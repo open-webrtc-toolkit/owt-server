@@ -18,7 +18,6 @@
     "chai-as-promised": "^5.1.0",
     "sinon": "^1.15.4",
     "sinon-as-promised": "^4.0.0",
-    "mockery": "*",
     "istanbul": "*"
   },
   "scripts": {

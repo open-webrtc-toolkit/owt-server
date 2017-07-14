@@ -106,7 +106,7 @@ module.exports = function (spec) {
         makeRPC(rpcClient,
                 erizos[erizo_id].agent,
                 'recycleNode',
-                [erizo_id, room_id],
+                [erizo_id, {room: room_id, task: room_id}],
                 function() {
                     delete erizos[erizo_id];
                 }, function() {

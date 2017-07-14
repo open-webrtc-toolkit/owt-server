@@ -59,6 +59,18 @@ function resolution2WidthHeight(resolution) {
   return resolutionName2Value[resolution] ? resolutionName2Value[resolution] : {width: w, height: h};
 }
 
+var ql2brl = {
+  'best_quality': '1.4x',
+  'better_quality': '1.2x',
+  'standard': '1.0x',
+  'better_speed': '0.8x',
+  'best_speed': '0.6x'
+};
+
+function qualityLevel2BitrateLevel (ql) {
+  return ql2brl[ql] ? ql2brl[ql] : '1.0x';
+}
+
 var idPattern = /^[0-9a-zA-Z\-]+$/;
 function isValidIdString(str) {
   return (typeof str === 'string') && idPattern.test(str);
@@ -106,6 +118,9 @@ var Client = function(participant_id, socket, portal, observer, reconnection_spe
   let disconnect_timeout;  // Timeout function for disconnection. It will be executed if disconnect timeout reached, will be cleared if other client valid reconnection ticket success.
   let disconnected = false;
   let old_clients = [];  // Old clients before reconnections.
+  let published_webrtc = {/*StreamId: {mix: boolean(IfMix)}*/}; //FIXME: for compatibility purpose for old clients(such as v3.4.x)
+  let ref2subId = {/*PeerId | StreamingOutURL | RecorderId: SubscriptionId}*/}; //FIXME: for compatibility purpose for old clients(such as v3.4.x)
+  let subId2ref = {/*SubscriptionId: PeerId | StreamingOutURL | RecorderId}*/}; //FIXME: for compatibility purpose for old clients(such as v3.4.x)
 
   // client_info has client version and platform.
   const checkClientAbility = function(ua){
@@ -170,6 +185,7 @@ var Client = function(participant_id, socket, portal, observer, reconnection_spe
   };
 
   const send_msg = function (event, data) {
+    //log.debug('send_msg, event:', event, 'data:', data);
     try {
       socket.emit(event, data);
     } catch (e) {
@@ -188,6 +204,11 @@ var Client = function(participant_id, socket, portal, observer, reconnection_spe
     }
   };
 
+  const getViewLabelFromStreamId = (streamId) => {
+    var bar_pos = streamId.indexOf("-");
+    return ((bar_pos >= 0) && (bar_pos < (streamId.length - 1))) ? streamId.substring(bar_pos + 1) : streamId;
+  };
+
   that.listen = function() {
     // Join portal. It returns room info.
     const joinPortal = function(participant_id, token){
@@ -198,19 +219,52 @@ var Client = function(participant_id, socket, portal, observer, reconnection_spe
           });
           return Promise.reject('Leaved conference before join success.');
         }
-        that.inRoom = result.session_id;
+        that.inRoom = result.room.id;
         that.tokenCode = result.tokenCode;
         observer.onJoin(result.tokenCode);
         return {clientId: participant_id,
-                id: result.session_id,
-                streams: result.streams.map(function(st) {
-                  if (st.view === 'common') {
-                    that.commonViewStream = st.id;
+                id: result.room.id,
+                streams: result.room.streams.map((st) => {
+                  var stream = {
+                    id: st.id,
+                    audio: !!st.media.audio,
+                    video: st.media.video ? {} : false,
+                    socket: ''
+                  };
+
+                  if (st.type === 'mixed') {
+                    stream.view = st.info.label;
+                    if (st.info.label === 'common') {
+                      that.commonViewStream = st.id;
+                    }
+                    stream.from = '';
+                  } else {
+                    stream.from = st.info.owner;
                   }
-                  st.video && (st.video.resolutions instanceof Array) && (st.video.resolutions = st.video.resolutions.map(resolution2WidthHeight));
-                  return st;
+
+                  if (st.media.video) {
+                    if (st.type === 'mixed') {
+                      stream.video.device = 'mcu';
+                      stream.video.resolutions = [st.media.video.parameters.resolution];
+
+                      st.media.video.optional && st.media.video.optional.parameters && st.media.video.optional.parameters.resolution && st.media.video.optional.parameters.resolution.forEach(function(reso) {
+                        stream.video.resolutions.push(reso);
+                      });
+                    } else if (st.media.video.source === 'screen-cast'){
+                      stream.video.device = 'screen';
+                    } else if (st.media.video.source === 'camera') {
+                      stream.video.device = 'camera';
+                    }
+                  }
+                  return stream;
                 }),
-                users: result.participants};
+                users: result.room.participants.map((ptt) => {
+                  return {
+                    id: ptt.id,
+                    name: ptt.user.name,
+                    role: ptt.role
+                  };
+                })};
       });
     };
 
@@ -239,8 +293,8 @@ var Client = function(participant_id, socket, portal, observer, reconnection_spe
           room_info.reconnectionTicket=generateReconnectionTicket();
         }
         safeCall(callback, 'success', room_info);
-      }).catch(function(error) {
-        joinPortalFailed(error, callback);
+      }).catch(function(err) {
+        joinPortalFailed(err, callback);
       });
     });
 
@@ -263,8 +317,10 @@ var Client = function(participant_id, socket, portal, observer, reconnection_spe
         reconnection_enabled=true;
         const ticket = generateReconnectionTicket();
         safeCall(callback, 'success', ticket);
-      }).catch(function(error){
-        safeCall(callback, 'error', error);
+      }).catch(function(err){
+        const err_message = getErrorMessage(err);
+        log.info('relogin failed:', err_message);
+        safeCall(callback, 'error', err_message);
       }).then(function(){
         for(let message of pending_messages){
           if (message && message.event) {
@@ -276,6 +332,10 @@ var Client = function(participant_id, socket, portal, observer, reconnection_spe
     });
 
     socket.on('refreshReconnectionTicket', function(callback){
+      if(!that.inRoom){
+        return safeCall(callback, 'error', 'Illegal request');
+      }
+
       if(!reconnection_enabled)
         safeCall(callback,'error','Reconnection is not enabled.');
       const ticket = generateReconnectionTicket();
@@ -283,81 +343,62 @@ var Client = function(participant_id, socket, portal, observer, reconnection_spe
     });
 
     socket.on('publish', function(options, url, callback) {
-      if(!that.inRoom) {
-        return safeCall(callback, 'error', 'unauthorized');
-      };
+      if(!that.inRoom){
+        return safeCall(callback, 'error', 'Illegal request');
+      }
 
-      var stream_id = Math.round(Math.random() * 1000000000000000000) + '',
-        connection_type,
-        stream_description = {};
+      var stream_id = Math.round(Math.random() * 1000000000000000000) + '';
+      var pub_info = {};
 
       if (options.state === 'erizo') {
-        connection_type = 'webrtc';
+        pub_info.type = 'webrtc';
+        pub_info.media = {
+          audio: (options.audio === false ? false : {source: 'mic'}),
+          video: (options.video === false ? false : {source: (options.video && options.video.device === 'screen') ? 'screen-cast' : 'camera'})
+        }
       } else if (options.state === 'url') {
-        connection_type = 'avstream';
-        stream_description.url = url;
-        stream_description.transport = options.transport;
-        stream_description.bufferSize = options.bufferSize;
+        pub_info.type = 'streaming';
+        pub_info.connection = {
+          url: url,
+          transportProtocol: options.transport || 'tcp',
+          bufferSize: options.bufferSize || 2048
+        };
+        pub_info.media = {
+          audio: (options.audio === undefined ? 'auto' : !!options.audio),
+          video: (options.video === undefined ? 'auto' : !!options.video)
+        };
       } else {
         return safeCall(callback, 'error', 'stream type(options.state) error.');
       }
 
-      stream_description.audio = (options.audio === undefined ? true : !!options.audio);
-      stream_description.video = (options.video === false ? false : (typeof options.video === 'object' ? options.video : {}));
-      ((stream_description.video && options.video && options.video.resolution && (typeof options.video.resolution.width === 'number') && (typeof options.video.resolution.height === 'number')) && (stream_description.video.resolution = widthHeight2Resolution(options.video.resolution.width, options.video.resolution.height))) ||
-      (stream_description.video && (typeof stream_description.video.resolution !== 'string' || stream_description.video.resolution === '') && (stream_description.video.resolution = 'unknown'));
-      stream_description.video && (typeof stream_description.video.device !== 'string' || stream_description.video.device === '') && (stream_description.video.device = 'unknown');
-      options.attributes && (stream_description.attributes = options.attributes);
-      var unmix = (options.unmix === true || (stream_description.video && (stream_description.video.device === 'screen'))) ? true : false;
+      options.attributes && (pub_info.attributes = options.attributes);
 
-      var has_responded = false;
-      return portal.publish(participant_id, stream_id, connection_type, stream_description, function(status) {
-        if (status.type === 'failed') {
-          if (has_responded) {
-            log.info('emitted connection_failed, reason:', status.reason);
-            send_msg('connection_failed', {streamId: stream_id});
-          } else {
-            safeCall(callback, 'error', status.reason);
-          }
+      return portal.publish(participant_id, stream_id, pub_info)
+      .then(function(result) {
+        log.debug('portal.publish -', result);
+        if (options.state === 'erizo') {
+          safeCall(callback, 'initializing', stream_id);
+          published_webrtc[stream_id] = {mix: !options.unmix};
         } else {
-          if (connection_type === 'webrtc') {
-            if (status.type === 'initializing') {
-              safeCall(callback, 'initializing', stream_id);
-              has_responded = true;
-            } else {
-              send_msg('signaling_message_erizo', {streamId: stream_id, mess: status});
-            }
-          } else {
-            if (status.type === 'ready') {
-              safeCall(callback, 'success', stream_id);
-              has_responded = true;
-            } else if (status.type !== 'initializing') {
-              safeCall(callback, status);
-              has_responded = true;
-            }
-          }
+          safeCall(callback, 'success', stream_id);
         }
-      }, unmix).then(function(connectionLocality) {
-        log.debug('portal.publish succeeded, connection locality:', connectionLocality);
-      }).catch(function(err) {
+      })
+      .catch(function(err) {
         const err_message = getErrorMessage(err);
         log.info('portal.publish failed:', err_message);
-        if (has_responded) {
-          send_msg('connection_failed', {streamId: stream_id});
-        } else {
-          safeCall(callback, 'error', err_message);
-        }
+        safeCall(callback, 'error', err_message);
       });
     });
 
     socket.on('unpublish', function(streamId, callback) {
-      if(!that.inRoom) {
-        return safeCall(callback, 'error', 'unauthorized');
-      };
+      if(!that.inRoom){
+        return safeCall(callback, 'error', 'Illegal request');
+      }
 
       return portal.unpublish(participant_id, streamId)
       .then(function() {
         safeCall(callback, 'success');
+        published_webrtc[streamId] && (delete published_webrtc[streamId]);
       }).catch(function(err) {
         const err_message = getErrorMessage(err);
         log.info('portal.unpublish failed:', err_message);
@@ -366,154 +407,110 @@ var Client = function(participant_id, socket, portal, observer, reconnection_spe
     });
 
     socket.on('mix', function(options, callback) {
+      if(!that.inRoom){
+        return safeCall(callback, 'error', 'Illegal request');
+      }
+
       var streamId = options.streamId;
-      var mixStreams = options.mixStreams;
 
-      if(!that.inRoom) {
-        return safeCall(callback, 'error', 'unauthorized');
-      };
-
-      return portal.mix(participant_id, streamId, mixStreams)
-      .then(function() {
-        safeCall(callback, 'success');
-      }).catch(function(err) {
-        const err_message = getErrorMessage(err);
-        log.info('portal.mix failed:', err_message);
-        safeCall(callback, 'error', err_message);
-      });
+      return Promise.all(options.mixStreams.map((mixStreamId) => {
+          var view_label = (getViewLabelFromStreamId(mixStreamId) || 'common');
+          return portal.streamControl(participant_id,
+                                      streamId,
+                                      {
+                                        operation: 'mix',
+                                        data: view_label
+                                      });
+        })).then((result) => {
+          safeCall(callback, 'success');
+        }).catch((err) => {
+          const err_message = getErrorMessage(err);
+          log.info('portal.mix failed:', err_message);
+          safeCall(callback, 'error', err_message);
+        });
     });
 
     socket.on('unmix', function(options, callback) {
+      if(!that.inRoom){
+        return safeCall(callback, 'error', 'Illegal request');
+      }
+
       var streamId = options.streamId;
-      var mixStreams = options.mixStreams;
 
-      if(!that.inRoom) {
-        return safeCall(callback, 'error', 'unauthorized');
-      };
-
-      return portal.unmix(participant_id, streamId, mixStreams)
-      .then(function() {
-        safeCall(callback, 'success');
-      }).catch(function(err) {
-        const err_message = getErrorMessage(err);
-        log.info('portal.unmix failed:', err_message);
-        safeCall(callback, 'error', err_message);
-      });
-    });
-
-    // To be delete after clients updated
-    socket.on('addToMixer', function(streamId, mixStreams, callback) {
-      if (typeof mixStreams === 'function') {
-        // Shift the arguments with old clients
-        callback = mixStreams;
-        mixStreams = undefined;
-      }
-
-      if(!that.inRoom) {
-        return safeCall(callback, 'error', 'unauthorized');
-      };
-
-      return portal.mix(participant_id, streamId, mixStreams)
-      .then(function() {
-        safeCall(callback, 'success');
-      }).catch(function(err) {
-        const err_message = getErrorMessage(err);
-        log.info('portal.mix failed:', err_message);
-        safeCall(callback, 'error', err_message);
-      });
-    });
-
-    // To be delete after clients updated
-    socket.on('removeFromMixer', function(streamId, mixStreams, callback) {
-      if (typeof mixStreams === 'function') {
-        // Shift the arguments with old clients
-        callback = mixStreams;
-        mixStreams = undefined;
-      }
-
-      if(!that.inRoom) {
-        return safeCall(callback, 'error', 'unauthorized');
-      };
-
-      return portal.unmix(participant_id, streamId, mixStreams)
-      .then(function() {
-        safeCall(callback, 'success');
-      }).catch(function(err) {
-        const err_message = getErrorMessage(err);
-        log.info('portal.unmix failed:', err_message);
-        safeCall(callback, 'error', err_message);
-      });
+      return Promise.all(options.mixStreams.map((mixStreamId) => {
+          var view_label = (getViewLabelFromStreamId(mixStreamId) || 'common');
+          return portal.streamControl(participant_id,
+                                      streamId,
+                                      {
+                                        operation: 'unmix',
+                                        data: view_label
+                                      });
+        })).then((result) => {
+          safeCall(callback, 'success');
+        }).catch((err) => {
+          const err_message = getErrorMessage(err);
+          log.info('portal.mix failed:', err_message);
+          safeCall(callback, 'error', err_message);
+        });
     });
 
     socket.on('setVideoBitrate', function(options, callback) {
-      if(!that.inRoom) {
-        return safeCall(callback, 'error', 'unauthorized');
-      };
-
-      return portal.setVideoBitrate(participant_id, options.id, options.bitrate)
-      .then(function() {
-        safeCall(callback, 'success');
-      }).catch(function(err) {
-        const err_message = getErrorMessage(err);
-        log.info('portal.setVideoBitrate failed:', err_message);
-        safeCall(callback, 'error', err_message);
-      });
+      safeCall(callback, 'error', 'No longer supported signaling');
     });
 
     socket.on('subscribe', function(options, unused, callback) {
-      if (!that.inRoom) {
-        return safeCall(callback, 'error', 'unauthorized');
+      if(!that.inRoom){
+        return safeCall(callback, 'error', 'Illegal request');
       }
 
-      var subscription_description = {};
-      (options.audio || options.audio === undefined) && (subscription_description.audio = {fromStream: options.streamId});
-      (options.video || options.video === undefined) && (subscription_description.video = {fromStream: options.streamId});
-      (options.video && options.video.resolution && (typeof options.video.resolution.width === 'number') && (typeof options.video.resolution.height === 'number')) &&
-      (subscription_description.video.resolution = widthHeight2Resolution(options.video.resolution.width, options.video.resolution.height));
-      (options.video && (typeof options.video.resolution === 'string')) && (subscription_description.video.resolution = options.video.resolution);
-      (options.video && options.video.quality_level && (subscription_description.video.quality_level = options.video.quality_level));
+      var peer_id = options.streamId;
+      if (ref2subId[peer_id]) {
+        return safeCall(callback, 'error', 'Subscription is ongoing');
+      }
 
-      if (!subscription_description.audio && !subscription_description.video) {
+      var subscription_id = Math.round(Math.random() * 1000000000000000000) + '';
+      ref2subId[peer_id] = subscription_id;
+      subId2ref[subscription_id] = peer_id;
+
+      var sub_desc = {type: 'webrtc', media: {}};
+      (options.audio || options.audio === undefined) && (sub_desc.media.audio = {from: options.streamId});
+      (options.video || options.video === undefined) && (sub_desc.media.video = {from: options.streamId});
+      (options.video && options.video.resolution && (typeof options.video.resolution.width === 'number') && (typeof options.video.resolution.height === 'number')) &&
+      (sub_desc.media.video.spec || (sub_desc.media.video.spec = {})) && (sub_desc.media.video.spec.resolution = options.video.resolution);
+      options.video && (typeof options.video.resolution === 'string') && (sub_desc.media.video.resolution = resolution2WidthHeight(options.video.resolution));
+      options.video && options.video.quality_level && (sub_desc.media.video.spec || (sub_desc.media.video.spec = {})) && (sub_desc.media.video.spec.bitrateLevel = qualityLevel2BitrateLevel(options.video.quality_level));
+
+      if (!sub_desc.media.audio && !sub_desc.media.video) {
           return safeCall(callback, 'error', 'bad options');
       }
 
-      //FIXME - a: use the target stream id as the subscription_id to keep compatible with client SDK, should be fixed and use random strings independently later.
-      var subscription_id = participant_id + '-sub-' + ((subscription_description.audio && subscription_description.audio.fromStream) ||
-                                                        (subscription_description.video && subscription_description.video.fromStream));
-
-      var has_responded = false;
-      return portal.subscribe(participant_id, subscription_id, 'webrtc', subscription_description, function(status) {
-        if (status.type === 'failed') {
-          if (has_responded) {
-            log.info('emitted connection_failed, reason:', status.reason);
-            send_msg('connection_failed', {streamId: options.streamId});
-          } else {
-            safeCall(callback, 'error', status.reason);
-            has_responded = true;
-          }
-        } else if (status.type === 'initializing') {
-          safeCall(callback, 'initializing', options.streamId/*FIXME -a */);
-          has_responded = true;
-        } else {
-          send_msg('signaling_message_erizo', {peerId: options.streamId/*FIXME -a */, mess: status});
-        }
-      }).then(function(connectionLocality) {
-        log.debug('portal.subscribe succeeded, connection locality:', connectionLocality);
-      }).catch(function(err) {
-        const err_message = getErrorMessage(err);
-        log.info('portal.subscribe failed:', err_message);
-        safeCall(callback, 'error', err_message);
-        has_responded = true;
-      });
+      return portal.subscribe(participant_id, subscription_id, sub_desc
+        ).then(function(result) {
+          safeCall(callback, 'initializing', peer_id);
+          log.debug('portal.subscribe succeeded');
+        }).catch(function(err) {
+          const err_message = getErrorMessage(err);
+          log.info('portal.subscribe failed:', err_message);
+          safeCall(callback, 'error', err_message);
+        });
     });
 
     socket.on('unsubscribe', function(streamId, callback) {
-      if(!that.inRoom) {
-        return safeCall(callback, 'error', 'unauthorized');
-      };
+      log.debug('on:unsubscribe, streamId:', streamId);
+      if(!that.inRoom){
+        return safeCall(callback, 'error', 'Illegal request');
+      }
 
-      var subscription_id = participant_id + '-sub-' + streamId; //FIXME - a: keep compatible with client SDK, should be refined later.
-      return portal.unsubscribe(participant_id, subscription_id)
+      var peer_id = streamId;
+      if (!ref2subId[peer_id]) {
+        return safeCall(callback, 'error', 'Subscription does NOT exist');
+      }
+      var subscription_id = ref2subId[peer_id];
+
+      delete ref2subId[peer_id];
+      delete subId2ref[subscription_id];
+
+      return portal.unsubscribe(participant_id,  subscription_id)
       .then(function() {
         safeCall(callback, 'success');
       }).catch(function(err) {
@@ -524,13 +521,20 @@ var Client = function(participant_id, socket, portal, observer, reconnection_spe
     });
 
     socket.on('signaling_message', function(message, to_to_deprecated, callback) {
-      portal.onConnectionSignalling(participant_id, message.streamId, message.msg);
+      if(!that.inRoom){
+        return safeCall(callback, 'error', 'Illegal request');
+      }
+
+      var session_id = (published_webrtc[message.streamId] ? message.streamId : ref2subId[message.streamId]);
+      if (session_id) {
+        portal.onSessionSignaling(participant_id, session_id, message.msg);
+      }
       safeCall(callback, 'ok');
     });
 
     socket.on('addExternalOutput', function(options, callback) {
-      if(!that.inRoom) {
-        return safeCall(callback, 'error', 'unauthorized');
+      if(!that.inRoom){
+        return safeCall(callback, 'error', 'Illegal request');
       }
 
       log.debug('Add serverUrl:', options.url, 'options:', options);
@@ -544,47 +548,44 @@ var Client = function(participant_id, socket, portal, observer, reconnection_spe
         return safeCall(callback, 'error', 'Invalid RTSP/RTMP server url');
       }
 
-      if (options.streamId === undefined) {
-        options.streamId = that.commonViewStream;
+      var streaming_url = parsed_url.format();
+      if (ref2subId[streaming_url]) {
+        return safeCall(callback, 'error', 'Streaming-out is ongoing');
       }
 
-      var subscription_description = {};
-      (options.audio || options.audio === undefined) && (subscription_description.audio = {fromStream: options.streamId, codecs: (options.audio && options.audio.codecs) || ['aac']});
-      (options.video || options.video === undefined) && (subscription_description.video = {fromStream: options.streamId, codecs: (options.video && options.video.codecs) || ['h264']});
-      ((subscription_description.video) && options.resolution && (typeof options.resolution.width === 'number') && (typeof options.resolution.height === 'number')) &&
-      (subscription_description.video.resolution = widthHeight2Resolution(options.resolution.width, options.resolution.height));
-      (subscription_description.video && (typeof options.resolution === 'string')) && (subscription_description.video.resolution = options.resolution);
-      subscription_description.url = parsed_url.format();
+      var subscription_id = Math.round(Math.random() * 1000000000000000000) + '';
+      ref2subId[streaming_url] = subscription_id;
+      subId2ref[subscription_id] = streaming_url;
 
-      var subscription_id = subscription_description.url;
-      var has_responded = false;
-      return portal.subscribe(participant_id, subscription_id, 'avstream', subscription_description, function(status) {
-        if (status.type === 'failed') {
-          if (has_responded) {
-            log.info('emitted connection_failed, reason:', status.reason);
-            send_msg('connection_failed', {url: subscription_description.url});
-          } else {
-            log.info('addExternalOutput onConnection error:', status.reason);
-            safeCall(callback, 'error', status.reason);
-            has_responded = true;
-          }
-        } else if (status.type === 'ready') {
-          safeCall(callback, 'success', {url: subscription_description.url});
-          has_responded = true;
+      var target_stream_id = (options.streamId || that.commonViewStream);
+      var sub_desc = {
+        type: 'streaming',
+        media: {
+          audio: (options.audio === false ? false: {from: target_stream_id, spec: {codec: options.audio && options.audio.codecs ? options.audio.codecs[0] : 'aac'}}),
+          video: (options.video === false ? false: {from: target_stream_id, spec: {codec: options.video && options.video.codecs ? options.video.codecs[0] : 'h264'}})
+        },
+        connection: {
+          url: parsed_url.format()
         }
-      }).then(function(connectionLocality) {
-        log.debug('portal.subscribe succeeded, connection locality:', connectionLocality);
-      }).catch(function(err) {
-        const err_message = getErrorMessage(err);
-        log.info('portal.subscribe failed:', err_message);
-        safeCall(callback, 'error', err_message);
-        has_responded = true;
-      });
+      };
+      ((sub_desc.media.video) && options.resolution && (typeof options.resolution.width === 'number') && (typeof options.resolution.height === 'number')) &&
+      (sub_desc.media.video.spec.resolution = options.resolution);
+      (sub_desc.media.video && (typeof options.resolution === 'string')) && (sub_desc.media.video.spec.resolution = resolution2WidthHeight(options.resolution));
+
+      return portal.subscribe(participant_id, subscription_id, sub_desc
+        ).then((result) => {  
+          log.debug('portal.subscribe succeeded');
+          safeCall(callback, 'success', {url: sub_desc.connection.url});
+        }).catch(function(err) {
+          const err_message = getErrorMessage(err);
+          log.info('portal.subscribe failed:', err_message);
+          safeCall(callback, 'error', err_message);
+        });
     });
 
     socket.on('updateExternalOutput', function(options, callback) {
-      if(!that.inRoom) {
-        return safeCall(callback, 'error', 'unauthorized');
+      if(!that.inRoom){
+        return safeCall(callback, 'error', 'Illegal request');
       }
 
       log.debug('Update serverUrl:', options.url, 'options:', options);
@@ -598,48 +599,38 @@ var Client = function(participant_id, socket, portal, observer, reconnection_spe
         return safeCall(callback, 'error', 'Invalid RTSP/RTMP server url');
       }
 
-      if (options.streamId === undefined) {
-        options.streamId = that.commonViewStream;
+      var streaming_url = options.url;
+      var subscription_id = ref2subId[streaming_url];
+      if (!subscription_id) {
+        return safeCall(callback, 'error', 'Streaming-out does NOT exist');
+      }
+      var update = {};
+
+      if (options.streamId) {
+        update.audio = {from: options.streamId};
+        update.video = {from: options.streamId};
       }
 
-      var subscription_description = {};
-      (options.audio || options.audio === undefined) && (subscription_description.audio = {fromStream: options.streamId, codecs: (options.audio && options.audio.codecs) || ['aac']});
-      (options.video || options.video === undefined) && (subscription_description.video = {fromStream: options.streamId, codecs: (options.video && options.video.codecs) || ['h264']});
-      ((subscription_description.video) && options.resolution && (typeof options.resolution.width === 'number') && (typeof options.resolution.height === 'number')) &&
-      (subscription_description.video.resolution = widthHeight2Resolution(options.resolution.width, options.resolution.height));
-      (subscription_description.video && (typeof options.resolution === 'string')) && (subscription_description.video.resolution = options.resolution);
-      subscription_description.url = parsed_url.format();
+      if (options.resolution) {
+        update.video = (update.video || {});
+        update.video.spec = {};
+        (typeof options.resolution.width === 'number') && (typeof options.resolution.height === 'number') && (update.video.spec.resolution = options.resolution);
+        (typeof options.resolution === 'string') && (update.video.spec.resolution = resolution2WidthHeight(options.resolution));
+      }
 
-      var has_responded = false;
-      return portal.unsubscribe(participant_id, options.url)
-      .then(function() {
-        return portal.subscribe(participant_id, options.url, 'avstream', subscription_description, function(status) {
-          if (status.type === 'failed') {
-            if (has_responded) {
-              log.info('emitted connection_failed, reason:', status.reason);
-              send_msg('connection_failed', {url: subscription_description.url});
-            } else {
-              log.info('updateExternalOutput onConnection error:', status.reason);
-              safeCall(callback, 'error', status.reason);
-              has_responded = true;
-            }
-          } else if (status.type === 'ready') {
-            safeCall(callback, 'success', {url: subscription_description.url});
-            has_responded = true;
-          }
+      return portal.subscriptionControl(participant_id, subscription_id, {operation: 'update', data: update}
+        ).then(function(subscriptionId) {
+          safeCall(callback, 'success', {url: options.url});
+        }).catch(function(err) {
+          const err_message = getErrorMessage(err);
+          log.info('portal.subscriptionControl failed:', err_message);
+          safeCall(callback, 'error', err_message);
         });
-      }).then(function(subscriptionId) {
-      }).catch(function(err) {
-        const err_message = getErrorMessage(err);
-        log.info('portal.unsubscribe/subscribe exception:', err_message);
-        safeCall(callback, 'error', err_message);
-        has_responded = true;
-      });
     });
 
     socket.on('removeExternalOutput', function(options, callback) {
-      if(!that.inRoom) {
-        return safeCall(callback, 'error', 'unauthorized');
+      if(!that.inRoom){
+        return safeCall(callback, 'error', 'Illegal request');
       }
 
       log.debug('Remove serverUrl:', options.url, 'options:', options);
@@ -648,7 +639,16 @@ var Client = function(participant_id, socket, portal, observer, reconnection_spe
         return safeCall(callback, 'error', 'Invalid RTSP/RTMP server url');
       }
 
-      return portal.unsubscribe(participant_id, options.url)
+      var streaming_url = options.url;
+      if (!ref2subId[streaming_url]) {
+        return safeCall(callback, 'error', 'Streaming-out does NOT exist');
+      }
+      var subscription_id = ref2subId[streaming_url];
+
+      delete ref2subId[streaming_url];
+      delete subId2ref[subscription_id];
+
+      return portal.unsubscribe(participant_id, subscription_id)
       .then(function() {
         safeCall(callback, 'success', {url: options.url});
       }, function(err) {
@@ -663,8 +663,8 @@ var Client = function(participant_id, socket, portal, observer, reconnection_spe
     });
 
     socket.on('startRecorder', function(options, callback) {
-      if (!that.inRoom) {
-        return safeCall(callback, 'error', 'unauthorized');
+      if(!that.inRoom){
+        return safeCall(callback, 'error', 'Illegal request');
       }
 
       if (!(options.recorderId === undefined || isValidIdString(options.recorderId))) {
@@ -689,54 +689,88 @@ var Client = function(participant_id, socket, portal, observer, reconnection_spe
         return safeCall(callback, 'error', 'Invalid video codec');
       }
 
-      var subscription_description = {audio: false, video: false};
-      (options.audioStreamId || unspecifiedStreamIds) && (subscription_description.audio = {fromStream: options.audioStreamId || that.commonViewStream});
-      (subscription_description.audio && (typeof options.audioCodec === 'string')) && (subscription_description.audio.codecs = [options.audioCodec]);
-      subscription_description.audio && (subscription_description.audio.codecs = (subscription_description.audio.codecs || ['opus']).map(function(c) {return (c === 'opus' ? 'opus_48000_2' : (c === 'aac' ? 'aac_48000_2' : c));}));
-      (options.videoStreamId || unspecifiedStreamIds) && (subscription_description.video = {fromStream: options.videoStreamId || that.commonViewStream});
-      (subscription_description.video && (typeof options.videoCodec === 'string')) && (subscription_description.video.codecs = [options.videoCodec]);
-      subscription_description.video && (subscription_description.video.codecs = subscription_description.video.codecs || ['vp8']);
-      options.path && (subscription_description.path = options.path);
-      subscription_description.interval = (options.interval && options.interval > 0) ? options.interval : -1;
+      //Behavior Change: The 'startRecorder' request with options.recorderId being specified will be considered
+      //as a contineous recording request in v3.5 and later releases.
+      if (options.recorderId) {
+        if ((options.audioStreamId === undefined) && (options.videoStreamId === undefined)) {
+          return safeCall(callback, 'error', 'Neither audio.from nor video.from was specified');
+        }
 
-      var recorder_id = (options.recorderId || formatDate(new Date, 'yyyyMMddhhmmssSS'));
-      var subscription_id = participant_id + '-' + recorder_id;
-      var recording_file, recorder_added = false;
-      return portal.subscribe(participant_id, subscription_id, 'recording', subscription_description, function(status) {
-        if (status.type === 'failed') {
-          if (recorder_added) {
-            that.notify('remove_recorder', {id: recorder_id});
-          } else {
-            safeCall(callback, 'error', status.reason);
-          }
-        } else if (status.type === 'ready') {
-          recorder_added = true;
+      if (!ref2subId[options.recorderId]) {
+        return safeCall(callback, 'error', 'Recording does NOT exist');
+      }
+        var subscription_id = options.recorderId;
+        var update = {
+          operation: 'update',
+          data: {}
+        };
+
+        options.audioStreamId && (update.data.audio = {from: options.audioStreamId});
+        options.videoStreamId && (update.data.video = {from: options.videoStreamId});
+        return portal.subscriptionControl(participant_id, subscription_id, update)
+          .then((result) => {
+            safeCall(callback, 'success', {recorderId: options.recorderId});
+          }).catch(function(err) {
+            const err_message = getErrorMessage(err);
+            log.info('portal.subscribe failed:', err_message);
+            safeCall(callback, 'error', err_message);
+          });
+      }
+
+      //Behavior Change: The options.path and options.interval parameters will be ignored in v3.5 and later releases. 
+      var recorder_id = Math.round(Math.random() * 1000000000000000000) + '';
+      var subscription_id = recorder_id;
+      ref2subId[recorder_id] = subscription_id;
+      subId2ref[subscription_id] = recorder_id;
+
+      var sub_desc = {
+        type: 'recording',
+        media: {
+          audio: false,
+          video: false
+        },
+        connection: {
+          container: (options.audioCodec === 'aac' ? 'mp4' : 'mkv')
+        }
+      };
+
+      (options.audioStreamId || unspecifiedStreamIds) && (sub_desc.media.audio = {from: options.audioStreamId || that.commonViewStream});
+      sub_desc.media.audio && (sub_desc.media.audio.codec = (function(c) {return (c === 'opus' ? 'opus_48000_2' : (c === 'aac' ? 'aac_48000_2' : c));})(options.audioCodec || 'opus'));
+
+      (options.videoStreamId || unspecifiedStreamIds) && (sub_desc.media.video = {from: options.videoStreamId || that.commonViewStream});
+      sub_desc.media.video && (sub_desc.media.video.codec = (options.videoCodec || 'vp8'));
+
+      return portal.subscribe(participant_id, subscription_id, sub_desc)
+        .then(function(result) {
+          log.debug('portal.subscribe succeeded, result:', result);
+
+          var recording_file = subscription_id + '.' + sub_desc.connection.container;
           safeCall(callback, 'success', {recorderId: recorder_id, path: recording_file, host: 'unknown'});
-        }
-      }).then(function(connectionLocality) {
-        log.debug('portal.subscribe succeeded, connection locality:', connectionLocality);
-        if (typeof options.audioCodec === 'string' && (options.audioCodec.indexOf('aac') > -1)) {
-          recording_file = path.join(options.path || '', 'room_' + that.inRoom + '-' + subscription_id + '.mp4' );
-        } else {
-          recording_file = path.join(options.path || '', 'room_' + that.inRoom + '-' + subscription_id + '.mkv' );
-        }
-      }).catch(function(err) {
-        const err_message = getErrorMessage(err);
-        log.info('portal.subscribe failed:', err_message);
-        safeCall(callback, 'error', err_message);
-      });
+        }).catch(function(err) {
+          const err_message = getErrorMessage(err);
+          log.info('portal.subscribe failed:', err_message);
+          safeCall(callback, 'error', err_message);
+        });
     });
 
     socket.on('stopRecorder', function(options, callback) {
-      if(!that.inRoom) {
-        return safeCall(callback, 'error', 'unauthorized');
+      if(!that.inRoom){
+        return safeCall(callback, 'error', 'Illegal request');
       }
 
       if (options.recorderId === undefined || !isValidIdString(options.recorderId)) {
         return safeCall(callback, 'error', 'Invalid recorder id');
       }
 
-      var subscription_id = (options.recorderId.startsWith(participant_id) ? options.recorderId : participant_id + '-' + options.recorderId);
+      var recorder_id = options.recorderId;
+      if (!ref2subId[recorder_id]) {
+        return safeCall(callback, 'error', 'Recording does NOT exist');
+      }
+      var subscription_id = ref2subId[recorder_id];
+
+      delete ref2subId[recorder_id];
+      delete subId2ref[subscription_id];
+
       return portal.unsubscribe(participant_id, subscription_id)
       .then(function() {
         safeCall(callback, 'success', {recorderId: options.recorderId, host: 'unknown'});
@@ -748,27 +782,28 @@ var Client = function(participant_id, socket, portal, observer, reconnection_spe
     });
 
     socket.on('getRegion', function(options, callback) {
-      if(!that.inRoom) {
-        return safeCall(callback, 'error', 'unauthorized');
+      if(!that.inRoom){
+        return safeCall(callback, 'error', 'Illegal request');
       }
 
       if (!isValidIdString(options.id)) {
         return safeCall(callback, 'error', 'Invalid stream id');
       }
 
-      return portal.getRegion(participant_id, options.id, options.mixStreamId)
-      .then(function(regionId) {
-        safeCall(callback, 'success', {region: regionId});
+      var view_label = (options.mixStreamId ? getViewLabelFromStreamId(options.mixStreamId) : 'common');
+      return portal.streamControl(participant_id, options.id, {operation: 'get-region', data: view_label})
+      .then(function(result) {
+        safeCall(callback, 'success', {region: result.region});
       }).catch(function(err) {
         const err_message = getErrorMessage(err);
-        log.info('portal.getRegion failed:', err_message);
+        log.info('portal.streamControl failed:', err_message);
         safeCall(callback, 'error', err_message);
       });
     });
 
     socket.on('setRegion', function(options, callback) {
-      if(!that.inRoom) {
-        return safeCall(callback, 'error', 'unauthorized');
+      if(!that.inRoom){
+        return safeCall(callback, 'error', 'Illegal request');
       }
 
       if (!isValidIdString(options.id)) {
@@ -779,19 +814,20 @@ var Client = function(participant_id, socket, portal, observer, reconnection_spe
         return safeCall(callback, 'error', 'Invalid region id');
       }
 
-      return portal.setRegion(participant_id, options.id, options.region, options.mixStreamId)
+      var view_label = (options.mixStreamId ? getViewLabelFromStreamId(options.mixStreamId) : 'common');
+      return portal.streamControl(participant_id, options.id, {operation: 'set-region', data: {view: view_label, region: options.region}})
       .then(function() {
         safeCall(callback, 'success');
       }).catch(function(err) {
         const err_message = getErrorMessage(err);
-        log.info('portal.setRegion failed:', err_message);
+        log.info('portal.streamControl failed:', err_message);
         safeCall(callback, 'error', err_message);
       });
     });
 
     socket.on('mute', function(options, callback) {
-      if(!that.inRoom) {
-        return safeCall(callback, 'error', 'unauthorized');
+      if(!that.inRoom){
+        return safeCall(callback, 'error', 'Illegal request');
       }
 
       if (!options.streamId) {
@@ -802,19 +838,19 @@ var Client = function(participant_id, socket, portal, observer, reconnection_spe
         return safeCall(callback, 'error', `invalid track ${options.track}`);
       }
 
-      return portal.setMute(participant_id, options.streamId, options.track, true)
+      return portal.streamControl(participant_id, options.streamId, {operation: 'pause', data: options.track})
       .then(function() {
           safeCall(callback, 'success');
         }).catch(function(err) {
           const err_message = getErrorMessage(err);
-          log.info('portal.setMute failed:', err_message);
+          log.info('portal.streamControl failed:', err_message);
           safeCall(callback, 'error', err_message);
         });
     });
 
     socket.on('unmute', function(options, callback) {
-      if(!that.inRoom) {
-        return safeCall(callback, 'error', 'unauthorized');
+      if(!that.inRoom){
+        return safeCall(callback, 'error', 'Illegal request');
       }
 
       if (!options.streamId) {
@@ -825,19 +861,19 @@ var Client = function(participant_id, socket, portal, observer, reconnection_spe
         return safeCall(callback, 'error', `invalid track ${options.track}`);
       }
 
-      return portal.setMute(participant_id, options.streamId, options.track, false)
+      return portal.streamControl(participant_id, options.streamId, {operation: 'play', data: options.track})
       .then(function() {
           safeCall(callback, 'success');
         }).catch(function(err) {
           const err_message = getErrorMessage(err);
-          log.info('portal.setMute failed:', err_message);
+          log.info('portal.streamControl failed:', err_message);
           safeCall(callback, 'error', err_message);
         });
     });
 
     socket.on('setPermission', function(options, callback) {
-      if (!that.inRoom) {
-        return safeCall(callback, 'error', 'unauthorized');
+      if(!that.inRoom){
+        return safeCall(callback, 'error', 'Illegal request');
       }
 
       if (!options.targetId) {
@@ -848,7 +884,7 @@ var Client = function(participant_id, socket, portal, observer, reconnection_spe
         return safeCall(callback, 'error', 'no action specified');
       }
 
-      return portal.setPermission(participant_id, options.targetId, options.action, options.update)
+      return portal.setPermission(participant_id, options.targetId, [{operation: options.action, value: options.update}])
       .then(function() {
         safeCall(callback, 'success');
       }).catch(function(err) {
@@ -859,8 +895,8 @@ var Client = function(participant_id, socket, portal, observer, reconnection_spe
     })
 
     socket.on('customMessage', function(msg, callback) {
-      if(!that.inRoom) {
-        return safeCall(callback, 'error', 'unauthorized');
+      if(!that.inRoom){
+        return safeCall(callback, 'error', 'Illegal request');
       }
 
       switch (msg.type) {
@@ -869,7 +905,7 @@ var Client = function(participant_id, socket, portal, observer, reconnection_spe
             return safeCall(callback, 'error', 'Invalid receiver');
           }
 
-          return portal.text(participant_id, msg.receiver, msg.data)
+          return portal.text(participant_id, {to: msg.receiver, message: msg.data})
             .then(function() {
               safeCall(callback, 'success');
             }).catch(function(err) {
@@ -893,16 +929,32 @@ var Client = function(participant_id, socket, portal, observer, reconnection_spe
           var cmdOpts = msg.payload.action.split('-'),
               track = cmdOpts[0],
               direction = (cmdOpts[1] === 'out' ? 'in' : 'out'),
-              on_off = cmdOpts[2];
+              operation = (cmdOpts[2] === 'on' ? 'play' : 'pause');
 
-          return portal.mediaOnOff(participant_id, msg.payload.streamId, track, direction, on_off)
-            .then(function() {
-              safeCall(callback, 'success');
-            }).catch(function(err) {
-              const err_message = getErrorMessage(err);
-              log.info('portal.mediaOnOff failed:', err_message);
-              safeCall(callback, 'error', err_message);
-            });
+          if (cmdOpts[1] === 'out') {
+            return portal.streamControl(participant_id, msg.payload.streamId, {operation: operation, data: track})
+              .then(() => {
+                safeCall(callback, 'success');
+              }).catch((err) => {
+                const err_message = getErrorMessage(err);
+                log.info('portal.streamControl failed:', err_message);
+                safeCall(callback, 'error', err_message);
+              });
+          } else {
+            var peer_id = msg.payload.streamId;
+            var subscription_id = ref2subId[peer_id];
+            if (subscription_id === undefined) {
+              return safeCall(callback, 'error', 'Subscription does NOT exist');
+            }
+            return portal.subscriptionControl(participant_id, subscription_id, {operation: operation, data: track})
+              .then(function() {
+                safeCall(callback, 'success');
+              }).catch(function(err) {
+                const err_message = getErrorMessage(err);
+                log.info('portal.subscriptionControl failed:', err_message);
+                safeCall(callback, 'error', err_message);
+              });
+          }
         default:
           return safeCall(callback, 'error', 'Invalid message type');
       }
@@ -921,6 +973,10 @@ var Client = function(participant_id, socket, portal, observer, reconnection_spe
     };
 
     socket.on('logout', function(callback){
+      if(!that.inRoom){
+        return safeCall(callback, 'error', 'Illegal request');
+      }
+
       log.debug(vsprintf('Reconnection for %s is disabled because of client logout.', [participant_id]));
       reconnection_enabled=false;
       leavePortal().then(function() {
@@ -956,9 +1012,108 @@ var Client = function(participant_id, socket, portal, observer, reconnection_spe
     });
   };
 
+  const notifyParticipantActivity = (participantActivity) => {
+    if (participantActivity.action === 'join') {
+      send_msg('user_join', {user: {id: participantActivity.data.id, name: participantActivity.data.user.name, role: participantActivity.data.role}});
+    } else if (participantActivity.action === 'leave') {
+      send_msg('user_leave', {user: {id: participantActivity.data}});
+    } else {
+      log.info('Unknown participant activity message:', participantActivity);
+    }
+  };
+
+  const notifyStreamInfo = (streamInfo) => {
+    log.debug('notifyStreamInfo, streamInfo:', streamInfo);
+    if (streamInfo.status === 'add') {
+      send_msg('add_stream', {id: streamInfo.data.id, audio: !!streamInfo.data.media.audio, video: !!streamInfo.data.media.video ? {device: streamInfo.data.type === 'mixed'? 'mcu' : streamInfo.data.media.video.source} : false, from: streamInfo.data.type === 'mixed' ? '' : streamInfo.data.info.owner, attributes: streamInfo.data.info.attributes});
+    } else if (streamInfo.status === 'update') {
+      var st_update = {id: streamInfo.data.id};
+      if ((streamInfo.data.field === 'audio.status') || (streamInfo.data.field === 'video.status')) {//Forward stream update
+        st_update.event = 'StateChange';
+        st_update.state = streamInfo.data.value;
+      } else if (streamInfo.data.field === 'video.layout') {//Mixed stream update
+        st_update.event = 'VideoLayoutChanged';
+        st_update.data = streamInfo.data.value.map((stream2region) => {//FIXME: Client side need to handle the incompetibility, since the definition of region has been extended.
+          return {
+            streamId: stream2region.stream,
+            id: stream2region.region.id,
+            left: stream2region.region.area.left,
+            top: stream2region.region.area.top,
+            relativeSize: stream2region.region.area.width
+          };
+        });
+      }
+      send_msg('update_stream', st_update);
+    } else if (streamInfo.status === 'remove') {
+      send_msg('remove_stream', {id: streamInfo.id});
+    } else {
+      log.info('Unknown stream info:', streamInfo);
+    }
+  };
+
+  const notifySessionProgress = (sessionProgress) => {
+    var id = sessionProgress.id;
+    if (sessionProgress.status === 'soac') {
+      if (published_webrtc[id]) {
+        send_msg('signaling_message_erizo', {streamId: id, mess: sessionProgress.data});
+      } else {
+        var peer_id = subId2ref[id];
+        if (peer_id) {
+          send_msg('signaling_message_erizo', {peerId: peer_id, mess: sessionProgress.data});
+        }
+      }
+    } else if (sessionProgress.status === 'ready') {
+      if (published_webrtc[id]) {
+        send_msg('signaling_message_erizo', {streamId: id, mess: {type: 'ready'}});
+        if (published_webrtc[id].mix) {
+          portal.streamControl(participant_id, id, {operation: 'mix', data: 'common'})
+            .catch((err) => {
+              log.info('Mix stream failed, reason:', getErrorMessage(err));
+            });
+        }
+      } else {
+        var peer_id = subId2ref[id];
+        if (peer_id) {
+          send_msg('signaling_message_erizo', {peerId: peer_id, mess: {type: 'ready'}});
+        }
+      }
+    } else if (sessionProgress.status === 'error') {
+      var ref = subId2ref[id];
+      if (ref) {
+        if (ref === id) {
+          var recorder_id = id;
+          log.debug('recorder error, recorder_id:', ref);
+          portal.unsubscribe(participant_id, id);
+          send_msg('remove_recorder', {id: recorder_id});
+        } else if (ref.indexOf('rtsp') !== -1 || ref.indexOf('rtmp') !== -1 || ref.indexOf('http') !== -1) {
+          send_msg('connection_failed', {url: ref});
+        } else {
+          send_msg('connection_failed', {streamId: ref});
+        }
+      } else {
+        send_msg('connection_failed', {streamId: id});
+      }
+    } else {
+      log.info('Unknown session progress message:', sessionProgress);
+    }
+  };
+
   that.notify = function(event, data) {
     log.debug('notify, event:', event, 'data:', data);
-    send_msg(event, data);
+    var protocol_version = '0.0.1';//FIXME: The actual protocol version should be considered here.
+    if (protocol_version.startsWith('1.')) {
+      send_msg(event, data);
+    } else {
+      if (event === 'participant') {
+        notifyParticipantActivity(data);
+      } else if (event === 'stream') {
+        notifyStreamInfo(data);
+      } else if (event === 'progress') {
+        notifySessionProgress(data);
+      } else {
+        send_msg(event, data);
+      }
+    }
   };
 
   that.drop = function() {
@@ -1089,13 +1244,13 @@ var SocketIOServer = function(spec, portal, observer) {
     }
   };
 
-  that.drop = function(participantId, fromRoom) {
+  that.drop = function(participantId) {
     if (participantId === 'all') {
       for(var pid in clients) {
         clients[pid].drop();
       }
       return Promise.resolve('ok');
-    } else if (clients[participantId] && (fromRoom === undefined || clients[participantId].inRoom === fromRoom)) {
+    } else if (clients[participantId]) {
       clients[participantId].drop();
       return Promise.resolve('ok');
     } else {

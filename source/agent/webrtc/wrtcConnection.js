@@ -97,7 +97,7 @@ module.exports = function (spec, on_status) {
               break;
 
             case CONN_INITIAL:
-              on_status({type: 'started'});
+              //on_status({type: 'started'});
               break;
 
             case CONN_SDP:
@@ -132,7 +132,11 @@ module.exports = function (spec, on_status) {
                 //log.info('SENDING PLI from ', id_pub, ' to ', id_sub);
                 //publishers[id_pub].muxer.sendPLI();
               //}
-              on_status({type: 'ready', audio_codecs: audio_codec_list_in_answer, video_codecs: video_codec_list_in_answer});
+              on_status({
+                type: 'ready',
+                audio: audio_codec_list_in_answer.length > 0 ? {codec: audio_codec_list_in_answer[0]} : false,
+                video: video_codec_list_in_answer.length > 0 ? {codec: video_codec_list_in_answer[0]} : false
+              });
               break;
             }
 
@@ -140,8 +144,6 @@ module.exports = function (spec, on_status) {
               break;
           }
         });
-
-        on_status({type: 'initializing'});
     };
 
     var bindFrameConstructors = function () {

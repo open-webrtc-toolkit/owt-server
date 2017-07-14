@@ -538,17 +538,17 @@ bool RtspIn::connect()
         switch (videoCodecId) {
             case AV_CODEC_ID_VP8:
                 m_videoFormat = FRAME_FORMAT_VP8;
-                m_AsyncEvent << ",\"video_codecs\":" << "[\"vp8\"]";
+                m_AsyncEvent << ",\"video\":{\"codec\":" << "\"vp8\"";
                 break;
 
             case AV_CODEC_ID_H264:
                 m_videoFormat = FRAME_FORMAT_H264;
-                m_AsyncEvent << ",\"video_codecs\":" << "[\"h264\"]";
+                m_AsyncEvent << ",\"video\":{\"codec\":" << "\"h264\"";
                 break;
 
             case AV_CODEC_ID_H265:
                 m_videoFormat = FRAME_FORMAT_H265;
-                m_AsyncEvent << ",\"video_codecs\":" << "[\"h265\"]";
+                m_AsyncEvent << ",\"video\":{\"codec\":" << "\"h265\"";
                 break;
 
             default:
@@ -559,10 +559,9 @@ bool RtspIn::connect()
                 return false;
         }
 
-        m_AsyncEvent << ",\"video_resolution\":" << "\"" << st->codecpar->width << "x" << st->codecpar->height << "\"";
-
         m_videoSize.width = st->codecpar->width;
         m_videoSize.height = st->codecpar->height;
+        m_AsyncEvent << ",\"resolution\":" << "{\"width\":" << st->codecpar->width << ", \"height\":" << st->codecpar->height << "}}";
 
         if (!isRtsp())
             m_videoJitterBuffer.reset(new JitterBuffer("video", JitterBuffer::SYNC_MODE_SLAVE, this));
@@ -593,32 +592,32 @@ bool RtspIn::connect()
         switch(audioCodecId) {
             case AV_CODEC_ID_PCM_MULAW:
                 m_audioFormat = FRAME_FORMAT_PCMU;
-                m_AsyncEvent << ",\"audio_codecs\":" << "[\"pcmu\"]";
+                m_AsyncEvent << ",\"audio\":{\"codec\":" << "\"pcmu\"}";
                 break;
 
             case AV_CODEC_ID_PCM_ALAW:
                 m_audioFormat = FRAME_FORMAT_PCMA;
-                m_AsyncEvent << ",\"audio_codecs\":" << "[\"pcma\"]";
+                m_AsyncEvent << ",\"audio\":{\"codec\":" << "\"pcma\"}";
                 break;
 
             case AV_CODEC_ID_OPUS:
                 m_audioFormat = FRAME_FORMAT_OPUS;
-                m_AsyncEvent << ",\"audio_codecs\":" << "[\"opus_48000_2\"]";
+                m_AsyncEvent << ",\"audio\":{\"codec\":" << "\"opus\",\"sampleRate\":48000, \"channelNum\":2}";
                 break;
 
             case AV_CODEC_ID_AAC:
                 m_audioFormat = FRAME_FORMAT_AAC;
-                m_AsyncEvent << ",\"audio_codecs\":" << "[\"aac\"]";
+                m_AsyncEvent << ",\"audio\":{\"codec\":" << "\"aac\"}";
                 break;
 
             case AV_CODEC_ID_AC3:
                 m_audioFormat = FRAME_FORMAT_AC3;
-                m_AsyncEvent << ",\"audio_codecs\":" << "[\"ac3\"]";
+                m_AsyncEvent << ",\"audio\":{\"codec\":" << "\"ac3\"}";
                 break;
 
             case AV_CODEC_ID_NELLYMOSER:
                 m_audioFormat = FRAME_FORMAT_NELLYMOSER;
-                m_AsyncEvent << ",\"audio_codecs\":" << "[\"nellymoser\"]";
+                m_AsyncEvent << ",\"audio\":{\"codec\":" << "\"nellymoser\"}";
                 break;
 
             default:

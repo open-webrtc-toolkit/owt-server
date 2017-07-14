@@ -20,10 +20,10 @@ schedule_reserve_time = 60000 #ms
 [strategy]
 general = "last-used"
 portal = "last-used"
-session = "last-used"
+conference = "last-used"
 webrtc = "last-used"
 sip = "round-robin"
-avstream = "round-robin"
+streaming = "round-robin"
 recording = "randomly-pick"
 audio = "most-used"
 video = "least-used"

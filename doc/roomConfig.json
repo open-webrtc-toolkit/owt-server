@@ -1,0 +1,189 @@
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Old:
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+{
+  "_id":"MyRoomID",                  // The ID of the room.
+  "name":"MyRoom",                   // The name of the room.
+  "mode":"hybrid",                   // The room mode, only "hybrid" supported.
+  "publishLimit":-1,                 // The number of published streams limit, -1 indicates no limit.
+  "userLimit":-1,                    // The number of users in this room limit.
+  "enableMixing":1,                  // Enable mixing settings for room, 1 for yes, 0 for no.
+  "mediaMixing":{                    // Settings for mix stream, only works when enableMixing is 1.
+    "video":{                        // Setting for mix video.
+      "avCoordinated":0,             // Enable VAD, 1 for yes, 0 for no.
+      "maxInput":16,                 // Max input for mix video, -1 indicates no limit.
+      "resolution":"vga",            // The mix video's resolution, if multistreaming is 1, this specifies the maximum resolution.
+      "multistreaming":0,            // Enable multistreaming, 1 for yes, 0 for no.
+      "quality_level":"standard",    // Quality level of mix video, not supported.
+      "bkColor":"black",             // The background color of the mix video.
+      "crop":0,                      // Whether crop for mix video, 1 for yes, 0 for no.
+      "layout":{                     // The layout of mix video.
+        "base":"fluid",              // Base layout, values in ["fluid", "lecture", "void"]
+        "custom":[]                  // Custom layout setting, take affact when base is "void", details are described in conference guide.
+      }
+    },
+    "audio":null                     // Mix audio setting not supported.
+  },
+  "sipInfo":{                        // The sip connectivity setting for room, set this to null when disabled.
+    "sipServer":"my.sip.server",     // The sip server's IP or hostname.
+    "username":"sipuser",            // The sip user name for this room.
+    "password":"sippassword"         // The sip password for this room.
+  }
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// New:
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+object(RoomConfig)::
+{
+  "_id":string(RoomID),                         // The ID of the room.
+  "name":string(Room),                          // The name of the room.
+  "publishLimit":number(PublishLimit),          // The number of published streams limit, -1 indicates no limit.
+  "participantLimit":number(ParticipantLimit),  // The number of participants in this room limit, -1 indicates no limit.
+  "avatar": string(AvartarURL) | "local",       // The avatar image storage URL.
+  "roles": [object(RoleDefinition)],            // The definitions of participant roles in this room.
+  "views": [object(MixedViewSetting)],          // The mixed views for room, Empty list means mixing is disabled.
+  "mediaIn": {                                  // Media formats allowed to publish to room.
+    "audio": [object(AudioFormat)]              // Supported audio codecs, priority descendingly sorted.
+             | false,
+    "video": [object(VideoFormat)]              // Supported video codecs, priority descendingly sorted.
+             | false
+  },
+  "mediaOut": {                                 // Media formats allowed to subscribe from room.
+    "audio": [object(AudioFormat)]              // Supported audio codecs, priority descendingly sorted. Empty list means audio is not supported.
+             | false
+    "video": {
+      "format": [object(VideoFormat)]           // Supported video codecs, priority descendingly sorted. Empty list means video is not supported.
+      "parameters": {                           // Supported video transcoding options.
+        "resolution": ["0.75x" | "0.667x" | "0.5x" | "0.333x" | "0.25x" | "xga" | "svga" | "vga" | "hvga" | "cif" | "sif" | "qcif" ],
+        "framerate": [5 | 15 | 24 | 30 | 48 | 60],
+        "bitrate": ["1.6x" | "1.4x" | "1.2x" | "0.8x" | "0.6x" | "0.4x"],
+        "keyFrameInterval": [100 | 30 | 5 | 2 | 1]
+      }
+    }
+    | false
+  },
+  "transcoding": {                              // Transcoding settings.
+    "audio": true | false,
+    "video": {
+      "format": true | false,
+      "parameters": {
+        "resolution": true | false,
+        "framerate": true | false,
+        "bitrate": true | false
+        "keyFrameInterval": true | false
+      }
+      | false
+    }
+    | false
+  },
+  "notifying": {
+    "participantActivities": true | false,
+    "streamChange": true | false
+  },
+  "sip": {                              // The sip connectivity setting for room, set this to null when disabled.
+    "sipServer":string(SipServerURL),   // The sip server's IP or hostname.
+    "username":string(SipUserID),       // The sip user id for this room.
+    "password":string(SipUserPassword)  // The sip user password for this room.
+  }
+  | false
+}
+
+object(RoleDefinition)::
+{
+  "role": string(RoleName),
+  "publish": {
+    "type": ["webrtc" | "streaming"],
+    "media": {
+      "audio": true | false,
+      "video": true | false
+    }
+  },
+  "subscribe": {
+    "type": ["webrtc" | "streaming" | "recording"],
+    "media": {
+      "audio": true | false,
+      "video": true | false
+    }
+  },
+  "text": "to-peer" | "to-all" | false,
+  "manage": true | false
+}
+
+object(MixedViewSetting)::
+{
+  "label": string(ViewLabel),
+  "video":{                                          // Setting for mix video.
+    "format": object(VideoFormat),
+    "parameters": {
+      "resolution": object(Resolution),              // Root size of mixed video.
+      "framerate": number(FramerateFPS),             // In set [5, 10, 15, 24, 30, 48, 60].
+      "bitrate": number(Mbps) | "standard",
+      "keyFrameInterval": number(Second)             // In set [100, 30, 5, 2, 1]
+    },
+    "maxInput": number(MaxInput),
+    "bkColor":"black" | "white" | "blue" | "green",  // The background color of the mix video.
+    "layout":{                                       // The layout of mix video.
+      "crop": false,                                 // Whether crop for mix video, true for yes, false for no.
+      "setRegionEffect": "exchange",                 // The effect when setting a sub-stream to a resion, values in ["exchange", "insert"].
+      "templates":[object(LayoutTemplate)]                                 // Custom layout setting, take affact when base is "void", details are described in conference guide.
+    }
+  } | false,
+  "audio": {
+    "format": object(AudioFormat),
+    "vad": {                                         // Enable VAD, true for yes, false for no.
+      "detectInterval": number(MilliSeconds)
+    }
+  } | false
+}
+
+object(AudioFormat)::
+{
+  "codec": "pcmu" | "pcma" | "opus" |  "g722" | "iSAC" | "iLBC" | "aac" | "ac3" | "nellymoser",
+  "sampleRate": 8000 | 16000 | 32000 | 48000 | 44100 | undefined,
+  "channelNum": 1 | 2 | undefined
+}
+
+object(VideoFormat)::
+{
+  "codec": "h264" | "h265" | "vp8" | "vp9",
+  "profile": ("baseline" | "constrained-baseline" | "main" | "high") /*If codec equals "h264"*/
+             | undefined /*If codec does NOT equal "h264"*/
+}
+
+object(Resolution)::
+{
+  "width": number(WidthPX),
+  "height": number(HeightPX)
+}
+
+object(LayoutTemplate)::
+{
+  "inputCount": number(InputCount),
+  "primary": string(IdOfPrimaryRegion),
+  "regions": [object(Region)]
+}
+
+object(Region)::
+{
+  id: string(RegionId),
+  shape: "rectangle" | "circle",
+  area: object(Rectangle)/*If shape equals "rectangle"*/
+        | object(Circle)/*If shape equals "circle"*/
+}
+            
+object(Rectangle)::
+{
+  left: number(LeftRatio),
+  top: number(TopRatio),
+  width: number(WidthRatio),
+  height: number(HeightRatio)
+}
+            
+object(Circle)::
+{
+  centerW: number(CenterWRatio),
+  centerH: number(CenterHRatio),
+  radius: number(RadiusWRatio)
+}

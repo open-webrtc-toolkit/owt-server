@@ -40,9 +40,9 @@ global.config.internal.protocol = global.config.internal.protocol || 'sctp';
 global.config.internal.minport = global.config.internal.minport || 0;
 global.config.internal.maxport = global.config.internal.maxport || 0;
 
-global.config.session = global.config.session || {};
-global.config.session.roles =
-    global.config.session.roles ||
+global.config.conference = global.config.conference || {};
+global.config.conference.roles =
+    global.config.conference.roles ||
     {
         'admin':{'publish': true, 'subscribe':true, 'record':true, 'addExternalOutput':true},
         'presenter':{'publish': true, 'subscribe':true, 'record':true, 'addExternalOutput':true},
@@ -118,8 +118,8 @@ rpc.connect(global.config.rabbit, function () {
         var clusterIP = process.argv[5];
 
         switch (purpose) {
-        case 'session':
-            controller = require('./session')(rpcClient, rpcID);
+        case 'conference':
+            controller = require('./conference')(rpcClient, rpcID);
             break;
         case 'audio':
             controller = require('./audio')(rpcClient);
@@ -128,13 +128,13 @@ rpc.connect(global.config.rabbit, function () {
             controller = require('./video')(rpcClient, clusterIP);
             break;
         case 'webrtc':
-            controller = require('./webrtc')();
+            controller = require('./webrtc')(rpcClient);
             break;
-        case 'avstream':
-            controller = require('./avstream')();
+        case 'streaming':
+            controller = require('./avstream')(rpcClient);
             break;
         case 'recording':
-            controller = require('./recording')();
+            controller = require('./recording')(rpcClient);
             break;
         case 'sip':
             controller = require('./sip')(rpcClient, {id:rpcID, addr:clusterIP});
@@ -159,7 +159,7 @@ rpc.connect(global.config.rabbit, function () {
             }
         });
 
-        rpc.asRpcServer(rpcID, controller, function(rpcServer) {
+        rpc.asRpcServer(rpcID, controller.rpcAPI || controller, function(rpcServer) {
             log.info(rpcID + ' as rpc server ready');
             rpc.asMonitor(function (data) {
                 if (data.reason === 'abnormal' || data.reason === 'error' || data.reason === 'quit') {

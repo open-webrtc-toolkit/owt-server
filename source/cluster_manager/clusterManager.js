@@ -77,6 +77,7 @@ var ClusterManager = function (clusterName, selfId, spec) {
     };
 
     var reportLoad = function (worker, load) {
+        log.debug('reportLoad, worker:', worker, 'load:', load);
         workers[worker] && schedulers[workers[worker].purpose] && schedulers[workers[worker].purpose].updateLoad(worker, load);
         data_synchronizer && data_synchronizer({type: 'worker_load', payload: {worker: worker, load: load}});
     };

@@ -294,10 +294,10 @@ module.exports = function (rpcClient) {
     };
 
     that.onFaultDetected = function (message) {
-        if (message.purpose === 'session' && controller) {
+        if (message.purpose === 'conference' && controller) {
             if ((message.type === 'node' && message.id === controller) ||
                 (message.type === 'worker' && controller.startsWith(message.id))) {
-                log.error('Session controller (type:', message.type, 'id:', message.id, ') fault is detected, exit.');
+                log.error('Conference controller (type:', message.type, 'id:', message.id, ') fault is detected, exit.');
                 that.deinit();
                 process.exit();
             }

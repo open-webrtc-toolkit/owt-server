@@ -87,10 +87,10 @@ for (var prop in opt.options) {
                 global.config.rabbit.port = value;
                 break;
             case 'my-purpose':
-                if (value === 'session' ||
+                if (value === 'conference' ||
                     value === 'webrtc' ||
                     value === 'sip' ||
-                    value === 'avstream' ||
+                    value === 'streaming' ||
                     value === 'recording' ||
                     value === 'audio' ||
                     value === 'video') {
@@ -217,29 +217,29 @@ var fillErizos = function() {
 
 var addTask = function(worker, nodeId, task) {
     tasks[nodeId] = tasks[nodeId] || {};
-    tasks[nodeId][task.session] = tasks[nodeId][task.session] || [];
+    tasks[nodeId][task.room] = tasks[nodeId][task.room] || [];
 
-    if (tasks[nodeId][task.session].indexOf(task.task) === -1) {
+    if (tasks[nodeId][task.room].indexOf(task.task) === -1) {
         worker && worker.addTask(task.task);
     }
 
-    tasks[nodeId][task.session].push(task.task);
+    tasks[nodeId][task.room].push(task.task);
 };
 
 var removeTask = function(worker, nodeId, task, on_last_task_leave) {
     if (tasks[nodeId]) {
-        if (tasks[nodeId][task.session]) {
-            var i = tasks[nodeId][task.session].indexOf(task.task);
+        if (tasks[nodeId][task.room]) {
+            var i = tasks[nodeId][task.room].indexOf(task.task);
             if (i > -1) {
-                tasks[nodeId][task.session].splice(i, 1);
+                tasks[nodeId][task.room].splice(i, 1);
             }
 
-            if (tasks[nodeId][task.session].indexOf(task.task) === -1) {
+            if (tasks[nodeId][task.room].indexOf(task.task) === -1) {
                 worker && worker.removeTask(task.task);
             }
 
-            if (tasks[nodeId][task.session].length === 0) {
-                delete tasks[nodeId][task.session];
+            if (tasks[nodeId][task.room].length === 0) {
+                delete tasks[nodeId][task.room];
                 if (Object.keys(tasks[nodeId]).length === 0) {
                     on_last_task_leave();
                 }
@@ -272,7 +272,7 @@ var api = function (worker) {
                 waitForInitialization();
             };
             try {
-                var room_id = task.session;
+                var room_id = task.room;
                 var erizo_id;
                 if (reuse) {
                     var i;
@@ -298,7 +298,7 @@ var api = function (worker) {
 
                 erizos.push(erizo_id);
 
-                if (reuse && myPurpose !== 'session' && myPurpose !== 'sip' && ((erizos.length + idle_erizos.length + 1) >= global.config.agent.maxProcesses)) {
+                if (reuse && myPurpose !== 'conference' && myPurpose !== 'sip' && ((erizos.length + idle_erizos.length + 1) >= global.config.agent.maxProcesses)) {
                     // We re-use Erizos
                     idle_erizos.push(erizos.shift());
                 } else {
@@ -430,7 +430,7 @@ var joinCluster = function (on_ok) {
         case 'webrtc':
             global.config.capacity.isps = global.config.capacity.isps || [];
             global.config.capacity.regions = global.config.capacity.regions || [];
-        case 'avstream':
+        case 'streaming':
             var concernedInterface = clusterInterface;
             if (!concernedInterface) {
                 var interfaces = require('os').networkInterfaces();
@@ -466,7 +466,7 @@ var joinCluster = function (on_ok) {
             load_collection.item = {name: 'cpu'};
             break;
         case 'audio':
-        case 'session':
+        case 'conference':
             load_collection.item = {name: 'cpu'};
             break;
         case 'video':

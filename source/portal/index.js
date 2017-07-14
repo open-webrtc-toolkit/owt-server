@@ -89,7 +89,7 @@ var getTokenKey = function(id, on_key, on_error) {
   dbAccess.getKey(id).then(function (key) {
     on_key(key);
   }).catch(function (err) {
-    log.info('Failed to get token key.');
+    log.info('Failed to get token key. err:', err.message ? err.message : err);
     on_error(err);
   });
 };
@@ -209,9 +209,9 @@ var stopServers = function() {
 };
 
 var rpcPublic = {
-  drop: function(participantId, fromRoom, callback) {
-    socketio_server && socketio_server.drop(participantId, fromRoom);
-    rest_server && rest_server.drop(participantId, fromRoom);
+  drop: function(participantId, callback) {
+    socketio_server && socketio_server.drop(participantId);
+    rest_server && rest_server.drop(participantId);
     callback('callback', 'ok');
   },
   notify: function(participantId, event, data, callback) {
@@ -222,7 +222,7 @@ var rpcPublic = {
     socketio_server && socketio_server.notify(participantId, event, data).catch(notifyFail);
     rest_server && rest_server.notify(participantId, event, data).catch(notifyFail);
     callback('callback', 'ok');
-  },
+  }
 };
 
 amqper.connect(config.rabbit, function () {
@@ -236,17 +236,15 @@ amqper.connect(config.rabbit, function () {
             amqper.asMonitor(function (data) {
               if (data.reason === 'abnormal' || data.reason === 'error' || data.reason === 'quit') {
                 if (portal !== undefined) {
-                  if (data.message.purpose === 'session') {
+                  if (data.message.purpose === 'conference') {
                     return portal.getParticipantsByController(data.message.type, data.message.id)
                       .then(function (impactedParticipants) {
                         impactedParticipants.forEach(function(participantId) {
-                          log.error('Fault on session controller(type:', data.message.type, 'id:', data.message.id, ') of participant', participantId, 'was detected, drop it.');
+                          log.error('Fault on conference controller(type:', data.message.type, 'id:', data.message.id, ') of participant', participantId, 'was detected, drop it.');
                           socketio_server && socketio_server.drop(participantId);
                           rest_server && rest_server.drop(participantId);
                         });
                       });
-                  } else {
-                    return portal.onFaultDetected(data.message);
                   }
                 }
               }

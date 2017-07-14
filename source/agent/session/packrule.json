@@ -6,12 +6,13 @@
         "files": [
             "../AgentLoader.js",
             "../erizoJS.js",
-            "Stream.js",
+            "participant.js",
             "agent.toml",
-            "controller.js",
+            "roomController.js",
             "log4js_configuration.json",
             "rpcRequest.js",
-            "session.js",
+            "conference.js",
+            "accessController.js",
             "../index.js",
             "../../common/amqp_client.js",
             "../../common/cipher.js",
@@ -26,9 +27,12 @@
     "debug": {
         "folders": {
             "test": [
-                "test/controller_test.js"
+                "test/controller_test.js",
+                "test/participant_test.js",
+                "test/accessController_test.js",
+                "test/rpcRequest_test.js"
             ]
         }
     },
-    "start": "node . -U session"
+    "start": "node . -U conference"
 }
