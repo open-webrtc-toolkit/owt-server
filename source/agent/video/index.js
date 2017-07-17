@@ -103,9 +103,9 @@ class StreamMap {
         if (inputId !== undefined) {
             this.freeIndex.push(inputId);
             delete this.map[streamId];
-            return -1;
+            return inputId;
         }
-        return inputId;
+        return -1;
     }
 
     // Return all the streams
@@ -166,6 +166,7 @@ function VMixer(rpcClient, clusterIP) {
     var streamMap;
 
     var addInput = function (stream_id, codec, options, avatar, on_ok, on_error) {
+        log.debug('add input', stream_id);
         if (engine) {
             if (!useHardware && !openh264Enabled && codec === 'h264') {
                 on_error('Codec ' + codec + ' is not supported by video engine.');
@@ -196,6 +197,7 @@ function VMixer(rpcClient, clusterIP) {
     };
 
     var removeInput = function (stream_id) {
+        log.debug('remove input', stream_id);
         if (inputs[stream_id] && streamMap.has(stream_id)) {
             let inputId = streamMap.remove(stream_id);
             engine.removeInput(inputId);
