@@ -125,39 +125,66 @@ function clearPermissionOfRoom(roomId) {
  * (nuve/rpc/rpcPublic.js).
  */
 var genConfig = function (room) {
+    function Rational(num, den) {
+        this.numerator = num;
+        this.denominator = den;
+    }
+
+    const ZERO = new Rational(0, 1);
+    const ONE = new Rational(1, 1);
+    const ONE_THIRD = new Rational(1, 3);
+    const TWO_THIRDs = new Rational(2, 3);
+
+    function Rectangle({id = '', left, top, relativesize} = {}) {
+        this.id = id;
+        this.shape = 'rectangle',
+        this.area = {
+            left: left || ZERO,
+            top: top || ZERO,
+            width: relativesize || ZERO,
+            height: relativesize || ZERO
+        };
+    }
+
     function generateLectureTemplates (maxInput) {
-        var result = [ {region:[{id: '1', left: 0, top: 0, relativesize: 1.0, priority: 1.0}]},
-                       {region:[{id: '1', left: 0, top: 0, relativesize: 0.667, priority: 1.0},
-                                  {id: '2', left: 0.667, top: 0, relativesize: 0.333, priority: 1.0},
-                                  {id: '3', left: 0.667, top: 0.333, relativesize: 0.333, priority: 1.0},
-                                  {id: '4', left: 0.667, top: 0.667, relativesize: 0.333, priority: 1.0},
-                                  {id: '5', left: 0.333, top: 0.667, relativesize: 0.333, priority: 1.0},
-                                  {id: '6', left: 0, top: 0.667, relativesize: 0.333, priority: 1.0}]}];
+        var result = [
+            {region:[new Rectangle({id: '1', left: ZERO, top: ZERO, relativesize: ONE })]},
+            {region:[
+                new Rectangle({id: '1', left: ZERO, top: ZERO, relativesize: TWO_THIRDs}),
+                new Rectangle({id: '2', left: TWO_THIRDs, top: ZERO, relativesize: ONE_THIRD}),
+                new Rectangle({id: '3', left: TWO_THIRDs, top: ONE_THIRD, relativesize: ONE_THIRD}),
+                new Rectangle({id: '4', left: TWO_THIRDs, top: TWO_THIRDs, relativesize: ONE_THIRD}),
+                new Rectangle({id: '5', left: ONE_THIRD, top: TWO_THIRDs, relativesize: ONE_THIRD}),
+                new Rectangle({id: '6', left: ZERO, top: TWO_THIRDs, relativesize: ONE_THIRD})
+            ]}
+        ];
         if (maxInput > 6) { // for maxInput: 8, 10, 12, 14
             var maxDiv = maxInput / 2;
             maxDiv = (maxDiv > Math.floor(maxDiv)) ? (maxDiv + 1) : maxDiv;
             maxDiv = maxDiv > 7 ? 7 : maxDiv;
 
             for (var divFactor = 4; divFactor <= maxDiv; divFactor++) {
-                var mainReginRelative = ((divFactor - 1) * 1.0 / divFactor);
-                var minorRegionRelative = 1.0 / divFactor;
+                var mainReginRelative = new Rational(divFactor - 1, divFactor);
+                var minorRegionRelative = new Rational(1, divFactor);
 
-                var regions = [{id: '1', left: 0, top: 0, relativesize: mainReginRelative, priority: 1.0}];
+                var regions = [{id: '1', left: ZERO, top: ZERO, relativesize: mainReginRelative}];
                 var id = 2;
                 for (var y = 0; y < divFactor; y++) {
-                    regions.push({id: ''+(id++),
-                                  left: mainReginRelative,
-                                  top: y*1.0 / divFactor,
-                                  relativesize: minorRegionRelative,
-                                  priority: 1.0});
+                    regions.push(new Rectangle({
+                        id: ''+(id++),
+                        left: mainReginRelative,
+                        top: new Rational(y, divFactor),
+                        relativesize: minorRegionRelative,
+                    }));
                 }
 
                 for (var x = divFactor - 2; x >= 0; x--) {
-                    regions.push({id: ''+(id++),
-                                  left: x*1.0 / divFactor,
-                                  top: mainReginRelative,
-                                  relativesize: minorRegionRelative,
-                                  priority: 1.0});
+                    regions.push(new Rectangle({
+                        id: ''+(id++),
+                        left: new Rational(x, divFactor),
+                        top: mainReginRelative,
+                        relativesize: minorRegionRelative,
+                    }));
                 }
                 result.push({region: regions});
             }
@@ -168,41 +195,45 @@ var genConfig = function (room) {
                 maxDiv = maxDiv > 7 ? 7 : maxDiv;
 
                 for (var divFactor = 4; divFactor <= maxDiv; divFactor++) {
-                    var mainReginRelative = ((divFactor - 2) * 1.0 / divFactor);
-                    var minorRegionRelative = 1.0 / divFactor;
+                    var mainReginRelative = new Rational(divFactor - 2, divFactor);
+                    var minorRegionRelative = new Rational(1, divFactor);
 
-                    var regions = [{id: '1', left: 0, top: 0, relativesize: mainReginRelative, priority: 1.0}];
+                    var regions = [{id: '1', left: ZERO, top: ZERO, relativesize: mainReginRelative}];
                     var id = 2;
                     for (var y = 0; y < divFactor - 1; y++) {
-                        regions.push({id: ''+(id++),
-                                      left: mainReginRelative,
-                                      top: y*1.0 / divFactor,
-                                      relativesize: minorRegionRelative,
-                                      priority: 1.0});
+                        regions.push(new Rectangle({
+                            id: ''+(id++),
+                            left: mainReginRelative,
+                            top: new Rational(y, divFactor),
+                            relativesize: minorRegionRelative,
+                        }));
                     }
 
                     for (var x = divFactor - 3; x >= 0; x--) {
-                        regions.push({id: ''+(id++),
-                                      left: x*1.0 / divFactor,
-                                      top: mainReginRelative,
-                                      relativesize: minorRegionRelative,
-                                      priority: 1.0});
+                        regions.push(new Rectangle({
+                            id: ''+(id++),
+                            left: new Rational(x, divFactor),
+                            top: mainReginRelative,
+                            relativesize: minorRegionRelative,
+                        }));
                     }
 
                     for (var y = 0; y < divFactor; y++) {
-                        regions.push({id: ''+(id++),
-                                      left: mainReginRelative + minorRegionRelative,
-                                      top: y*1.0 / divFactor,
-                                      relativesize: minorRegionRelative,
-                                      priority: 1.0});
+                        regions.push(new Rectangle({
+                            id: ''+(id++),
+                            left: new Rational(divFactor - 1, divFactor),
+                            top: new Rational(y, divFactor),
+                            relativesize: minorRegionRelative
+                        }));
                     }
 
                     for (var x = divFactor - 2; x >= 0; x--) {
-                        regions.push({id: ''+(id++),
-                                      left: x*1.0 / divFactor,
-                                      top: mainReginRelative + minorRegionRelative,
-                                      relativesize: minorRegionRelative,
-                                      priority: 1.0});
+                        regions.push(new Rectangle({
+                            id: ''+(id++),
+                            left: new Rational(x, divFactor),
+                            top: new Rational(divFactor - 1, divFactor),
+                            relativesize: minorRegionRelative
+                        }));
                     }
                     result.push({region: regions});
                 }
@@ -221,15 +252,14 @@ var genConfig = function (room) {
 
         for (var divFactor = 1; divFactor <= maxDiv; divFactor++) {
             var regions = [];
-            var relativeSize = 1.0 / divFactor;
+            var relativeSize = new Rational(1, divFactor);
             var id = 1;
             for (var y = 0; y < divFactor; y++)
                 for(var x = 0; x < divFactor; x++) {
-                    var region = {id: String(id++),
-                                  left: x*1.0 / divFactor,
-                                  top: y*1.0 / divFactor,
-                                  relativesize: relativeSize,
-                                  priority: 1.0};
+                    var region = new Rectangle({id: String(id++),
+                                  left: new Rational(x, divFactor),
+                                  top: new Rational(y, divFactor),
+                                  relativesize: relativeSize});
                     regions.push(region);
                 }
 
@@ -247,14 +277,6 @@ var genConfig = function (room) {
             var region = templates[i].region;
             if (!(region instanceof Array))
                 return false;
-
-            for (var j in region) {
-                if (((typeof region[j].left) !== 'number') || region[j].left < 0.0 || region[j].left > 1.0 ||
-                  ((typeof region[j].top) !== 'number') || region[j].top < 0.0 || region[j].top > 1.0 ||
-                  ((typeof region[j].relativesize) !== 'number') || region[j].relativesize < 0.0 ||
-                  region[j].relativesize > 1.0)
-                    return false;
-            }
         }
         return true;
     }

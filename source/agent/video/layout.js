@@ -16,18 +16,27 @@ const log = require('./logger').logger.getLogger('LayoutProcessor');
 const util = require('util');
 const EventEmitter = require('events').EventEmitter;
 
+
+/**
+ * @typedef Rational
+ * @type {object}
+ * @property {number} numerator
+ * @property {number} denominator
+ */
+
 /**
  * @constructor Region
  * @param {string} id
- * @param {number} left
- * @param {number} top
- * @param {number} relativeSize
+ * @param {Rational} left
+ * @param {Rational} top
+ * @param {Rational} relativeSize
  */
-function Region({ id = 'default', left = -1, top = -1, relativesize = -1 } = {}) {
-    this.id = id;
-    this.left = left;
-    this.top = top;
-    this.relativeSize = relativesize;
+function Region(options = {}) {
+    this.id = options.id;
+    if (options.area && options.shape) {
+        this.shape = options.shape;
+        this.area = options.area;
+    }
 }
 
 /**
@@ -35,11 +44,7 @@ function Region({ id = 'default', left = -1, top = -1, relativesize = -1 } = {})
  * @return {boolean}
  */
 Region.prototype.validate = function() {
-    if (this.left >= 0.0 && this.left <= 1.0 && this.top >= 0.0 && this.top <= 1.0 &&
-            this.relativeSize >= 0.0 && this.relativeSize <= 1.0) {
-        return true;
-    }
-    return false;
+    return true;
 };
 
 /**

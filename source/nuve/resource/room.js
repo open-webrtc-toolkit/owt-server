@@ -503,14 +503,6 @@ function isTemplatesValid (templates) {
         var region = templates[i].region;
         if (!(region instanceof Array))
             return false;
-
-        for (var j in region) {
-            if (((typeof region[j].left) !== 'number') || region[j].left < 0.0 || region[j].left > 1.0 ||
-              ((typeof region[j].top) !== 'number') || region[j].top < 0.0 || region[j].top > 1.0 ||
-              ((typeof region[j].relativesize) !== 'number') || region[j].relativesize < 0.0 ||
-              region[j].relativesize > 1.0)
-                return false;
-        }
     }
     return true;
 }

@@ -28,27 +28,49 @@
 namespace mcu {
 
 /**
- * the configuration is a subset of rfc5707, VideoLayout element definition
- *    An example of a video layout with six regions is:
+ * the configuration of VideoLayout element definition
+ *    An example of a video layout with 5 regions is:
 
       +-------+---+
       |       | 2 |
       |   1   +---+
       |       | 3 |
       +---+---+---+
-      | 6 | 5 | 4 |
+      |   5   | 4 |
       +---+---+---+
 
       <videolayout type="text/msml-basic-layout">
          <root size="CIF"/>
-         <region id="1" left="0" top="0" relativesize="2/3"/>
-         <region id="2" left="67%" top="0" relativesize="1/3"/>
-         <region id="3" left="67%" top="33%" relativesize="1/3">
-         <region id="4" left="67%" top="67%" relativesize="1/3"/>
-         <region id="5" left="33%" top="67%" relativesize="1/3"/>
-         <region id="6" left="0" top="67%" relativesize="1/3"/>
+         <region id="1" shape="rectangle" area.top="0" area.left="0", area.width="2/3", area.height="2/3"/>
+         <region id="2" shape="rectangle" area.top="0" area.left="2/3", area.width="1/3", area.height="1/3"/>
+         <region id="3" shape="rectangle" area.top="1/3" area.left="2/3", area.width="1/3", area.height="1/3"/>
+         <region id="4" shape="rectangle" area.top="2/3" area.left="2/3", area.width="1/3", area.height="1/3"/>
+         <region id="5" shape="rectangle" area.top="2/3" area.left="0", area.width="2/3", area.height="1/3"/>
       </videolayout>
  */
+
+struct Rational {
+  int numerator;
+  int denominator;
+};
+
+struct Rectangle {
+  Rational left; // percentage
+  Rational top; // percentage
+  Rational width; // percentage
+  Rational height; // percentage
+};
+
+struct Circle {
+  Rational centerW; // percentage
+  Rational centerH; // percentage
+  Rational radius; // percentage
+};
+
+union Shape {
+  Rectangle rect;
+  Circle circle;
+};
 
 struct Region {
     Region()
@@ -59,10 +81,13 @@ struct Region {
     }
 
     std::string id;
-    float left; // percentage
-    float top;    // percentage
-    float relativeSize;    //fraction
+    float left; // percentage, deprecated
+    float top;    // percentage, deprecated
+    float relativeSize;    //fraction, deprecated
     //float priority;
+
+    std::string shape; // shape of region
+    Shape area; // shape area
 };
 
 struct InputRegion {
