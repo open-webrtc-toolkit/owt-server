@@ -157,6 +157,16 @@ void VideoMixer::removeOutput(const v8::FunctionCallbackInfo<v8::Value>& args) {
   me->removeOutput(outStreamID);
 }
 
+mcu::Rational parseRational(Isolate* isolate, Local<Value> rational) {
+  mcu::Rational ret = { 0, 1 };
+  if (rational->IsObject()) {
+    Local<Object> obj = rational->ToObject();
+    ret.numerator = obj->Get(String::NewFromUtf8(isolate, "numerator"))->Int32Value();
+    ret.denominator = obj->Get(String::NewFromUtf8(isolate, "denominator"))->Int32Value();
+  }
+  return ret;
+}
+
 void VideoMixer::updateLayoutSolution(const v8::FunctionCallbackInfo<v8::Value>& args) {
   Isolate* isolate = Isolate::GetCurrent();
 
@@ -173,17 +183,34 @@ void VideoMixer::updateLayoutSolution(const v8::FunctionCallbackInfo<v8::Value>&
     mcu::LayoutSolution solution;
     int length = jsSolution->Get(String::NewFromUtf8(isolate, "length"))->ToObject()->Uint32Value();
     for (int i = 0; i < length; i++) {
+      if (!jsSolution->Get(i)->IsObject())
+        continue;
       Local<Object> jsInputRegion = jsSolution->Get(i)->ToObject();
       int input = jsInputRegion->Get(String::NewFromUtf8(isolate, "input"))->NumberValue();
       Local<Object> regObj = jsInputRegion->Get(String::NewFromUtf8(isolate, "region"))->ToObject();
 
       mcu::Region region;
-      String::Utf8Value s(regObj->Get(String::NewFromUtf8(isolate, "id"))->ToString());
-      region.id = std::string(*s);
-      region.left = regObj->Get(String::NewFromUtf8(isolate, "left"))->NumberValue();
-      region.top = regObj->Get(String::NewFromUtf8(isolate, "top"))->NumberValue();
-      region.relativeSize = regObj->Get(String::NewFromUtf8(isolate, "relativeSize"))->NumberValue();
+      region.id = *String::Utf8Value(regObj->Get(String::NewFromUtf8(isolate, "id")));
 
+      Local<Value> area = regObj->Get(String::NewFromUtf8(isolate, "area"));
+      if (area->IsObject()) {
+        Local<Object> areaObj = area->ToObject();
+        region.shape = *String::Utf8Value(regObj->Get(String::NewFromUtf8(isolate, "shape")));
+        if (region.shape == "rectangle") {
+          region.area.rect.left = parseRational(isolate, areaObj->Get(String::NewFromUtf8(isolate, "left")));
+          region.area.rect.top = parseRational(isolate, areaObj->Get(String::NewFromUtf8(isolate, "top")));
+          region.area.rect.width = parseRational(isolate, areaObj->Get(String::NewFromUtf8(isolate, "width")));
+          region.area.rect.height = parseRational(isolate, areaObj->Get(String::NewFromUtf8(isolate, "height")));
+          // Set the rectangle args to region
+          region.left = float(region.area.rect.left.numerator) / region.area.rect.left.denominator;
+          region.top = float(region.area.rect.top.numerator) / region.area.rect.top.denominator;
+          region.relativeSize = float(region.area.rect.width.numerator) / region.area.rect.width.denominator;
+        } else if (region.shape == "circle") {
+          region.area.circle.centerW = parseRational(isolate, areaObj->Get(String::NewFromUtf8(isolate, "centerW")));
+          region.area.circle.centerH = parseRational(isolate, areaObj->Get(String::NewFromUtf8(isolate, "centerH")));
+          region.area.circle.radius = parseRational(isolate, areaObj->Get(String::NewFromUtf8(isolate, "radius")));
+        }
+      }
 
       mcu::InputRegion inputRegion = { input, region };
       solution.push_back(inputRegion);
