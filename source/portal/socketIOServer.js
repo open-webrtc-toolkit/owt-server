@@ -692,7 +692,7 @@ var Client = function(participant_id, socket, portal, observer, reconnection_spe
       var subscription_description = {audio: false, video: false};
       (options.audioStreamId || unspecifiedStreamIds) && (subscription_description.audio = {fromStream: options.audioStreamId || that.commonViewStream});
       (subscription_description.audio && (typeof options.audioCodec === 'string')) && (subscription_description.audio.codecs = [options.audioCodec]);
-      subscription_description.audio && (subscription_description.audio.codecs = (subscription_description.audio.codecs || ['opus', 'aac']).map(function(c) {return (c === 'opus' ? 'opus_48000_2' : (c === 'aac' ? 'aac_48000_2' : c));}));
+      subscription_description.audio && (subscription_description.audio.codecs = (subscription_description.audio.codecs || ['opus']).map(function(c) {return (c === 'opus' ? 'opus_48000_2' : (c === 'aac' ? 'aac_48000_2' : c));}));
       (options.videoStreamId || unspecifiedStreamIds) && (subscription_description.video = {fromStream: options.videoStreamId || that.commonViewStream});
       (subscription_description.video && (typeof options.videoCodec === 'string')) && (subscription_description.video.codecs = [options.videoCodec]);
       subscription_description.video && (subscription_description.video.codecs = subscription_description.video.codecs || ['vp8']);
