@@ -44,3 +44,4 @@
 
     - `cd dist`
     - `bin/start-all.sh`
+
