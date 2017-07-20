@@ -29,12 +29,6 @@
 
 extern "C" {
 #include <libavformat/avformat.h>
-#include <libavcodec/avcodec.h>
-#include <libavutil/avstring.h>
-#include <libavutil/channel_layout.h>
-#include <libavutil/opt.h>
-#include <libavutil/time.h>
-#include <libavutil/audio_fifo.h>
 }
 
 namespace woogeen_base {
@@ -53,20 +47,16 @@ protected:
     bool hasVideo() {return !m_videoOptions.codec.empty();}
     bool isHls(std::string uri) {return (uri.compare(0, 7, "http://") == 0);}
 
-    bool checkCodec(AVOptions &audioOptions, AVOptions &videoOptions);
-
     void sendLoop();
 
     bool connect();
     bool reconnect();
     void close();
 
-    bool openAudioEncoder(AVOptions &options);
     bool addAudioStream(AVOptions &options);
     bool addVideoStream(AVOptions &options);
 
     bool writeHeader();
-    void addAudioFrame(uint8_t* data, int nbSamples);
     int writeAVFrame(AVStream* stream, const EncodedFrame& frame);
 
     char *ff_err2str(int errRet);
@@ -84,10 +74,6 @@ private:
     AVFormatContext* m_context;
     AVStream* m_audioStream;
     AVStream* m_videoStream;
-
-    AVCodecContext* m_audioEnc;
-    AVAudioFifo* m_audioFifo;
-    AVFrame* m_audioEncodingFrame;
 
     boost::shared_ptr<woogeen_base::EncodedFrame> m_videoKeyFrame;
     boost::scoped_ptr<MediaFrameQueue> m_frameQueue;

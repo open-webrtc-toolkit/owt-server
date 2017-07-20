@@ -46,9 +46,6 @@ RtspOut::RtspOut(const std::string& url, const AVOptions* audio, const AVOptions
     , m_context{ nullptr }
     , m_audioStream{ nullptr }
     , m_videoStream{ nullptr }
-    , m_audioEnc{ nullptr }
-    , m_audioFifo{ nullptr }
-    , m_audioEncodingFrame{ nullptr }
 {
     if (!audio && !video) {
         ELOG_ERROR("NULL a/v AVOptions params");
@@ -74,11 +71,6 @@ RtspOut::RtspOut(const std::string& url, const AVOptions* audio, const AVOptions
 
     avcodec_register_all();
 
-    if(!checkCodec(m_audioOptions, m_videoOptions)) {
-        notifyAsyncEvent("init", m_AsyncEvent.str().c_str());
-        return;
-    }
-
     if(!connect()) {
         notifyAsyncEvent("init", "Cannot open connection");
         return;
@@ -102,21 +94,6 @@ void RtspOut::close()
     m_frameQueue->cancel();
     m_thread.join();
 
-    // audio encoder
-    if (m_audioEncodingFrame) {
-        av_frame_free(&m_audioEncodingFrame);
-        m_audioEncodingFrame = NULL;
-    }
-
-    if (m_audioFifo) {
-        av_audio_fifo_free(m_audioFifo);
-        m_audioFifo = NULL;
-    }
-
-    if (m_audioEnc) {
-        avcodec_close(m_audioEnc);
-    }
-
     // output context
     if (m_context) {
         av_write_trailer(m_context);
@@ -126,33 +103,6 @@ void RtspOut::close()
         avformat_free_context(m_context);
         m_context = NULL;
     }
-}
-
-bool RtspOut::checkCodec(AVOptions &audioOptions, AVOptions &videoOptions)
-{
-    AVCodec* codec = NULL;
-
-    //audio disabled, dont check
-    if (audioOptions.codec.empty())
-        return true;
-#if 0
-    if (audioOptions.codec.compare("pcm_raw") != 0) {
-        m_AsyncEvent.str("");
-        m_AsyncEvent << "Invalid audio codec (" << audioOptions.codec << "), want(pcm_raw)";
-        ELOG_ERROR("Invalid audio codec(%s), want(%s)", audioOptions.codec.c_str(), "pcm_raw");
-        return false;
-    }
-#endif
-
-    codec = avcodec_find_encoder_by_name("libfdk_aac");
-    if (!codec) {
-        m_AsyncEvent.str("");
-        m_AsyncEvent << "Can not find audio encoder libfdk_aac, please check if ffmpeg/libfdk_aac installed";
-        ELOG_ERROR("Can not find audio encoder %s, please check if ffmpeg/libfdk_aac installed", "libfdk_aac");
-        return false;
-    }
-
-    return true;
 }
 
 void RtspOut::sendLoop()
@@ -174,7 +124,7 @@ void RtspOut::sendLoop()
         usleep(20000);
     }
 
-    if (hasAudio() && (!openAudioEncoder(m_audioOptions) || !addAudioStream(m_audioOptions))) {
+    if (hasAudio() && !addAudioStream(m_audioOptions)) {
         notifyAsyncEvent("fatal", "Cannot add audio stream");
         goto exit;
     }
@@ -293,109 +243,32 @@ bool RtspOut::reconnect()
     return true;
 }
 
-bool RtspOut::openAudioEncoder(AVOptions &options)
-{
-    int ret;
-    AVCodec* codec = NULL;
-    int nbChannels = options.spec.audio.channels;
-    int sampleRate = options.spec.audio.sampleRate;
-
-    codec = avcodec_find_encoder_by_name("libfdk_aac");
-    if (!codec) {
-        ELOG_ERROR("Can not find audio encoder %s, please check if ffmpeg/libfdk_aac installed", "libfdk_aac");
-        goto fail;
-    }
-
-    m_audioEnc = avcodec_alloc_context3(codec);
-    if (!m_audioEnc) {
-        ELOG_ERROR("Can not alloc avcodec context");
-        goto fail;
-    }
-    m_audioEnc->channels         = nbChannels;
-    m_audioEnc->channel_layout   = av_get_default_channel_layout(nbChannels);
-    m_audioEnc->sample_rate      = sampleRate;
-    m_audioEnc->sample_fmt       = AV_SAMPLE_FMT_S16;
-
-    if (m_context->oformat->flags & AVFMT_GLOBALHEADER)
-        m_audioEnc->flags |= CODEC_FLAG_GLOBAL_HEADER;
-
-    ret = avcodec_open2(m_audioEnc, codec, nullptr);
-    if (ret < 0) {
-        ELOG_ERROR("Cannot open output audio codec, %s", ff_err2str(ret));
-        goto fail;
-    }
-
-    if (m_audioFifo) {
-        av_audio_fifo_free(m_audioFifo);
-        m_audioFifo = NULL;
-    }
-
-    m_audioFifo = av_audio_fifo_alloc(m_audioEnc->sample_fmt, m_audioEnc->channels, 1);
-    if (!m_audioFifo) {
-        ELOG_ERROR("Cannot allocate audio fifo");
-        goto fail;
-    }
-
-    if (m_audioEncodingFrame) {
-        av_frame_free(&m_audioEncodingFrame);
-        m_audioEncodingFrame = NULL;
-    }
-
-    m_audioEncodingFrame  = av_frame_alloc();
-    if (!m_audioEncodingFrame) {
-        ELOG_ERROR("Cannot allocate audio frame");
-        goto fail;
-    }
-
-    m_audioEncodingFrame->nb_samples        = m_audioEnc->frame_size;
-    m_audioEncodingFrame->format            = m_audioEnc->sample_fmt;
-    m_audioEncodingFrame->channel_layout    = m_audioEnc->channel_layout;
-    m_audioEncodingFrame->sample_rate       = m_audioEnc->sample_rate;
-
-    ret = av_frame_get_buffer(m_audioEncodingFrame, 0);
-    if (ret < 0) {
-        ELOG_ERROR("Cannot get audio frame buffer, %s", ff_err2str(ret));
-        goto fail;
-    }
-
-    ELOG_DEBUG("Audio encoder frame_size %d, sample_rate %d, channels %d",
-            m_audioEnc->frame_size, m_audioEnc->sample_rate, m_audioEnc->channels);
-    return true;
-
-fail:
-    if (m_audioEncodingFrame) {
-        av_frame_free(&m_audioEncodingFrame);
-        m_audioEncodingFrame = NULL;
-    }
-
-    if (m_audioFifo) {
-        av_audio_fifo_free(m_audioFifo);
-        m_audioFifo = NULL;
-    }
-
-    if (m_audioEnc) {
-        avcodec_close(m_audioEnc);
-        m_audioEnc = NULL;
-    }
-
-    return false;
-}
-
 bool RtspOut::addAudioStream(AVOptions &options)
 {
-    int ret;
+    enum AVCodecID codec_id = AV_CODEC_ID_AAC;
 
-    m_audioStream = avformat_new_stream(m_context, m_audioEnc->codec);
+    if (options.codec.compare("aac") != 0) {
+        ELOG_ERROR("Invalid audio codec, %s", options.codec.c_str());
+        return false;
+    }
+
+    m_audioStream = avformat_new_stream(m_context, NULL);
     if (!m_audioStream) {
         ELOG_ERROR("Cannot add audio stream");
         return false;
     }
 
-    ret = avcodec_parameters_from_context(m_audioStream->codecpar, m_audioEnc);
-    if (ret < 0) {
-        ELOG_ERROR("Could not copy the stream parameters, %s", ff_err2str(ret));
-        m_audioStream = NULL;
-        return false;
+    AVCodecParameters *par = m_audioStream->codecpar;
+    par->codec_type     = AVMEDIA_TYPE_AUDIO;
+    par->codec_id       = codec_id;
+    par->sample_rate    = m_audioOptions.spec.audio.sampleRate;
+    par->channels       = m_audioOptions.spec.audio.channels;
+    par->channel_layout = av_get_default_channel_layout(par->channels);
+    if (codec_id == AV_CODEC_ID_AAC) { //AudioSpecificConfig 48000-2
+        par->extradata_size = 2;
+        par->extradata      = (uint8_t *)malloc(par->extradata_size);
+        par->extradata[0]   = 0x11;
+        par->extradata[1]   = 0x90;
     }
 
     ELOG_DEBUG("Audio stream added");
@@ -443,10 +316,6 @@ bool RtspOut::addVideoStream(AVOptions &options)
     }
 
     av_parser_close(parser);
-
-    if (m_context->oformat->flags & AVFMT_GLOBALHEADER)
-        m_videoStream->codec->flags |= CODEC_FLAG_GLOBAL_HEADER;
-
     ELOG_DEBUG("Video stream added: %dx%d", width, height);
     return true;
 }
@@ -454,7 +323,6 @@ bool RtspOut::addVideoStream(AVOptions &options)
 void RtspOut::onFrame(const woogeen_base::Frame& frame)
 {
     switch (frame.format) {
-        case woogeen_base::FRAME_FORMAT_PCM_48000_2:
         case woogeen_base::FRAME_FORMAT_AAC:
         case woogeen_base::FRAME_FORMAT_AAC_48000_2:
             if (!hasAudio())
@@ -482,11 +350,7 @@ void RtspOut::onFrame(const woogeen_base::Frame& frame)
                 notifyAsyncEvent("fatal", "Invalid audio frame channels or sample rate");
                 return;
             }
-
-            if (frame.format == woogeen_base::FRAME_FORMAT_PCM_48000_2)
-                addAudioFrame(frame.payload, frame.additionalInfo.audio.nbSamples);
-            else
-                m_frameQueue->pushFrame(frame.payload, frame.length);
+            m_frameQueue->pushFrame(frame.payload, frame.length);
 
             break;
 
@@ -534,48 +398,6 @@ void RtspOut::onFrame(const woogeen_base::Frame& frame)
 
             notifyAsyncEvent("fatal", "Unsupported frame format");
             return;
-    }
-}
-
-void RtspOut::addAudioFrame(uint8_t* data, int nbSamples)
-{
-    int n;
-
-    if (!m_audioFifo || !m_audioEnc) {
-        ELOG_ERROR("Not valid audio fifo(%p), enc(%p)", m_audioFifo, m_audioEnc);
-        return;
-    }
-
-    n = av_audio_fifo_write(m_audioFifo, reinterpret_cast<void**>(&data), nbSamples);
-    if (n < nbSamples) {
-        ELOG_ERROR("Cannot not write data to fifo, bnSamples %d, writed %d", nbSamples, n);
-        return;
-    }
-
-    AVPacket pkt;
-    memset(&pkt, 0, sizeof(pkt));
-    while (av_audio_fifo_size(m_audioFifo) >= m_audioEnc->frame_size) {
-        n = av_audio_fifo_read(m_audioFifo, reinterpret_cast<void**>(m_audioEncodingFrame->data), m_audioEnc->frame_size);
-        if (n != m_audioEnc->frame_size) {
-            ELOG_ERROR("Cannot read enough data from fifo, needed %d, read %d", m_audioEnc->frame_size, n);
-            return;
-        }
-
-        int ret;
-        int got_output = 0;
-
-        av_init_packet(&pkt);
-        ret = avcodec_encode_audio2(m_audioEnc, &pkt, m_audioEncodingFrame, &got_output);
-        if (ret < 0) {
-            ELOG_ERROR("Cannot encode audio frame, %s", ff_err2str(ret));
-            return;
-        }
-
-        if (!got_output)
-            return;
-
-        m_frameQueue->pushFrame(pkt.data, pkt.size);
-        av_packet_unref(&pkt);
     }
 }
 

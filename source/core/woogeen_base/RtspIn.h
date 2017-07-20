@@ -32,12 +32,7 @@
 #include "VideoHelper.h"
 
 extern "C" {
-#include <libavcodec/avcodec.h>
 #include <libavformat/avformat.h>
-#include <libavutil/mathematics.h>
-#include <libavutil/audio_fifo.h>
-#include <libavutil/opt.h>
-#include <libswresample/swresample.h>
 }
 
 #include <fstream>
@@ -200,8 +195,6 @@ public:
     }
 
 private:
-    bool m_enableTranscoding;
-
     std::string m_url;
     bool m_needAudio;
     bool m_needVideo;
@@ -219,45 +212,24 @@ private:
     VideoSize m_videoSize;
     bool m_needCheckVBS;
     bool m_needApplyVBSF;
-    AVBitStreamFilterContext *m_vbsf;
+    AVBSFContext *m_vbsf;
 
     int m_audioStreamIndex;
     FrameFormat m_audioFormat;
-    bool m_needAudioTranscoder;
-    AVCodecID m_audioDecId;
-    AVCodecContext *m_audioDecCtx;
-    AVFrame *m_audioDecFrame;
-    AVCodecContext *m_audioEncCtx;
-    struct SwrContext *m_audioSwrCtx;
-    uint8_t **m_audioSwrSamplesData;
-    int m_audioSwrSamplesLinesize;
-    int m_audioSwrSamplesCount;
-    AVAudioFifo* m_audioEncFifo;
-    AVFrame *m_audioEncFrame;
-    int64_t m_audioFifoTimeBegin;
-    int64_t m_audioFifoTimeEnd;
-    int64_t m_audioEncTimestamp;
+    uint32_t m_audioSampleRate;
+    uint32_t m_audioChannels;
 
     AVRational m_msTimeBase;
     AVRational m_videoTimeBase;
     AVRational m_audioTimeBase;
 
-    uint32_t m_audioSampleRate;
-    uint32_t m_audioChannels;
-
     boost::shared_ptr<JitterBuffer> m_videoJitterBuffer;
     boost::shared_ptr<JitterBuffer> m_audioJitterBuffer;
-
-    std::unique_ptr<std::ofstream> m_audioRawDumpFile;
-    std::unique_ptr<std::ofstream> m_audioResampleDumpFile;
-    AVFormatContext* m_dumpContext;
 
     char m_errbuff[500];
     char *ff_err2str(int errRet);
 
     std::ostringstream m_AsyncEvent;
-
-    enum AVSampleFormat getSampleFmt(AVCodec *codec, enum AVSampleFormat sample_fmt);
 
     bool isRtsp() {return (m_url.compare(0, 7, "rtsp://") == 0);}
 
@@ -271,14 +243,6 @@ private:
     bool filterVBS(AVStream *st, AVPacket *pkt);
     void filterSEI(AVPacket *pkt);
     int  getNextNaluPosition(uint8_t *buffer, int buffer_size, bool &is_sei);
-
-    bool initAudioDecoder(AVCodecID codec);
-    bool initAudioTranscoder(AVCodecID inCodec, AVCodecID outCodec);
-
-    bool decAudioFrame(AVPacket &packet);
-    bool encAudioFrame(AVPacket *packet);
-
-    bool initDump(char *dumpFile);
 };
 
 }

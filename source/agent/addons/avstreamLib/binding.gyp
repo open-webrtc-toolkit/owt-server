@@ -18,9 +18,7 @@
     'libraries': [
       '-lboost_thread',
       '-llog4cxx',
-      '<!@(pkg-config --libs libavcodec)',
       '<!@(pkg-config --libs libavformat)',
-      '<!@(pkg-config --libs libavutil)',
     ],
     'conditions': [
       [ 'OS=="mac"', {
@@ -32,7 +30,7 @@
         },
       }, { # OS!="mac"
         'cflags!':    ['-fno-exceptions'],
-        'cflags_cc':  ['-Wall', '-O$(OPTIMIZATION_LEVEL)', '-g' , '-std=c++11', '-frtti', '-Wno-deprecated-declarations'],
+        'cflags_cc':  ['-Wall', '-O$(OPTIMIZATION_LEVEL)', '-g' , '-std=c++11', '-frtti'],
         'cflags_cc!': ['-fno-exceptions']
       }],
     ]
