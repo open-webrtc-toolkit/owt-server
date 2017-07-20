@@ -27,8 +27,8 @@
 #include <string>
 
 extern "C" {
-#include <libavcodec/avcodec.h>
 #include <libavformat/avformat.h>
+#include <libavutil/avstring.h>
 }
 
 namespace woogeen_base {
@@ -69,6 +69,8 @@ private:
     uint32_t m_videoHeight;
 
     bool m_videoSourceChanged;
+
+    Frame m_videoKeyFrame;
 
     char m_errbuff[500];
 };

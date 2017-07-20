@@ -19,13 +19,6 @@
  */
 
 #include "MediaFileOut.h"
-#include <rtputils.h>
-#include <MediaUtilities.h>
-
-extern "C" {
-#include <libavutil/avstring.h>
-#include <libavutil/channel_layout.h>
-}
 
 #define KEYFRAME_REQ_INTERVAL (6 * 1000) // 6 seconds
 
@@ -74,6 +67,8 @@ MediaFileOut::MediaFileOut(const std::string& url, const AVOptions* audio, const
     , m_videoHeight(0)
     , m_videoSourceChanged(true)
 {
+    memset(&m_videoKeyFrame, 0, sizeof(m_videoKeyFrame));
+
     m_videoQueue.reset(new MediaFrameQueue());
     m_audioQueue.reset(new MediaFrameQueue());
     setEventRegistry(handle);
@@ -122,15 +117,16 @@ void MediaFileOut::close()
         m_jobTimer->stop();
     if (m_status == AVStreamOut::Context_READY)
         av_write_trailer(m_context);
-    if (m_videoStream && m_videoStream->codec)
-        avcodec_close(m_videoStream->codec);
-    if (m_audioStream && m_audioStream->codec)
-        avcodec_close(m_audioStream->codec);
     if (m_context) {
         if (m_context->pb && !(m_context->oformat->flags & AVFMT_NOFILE))
             avio_close(m_context->pb);
         avformat_free_context(m_context);
         m_context = nullptr;
+    }
+    if (m_videoKeyFrame.payload) {
+        free(m_videoKeyFrame.payload);
+        m_videoKeyFrame.payload = NULL;
+        m_videoKeyFrame.length = 0;
     }
     m_status = AVStreamOut::Context_CLOSED;
     ELOG_DEBUG("closed");
@@ -187,6 +183,27 @@ void MediaFileOut::onFrame(const Frame& frame)
     case FRAME_FORMAT_VP8:
     case FRAME_FORMAT_H264:
         if (m_expectedVideo == frameFormat2VideoCodecID(frame.format)) {
+            if (m_videoSourceChanged) {
+                if (frame.additionalInfo.video.isKeyFrame) {
+                    ELOG_DEBUG("key frame comes after video source changed!");
+                    m_videoSourceChanged = false;
+
+                    if (m_videoKeyFrame.payload) {
+                        free(m_videoKeyFrame.payload);
+                        m_videoKeyFrame.payload = NULL;
+                        m_videoKeyFrame.length = 0;
+                    }
+                    m_videoKeyFrame.payload = (uint8_t *)malloc(frame.length);
+                    m_videoKeyFrame.length = frame.length;
+                    memcpy(m_videoKeyFrame.payload, frame.payload, frame.length);
+                } else {
+                    ELOG_DEBUG("request key frame after video source changed!");
+                    deliverFeedbackMsg(FeedbackMsg{.type = VIDEO_FEEDBACK, .cmd = REQUEST_KEY_FRAME});
+
+                    return;
+                }
+            }
+
             bool addStreamOK = true;
             if (!m_videoStream) {
                 if (frame.additionalInfo.video.width != 0 && frame.additionalInfo.video.height != 0) {
@@ -208,22 +225,6 @@ void MediaFileOut::onFrame(const Frame& frame)
             }
 
             if (addStreamOK && m_status == AVStreamOut::Context_READY) {
-                if (m_videoSourceChanged) {
-                    bool isKeyFrame;
-                    if (frame.format == FRAME_FORMAT_H264)
-                        isKeyFrame = isH264KeyFrame(frame.payload, frame.length);
-                    else
-                        isKeyFrame = isVp8KeyFrame(frame.payload, frame.length);
-
-                    if (isKeyFrame) {
-                        ELOG_DEBUG("key frame comes after video source changed!");
-                        m_videoSourceChanged = false;
-                    } else {
-                        ELOG_DEBUG("request key frame after video source changed!");
-                        deliverFeedbackMsg(FeedbackMsg{.type = VIDEO_FEEDBACK, .cmd = REQUEST_KEY_FRAME});
-                    }
-                }
-
                 if (!m_videoSourceChanged) {
                     m_videoQueue->pushFrame(frame.payload, frame.length);
                 }
@@ -246,7 +247,7 @@ void MediaFileOut::onFrame(const Frame& frame)
             bool addStreamOK = true;
             if (!m_audioStream) {
                 addStreamOK = addAudioStream(m_expectedAudio, frame.additionalInfo.audio.channels, frame.additionalInfo.audio.sampleRate);
-            } else if (frame.additionalInfo.audio.channels != m_audioStream->codec->channels || int(frame.additionalInfo.audio.sampleRate) != m_audioStream->codec->sample_rate) {
+            } else if (frame.additionalInfo.audio.channels != m_audioStream->codecpar->channels || int(frame.additionalInfo.audio.sampleRate) != m_audioStream->codecpar->sample_rate) {
                 ELOG_ERROR("invalid audio frame channels %d, or sample rate: %d", frame.additionalInfo.audio.channels, frame.additionalInfo.audio.sampleRate);
                 notifyAsyncEvent("fatal", "invalid audio frame channels or sample rate");
                 return close();
@@ -288,7 +289,6 @@ void MediaFileOut::onVideoSourceChanged()
 
 bool MediaFileOut::addAudioStream(enum AVCodecID codec_id, int nbChannels, int sampleRate)
 {
-    m_context->oformat->audio_codec = codec_id;
     AVStream* stream = avformat_new_stream(m_context, nullptr);
     if (!stream) {
         ELOG_ERROR("cannot add audio stream");
@@ -296,21 +296,20 @@ bool MediaFileOut::addAudioStream(enum AVCodecID codec_id, int nbChannels, int s
         close();
         return false;
     }
-    AVCodecContext* c = stream->codec;
-    c->codec_id = codec_id;
-    c->codec_type = AVMEDIA_TYPE_AUDIO;
-    c->channels = nbChannels;
-    c->channel_layout = av_get_default_channel_layout(nbChannels);
-    c->sample_rate = sampleRate;
-    if (codec_id == AV_CODEC_ID_OPUS)
-        c->sample_fmt = AV_SAMPLE_FMT_FLT;
-    else
-        c->sample_fmt = AV_SAMPLE_FMT_S16;
 
-    if (m_context->oformat->flags & AVFMT_GLOBALHEADER)
-        c->flags |= CODEC_FLAG_GLOBAL_HEADER;
+    AVCodecParameters *par = stream->codecpar;
+    par->codec_type     = AVMEDIA_TYPE_AUDIO;
+    par->codec_id       = codec_id;
+    par->sample_rate    = sampleRate;
+    par->channels       = nbChannels;
+    par->channel_layout = av_get_default_channel_layout(par->channels);
+    if (codec_id == AV_CODEC_ID_AAC) { //AudioSpecificConfig 48000-2
+        par->extradata_size = 2;
+        par->extradata      = (uint8_t *)malloc(par->extradata_size);
+        par->extradata[0]   = 0x11;
+        par->extradata[1]   = 0x90;
+    }
     m_audioStream = stream;
-    ELOG_DEBUG("audio stream added: %d channel(s), %d Hz, %s", nbChannels, sampleRate, (codec_id == AV_CODEC_ID_OPUS ? "OPUS" : (codec_id == AV_CODEC_ID_PCM_MULAW ? "PCMU" : "PCMA")));
 
     if ((m_expectedVideo == AV_CODEC_ID_NONE) || m_videoStream) {
         return getReady();
@@ -320,7 +319,6 @@ bool MediaFileOut::addAudioStream(enum AVCodecID codec_id, int nbChannels, int s
 
 bool MediaFileOut::addVideoStream(enum AVCodecID codec_id, unsigned int width, unsigned int height)
 {
-    m_context->oformat->video_codec = codec_id;
     AVStream* stream = avformat_new_stream(m_context, nullptr);
     if (!stream) {
         notifyAsyncEvent("fatal", "cannot add audio stream");
@@ -328,18 +326,34 @@ bool MediaFileOut::addVideoStream(enum AVCodecID codec_id, unsigned int width, u
         ELOG_ERROR("cannot add video stream");
         return false;
     }
-    AVCodecContext* c = stream->codec;
-    c->codec_id = codec_id;
-    c->codec_type = AVMEDIA_TYPE_VIDEO;
-    c->width = width;
-    c->height = height;
-    c->pix_fmt = AV_PIX_FMT_YUV420P;
-    /* Some formats want stream headers to be separate. */
-    if (m_context->oformat->flags & AVFMT_GLOBALHEADER)
-        c->flags |= CODEC_FLAG_GLOBAL_HEADER;
-    m_context->oformat->flags |= AVFMT_VARIABLE_FPS;
+
+    AVCodecParameters *par = stream->codecpar;
+    par->codec_type     = AVMEDIA_TYPE_VIDEO;
+    par->codec_id       = codec_id;
+    par->width          = width;
+    par->height         = height;
+
+    if (codec_id == AV_CODEC_ID_H264) {
+        //extradata
+        AVCodecParserContext *parser = av_parser_init(codec_id);
+        if (!parser) {
+            ELOG_ERROR("Cannot find video parser");
+            return false;
+        }
+
+        int size = parser->parser->split(NULL, m_videoKeyFrame.payload, m_videoKeyFrame.length);
+        if (size > 0) {
+            par->extradata_size = size;
+            par->extradata      = (uint8_t *)malloc(size + AV_INPUT_BUFFER_PADDING_SIZE);
+            memcpy(par->extradata, m_videoKeyFrame.payload, par->extradata_size);
+        } else {
+            ELOG_WARN("Cannot find video extradata");
+        }
+
+        av_parser_close(parser);
+    }
+
     m_videoStream = stream;
-    ELOG_DEBUG("video stream added: %dx%d, %s", width, height, (codec_id == AV_CODEC_ID_H264) ? "H264" : "VP8");
 
     if ((m_expectedAudio == AV_CODEC_ID_NONE) || m_audioStream) {
         return getReady();
@@ -394,7 +408,7 @@ int MediaFileOut::writeAVFrame(AVStream* stream, const EncodedFrame& frame, bool
     pkt.stream_index = stream->index;
 
     if (isVideo) {
-        if (stream->codec->codec_id == AV_CODEC_ID_H264)
+        if (stream->codecpar->codec_id == AV_CODEC_ID_H264)
             pkt.flags = isH264KeyFrame(frame.m_payloadData, frame.m_payloadSize) ? AV_PKT_FLAG_KEY : 0;
         else
             pkt.flags = isVp8KeyFrame(frame.m_payloadData, frame.m_payloadSize) ? AV_PKT_FLAG_KEY : 0;

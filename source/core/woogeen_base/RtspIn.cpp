@@ -25,8 +25,6 @@
 #include <sstream>
 #include <sys/time.h>
 
-//#define DUMP_AUDIO
-
 #define RB24(x)                           \
     ((((const uint8_t*)(x))[0] << 16) |         \
      (((const uint8_t*)(x))[1] <<  8) |         \
@@ -382,8 +380,7 @@ void JitterBuffer::handleJob()
 DEFINE_LOGGER(RtspIn, "woogeen.RtspIn");
 
 RtspIn::RtspIn(const Options& options, EventRegistry* handle)
-    : m_enableTranscoding(false)
-    , m_url(options.url)
+    : m_url(options.url)
     , m_needAudio(options.enableAudio)
     , m_needVideo(options.enableVideo)
     , m_asyncHandle(handle)
@@ -399,22 +396,8 @@ RtspIn::RtspIn(const Options& options, EventRegistry* handle)
     , m_vbsf(nullptr)
     , m_audioStreamIndex(-1)
     , m_audioFormat(FRAME_FORMAT_UNKNOWN)
-    , m_needAudioTranscoder(false)
-    , m_audioDecId(AV_CODEC_ID_NONE)
-    , m_audioDecFrame(nullptr)
-    , m_audioEncCtx(nullptr)
-    , m_audioSwrCtx(nullptr)
-    , m_audioSwrSamplesData(nullptr)
-    , m_audioSwrSamplesLinesize(0)
-    , m_audioSwrSamplesCount(0)
-    , m_audioEncFifo(nullptr)
-    , m_audioEncFrame(nullptr)
-    , m_audioFifoTimeBegin(AV_NOPTS_VALUE)
-    , m_audioFifoTimeEnd(AV_NOPTS_VALUE)
-    , m_audioEncTimestamp(AV_NOPTS_VALUE)
     , m_audioSampleRate(0)
     , m_audioChannels(0)
-    , m_dumpContext(nullptr)
 {
     ELOG_INFO_T("url: %s, audio: %d, video: %d"
             , m_url.c_str(), m_needAudio, m_needVideo);
@@ -462,46 +445,9 @@ RtspIn::~RtspIn()
     }
     av_dict_free(&m_options);
     if (m_vbsf) {
-        av_bitstream_filter_close(m_vbsf);
+        av_bsf_free(&m_vbsf);
         m_vbsf = NULL;
     }
-    if (m_audioEncFrame) {
-        av_frame_free(&m_audioEncFrame);
-        m_audioEncFrame = NULL;
-    }
-    if (m_audioEncFifo) {
-        av_audio_fifo_free(m_audioEncFifo);
-        m_audioEncFifo = NULL;
-    }
-    if (m_audioSwrCtx) {
-        swr_free(&m_audioSwrCtx);
-        m_audioSwrCtx = NULL;
-    }
-    if (m_audioSwrSamplesData) {
-        av_freep(&m_audioSwrSamplesData[0]);
-        av_freep(&m_audioSwrSamplesData);
-        m_audioSwrSamplesData = NULL;
-
-        m_audioSwrSamplesLinesize = 0;
-    }
-    m_audioSwrSamplesCount = 0;
-    if (m_audioEncCtx) {
-        avcodec_close(m_audioEncCtx);
-        m_audioEncCtx = NULL;
-    }
-    if (m_audioDecFrame) {
-        av_frame_free(&m_audioDecFrame);
-        m_audioDecFrame = NULL;
-    }
-    if (m_audioDecCtx) {
-        avcodec_close(m_audioDecCtx);
-        m_audioDecCtx = NULL;
-    }
-
-#ifdef DUMP_AUDIO
-    m_audioRawDumpFile.reset();
-    m_audioResampleDumpFile.reset();
-#endif
 
     ELOG_DEBUG_T("Closed");
 }
@@ -511,18 +457,6 @@ void RtspIn::requestKeyFrame()
     ELOG_DEBUG_T("requestKeyFrame");
     if (!m_keyFrameRequest)
         m_keyFrameRequest = true;
-}
-
-enum AVSampleFormat RtspIn::getSampleFmt(AVCodec *codec, enum AVSampleFormat sample_fmt)
-{
-    const enum AVSampleFormat *p = codec->sample_fmts;
-
-    while (*p != AV_SAMPLE_FMT_NONE) {
-        if (*p == sample_fmt)
-            return sample_fmt;
-        p++;
-    }
-    return codec->sample_fmts[0];
 }
 
 bool RtspIn::connect()
@@ -600,7 +534,7 @@ bool RtspIn::connect()
                 st->codecpar->height
                 );
 
-        AVCodecID videoCodecId = st->codec->codec_id;
+        AVCodecID videoCodecId = st->codecpar->codec_id;
         switch (videoCodecId) {
             case AV_CODEC_ID_VP8:
                 m_videoFormat = FRAME_FORMAT_VP8;
@@ -625,10 +559,10 @@ bool RtspIn::connect()
                 return false;
         }
 
-        //FIXME: the resolution info should be retrieved from the rtsp video source.
-        std::string resolution = "hd1080p";
-        m_AsyncEvent << ",\"video_resolution\":" << "\"hd1080p\"";
-        VideoResolutionHelper::getVideoSize(resolution, m_videoSize);
+        m_AsyncEvent << ",\"video_resolution\":" << "\"" << st->codecpar->width << "x" << st->codecpar->height << "\"";
+
+        m_videoSize.width = st->codecpar->width;
+        m_videoSize.height = st->codecpar->height;
 
         if (!isRtsp())
             m_videoJitterBuffer.reset(new JitterBuffer("video", JitterBuffer::SYNC_MODE_SLAVE, this));
@@ -655,7 +589,7 @@ bool RtspIn::connect()
                 audio_st->codecpar->channels
                 );
 
-        AVCodecID audioCodecId = audio_st->codec->codec_id;
+        AVCodecID audioCodecId = audio_st->codecpar->codec_id;
         switch(audioCodecId) {
             case AV_CODEC_ID_PCM_MULAW:
                 m_audioFormat = FRAME_FORMAT_PCMU;
@@ -673,39 +607,18 @@ bool RtspIn::connect()
                 break;
 
             case AV_CODEC_ID_AAC:
-            case AV_CODEC_ID_AC3:
-            case AV_CODEC_ID_NELLYMOSER:
-                if (m_enableTranscoding) {
-                    m_needAudioTranscoder = true;
-                    if (!initAudioTranscoder(audioCodecId, AV_CODEC_ID_OPUS)) {
-                        ELOG_ERROR_T("Can not init audio codec");
+                m_audioFormat = FRAME_FORMAT_AAC;
+                m_AsyncEvent << ",\"audio_codecs\":" << "[\"aac\"]";
+                break;
 
-                        m_AsyncEvent.str("");
-                        m_AsyncEvent << "{\"type\":\"failed\",\"reason\":\"can not init audio\"}";
-                        return false;
-                    }
-                    m_audioDecId = audioCodecId;
-                    m_audioFormat = FRAME_FORMAT_OPUS;
-                    m_AsyncEvent << ",\"audio_codecs\":" << "[\"opus_48000_2\"]";
-                } else {
-                    switch(audioCodecId) {
-                        case AV_CODEC_ID_AAC:
-                            m_audioFormat = FRAME_FORMAT_AAC;
-                            m_AsyncEvent << ",\"audio_codecs\":" << "[\"aac\"]";
-                            break;
-                        case AV_CODEC_ID_AC3:
-                            m_audioFormat = FRAME_FORMAT_AC3;
-                            m_AsyncEvent << ",\"audio_codecs\":" << "[\"ac3\"]";
-                            break;
-                        case AV_CODEC_ID_NELLYMOSER:
-                            m_audioFormat = FRAME_FORMAT_NELLYMOSER;
-                            m_AsyncEvent << ",\"audio_codecs\":" << "[\"nellymoser\"]";
-                            break;
-                        default:
-                            ELOG_WARN("Audio codec %s is not supported ", avcodec_get_name(audioCodecId));
-                            break;
-                    }
-                }
+            case AV_CODEC_ID_AC3:
+                m_audioFormat = FRAME_FORMAT_AC3;
+                m_AsyncEvent << ",\"audio_codecs\":" << "[\"ac3\"]";
+                break;
+
+            case AV_CODEC_ID_NELLYMOSER:
+                m_audioFormat = FRAME_FORMAT_NELLYMOSER;
+                m_AsyncEvent << ",\"audio_codecs\":" << "[\"nellymoser\"]";
                 break;
 
             default:
@@ -719,19 +632,11 @@ bool RtspIn::connect()
         if (!isRtsp())
             m_audioJitterBuffer.reset(new JitterBuffer("audio", JitterBuffer::SYNC_MODE_MASTER, this));
 
-        if (m_enableTranscoding) {
-            m_audioTimeBase.num = 1;
-            m_audioTimeBase.den = 48000;
+        m_audioTimeBase.num = 1;
+        m_audioTimeBase.den = audio_st->codecpar->sample_rate;
 
-            m_audioSampleRate = 48000;
-            m_audioChannels = 2;
-        } else {
-            m_audioTimeBase.num = 1;
-            m_audioTimeBase.den = audio_st->codec->sample_rate;
-
-            m_audioSampleRate = audio_st->codec->sample_rate;
-            m_audioChannels = audio_st->codec->channels;
-        }
+        m_audioSampleRate = audio_st->codecpar->sample_rate;
+        m_audioChannels = audio_st->codecpar->channels;
     }
 
     m_msTimeBase.num = 1;
@@ -818,13 +723,6 @@ bool RtspIn::reconnect()
             ELOG_ERROR_T("Audio stream index changed, %d -> %d", m_audioStreamIndex, streamNo);
             m_audioStreamIndex = streamNo;
         }
-
-        // reinitilize audio transcoder
-        if (m_needAudioTranscoder) {
-            m_audioEncTimestamp = AV_NOPTS_VALUE;
-            if (!initAudioDecoder(m_audioDecId))
-                return false;
-        }
     }
 
     av_read_play(m_context);
@@ -891,11 +789,6 @@ void RtspIn::receiveLoop()
                     , m_avPacket.dts, m_avPacket.size);
 
             if (filterVBS(video_st, &m_avPacket)) {
-                if (m_needAudioTranscoder) {
-                    m_avPacket.dts += m_audioEncTimestamp - m_audioFifoTimeBegin;
-                    m_avPacket.pts += m_audioEncTimestamp - m_audioFifoTimeBegin;
-                    ELOG_TRACE_T("Audio transcoder offset %ld", m_audioEncTimestamp - m_audioFifoTimeBegin);
-                }
                 // filtering SEI will cause SW h.264 decoder failing to decode, though it partially reslove
                 // issues on decoding forward stream in Chrome58
                 // filterSEI(&m_avPacket);
@@ -912,26 +805,10 @@ void RtspIn::receiveLoop()
             ELOG_TRACE_T("Receive audio frame packet, dts %ld, duration %ld, size %d"
                     , m_avPacket.dts, m_avPacket.duration, m_avPacket.size);
 
-            if (!m_needAudioTranscoder) {
-                if (m_audioJitterBuffer)
-                    m_audioJitterBuffer->insert(m_avPacket);
-                else
-                    deliverAudioFrame(&m_avPacket);
-            } else if(decAudioFrame(m_avPacket)) {
-                AVPacket audioPacket;
-                memset(&audioPacket, 0, sizeof(audioPacket));
-
-                while(true) {
-                    av_init_packet(&audioPacket);
-                    if(!encAudioFrame(&audioPacket))
-                        break;
-                    if (m_audioJitterBuffer)
-                        m_audioJitterBuffer->insert(audioPacket);
-                    else
-                        deliverAudioFrame(&audioPacket);
-                    av_packet_unref(&audioPacket);
-                }
-            }
+            if (m_audioJitterBuffer)
+                m_audioJitterBuffer->insert(m_avPacket);
+            else
+                deliverAudioFrame(&m_avPacket);
         }
         av_packet_unref(&m_avPacket);
     }
@@ -942,6 +819,10 @@ void RtspIn::receiveLoop()
 
 void RtspIn::checkVideoBitstream(AVStream *st, const AVPacket *pkt)
 {
+    int ret;
+    const char *filter_name = NULL;
+    const AVBitStreamFilter *bsf = NULL;
+
     if (!m_needCheckVBS)
         return;
 
@@ -950,26 +831,52 @@ void RtspIn::checkVideoBitstream(AVStream *st, const AVPacket *pkt)
         case AV_CODEC_ID_H264:
             if (pkt->size < 5 || RB32(pkt->data) == 0x0000001 || RB24(pkt->data) == 0x000001)
                 break;
-
-            m_vbsf = av_bitstream_filter_init("h264_mp4toannexb");
-            if(!m_vbsf)
-                ELOG_ERROR_T("Fail to init h264_mp4toannexb filter");
-
-            m_needApplyVBSF = true;
+            filter_name = "h264_mp4toannexb";
             break;
         case AV_CODEC_ID_HEVC:
             if (pkt->size < 5 || RB32(pkt->data) == 0x0000001 || RB24(pkt->data) == 0x000001)
                 break;
-
-            m_vbsf = av_bitstream_filter_init("hevc_mp4toannexb");
-            if(!m_vbsf)
-                ELOG_ERROR_T("Fail to init hevc_mp4toannexb filter");
-
-            m_needApplyVBSF = true;
+            filter_name = "hevc_mp4toannexb";
             break;
         default:
             break;
     }
+
+    if (filter_name) {
+        bsf = av_bsf_get_by_name(filter_name);
+        if(!bsf) {
+            ELOG_ERROR_T("Fail to get bsf, %s", filter_name);
+            goto exit;
+        }
+
+        ret = av_bsf_alloc(bsf, &m_vbsf);
+        if (ret) {
+            ELOG_ERROR_T("Fail to alloc bsf context");
+            goto exit;
+        }
+
+        ret = avcodec_parameters_copy(m_vbsf->par_in, st->codecpar);
+        if (ret < 0) {
+            ELOG_ERROR_T("Fail to copy bsf parameters, %s", ff_err2str(ret));
+
+            av_bsf_free(&m_vbsf);
+            m_vbsf = NULL;
+            goto exit;
+        }
+
+        ret = av_bsf_init(m_vbsf);
+        if (ret < 0) {
+            ELOG_ERROR_T("Fail to init bsf, %s", ff_err2str(ret));
+
+            av_bsf_free(&m_vbsf);
+            m_vbsf = NULL;
+            goto exit;
+        }
+
+        m_needApplyVBSF = true;
+    }
+
+exit:
     m_needCheckVBS = false;
     ELOG_DEBUG_T("%s video bitstream filter", m_needApplyVBSF ? "Apply" : "Not apply");
 }
@@ -1041,12 +948,33 @@ bool RtspIn::filterVBS(AVStream *st, AVPacket *pkt) {
     }
 
     av_packet_split_side_data(pkt);
-    ret = av_apply_bitstream_filters(st->codec, pkt, m_vbsf);
-    if(ret < 0) {
-        ELOG_ERROR_T("Fail to filter video bitstream, len(%d)(0x%x 0x%x 0x%x 0x%x), %s"
-                , pkt->size
-                , pkt->data[0], pkt->data[1], pkt->data[2], pkt->data[3]
-                , ff_err2str(ret));
+
+    AVPacket filter_pkt;
+    AVPacket filtered_pkt;
+
+    memset(&filter_pkt, 0, sizeof(filter_pkt));
+    memset(&filtered_pkt, 0, sizeof(filtered_pkt));
+
+    if ((ret = av_packet_ref(&filter_pkt, pkt)) < 0) {
+        ELOG_ERROR_T("Fail to ref input pkt");
+        return false;
+    }
+
+    if ((ret = av_bsf_send_packet(m_vbsf, &filter_pkt)) < 0) {
+        ELOG_ERROR_T("Fail to send packet, %s", ff_err2str(ret));
+        av_packet_unref(&filter_pkt);
+        return false;
+    }
+
+    if ((ret = av_bsf_receive_packet(m_vbsf, &filtered_pkt)) < 0) {
+        ELOG_ERROR_T("Fail to receive packet, %s", ff_err2str(ret));
+        return false;
+    }
+
+    av_packet_unref(&filter_pkt);
+    av_packet_unref(pkt);
+    if ((ret = av_packet_ref(pkt, &filtered_pkt)) < 0) {
+        ELOG_ERROR_T("Fail to ref filtered pkt");
         return false;
     }
 
@@ -1084,386 +1012,6 @@ int RtspIn::getNextNaluPosition(uint8_t *buffer, int buffer_size, bool &is_sei) 
         return static_cast<int>(head - buffer);
     }
     return -1;
-}
-
-bool RtspIn::initAudioDecoder(AVCodecID codec) {
-    AVStream *audio_st = m_context->streams[m_audioStreamIndex];
-    AVCodec *audioDec = NULL;
-    int ret;
-
-    switch(codec) {
-        case AV_CODEC_ID_AAC:
-        case AV_CODEC_ID_AC3:
-        case AV_CODEC_ID_NELLYMOSER:
-            audioDec = avcodec_find_decoder(codec);
-            if (!audioDec) {
-                ELOG_ERROR_T("Could not find audio decoder %s", avcodec_get_name(codec));
-                return false;
-            }
-
-            break;
-
-        default:
-            ELOG_ERROR_T("Decoder %s is not supported", avcodec_get_name(codec));
-            return false;
-    }
-
-    m_audioDecCtx = avcodec_alloc_context3(audioDec);
-    if (!m_audioDecCtx ) {
-        ELOG_ERROR_T("Could not alloc audio decoder context");
-        return false;
-    }
-
-    m_audioDecCtx->sample_fmt = getSampleFmt(audioDec, AV_SAMPLE_FMT_FLT);
-    m_audioDecCtx->sample_rate = audio_st->codec->sample_rate;
-    m_audioDecCtx->channels = audio_st->codec->channels;
-    m_audioDecCtx->channel_layout = av_get_default_channel_layout(m_audioDecCtx->channels);
-
-    /* open it */
-    ret = avcodec_open2(m_audioDecCtx, audioDec, NULL);
-    if (ret < 0) {
-        ELOG_ERROR_T("Could not open audio decoder context, %s", ff_err2str(ret));
-        return false;
-    }
-
-    ELOG_INFO_T("Audio dec sample_format(%s), sample_rate %d, channels %d, channel_layout %ld, frame_size %d"
-            , av_get_sample_fmt_name(m_audioDecCtx->sample_fmt)
-            , m_audioDecCtx->sample_rate
-            , m_audioDecCtx->channels
-            , m_audioDecCtx->channel_layout
-            , m_audioDecCtx->frame_size
-            );
-
-    return true;
-}
-
-bool RtspIn::initAudioTranscoder(AVCodecID inCodec, AVCodecID outCodec) {
-    int ret;
-    AVCodec *audioEnc = NULL;
-
-    if (outCodec != AV_CODEC_ID_OPUS) {
-        ELOG_ERROR_T("Encoder %s is not supported, OPUS only", avcodec_get_name(outCodec));
-        return false;
-    }
-
-    avcodec_register_all();
-
-    if (!initAudioDecoder(inCodec))
-        goto failed;
-
-    m_audioDecFrame = av_frame_alloc();
-    if (!m_audioDecFrame) {
-        ELOG_ERROR_T("Could not allocate audio dec frame");
-        goto failed;
-    }
-
-    audioEnc = avcodec_find_encoder(AV_CODEC_ID_OPUS);
-    if (!audioEnc) {
-        ELOG_ERROR_T("Could not find audio encoder %s", avcodec_get_name(AV_CODEC_ID_OPUS));
-        goto failed;
-    }
-
-    m_audioEncCtx = avcodec_alloc_context3(audioEnc);
-    if (!m_audioEncCtx ) {
-        ELOG_ERROR_T("Could not alloc audio encoder context");
-        goto failed;
-    }
-
-    m_audioEncCtx->channels         = 2;
-    m_audioEncCtx->channel_layout   = av_get_default_channel_layout(m_audioEncCtx->channels);
-    m_audioEncCtx->sample_rate      = 48000;
-    m_audioEncCtx->sample_fmt       = getSampleFmt(audioEnc , m_audioDecCtx->sample_fmt);
-    m_audioEncCtx->bit_rate         = 64000;
-
-    /* open it */
-    ret = avcodec_open2(m_audioEncCtx, audioEnc, NULL);
-    if (ret < 0) {
-        ELOG_ERROR_T("Could not open audio encoder context, %s", ff_err2str(ret));
-        goto failed;
-    }
-
-    ELOG_INFO_T("Audio enc sample_format(%s), sample_rate %d, channels %d, channel_layout %ld, frame_size %d"
-            , av_get_sample_fmt_name(m_audioEncCtx->sample_fmt)
-            , m_audioEncCtx->sample_rate
-            , m_audioEncCtx->channels
-            , m_audioEncCtx->channel_layout
-            , m_audioEncCtx->frame_size
-            );
-
-    if (m_audioDecCtx->sample_fmt != m_audioEncCtx->sample_fmt
-            || m_audioDecCtx->sample_rate != m_audioEncCtx->sample_rate
-            || m_audioDecCtx->channels != m_audioEncCtx->channels) {
-        ELOG_TRACE_T("Init audio resampler");
-
-        m_audioSwrCtx = swr_alloc();
-        if (!m_audioSwrCtx) {
-            ELOG_ERROR_T("Could not allocate resampler context");
-            goto failed;
-        }
-
-        /* set options */
-        av_opt_set_int       (m_audioSwrCtx, "in_channel_count",   m_audioDecCtx->channels,         0);
-        av_opt_set_int       (m_audioSwrCtx, "in_sample_rate",     m_audioDecCtx->sample_rate,      0);
-        av_opt_set_sample_fmt(m_audioSwrCtx, "in_sample_fmt",      m_audioDecCtx->sample_fmt,       0);
-        av_opt_set_int       (m_audioSwrCtx, "out_channel_count",  m_audioEncCtx->channels,         0);
-        av_opt_set_int       (m_audioSwrCtx, "out_sample_rate",    m_audioEncCtx->sample_rate,      0);
-        av_opt_set_sample_fmt(m_audioSwrCtx, "out_sample_fmt",     m_audioEncCtx->sample_fmt,       0);
-
-        ret = swr_init(m_audioSwrCtx);
-        if (ret < 0) {
-            ELOG_ERROR_T("Fail to initialize the resampling context, %s", ff_err2str(ret));
-            goto failed;
-        }
-
-        m_audioSwrSamplesCount = m_audioEncCtx->frame_size * 2;
-        ret = av_samples_alloc_array_and_samples(&m_audioSwrSamplesData, &m_audioSwrSamplesLinesize, m_audioEncCtx->channels,
-                m_audioSwrSamplesCount, m_audioEncCtx->sample_fmt, 0);
-        if (ret < 0) {
-            ELOG_ERROR_T("Could not allocate swr samples data, %s", ff_err2str(ret));
-            goto failed;
-        }
-    }
-
-    m_audioEncFifo = av_audio_fifo_alloc(m_audioEncCtx->sample_fmt, m_audioEncCtx->channels, 1);
-    if (!m_audioEncFifo) {
-        ELOG_ERROR_T("Could not allocate audio enc fifo");
-        goto failed;
-    }
-
-    m_audioEncFrame  = av_frame_alloc();
-    if (!m_audioEncFrame) {
-        ELOG_ERROR_T("Could not allocate audio enc frame");
-        goto failed;
-    }
-
-    m_audioEncFrame->nb_samples        = m_audioEncCtx->frame_size;
-    m_audioEncFrame->format            = m_audioEncCtx->sample_fmt;
-    m_audioEncFrame->channel_layout    = m_audioEncCtx->channel_layout;
-    m_audioEncFrame->sample_rate       = m_audioEncCtx->sample_rate;
-
-    ret = av_frame_get_buffer(m_audioEncFrame, 0);
-    if (ret < 0) {
-        ELOG_ERROR_T("Could not get audio frame buffer, %s", ff_err2str(ret));
-        goto failed;
-    }
-
-#ifdef DUMP_AUDIO
-    char dumpFile[128];
-
-    snprintf(dumpFile, 128, "/tmp/audio-%s-%s-%d-%d.pcm"
-            , "raw"
-            , av_get_sample_fmt_name(m_audioDecCtx->sample_fmt)
-            , m_audioDecCtx->sample_rate
-            , m_audioDecCtx->channels
-            );
-    m_audioRawDumpFile.reset(new std::ofstream(dumpFile, std::ios::binary));
-
-    if (m_audioSwrCtx) {
-        snprintf(dumpFile, 128, "/tmp/audio-%s-%s-%d-%d.pcm"
-                , "resample"
-                , av_get_sample_fmt_name(m_audioEncCtx->sample_fmt)
-                , m_audioEncCtx->sample_rate
-                , m_audioEncCtx->channels
-                );
-        m_audioResampleDumpFile.reset(new std::ofstream(dumpFile, std::ios::binary));
-    }
-
-#if 0
-    snprintf(dumpFile, 128, "/tmp/audio-%s-%s-%d-%d.opus"
-            , avcodec_get_name(m_audioEncCtx->codec_id)
-            , avcodec_get_name(m_audioEncCtx->codec_id)
-            , m_audioEncCtx->sample_rate
-            , m_audioEncCtx->channels
-            );
-    if(!initDump(dumpFile)) {
-        ELOG_ERROR_T("Could not init dump");
-        goto failed;
-    }
-#endif
-
-#endif
-
-    ELOG_TRACE_T("Init audio transcoder OK");
-    return true;
-
-failed:
-    if (m_audioEncFrame) {
-        av_frame_free(&m_audioEncFrame);
-        m_audioEncFrame = NULL;
-    }
-
-    if (m_audioEncFifo) {
-        av_audio_fifo_free(m_audioEncFifo);
-        m_audioEncFifo = NULL;
-    }
-
-    if (m_audioSwrCtx) {
-        swr_free(&m_audioSwrCtx);
-        m_audioSwrCtx = NULL;
-    }
-
-    if (m_audioSwrSamplesData) {
-        av_freep(&m_audioSwrSamplesData[0]);
-        av_freep(&m_audioSwrSamplesData);
-        m_audioSwrSamplesData = NULL;
-
-        m_audioSwrSamplesLinesize = 0;
-    }
-    m_audioSwrSamplesCount = 0;
-
-    if (m_audioEncCtx) {
-        avcodec_close(m_audioEncCtx);
-        m_audioEncCtx = NULL;
-    }
-
-    if (m_audioDecFrame) {
-        av_frame_free(&m_audioDecFrame);
-        m_audioDecFrame = NULL;
-    }
-
-    return false;
-}
-
-bool RtspIn::decAudioFrame(AVPacket &packet) {
-    int got;
-    int ret;
-    int nSamples;
-    uint8_t **audioFrameData;
-    int audioFrameLen = 0;
-
-    if (!m_audioEncCtx) {
-        ELOG_ERROR_T("Invalid transcode params");
-        return false;
-    }
-
-    ret = avcodec_decode_audio4(m_audioDecCtx, m_audioDecFrame, &got, &packet);
-    if (ret < 0) {
-        ELOG_ERROR_T("Error while decoding, %s", ff_err2str(ret));
-        return false;
-    }
-
-    if (!got) {
-        ELOG_TRACE_T("No decoded frame output");
-        return false;
-    }
-
-    audioFrameData = m_audioDecFrame->data;
-    audioFrameLen = m_audioDecFrame->nb_samples;
-
-#ifdef DUMP_AUDIO
-    if (m_audioRawDumpFile) {
-        m_audioRawDumpFile->write((const char*)m_audioDecFrame->data[0]
-                , m_audioDecFrame->nb_samples * m_audioDecCtx->channels * av_get_bytes_per_sample(m_audioDecCtx->sample_fmt));
-    }
-#endif
-
-    if (m_audioSwrCtx) {
-        int dst_nb_samples;
-
-        /* compute destination number of samples */
-        dst_nb_samples = av_rescale_rnd(
-                swr_get_delay(m_audioSwrCtx, m_audioDecCtx->sample_rate) + m_audioDecFrame->nb_samples
-                , m_audioEncCtx->sample_rate
-                , m_audioDecCtx->sample_rate
-                , AV_ROUND_UP);
-
-        if (dst_nb_samples > m_audioSwrSamplesCount) {
-            ELOG_TRACE_T("Realloc audio swr samples buffer");
-
-            av_freep(&m_audioSwrSamplesData[0]);
-            ret = av_samples_alloc(m_audioSwrSamplesData, &m_audioSwrSamplesLinesize, m_audioEncCtx->channels,
-                dst_nb_samples, m_audioEncCtx->sample_fmt, 1);
-            if (ret < 0) {
-                ELOG_ERROR_T("Fail to realloc swr samples, %s", ff_err2str(ret));
-                return false;
-            }
-            m_audioSwrSamplesCount = dst_nb_samples;
-        }
-
-        /* convert to destination format */
-        ret = swr_convert(m_audioSwrCtx, m_audioSwrSamplesData, dst_nb_samples, (const uint8_t **)m_audioDecFrame->data, m_audioDecFrame->nb_samples);
-        if (ret < 0) {
-            ELOG_ERROR_T("Error while converting, %s", ff_err2str(ret));
-            return false;
-        }
-
-#ifdef DUMP_AUDIO
-        if (m_audioResampleDumpFile) {
-            int bufsize = av_samples_get_buffer_size(&m_audioSwrSamplesLinesize, m_audioEncCtx->channels,
-                    ret, m_audioEncCtx->sample_fmt, 1);
-
-            m_audioResampleDumpFile->write((const char*)m_audioSwrSamplesData[0], bufsize);
-        }
-#endif
-
-        audioFrameData = m_audioSwrSamplesData;
-        audioFrameLen = ret;
-    }
-
-    nSamples = av_audio_fifo_write(m_audioEncFifo, reinterpret_cast<void**>(audioFrameData), audioFrameLen);
-    if (nSamples < audioFrameLen) {
-        ELOG_ERROR_T("Can not write audio enc fifo, nbSamples %d, writed %d", audioFrameLen, nSamples);
-        return false;
-    }
-
-    if (m_audioEncTimestamp == AV_NOPTS_VALUE) {
-        m_audioEncTimestamp = packet.dts;
-        m_audioFifoTimeBegin = packet.dts;
-    }
-    m_audioFifoTimeEnd = packet.dts + 1000.0 * audioFrameLen / m_audioEncCtx->sample_rate;
-
-    return true;
-}
-
-bool RtspIn::encAudioFrame(AVPacket *packet) {
-    int ret;
-    int got;
-    int nSamples;
-
-    if (!m_audioEncCtx) {
-        ELOG_ERROR_T("Invalid transcode params");
-        return false;
-    }
-
-    if (av_audio_fifo_size(m_audioEncFifo) < m_audioEncCtx->frame_size) {
-        return false;
-    }
-
-    nSamples = av_audio_fifo_read(m_audioEncFifo, reinterpret_cast<void**>(m_audioEncFrame->data), m_audioEncCtx->frame_size);
-    if (nSamples < m_audioEncCtx->frame_size) {
-        ELOG_ERROR_T("Can not read audio enc fifo, nbSamples %d, writed %d", m_audioEncCtx->frame_size, nSamples);
-        return false;
-    }
-
-    ret = avcodec_encode_audio2(m_audioEncCtx, packet, m_audioEncFrame, &got);
-    if (ret < 0) {
-        ELOG_ERROR_T("Fail to encode audio frame, %s", ff_err2str(ret));
-        return false;
-    }
-
-    if (!got) {
-        ELOG_TRACE_T("Not get encoded audio frame");
-        return false;
-    }
-
-    packet->dts = m_audioEncTimestamp;
-
-    m_audioEncTimestamp += 1000.0 * m_audioEncCtx->frame_size / m_audioEncCtx->sample_rate;
-    m_audioFifoTimeBegin += (double)(m_audioFifoTimeEnd - m_audioFifoTimeBegin) * m_audioEncCtx->frame_size / (av_audio_fifo_size(m_audioEncFifo) + m_audioEncCtx->frame_size);
-
-    if (av_audio_fifo_size(m_audioEncFifo) >= m_audioEncCtx->frame_size) {
-        ELOG_TRACE_T("More data in fifo to encode %d >= %d", av_audio_fifo_size(m_audioEncFifo), m_audioEncCtx->frame_size);
-    }
-
-#ifdef DUMP_AUDIO
-    if (m_dumpContext) {
-        AVPacket dump_pkt;
-        av_packet_ref(&dump_pkt, packet);
-        ret = av_interleaved_write_frame(m_dumpContext, &dump_pkt);
-    }
-#endif
-
-    return true;
 }
 
 void RtspIn::onSyncTimeChanged(JitterBuffer *jitterBuffer, int64_t syncTimestamp)
@@ -1555,50 +1103,6 @@ char *RtspIn::ff_err2str(int errRet)
 {
     av_strerror(errRet, (char*)(&m_errbuff), 500);
     return m_errbuff;
-}
-
-bool RtspIn::initDump(char *dumpFile) {
-
-    avformat_alloc_output_context2(&m_dumpContext, nullptr, nullptr, dumpFile);
-    if (!m_dumpContext) {
-        ELOG_ERROR_T("avformat_alloc_output_context2 dump context failed");
-        return false;
-        //goto failed;
-    }
-
-    AVStream* dumpStream = NULL;
-    dumpStream = avformat_new_stream(m_dumpContext, m_audioEncCtx->codec);
-    if (!dumpStream) {
-        ELOG_ERROR_T("cannot add dump stream");
-        return false;
-        //goto failed;
-    }
-#if 1
-    //Copy the settings of AVCodecContext
-    if (avcodec_copy_context(dumpStream->codec, m_audioEncCtx) < 0) {
-        ELOG_ERROR_T("Fail to copy dump stream codec context");
-        return false;
-        //goto failed;
-    }
-#endif
-    dumpStream->codec->codec_tag = 0;
-    if (m_dumpContext->oformat->flags & AVFMT_GLOBALHEADER)
-        dumpStream->codec->flags |= CODEC_FLAG_GLOBAL_HEADER;
-
-    if (avio_open(&m_dumpContext->pb, m_dumpContext->filename, AVIO_FLAG_WRITE) < 0) {
-        ELOG_ERROR_T("avio_open failed, %s", m_dumpContext->filename);
-        return false;
-        //goto failed;
-    }
-
-    if (avformat_write_header(m_dumpContext, nullptr) < 0) {
-        ELOG_ERROR_T("avformat_write_header failed");
-        return false;
-        //goto failed;
-    }
-
-    av_dump_format(m_dumpContext, 0, m_dumpContext->filename, 1);
-    return true;
 }
 
 }
