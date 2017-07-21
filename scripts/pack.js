@@ -444,6 +444,7 @@ function getAddonLibs(addonPath) {
 function filterLib(libSrc) {
   if (!libSrc) return false;
 
+  console.log('require:', libSrc);
   const libName = path.basename(libSrc);
   // Remove libmsdk
   if (libName.indexOf('libmfxhw') === 0) return false;
@@ -454,6 +455,7 @@ function filterLib(libSrc) {
   // Remove libav/ffmpeg if aac
   if (libName.indexOf('libav') === 0 || libName.indexOf('libsw') === 0) {
     let output = execSync(`ldd ${libSrc}`).toString();
+    console.log('libav output:', output);
     if (options['archive'] && output.indexOf('aac') >= 0) {
       return false;
     }
