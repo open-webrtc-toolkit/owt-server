@@ -36,14 +36,16 @@ namespace mcu {
 
 static void fillVppStream(mfxVPPCompInputStream *vppStream, const VideoSize& rootSize, const Region& region)
 {
-    assert(!(region.relativeSize < 0.0 || region.relativeSize > 1.0)
-            && !(region.left < 0.0 || region.left > 1.0)
-            && !(region.top < 0.0 || region.top > 1.0));
+    assert(region.shape.compare("rectangle") == 0
+            && (region.area.rect.left.denominator != 0 && region.area.rect.left.denominator >= region.area.rect.left.numerator)
+            && (region.area.rect.top.denominator != 0 && region.area.rect.top.denominator >= region.area.rect.top.numerator)
+            && (region.area.rect.width.denominator != 0 && region.area.rect.width.denominator >= region.area.rect.width.numerator)
+            && (region.area.rect.height.denominator != 0 && region.area.rect.height.denominator >= region.area.rect.height.numerator));
 
-    unsigned int sub_width = (unsigned int)(rootSize.width * region.relativeSize);
-    unsigned int sub_height = (unsigned int)(rootSize.height * region.relativeSize);
-    unsigned int offset_width = (unsigned int)(rootSize.width * region.left);
-    unsigned int offset_height = (unsigned int)(rootSize.height * region.top);
+    uint32_t sub_width      = (uint64_t)rootSize.width * region.area.rect.width.numerator / region.area.rect.width.denominator;
+    uint32_t sub_height     = (uint64_t)rootSize.height * region.area.rect.height.numerator / region.area.rect.height.denominator;
+    uint32_t offset_width   = (uint64_t)rootSize.width * region.area.rect.left.numerator / region.area.rect.left.denominator;
+    uint32_t offset_height  = (uint64_t)rootSize.height * region.area.rect.top.numerator / region.area.rect.top.denominator;
     if (offset_width + sub_width > rootSize.width)
         sub_width = rootSize.width - offset_width;
 
@@ -735,7 +737,13 @@ void MsdkVideoCompositor::updateLayoutSolution(LayoutSolution& solution)
 
     ELOG_DEBUG("updateLayoutSolution: size(%ld)", solution.size());
     for (auto& l : solution) {
-        ELOG_TRACE("input(%d): relative(%f), left(%f), top(%f)", l.input, l.region.relativeSize, l.region.left, l.region.top);
+        ELOG_DEBUG("input(%d): %s, left(%.2f), top(%.2f), width(%.2f), height(%.2f)"
+                , l.input
+                , l.region.shape.c_str()
+                , (float)l.region.area.rect.left.numerator / l.region.area.rect.left.denominator
+                , (float)l.region.area.rect.top.numerator / l.region.area.rect.top.denominator
+                , (float)l.region.area.rect.width.numerator / l.region.area.rect.width.denominator
+                , (float)l.region.area.rect.height.numerator / l.region.area.rect.height.denominator);
     }
 
     m_newLayout = solution;
@@ -849,9 +857,15 @@ bool MsdkVideoCompositor::commitLayout()
             m_compInputStreams.resize(m_vppLayout.size() + 1);
 
             Region rootRegion;
-            rootRegion.left = 0.0;
-            rootRegion.top = 0.0;
-            rootRegion.relativeSize = 1.0;
+            rootRegion.shape = "rectangle";
+            rootRegion.area.rect.left.numerator = 0;
+            rootRegion.area.rect.left.denominator = 1;
+            rootRegion.area.rect.top.numerator = 0;
+            rootRegion.area.rect.top.denominator = 1;
+            rootRegion.area.rect.width.numerator = 1;
+            rootRegion.area.rect.width.denominator = 1;
+            rootRegion.area.rect.height.numerator = 1;
+            rootRegion.area.rect.height.denominator = 1;
             fillVppStream(&m_compInputStreams[0], m_rootSize, rootRegion);
 
             i = 1;
@@ -1017,29 +1031,16 @@ void MsdkVideoCompositor::applyAspectRatio()
         if (frame == m_defaultInputFrame)
             continue;
 
-        uint32_t frame_w    = frame->getCropW();
-        uint32_t frame_h    = frame->getCropH();
-        uint32_t vpp_w      = vppRect->DstW;
-        uint32_t vpp_h      = vppRect->DstH;
+        uint32_t frame_w = frame->getCropW();
+        uint32_t frame_h = frame->getCropH();
         uint32_t x, y, w, h;
 
         if (m_crop) {
-            if ((frame_w + 1) * vpp_h >= vpp_w * (frame_h - 1) &&
-                    (frame_w - 1) * vpp_h <= vpp_w * (frame_h + 1)) {
-                continue;
-            } else if (frame_w * layoutRect->DstH > layoutRect->DstW * frame_h) {
-                w = frame_h * layoutRect->DstW / layoutRect->DstH;
-                h = frame_h;
+            w = std::min(frame_w, layoutRect->DstW * frame_h / layoutRect->DstH);
+            h = std::min(frame_h, layoutRect->DstH * frame_w / layoutRect->DstW);
 
-                x = (frame_w - w) / 2;
-                y = 0;
-            } else {
-                w = frame_w;
-                h = frame_w * layoutRect->DstH / layoutRect->DstW;
-
-                x = 0;
-                y = (frame_h - h) / 2;
-            }
+            x = frame->getCropX() + (frame_w - w) / 2;
+            y = frame->getCropY() + (frame_h - h) / 2;
 
             if (frame->getCropX() != x || frame->getCropY() != y || frame->getCropW() != w || frame->getCropH()!= h) {
                 ELOG_TRACE("setCrop(%p) %d-%d-%d-%d -> %d-%d-%d-%d"
@@ -1049,37 +1050,20 @@ void MsdkVideoCompositor::applyAspectRatio()
                         );
 
                 frame->setCrop(x, y, w, h);
-            } else {
-                ELOG_WARN("invalid setCrop(%p) %d-%d-%d-%d -> %d-%d-%d-%d"
-                        , frame.get()
-                        , frame->getCropX(), frame->getCropY(), frame->getCropW(), frame->getCropH()
-                        , x, y, w, h
-                        );
             }
         } else {
-            if (frame_w * (vpp_h + 1) >= (vpp_w - 1) * frame_h &&
-                    frame_w * (vpp_h - 1) <= (vpp_w + 1) * frame_h) {
-                continue;
-            } else if (frame_w * layoutRect->DstH > layoutRect->DstW * frame_h) {
-                w = layoutRect->DstW;
-                h = layoutRect->DstW * frame_h / frame_w;
+            w = std::min(layoutRect->DstW, frame_w * layoutRect->DstH / frame_h);
+            h = std::min(layoutRect->DstH, frame_h * layoutRect->DstW / frame_w);
 
-                x = layoutRect->DstX;
-                y = layoutRect->DstY + (layoutRect->DstH - h) / 2;
-            } else {
-                w = layoutRect->DstH * frame_w / frame_h;
-                h = layoutRect->DstH;
-
-                x = layoutRect->DstX + (layoutRect->DstW - w) / 2;
-                y = layoutRect->DstY;
-            }
+            x = layoutRect->DstX + (layoutRect->DstW - w) / 2;
+            y = layoutRect->DstY + (layoutRect->DstH - h) / 2;
 
             if (vppRect->DstX != x || vppRect->DstY != y || vppRect->DstW != w || vppRect->DstH != h) {
                 ELOG_TRACE("update pos %d-%d-%d-%d -> %d-%d-%d-%d, aspect ratio %lf -> %lf"
                         , vppRect->DstX, vppRect->DstY, vppRect->DstW, vppRect->DstH
                         , x, y, w, h
-                        , (double)vpp_w / vpp_h
-                        , (double)frame_w / frame_h
+                        , (double)vppRect->DstW / vppRect->DstH
+                        , (double)w / h
                         );
 
                 vppRect->DstX = x;
@@ -1088,13 +1072,6 @@ void MsdkVideoCompositor::applyAspectRatio()
                 vppRect->DstH = h;
 
                 isChanged = true;
-            } else {
-                ELOG_WARN("invalid update pos %d-%d-%d-%d -> %d-%d-%d-%d, aspect ratio %lf -> %lf"
-                        , vppRect->DstX, vppRect->DstY, vppRect->DstW, vppRect->DstH
-                        , x, y, w, h
-                        , (double)vpp_w / vpp_h
-                        , (double)frame_w / frame_h
-                        );
             }
         }
     }

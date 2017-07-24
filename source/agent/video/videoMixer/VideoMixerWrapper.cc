@@ -201,10 +201,6 @@ void VideoMixer::updateLayoutSolution(const v8::FunctionCallbackInfo<v8::Value>&
           region.area.rect.top = parseRational(isolate, areaObj->Get(String::NewFromUtf8(isolate, "top")));
           region.area.rect.width = parseRational(isolate, areaObj->Get(String::NewFromUtf8(isolate, "width")));
           region.area.rect.height = parseRational(isolate, areaObj->Get(String::NewFromUtf8(isolate, "height")));
-          // Set the rectangle args to region
-          region.left = float(region.area.rect.left.numerator) / region.area.rect.left.denominator;
-          region.top = float(region.area.rect.top.numerator) / region.area.rect.top.denominator;
-          region.relativeSize = float(region.area.rect.width.numerator) / region.area.rect.width.denominator;
         } else if (region.shape == "circle") {
           region.area.circle.centerW = parseRational(isolate, areaObj->Get(String::NewFromUtf8(isolate, "centerW")));
           region.area.circle.centerH = parseRational(isolate, areaObj->Get(String::NewFromUtf8(isolate, "centerH")));

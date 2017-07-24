@@ -50,8 +50,8 @@ namespace mcu {
  */
 
 struct Rational {
-  int numerator;
-  int denominator;
+  uint32_t numerator;
+  uint32_t denominator;
 };
 
 struct Rectangle {
@@ -73,19 +73,7 @@ union Shape {
 };
 
 struct Region {
-    Region()
-        : left(0.0)
-        , top(0.0)
-        , relativeSize(0.0)
-    {
-    }
-
     std::string id;
-    float left; // percentage, deprecated
-    float top;    // percentage, deprecated
-    float relativeSize;    //fraction, deprecated
-    //float priority;
-
     std::string shape; // shape of region
     Shape area; // shape area
 };

@@ -411,36 +411,56 @@ webrtc::VideoFrame* SoftVideoCompositor::customLayout()
         rtc::scoped_refptr<webrtc::VideoFrameBuffer> i420Buffer = sub_image->video_frame_buffer();
 
         Region region = it->region;
-        assert(!(region.relativeSize < 0.0 || region.relativeSize > 1.0)
-            && !(region.left < 0.0 || region.left > 1.0)
-            && !(region.top < 0.0 || region.top > 1.0));
 
-        uint32_t sub_width      = (uint32_t)(m_compositeSize.width * region.relativeSize);
-        uint32_t sub_height     = (uint32_t)(m_compositeSize.height * region.relativeSize);
-        uint32_t offset_width   = (uint32_t)(m_compositeSize.width * region.left);
-        uint32_t offset_height  = (uint32_t)(m_compositeSize.height * region.top);
+        assert(region.shape.compare("rectangle") == 0
+                && (region.area.rect.left.denominator != 0 && region.area.rect.left.denominator >= region.area.rect.left.numerator)
+                && (region.area.rect.top.denominator != 0 && region.area.rect.top.denominator >= region.area.rect.top.numerator)
+                && (region.area.rect.width.denominator != 0 && region.area.rect.width.denominator >= region.area.rect.width.numerator)
+                && (region.area.rect.height.denominator != 0 && region.area.rect.height.denominator >= region.area.rect.height.numerator));
+
+        uint32_t sub_width      = (uint64_t)m_compositeSize.width * region.area.rect.width.numerator / region.area.rect.width.denominator;
+        uint32_t sub_height     = (uint64_t)m_compositeSize.height * region.area.rect.height.numerator / region.area.rect.height.denominator;
+        uint32_t offset_width   = (uint64_t)m_compositeSize.width * region.area.rect.left.numerator / region.area.rect.left.denominator;
+        uint32_t offset_height  = (uint64_t)m_compositeSize.height * region.area.rect.top.numerator / region.area.rect.top.denominator;
+
         if (offset_width + sub_width > m_compositeSize.width)
             sub_width = m_compositeSize.width - offset_width;
 
         if (offset_height + sub_height > m_compositeSize.height)
             sub_height = m_compositeSize.height - offset_height;
 
-        uint32_t cropped_sub_width = sub_width;
-        uint32_t cropped_sub_height = sub_height;
-        if (!m_crop) {
-            // If we are *not* required to crop the video input to fit in its region,
-            // we need to adjust the region to be filled to match the input's width/height.
-            cropped_sub_width = std::min(sub_width, i420Buffer->width() * sub_height / i420Buffer->height());
-            cropped_sub_height = std::min(sub_height, i420Buffer->height() * sub_width / i420Buffer->width());
+        uint32_t cropped_sub_width;
+        uint32_t cropped_sub_height;
+        uint32_t src_x;
+        uint32_t src_y;
+        uint32_t src_width;
+        uint32_t src_height;
+        if (m_crop) {
+            src_width   = std::min((uint32_t)i420Buffer->width(), sub_width * i420Buffer->height() / sub_height);
+            src_height  = std::min((uint32_t)i420Buffer->height(), sub_height * i420Buffer->width() / sub_width);
+            src_x       = (i420Buffer->width() - src_width) / 2;
+            src_y       = (i420Buffer->height() - src_height) / 2;
+
+            cropped_sub_width   = sub_width;
+            cropped_sub_height  = sub_height;
+        } else {
+            src_width   = i420Buffer->width();
+            src_height  = i420Buffer->height();
+            src_x       = 0;
+            src_y       = 0;
+
+            cropped_sub_width   = std::min(sub_width, i420Buffer->width() * sub_height / i420Buffer->height());
+            cropped_sub_height  = std::min(sub_height, i420Buffer->height() * sub_width / i420Buffer->width());
         }
-        offset_width += ((sub_width - cropped_sub_width) / 2) & ~1;
-        offset_height += ((sub_height - cropped_sub_height) / 2) & ~1;
+
+        offset_width += (sub_width - cropped_sub_width) / 2;
+        offset_height += (sub_height - cropped_sub_height) / 2;
 
         int ret = libyuv::I420Scale(
-                i420Buffer->DataY(), i420Buffer->StrideY(),
-                i420Buffer->DataU(), i420Buffer->StrideU(),
-                i420Buffer->DataV(), i420Buffer->StrideV(),
-                i420Buffer->width(), i420Buffer->height(),
+                i420Buffer->DataY() + src_y * i420Buffer->StrideY() + src_x, i420Buffer->StrideY(),
+                i420Buffer->DataU() + (src_y * i420Buffer->StrideU() + src_x) / 2, i420Buffer->StrideU(),
+                i420Buffer->DataV() + (src_y * i420Buffer->StrideV() + src_x) / 2, i420Buffer->StrideV(),
+                src_width, src_height,
                 m_compositeBuffer->MutableDataY() + offset_height * m_compositeBuffer->StrideY() + offset_width, m_compositeBuffer->StrideY(),
                 m_compositeBuffer->MutableDataU() + (offset_height * m_compositeBuffer->StrideU() + offset_width) / 2, m_compositeBuffer->StrideU(),
                 m_compositeBuffer->MutableDataV() + (offset_height * m_compositeBuffer->StrideV() + offset_width) / 2, m_compositeBuffer->StrideV(),
