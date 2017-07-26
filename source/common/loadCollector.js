@@ -7,30 +7,46 @@ var logger = require('./logger').logger;
 var log = logger.getLogger('LoadCollector');
 
 var child_process = require('child_process');
+var os = require('os');
 
-var cpuCollector = function (period, on_load) {
-    var child = child_process.spawn('top', ['-b', '-d', Math.max(Math.floor(period / 1000), 1)]);
-
-    child.stdout.on('data', function (data) {
-        var cpuline = data.toString().split('\n').filter(function (line) {return line.startsWith('%Cpu(s):');})[0];
-        var regex = /\s+(\d+\.\d+)\s+id/;
-
-        if (cpuline) {
-            var m = regex.exec(cpuline);
-            if (m && (m.length === 2)) {
-                on_load(Math.floor(100 - Number(m[1])) / 100);
+var cpuCollector = function (period, onLoad) {
+    var olds = os.cpus();
+    var begin = 0;
+    var end = olds.length - 1;
+    var interval = setInterval(function() {
+        var cpus = os.cpus();
+        var idle = 0;
+        var total = 0;
+        for (let i = begin; i <= end; i++) {
+            for (let key in cpus[i].times) {
+                let diff = cpus[i].times[key] - olds[i].times[key];
+                if (key === 'idle') {
+                    idle += diff;
+                }
+                total += diff;
             }
         }
-    });
-
-    child.stderr.on('data', function (error) {
-        log.error('cpu collector error:', error.toString());
-    });
+        olds = cpus;
+        onLoad(1 - idle/total);
+        log.debug('cpu usage:', 1 - idle/total);
+    }, period);
 
     this.stop = function () {
         log.debug("To stop cpu load collector.");
-        child && child.kill();
-        child = undefined;
+        clearInterval(interval);
+    };
+};
+
+var memCollector = function (period, onLoad) {
+    var interval = setInterval(function() {
+        var usage = 1 - os.freemem() / os.totalmem();
+        onLoad(usage);
+        log.debug('mem usage:', usage);
+    }, period);
+
+    this.stop = function () {
+        log.debug("To mem cpu load collector.");
+        clearInterval(interval);
     };
 };
 
@@ -174,9 +190,8 @@ exports.LoadCollector = function (spec) {
             collector = new gpuCollector(period, on_load);
             break;
         case 'memory':
-            log.error('Not support memory load currently.');
-            return undefined;
-            //break;
+            collector = new memCollector(period, on_load);
+            break;
         case 'disk':
             collector = new diskCollector(period, item.drive, on_load);
             break;
