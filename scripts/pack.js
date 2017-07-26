@@ -456,7 +456,7 @@ function filterLib(libSrc) {
   if (libName.indexOf('libav') === 0 || libName.indexOf('libsw') === 0) {
     let output = execSync(`ldd ${libSrc}`).toString();
     console.log('libav output:', output);
-    if (options['archive'] && output.indexOf('aac') >= 0) {
+    if (options['archive'] && output.indexOf('libfdk-aac') >= 0) {
       return false;
     }
   }
