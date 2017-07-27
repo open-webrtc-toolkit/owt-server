@@ -167,6 +167,7 @@ bool AcmmFrameMixer::addInput(const std::string& participant, const FrameFormat 
     if (acmmParticipant->hasInput()) {
         ELOG_DEBUG("Update previous input");
 
+        acmmParticipant->unsetInput();
         if(!acmmParticipant->setInput(format, source)) {
             ELOG_ERROR("Fail to set participant input");
             return false;
