@@ -330,6 +330,12 @@ function VMixer(rpcClient, clusterIP) {
         }
     };
 
+    that.close = function() {
+        if (engine) {
+            that.deinit();
+        }
+    };
+
     that.onFaultDetected = function (message) {
         if (message.purpose === 'session' && controller) {
             if ((message.type === 'node' && message.id === controller) ||
@@ -677,6 +683,12 @@ function VTranscoder(rpcClient, clusterIP) {
         if (engine) {
             engine.close();
             engine = undefined;
+        }
+    };
+
+    that.close = function() {
+        if (engine) {
+            that.deinit();
         }
     };
 
