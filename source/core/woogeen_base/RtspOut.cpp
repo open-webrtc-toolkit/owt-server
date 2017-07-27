@@ -266,7 +266,7 @@ bool RtspOut::addAudioStream(AVOptions &options)
     par->channel_layout = av_get_default_channel_layout(par->channels);
     if (codec_id == AV_CODEC_ID_AAC) { //AudioSpecificConfig 48000-2
         par->extradata_size = 2;
-        par->extradata      = (uint8_t *)malloc(par->extradata_size);
+        par->extradata      = (uint8_t *)av_malloc(par->extradata_size + AV_INPUT_BUFFER_PADDING_SIZE);
         par->extradata[0]   = 0x11;
         par->extradata[1]   = 0x90;
     }
@@ -309,7 +309,7 @@ bool RtspOut::addVideoStream(AVOptions &options)
     int size = parser->parser->split(NULL, m_videoKeyFrame->m_payloadData, m_videoKeyFrame->m_payloadSize);
     if (size > 0) {
         par->extradata_size = size;
-        par->extradata      = (uint8_t *)malloc(size + AV_INPUT_BUFFER_PADDING_SIZE);
+        par->extradata      = (uint8_t *)av_malloc(par->extradata_size + AV_INPUT_BUFFER_PADDING_SIZE);
         memcpy(par->extradata, m_videoKeyFrame->m_payloadData, par->extradata_size);
     } else {
         ELOG_WARN("Cannot find video extradata");

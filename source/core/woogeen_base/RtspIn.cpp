@@ -968,15 +968,13 @@ bool RtspIn::filterVBS(AVStream *st, AVPacket *pkt) {
 
     if ((ret = av_bsf_receive_packet(m_vbsf, &filtered_pkt)) < 0) {
         ELOG_ERROR_T("Fail to receive packet, %s", ff_err2str(ret));
+        av_packet_unref(&filter_pkt);
         return false;
     }
 
     av_packet_unref(&filter_pkt);
     av_packet_unref(pkt);
-    if ((ret = av_packet_ref(pkt, &filtered_pkt)) < 0) {
-        ELOG_ERROR_T("Fail to ref filtered pkt");
-        return false;
-    }
+    av_packet_move_ref(pkt, &filtered_pkt);
 
     return true;
 }
@@ -1064,7 +1062,7 @@ void RtspIn::deliverVideoFrame(AVPacket *pkt)
             , timeRescale(frame.timeStamp, m_videoTimeBase, m_msTimeBase)
             , pkt->dts
             , frame.length
-            , (pkt->flags & AV_PKT_FLAG_KEY) ? "key frame" : ""
+            , (pkt->flags & AV_PKT_FLAG_KEY) ? "key" : "non-key"
             );
 }
 
