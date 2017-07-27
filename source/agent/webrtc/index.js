@@ -207,6 +207,20 @@ module.exports = function () {
         }
     };
 
+    that.close = function() {
+        log.debug('close called');
+        var connIds = connections.getIds();
+        for (let connectionId of connIds) {
+            var conn = connections.getConnection(connectionId);
+            connections.removeConnection(connectionId);
+            if (conn && conn.type === 'internal') {
+                internalConnFactory.destroy(connectionId, conn.direction);
+            } else if (conn) {
+                conn.connection.close();
+            }
+        }
+    };
+
     that.onFaultDetected = function (message) {
         connections.onFaultDetected(message);
     };

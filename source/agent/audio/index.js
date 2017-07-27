@@ -287,6 +287,12 @@ module.exports = function (rpcClient) {
         }
     };
 
+    that.close = function() {
+        if (engine) {
+            that.deinit();
+        }
+    };
+
     that.onFaultDetected = function (message) {
         if (message.purpose === 'session' && controller) {
             if ((message.type === 'node' && message.id === controller) ||

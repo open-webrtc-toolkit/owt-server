@@ -165,6 +165,10 @@ module.exports = function Connections () {
         return connections[connectionId];
     };
 
+    that.getIds = function () {
+        return Object.keys(connections);
+    };
+
     that.onFaultDetected = function (message) {
         if (message.purpose === 'session' || message.purpose === 'portal') {
             for (var conn_id in connections) {
