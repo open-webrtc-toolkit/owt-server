@@ -34,10 +34,14 @@ AudioFramePacketizer::AudioFramePacketizer()
     : m_enabled(true)
     , m_frameFormat(FRAME_FORMAT_UNKNOWN)
     , m_seqNo(0)
+    , m_ssrc(0)
+    , m_ssrc_generator(SsrcGenerator::GetSsrcGenerator())
 {
     audioSink_ = nullptr;
+    m_ssrc = m_ssrc_generator->CreateSsrc();
+    m_ssrc_generator->RegisterSsrc(m_ssrc);
     m_audioTransport.reset(new WebRTCTransport<erizo::AUDIO>(this, nullptr));
-    m_taskRunner.reset(new woogeen_base::WebRTCTaskRunner());
+    m_taskRunner.reset(new woogeen_base::WebRTCTaskRunner("AudioFramePacketizer"));
     m_taskRunner->Start();
     init();
 }
@@ -46,6 +50,8 @@ AudioFramePacketizer::~AudioFramePacketizer()
 {
     close();
     m_taskRunner->Stop();
+    m_ssrc_generator->ReturnSsrc(m_ssrc);
+    SsrcGenerator::ReturnSsrcGenerator();
     boost::unique_lock<boost::shared_mutex> lock(m_rtpRtcpMutex);
 }
 
@@ -134,16 +140,16 @@ void AudioFramePacketizer::onFrame(const Frame& frame)
 
     boost::shared_lock<boost::shared_mutex> lock(m_rtpRtcpMutex);
     // FIXME: The frame type information is lost. We treat every frame a kAudioFrameSpeech frame for now.
-    m_rtpRtcp->SendOutgoingData(webrtc::kAudioFrameSpeech, payloadType, frame.timeStamp, -1, frame.payload, frame.length /*, RTPFragementationHeader* */);
+    m_rtpRtcp->SendOutgoingData(webrtc::kAudioFrameSpeech, payloadType, frame.timeStamp, -1, frame.payload, frame.length, nullptr, nullptr, nullptr);
 }
 
 bool AudioFramePacketizer::init()
 {
     RtpRtcp::Configuration configuration;
-    // configuration.id = m_id;
     configuration.outgoing_transport = m_audioTransport.get();
     configuration.audio = true;  // Audio.
     m_rtpRtcp.reset(RtpRtcp::CreateRtpRtcp(configuration));
+    m_rtpRtcp->SetSSRC(m_ssrc);
 
     // Enable NACK.
     // TODO: the parameters should be dynamically adjustable.
