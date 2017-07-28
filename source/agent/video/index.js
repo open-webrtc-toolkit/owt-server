@@ -16,8 +16,7 @@ const { LayoutProcessor } = require('./layout');
 var useHardware = global.config.video.hardwareAccelerated,
     openh264Enabled = global.config.video.openh264Enabled,
     yamiEnabled = global.config.video.yamiEnabled,
-    gaccPluginEnabled = global.config.video.enableBetterHEVCQuality,
-    msdkBackgroundColorEnabled = global.config.video.enableMsdkBackgroundColorSurface;
+    gaccPluginEnabled = global.config.video.enableBetterHEVCQuality;
 
 var VideoMixer, VideoTranscoder;
 try {
@@ -263,7 +262,6 @@ function VMixer(rpcClient, clusterIP) {
             'simulcast': videoConfig.multistreaming,
             'crop': videoConfig.crop,
             'gaccplugin': gaccPluginEnabled,
-            'enableMsdkBackgroundColorSurface': msdkBackgroundColorEnabled
         };
 
         streamMap = new StreamMap(videoConfig.maxInput);

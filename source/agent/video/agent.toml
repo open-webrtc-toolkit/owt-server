@@ -52,9 +52,6 @@ openh264Enabled = false
 #Warning: enabling this will introduce extra CPU resource consumption.
 enableBetterHEVCQuality = false
 
-#Enable MSDK background color surface would potentially cause performance drop.
-enableMsdkBackgroundColorSurface = false
-
 [avatar]
 #widthxheight between the two dot ("180x180" between the "avatar." and ".yuv" in the default) in the location indicates the image size
 location = "avatars/avatar_blue.180x180.yuv"
