@@ -27,7 +27,6 @@ global.config.video.hardwareAccelerated = !!global.config.video.hardwareAccelera
 global.config.video.openh264Enabled = !!global.config.video.openh264Enabled;
 global.config.video.yamiEnabled = !!global.config.video.yamiEnabled;
 global.config.video.enableBetterHEVCQuality = !!global.config.video.enableBetterHEVCQuality;
-global.config.video.enableMsdkBackgroundColorSurface = !!global.config.video.enableMsdkBackgroundColorSurface;
 
 global.config.avatar = global.config.avatar || {};
 

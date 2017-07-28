@@ -141,17 +141,6 @@ bool MsdkBase::getConfigHevcEncoderGaccPlugin()
     return m_configHevcEncoderGaccPlugin;
 }
 
-void MsdkBase::setConfigEnableBackgroundColorSurface(bool enableBackgroundColorSurface)
-{
-    ELOG_DEBUG("Set enableBackgroundColorSurface(%d)", enableBackgroundColorSurface);
-    m_configEnableBackgroundColorSurface = enableBackgroundColorSurface;
-}
-
-bool MsdkBase::getConfigEnableBackgroundColorSurface()
-{
-    return m_configEnableBackgroundColorSurface;
-}
-
 MFXVideoSession *MsdkBase::createSession_internal(void)
 {
     mfxStatus sts = MFX_ERR_NONE;

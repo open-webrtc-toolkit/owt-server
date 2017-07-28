@@ -119,8 +119,6 @@ protected:
     void applyAspectRatio();
 
 private:
-    bool m_enbaleBgColorSurface;
-
     const webrtc::Clock *m_clock;
 
     uint32_t m_maxInput;
