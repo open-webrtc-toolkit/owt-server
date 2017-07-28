@@ -23,6 +23,7 @@
 #include "WebRTCTaskRunner.h"
 #include <rtputils.h>
 #include <webrtc/common_types.h>
+#include <webrtc/modules/video_coding/timing.h>
 #include "webrtc/modules/remote_bitrate_estimator/remote_bitrate_estimator_single_stream.h"
 
 using namespace webrtc;
@@ -38,50 +39,42 @@ VideoFrameConstructor::VideoFrameConstructor()
     , m_width(0)
     , m_height(0)
     , m_ssrc(0)
-    , m_vcm(nullptr)
+    , m_video_receiver(nullptr)
     , m_transport(nullptr)
 {
     m_videoTransport.reset(new WebRTCTransport<erizo::VIDEO>(nullptr, nullptr));
     sinkfbSource_ = m_videoTransport.get();
-    m_taskRunner.reset(new woogeen_base::WebRTCTaskRunner());
+    m_taskRunner.reset(new woogeen_base::WebRTCTaskRunner("VideoFrameConstructor"));
     m_taskRunner->Start();
     init();
 }
 
 VideoFrameConstructor::~VideoFrameConstructor()
 {
+    m_remoteBitrateObserver->RemoveRembSender(m_rtpRtcp.get());
     m_videoReceiver->StopReceive();
-    m_recorder->Stop();
 
     unbindTransport();
 
     if (m_taskRunner) {
-        m_taskRunner->DeRegisterModule(m_avSync.get());
         m_taskRunner->DeRegisterModule(m_rtpRtcp.get());
-        m_taskRunner->DeRegisterModule(m_vcm);
+        m_taskRunner->DeRegisterModule(m_video_receiver.get());;
     }
     m_taskRunner->Stop();
-
-    if (m_vcm) {
-        VideoCodingModule::Destroy(m_vcm);
-        m_vcm = nullptr;
-    }
 }
 
 bool VideoFrameConstructor::init()
 {
-    m_vcm = VideoCodingModule::Create();
-    if (m_vcm)
-        m_vcm->InitializeReceiver();
-    else
-        return false;
+    // TODO: move to new jitter buffer implemetation(not ready yet).
+    m_video_receiver.reset(new webrtc::vcm::VideoReceiver(Clock::GetRealTimeClock(), nullptr, nullptr, new VCMTiming(Clock::GetRealTimeClock(), nullptr), nullptr, nullptr));
 
     // FIXME: Now we just provide a DummyRemoteBitrateObserver to satisfy the requirement of our components.
     // We need to investigate whether this is necessary or not in our case, so that we can decide whether to
     // provide a real RemoteBitrateObserver.
-    m_remoteBitrateObserver.reset(new DummyRemoteBitrateObserver());
+    //m_remoteBitrateObserver.reset(new DummyRemoteBitrateObserver());
+    m_remoteBitrateObserver.reset(new VieRemb(Clock::GetRealTimeClock()));
     m_remoteBitrateEstimator.reset(new RemoteBitrateEstimatorSingleStream(m_remoteBitrateObserver.get(), Clock::GetRealTimeClock()));
-    m_videoReceiver.reset(new ViEReceiver(0, m_vcm, m_remoteBitrateEstimator.get(), this));
+    m_videoReceiver.reset(new ViEReceiver(m_video_receiver.get(), m_remoteBitrateEstimator.get(), this));
 
     RtpRtcp::Configuration configuration;
     configuration.audio = false;  // Video.
@@ -90,35 +83,40 @@ bool VideoFrameConstructor::init()
     configuration.receive_statistics = m_videoReceiver->GetReceiveStatistics();
     m_rtpRtcp.reset(RtpRtcp::CreateRtpRtcp(configuration));
     m_rtpRtcp->SetRTCPStatus(webrtc::RtcpMode::kCompound);
-    // There're 3 options of Intra frame requests: PLI, FIR in RTCP and FIR in RTP (RFC 2032).
     // Since currently our MCU only claims FIR support in SDP, we choose FirRtcp for now.
     m_rtpRtcp->SetKeyFrameRequestMethod(kKeyFrameReqFirRtcp);
     m_rtpRtcp->SetREMBStatus(true);
     m_videoReceiver->SetRtpRtcpModule(m_rtpRtcp.get());
+    m_remoteBitrateObserver->AddRembSender(m_rtpRtcp.get());
 
     // Register codec.
     VideoCodec video_codec;
-    if (VideoCodingModule::Codec(webrtc::kVideoCodecVP8, &video_codec) != VCM_OK
-        || m_vcm->RegisterReceiveCodec(&video_codec, 1, true) != VCM_OK)
+    VideoCodingModule::Codec(webrtc::kVideoCodecVP8, &video_codec);
+    video_codec.plType = VP8_90000_PT;
+    if (m_video_receiver->RegisterReceiveCodec(&video_codec, 1, true) != VCM_OK)
         assert(!"register VP8 decoder failed");
     m_videoReceiver->SetReceiveCodec(video_codec);
 
-    if (VideoCodingModule::Codec(webrtc::kVideoCodecVP9, &video_codec) != VCM_OK
-        || m_vcm->RegisterReceiveCodec(&video_codec, 1, true) != VCM_OK)
+    VideoCodingModule::Codec(webrtc::kVideoCodecVP9, &video_codec);
+    video_codec.plType = VP9_90000_PT;
+    if (m_video_receiver->RegisterReceiveCodec(&video_codec, 1, true) != VCM_OK)
         assert(!"register VP9 decoder failed");
     m_videoReceiver->SetReceiveCodec(video_codec);
 
-    if (VideoCodingModule::Codec(webrtc::kVideoCodecH264, &video_codec) != VCM_OK
-        || m_vcm->RegisterReceiveCodec(&video_codec, 1, true) != VCM_OK)
+    VideoCodingModule::Codec(webrtc::kVideoCodecH264, &video_codec);
+    video_codec.plType = H264_90000_PT;
+    if (m_video_receiver->RegisterReceiveCodec(&video_codec, 1, true) != VCM_OK)
         assert(!"register H264 decoder failed");
     m_videoReceiver->SetReceiveCodec(video_codec);
 
+#if 0
     memset(&video_codec, 0, sizeof(VideoCodec));
     video_codec.codecType = webrtc::kVideoCodecH265;
     strcpy(video_codec.plName, "H265");
     video_codec.plType = H265_90000_PT;
     m_vcm->RegisterReceiveCodec(&video_codec, 1, true);
     m_videoReceiver->SetReceiveCodec(video_codec);
+#endif
 
     memset(&video_codec, 0, sizeof(VideoCodec));
     video_codec.codecType = webrtc::kVideoCodecRED;
@@ -134,19 +132,19 @@ bool VideoFrameConstructor::init()
 
     // Enable NACK.
     // TODO: the parameters should be dynamically adjustable.
-    m_videoReceiver->SetNackStatus(true, webrtc::kMaxPacketAgeToNack);
-    m_vcm->SetVideoProtection(webrtc::kProtectionNackReceiver, true);
-    m_vcm->SetNackSettings(webrtc::kMaxNackListSize, webrtc::kMaxPacketAgeToNack, 0);
-    m_vcm->RegisterPacketRequestCallback(this);
+    // The basic idea is to adjust according to bitrate.
+    static const int kMaxPacketAgeToNack = 450;
+    static const int kMaxNackListSize = 250;
+    m_videoReceiver->SetNackStatus(true, kMaxPacketAgeToNack);
+    m_video_receiver->SetVideoProtection(webrtc::kProtectionNack, true);
+    m_video_receiver->SetNackSettings(kMaxNackListSize, kMaxPacketAgeToNack, 0);
+    m_video_receiver->RegisterPacketRequestCallback(this);
 
     // Register the key frame request callback.
-    m_vcm->RegisterFrameTypeCallback(this);
+    m_video_receiver->RegisterFrameTypeCallback(this);
+    m_video_receiver->RegisterReceiveCallback(this);
 
-    m_avSync.reset(new ViESyncModule(m_vcm, 0));
-    m_recorder.reset(new DebugRecorder());
-//    m_recorder->Start("webrtc.frame.i420");
-
-    m_taskRunner->RegisterModule(m_vcm);
+    m_taskRunner->RegisterModule(m_video_receiver.get());
     m_taskRunner->RegisterModule(m_rtpRtcp.get());
     m_videoReceiver->StartReceive();
     return true;
@@ -178,22 +176,9 @@ void VideoFrameConstructor::enable(bool enabled)
     }
 }
 
-void VideoFrameConstructor::syncWithAudio(int32_t voiceChannelId, VoEVideoSync* voe)
-{
-    if (m_avSync) {
-        m_avSync->ConfigureSync(voiceChannelId, voe, m_rtpRtcp.get(), m_videoReceiver->GetRtpReceiver());
-        m_taskRunner->RegisterModule(m_avSync.get());
-    }
-}
-
 bool VideoFrameConstructor::setBitrate(uint32_t kbps)
 {
-    if (!m_ssrc)
-        return false;
-    m_rtpRtcp->SetREMBStatus(true);
-    std::vector<uint32_t> ssrcs;
-    ssrcs.push_back(m_ssrc);
-    m_rtpRtcp->SetREMBData(kbps * 1000, ssrcs);
+    // At present we do not react on this request
     return true;
 }
 
@@ -214,8 +199,10 @@ int32_t VideoFrameConstructor::OnInitializeDecoder(
     const size_t channels,
     const uint32_t rate)
 {
-    m_vcm->RegisterExternalDecoder(this, payload_type, true);
-    m_vcm->ResetDecoder();
+    // TODO: In M59 rtp_video_receiver will never invoke OnInitializeDecoder
+    // from RtpFeedback. So moving the external decoder register to
+    // somewhere else and remove the workaround in rtp_rtcp module.
+    m_video_receiver->RegisterExternalDecoder(this, payload_type);
     return 0;
 }
 
@@ -227,24 +214,23 @@ void VideoFrameConstructor::OnIncomingSSRCChanged(const uint32_t ssrc)
 
 void VideoFrameConstructor::ResetStatistics(uint32_t ssrc)
 {
-    //Not supported on M53
-    //StreamStatistician* statistician = m_videoReceiver->GetReceiveStatistics()->GetStatistician(ssrc);
-    //if (statistician)
-    //    statistician->ResetStatistics();
+    //Not supported on M59
 }
 
 int32_t VideoFrameConstructor::InitDecode(const webrtc::VideoCodec* codecSettings, int32_t numberOfCores)
 {
     assert(codecSettings->codecType == webrtc::kVideoCodecVP8 || codecSettings->codecType == webrtc::kVideoCodecH264
-           || codecSettings->codecType == webrtc::kVideoCodecH265 || codecSettings->codecType == webrtc::kVideoCodecVP9);
+           /*|| codecSettings->codecType == webrtc::kVideoCodecH265*/ || codecSettings->codecType == webrtc::kVideoCodecVP9);
     if (codecSettings->codecType == webrtc::kVideoCodecVP8)
         m_format = woogeen_base::FRAME_FORMAT_VP8;
     else if (codecSettings->codecType == webrtc::kVideoCodecVP9)
         m_format = woogeen_base::FRAME_FORMAT_VP9;
     else if (codecSettings->codecType == webrtc::kVideoCodecH264)
         m_format = woogeen_base::FRAME_FORMAT_H264;
+/*
     else if (codecSettings->codecType == webrtc::kVideoCodecH265)
         m_format = woogeen_base::FRAME_FORMAT_H265;
+*/
 
     return 0;
 }
@@ -281,10 +267,13 @@ int32_t VideoFrameConstructor::Decode(const webrtc::EncodedImage& encodedImage,
         case webrtc::kVideoCodecH264:
             format = FRAME_FORMAT_H264;
             break;
+/*
         case webrtc::kVideoCodecH265:
             format = FRAME_FORMAT_H265;
             break;
+*/
         default:
+            ELOG_ERROR("Unknown format");
             return 0;
         }
 
@@ -303,7 +292,7 @@ int32_t VideoFrameConstructor::Decode(const webrtc::EncodedImage& encodedImage,
             //TODO: Notify the controlling layer about the resolution change.
         }
 
-        if (encodedImage._frameType == webrtc::kKeyFrame) {
+        if (encodedImage._frameType == webrtc::kVideoFrameKey) {
             //ELOG_INFO("got a key frame");
         }
 
@@ -315,7 +304,7 @@ int32_t VideoFrameConstructor::Decode(const webrtc::EncodedImage& encodedImage,
         frame.timeStamp = encodedImage._timeStamp;
         frame.additionalInfo.video.width = m_width;
         frame.additionalInfo.video.height = m_height;
-        frame.additionalInfo.video.isKeyFrame = (encodedImage._frameType == webrtc::kKeyFrame);
+        frame.additionalInfo.video.isKeyFrame = (encodedImage._frameType == webrtc::kVideoFrameKey);
 
         if (m_enabled) {
             deliverFrame(frame);
@@ -332,6 +321,7 @@ int VideoFrameConstructor::deliverVideoData(char* buf, int len)
 {
     RTCPHeader* chead = reinterpret_cast<RTCPHeader*>(buf);
     uint8_t packetType = chead->getPacketType();
+
     assert(packetType != RTCP_Receiver_PT && packetType != RTCP_PS_Feedback_PT && packetType != RTCP_RTP_Feedback_PT);
     if (packetType == RTCP_Sender_PT)
         return m_videoReceiver->ReceivedRTCPPacket(buf, len) == -1 ? 0 : len;
@@ -340,9 +330,10 @@ int VideoFrameConstructor::deliverVideoData(char* buf, int len)
     if (m_videoReceiver->ReceivedRTPPacket(buf, len, current) != -1) {
         // FIXME: Decode should be invoked as often as possible.
         // To invoke it in current work thread is not a good idea. We may need to create
-        // a dedicated thread to keep on invoking vcm Decode, and, with a wait time other than 0.
+        // a dedicated thread to keep on invoking vcm::VideoReceiver::Decode, and, with a wait time other than 0.
         // (Default wait time used by webrtc vie engine is 50ms).
-        int32_t ret = m_vcm->Decode(0);
+        uint16_t maxWaitInterval = 0;
+        int32_t ret = m_video_receiver->Decode(maxWaitInterval);
         ELOG_TRACE("receivedRtpData decode result = %d",  ret);
         return len;
     }

@@ -38,10 +38,15 @@ VideoFramePacketizer::VideoFramePacketizer(bool enableRed, bool enableUlpfec)
     , m_frameFormat(FRAME_FORMAT_UNKNOWN)
     , m_frameWidth(0)
     , m_frameHeight(0)
+    , m_random(rtc::TimeMicros())
+    , m_ssrc(0)
+    , m_ssrc_generator(SsrcGenerator::GetSsrcGenerator())
 {
     videoSink_ = nullptr;
+    m_ssrc = m_ssrc_generator->CreateSsrc();
+    m_ssrc_generator->RegisterSsrc(m_ssrc);
     m_videoTransport.reset(new WebRTCTransport<erizo::VIDEO>(this, nullptr));
-    m_taskRunner.reset(new woogeen_base::WebRTCTaskRunner());
+    m_taskRunner.reset(new woogeen_base::WebRTCTaskRunner("VideoFramePacketizer"));
     m_taskRunner->Start();
     init(enableRed, enableUlpfec);
 }
@@ -50,6 +55,8 @@ VideoFramePacketizer::~VideoFramePacketizer()
 {
     close();
     m_taskRunner->Stop();
+    m_ssrc_generator->ReturnSsrc(m_ssrc);
+    SsrcGenerator::ReturnSsrcGenerator();
     boost::unique_lock<boost::shared_mutex> lock(m_rtpRtcpMutex);
 }
 
@@ -108,11 +115,13 @@ bool VideoFramePacketizer::setSendCodec(FrameFormat frameFormat, unsigned int wi
         strcpy(codec.plName, "H264");
         codec.plType = H264_90000_PT;
         break;
+/*
     case FRAME_FORMAT_H265:
         codec.codecType = webrtc::kVideoCodecH265;
         strcpy(codec.plName, "H265");
         codec.plType = H265_90000_PT;
         break;
+*/
     case FRAME_FORMAT_I420:
     default:
         return false;
@@ -276,6 +285,7 @@ void VideoFramePacketizer::onFrame(const Frame& frame)
     }
 
     webrtc::RTPVideoHeader h;
+    uint32_t transport_frame_id_out = 0;
 
     if (frame.format != m_frameFormat
         || frame.additionalInfo.video.width != m_frameWidth
@@ -290,13 +300,13 @@ void VideoFramePacketizer::onFrame(const Frame& frame)
         h.codec = webrtc::kRtpVideoVp8;
         h.codecHeader.VP8.InitRTPVideoHeaderVP8();
         boost::shared_lock<boost::shared_mutex> lock(m_rtpRtcpMutex);
-        m_rtpRtcp->SendOutgoingData(webrtc::kVideoFrameKey, VP8_90000_PT, frame.timeStamp, frame.timeStamp / 90, frame.payload, frame.length, nullptr, &h);
+        m_rtpRtcp->SendOutgoingData(webrtc::kVideoFrameKey, VP8_90000_PT, frame.timeStamp, frame.timeStamp / 90, frame.payload, frame.length, nullptr, &h, &transport_frame_id_out);
     } else if (frame.format == FRAME_FORMAT_VP9) {
         h.codec = webrtc::kRtpVideoVp9;
         h.codecHeader.VP9.InitRTPVideoHeaderVP9();
         boost::shared_lock<boost::shared_mutex> lock(m_rtpRtcpMutex);
-        m_rtpRtcp->SendOutgoingData(webrtc::kVideoFrameKey, VP9_90000_PT, frame.timeStamp, frame.timeStamp / 90, frame.payload, frame.length, nullptr, &h);
-    } else if (frame.format == FRAME_FORMAT_H264 || frame.format == FRAME_FORMAT_H265) {
+        m_rtpRtcp->SendOutgoingData(webrtc::kVideoFrameKey, VP9_90000_PT, frame.timeStamp, frame.timeStamp / 90, frame.payload, frame.length, nullptr, &h, &transport_frame_id_out);
+    } else if (frame.format == FRAME_FORMAT_H264 /*|| frame.format == FRAME_FORMAT_H265*/) {
         int frame_length = frame.length;
         //dump(this, frame.format, frame.payload, frame_length);
         //FIXME: temporarily filter out AUD because chrome M59 could NOT handle it correctly.
@@ -313,7 +323,8 @@ void VideoFramePacketizer::onFrame(const Frame& frame)
         RTPFragmentationHeader frag_info;
 
 
-        h.codec = (frame.format == FRAME_FORMAT_H264)?(webrtc::kRtpVideoH264):(webrtc::kRtpVideoH265);
+        //h.codec = (frame.format == FRAME_FORMAT_H264)?(webrtc::kRtpVideoH264):(webrtc::kRtpVideoH265);
+        h.codec = webrtc::kRtpVideoH264;
         while (buffer_length > 0) {
             nalu_found_length = findNALU(buffer_start, buffer_length, &nalu_start_offset, &nalu_end_offset);
             if (nalu_found_length < 0) {
@@ -332,9 +343,9 @@ void VideoFramePacketizer::onFrame(const Frame& frame)
 
         boost::shared_lock<boost::shared_mutex> lock(m_rtpRtcpMutex);
         if (frame.format == FRAME_FORMAT_H264) {
-          m_rtpRtcp->SendOutgoingData(webrtc::kVideoFrameKey, H264_90000_PT, frame.timeStamp, frame.timeStamp / 90, frame.payload, frame_length, &frag_info, &h);
+          m_rtpRtcp->SendOutgoingData(webrtc::kVideoFrameKey, H264_90000_PT, frame.timeStamp, frame.timeStamp / 90, frame.payload, frame_length, &frag_info, &h, &transport_frame_id_out);
         } else {
-          m_rtpRtcp->SendOutgoingData(webrtc::kVideoFrameKey, H265_90000_PT, frame.timeStamp, frame.timeStamp / 90, frame.payload, frame_length, &frag_info, &h);
+          //m_rtpRtcp->SendOutgoingData(webrtc::kVideoFrameKey, H265_90000_PT, frame.timeStamp, frame.timeStamp / 90, frame.payload, frame_length, &frag_info, &h, &transport_frame_id_out);
         }
     }
 }
@@ -348,7 +359,8 @@ int VideoFramePacketizer::sendFirPacket()
 
 bool VideoFramePacketizer::init(bool enableRed, bool enableUlpfec)
 {
-    m_bitrateController.reset(webrtc::BitrateController::CreateBitrateController(Clock::GetRealTimeClock(), this));
+    m_retransmissionRateLimiter.reset(new webrtc::RateLimiter(Clock::GetRealTimeClock(), 1000));
+    m_bitrateController.reset(webrtc::BitrateController::CreateBitrateController(Clock::GetRealTimeClock(), this, &m_rtcEventLog));
     m_bandwidthObserver.reset(m_bitrateController->CreateRtcpBandwidthObserver());
     // FIXME: Provide the correct bitrate settings (start, min and max bitrates).
     //m_bitrateController->SetBitrateObserver(this, 300 * 1000, 0, 0);
@@ -356,17 +368,20 @@ bool VideoFramePacketizer::init(bool enableRed, bool enableUlpfec)
     m_bitrateController->SetMinMaxBitrate(0, 0);
 
     RtpRtcp::Configuration configuration;
-    // configuration.id = m_id;
     configuration.outgoing_transport = m_videoTransport.get();
     configuration.audio = false;  // Video.
     configuration.intra_frame_callback = this;
+    configuration.event_log = &m_rtcEventLog;
     configuration.bandwidth_callback = m_bandwidthObserver.get();
+    configuration.retransmission_rate_limiter = m_retransmissionRateLimiter.get();
     m_rtpRtcp.reset(RtpRtcp::CreateRtpRtcp(configuration));
+    m_rtpRtcp->SetSSRC(m_ssrc);
 
     // TODO: the parameters should be dynamically adjustable.
-    uint8_t red_pl_type = enableRed? RED_90000_PT : 0;
-    uint8_t ulpfec_pl_type = enableUlpfec? ULP_90000_PT : 0;
-    m_rtpRtcp->SetGenericFECStatus(false, red_pl_type, ulpfec_pl_type);
+    // Upstream might bundle RED with ULPFEC. Revisit this once upgrade to post M60.
+    int red_pl_type = enableRed? RED_90000_PT : -1;
+    int ulpfec_pl_type = enableUlpfec? ULP_90000_PT : -1;
+    m_rtpRtcp->SetUlpfecConfig(red_pl_type, ulpfec_pl_type);
     m_rtpRtcp->SetREMBStatus(true);
 
     // Enable NACK.

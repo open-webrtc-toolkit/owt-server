@@ -21,7 +21,8 @@
 #ifndef WebRTCTaskRunner_h
 #define WebRTCTaskRunner_h
 
-#include <webrtc/modules/utility/interface/process_thread.h>
+#include <webrtc/base/location.h>
+#include <webrtc/modules/utility/include/process_thread.h>
 
 namespace woogeen_base {
 
@@ -32,22 +33,22 @@ namespace woogeen_base {
  */
 class WebRTCTaskRunner {
 public:
-    WebRTCTaskRunner();
+    WebRTCTaskRunner(const char* task_name);
     ~WebRTCTaskRunner();
 
-    int32_t Start();
-    int32_t Stop();
-    int32_t RegisterModule(webrtc::Module*);
-    int32_t DeRegisterModule(webrtc::Module*);
+    void Start();
+    void Stop();
+    void RegisterModule(webrtc::Module*);
+    void DeRegisterModule(webrtc::Module*);
 
     webrtc::ProcessThread* unwrap();
 
 private:
-    rtc::scoped_ptr<webrtc::ProcessThread> m_processThread;
+    std::unique_ptr<webrtc::ProcessThread> m_processThread;
 };
 
-inline WebRTCTaskRunner::WebRTCTaskRunner()
-    : m_processThread(webrtc::ProcessThread::Create())
+inline WebRTCTaskRunner::WebRTCTaskRunner(const char* task_name)
+    : m_processThread(webrtc::ProcessThread::Create(task_name))
 {
 }
 
@@ -55,24 +56,24 @@ inline WebRTCTaskRunner::~WebRTCTaskRunner()
 {
 }
 
-inline int32_t WebRTCTaskRunner::Start()
+inline void WebRTCTaskRunner::Start()
 {
-    return m_processThread->Start();
+    m_processThread->Start();
 }
 
-inline int32_t WebRTCTaskRunner::Stop()
+inline void WebRTCTaskRunner::Stop()
 {
-    return m_processThread->Stop();
+    m_processThread->Stop();
 }
 
-inline int32_t WebRTCTaskRunner::RegisterModule(webrtc::Module* module)
+inline void WebRTCTaskRunner::RegisterModule(webrtc::Module* module)
 {
-    return m_processThread->RegisterModule(module);
+    m_processThread->RegisterModule(module, RTC_FROM_HERE);
 }
 
-inline int32_t WebRTCTaskRunner::DeRegisterModule(webrtc::Module* module)
+inline void WebRTCTaskRunner::DeRegisterModule(webrtc::Module* module)
 {
-    return m_processThread->DeRegisterModule(module);
+    m_processThread->DeRegisterModule(module);
 }
 
 inline webrtc::ProcessThread* WebRTCTaskRunner::unwrap()

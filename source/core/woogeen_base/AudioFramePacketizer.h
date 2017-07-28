@@ -23,6 +23,7 @@
 
 #include "MediaFramePipeline.h"
 #include "WebRTCTransport.h"
+#include "SsrcGenerator.h"
 
 #include <logger.h>
 
@@ -79,10 +80,11 @@ private:
     boost::shared_ptr<webrtc::Transport> m_audioTransport;
     boost::shared_ptr<WebRTCTaskRunner> m_taskRunner;
     FrameFormat m_frameFormat;
-
     boost::shared_mutex m_transport_mutex;
 
     uint16_t m_seqNo;
+    uint32_t m_ssrc;
+    SsrcGenerator* const m_ssrc_generator;
 };
 
 }

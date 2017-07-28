@@ -17,21 +17,22 @@
       '../../../core/erizo/src/erizo/rtp/RtpSource.cpp',
       '../../../core/erizo/src/erizo/rtp/RtpSink.cpp',
       '../../../core/woogeen_base/VideoFramePacketizer.cpp',
-      '../../../../third_party/webrtc/src/webrtc/video_engine/stream_synchronization.cc',
-      '../../../../third_party/webrtc/src/webrtc/video_engine/vie_receiver.cc',
-      '../../../../third_party/webrtc/src/webrtc/video_engine/vie_sync_module.cc',
       '../../../core/woogeen_base/MediaFramePipeline.cpp',
+      '../../../core/rtc_adapter/VieReceiver.cc',
+      '../../../core/rtc_adapter/VieRemb.cc',
+      '../../../core/woogeen_base/SsrcGenerator.cc',
     ],
     'dependencies': ['sipLib'],
     'cflags_cc': ['-DWEBRTC_POSIX', '-DWEBRTC_LINUX'],
     'include_dirs': [
       '$(CORE_HOME)/common',
       '$(CORE_HOME)/erizo/src/erizo',
+      '../../../core/rtc_adapter',
       '$(CORE_HOME)/woogeen_base',
-      '$(CORE_HOME)/../../third_party/webrtc/src'
+      '$(CORE_HOME)/../../third_party/webrtc-m59/src'
     ],
     'libraries': [
-      '-L$(CORE_HOME)/../../third_party/webrtc', '-lwebrtc',
+      '-L$(CORE_HOME)/../../third_party/webrtc-m59', '-lwebrtc',
       '-llog4cxx',
       '-lboost_thread',
       '-lboost_system',
@@ -39,6 +40,9 @@
       '-L$(CORE_HOME)/../../third_party/libre-0.4.16', '-lre',
       '-Wl,-rpath,$(CORE_HOME)/../../third_party/libre-0.4.16',
       '-Wl,-rpath,<!(pwd)/build/$(BUILDTYPE)',
+      '<!@(pkg-config --libs libavutil)',
+      '<!@(pkg-config --libs libavcodec)',
+      '<!@(pkg-config --libs libavformat)',
     ],
     'conditions': [
       [ 'OS=="mac"', {

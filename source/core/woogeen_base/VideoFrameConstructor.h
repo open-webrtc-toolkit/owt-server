@@ -21,10 +21,11 @@
 #ifndef VideoFrameConstructor_h
 #define VideoFrameConstructor_h
 
-#include "DebugRecorder.h"
 #include "WebRTCTaskRunner.h"
 #include "WebRTCTransport.h"
 #include "MediaFramePipeline.h"
+#include "VieReceiver.h"
+#include "VieRemb.h"
 
 #include <boost/scoped_ptr.hpp>
 #include <boost/shared_ptr.hpp>
@@ -32,10 +33,10 @@
 #include <MediaDefinitions.h>
 #include <webrtc/modules/remote_bitrate_estimator/include/remote_bitrate_estimator.h>
 #include <webrtc/modules/rtp_rtcp/include/rtp_rtcp.h>
-#include <webrtc/modules/video_coding/codecs/interface/video_codec_interface.h>
-#include <webrtc/modules/video_coding/main/interface/video_coding.h>
-#include <webrtc/video_engine/vie_receiver.h>
-#include <webrtc/video_engine/vie_sync_module.h>
+#include <webrtc/modules/video_coding/include/video_codec_interface.h>
+#include <webrtc/modules/video_coding/include/video_coding.h>
+#include <webrtc/modules/video_coding/include/video_coding_defines.h>
+#include <webrtc/modules/video_coding/video_coding_impl.h>
 
 
 namespace woogeen_base {
@@ -47,6 +48,7 @@ class VideoFrameConstructor : public erizo::MediaSink,
                               public FrameSource,
                               public webrtc::VideoDecoder,
                               public webrtc::RtpFeedback,
+                              public webrtc::VCMReceiveCallback,
                               public webrtc::VCMFrameTypeCallback,
                               public webrtc::VCMPacketRequestCallback {
     DECLARE_LOGGER();
@@ -64,6 +66,10 @@ public:
 
     // Implements the webrtc::VCMFrameTypeCallback interface.
     virtual int32_t RequestKeyFrame();
+
+    // Implements the webrtc::VCMReceiveCallback interface.
+    virtual int32_t FrameToRender(webrtc::VideoFrame& videoFrame,
+                                  rtc::Optional<uint8_t> qp) { return 0; }
 
     // Implements the webrtc::RtpFeedback interface.
     virtual int32_t OnInitializeDecoder(
@@ -95,7 +101,6 @@ public:
     // Implements the FrameSource interfaces.
     void onFeedback(const FeedbackMsg& msg);
 
-    void syncWithAudio(int32_t voiceChannelId, webrtc::VoEVideoSync*);
     bool setBitrate(uint32_t kbps);
 
 private:
@@ -107,15 +112,13 @@ private:
     uint16_t m_height;
     uint32_t m_ssrc;
 
-    webrtc::VideoCodingModule* m_vcm;
-    boost::scoped_ptr<webrtc::RemoteBitrateObserver> m_remoteBitrateObserver;
+    boost::scoped_ptr<webrtc::vcm::VideoReceiver> m_video_receiver;
+    boost::scoped_ptr<webrtc::VieRemb> m_remoteBitrateObserver;
     boost::scoped_ptr<webrtc::RemoteBitrateEstimator> m_remoteBitrateEstimator;
     boost::scoped_ptr<webrtc::ViEReceiver> m_videoReceiver;
     boost::scoped_ptr<webrtc::RtpRtcp> m_rtpRtcp;
-    boost::scoped_ptr<webrtc::ViESyncModule> m_avSync;
     boost::shared_ptr<WebRTCTransport<erizo::VIDEO>> m_videoTransport;
 
-    boost::scoped_ptr<DebugRecorder> m_recorder;
     boost::shared_ptr<WebRTCTaskRunner> m_taskRunner;
 
     erizo::MediaSource* m_transport;
