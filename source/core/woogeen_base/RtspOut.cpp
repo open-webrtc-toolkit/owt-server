@@ -38,27 +38,30 @@ namespace woogeen_base {
 
 DEFINE_LOGGER(RtspOut, "woogeen.RtspOut");
 
-RtspOut::RtspOut(const std::string& url, const AVOptions* audio, const AVOptions* video, EventRegistry* handle)
+RtspOut::RtspOut(const std::string& url, bool hasAudio, bool hasVideo, EventRegistry* handle)
     : AVStreamOut{ handle }
     , m_uri{ url }
+    , m_hasAudio(hasAudio)
+    , m_hasVideo(hasVideo)
+    , m_audioFormat(FRAME_FORMAT_UNKNOWN)
+    , m_sampleRate(0)
+    , m_channels(0)
+    , m_videoFormat(FRAME_FORMAT_UNKNOWN)
+    , m_width(0)
+    , m_height(0)
     , m_audioReceived(false)
     , m_videoReceived(false)
     , m_context{ nullptr }
     , m_audioStream{ nullptr }
     , m_videoStream{ nullptr }
 {
-    if (!audio && !video) {
-        ELOG_ERROR("NULL a/v AVOptions params");
-        notifyAsyncEvent("init", "NULL a/v AVOptions params");
+    ELOG_TRACE("url %s, audio %d, video %d", m_uri.c_str(), m_hasAudio, m_hasVideo);
+
+    if (!m_hasAudio && !m_hasVideo) {
+        ELOG_ERROR("Audio/Video not enabled");
+        notifyAsyncEvent("init", "Audio/Video not enabled");
         return;
     }
-
-    if (audio)
-        m_audioOptions = *audio;
-    if (video)
-        m_videoOptions = *video;
-
-    ELOG_TRACE("url %s, acodec %s, vcodec %s", m_uri.c_str(), m_audioOptions.codec.c_str(), m_videoOptions.codec.c_str());
 
     m_frameQueue.reset(new woogeen_base::MediaFrameQueue());
 
@@ -110,7 +113,7 @@ void RtspOut::sendLoop()
     int ret;
     int i = 0;
 
-    while ((hasAudio() && !m_audioReceived) || (hasVideo() && !m_videoReceived)) {
+    while ((m_hasAudio && !m_audioReceived) || (m_hasVideo && !m_videoReceived)) {
         if (m_status == AVStreamOut::Context_CLOSED)
             goto exit;
 
@@ -120,15 +123,15 @@ void RtspOut::sendLoop()
             goto exit;
         }
         ELOG_DEBUG("Wait for av options available, hasAudio %d(rcv %d), hasVideo %d(rcv %d), retry %d"
-                , hasAudio(), m_audioReceived, hasAudio(), m_videoReceived, i);
+                , m_hasAudio, m_audioReceived, m_hasVideo, m_videoReceived, i);
         usleep(20000);
     }
 
-    if (hasAudio() && !addAudioStream(m_audioOptions)) {
+    if (m_hasAudio && !addAudioStream(m_audioFormat, m_sampleRate, m_channels)) {
         notifyAsyncEvent("fatal", "Cannot add audio stream");
         goto exit;
     }
-    if (hasVideo() && !addVideoStream(m_videoOptions)) {
+    if (m_hasVideo && !addVideoStream(m_videoFormat, m_width, m_height)) {
         notifyAsyncEvent("fatal", "Cannot add video stream");
         goto exit;
     }
@@ -226,10 +229,10 @@ bool RtspOut::reconnect()
     if (!connect())
         return false;
 
-    if (hasAudio() && !addAudioStream(m_audioOptions)) {
+    if (m_hasAudio && !addAudioStream(m_audioFormat, m_sampleRate, m_channels)) {
         return false;
     }
-    if (hasVideo() && !addVideoStream(m_videoOptions)) {
+    if (m_hasVideo && !addVideoStream(m_videoFormat, m_width, m_height)) {
         return false;
     }
 
@@ -243,12 +246,18 @@ bool RtspOut::reconnect()
     return true;
 }
 
-bool RtspOut::addAudioStream(AVOptions &options)
+bool RtspOut::addAudioStream(FrameFormat format, uint32_t sampleRate, uint32_t channels)
 {
     enum AVCodecID codec_id = AV_CODEC_ID_AAC;
 
-    if (options.codec.compare("aac") != 0) {
-        ELOG_ERROR("Invalid audio codec, %s", options.codec.c_str());
+    if (format != FRAME_FORMAT_AAC_48000_2
+            || sampleRate != 48000
+            || channels != 2) {
+        ELOG_ERROR("Invalid audio stream, codec(%s), sampleRate(%d), channels(%d)"
+                , getFormatStr(format)
+                , sampleRate
+                , channels
+                );
         return false;
     }
 
@@ -261,8 +270,8 @@ bool RtspOut::addAudioStream(AVOptions &options)
     AVCodecParameters *par = m_audioStream->codecpar;
     par->codec_type     = AVMEDIA_TYPE_AUDIO;
     par->codec_id       = codec_id;
-    par->sample_rate    = m_audioOptions.spec.audio.sampleRate;
-    par->channels       = m_audioOptions.spec.audio.channels;
+    par->sample_rate    = sampleRate;
+    par->channels       = channels;
     par->channel_layout = av_get_default_channel_layout(par->channels);
     if (codec_id == AV_CODEC_ID_AAC) { //AudioSpecificConfig 48000-2
         par->extradata_size = 2;
@@ -275,15 +284,12 @@ bool RtspOut::addAudioStream(AVOptions &options)
     return true;
 }
 
-bool RtspOut::addVideoStream(AVOptions &options)
+bool RtspOut::addVideoStream(FrameFormat format, uint32_t width, uint32_t height)
 {
     enum AVCodecID codec_id = AV_CODEC_ID_H264;
-    int width = options.spec.video.width;
-    int height = options.spec.video.height;
-    AVCodecParserContext *parser;
 
-    if (options.codec.compare("h264") != 0) {
-        ELOG_ERROR("Invalid video codec, %s", options.codec.c_str());
+    if (format != FRAME_FORMAT_H264) {
+        ELOG_ERROR("Invalid video stream, codec(%s)", getFormatStr(format));
         return false;
     }
 
@@ -295,27 +301,29 @@ bool RtspOut::addVideoStream(AVOptions &options)
 
     AVCodecParameters *par = m_videoStream->codecpar;
     par->codec_type = AVMEDIA_TYPE_VIDEO;
-    par->codec_id = codec_id;
-    par->width = width;
-    par->height = height;
+    par->codec_id   = codec_id;
+    par->width      = width;
+    par->height     = height;
 
-    //extradata
-    parser = av_parser_init(codec_id);
-    if (!parser) {
-        ELOG_ERROR("Cannot find video parser");
-        return false;
+    if (codec_id == AV_CODEC_ID_H264) { //extradata
+        AVCodecParserContext *parser = av_parser_init(codec_id);
+        if (!parser) {
+            ELOG_ERROR("Cannot find video parser");
+            return false;
+        }
+
+        int size = parser->parser->split(NULL, m_videoKeyFrame->m_payloadData, m_videoKeyFrame->m_payloadSize);
+        if (size > 0) {
+            par->extradata_size = size;
+            par->extradata      = (uint8_t *)av_malloc(par->extradata_size + AV_INPUT_BUFFER_PADDING_SIZE);
+            memcpy(par->extradata, m_videoKeyFrame->m_payloadData, par->extradata_size);
+        } else {
+            ELOG_WARN("Cannot find video extradata");
+        }
+
+        av_parser_close(parser);
     }
 
-    int size = parser->parser->split(NULL, m_videoKeyFrame->m_payloadData, m_videoKeyFrame->m_payloadSize);
-    if (size > 0) {
-        par->extradata_size = size;
-        par->extradata      = (uint8_t *)av_malloc(par->extradata_size + AV_INPUT_BUFFER_PADDING_SIZE);
-        memcpy(par->extradata, m_videoKeyFrame->m_payloadData, par->extradata_size);
-    } else {
-        ELOG_WARN("Cannot find video extradata");
-    }
-
-    av_parser_close(parser);
     ELOG_DEBUG("Video stream added: %dx%d", width, height);
     return true;
 }
@@ -325,8 +333,10 @@ void RtspOut::onFrame(const woogeen_base::Frame& frame)
     switch (frame.format) {
         case woogeen_base::FRAME_FORMAT_AAC:
         case woogeen_base::FRAME_FORMAT_AAC_48000_2:
-            if (!hasAudio())
+            if (!m_hasAudio) {
+                ELOG_WARN("Audio is not enabled");
                 return;
+            }
 
             if (!m_audioReceived) {
                 ELOG_INFO("Initial audio options format(%s), sample rate(%d), channels(%d)"
@@ -334,16 +344,17 @@ void RtspOut::onFrame(const woogeen_base::Frame& frame)
                         , frame.additionalInfo.audio.sampleRate
                         , frame.additionalInfo.audio.channels);
 
-                m_audioOptions.spec.audio.sampleRate = frame.additionalInfo.audio.sampleRate;
-                m_audioOptions.spec.audio.channels = frame.additionalInfo.audio.channels;
+                m_audioFormat   = woogeen_base::FRAME_FORMAT_AAC_48000_2;
+                m_sampleRate    = frame.additionalInfo.audio.sampleRate;
+                m_channels      = frame.additionalInfo.audio.channels;
                 m_audioReceived = true;
             }
 
             if (m_status != AVStreamOut::Context_READY)
                 return;
 
-            if (frame.additionalInfo.audio.channels != m_audioOptions.spec.audio.channels
-                    || frame.additionalInfo.audio.sampleRate != m_audioOptions.spec.audio.sampleRate) {
+            if (m_channels != frame.additionalInfo.audio.channels
+                    || m_sampleRate != frame.additionalInfo.audio.sampleRate) {
                 ELOG_ERROR("Invalid audio frame channels %d, or sample rate: %d"
                         , frame.additionalInfo.audio.channels, frame.additionalInfo.audio.sampleRate);
 
@@ -355,13 +366,11 @@ void RtspOut::onFrame(const woogeen_base::Frame& frame)
             break;
 
         case woogeen_base::FRAME_FORMAT_H264:
-            if (!hasVideo())
+            if (!m_hasVideo)
                 return;
 
             if (!m_videoReceived) {
-                if (!isH264KeyFrame(frame.payload, frame.length)) {
-                    ELOG_DEBUG("Not video key frame, %d", frame.length);
-
+                if (!frame.additionalInfo.video.isKeyFrame) {
                     ELOG_DEBUG("Request video key frame");
                     deliverFeedbackMsg(FeedbackMsg{.type = VIDEO_FEEDBACK, .cmd = REQUEST_KEY_FRAME});
                     return;
@@ -373,16 +382,17 @@ void RtspOut::onFrame(const woogeen_base::Frame& frame)
 
                 m_videoKeyFrame.reset(new EncodedFrame(frame.payload, frame.length, 0, frame.format));
 
-                m_videoOptions.spec.video.width = frame.additionalInfo.video.width;
-                m_videoOptions.spec.video.height = frame.additionalInfo.video.height;
+                m_videoFormat   = frame.format;
+                m_width         = frame.additionalInfo.video.width;
+                m_height        = frame.additionalInfo.video.height;
                 m_videoReceived = true;
             }
 
             if (m_status != AVStreamOut::Context_READY)
                 return;
 
-            if (frame.additionalInfo.video.width != m_videoOptions.spec.video.width
-                    || frame.additionalInfo.video.height != m_videoOptions.spec.video.height) {
+            if (m_width != frame.additionalInfo.video.width
+                    || m_height != frame.additionalInfo.video.height) {
                 ELOG_ERROR("Invalid video frame resolution: %dx%d",
                         frame.additionalInfo.video.width, frame.additionalInfo.video.height);
 
