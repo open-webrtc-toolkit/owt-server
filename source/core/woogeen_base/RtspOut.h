@@ -36,15 +36,13 @@ namespace woogeen_base {
 class RtspOut : public AVStreamOut {
     DECLARE_LOGGER();
 public:
-    RtspOut(const std::string& url, const AVOptions* audio, const AVOptions* video, EventRegistry* handle);
+    RtspOut(const std::string& url, bool hasAudio, bool hasVideo, EventRegistry* handle);
     ~RtspOut();
 
     void onFrame(const woogeen_base::Frame&);
     void onTimeout() {;}
 
 protected:
-    bool hasAudio() {return !m_audioOptions.codec.empty();}
-    bool hasVideo() {return !m_videoOptions.codec.empty();}
     bool isHls(std::string uri) {return (uri.compare(0, 7, "http://") == 0);}
 
     void sendLoop();
@@ -53,8 +51,8 @@ protected:
     bool reconnect();
     void close();
 
-    bool addAudioStream(AVOptions &options);
-    bool addVideoStream(AVOptions &options);
+    bool addAudioStream(FrameFormat format, uint32_t sampleRate, uint32_t channels);
+    bool addVideoStream(FrameFormat format, uint32_t width, uint32_t height);
 
     bool writeHeader();
     int writeAVFrame(AVStream* stream, const EncodedFrame& frame);
@@ -63,8 +61,16 @@ protected:
 
 private:
     std::string m_uri;
-    AVOptions m_audioOptions;
-    AVOptions m_videoOptions;
+    bool m_hasAudio;
+    bool m_hasVideo;
+
+    FrameFormat m_audioFormat;
+    uint32_t m_sampleRate;
+    uint32_t m_channels;
+
+    FrameFormat m_videoFormat;
+    uint32_t m_width;
+    uint32_t m_height;
 
     boost::thread m_thread;
 

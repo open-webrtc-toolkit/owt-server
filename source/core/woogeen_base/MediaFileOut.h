@@ -37,7 +37,7 @@ class MediaFileOut : public AVStreamOut {
     DECLARE_LOGGER();
 
 public:
-    MediaFileOut(const std::string& url, const AVOptions* audio, const AVOptions* video, int snapshotInterval, EventRegistry* handle);
+    MediaFileOut(const std::string& url, bool hasAudio, bool hasVideo, EventRegistry* handle);
     ~MediaFileOut();
 
     // AVStreamOut interface
@@ -45,28 +45,33 @@ public:
     void onTimeout();
     void onVideoSourceChanged();
 
-private:
-    boost::scoped_ptr<MediaFrameQueue> m_videoQueue;
-    boost::scoped_ptr<MediaFrameQueue> m_audioQueue;
-
+protected:
     void close();
-    bool init(const AVOptions* audio, const AVOptions* video);
-    bool addVideoStream(enum AVCodecID codec_id, unsigned int width, unsigned int height);
-    bool addAudioStream(enum AVCodecID codec_id, int nbChannels = 1, int sampleRate = 8000);
+    bool addAudioStream(FrameFormat format, uint32_t sampleRate, uint32_t channels);
+    bool addVideoStream(FrameFormat format, uint32_t width, uint32_t height);
     bool getReady();
     int writeAVFrame(AVStream*, const EncodedFrame&, bool isVideo);
     char *ff_err2str(int errRet);
 
-    AVCodecID m_expectedVideo;
-    AVStream* m_videoStream;
-    AVCodecID m_expectedAudio;
-    AVStream* m_audioStream;
-    AVFormatContext* m_context;
-    std::string m_recordPath;
-    int m_snapshotInterval; // FIXME: snapshot interval for the future usage
+private:
+    boost::scoped_ptr<MediaFrameQueue> m_videoQueue;
+    boost::scoped_ptr<MediaFrameQueue> m_audioQueue;
 
-    uint32_t m_videoWidth;
-    uint32_t m_videoHeight;
+    std::string m_uri;
+    bool m_hasAudio;
+    bool m_hasVideo;
+
+    FrameFormat m_audioFormat;
+    uint32_t m_sampleRate;
+    uint32_t m_channels;
+
+    FrameFormat m_videoFormat;
+    uint32_t m_width;
+    uint32_t m_height;
+
+    AVFormatContext* m_context;
+    AVStream* m_audioStream;
+    AVStream* m_videoStream;
 
     bool m_videoSourceChanged;
 

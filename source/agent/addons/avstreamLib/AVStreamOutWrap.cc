@@ -83,23 +83,13 @@ void AVStreamOutWrap::New(const v8::FunctionCallbackInfo<v8::Value>& args)
     Local<Object> options = args[0]->ToObject();
     bool requireAudio = (*options->Get(String::NewFromUtf8(isolate, "require_audio"))->ToBoolean())->BooleanValue();
     bool requireVideo = (*options->Get(String::NewFromUtf8(isolate, "require_video"))->ToBoolean())->BooleanValue();
-    woogeen_base::AVStreamOut::AVOptions audioOption, videoOption, *pAudio = nullptr, *pVideo = nullptr;
-    if (requireAudio) {
-        audioOption.codec = std::string(*String::Utf8Value(options->Get(String::NewFromUtf8(isolate, "audio_codec"))->ToString()));
-        pAudio = &audioOption;
-    }
-    if (requireVideo) {
-        videoOption.codec = std::string(*String::Utf8Value(options->Get(String::NewFromUtf8(isolate, "video_codec"))->ToString()));
-        pVideo = &videoOption;
-    }
     AVStreamOutWrap* obj = new AVStreamOutWrap();
     std::string type = std::string(*String::Utf8Value(options->Get(String::NewFromUtf8(isolate, "type"))->ToString()));
     std::string url = std::string(*String::Utf8Value(options->Get(String::NewFromUtf8(isolate, "url"))->ToString()));
     if (type.compare("avstream") == 0)
-        obj->me = new woogeen_base::RtspOut(url, pAudio, pVideo, obj);
+        obj->me = new woogeen_base::RtspOut(url, requireAudio, requireVideo, obj);
     else if (type.compare("file") == 0) {
-        int snapshotInterval = options->Get(String::NewFromUtf8(isolate, "interval"))->IntegerValue();
-        obj->me = new woogeen_base::MediaFileOut(url, pAudio, pVideo, snapshotInterval, obj);
+        obj->me = new woogeen_base::MediaFileOut(url, requireAudio, requireVideo, obj);
     } else {
         isolate->ThrowException(Exception::TypeError(String::NewFromUtf8(isolate, "Unsupported AVStreamOut type")));
         return;

@@ -136,11 +136,6 @@ public:
         Context_READY = 2
     };
 
-    struct AVOptions {
-        std::string codec;
-        MediaSpecInfo spec;
-    };
-
     AVStreamOut(EventRegistry* handle = nullptr)
         : m_status{ Context_EMPTY }
         , m_lastKeyFrameReqTime{ 0 }
