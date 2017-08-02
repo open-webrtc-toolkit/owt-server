@@ -345,12 +345,12 @@ void JitterBuffer::handleJob()
                 m_buffer.popPacket();
             }
 
-            if (m_syncMode == SYNC_MODE_MASTER) {
-                m_syncMutex.lock();
-                m_firstTimestamp = seekMs;
-                m_firstLocalTime.reset(new boost::posix_time::ptime(boost::posix_time::microsec_clock::local_time()));
-                m_syncMutex.unlock();
+            m_syncMutex.lock();
+            m_firstTimestamp = seekMs;
+            m_firstLocalTime.reset(new boost::posix_time::ptime(boost::posix_time::microsec_clock::local_time()));
+            m_syncMutex.unlock();
 
+            if (m_syncMode == SYNC_MODE_MASTER) {
                 m_listener->onSyncTimeChanged(this, seekMs);
             }
 
