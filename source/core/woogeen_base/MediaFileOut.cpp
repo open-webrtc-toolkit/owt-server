@@ -276,12 +276,46 @@ bool MediaFileOut::addAudioStream(FrameFormat format, uint32_t sampleRate, uint3
     par->sample_rate    = sampleRate;
     par->channels       = channels;
     par->channel_layout = av_get_default_channel_layout(par->channels);
-    if (par->codec_id == AV_CODEC_ID_AAC) { //AudioSpecificConfig 48000-2
-        par->extradata_size = 2;
-        par->extradata      = (uint8_t *)av_malloc(par->extradata_size + AV_INPUT_BUFFER_PADDING_SIZE);
-        par->extradata[0]   = 0x11;
-        par->extradata[1]   = 0x90;
+    switch(par->codec_id) {
+        case AV_CODEC_ID_AAC: //AudioSpecificConfig 48000-2
+            par->extradata_size = 2;
+            par->extradata      = (uint8_t *)av_malloc(par->extradata_size + AV_INPUT_BUFFER_PADDING_SIZE);
+            par->extradata[0]   = 0x11;
+            par->extradata[1]   = 0x90;
+            break;
+        case AV_CODEC_ID_OPUS: //OpusHead 48000-2
+            par->extradata_size = 19;
+            par->extradata      = (uint8_t *)av_malloc(par->extradata_size + AV_INPUT_BUFFER_PADDING_SIZE);
+            par->extradata[0]   = 'O';
+            par->extradata[1]   = 'p';
+            par->extradata[2]   = 'u';
+            par->extradata[3]   = 's';
+            par->extradata[4]   = 'H';
+            par->extradata[5]   = 'e';
+            par->extradata[6]   = 'a';
+            par->extradata[7]   = 'd';
+            //Version
+            par->extradata[8]   = 1;
+            //Channel Count
+            par->extradata[9]   = 2;
+            //Pre-skip
+            par->extradata[10]  = 0x38;
+            par->extradata[11]  = 0x1;
+            //Input Sample Rate (Hz)
+            par->extradata[12]  = 0x80;
+            par->extradata[13]  = 0xbb;
+            par->extradata[14]  = 0;
+            par->extradata[15]  = 0;
+            //Output Gain (Q7.8 in dB)
+            par->extradata[16]  = 0;
+            par->extradata[17]  = 0;
+            //Mapping Family
+            par->extradata[18]  = 0;
+            break;
+        default:
+            break;
     }
+
     m_audioStream = stream;
 
     if (!m_hasVideo || m_videoStream) {
