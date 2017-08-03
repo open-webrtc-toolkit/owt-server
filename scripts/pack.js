@@ -360,7 +360,8 @@ function packAddon(target) {
 
   for (const addon of natives.addons) {
     let buildType = options['addon-debug'] ? 'Debug' : 'Release';
-    let buildPath = `${path.basename(addon.folder)}/build/${buildType}`;
+    // Debug or Release addon, all pack to 'Release' folder
+    let buildPath = `${path.basename(addon.folder)}/build/Release`;
     let addonDist = path.join(packDist, buildPath);
     let addonPath = path.join(packSrc, addon.folder, `build/${buildType}/${addon.name}.node`);
 
