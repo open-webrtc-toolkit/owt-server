@@ -41,16 +41,19 @@ VideoFrameConstructor::VideoFrameConstructor()
     , m_ssrc(0)
     , m_video_receiver(nullptr)
     , m_transport(nullptr)
+    , m_pendingKeyFrameRequests(0)
 {
     m_videoTransport.reset(new WebRTCTransport<erizo::VIDEO>(nullptr, nullptr));
     sinkfbSource_ = m_videoTransport.get();
     m_taskRunner.reset(new woogeen_base::WebRTCTaskRunner("VideoFrameConstructor"));
     m_taskRunner->Start();
+    m_feedbackTimer.reset(new JobTimer(1, this));
     init();
 }
 
 VideoFrameConstructor::~VideoFrameConstructor()
 {
+    m_feedbackTimer->stop();
     m_remoteBitrateObserver->RemoveRembSender(m_rtpRtcp.get());
     m_videoReceiver->StopReceive();
 
@@ -347,11 +350,19 @@ int VideoFrameConstructor::deliverAudioData(char* buf, int len)
     return 0;
 }
 
+void VideoFrameConstructor::onTimeout()
+{
+    if (m_pendingKeyFrameRequests > 0) {
+        this->RequestKeyFrame();
+        m_pendingKeyFrameRequests = 0;
+    }
+}
+
 void VideoFrameConstructor::onFeedback(const FeedbackMsg& msg)
 {
     if (msg.type == woogeen_base::VIDEO_FEEDBACK) {
         if (msg.cmd == REQUEST_KEY_FRAME) {
-            this->RequestKeyFrame();
+            ++m_pendingKeyFrameRequests;
         } else if (msg.cmd == SET_BITRATE) {
             this->setBitrate(msg.data.kbps);
         }
