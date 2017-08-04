@@ -31,6 +31,7 @@
 #include <boost/shared_ptr.hpp>
 #include <logger.h>
 #include <MediaDefinitions.h>
+#include <JobTimer.h>
 #include <webrtc/modules/remote_bitrate_estimator/include/remote_bitrate_estimator.h>
 #include <webrtc/modules/rtp_rtcp/include/rtp_rtcp.h>
 #include <webrtc/modules/video_coding/include/video_codec_interface.h>
@@ -46,6 +47,7 @@ namespace woogeen_base {
  */
 class VideoFrameConstructor : public erizo::MediaSink,
                               public FrameSource,
+                              public JobTimerListener,
                               public webrtc::VideoDecoder,
                               public webrtc::RtpFeedback,
                               public webrtc::VCMReceiveCallback,
@@ -60,6 +62,9 @@ public:
     void bindTransport(erizo::MediaSource* source, erizo::FeedbackSink* fbSink);
     void unbindTransport();
     void enable(bool enabled);
+
+    // Implements the JobTimerListener.
+    void onTimeout();
 
     // Implements the webrtc::VCMPacketRequestCallback interface.
     virtual int32_t ResendPackets(const uint16_t* sequenceNumbers, uint16_t length);
@@ -123,6 +128,8 @@ private:
 
     erizo::MediaSource* m_transport;
     boost::shared_mutex m_transport_mutex;
+    boost::scoped_ptr<JobTimer> m_feedbackTimer;
+    uint32_t m_pendingKeyFrameRequests;
 };
 
 class DummyRemoteBitrateObserver : public webrtc::RemoteBitrateObserver {
