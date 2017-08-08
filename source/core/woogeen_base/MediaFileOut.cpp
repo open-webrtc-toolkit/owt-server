@@ -55,7 +55,7 @@ inline AVCodecID frameFormat2AudioCodecID(int frameFormat)
     }
 }
 
-MediaFileOut::MediaFileOut(const std::string& url, bool hasAudio, bool hasVideo, EventRegistry* handle)
+MediaFileOut::MediaFileOut(const std::string& url, bool hasAudio, bool hasVideo, EventRegistry* handle, int recordingTimeout)
     : m_uri{ url }
     , m_hasAudio(hasAudio)
     , m_hasVideo(hasVideo)

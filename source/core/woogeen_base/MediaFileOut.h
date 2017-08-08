@@ -37,7 +37,7 @@ class MediaFileOut : public AVStreamOut {
     DECLARE_LOGGER();
 
 public:
-    MediaFileOut(const std::string& url, bool hasAudio, bool hasVideo, EventRegistry* handle);
+    MediaFileOut(const std::string& url, bool hasAudio, bool hasVideo, EventRegistry* handle, int recordingTimeout);
     ~MediaFileOut();
 
     // AVStreamOut interface

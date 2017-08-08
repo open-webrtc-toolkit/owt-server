@@ -37,3 +37,6 @@ ip_address = "" #default: ""
 # The internal listening port range, only works for TCP now
 maxport = 0 #default: 0
 minport = 0 #default: 0
+
+[avstream]
+initialize_timeout = 2000 #default: 2000

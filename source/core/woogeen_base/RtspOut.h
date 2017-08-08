@@ -36,7 +36,7 @@ namespace woogeen_base {
 class RtspOut : public AVStreamOut {
     DECLARE_LOGGER();
 public:
-    RtspOut(const std::string& url, bool hasAudio, bool hasVideo, EventRegistry* handle);
+    RtspOut(const std::string& url, bool hasAudio, bool hasVideo, EventRegistry* handle, int streamingTimeout);
     ~RtspOut();
 
     void onFrame(const woogeen_base::Frame&);
