@@ -47,7 +47,8 @@ module.exports = function (rpcClient) {
                                 audio_codec: 'opus_48000_2'/*FIXME: should be removed later*/,
                                 video_codec: 'h264'/*FIXME: should be removed later*/,
                                 url: path.join(recording_path, connectionId + '.' + options.connection.container),
-                                interval: 1000/*FIXME: should be removed later*/};
+                                interval: 1000/*FIXME: should be removed later*/,
+                                initializeTimeout: global.config.recording.initializeTimeout};
 
         var connection = new AVStreamOut(avstream_options, function (error) {
             if (error) {

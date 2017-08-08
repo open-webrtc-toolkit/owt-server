@@ -50,7 +50,8 @@ module.exports = function (rpcClient) {
                                 audio_codec: 'aac'/*FIXME:hard coded*/,
                                 video_codec: 'h264'/*FIXME: hard coded*/,
                                 video_resolution: 'vga'/*FIXME: hard coded*/,
-                                url: options.connection.url};
+                                url: options.connection.url,
+                                initializeTimeout: global.config.avstream.initializeTimeout};
 
         var connection = new AVStreamOut(avstream_options, function (error) {
             if (error) {
