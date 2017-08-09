@@ -43,6 +43,7 @@ RtspOut::RtspOut(const std::string& url, bool hasAudio, bool hasVideo, EventRegi
     , m_uri{ url }
     , m_hasAudio(hasAudio)
     , m_hasVideo(hasVideo)
+    , m_timeOutMs(streamingTimeout)
     , m_audioFormat(FRAME_FORMAT_UNKNOWN)
     , m_sampleRate(0)
     , m_channels(0)
@@ -55,7 +56,7 @@ RtspOut::RtspOut(const std::string& url, bool hasAudio, bool hasVideo, EventRegi
     , m_audioStream{ nullptr }
     , m_videoStream{ nullptr }
 {
-    ELOG_TRACE("url %s, audio %d, video %d", m_uri.c_str(), m_hasAudio, m_hasVideo);
+    ELOG_TRACE("url %s, audio %d, video %d, timeOut %d", m_uri.c_str(), m_hasAudio, m_hasVideo, m_timeOutMs);
 
     if (!m_hasAudio && !m_hasVideo) {
         ELOG_ERROR("Audio/Video not enabled");
@@ -110,21 +111,23 @@ void RtspOut::close()
 
 void RtspOut::sendLoop()
 {
-    int ret;
-    int i = 0;
-
+    const uint32_t waitMs = 20;
+    uint32_t timeOut = 0;
     while ((m_hasAudio && !m_audioReceived) || (m_hasVideo && !m_videoReceived)) {
         if (m_status == AVStreamOut::Context_CLOSED)
             goto exit;
 
-        if (i++ >= 100) {
-            ELOG_ERROR("No a/v frames");
+        if (timeOut >= m_timeOutMs) {
+            ELOG_ERROR("No a/v frames, timeOut %d", m_timeOutMs);
             notifyAsyncEvent("fatal", "No a/v frames");
             goto exit;
         }
-        ELOG_DEBUG("Wait for av options available, hasAudio %d(rcv %d), hasVideo %d(rcv %d), retry %d"
-                , m_hasAudio, m_audioReceived, m_hasVideo, m_videoReceived, i);
-        usleep(20000);
+
+        timeOut += waitMs;
+        usleep(waitMs * 1000);
+
+        ELOG_DEBUG("Wait for av options available, hasAudio %d(rcv %d), hasVideo %d(rcv %d), waitMs %d"
+                , m_hasAudio, m_audioReceived, m_hasVideo, m_videoReceived, timeOut);
     }
 
     if (m_hasAudio && !addAudioStream(m_audioFormat, m_sampleRate, m_channels)) {
@@ -157,6 +160,8 @@ void RtspOut::sendLoop()
 
         int retry = 1;
         while(true) {
+            int ret;
+
             ret = writeAVFrame(frame->m_format == FRAME_FORMAT_H264? m_videoStream : m_audioStream, *frame);
             if (ret == 0)
                 break;
