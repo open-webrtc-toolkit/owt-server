@@ -16,10 +16,10 @@ var genID = (function() {
     }
     return function() {
         return s4() + s4()
+               /*+ '-' + s4()
                + '-' + s4()
                + '-' + s4()
-               + '-' + s4()
-               + '-' + s4() + s4() + s4();
+               + '-'*/ + s4() + s4() + s4();
     };
 })();
 
@@ -31,7 +31,7 @@ module.exports = function (spec) {
         tasks = [];
 
     var rpcClient = spec.rpcClient,
-        id = spec.purpose + '.' + genID(),
+        id = spec.purpose + '-' + (spec.info.hostname || spec.info.ip) + '-' + genID(),
         purpose = spec.purpose,
         info = spec.info,
         cluster_name = spec.clusterName || 'woogeenCluster',
