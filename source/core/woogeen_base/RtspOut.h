@@ -63,6 +63,7 @@ private:
     std::string m_uri;
     bool m_hasAudio;
     bool m_hasVideo;
+    uint32_t m_timeOutMs;
 
     FrameFormat m_audioFormat;
     uint32_t m_sampleRate;
