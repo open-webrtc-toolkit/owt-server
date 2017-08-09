@@ -261,7 +261,7 @@ var Client = function(participant_id, socket, portal, observer, reconnection_spe
                 users: result.room.participants.map((ptt) => {
                   return {
                     id: ptt.id,
-                    name: ptt.user.name,
+                    name: ptt.user,
                     role: ptt.role
                   };
                 })};
@@ -310,6 +310,9 @@ var Client = function(participant_id, socket, portal, observer, reconnection_spe
         old_clients=result.oldClients;
         that.inRoom=result.roomId;
         participant_id=result.participantId;
+        published_webrtc=result.published_webrtc;
+        ref2subId=result.ref2subId;
+        subId2ref=result.subId2ref;
         for(let client of old_clients){
           client.replaceSocket(socket);
         }
@@ -1027,7 +1030,7 @@ var Client = function(participant_id, socket, portal, observer, reconnection_spe
     if (streamInfo.status === 'add') {
       send_msg('add_stream', {id: streamInfo.data.id, audio: !!streamInfo.data.media.audio, video: !!streamInfo.data.media.video ? {device: streamInfo.data.type === 'mixed'? 'mcu' : streamInfo.data.media.video.source} : false, from: streamInfo.data.type === 'mixed' ? '' : streamInfo.data.info.owner, attributes: streamInfo.data.info.attributes});
     } else if (streamInfo.status === 'update') {
-      var st_update = {id: streamInfo.data.id};
+      var st_update = {id: streamInfo.id};
       if ((streamInfo.data.field === 'audio.status') || (streamInfo.data.field === 'video.status')) {//Forward stream update
         st_update.event = 'StateChange';
         st_update.state = streamInfo.data.value;
@@ -1128,7 +1131,13 @@ var Client = function(participant_id, socket, portal, observer, reconnection_spe
     }
     return validateReconnectionTicket(ticket).then(function(){
       old_clients.push(that);
-      return {pendingMessages:pending_messages, oldClients:old_clients};
+      return {
+        pendingMessages:pending_messages,
+        oldClients:old_clients,
+        published_webrtc: published_webrtc,
+        ref2subId: ref2subId,
+        subId2ref: subId2ref
+      };
     });
   };
 
@@ -1204,7 +1213,15 @@ var SocketIOServer = function(spec, portal, observer) {
         return client.validateReconnectionTicket(ticket).then(function(old_client_info){
           clients[ticket.participantId]=clients[participant_id];
           delete clients[participant_id];
-          return Promise.resolve({pendingStreams:old_client_info.pending_messages, roomId:client.inRoom, participantId:ticket.participantId, oldClients:old_client_info.oldClients});
+          return Promise.resolve({
+            pendingStreams:old_client_info.pendingMessages,
+            roomId:client.inRoom,
+            participantId:ticket.participantId,
+            oldClients:old_client_info.oldClients,
+            published_webrtc: old_client_info.published_webrtc,
+            ref2subId: old_client_info.ref2subId,
+            subId2ref: old_client_info.subId2ref
+          });
         });
       };
       const reconnection_spec = {

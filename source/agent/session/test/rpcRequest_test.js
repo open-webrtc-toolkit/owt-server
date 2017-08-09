@@ -28,7 +28,7 @@ describe('rpcRequest.getWorkerNode', function() {
 
     var req = rpcRequest(mockRpcChannel);
 
-    return expect(req.getWorkerNode('woogeen-cluster', 'purpose', {session: 'Session', task: 'sessionId'})).to.be.rejectedWith('timeout or error while getting agent');
+    return expect(req.getWorkerNode('woogeen-cluster', 'purpose', {room: 'Session', task: 'sessionId'})).to.be.rejectedWith('timeout or error while getting agent');
   });
 
   it('Should fail if requiring node timeout or error occurs.', function() {
@@ -39,7 +39,7 @@ describe('rpcRequest.getWorkerNode', function() {
 
     var req = rpcRequest(mockRpcChannel);
 
-    return expect(req.getWorkerNode('woogeen-cluster', 'purpose', {session: 'Session', task: 'sessionId'})).to.be.rejectedWith('timeout or error');
+    return expect(req.getWorkerNode('woogeen-cluster', 'purpose', {room: 'Session', task: 'sessionId'})).to.be.rejectedWith('timeout or error');
   });
 });
 
@@ -88,7 +88,6 @@ describe('rpcRequest.initiate', function() {
     var req = rpcRequest(mockRpcChannel);
 
     mockRpcChannel.makeRPC.rejects('timeout or error');
-    var onStatus = sinon.spy();
 
     return Promise.all([
       expect(req.initiate('rpcIdOfController',
@@ -113,14 +112,9 @@ describe('rpcRequest.terminate', function() {
 
     mockRpcChannel.makeRPC.resolves('ok');
 
-    return Promise.all([
-      expect(req.terminate('rpcIdOfWorkerNode', 'sessionId', 'in')).to.become('ok'),
-      expect(req.terminate('rpcIdOfWorkerNode', 'sessionId', 'out')).to.become('ok'),
-      expect(req.recycleWorkerNode('rpcIdOfWorkerAgent', 'rpcIdOfWorkerNode', {session: 'Session', task: 'sessionId'})).to.become('ok')
-      ])
-      .then(function() {
-        expect(mockRpcChannel.makeRPC.callCount).to.equal(3);
-      });
+    expect(req.terminate('rpcIdOfWorkerNode', 'sessionId', 'out')).to.become('ok');
+    expect(req.terminate('rpcIdOfWorkerNode', 'sessionId', 'in')).to.become('ok');
+    expect(req.recycleWorkerNode('rpcIdOfWorkerAgent', 'rpcIdOfWorkerNode', {room: 'Session', task: 'sessionId'})).to.become('ok');
   });
 
   it('Should still succeed if rpcChannel.makeRPC fails.', function() {
@@ -130,18 +124,13 @@ describe('rpcRequest.terminate', function() {
 
     mockRpcChannel.makeRPC.rejects('timeout or error');
 
-    return Promise.all([
-      expect(req.terminate('rpcIdOfWorkerNode', 'sessionId', 'in')).to.become('ok'),
-      expect(req.terminate('rpcIdOfWorkerNode', 'sessionId', 'out')).to.become('ok'),
-      expect(req.recycleWorkerNode('rpcIdOfWorkerAgent', 'rpcIdOfWorkerNode', {session: 'Session', task: 'sessionId'})).to.become('ok')
-      ])
-      .then(function() {
-        expect(mockRpcChannel.makeRPC.callCount).to.equal(3);
-      });
+    expect(req.terminate('rpcIdOfWorkerNode', 'sessionId', 'in')).to.become('ok'),
+    expect(req.terminate('rpcIdOfWorkerNode', 'sessionId', 'out')).to.become('ok'),
+    expect(req.recycleWorkerNode('rpcIdOfWorkerAgent', 'rpcIdOfWorkerNode', {room: 'Session', task: 'sessionId'})).to.become('ok')
    });
 });
 
-describe('rpcRequest.getRoomConfig/onSOAC/mediaOnOff/sendMsg/dropUser', function() {
+describe('rpcRequest.getRoomConfig/onSessionSignaling/mediaOnOff/sendMsg/dropUser', function() {
   it('Should succeed if rpcChannel.makeRPC succeeds.', function() {
     var mockRpcChannel = sinon.createStubInstance(rpcChannel);
     mockRpcChannel.makeRPC = sinon.stub();
@@ -150,7 +139,7 @@ describe('rpcRequest.getRoomConfig/onSOAC/mediaOnOff/sendMsg/dropUser', function
     mockRpcChannel.makeRPC.resolves('ok-or-data');
     var getRoomConfig = req.getRoomConfig('config-server', 'roomId');
     var mediaOnOff = req.mediaOnOff('rpcIdOfWorkerNode', 'sessionId', 'video', 'in', 'off');
-    var onSOAC = req.onSOAC('rpcIdOfWorkerNode', 'sessionId', 'soacObj');
+    var onSessionSignaling = req.onSessionSignaling('rpcIdOfWorkerNode', 'sessionId', 'soacObj');
     var sendMsg = req.sendMsg('rpcIdOfPortal', 'participantId', 'event-name', 'msgObj');
     var dropUser = req.dropUser('rpcIdOfPortal', 'participantId');
 
@@ -158,7 +147,7 @@ describe('rpcRequest.getRoomConfig/onSOAC/mediaOnOff/sendMsg/dropUser', function
     return Promise.all([
       expect(getRoomConfig).to.become('ok-or-data'),
       expect(mediaOnOff).to.become('ok-or-data'),
-      expect(onSOAC).to.become('ok-or-data'),
+      expect(onSessionSignaling).to.become('ok-or-data'),
       expect(sendMsg).to.become('ok-or-data'),
       expect(dropUser).to.become('ok-or-data')
       ])
@@ -175,14 +164,14 @@ describe('rpcRequest.getRoomConfig/onSOAC/mediaOnOff/sendMsg/dropUser', function
     mockRpcChannel.makeRPC.rejects('timeout-or-error');
     var getRoomConfig = req.getRoomConfig('config-server', 'roomId');
     var mediaOnOff = req.mediaOnOff('rpcIdOfWorkerNode', 'sessionId', 'video', 'in', 'off');
-    var onSOAC = req.onSOAC('rpcIdOfWorkerNode', 'sessionId', 'soacObj');
+    var onSessionSignaling = req.onSessionSignaling('rpcIdOfWorkerNode', 'sessionId', 'soacObj');
     var sendMsg = req.sendMsg('rpcIdOfPortal', 'participantId', 'event-name', 'msgObj');
     var dropUser = req.dropUser('rpcIdOfPortal', 'participantId');
 
     return Promise.all([
       expect(getRoomConfig).to.be.rejectedWith('timeout-or-error'),
       expect(mediaOnOff).to.be.rejectedWith('timeout-or-error'),
-      expect(onSOAC).to.be.rejectedWith('timeout-or-error'),
+      expect(onSessionSignaling).to.be.rejectedWith('timeout-or-error'),
       expect(sendMsg).to.be.rejectedWith('timeout-or-error'),
       expect(dropUser).to.be.rejectedWith('timeout-or-error')
       ])

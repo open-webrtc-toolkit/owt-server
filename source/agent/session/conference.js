@@ -89,7 +89,7 @@ var translateOldRoomConfig = (oldConfig) => {
           }
         ],
         parameters: {
-          resolution: ['0.75x', '0.667x', '0.5x', '0.333x', '0.25x', 'xga', 'svga', 'vga', 'hvga', 'cif', 'sif', 'qcif'],
+          resolution: [/*'0.75x', '0.667x',*/ '0.5x', '0.333x', '0.25x', 'xga', 'svga', 'vga'/*, 'hvga', 'cif', 'sif', 'qcif'*/],
           framerate: [5, 15, 24, 30, 48, 60],
           bitrate: ['1.6x', '1.4x', '1.2x', '0.8x', '0.6x', '0.4x'],
           keyFrameInterval: [100, 30, 5, 2, 1]
@@ -647,7 +647,7 @@ var Conference = function (rpcClient, selfRpcId) {
                           optional: {
                             format: room_config.mediaOut.video.format,
                             parameters: {
-                              resolution: room_config.mediaOut.video.parameters.resolution.map((x) => {return calcResolution(x, viewSettings.video.parameters.resolution)}).filter((reso) => {return reso.width <= viewSettings.video.parameters.resolution.width && reso.height <= viewSettings.video.parameters.resolution.height;}),
+                              resolution: room_config.mediaOut.video.parameters.resolution.map((x) => {return calcResolution(x, viewSettings.video.parameters.resolution)}).filter((reso) => {return reso.width < viewSettings.video.parameters.resolution.width && reso.height < viewSettings.video.parameters.resolution.height;}),
                               framerate: room_config.mediaOut.video.parameters.framerate.filter((x) => {return x < viewSettings.video.parameters.framerate;}),
                               bitrate: room_config.mediaOut.video.parameters.bitrate.map((x) => {calcBitrate(x, viewSettings.video.parameters.bitrate)}),
                               keyFrameInterval: room_config.mediaOut.video.parameters.keyFrameInterval.filter((x) => {return x < viewSettings.video.parameters.keyFrameInterval;})

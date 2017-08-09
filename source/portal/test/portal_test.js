@@ -48,7 +48,7 @@ const testToken = {tokenId: '573eab88111478bb3526421b',
 const testParticipantId = '/#gpMeAEuPeMMDT0daAAAA';
 const testRoom = '573eab78111478bb3526421a';
 
-const delete_token_result = {code: 'tokenCode', user: {id: 'user-id', name: 'user-name'}, role: 'presenter', origin: {isp: 'isp', region: 'region'}, room: testRoom};
+const delete_token_result = {code: 'tokenCode', user: 'user-id', role: 'presenter', origin: {isp: 'isp', region: 'region'}, room: testRoom};
 const join_room_result = {
   permission: {
     publish: {
@@ -218,10 +218,7 @@ const join_room_result = {
     participants: [{
         id: 'participant-id',
         role: 'presenter',
-        user: {
-          id: 'user-id',
-          name: 'user-name'
-        }
+        user: 'user-id-2'
       }
     ]
   }

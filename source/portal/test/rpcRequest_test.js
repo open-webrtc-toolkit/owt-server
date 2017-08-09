@@ -51,7 +51,7 @@ describe('rpcRequest.join/leave/publish/unpublish/subscribe/unsubscribe/onSessio
 
     mockRpcChannel.makeRPC.resolves('ok-or-data');
 
-    var join = req.join('rpcIdOfController', 'roomId', {id: 'participantId', user: {name: 'UserName', id: 'UserId'}, role: 'UserRole', portal: 'portalRpcId', origin: 'originObj'});
+    var join = req.join('rpcIdOfController', 'roomId', {id: 'participantId', user: 'UserId', role: 'UserRole', portal: 'portalRpcId', origin: 'originObj'});
     var leave = req.leave('rpcIdOfController', 'roomId', 'participantId')
     var pub = req.publish('rpcIdOfController', 'participantId', 'streamId', 'pubOptions');
     var unpub = req.unpublish('rpcIdOfController', 'participantId', 'streamId');
@@ -88,7 +88,7 @@ describe('rpcRequest.join/leave/publish/unpublish/subscribe/unsubscribe/onSessio
 
     mockRpcChannel.makeRPC.rejects('error or timeout');
 
-    var join = req.join('rpcIdOfController', 'roomId', {id: 'participantId', user: {name: 'UserName', id: 'UserId'}, role: 'UserRole', portal: 'portalRpcId', origin: 'originObj'});
+    var join = req.join('rpcIdOfController', 'roomId', {id: 'participantId', user: 'UserId', role: 'UserRole', portal: 'portalRpcId', origin: 'originObj'});
     var leave = req.leave('rpcIdOfController', 'roomId', 'participantId')
     var pub = req.publish('rpcIdOfController', 'participantId', 'streamId', 'pubOptions');
     var unpub = req.unpublish('rpcIdOfController', 'participantId', 'streamId');

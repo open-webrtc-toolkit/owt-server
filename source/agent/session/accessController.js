@@ -35,7 +35,7 @@ module.exports.create = function(spec, rpcReq, onSessionEstablished, onSessionAb
         .catch(function(reason) {
           log.debug('rpcRequest.terminate fail:', reason);
         });
-      rpcReq.recycleWorkerNode(session.locality.agent, session.locality.node, {session: in_room, task: sessionId})
+      rpcReq.recycleWorkerNode(session.locality.agent, session.locality.node, {room: in_room, task: sessionId})
         .catch(function(reason) {
           log.debug('AccessNode not recycled', session.locality);
         });
@@ -170,7 +170,7 @@ module.exports.create = function(spec, rpcReq, onSessionEstablished, onSessionAb
         log.debug('getWorkerNode ok, participantId:', participantId, 'sessionId:', sessionId, 'locality:', locality);
         if (sessions[sessionId] === undefined) {
           log.debug('Session has been aborted, sessionId:', sessionId);
-          rpcReq.recycleWorkerNode(locality.agent, locality.node, {session: in_room, task: sessionId})
+          rpcReq.recycleWorkerNode(locality.agent, locality.node, {room: in_room, task: sessionId})
             .catch(function(reason) {
               log.debug('AccessNode not recycled', locality);
             });
@@ -197,7 +197,7 @@ module.exports.create = function(spec, rpcReq, onSessionEstablished, onSessionAb
             .catch(function(reason) {
               log.debug('Terminate fail:', reason);
             });
-          rpcReq.recycleWorkerNode(locality.agent, locality.node, {session: in_room, task: sessionId})
+          rpcReq.recycleWorkerNode(locality.agent, locality.node, {room: in_room, task: sessionId})
             .catch(function(reason) {
               log.debug('AccessNode not recycled', locality);
             });
