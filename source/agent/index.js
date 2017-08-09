@@ -134,7 +134,7 @@ function cleanupErizoJS (id) {
 }
 
 var launchErizoJS = function() {
-    var id = myId + '.' + erizo_index++;
+    var id = myId + '-' + erizo_index++;
     if (!fs.existsSync('../logs')){
         fs.mkdirSync('../logs');
     }
