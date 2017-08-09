@@ -57,7 +57,7 @@ var Portal = function(spec, rpcReq) {
       .then(function(deleteTokenResult) {
         log.debug('login ok.', deleteTokenResult);
         tokenCode = deleteTokenResult.code;
-        userInfo = (typeof deleteTokenResult.user === 'string' ? {id: deleteTokenResult.user, name: deleteTokenResult.user} : deleteTokenResult.user);//FIXME: remove the 'string' case.
+        userInfo = deleteTokenResult.user;
         role = deleteTokenResult.role;
         origin = deleteTokenResult.origin;
         room = deleteTokenResult.room;

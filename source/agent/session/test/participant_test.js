@@ -7,7 +7,7 @@ var Participant = require('../participant');
 var rpcReq = require('../rpcRequest');
 
 describe('participant.isPublishPermitted', function() {
-  var participant_spec = {id: 'participantId', user: {id: 'user-id', name: 'user-name'}, role: 'role', portal: 'portalObj', origin: 'originObj'}
+  var participant_spec = {id: 'participantId', user: 'user-id', role: 'role', portal: 'portalObj', origin: 'originObj'}
   var mockrpcReq = sinon.createStubInstance(rpcReq);
 
   it('With permission.publish being false.', function() {
