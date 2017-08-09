@@ -453,7 +453,21 @@ audio-agent/node|Auto schedule new audio-agent/node resource to recover the sess
 video-agent/node|Auto schedule new video-agent/node resource to recover the session context.|Transparent
 sip-agent/node|All sip participants it carries should be dropped by session nodes.|SIP BYE signaling event
 
-## 2.4 Security Recommendations {#Conferencesection2_4}
+## 2.4 MCU configurations for public access {#Conferencesection2_4}
+
+Intel CS for WebRTC MCU server provides following settings in toml files to configure the network interfaces for public access.
+
+ **Table 2-7. Configuriton Items for Public Access**
+Configuriton Item|Location|Usage
+--------|--------|--------
+webrtc.network_interfaces|webrtc_agent/agent.toml|The network inferfaces of webrtc-agent which clients in public network can connect to
+webrtc.minport|webrtc_agent/agent.toml|The webrtc port range lowerbound for clients to connect through UDP
+webrtc.maxport|webrtc_agent/agent.toml|The webrtc port range upperbound for clients to connect through UDP
+nuve.port|nuve/nuve.toml|The port of nuve should be accessible in public network through TCP
+portal.hostname, portal.ip_address|portal/portal.toml|The hostname and ip address of portal for public access, hostname first if it is not empty.
+portal.port|portal/portal.toml|The port of portal for public access through TCP
+
+## 2.5 Security Recommendations {#Conferencesection2_5}
 Intel Corporation does not host any conference cluster/service. Instead, the entire suite is provided so you can build your own video conference system and host your own server cluster.
 
 Customers must be familiar with industry standards and best practices for deploying server clusters. Intel Corporation assumes no responsibility for loss caused from potential improper deployment and mismanagement.
@@ -483,7 +497,7 @@ The following instructions are provided only as recommendations regarding securi
 **Figure 2-1. Security Recommendations Picture**
 ![Security Recommendations Picture](./pic/deploy.png)
 
-## 2.5 FAQ {#Conferencesection2_5}
+## 2.6 FAQ {#Conferencesection2_6}
 1. Sudden low volume when connecting Chrome on Windows to MCU
     **Resolution**:
 
@@ -532,7 +546,7 @@ Only super service user can access service management, in the ‘overview' tab t
 ## 3.5 Room Management {#Conferencesection3_5}
 Any service user can do room management inside the service, including creating, deleting or modifying rooms.
 
-Specifically for modifying rooms, user can choose room mode, room publish limit, user limit and media mixing configuration (only for hybrid mode) for its own preference. These configurations are combined into a view which will generate corresponding mix stream. When room mode is hybrid, user can define a configuration set for media mixing: resolution, background color, layout, etc. For VAD, set avCoordinated to true to enable VAD in the room. Enabling multi-streaming can let MCU generate two or more mixed streams with different resolutions to fulfill different devices. For layout, use can choose a base layout template and customize its own preferred ones, which would be combined as a whole for rendering mixed video.
+Specifically for modifying rooms, user can choose room mode, room publish limit, user limit and media mixing configuration (only for hybrid mode) for its own preference. For a single room's media mixing configuration, multiple views can be enabled and configured. The configuration set of a view includes: resolution, background color, layout, etc. For VAD, set avCoordinated to true to enable VAD in the room. Enabling multi-streaming can let a view of MCU generate two or more mixed streams with different resolutions to fulfill different devices. For layout, user can choose a base layout template and customize its own preferred ones, which would be combined as a whole for rendering mixed video.
 
 > **Note**: If base layout is set to 'void', user must input customized layout for the room, otherwise the video layout would be treated as invalid. Read 3.5.1 for details of customized layout. maxInput indicates the maximum number of video frame inputs for the video layout definition.
 
@@ -629,7 +643,7 @@ All workers including portals, session-agents, webrtc-agents, avstream-agents, r
 4. round-robin: If more than 1 worker with the specified purpose are alive and available, they will be scheduled one by one circularly.
 5. randomly-pick: If more than 1 worker with the specified purpose are alive and available, they will be scheduled randomly.
 
-For portal and webrtc-agent workers, fine-grained scheduling strategy with "isp" and "region" preferences is also provided. If "isp" or "region" capability is specified in portal and webrtc-agent workers, then cluster-manager will only schedule the corresponding worker nodes to the client requests with matched "isp" and "region" preferences.
+For portal and webrtc-agent workers, the "isp" and "region" preferences can be specfied in portal and webrtc-agent configurations. Pass the prefered "isp" and "region" when creating token, then cluster-manager will only schedule the corresponding worker nodes to the client requests with matched "isp" and "region" preferences. The portal and webrtc-agent will serve all the isp and region if corresponding configuration items under "capacity" are set to empty lists. If no preferences specified when creating token, default isp and region values are just strings "isp" and "region".
 
 ## 3.7 Runtime Configuration {#Conferencesection3_7}
 Only super service user can access runtime configuration. Current management console implementation just provides the MCU cluster runtime configuration viewer.
