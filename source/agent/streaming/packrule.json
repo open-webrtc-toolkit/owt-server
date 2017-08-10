@@ -1,6 +1,6 @@
 {
-    "name": "avstream-agent",
-    "dest": "avstream_agent",
+    "name": "streaming-agent",
+    "dest": "streaming_agent",
     "node": {
         "bin": "woogeen_avstream",
         "entry": "../erizoJS.js",

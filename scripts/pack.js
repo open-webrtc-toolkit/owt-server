@@ -565,7 +565,13 @@ function packScripts() {
 
   var startCommands = '';
   var stopCommands = '';
-  var scriptItems = allTargets.map((element) => element.rules.name);
+  var scriptItems = [];
+  scriptItems.push('nuve');
+  scriptItems.push('cluster-manager');
+  for (let i = 0; i < allTargets.length; i++) {
+    let name = allTargets[i].rules.name;
+    if (scriptItems.indexOf(name) < 0) scriptItems.push(name);
+  }
   scriptItems.push('app');
   scriptItems.forEach((m) => {
     startCommands += '${bin}/daemon.sh start ' + m + ' $1\n';
