@@ -1,6 +1,6 @@
 {
-    "name": "session-agent",
-    "dest": "session_agent",
+    "name": "conference-agent",
+    "dest": "conference_agent",
     "common": {
         "package": "package.json",
         "files": [
