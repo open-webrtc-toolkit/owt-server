@@ -870,8 +870,13 @@ var LegacyClient = function(clientId, sigConnection, portal) {
           socket: ''
         };
 
+        if (st.info.attributes) {
+          stream.attributes = st.info.attributes;
+        }
+
         if (st.type === 'mixed') {
           stream.view = st.info.label;
+          stream.video.layout = st.info.layout;
           if (st.info.label === 'common') {
             that.commonViewStream = st.id;
           }
