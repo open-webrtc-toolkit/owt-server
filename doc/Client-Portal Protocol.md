@@ -335,9 +335,9 @@ object(TextReceiveMessage)::
 ```
 #### 3.3.6 Participant Starts Publishing a Stream to Room
 **RequestName**:  “publish”
-**RequestData**: The PublicationInfo object with following definition:
+**RequestData**: The PublicationRequest object with following definition:
 ```
-object(PublicationInfo)::
+object(PublicationRequest)::
   {
    type: "webrtc" | "streaming",
    connection: undefined/*If type equals "webrtc"*/
@@ -381,9 +381,9 @@ object(PublicationResult)::
 ```
 #### 3.3.7 Participant Stops Publishing a Stream to Room
 **RequestName**:  “unpublish”
-**RequestData**: The UnpublicationInfo object with following definition:
+**RequestData**: The UnpublicationRequest object with following definition:
 ```
-object(UnpublicationInfo)::
+object(UnpublicationRequest)::
   {
    id: string(SessionId) //same as the stream id.
   }
@@ -436,9 +436,9 @@ object(RegionInfo)::
 ```
 #### 3.3.10 Participant Starts a Subscription
 **RequestName**:  “subscribe”
-**RequestData**: The SubscriptionInfo object with following definition:
+**RequestData**: The SubscriptionRequest object with following definition:
 ```
-object(SubscriptionInfo)::
+object(SubscriptionRequest)::
   {
    type: "webrtc" | "streaming" | "recording",
    connection: undefined/*If type equals "webrtc"*/
@@ -503,9 +503,9 @@ object(SubscriptionResult)::
 ```
 #### 3.3.11 Participant Stops a Self-Initiated Subscription
 **RequestName**:  “unsubscribe”
-**RequestData**: The UnsubscriptionInfo object with following definition:
+**RequestData**: The UnsubscriptionRequest object with following definition:
 ```
-object(UnsubscriptionInfo)::
+object(UnsubscriptionRequest)::
   {
    id: string(SubscriptionId)
   }
