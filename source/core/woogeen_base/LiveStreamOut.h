@@ -18,33 +18,34 @@
  * and approved by Intel in writing.
  */
 
-#ifndef MediaFileOut_h
-#define MediaFileOut_h
+#ifndef LiveStreamOut_h
+#define LiveStreamOut_h
+
+#include <string>
+
+#include <logger.h>
 
 #include "AVStreamOut.h"
-#include <logger.h>
-#include <string>
 
 namespace woogeen_base {
 
-class MediaFileOut : public AVStreamOut {
+class LiveStreamOut : public AVStreamOut {
     DECLARE_LOGGER();
 
 public:
-    MediaFileOut(const std::string& url, bool hasAudio, bool hasVideo, EventRegistry* handle, int recordingTimeout);
-    ~MediaFileOut();
-
-    void onVideoSourceChanged() override;
+    LiveStreamOut(const std::string& url, bool hasAudio, bool hasVideo, EventRegistry* handle, int streamingTimeout);
+    ~LiveStreamOut();
 
 protected:
     bool isAudioFormatSupported(FrameFormat format) override;
     bool isVideoFormatSupported(FrameFormat format) override;
     const char *getFormatName(std::string& url) override;
+    bool writeHeader(void) override;
 
-    uint32_t getKeyFrameInterval(void) override {return 6000;}
-    uint32_t getReconnectCount(void) override {return 0;}
+    uint32_t getKeyFrameInterval(void) override {return 2000;}
+    uint32_t getReconnectCount(void) override {return 1;}
 };
 
-} /* namespace woogeen_base */
+}
 
-#endif /* MediaFileOut_h */
+#endif // LiveStreamOut_h

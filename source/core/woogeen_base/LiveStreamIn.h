@@ -18,8 +18,8 @@
  * and approved by Intel in writing.
  */
 
-#ifndef RtspIn_h
-#define RtspIn_h
+#ifndef LiveStreamIn_h
+#define LiveStreamIn_h
 
 #include <boost/thread.hpp>
 #include <boost/asio.hpp>
@@ -159,7 +159,7 @@ private:
     int64_t m_maxBufferingMs;
 };
 
-class RtspIn : public FrameSource, public JitterBufferListener {
+class LiveStreamIn : public FrameSource, public JitterBufferListener {
     DECLARE_LOGGER();
 
     static const uint32_t DEFAULT_UDP_BUF_SIZE = 8 * 1024 * 1024;
@@ -169,12 +169,12 @@ public:
         std::string transport;
         uint32_t bufferSize;
         std::string enableAudio;
-        std::string  enableVideo;
+        std::string enableVideo;
         Options() : url{""}, transport{"tcp"}, bufferSize{DEFAULT_UDP_BUF_SIZE}, enableAudio{"no"}, enableVideo{"no"} { }
     };
 
-    RtspIn (const Options&, EventRegistry*);
-    virtual ~RtspIn();
+    LiveStreamIn (const Options&, EventRegistry*);
+    virtual ~LiveStreamIn();
 
     void setEventRegistry(EventRegistry* handle) { m_asyncHandle = handle; }
 
@@ -195,8 +195,8 @@ public:
 
 private:
     std::string m_url;
-    bool m_needAudio;
-    bool m_needVideo;
+    std::string m_enableAudio;
+    std::string m_enableVideo;
     EventRegistry* m_asyncHandle;
     AVDictionary* m_options;
     bool m_running;
@@ -245,4 +245,4 @@ private:
 };
 
 }
-#endif /* RtspIn_h */
+#endif /* LiveStreamIn_h */
