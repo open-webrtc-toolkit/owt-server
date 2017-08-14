@@ -21,7 +21,7 @@
 #include "AVStreamInWrap.h"
 #include "../../addons/common/MediaFramePipelineWrapper.h"
 #include <MediaFileIn.h>
-#include <RtspIn.h>
+#include <LiveStreamIn.h>
 
 using namespace v8;
 
@@ -80,7 +80,7 @@ void AVStreamInWrap::New(const FunctionCallbackInfo<Value>& args)
     Local<String> keyBufferSize = String::NewFromUtf8(isolate, "buffer_size");
     Local<String> keyAudio = String::NewFromUtf8(isolate, "has_audio");
     Local<String> keyVideo = String::NewFromUtf8(isolate, "has_video");
-    woogeen_base::RtspIn::Options param{};
+    woogeen_base::LiveStreamIn::Options param{};
     Local<Object> options = args[0]->ToObject();
     if (options->Has(keyUrl))
         param.url = std::string(*String::Utf8Value(options->Get(keyUrl)->ToString()));
@@ -96,7 +96,7 @@ void AVStreamInWrap::New(const FunctionCallbackInfo<Value>& args)
     AVStreamInWrap* obj = new AVStreamInWrap();
     std::string type = std::string(*String::Utf8Value(options->Get(String::NewFromUtf8(isolate, "type"))->ToString()));
     if (type.compare("streaming") == 0)
-        obj->me = new woogeen_base::RtspIn(param, obj);
+        obj->me = new woogeen_base::LiveStreamIn(param, obj);
     else if (type.compare("file") == 0)
         obj->me = new woogeen_base::MediaFileIn();
     else {

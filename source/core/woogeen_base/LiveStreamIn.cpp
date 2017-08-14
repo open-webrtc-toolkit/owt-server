@@ -18,7 +18,7 @@
  * and approved by Intel in writing.
  */
 
-#include "RtspIn.h"
+#include "LiveStreamIn.h"
 
 #include <cstdio>
 #include <rtputils.h>
@@ -142,7 +142,7 @@ void FramePacketBuffer::clear()
     return;
 }
 
-DEFINE_LOGGER(JitterBuffer, "woogeen.RtspIn.JitterBuffer");
+DEFINE_LOGGER(JitterBuffer, "woogeen.LiveStreamIn.JitterBuffer");
 
 JitterBuffer::JitterBuffer(std::string name, SyncMode syncMode, JitterBufferListener *listener, int64_t maxBufferingMs)
     : m_name(name)
@@ -377,12 +377,12 @@ void JitterBuffer::handleJob()
     m_timer->async_wait(boost::bind(&JitterBuffer::onTimeout, this, boost::asio::placeholders::error));
 }
 
-DEFINE_LOGGER(RtspIn, "woogeen.RtspIn");
+DEFINE_LOGGER(LiveStreamIn, "woogeen.LiveStreamIn");
 
-RtspIn::RtspIn(const Options& options, EventRegistry* handle)
+LiveStreamIn::LiveStreamIn(const Options& options, EventRegistry* handle)
     : m_url(options.url)
-    , m_needAudio(options.enableAudio == "yes")//FIXME: need to handle "auto"
-    , m_needVideo(options.enableVideo == "yes")//FIXME: need to handle "auto"
+    , m_enableAudio(options.enableAudio)
+    , m_enableVideo(options.enableVideo)
     , m_asyncHandle(handle)
     , m_options(nullptr)
     , m_running(false)
@@ -399,11 +399,27 @@ RtspIn::RtspIn(const Options& options, EventRegistry* handle)
     , m_audioSampleRate(0)
     , m_audioChannels(0)
 {
-    ELOG_INFO_T("url: %s, audio: %d, video: %d"
-            , m_url.c_str(), m_needAudio, m_needVideo);
+    ELOG_INFO_T("url: %s, audio: %s, video: %s"
+            , m_url.c_str(), m_enableAudio.c_str(), m_enableVideo.c_str());
+
+    if (!m_enableAudio.compare("no") && !m_enableVideo.compare("no")) {
+        ELOG_ERROR_T("Audio/Video not enabled");
+
+        m_AsyncEvent.str("");
+        m_AsyncEvent << "{\"type\":\"failed\",\"reason\":\"Audio/Video not enabled\"}";
+        return;
+    }
+
+    if (ELOG_IS_TRACE_ENABLED())
+        av_log_set_level(AV_LOG_DEBUG);
+    else if (ELOG_IS_DEBUG_ENABLED())
+        av_log_set_level(AV_LOG_INFO);
+    else
+        av_log_set_level(AV_LOG_WARNING);
+
     if(isRtsp()) {
         if (options.transport.compare("udp") == 0) {
-            uint32_t buffer_size =  options.bufferSize > 0 ? options.bufferSize : DEFAULT_UDP_BUF_SIZE;
+            uint32_t buffer_size = options.bufferSize > 0 ? options.bufferSize : DEFAULT_UDP_BUF_SIZE;
             char buf[256];
             snprintf(buf, sizeof(buf), "%u", buffer_size);
             av_dict_set(&m_options, "buffer_size", buf, 0);
@@ -416,10 +432,10 @@ RtspIn::RtspIn(const Options& options, EventRegistry* handle)
         }
     }
 
-    m_thread = boost::thread(&RtspIn::receiveLoop, this);
+    m_thread = boost::thread(&LiveStreamIn::receiveLoop, this);
 }
 
-RtspIn::~RtspIn()
+LiveStreamIn::~LiveStreamIn()
 {
     ELOG_INFO_T("Closing %s" , m_url.c_str());
     m_running = false;
@@ -452,31 +468,16 @@ RtspIn::~RtspIn()
     ELOG_DEBUG_T("Closed");
 }
 
-void RtspIn::requestKeyFrame()
+void LiveStreamIn::requestKeyFrame()
 {
     ELOG_DEBUG_T("requestKeyFrame");
     if (!m_keyFrameRequest)
         m_keyFrameRequest = true;
 }
 
-bool RtspIn::connect()
+bool LiveStreamIn::connect()
 {
     int res;
-
-    if (!m_needVideo && !m_needAudio) {
-        ELOG_ERROR_T("Audio and video not enabled");
-
-        m_AsyncEvent.str("");
-        m_AsyncEvent << "{\"type\":\"failed\",\"reason\":\"audio and video not enabled\"}";
-        return false;
-    }
-
-    if (ELOG_IS_TRACE_ENABLED())
-        av_log_set_level(AV_LOG_DEBUG);
-    else if (ELOG_IS_DEBUG_ENABLED())
-        av_log_set_level(AV_LOG_INFO);
-    else
-        av_log_set_level(AV_LOG_WARNING);
 
     srand((unsigned)time(0));
 
@@ -514,128 +515,142 @@ bool RtspIn::connect()
     m_AsyncEvent.str("");
     m_AsyncEvent << "{\"type\":\"ready\"";
 
-    AVStream *st, *audio_st;
-    if (m_needVideo) {
+    AVStream *video_st, *audio_st;
+    if (!m_enableVideo.compare("yes") || !m_enableVideo.compare("auto")) {
         int streamNo = av_find_best_stream(m_context, AVMEDIA_TYPE_VIDEO, -1, -1, nullptr, 0);
-        if (streamNo < 0) {
-            ELOG_WARN("No Video stream found");
+        if (streamNo >= 0) {
+            video_st = m_context->streams[streamNo];
+            ELOG_INFO_T("Has video, video stream number(%d), codec(%s), %s, %dx%d",
+                    streamNo,
+                    avcodec_get_name(video_st->codecpar->codec_id),
+                    avcodec_profile_name(video_st->codecpar->codec_id, video_st->codecpar->profile),
+                    video_st->codecpar->width,
+                    video_st->codecpar->height
+                    );
 
-            m_AsyncEvent.str("");
-            m_AsyncEvent << "{\"type\":\"failed\",\"reason\":\"no video stream found\"}";
-            return false;
-        }
-        m_videoStreamIndex = streamNo;
-        st = m_context->streams[streamNo];
-        ELOG_INFO_T("Has video, video stream number(%d), codec(%s), %s, %dx%d",
-                m_videoStreamIndex,
-                avcodec_get_name(st->codecpar->codec_id),
-                avcodec_profile_name(st->codecpar->codec_id, st->codecpar->profile),
-                st->codecpar->width,
-                st->codecpar->height
-                );
+            AVCodecID videoCodecId = video_st->codecpar->codec_id;
+            switch (videoCodecId) {
+                case AV_CODEC_ID_VP8:
+                    m_videoFormat = FRAME_FORMAT_VP8;
+                    m_AsyncEvent << ",\"video\":{\"codec\":" << "\"vp8\"";
+                    break;
 
-        AVCodecID videoCodecId = st->codecpar->codec_id;
-        switch (videoCodecId) {
-            case AV_CODEC_ID_VP8:
-                m_videoFormat = FRAME_FORMAT_VP8;
-                m_AsyncEvent << ",\"video\":{\"codec\":" << "\"vp8\"";
-                break;
+                case AV_CODEC_ID_H264:
+                    m_videoFormat = FRAME_FORMAT_H264;
+                    m_AsyncEvent << ",\"video\":{\"codec\":" << "\"h264\"";
+                    break;
 
-            case AV_CODEC_ID_H264:
-                m_videoFormat = FRAME_FORMAT_H264;
-                m_AsyncEvent << ",\"video\":{\"codec\":" << "\"h264\"";
-                break;
+                case AV_CODEC_ID_H265:
+                    m_videoFormat = FRAME_FORMAT_H265;
+                    m_AsyncEvent << ",\"video\":{\"codec\":" << "\"h265\"";
+                    break;
 
-            case AV_CODEC_ID_H265:
-                m_videoFormat = FRAME_FORMAT_H265;
-                m_AsyncEvent << ",\"video\":{\"codec\":" << "\"h265\"";
-                break;
+                default:
+                    ELOG_WARN("Video codec %s is not supported", avcodec_get_name(videoCodecId));
+                    break;
+            }
 
-            default:
-                ELOG_WARN("Video codec %s is not supported", avcodec_get_name(videoCodecId));
+            if (m_videoFormat != FRAME_FORMAT_UNKNOWN) {
+                m_videoSize.width = video_st->codecpar->width;
+                m_videoSize.height = video_st->codecpar->height;
+                m_AsyncEvent << ",\"resolution\":" << "{\"width\":" << video_st->codecpar->width << ", \"height\":" << video_st->codecpar->height << "}}";
 
+                if (!isRtsp())
+                    m_videoJitterBuffer.reset(new JitterBuffer("video", JitterBuffer::SYNC_MODE_SLAVE, this));
+
+                m_videoTimeBase.num = 1;
+                m_videoTimeBase.den = 90000;
+
+                m_videoStreamIndex = streamNo;
+            } else if (!m_enableVideo.compare("yes")) {
                 m_AsyncEvent.str("");
                 m_AsyncEvent << "{\"type\":\"failed\",\"reason\":\"video codec is not supported\"}";
                 return false;
+            }
+        } else {
+            ELOG_WARN("No Video stream found");
+
+            if (!m_enableVideo.compare("yes")) {
+                m_AsyncEvent.str("");
+                m_AsyncEvent << "{\"type\":\"failed\",\"reason\":\"no video stream found\"}";
+                return false;
+            }
         }
-
-        m_videoSize.width = st->codecpar->width;
-        m_videoSize.height = st->codecpar->height;
-        m_AsyncEvent << ",\"resolution\":" << "{\"width\":" << st->codecpar->width << ", \"height\":" << st->codecpar->height << "}}";
-
-        if (!isRtsp())
-            m_videoJitterBuffer.reset(new JitterBuffer("video", JitterBuffer::SYNC_MODE_SLAVE, this));
-
-        m_videoTimeBase.num = 1;
-        m_videoTimeBase.den = 90000;
     }
 
-    if (m_needAudio) {
-        int audioStreamNo = av_find_best_stream(m_context, AVMEDIA_TYPE_AUDIO, -1, -1, nullptr, 0);
-        if (audioStreamNo < 0) {
-            ELOG_WARN("No Audio stream found");
+    if (!m_enableAudio.compare("yes") || !m_enableAudio.compare("auto")) {
+        int streamNo = av_find_best_stream(m_context, AVMEDIA_TYPE_AUDIO, -1, -1, nullptr, 0);
+        if (streamNo >= 0) {
+            audio_st = m_context->streams[streamNo];
+            ELOG_INFO_T("Has audio, audio stream number(%d), codec(%s), %d-%d",
+                    streamNo,
+                    avcodec_get_name(audio_st->codecpar->codec_id),
+                    audio_st->codecpar->sample_rate,
+                    audio_st->codecpar->channels
+                    );
 
-            m_AsyncEvent.str("");
-            m_AsyncEvent << "{\"type\":\"failed\",\"reason\":\"no audio stream found\"}";
-            return false;
-        }
-        m_audioStreamIndex = audioStreamNo;
-        audio_st = m_context->streams[m_audioStreamIndex];
-        ELOG_INFO_T("Has audio, audio stream number(%d), codec(%s), %d-%d",
-                m_audioStreamIndex,
-                avcodec_get_name(audio_st->codecpar->codec_id),
-                audio_st->codecpar->sample_rate,
-                audio_st->codecpar->channels
-                );
+            AVCodecID audioCodecId = audio_st->codecpar->codec_id;
+            switch(audioCodecId) {
+                case AV_CODEC_ID_PCM_MULAW:
+                    m_audioFormat = FRAME_FORMAT_PCMU;
+                    m_AsyncEvent << ",\"audio\":{\"codec\":" << "\"pcmu\"}";
+                    break;
 
-        AVCodecID audioCodecId = audio_st->codecpar->codec_id;
-        switch(audioCodecId) {
-            case AV_CODEC_ID_PCM_MULAW:
-                m_audioFormat = FRAME_FORMAT_PCMU;
-                m_AsyncEvent << ",\"audio\":{\"codec\":" << "\"pcmu\"}";
-                break;
+                case AV_CODEC_ID_PCM_ALAW:
+                    m_audioFormat = FRAME_FORMAT_PCMA;
+                    m_AsyncEvent << ",\"audio\":{\"codec\":" << "\"pcma\"}";
+                    break;
 
-            case AV_CODEC_ID_PCM_ALAW:
-                m_audioFormat = FRAME_FORMAT_PCMA;
-                m_AsyncEvent << ",\"audio\":{\"codec\":" << "\"pcma\"}";
-                break;
+                case AV_CODEC_ID_OPUS:
+                    m_audioFormat = FRAME_FORMAT_OPUS;
+                    m_AsyncEvent << ",\"audio\":{\"codec\":" << "\"opus\",\"sampleRate\":48000, \"channelNum\":2}";
+                    break;
 
-            case AV_CODEC_ID_OPUS:
-                m_audioFormat = FRAME_FORMAT_OPUS;
-                m_AsyncEvent << ",\"audio\":{\"codec\":" << "\"opus\",\"sampleRate\":48000, \"channelNum\":2}";
-                break;
+                case AV_CODEC_ID_AAC:
+                    m_audioFormat = FRAME_FORMAT_AAC;
+                    m_AsyncEvent << ",\"audio\":{\"codec\":" << "\"aac\"}";
+                    break;
 
-            case AV_CODEC_ID_AAC:
-                m_audioFormat = FRAME_FORMAT_AAC;
-                m_AsyncEvent << ",\"audio\":{\"codec\":" << "\"aac\"}";
-                break;
+                case AV_CODEC_ID_AC3:
+                    m_audioFormat = FRAME_FORMAT_AC3;
+                    m_AsyncEvent << ",\"audio\":{\"codec\":" << "\"ac3\"}";
+                    break;
 
-            case AV_CODEC_ID_AC3:
-                m_audioFormat = FRAME_FORMAT_AC3;
-                m_AsyncEvent << ",\"audio\":{\"codec\":" << "\"ac3\"}";
-                break;
+                case AV_CODEC_ID_NELLYMOSER:
+                    m_audioFormat = FRAME_FORMAT_NELLYMOSER;
+                    m_AsyncEvent << ",\"audio\":{\"codec\":" << "\"nellymoser\"}";
+                    break;
 
-            case AV_CODEC_ID_NELLYMOSER:
-                m_audioFormat = FRAME_FORMAT_NELLYMOSER;
-                m_AsyncEvent << ",\"audio\":{\"codec\":" << "\"nellymoser\"}";
-                break;
+                default:
+                    ELOG_WARN("Audio codec %s is not supported ", avcodec_get_name(audioCodecId));
+                    break;
+            }
 
-            default:
-                ELOG_WARN("Audio codec %s is not supported ", avcodec_get_name(audioCodecId));
+            if (m_audioFormat != FRAME_FORMAT_UNKNOWN) {
+                if (!isRtsp())
+                    m_audioJitterBuffer.reset(new JitterBuffer("audio", JitterBuffer::SYNC_MODE_MASTER, this));
 
+                m_audioTimeBase.num = 1;
+                m_audioTimeBase.den = audio_st->codecpar->sample_rate;
+
+                m_audioSampleRate = audio_st->codecpar->sample_rate;
+                m_audioChannels = audio_st->codecpar->channels;
+
+                m_audioStreamIndex = streamNo;
+            } else if (!m_enableAudio.compare("yes")) {
                 m_AsyncEvent.str("");
                 m_AsyncEvent << "{\"type\":\"failed\",\"reason\":\"audio codec is not supported\"}";
                 return false;
+            }
+        } else {
+            ELOG_WARN("No Audio stream found");
+
+            if (!m_enableAudio.compare("yes")) {
+                m_AsyncEvent.str("");
+                m_AsyncEvent << "{\"type\":\"failed\",\"reason\":\"no audio stream found\"}";
+                return false;
+            }
         }
-
-        if (!isRtsp())
-            m_audioJitterBuffer.reset(new JitterBuffer("audio", JitterBuffer::SYNC_MODE_MASTER, this));
-
-        m_audioTimeBase.num = 1;
-        m_audioTimeBase.den = audio_st->codecpar->sample_rate;
-
-        m_audioSampleRate = audio_st->codecpar->sample_rate;
-        m_audioChannels = audio_st->codecpar->channels;
     }
 
     m_msTimeBase.num = 1;
@@ -655,7 +670,7 @@ bool RtspIn::connect()
     return true;
 }
 
-bool RtspIn::reconnect()
+bool LiveStreamIn::reconnect()
 {
     int res;
 
@@ -698,7 +713,7 @@ bool RtspIn::reconnect()
     ELOG_DEBUG_T("Dump format");
     av_dump_format(m_context, 0, nullptr, 0);
 
-    if (m_needVideo) {
+    if (m_videoStreamIndex != -1) {
         int streamNo = av_find_best_stream(m_context, AVMEDIA_TYPE_VIDEO, -1, -1, nullptr, 0);
         if (streamNo < 0) {
             ELOG_ERROR_T("No Video stream found");
@@ -711,7 +726,7 @@ bool RtspIn::reconnect()
         }
     }
 
-    if (m_needAudio) {
+    if (m_audioStreamIndex != -1) {
         int streamNo = av_find_best_stream(m_context, AVMEDIA_TYPE_AUDIO, -1, -1, nullptr, 0);
         if (streamNo < 0) {
             ELOG_ERROR_T("No Audio stream found");
@@ -734,7 +749,7 @@ bool RtspIn::reconnect()
     return true;
 }
 
-void RtspIn::receiveLoop()
+void LiveStreamIn::receiveLoop()
 {
     int ret = connect();
     if (!ret) {
@@ -746,7 +761,7 @@ void RtspIn::receiveLoop()
     ELOG_DEBUG_T("%s", m_AsyncEvent.str().c_str());
     ::notifyAsyncEvent(m_asyncHandle, "status", m_AsyncEvent.str().c_str());
 
-    if (m_needVideo) {
+    if (m_videoStreamIndex != -1) {
         int i = 0;
 
         while (!m_keyFrameRequest) {
@@ -816,7 +831,7 @@ void RtspIn::receiveLoop()
     ELOG_DEBUG_T("Thread exited!");
 }
 
-void RtspIn::checkVideoBitstream(AVStream *st, const AVPacket *pkt)
+void LiveStreamIn::checkVideoBitstream(AVStream *st, const AVPacket *pkt)
 {
     int ret;
     const char *filter_name = NULL;
@@ -880,7 +895,7 @@ exit:
     ELOG_DEBUG_T("%s video bitstream filter", m_needApplyVBSF ? "Apply" : "Not apply");
 }
 
-void RtspIn::filterSEI(AVPacket *pkt) {
+void LiveStreamIn::filterSEI(AVPacket *pkt) {
     // After the annex-b bitstream is generated, remove SEI NALs from the stream
     // as chrome-58 does not accept pic-timing-sei.
     if (pkt == nullptr)
@@ -934,7 +949,7 @@ void RtspIn::filterSEI(AVPacket *pkt) {
     av_shrink_packet(pkt, new_size);
 }
 
-bool RtspIn::filterVBS(AVStream *st, AVPacket *pkt) {
+bool LiveStreamIn::filterVBS(AVStream *st, AVPacket *pkt) {
     int ret;
 
     checkVideoBitstream(st, pkt);
@@ -979,7 +994,7 @@ bool RtspIn::filterVBS(AVStream *st, AVPacket *pkt) {
 }
 
 // Returns the offset of next NALU(including SC) from provided buffer.
-int RtspIn::getNextNaluPosition(uint8_t *buffer, int buffer_size, bool &is_sei) {
+int LiveStreamIn::getNextNaluPosition(uint8_t *buffer, int buffer_size, bool &is_sei) {
     if (buffer_size < 4) {
         return -1;
     }
@@ -1011,7 +1026,7 @@ int RtspIn::getNextNaluPosition(uint8_t *buffer, int buffer_size, bool &is_sei) 
     return -1;
 }
 
-void RtspIn::onSyncTimeChanged(JitterBuffer *jitterBuffer, int64_t syncTimestamp)
+void LiveStreamIn::onSyncTimeChanged(JitterBuffer *jitterBuffer, int64_t syncTimestamp)
 {
     if (m_audioJitterBuffer.get() == jitterBuffer) {
         ELOG_DEBUG_T("onSyncTimeChanged audio, timestamp %ld ", syncTimestamp);
@@ -1032,7 +1047,7 @@ void RtspIn::onSyncTimeChanged(JitterBuffer *jitterBuffer, int64_t syncTimestamp
     }
 }
 
-void RtspIn::deliverNullVideoFrame()
+void LiveStreamIn::deliverNullVideoFrame()
 {
     uint8_t dumyData = 0;
     Frame frame;
@@ -1044,7 +1059,7 @@ void RtspIn::deliverNullVideoFrame()
     ELOG_DEBUG_T("deliver null video frame");
 }
 
-void RtspIn::deliverVideoFrame(AVPacket *pkt)
+void LiveStreamIn::deliverVideoFrame(AVPacket *pkt)
 {
     Frame frame;
     memset(&frame, 0, sizeof(frame));
@@ -1057,7 +1072,7 @@ void RtspIn::deliverVideoFrame(AVPacket *pkt)
     frame.additionalInfo.video.isKeyFrame = (pkt->flags & AV_PKT_FLAG_KEY);
     deliverFrame(frame);
 
-    ELOG_DEBUG_T("deliver video frame, timestamp %ld(%ld), size %4d, %s"
+    ELOG_TRACE_T("deliver video frame, timestamp %ld(%ld), size %4d, %s"
             , timeRescale(frame.timeStamp, m_videoTimeBase, m_msTimeBase)
             , pkt->dts
             , frame.length
@@ -1065,7 +1080,7 @@ void RtspIn::deliverVideoFrame(AVPacket *pkt)
             );
 }
 
-void RtspIn::deliverAudioFrame(AVPacket *pkt)
+void LiveStreamIn::deliverAudioFrame(AVPacket *pkt)
 {
     Frame frame;
     memset(&frame, 0, sizeof(frame));
@@ -1079,13 +1094,13 @@ void RtspIn::deliverAudioFrame(AVPacket *pkt)
     frame.additionalInfo.audio.nbSamples = frame.length / frame.additionalInfo.audio.channels /2;
     deliverFrame(frame);
 
-    ELOG_DEBUG_T("deliver audio frame, timestamp %ld(%ld), size %4d"
+    ELOG_TRACE_T("deliver audio frame, timestamp %ld(%ld), size %4d"
             , timeRescale(frame.timeStamp, m_audioTimeBase, m_msTimeBase)
             , pkt->dts
             , frame.length);
 }
 
-void RtspIn::onDeliverFrame(JitterBuffer *jitterBuffer, AVPacket *pkt)
+void LiveStreamIn::onDeliverFrame(JitterBuffer *jitterBuffer, AVPacket *pkt)
 {
     if (m_videoJitterBuffer.get() == jitterBuffer) {
         deliverVideoFrame(pkt);
@@ -1096,7 +1111,7 @@ void RtspIn::onDeliverFrame(JitterBuffer *jitterBuffer, AVPacket *pkt)
     }
 }
 
-char *RtspIn::ff_err2str(int errRet)
+char *LiveStreamIn::ff_err2str(int errRet)
 {
     av_strerror(errRet, (char*)(&m_errbuff), 500);
     return m_errbuff;

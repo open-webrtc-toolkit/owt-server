@@ -21,15 +21,20 @@
 #ifndef AVStreamOut_h
 #define AVStreamOut_h
 
+#include <queue>
+#include <boost/shared_ptr.hpp>
+#include <boost/thread.hpp>
+#include <boost/thread/mutex.hpp>
+
+#include <logger.h>
+#include <EventRegistry.h>
+#include <rtputils.h>
+
 #include "MediaFramePipeline.h"
 
-#include <EventRegistry.h>
-#include <JobTimer.h>
-#include <queue>
-#include <boost/scoped_ptr.hpp>
-#include <boost/shared_ptr.hpp>
-#include <boost/thread/mutex.hpp>
-#include <rtputils.h>
+extern "C" {
+#include <libavformat/avformat.h>
+}
 
 namespace woogeen_base {
 
@@ -40,39 +45,48 @@ static inline int64_t currentTimeMs()
     return ((time.tv_sec * 1000) + (time.tv_usec / 1000));
 }
 
-class EncodedFrame {
+class MediaFrame {
 public:
-    EncodedFrame(const uint8_t* data, size_t length, int64_t timeStamp, FrameFormat format)
+    MediaFrame(const woogeen_base::Frame& frame, int64_t timeStamp = 0)
         : m_timeStamp(timeStamp)
-        , m_payloadData(nullptr)
-        , m_payloadSize(length)
-        , m_format(format)
     {
-        // copy the encoded frame
-        m_payloadData = new uint8_t[length];
-        memcpy(m_payloadData, data, length);
+        m_frame = frame;
+        if (frame.length > 0) {
+            uint8_t *payload = frame.payload;
+            uint32_t length = frame.length;
+
+            if (isAudioFrame(frame) && frame.additionalInfo.audio.isRtpPacket) {
+                RTPHeader* rtp = reinterpret_cast<RTPHeader*>(payload);
+                uint32_t headerLength = rtp->getHeaderLength();
+                assert(length >= headerLength);
+                payload += headerLength;
+                length -= headerLength;
+                m_frame.additionalInfo.audio.isRtpPacket = false;
+            }
+
+            m_frame.payload = (uint8_t *)malloc(length);
+            memcpy(m_frame.payload, payload, length);
+        } else {
+            m_frame.payload = NULL;
+        }
     }
 
-    ~EncodedFrame()
+    ~MediaFrame()
     {
-        if (m_payloadData) {
-            delete[] m_payloadData;
-            m_payloadData = nullptr;
+        if (m_frame.payload) {
+            free(m_frame.payload);
+            m_frame.payload = NULL;
         }
     }
 
     int64_t m_timeStamp;
-    uint8_t* m_payloadData;
-    size_t m_payloadSize;
-    FrameFormat m_format;
+    woogeen_base::Frame m_frame;
 };
-
-static const unsigned int DEFAULT_QUEUE_MAX = 10;
 
 class MediaFrameQueue {
 public:
-    MediaFrameQueue(unsigned int max = DEFAULT_QUEUE_MAX)
-        : m_max(max)
+    MediaFrameQueue()
+        : m_valid(true)
         , m_startTimeOffset(currentTimeMs())
     {
     }
@@ -81,53 +95,57 @@ public:
     {
     }
 
-    void pushFrame(const uint8_t* data, size_t length, FrameFormat format = FRAME_FORMAT_UNKNOWN)
+    void pushFrame(const woogeen_base::Frame& frame)
     {
         boost::mutex::scoped_lock lock(m_mutex);
+        if (!m_valid)
+            return;
 
-        int64_t timestamp = currentTimeMs() - m_startTimeOffset;
-        boost::shared_ptr<EncodedFrame> newFrame(new EncodedFrame(data, length, timestamp, format));
-        m_queue.push(newFrame);
-
+        boost::shared_ptr<MediaFrame> mediaFrame(new MediaFrame(frame, currentTimeMs() - m_startTimeOffset));
+        m_queue.push(mediaFrame);
         if (m_queue.size() == 1)
             m_cond.notify_one();
     }
 
-    boost::shared_ptr<EncodedFrame> popFrame(int timeout = 0)
+    boost::shared_ptr<MediaFrame> popFrame(int timeout = 0)
     {
         boost::mutex::scoped_lock lock(m_mutex);
-        boost::shared_ptr<EncodedFrame> frame;
+        boost::shared_ptr<MediaFrame> mediaFrame;
+
+        if (!m_valid)
+            return NULL;
 
         if (m_queue.size() == 0 && timeout > 0) {
             m_cond.timed_wait(lock, boost::get_system_time() + boost::posix_time::milliseconds(timeout));
         }
 
         if (m_queue.size() > 0) {
-            frame = m_queue.front();
+            mediaFrame = m_queue.front();
             m_queue.pop();
         }
 
-        return frame;
+        return mediaFrame;
     }
 
     void cancel()
     {
         boost::mutex::scoped_lock lock(m_mutex);
+        m_valid = false;
         m_cond.notify_all();
     }
 
 private:
-    // This queue can be used to store decoded frames
-    std::queue<boost::shared_ptr<EncodedFrame>> m_queue;
-    // The max size we allow the queue to grow before discarding frames
-    unsigned int m_max;
-    int64_t m_startTimeOffset;
-
+    std::queue<boost::shared_ptr<MediaFrame>> m_queue;
     boost::mutex m_mutex;
     boost::condition_variable m_cond;
+
+    bool m_valid;
+    int64_t m_startTimeOffset;
 };
 
-class AVStreamOut : public FrameDestination, public JobTimerListener, public EventRegistry {
+class AVStreamOut : public woogeen_base::FrameDestination, public EventRegistry {
+    DECLARE_LOGGER();
+
 public:
     enum Status {
         Context_CLOSED = -1,
@@ -136,47 +154,82 @@ public:
         Context_READY = 2
     };
 
-    AVStreamOut(EventRegistry* handle = nullptr)
-        : m_status{ Context_EMPTY }
-        , m_lastKeyFrameReqTime{ 0 }
-        , m_asyncHandle{ handle }
-    {
-    }
+    AVStreamOut(const std::string& url, bool hasAudio, bool hasVideo, EventRegistry* handle, int timeout);
     virtual ~AVStreamOut() {}
 
-    void setEventRegistry(EventRegistry* handle) { m_asyncHandle = handle; }
-
     // FrameDestination
-    virtual void onFrame(const Frame&) = 0;
-    virtual void onVideoSourceChanged() {deliverFeedbackMsg(FeedbackMsg{.type = VIDEO_FEEDBACK, .cmd = REQUEST_KEY_FRAME });}
-
-    // JobTimerListener
-    virtual void onTimeout() = 0;
+    virtual void onFrame(const Frame&);
+    virtual void onVideoSourceChanged(void) {deliverFeedbackMsg(FeedbackMsg{.type = VIDEO_FEEDBACK, .cmd = REQUEST_KEY_FRAME });}
 
 protected:
-    Status m_status;
-    boost::scoped_ptr<JobTimer> m_jobTimer;
-    int64_t m_lastKeyFrameReqTime;
+    virtual bool isAudioFormatSupported(FrameFormat format) = 0;
+    virtual bool isVideoFormatSupported(FrameFormat format) = 0;
+    virtual const char *getFormatName(std::string& url) = 0;
+    virtual uint32_t getKeyFrameInterval(void) = 0;
+    virtual uint32_t getReconnectCount(void) = 0;
+
+    virtual bool writeHeader(void);
 
     // EventRegistry
     virtual bool notifyAsyncEvent(const std::string& event, const std::string& data)
     {
-        if (m_asyncHandle)
+        if (m_asyncHandle) {
             return m_asyncHandle->notifyAsyncEvent(event, data);
-
-        return false;
+        } else {
+            return false;
+        }
     }
 
     virtual bool notifyAsyncEventInEmergency(const std::string& event, const std::string& data)
     {
-        if (m_asyncHandle)
+        if (m_asyncHandle) {
             return m_asyncHandle->notifyAsyncEventInEmergency(event, data);
-
-        return false;
+        } else {
+            return false;
+        }
     }
 
-private:
-    EventRegistry* m_asyncHandle;
+    void close();
+    bool connect(void);
+    void disconnect(void);
+    bool addAudioStream(FrameFormat format, uint32_t sampleRate, uint32_t channels);
+    bool addVideoStream(FrameFormat format, uint32_t width, uint32_t height);
+
+    bool writeFrame(AVStream *stream, boost::shared_ptr<MediaFrame> mediaFrame);
+
+    void sendLoop(void);
+
+    char *ff_err2str(int errRet);
+
+protected:
+    Status m_status;
+
+    std::string m_url;
+    bool m_hasAudio;
+    bool m_hasVideo;
+    EventRegistry *m_asyncHandle;
+    uint32_t m_timeOutMs;
+
+    FrameFormat m_audioFormat;
+    uint32_t m_sampleRate;
+    uint32_t m_channels;
+    FrameFormat m_videoFormat;
+    uint32_t m_width;
+    uint32_t m_height;
+
+    bool m_videoSourceChanged;
+
+    boost::shared_ptr<woogeen_base::MediaFrame> m_videoKeyFrame;
+    MediaFrameQueue m_frameQueue;
+
+    AVFormatContext *m_context;
+    AVStream *m_audioStream;
+    AVStream *m_videoStream;
+
+    int64_t m_lastKeyFrameTimestamp;
+    char m_errbuff[500];
+
+    boost::thread m_thread;
 };
 
 } /* namespace woogeen_base */
