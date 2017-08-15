@@ -28,9 +28,9 @@ module.exports = function (rpcClient) {
     };
 
     var createAVStreamIn = function (sessionId, options) {
-        var avstream_options = {type: 'avstream',
-                                has_audio: !!options.media.audio,//FIXME: maybe 'auto'
-                                has_video: !!options.media.video,//FIXME: maybe 'auto'
+        var avstream_options = {type: 'streaming',
+                                has_audio: (options.media.audio === 'auto' ? 'auto' : (!!options.media.audio ? 'yes' : 'no')),
+                                has_video: (options.media.video === 'auto' ? 'auto' : (!!options.media.video ? 'yes' : 'no')),
                                 transport: options.connection.transportProtocol,
                                 buffer_size: options.connection.bufferSize,
                                 url: options.connection.url};
@@ -44,7 +44,7 @@ module.exports = function (rpcClient) {
     };
 
     var createAVStreamOut = function (connectionId, options) {
-        var avstream_options = {type: 'avstream',
+        var avstream_options = {type: 'streaming',
                                 require_audio: !!options.media.audio,
                                 require_video: !!options.media.video,
                                 audio_codec: 'aac'/*FIXME:hard coded*/,

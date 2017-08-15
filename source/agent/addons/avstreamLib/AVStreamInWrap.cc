@@ -26,9 +26,7 @@
 using namespace v8;
 
 Persistent<Function> AVStreamInWrap::constructor;
-AVStreamInWrap::AVStreamInWrap(bool a, bool v)
-    : enableAudio{ a }
-    , enableVideo{ v }
+AVStreamInWrap::AVStreamInWrap()
 {
 }
 AVStreamInWrap::~AVStreamInWrap() {}
@@ -82,7 +80,6 @@ void AVStreamInWrap::New(const FunctionCallbackInfo<Value>& args)
     Local<String> keyBufferSize = String::NewFromUtf8(isolate, "buffer_size");
     Local<String> keyAudio = String::NewFromUtf8(isolate, "has_audio");
     Local<String> keyVideo = String::NewFromUtf8(isolate, "has_video");
-    Local<String> keyH264 = String::NewFromUtf8(isolate, "h264");
     woogeen_base::RtspIn::Options param{};
     Local<Object> options = args[0]->ToObject();
     if (options->Has(keyUrl))
@@ -92,17 +89,13 @@ void AVStreamInWrap::New(const FunctionCallbackInfo<Value>& args)
     if (options->Has(keyBufferSize))
         param.bufferSize = options->Get(keyBufferSize)->Uint32Value();
     if (options->Has(keyAudio))
-        param.enableAudio = (*options->Get(keyAudio)->ToBoolean())->BooleanValue();
+        param.enableAudio = std::string(*String::Utf8Value(options->Get(keyAudio)->ToString()));
     if (options->Has(keyVideo))
-        param.enableVideo = (*options->Get(keyVideo)->ToBoolean())->BooleanValue();
-    if (options->Has(keyH264))
-        param.enableH264 = (*options->Get(keyH264)->ToBoolean())->BooleanValue();
-    else
-        param.enableH264 = true;
+        param.enableVideo = std::string(*String::Utf8Value(options->Get(keyVideo)->ToString()));
 
-    AVStreamInWrap* obj = new AVStreamInWrap(param.enableAudio, param.enableVideo);
+    AVStreamInWrap* obj = new AVStreamInWrap();
     std::string type = std::string(*String::Utf8Value(options->Get(String::NewFromUtf8(isolate, "type"))->ToString()));
-    if (type.compare("avstream") == 0)
+    if (type.compare("streaming") == 0)
         obj->me = new woogeen_base::RtspIn(param, obj);
     else if (type.compare("file") == 0)
         obj->me = new woogeen_base::MediaFileIn();
@@ -142,9 +135,9 @@ void AVStreamInWrap::addDestination(const FunctionCallbackInfo<Value>& args)
     FrameDestination* param = ObjectWrap::Unwrap<FrameDestination>(args[1]->ToObject());
     woogeen_base::FrameDestination* dest = param->dest;
 
-    if (obj->enableAudio && track == "audio")
+    if (track == "audio")
         obj->me->addAudioDestination(dest);
-    else if (obj->enableVideo && track == "video")
+    else if (track == "video")
         obj->me->addVideoDestination(dest);
 }
 
@@ -160,8 +153,8 @@ void AVStreamInWrap::removeDestination(const FunctionCallbackInfo<Value>& args)
     FrameDestination* param = ObjectWrap::Unwrap<FrameDestination>(args[1]->ToObject());
     woogeen_base::FrameDestination* dest = param->dest;
 
-    if (obj->enableAudio && track == "audio")
+    if (track == "audio")
         obj->me->removeAudioDestination(dest);
-    else if (obj->enableVideo && track == "video")
+    else if (track == "video")
         obj->me->removeVideoDestination(dest);
 }

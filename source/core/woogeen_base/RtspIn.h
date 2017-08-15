@@ -168,10 +168,9 @@ public:
         std::string url;
         std::string transport;
         uint32_t bufferSize;
-        bool enableAudio;
-        bool enableVideo;
-        bool enableH264;
-        Options() : url{""}, transport{"tcp"}, bufferSize{DEFAULT_UDP_BUF_SIZE}, enableAudio{false}, enableVideo{false}, enableH264{false} { }
+        std::string enableAudio;
+        std::string  enableVideo;
+        Options() : url{""}, transport{"tcp"}, bufferSize{DEFAULT_UDP_BUF_SIZE}, enableAudio{"no"}, enableVideo{"no"} { }
     };
 
     RtspIn (const Options&, EventRegistry*);

@@ -87,7 +87,7 @@ void AVStreamOutWrap::New(const v8::FunctionCallbackInfo<v8::Value>& args)
     std::string type = std::string(*String::Utf8Value(options->Get(String::NewFromUtf8(isolate, "type"))->ToString()));
     std::string url = std::string(*String::Utf8Value(options->Get(String::NewFromUtf8(isolate, "url"))->ToString()));
     int initializeTimeout = options->Get(String::NewFromUtf8(isolate, "initializeTimeout"))->Int32Value();
-    if (type.compare("avstream") == 0) {
+    if (type.compare("streaming") == 0) {
         obj->me = new woogeen_base::RtspOut(url, requireAudio, requireVideo, obj, initializeTimeout);
     } else if (type.compare("file") == 0) {
         obj->me = new woogeen_base::MediaFileOut(url, requireAudio, requireVideo, obj, initializeTimeout);
