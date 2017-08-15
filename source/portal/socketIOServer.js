@@ -921,7 +921,7 @@ var Client = function(participant_id, socket, portal, observer, reconnection_spe
             return safeCall(callback, 'error', 'Invalid receiver');
           }
 
-          return portal.text(participant_id, {to: msg.receiver, message: msg.data})
+          return portal.text(participant_id, msg.receiver, msg.data)
             .then(function() {
               safeCall(callback, 'success');
             }).catch(function(err) {
