@@ -2,7 +2,7 @@
     "name": "streaming-agent",
     "dest": "streaming_agent",
     "node": {
-        "bin": "woogeen_avstream",
+        "bin": "woogeen_streaming",
         "entry": "../erizoJS.js",
         "libpath": "avstream",
         "libfiles": [
