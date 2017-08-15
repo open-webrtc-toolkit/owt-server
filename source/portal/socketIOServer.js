@@ -118,7 +118,7 @@ var Client = function(participant_id, socket, portal, observer, reconnection_spe
   let disconnect_timeout;  // Timeout function for disconnection. It will be executed if disconnect timeout reached, will be cleared if other client valid reconnection ticket success.
   let disconnected = false;
   let old_clients = [];  // Old clients before reconnections.
-  let published_webrtc = {/*StreamId: {mix: boolean(IfMix)}*/}; //FIXME: for compatibility purpose for old clients(such as v3.4.x)
+  let published = {/*StreamId: {type: "webrtc" | "streamingIn", mix: boolean(IfMix)}*/}; //FIXME: for compatibility purpose for old clients(such as v3.4.x)
   let ref2subId = {/*PeerId | StreamingOutURL | RecorderId: SubscriptionId}*/}; //FIXME: for compatibility purpose for old clients(such as v3.4.x)
   let subId2ref = {/*SubscriptionId: PeerId | StreamingOutURL | RecorderId}*/}; //FIXME: for compatibility purpose for old clients(such as v3.4.x)
 
@@ -310,7 +310,7 @@ var Client = function(participant_id, socket, portal, observer, reconnection_spe
         old_clients=result.oldClients;
         that.inRoom=result.roomId;
         participant_id=result.participantId;
-        published_webrtc=result.published_webrtc;
+        published=result.published;
         ref2subId=result.ref2subId;
         subId2ref=result.subId2ref;
         for(let client of old_clients){
@@ -381,9 +381,10 @@ var Client = function(participant_id, socket, portal, observer, reconnection_spe
         log.debug('portal.publish -', result);
         if (options.state === 'erizo') {
           safeCall(callback, 'initializing', stream_id);
-          published_webrtc[stream_id] = {mix: !options.unmix};
+          published[stream_id] = {type: 'webrtc', mix: !(options.unmix || (options.video && options.video.device === 'screen'))};
         } else {
           safeCall(callback, 'success', stream_id);
+          published[stream_id] = {type: 'streamingIn', mix: !options.unmix};
         }
       })
       .catch(function(err) {
@@ -401,7 +402,7 @@ var Client = function(participant_id, socket, portal, observer, reconnection_spe
       return portal.unpublish(participant_id, streamId)
       .then(function() {
         safeCall(callback, 'success');
-        published_webrtc[streamId] && (delete published_webrtc[streamId]);
+        published[streamId] && (delete published[streamId]);
       }).catch(function(err) {
         const err_message = getErrorMessage(err);
         log.info('portal.unpublish failed:', err_message);
@@ -466,6 +467,10 @@ var Client = function(participant_id, socket, portal, observer, reconnection_spe
         return safeCall(callback, 'error', 'Illegal request');
       }
 
+      if (!isValidIdString(options.streamId)) {
+        return safeCall(callback, 'error', 'Invalid stream id');
+      }
+
       var peer_id = options.streamId;
       if (ref2subId[peer_id]) {
         return safeCall(callback, 'error', 'Subscription is ongoing');
@@ -528,7 +533,7 @@ var Client = function(participant_id, socket, portal, observer, reconnection_spe
         return safeCall(callback, 'error', 'Illegal request');
       }
 
-      var session_id = (published_webrtc[message.streamId] ? message.streamId : ref2subId[message.streamId]);
+      var session_id = (published[message.streamId] ? message.streamId : ref2subId[message.streamId]);
       if (session_id) {
         portal.onSessionSignaling(participant_id, session_id, message.msg);
       }
@@ -549,6 +554,10 @@ var Client = function(participant_id, socket, portal, observer, reconnection_spe
       var parsed_url = url.parse(options.url);
       if ((parsed_url.protocol !== 'rtsp:' && parsed_url.protocol !== 'rtmp:' && parsed_url.protocol !== 'http:') || !parsed_url.slashes || !parsed_url.host) {
         return safeCall(callback, 'error', 'Invalid RTSP/RTMP server url');
+      }
+
+      if (!(options.streamId === undefined || isValidIdString(options.streamId))) {
+        return safeCall(callback, 'error', 'Invalid stream id');
       }
 
       var streaming_url = parsed_url.format();
@@ -600,6 +609,10 @@ var Client = function(participant_id, socket, portal, observer, reconnection_spe
       var parsed_url = url.parse(options.url);
       if ((parsed_url.protocol !== 'rtsp:' && parsed_url.protocol !== 'rtmp:' && parsed_url.protocol !== 'http:') || !parsed_url.slashes || !parsed_url.host) {
         return safeCall(callback, 'error', 'Invalid RTSP/RTMP server url');
+      }
+
+      if (!(options.streamId === undefined || isValidIdString(options.streamId))) {
+        return safeCall(callback, 'error', 'Invalid stream id');
       }
 
       var streaming_url = options.url;
@@ -1057,7 +1070,7 @@ var Client = function(participant_id, socket, portal, observer, reconnection_spe
   const notifySessionProgress = (sessionProgress) => {
     var id = sessionProgress.id;
     if (sessionProgress.status === 'soac') {
-      if (published_webrtc[id]) {
+      if (published[id]) {
         send_msg('signaling_message_erizo', {streamId: id, mess: sessionProgress.data});
       } else {
         var peer_id = subId2ref[id];
@@ -1066,9 +1079,12 @@ var Client = function(participant_id, socket, portal, observer, reconnection_spe
         }
       }
     } else if (sessionProgress.status === 'ready') {
-      if (published_webrtc[id]) {
-        send_msg('signaling_message_erizo', {streamId: id, mess: {type: 'ready'}});
-        if (published_webrtc[id].mix) {
+      if (published[id]) {
+        if (published[id].type === 'webrtc') {
+          send_msg('signaling_message_erizo', {streamId: id, mess: {type: 'ready'}});
+        }
+
+        if (published[id].mix) {
           portal.streamControl(participant_id, id, {operation: 'mix', data: 'common'})
             .catch((err) => {
               log.info('Mix stream failed, reason:', getErrorMessage(err));
@@ -1134,7 +1150,7 @@ var Client = function(participant_id, socket, portal, observer, reconnection_spe
       return {
         pendingMessages:pending_messages,
         oldClients:old_clients,
-        published_webrtc: published_webrtc,
+        published: published,
         ref2subId: ref2subId,
         subId2ref: subId2ref
       };
@@ -1218,7 +1234,7 @@ var SocketIOServer = function(spec, portal, observer) {
             roomId:client.inRoom,
             participantId:ticket.participantId,
             oldClients:old_client_info.oldClients,
-            published_webrtc: old_client_info.published_webrtc,
+            published: old_client_info.published,
             ref2subId: old_client_info.ref2subId,
             subId2ref: old_client_info.subId2ref
           });

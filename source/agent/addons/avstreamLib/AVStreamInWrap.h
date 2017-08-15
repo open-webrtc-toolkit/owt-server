@@ -32,11 +32,9 @@ class AVStreamInWrap : public NodeEventedObjectWrap {
   static void Init(v8::Handle<v8::Object>);
   static void Init(v8::Handle<v8::Object>, v8::Handle<v8::Object>);
   woogeen_base::FrameSource* me;
-  bool enableAudio;
-  bool enableVideo;
 
  private:
-  AVStreamInWrap(bool, bool);
+  AVStreamInWrap();
   ~AVStreamInWrap();
   static v8::Persistent<v8::Function> constructor;
 

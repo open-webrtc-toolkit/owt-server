@@ -381,8 +381,8 @@ DEFINE_LOGGER(RtspIn, "woogeen.RtspIn");
 
 RtspIn::RtspIn(const Options& options, EventRegistry* handle)
     : m_url(options.url)
-    , m_needAudio(options.enableAudio)
-    , m_needVideo(options.enableVideo)
+    , m_needAudio(options.enableAudio == "yes")//FIXME: need to handle "auto"
+    , m_needVideo(options.enableVideo == "yes")//FIXME: need to handle "auto"
     , m_asyncHandle(handle)
     , m_options(nullptr)
     , m_running(false)
