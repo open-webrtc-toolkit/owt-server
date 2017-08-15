@@ -156,7 +156,7 @@ module.exports = function (rpcClient) {
                 if (conn)
                     conn.connect(options);
                 break;
-            case 'avstream':
+            case 'streaming':
                 conn = createAVStreamOut(connectionId, options);
                 break;
             default:
