@@ -1464,7 +1464,8 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
         if (!mix_views[fromView]) {
             return on_error('Invalid view');
         }
-        unmixStream(stream_id, fromView, on_ok, on_error);
+        unmixStream(stream_id, fromView);
+        on_ok();
     };
 
     that.getRegion = function (stream_id, fromView, on_ok, on_error) {

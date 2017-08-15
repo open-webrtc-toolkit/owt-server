@@ -453,7 +453,7 @@ var Client = function(participant_id, socket, portal, observer, reconnection_spe
           safeCall(callback, 'success');
         }).catch((err) => {
           const err_message = getErrorMessage(err);
-          log.info('portal.mix failed:', err_message);
+          log.info('portal.unmix failed:', err_message);
           safeCall(callback, 'error', err_message);
         });
     });
