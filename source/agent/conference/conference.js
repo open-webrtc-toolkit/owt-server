@@ -116,7 +116,7 @@ var translateOldRoomConfig = (oldConfig) => {
       role: r,
       publish: !!global.config.conference.roles[r].publish ? {type: ['webrtc', 'streaming'], media: {audio: true, video: true}} : false,
       subscribe: !!global.config.conference.roles[r].subscribe ? {type: ['webrtc'], media: {audio: true, video: true}} : false,
-      text: !!global.config.conference.roles[r].text,
+      text: (global.config.conference.roles[r].text === undefined) ? 'to-all' : !!global.config.conference.roles[r].text,
       manage: !!global.config.conference.roles[r].manage
     };
     if (typeof global.config.conference.roles[r].publish === 'object') {
@@ -1439,8 +1439,8 @@ var Conference = function (rpcClient, selfRpcId) {
       return callback('callback', 'error', 'unauthorized');
     }
 
-    if ((data.to !== 'all') && (participants[toParticipantId] === undefined)) {
-      return callback('callback', 'error', 'Target participant does NOT exist')
+    if ((toParticipantId !== 'all') && (participants[toParticipantId] === undefined)) {
+      return callback('callback', 'error', 'Target participant does NOT exist: ' + toParticipantId);
     }
 
     sendMsg(fromParticipantId, toParticipantId, 'custom_message', {from: fromParticipantId, to: toParticipantId, data: msg});
