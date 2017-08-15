@@ -643,7 +643,7 @@ All workers including portals, session-agents, webrtc-agents, avstream-agents, r
 4. round-robin: If more than 1 worker with the specified purpose are alive and available, they will be scheduled one by one circularly.
 5. randomly-pick: If more than 1 worker with the specified purpose are alive and available, they will be scheduled randomly.
 
-For portal and webrtc-agent workers, the "isp" and "region" preferences can be specfied in portal and webrtc-agent configurations. Pass the prefered "isp" and "region" when creating token, then cluster-manager will only schedule the corresponding worker nodes to the client requests with matched "isp" and "region" preferences. The portal and webrtc-agent will serve all the isp and region if corresponding configuration items under "capacity" are set to empty lists. If no preferences specified when creating token, default isp and region values are just strings "isp" and "region".
+For portal and webrtc-agent workers, the "isp" and "region" preferences can be specfied in portal and webrtc-agent configurations. Pass the prefered "isp" and "region" when creating token, then cluster-manager will only schedule the corresponding worker nodes to the client requests with matched "isp" and "region" preferences. The portal and webrtc-agent will serve all the isp and region if corresponding configuration items under "capacity" are set to empty lists. If no preferences specified when creating token, then only those portal and webrtc-agent with empty isp and region setting will serve them.
 
 ## 3.7 Runtime Configuration {#Conferencesection3_7}
 Only super service user can access runtime configuration. Current management console implementation just provides the MCU cluster runtime configuration viewer.
