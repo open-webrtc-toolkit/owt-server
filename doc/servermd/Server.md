@@ -460,12 +460,12 @@ Intel CS for WebRTC MCU server provides the following settings in configuration 
  **Table 2-7. Configuriton Items for Public Access**
 Configuration Item|Location|Usage
 --------|--------|--------
-webrtc.network_interfaces|webrtc_agent/agent.toml|The network interfaces of webrtc-agent that clients in public network can connect to
-webrtc.minport|webrtc_agent/agent.toml|The webrtc port range lowerbound for clients to connect through UDP
-webrtc.maxport|webrtc_agent/agent.toml|The webrtc port range upperbound for clients to connect through UDP
-nuve.port|nuve/nuve.toml|The port of nuve should be accessible in public network through TCP
-portal.hostname, portal.ip_address|portal/portal.toml|The hostname and IP address of portal for public access; hostname first if it is not empty.
-portal.port|portal/portal.toml|The port of portal for public access through TCP
+webrtc.network_interfaces | webrtc_agent/agent.toml | The network interfaces of webrtc-agent that clients in public network can connect to
+webrtc.minport | webrtc_agent/agent.toml | The webrtc port range lowerbound for clients to connect through UDP
+webrtc.maxport | webrtc_agent/agent.toml | The webrtc port range upperbound for clients to connect through UDP
+nuve.port | nuve/nuve.toml | The port of nuve should be accessible in public network through TCP
+portal.hostname, portal.ip_address | portal/portal.toml | The hostname and IP address of portal for public access; hostname first if it is not empty.
+portal.port | portal/portal.toml | The port of portal for public access through TCP
 
 ## 2.5 Security Recommendations {#Conferencesection2_5}
 Intel Corporation does not host any conference cluster/service. Instead, the entire suite is provided so you can build your own video conference system and host your own server cluster.
