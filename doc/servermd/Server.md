@@ -97,7 +97,7 @@ Either Professional Edition or Community Edition is applicable. For download or 
 The external stream output (rtsp/rtmp) feature relies on AAC encoder libfdk_aac support in ffmpeg library, please see [Compile and deploy ffmpeg with libfdk_aac](#Conferencesection2_3_5) section for detailed instructions.
 
  **Table 2-2. Client compatibility**
-Application Name|Google Chrome* 59|Mozilla Firefox* 53|Microsoft Edge* 40.15063|Intel CS for WebRTC Client SDK for Android | Intel CS for WebRTC Client SDK for iOS | Intel CS for WebRTC Client SDK for Windows
+Application Name|Google Chrome* 60|Mozilla Firefox* 55|Microsoft Edge* 40.15063|Intel CS for WebRTC Client SDK for Android | Intel CS for WebRTC Client SDK for iOS | Intel CS for WebRTC Client SDK for Windows
 --------|--------|--------|--------|--------|--------|--------
 MCU Client|YES|YES|YES|YES|YES|YES
 Management Console|YES|YES|YES|N/A|N/A|N/A
@@ -455,16 +455,16 @@ sip-agent/node|All sip participants it carries should be dropped by session node
 
 ## 2.4 MCU configurations for public access {#Conferencesection2_4}
 
-Intel CS for WebRTC MCU server provides following settings in toml files to configure the network interfaces for public access.
+Intel CS for WebRTC MCU server provides the following settings in configuration files to configure the network interfaces for public access.
 
  **Table 2-7. Configuriton Items for Public Access**
-Configuriton Item|Location|Usage
+Configuration Item|Location|Usage
 --------|--------|--------
-webrtc.network_interfaces|webrtc_agent/agent.toml|The network inferfaces of webrtc-agent which clients in public network can connect to
+webrtc.network_interfaces|webrtc_agent/agent.toml|The network interfaces of webrtc-agent that clients in public network can connect to
 webrtc.minport|webrtc_agent/agent.toml|The webrtc port range lowerbound for clients to connect through UDP
 webrtc.maxport|webrtc_agent/agent.toml|The webrtc port range upperbound for clients to connect through UDP
 nuve.port|nuve/nuve.toml|The port of nuve should be accessible in public network through TCP
-portal.hostname, portal.ip_address|portal/portal.toml|The hostname and ip address of portal for public access, hostname first if it is not empty.
+portal.hostname, portal.ip_address|portal/portal.toml|The hostname and IP address of portal for public access; hostname first if it is not empty.
 portal.port|portal/portal.toml|The port of portal for public access through TCP
 
 ## 2.5 Security Recommendations {#Conferencesection2_5}
@@ -546,7 +546,7 @@ Only super service user can access service management, in the ‘overview' tab t
 ## 3.5 Room Management {#Conferencesection3_5}
 Any service user can do room management inside the service, including creating, deleting or modifying rooms.
 
-Specifically for modifying rooms, user can choose room mode, room publish limit, user limit and media mixing configuration (only for hybrid mode) for its own preference. For a single room's media mixing configuration, multiple views can be enabled and configured. The configuration set of a view includes: resolution, background color, layout, etc. For VAD, set avCoordinated to true to enable VAD in the room. Enabling multi-streaming can let a view of MCU generate two or more mixed streams with different resolutions to fulfill different requirements. For layout, user can choose a base layout template and customize its own preferred ones, which would be combined as a whole for rendering mixed video.
+To modify rooms, a user can choose room mode, room publish limit, user limit and media mixing configuration (only for hybrid mode) for its own preference. For a single room's media mixing configuration, multiple views can be enabled and configured. The configuration set of a view includes: resolution, background color, layout, etc. For VAD, set avCoordinated to true to enable VAD in the room. Enabling multi-streaming can let a view of MCU generate two or more mixed streams with different resolutions to fulfill different requirements. For layout, a user can choose a base layout template and customize its own preferred ones, which would be combined as a whole for rendering mixed video.
 
 > **Note**: If base layout is set to 'void', user must input customized layout for the room, otherwise the video layout would be treated as invalid. Read 3.5.1 for details of customized layout. maxInput indicates the maximum number of video frame inputs for the video layout definition.
 
@@ -643,7 +643,7 @@ All workers including portals, session-agents, webrtc-agents, avstream-agents, r
 4. round-robin: If more than 1 worker with the specified purpose are alive and available, they will be scheduled one by one circularly.
 5. randomly-pick: If more than 1 worker with the specified purpose are alive and available, they will be scheduled randomly.
 
-For portal and webrtc-agent workers, the "isp" and "region" preferences can be specfied in portal and webrtc-agent configurations. Pass the preferred "isp" and "region" when creating token, then cluster-manager will only schedule the corresponding worker nodes to the client requests with matched "isp" and "region" preferences. The portal and webrtc-agent will serve all the isp and region if corresponding configuration items under "capacity" are set to empty lists. If no preferences specified for clients when creating token, then only those portal and webrtc-agent with empty isp and region setting will serve them.
+For portal and webrtc-agent workers, the "isp" and "region" preferences can be specified in portal and webrtc-agent configurations. Pass the preferred "isp" and "region" when creating a token, then cluster-manager will only schedule the corresponding worker nodes to the client requests that match "isp" and "region" preferences. The portal and webrtc-agent will serve all the isp and region if corresponding configuration items under "capacity" are set to empty lists. If no preferences are specified for clients when creating token, then only those portal and webrtc-agent with empty isp and region setting will serve them.
 
 ## 3.7 Runtime Configuration {#Conferencesection3_7}
 Only super service user can access runtime configuration. Current management console implementation just provides the MCU cluster runtime configuration viewer.
@@ -713,7 +713,7 @@ For example, connect to the MCU sample application server XXXXX with the followi
 
 # 5 Peer Server {#Conferencesection5}
 ## 5.1 Introduction {#Conferencesection5_1}
-The peer server is the default signaling server of the Intel CS for WebRTC. The peer server provides the ability to exchange WebRTC signaling messages over Socket.IO between different clients, as well as provides chat room management.
+The peer server is the default signaling server of the Intel CS for WebRTC. The peer server provides the ability to exchange WebRTC signaling messages over Socket.IO between different clients.
 
 **Figure 5-1. Peer Server Framework**
 <img src="./pic/framework.png" alt="Framework" style="width: 600px;">
