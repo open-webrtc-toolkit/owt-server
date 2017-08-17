@@ -1,5 +1,5 @@
-var conference = Woogeen.ConferenceClient.create();
-var conference2 = Woogeen.ConferenceClient.create();
+var conference = Woogeen.ConferenceClient.create({});
+var conference2 = Woogeen.ConferenceClient.create({});
 var localStream, remoteStream = [], mixStream, mixStreams = [],
   localStream2;
 var Mix = false;
@@ -8,6 +8,7 @@ var myCodec = "";
 var ClientId;
 var currentRoom;
 var newToken;
+var preference;
 var videoLocal = true;
 var audioLocal = true;
 var options = document.getElementById('streamIds').children;
@@ -484,7 +485,8 @@ function showv(tag) {
 }
 
 function createNewToken(role) {
-  createToken(currentRoom, 'user', role, function(response) {
+  var name = "user";
+  createToken(currentRoom, name, role, preference, function(response) {
     recordActionResulte(true);
     newToken = response;
     console.log("create new token ", newToken);
@@ -543,7 +545,7 @@ function pub(codec) {
 
 function shareScreen(videoCodec, audioCodec) {
   var extensionId = document.getElementById('extensionid').value;
-  if(!extensionId){
+  if(!extensionId && navigator.userAgent.includes("Chrome")){
     console.warn('Please input the extension ID!');
     return
   };
@@ -807,6 +809,7 @@ function unsub(st) {
     if (st === undefined) {
       for (var i in conference.remoteStreams) {
         var stream = conference.remoteStreams[i];
+        stream.hide();
         conference.unsubscribe(stream, function(et) {
           recordActionResulte(true);
           L.Logger.info(stream.id(), 'unsubscribe stream');
@@ -820,6 +823,7 @@ function unsub(st) {
         var stream = conference.remoteStreams[i];
         if (conference.remoteStreams[i].isMixed()) {
          (function(id){
+          stream.hide();
           conference.unsubscribe(stream, function(et) {
             recordActionResulte(true);
             L.Logger.info(id, 'unsubscribe stream');
@@ -835,6 +839,7 @@ function unsub(st) {
       for (var i in conference.remoteStreams) {
         var stream = conference.remoteStreams[i];
         if (conference.remoteStreams[i].isScreen()) {
+          stream.hide();
           conference.unsubscribe(stream, function(et) {
             recordActionResulte(true);
             L.Logger.info(stream.id(), 'unsubscribe stream');
@@ -848,6 +853,7 @@ function unsub(st) {
       for (var i in conference.remoteStreams) {
         var stream = conference.remoteStreams[i];
         if (!(conference.remoteStreams[i].isMixed()) && !(conference.remoteStreams[i].isScreen()) && stream.id() !== localStream.id()) {
+          stream.hide();
           conference.unsubscribe(stream, function(et) {
             recordActionResulte(true);
             L.Logger.info(stream.id(), 'unsubscribe stream');
@@ -1197,6 +1203,7 @@ function unsubscribe_subscribe(name) {
   var interval1 = setInterval(function() {
     x++;
     if (conference !== undefined) {
+      remoteS.hide();
       conference.unsubscribe(remoteS, function(str) {
         console.log("unsubscribe local stream succeed:", str);
         conference.subscribe(remoteS, function(str) {
@@ -1237,6 +1244,7 @@ function qualityTest(){
   function unsubThenable () {
      return {
               then: function (resolve, reject) {
+                mixStream.hide();
                 conference.unsubscribe(mixStream, (st) => {
                   console.log('unsubscribe mix success');
                   resolve(Promise.resolve());
@@ -1567,6 +1575,10 @@ conference.on('user-left', function(event) {
   });
 });
 
+conference.on('stream-failed', function(evt){
+  console.error('stream failed', evt);
+});
+
 
 window.onload = function() {
   L.Logger.setLogLevel(L.Logger.INFO);
@@ -1684,7 +1696,7 @@ if(!maxVideoBW){
       subscribe(stream);
     }
   });
-  var preference = {
+  preference = {
     isp: isp,
     region: region
   }
@@ -1725,7 +1737,7 @@ if(!maxVideoBW){
           video: videoLocal ? {
             device: 'camera',
             resolution: resolution,
-            framerate: [30, 500]
+            frameRate: [10, 10000]
           } : videoLocal,
           audio: audioLocal
         }, function(err, stream) {
@@ -1870,6 +1882,7 @@ if(!maxVideoBW){
 
 
   });
+ //setTimeout(function(){location.reload()}, 1000*60);
 };
 
 function openWindow() {
