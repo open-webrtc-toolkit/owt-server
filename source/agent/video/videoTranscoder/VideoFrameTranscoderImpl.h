@@ -29,8 +29,6 @@
 #include <MediaFramePipeline.h>
 #include <VideoFrameTranscoder.h>
 
-#include "I420VideoFrameDecoder.h"
-
 #include <VCMFrameDecoder.h>
 #include <SwFrameProcesser.h>
 #include <VCMFrameEncoderAdapter.h>
@@ -120,16 +118,12 @@ inline bool VideoFrameTranscoderImpl::setInput(int input, woogeen_base::FrameFor
 
     boost::shared_ptr<woogeen_base::VideoFrameDecoder> decoder;
 
-    if (format == woogeen_base::FRAME_FORMAT_I420)
-        decoder.reset(new I420VideoFrameDecoder());
-    else {
 #ifdef ENABLE_MSDK
-        if (!decoder && woogeen_base::MsdkFrameDecoder::supportFormat(format))
-            decoder.reset(new woogeen_base::MsdkFrameDecoder());
+    if (!decoder && woogeen_base::MsdkFrameDecoder::supportFormat(format))
+        decoder.reset(new woogeen_base::MsdkFrameDecoder());
 #endif
-        if (!decoder)
-            decoder.reset(new woogeen_base::VCMFrameDecoder(format));
-    }
+    if (!decoder)
+        decoder.reset(new woogeen_base::VCMFrameDecoder(format));
 
     if (decoder->init(format)) {
         decoder->addVideoDestination(this);

@@ -28,8 +28,6 @@
 #include <MediaUtilities.h>
 #include <MediaFramePipeline.h>
 
-#include "I420VideoFrameDecoder.h"
-
 #include "SoftVideoCompositor.h"
 #include <VCMFrameDecoder.h>
 #include <VCMFrameEncoder.h>
@@ -165,22 +163,18 @@ inline bool VideoFrameMixerImpl::addInput(int input, woogeen_base::FrameFormat f
 
     boost::shared_ptr<woogeen_base::VideoFrameDecoder> decoder;
 
-    if (format == woogeen_base::FRAME_FORMAT_I420)
-        decoder.reset(new I420VideoFrameDecoder());
-    else {
 #ifdef ENABLE_YAMI
-        if (!decoder && woogeen_base::YamiFrameDecoder::supportFormat(format))
-            decoder.reset(new woogeen_base::YamiFrameDecoder());
+    if (!decoder && woogeen_base::YamiFrameDecoder::supportFormat(format))
+        decoder.reset(new woogeen_base::YamiFrameDecoder());
 #endif
 
 #ifdef ENABLE_MSDK
-        if (!decoder && woogeen_base::MsdkFrameDecoder::supportFormat(format))
-            decoder.reset(new woogeen_base::MsdkFrameDecoder());
+    if (!decoder && woogeen_base::MsdkFrameDecoder::supportFormat(format))
+        decoder.reset(new woogeen_base::MsdkFrameDecoder());
 #endif
 
-        if (!decoder)
-            decoder.reset(new woogeen_base::VCMFrameDecoder(format));
-    }
+    if (!decoder)
+        decoder.reset(new woogeen_base::VCMFrameDecoder(format));
 
     if (decoder->init(format)) {
         boost::shared_ptr<CompositeIn> compositorIn(new CompositeIn(input, avatar, m_compositor));
