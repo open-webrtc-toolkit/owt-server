@@ -155,7 +155,7 @@ public:
     };
 
     AVStreamOut(const std::string& url, bool hasAudio, bool hasVideo, EventRegistry* handle, int timeout);
-    virtual ~AVStreamOut() {}
+    virtual ~AVStreamOut();
 
     // FrameDestination
     virtual void onFrame(const Frame&);
