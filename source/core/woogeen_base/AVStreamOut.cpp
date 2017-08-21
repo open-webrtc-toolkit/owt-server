@@ -83,6 +83,11 @@ AVStreamOut::AVStreamOut(const std::string& url, bool hasAudio, bool hasVideo, E
     notifyAsyncEvent("init", "");
 }
 
+AVStreamOut::~AVStreamOut()
+{
+    close();
+}
+
 void AVStreamOut::onFrame(const woogeen_base::Frame& frame)
 {
     if (isAudioFrame(frame)) {
@@ -303,13 +308,15 @@ void AVStreamOut::disconnect()
 
 void AVStreamOut::close()
 {
-    ELOG_INFO("Close %s", m_url.c_str());
+    ELOG_INFO("Closing %s", m_url.c_str());
 
     m_status = AVStreamOut::Context_CLOSED;
     m_frameQueue.cancel();
     m_thread.join();
 
     disconnect();
+
+    ELOG_INFO("Closed");
 }
 
 bool AVStreamOut::addAudioStream(FrameFormat format, uint32_t sampleRate, uint32_t channels)
