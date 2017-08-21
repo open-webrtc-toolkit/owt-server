@@ -29,10 +29,10 @@
       '$(CORE_HOME)/erizo/src/erizo',
       '../../../core/rtc_adapter',
       '$(CORE_HOME)/woogeen_base',
-      '$(CORE_HOME)/../../third_party/webrtc-m59/src'
+      '$(CORE_HOME)/../../third_party/webrtc/src'
     ],
     'libraries': [
-      '-L$(CORE_HOME)/../../third_party/webrtc-m59', '-lwebrtc',
+      '-L$(CORE_HOME)/../../third_party/webrtc', '-lwebrtc',
       '-llog4cxx',
       '-lboost_thread',
       '-lboost_system',
@@ -40,9 +40,6 @@
       '-L$(CORE_HOME)/../../third_party/libre-0.4.16', '-lre',
       '-Wl,-rpath,$(CORE_HOME)/../../third_party/libre-0.4.16',
       '-Wl,-rpath,<!(pwd)/build/$(BUILDTYPE)',
-      '<!@(pkg-config --libs libavutil)',
-      '<!@(pkg-config --libs libavcodec)',
-      '<!@(pkg-config --libs libavformat)',
     ],
     'conditions': [
       [ 'OS=="mac"', {

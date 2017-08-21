@@ -30,11 +30,11 @@
     'include_dirs': [ '$(CORE_HOME)/common',
                       '$(CORE_HOME)/erizo/src/erizo',
                       '$(CORE_HOME)/woogeen_base',
-                      '$(CORE_HOME)/../../third_party/webrtc-m59/src',
+                      '$(CORE_HOME)/../../third_party/webrtc/src',
                       '$(CORE_HOME)/../../build/libdeps/build/include',
     ],
     'libraries': [
-      '-L$(CORE_HOME)/../../third_party/webrtc-m59', '-lwebrtc',
+      '-L$(CORE_HOME)/../../third_party/webrtc', '-lwebrtc',
       '-lboost_thread',
       '-llog4cxx',
       '<!@(pkg-config --libs libavcodec)',

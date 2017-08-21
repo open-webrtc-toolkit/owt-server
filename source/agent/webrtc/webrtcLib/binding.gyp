@@ -41,7 +41,7 @@
       '../../../core/erizo/src/erizo',
       '../../../core/woogeen_base',
       '../../../core/rtc_adapter',
-      '../../../../third_party/webrtc-m59/src',
+      '../../../../third_party/webrtc/src',
       '../../../../build/libdeps/build/include',
       '<!@(pkg-config glib-2.0 --cflags-only-I | sed s/-I//g)',
     ],
@@ -54,11 +54,7 @@
       '-llog4cxx',
       '-lboost_thread',
       '-lboost_system',
-      '-L$(CORE_HOME)/../../third_party/webrtc-m59', '-lwebrtc',
-      '-L$(CORE_HOME)/../../third_party/openh264', '-lopenh264',
-      '<!@(pkg-config --libs libavutil)',
-      '<!@(pkg-config --libs libavcodec)',
-      '<!@(pkg-config --libs libavformat)',
+      '-L$(CORE_HOME)/../../third_party/webrtc', '-lwebrtc',
     ],
     'conditions': [
       [ 'OS=="mac"', {
