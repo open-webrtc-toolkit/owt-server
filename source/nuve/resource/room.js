@@ -499,10 +499,61 @@ function isTemplatesValid (templates) {
         return false;
     }
 
+    var isRatio = (num) => (num >= 0.0 && num <= 1.0);
+    var toRational = (floatValue) => {
+        var dec = 10000;
+        return {
+            numerator: Math.round(floatValue * dec),
+            denominator: dec
+        };
+    };
+    var parseRatio = (stringValue) => {
+        var numerator = 0
+        var denominator = 1;
+        if (typeof stringValue === 'string') {
+            var strs = stringValue.split('/');
+            if (strs.length === 2) {
+                numerator = parseInt(strs[0]) || 0;
+                denominator = parseInt(strs[1]) || 1;
+            } else if (strs.length === 1) {
+                numerator = parseInt(strs[0]);
+            }
+        }
+        return {
+            numerator,
+            denominator
+        };
+    };
+
     for (var i in templates) {
         var region = templates[i].region;
         if (!(region instanceof Array))
             return false;
+        for (var k = 0; k < region.length; k++) {
+            if (isRatio(region[k].relativesize) && isRatio(region[k].left) && isRatio(region[k].top)) {
+                // convert to new format region
+                console.log('convert');
+                region[k].shape = 'rectangle';
+                region[k].area = {
+                    left: toRational(region[k].left),
+                    top: toRational(region[k].top),
+                    width: toRational(region[k].relativesize),
+                    height: toRational(region[k].relativesize)
+                };
+                delete region[k].left;
+                delete region[k].top;
+                delete region[k].relativesize;
+            } else if (region[k].shape === 'rectangle') {
+                if (!region[k].area) return false;
+                console.log('no convert');
+                region[k].area.left = parseRatio(region[k].area.left);
+                region[k].area.top = parseRatio(region[k].area.top);
+                region[k].area.width = parseRatio(region[k].area.width);
+                region[k].area.height = parseRatio(region[k].area.height);
+            } else {
+                return false;
+            }
+        }
     }
     return true;
 }
