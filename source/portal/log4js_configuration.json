@@ -13,6 +13,8 @@
     "ClusterWorker": "INFO",
     "LoadCollector": "INFO",
     "Main": "INFO",
+    "LegacyClient": "INFO",
+    "V10Client": "INFO",
     "SocketIOServer": "INFO",
     "RestServer": "INFO",
     "Portal": "INFO",

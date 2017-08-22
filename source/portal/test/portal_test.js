@@ -241,7 +241,7 @@ describe('portal.updateTokenKey: update the token key.', function() {
     mockrpcReq.getController.resolves('rpcIdOfController');
     mockrpcReq.join.resolves(join_room_result);
 
-    var final_result = {tokenCode: delete_token_result.code, user: delete_token_result.user, role: delete_token_result.role, permission: join_room_result.permission, room: join_room_result.room};
+    var final_result = {tokenCode: delete_token_result.code, data: {user: delete_token_result.user, role: delete_token_result.role, permission: join_room_result.permission, room: join_room_result.room}};
 
     return portal.join(testParticipantId, testToken).then(function(runInHere) {
         expect(runInHere).to.be.false;
@@ -268,7 +268,7 @@ describe('portal.join: Participants join.', function() {
     mockrpcReq.getController.resolves('rpcIdOfController');
     mockrpcReq.join.resolves(join_room_result);
 
-    var final_result = {tokenCode: delete_token_result.code, user: delete_token_result.user, role: delete_token_result.role, permission: join_room_result.permission, room: join_room_result.room};
+    var final_result = {tokenCode: delete_token_result.code, data: {user: delete_token_result.user, role: delete_token_result.role, permission: join_room_result.permission, room: join_room_result.room}};
 
     return portal.join(testParticipantId, testToken).then(function(result) {
       expect(result).to.deep.equal(final_result);
@@ -289,7 +289,7 @@ describe('portal.join: Participants join.', function() {
     mockrpcReq.getController.resolves('rpcIdOfController');
     mockrpcReq.join.resolves(join_room_result);
 
-    var final_result = {tokenCode: delete_token_result.code, user: delete_token_result.user, role: delete_token_result.role, permission: join_room_result.permission, room: join_room_result.room};
+    var final_result = {tokenCode: delete_token_result.code, data: {user: delete_token_result.user, role: delete_token_result.role, permission: join_room_result.permission, room: join_room_result.room}};
 
     return portal.join(testParticipantId, testToken).then(function(result) {
       expect(result).to.deep.equal(final_result);
@@ -384,7 +384,7 @@ describe('portal.leave: Participants leave.', function() {
     mockrpcReq.join.resolves(join_room_result);
     mockrpcReq.leave.resolves('ok');
 
-    var final_result = {tokenCode: delete_token_result.code, user: delete_token_result.user, role: delete_token_result.role, permission: join_room_result.permission, room: join_room_result.room};
+    var final_result = {tokenCode: delete_token_result.code, data: {user: delete_token_result.user, role: delete_token_result.role, permission: join_room_result.permission, room: join_room_result.room}};
 
     return portal.join(testParticipantId, testToken).then(function(result) {
       expect(result).to.deep.equal(final_result);
@@ -409,7 +409,7 @@ describe('portal.leave: Participants leave.', function() {
     mockrpcReq.join.resolves(join_room_result);
     mockrpcReq.leave.rejects('some error');
 
-    var final_result = {tokenCode: delete_token_result.code, user: delete_token_result.user, role: delete_token_result.role, permission: join_room_result.permission, room: join_room_result.room};
+    var final_result = {tokenCode: delete_token_result.code, data: {user: delete_token_result.user, role: delete_token_result.role, permission: join_room_result.permission, room: join_room_result.room}};
 
     return portal.join(testParticipantId, testToken).then(function(result) {
       expect(result).to.deep.equal(final_result);

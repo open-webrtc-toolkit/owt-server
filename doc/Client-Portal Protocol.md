@@ -8,7 +8,8 @@ ____
 |date | contributor | revision |
 | :-------: | :------------: | :------------: |
 |12-06-2017 |Xiande|draft|
-|28-06-2017 |Xiande|1.0.0 reviewed|
+|28-06-2017 |Xiande|1.0 reviewed|
+|22-08-2017 |Xiande|1.0 final|
 
 ## 1. Overview
 This documentation covers all signaling messages between Client and Portal component, including signaling messages transported through Socket.io connections and RESTful interfaces. All the signaling interaction at the Client side should be encapsulated in the Client SDK, and Client SDK should provide an API suite for client side application integration.
@@ -28,9 +29,9 @@ This documentation covers all signaling messages between Client and Portal compo
 #### 3.1.1 Client -> Portal
 Given that Client has connected Portal successfully and the socket object is ready to send/receive data to/from Portal, Client must send all signaling message to Portal by calling the client socket object’s ***emit*** method in the following format (javascript code for example, same for rest of this documentation):
 ```
-clientSocket.emit("signaling",
+clientSocket.emit(
               RequestName,
-              RequestData,
+              RequestData, //Will be absent if no data is required.
               function(ResponseStatus, ResponseData) {
                   //Handle the status and response here.
               }
@@ -51,9 +52,9 @@ object(ErrorDesciption)::
 #### 3.1.2 Portal -> Client
 Given that Portal has accepted Clients connecting and the socket object is ready to send/receive data to/from Client, Portal must send all signaling messages to Client by calling the server socket object’s ***emit*** method in the following format:
 ```
-serverSocket.emit("signaling",
+serverSocket.emit(
               NotificationName,
-              NotificationData
+              NotificationData //Will be absent if no data is required.
              );
 ```
 Where
@@ -65,14 +66,8 @@ Portal should be able to listen at both a secure and an insecure socket.io serve
 Socket.io server will pop a ‘connection’ event indicating a new client’s successfully connecting.
 #### 3.2.2 Client Keeps Alive
 Socket.io server has its own underlying connection keep-alive mechanism, so no application level heart-beat is needed. But Client needs to refresh the reconnection ticket periodically before the current one expires if it wants to reconnect to Portal in case the network break or switch happens. The refreshing request must keep to the following format:
-**RequestName**:  “refresh”
-**RequestData**: The RefreshTicketInfo object with following definition:
-```
-object(RefreshTicketInfo)::
-  {
-   id: string(ParticipantId) /*The participant id returned at successful login, see 3.3.1*/
-  }
-```
+**RequestName**:  “refreshReconnectionTicket”
+**RequestData**: absent
 **ResponseData**: A refreshed ReconnectionTicket object if **ResponseStatus** is “ok”.
 #### 3.2.3 Client Disconnects
 The connected socket.io object at server side will be notified with a ‘disconnect’ event. The waiting for reconnecting timer **(Timer100)** will be started at receiving the ‘disconnect’ event if the following conditions are fulfilled:
@@ -81,14 +76,7 @@ The connected socket.io object at server side will be notified with a ‘disconn
     If Client has not reconnected successfully before **Timer100** expires, Portal will not wait for and accept the Client’s reconnecting any longer. Otherwise, if Client reconnects successfully before **Timer100** expires, Portal will resume all the signaling activities with Client and kill **Timer100**.
 #### 3.2.4 Client Reconnects
 **RequestName**:  “relogin”
-**RequestData**: The ReconnectionInfo object with following definition:
-```
-object(ReconnectionInfo)::
-  {
-   id: string(ParticipantId), /*The participant id returned at successful login, see 3.3.1*/
-   ticket: object(ReconnectionTicket) /*The reconnectionTicket returned at successful login, see 3.3.1*/
-  }
-```
+**RequestData**: The ReconnectionTicket object with following definition:
 **ResponseData**: A refreshed ReconnectionTicket object if **ResponseStatus** is “ok”.
 ### 3.3 Conferencing
 #### 3.3.1 Participant Joins a Room
@@ -99,7 +87,7 @@ object(LoginInfo)::
   {
    token: string(Base64EncodedToken),
    userAgent: object(ClientInfo),
-   protocol: string(ProtocolVersion) //e.g.  “1.0.0”
+   protocol: string(ProtocolVersion) //e.g.  “1.0”
   }
 
   object(ClientInfo)::
@@ -293,15 +281,12 @@ object(LoginResult)::
 ```
 #### 3.3.2 Participant Leaves a Room
 **RequestName**:  “logout”
-**RequestData**: The LogoutInfo object with following definition:
-```
-object(LogoutInfo)::
-  {
-   id: string(ParticipantId)
-  }
-```
+**RequestData**: absent
 **ResponseData**: undefined if **ResponseStatus** is “ok”.
-#### 3.3.3 Participant Is Notified on Other Participant’s Action
+#### 3.3.3 Participant Is Dropped by MCU
+**NotificationName**: “drop”
+**NotificationData**: undefined
+#### 3.3.4 Participant Is Notified on Other Participant’s Action
 **NotificationName**: “participant”
 **NotificationData**: The ParticipantAction object with following definition:
 ```
@@ -312,7 +297,7 @@ object(ParticipantAction)::
         | string(ParticipantId)/*If status equals "leave"*/
   }
 ```
-#### 3.3.4 Participant Sends a Text Message
+#### 3.3.5 Participant Sends a Text Message
 **RequestName**:  “text”
 **RequestData**: The TextSendMessage object with following definition:
 ```
@@ -323,7 +308,7 @@ object(TextSendMessage)::
   }
 ```
 **ResponseData**: undefined if **ResponseStatus** is “ok”.
-#### 3.3.5 Participant Receives Text Message from another Participant
+#### 3.3.6 Participant Receives Text Message from another Participant
 **NotificationName**: “text”
 **NotificationData**: The TextReceiveMessage object with following definition:
 ```
@@ -333,7 +318,7 @@ object(TextReceiveMessage)::
    message: string(Message)
   }
 ```
-#### 3.3.6 Participant Starts Publishing a Stream to Room
+#### 3.3.7 Participant Starts Publishing a Stream to Room
 **RequestName**:  “publish”
 **RequestData**: The PublicationRequest object with following definition:
 ```
@@ -379,7 +364,7 @@ object(PublicationResult)::
    id: string(SessionId) //will be used as the stream id when it gets ready.
   }
 ```
-#### 3.3.7 Participant Stops Publishing a Stream to Room
+#### 3.3.8 Participant Stops Publishing a Stream to Room
 **RequestName**:  “unpublish”
 **RequestData**: The UnpublicationRequest object with following definition:
 ```
@@ -389,7 +374,7 @@ object(UnpublicationRequest)::
   }
 ```
 **ResponseData**: undefined if **ResponseStatus** is “ok”.
-#### 3.3.8 Participant Is Notified on Streams Update in Room
+#### 3.3.9 Participant Is Notified on Streams Update in Room
 **NotificationName**: “stream”
 **NotificationData**: The StreamUpdateMessage object with following definition.
 ```
@@ -408,7 +393,7 @@ object(StreamUpdateMessage)::
      value: "active" | "inactive" | [object(SubStream2RegionMapping)]
     }
 ```
-#### 3.3.9 Participant Controls a Stream
+#### 3.3.10 Participant Controls a Stream
 **RequestName**:  “stream-control”
 **RequestData**: The StreamControlInfo object with following definition:
 ```
@@ -434,7 +419,7 @@ object(RegionInfo)::
    region: string(RegionId)
   }
 ```
-#### 3.3.10 Participant Starts a Subscription
+#### 3.3.11 Participant Starts a Subscription
 **RequestName**:  “subscribe”
 **RequestData**: The SubscriptionRequest object with following definition:
 ```
@@ -488,7 +473,7 @@ object(SubscriptionRequest)::
         {
          codec: string(WantedVideoCodec),//Will be ignored if type equals "webrtc"
          profile: string(WantedVideoProfile) /*Will be ignored if type equals "webrtc" or codec does NOT equal "h264"*/ | undefined,
-                        resolution: object(Resolution) | undefined,
+         resolution: object(Resolution) | undefined,
          framerate: number(WantedFrameRateFPS) | undefined,
          bitrate: number(WantedBitrateKbps) | string(WantedBitrateMultiple) | undefined,
          keyFrameInterval: number(WantedKeyFrameIntervalSecond) | undefined
@@ -501,7 +486,7 @@ object(SubscriptionResult)::
    id: string(SubscriptionId)
   }
 ```
-#### 3.3.11 Participant Stops a Self-Initiated Subscription
+#### 3.3.12 Participant Stops a Self-Initiated Subscription
 **RequestName**:  “unsubscribe”
 **RequestData**: The UnsubscriptionRequest object with following definition:
 ```
@@ -511,7 +496,7 @@ object(UnsubscriptionRequest)::
   }
 ```
 **ResponseData**: undefined if **ResponseStatus** is “ok”.
-#### 3.3.12 Participant Controls a Self-Initiated Subscription
+#### 3.3.13 Participant Controls a Self-Initiated Subscription
 **RequestName**:  “subscription-control”
 **RequestData**: The SubscriptionControlInfo object with following definition:
 ```
@@ -550,7 +535,7 @@ object(SubscriptionControlInfo)::
         }
 ```
 **ResponseData**: undefined if **ResponseStatus** is “ok”.
-#### 3.3.13 Participant Sends Session Signaling
+#### 3.3.14 Participant Sends Session Signaling
 **RequestName**:  “soac”
 **RequestData**: The SOACMessage object with following definition:
 ```
@@ -573,7 +558,7 @@ object(SOACMessage)::
     }
 ```
 **ResponseData**: undefined if **ResponseStatus** is “ok”.
-#### 3.3.14 Participant Receives Session Progress
+#### 3.3.15 Participant Receives Session Progress
 **NotificationName**: “progress”
 **NotificationData**: The SessionProgress object with following definition.
 ```
@@ -593,7 +578,7 @@ object(SessionProgress)::
      file: string(FullPathNameOfRecordedFile)
     }
 ```
-#### 3.3.15 Participant Sets Permission of another Participant
+#### 3.3.16 Participant Sets Permission of another Participant
 **RequestName**:  “set-permission”
 **RequestData**: The SetPermission object with following definition:
 ```
