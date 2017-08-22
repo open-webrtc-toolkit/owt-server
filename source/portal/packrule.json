@@ -11,6 +11,8 @@
             "restServer.js",
             "rpcRequest.js",
             "socketIOServer.js",
+            "legacyClient.js",
+            "v10Client.js",
             "../common/amqp_client.js",
             "../common/cipher.js",
             "../common/clusterWorker.js",
@@ -35,7 +37,8 @@
                 "test/portal_test.js",
                 "test/restServer_test.js",
                 "test/rpcRequest_test.js",
-                "test/socketIOServer_test.js"
+                "test/socketIOServer_legacyClient_test.js",
+                "test/socketIOServer_v10Client_test.js"
             ]
         }
     },

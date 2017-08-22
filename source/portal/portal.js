@@ -47,7 +47,7 @@ var Portal = function(spec, rpcReq) {
       }
     };
 
-    var tokenCode, userInfo, role, origin, room, room_controller;
+    var tokenCode, userInfo, role, origin, room_id, room_controller;
 
     return validateToken(token)
       .then(function(validToken) {
@@ -60,27 +60,29 @@ var Portal = function(spec, rpcReq) {
         userInfo = deleteTokenResult.user;
         role = deleteTokenResult.role;
         origin = deleteTokenResult.origin;
-        room = deleteTokenResult.room;
-        return rpcReq.getController(cluster_name, room);
+        room_id = deleteTokenResult.room;
+        return rpcReq.getController(cluster_name, room_id);
       })
       .then(function(controller) {
         log.debug('got controller:', controller);
         room_controller = controller;
-        return rpcReq.join(controller, room, {id: participantId, user: userInfo, role: role, portal: self_rpc_id, origin: origin});
+        return rpcReq.join(controller, room_id, {id: participantId, user: userInfo, role: role, portal: self_rpc_id, origin: origin});
       })
       .then(function(joinResult) {
         log.debug('join ok, result:', joinResult);
         participants[participantId] = {
-          in_room: room,
+          in_room: room_id,
           controller: room_controller
         };
 
         return {
           tokenCode: tokenCode,
-          user: userInfo,
-          role: role,
-          permission: joinResult.permission,
-          room: joinResult.room
+          data: {
+            user: userInfo,
+            role: role,
+            permission: joinResult.permission,
+            room: joinResult.room
+          }
         };
       });
   };
