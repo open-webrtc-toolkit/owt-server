@@ -80,7 +80,9 @@ public:
     bool addOutput(int output,
             woogeen_base::FrameFormat,
             const woogeen_base::VideoSize&,
-            const woogeen_base::QualityLevel qualityLevel,
+            const unsigned int framerateFPS,
+            const unsigned int bitrateKbps,
+            const unsigned int keyFrameIntervalSeconds,
             woogeen_base::FrameDestination*);
     void removeOutput(int output);
     void setBitrate(unsigned short kbps, int output);
@@ -241,12 +243,13 @@ inline void VideoFrameMixerImpl::requestKeyFrame(int output)
 inline bool VideoFrameMixerImpl::addOutput(int output,
                                            woogeen_base::FrameFormat format,
                                            const woogeen_base::VideoSize& rootSize,
-                                           const woogeen_base::QualityLevel qualityLevel,
+                                           const unsigned int framerateFPS,
+                                           const unsigned int bitrateKbps,
+                                           const unsigned int keyFrameIntervalSeconds,
                                            woogeen_base::FrameDestination* dest)
 {
     boost::shared_ptr<woogeen_base::VideoFrameEncoder> encoder;
     boost::upgrade_lock<boost::shared_mutex> lock(m_outputMutex);
-    uint32_t bitrateKbps = woogeen_base::calcBitrate(rootSize.width, rootSize.height) * woogeen_base::getQualityLevelMultiplier(qualityLevel);
 
     // find a reusable encoder.
     auto it = m_outputs.begin();
@@ -258,7 +261,7 @@ inline bool VideoFrameMixerImpl::addOutput(int output,
     int32_t streamId = -1;
     if (it != m_outputs.end()) { // Found a reusable encoder
         encoder = it->second.encoder;
-        streamId = encoder->generateStream(rootSize.width, rootSize.height, bitrateKbps, dest);
+        streamId = encoder->generateStream(rootSize.width, rootSize.height, framerateFPS, bitrateKbps, keyFrameIntervalSeconds, dest);
         if (streamId < 0)
             return false;
     } else { // Never found a reusable encoder.
@@ -275,7 +278,7 @@ inline bool VideoFrameMixerImpl::addOutput(int output,
         if (!encoder)
             encoder.reset(new woogeen_base::VCMFrameEncoder(format, m_useSimulcast));
 
-        streamId = encoder->generateStream(rootSize.width, rootSize.height, bitrateKbps, dest);
+        streamId = encoder->generateStream(rootSize.width, rootSize.height, framerateFPS, bitrateKbps, keyFrameIntervalSeconds, dest);
         if (streamId < 0)
             return false;
 

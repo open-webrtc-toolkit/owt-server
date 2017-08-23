@@ -271,7 +271,7 @@ public:
 class VideoFrameProcesser : public FrameSource, public FrameDestination {
 public:
     virtual ~VideoFrameProcesser() { }
-    virtual bool init(FrameFormat format) = 0;
+    virtual bool init(FrameFormat format, const uint32_t width, const uint32_t height, const uint32_t frameRate) = 0;
 };
 
 class VideoFrameEncoder : public FrameDestination {
@@ -282,47 +282,11 @@ public:
 
     virtual bool canSimulcast(FrameFormat, uint32_t width, uint32_t height) = 0;
     virtual bool isIdle() = 0;
-    virtual int32_t generateStream(uint32_t width, uint32_t height, uint32_t bitrateKbps, FrameDestination*) = 0;
+    virtual int32_t generateStream(uint32_t width, uint32_t height, uint32_t frameRate, uint32_t bitrateKbps, uint32_t keyFrameIntervalSeconds, FrameDestination*) = 0;
     virtual void degenerateStream(int32_t streamId) = 0;
     virtual void setBitrate(unsigned short kbps, int32_t streamId) = 0;
     virtual void requestKeyFrame(int32_t streamId) = 0;
 };
-
-enum QualityLevel {
-    QUALITY_LEVEL_BEST_QUALITY = 0,   //1.4
-    QUALITY_LEVEL_QUALITY,            //1.2
-    QUALITY_LEVEL_STANDARD,           //1.0
-    QUALITY_LEVEL_SPEED,              //0.8
-    QUALITY_LEVEL_BEST_SPEED,         //0.6
-
-    QUALITY_LEVEL_AUTO,
-};
-
-inline double getQualityLevelMultiplier(const QualityLevel &level) {
-    double multiplier = 0;
-    switch(level) {
-        case QUALITY_LEVEL_BEST_QUALITY:
-            multiplier = 1.4;
-            break;
-        case QUALITY_LEVEL_QUALITY:
-            multiplier = 1.2;
-            break;
-        case QUALITY_LEVEL_STANDARD:
-            multiplier = 1;
-            break;
-        case QUALITY_LEVEL_SPEED:
-            multiplier = 0.8;
-            break;
-        case QUALITY_LEVEL_BEST_SPEED:
-            multiplier = 0.6;
-            break;
-        case QUALITY_LEVEL_AUTO:
-        default:
-            multiplier = 0;
-            break;
-    }
-    return multiplier;
-}
 
 }
 #endif

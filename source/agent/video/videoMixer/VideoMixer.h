@@ -23,18 +23,12 @@
 
 #include <boost/shared_ptr.hpp>
 #include <boost/thread/shared_mutex.hpp>
-#include <boost/scoped_ptr.hpp>
 #include <logger.h>
 #include <map>
 #include <set>
-#include <vector>
 
 #include "MediaFramePipeline.h"
 #include "VideoLayout.h"
-
-namespace webrtc {
-class VoEVideoSync;
-}
 
 namespace mcu {
 
@@ -59,11 +53,6 @@ public:
             , woogeen_base::FrameDestination* dest);
     void removeOutput(const std::string& outStreamID);
 
-    int32_t bindAudio(uint32_t sourceId, int voiceChannelId, webrtc::VoEVideoSync*)
-    {
-        //TODO: Establish another data path to guarantee the a/v sync of input streams.
-        return -1;
-    }
     // Update Layout solution
     void updateLayoutSolution(LayoutSolution& solution);
 
@@ -80,7 +69,6 @@ private:
     boost::shared_mutex m_outputsMutex;
     std::map<std::string, int32_t> m_outputs;
 };
-
 
 } /* namespace mcu */
 #endif /* VideoMixer_h */

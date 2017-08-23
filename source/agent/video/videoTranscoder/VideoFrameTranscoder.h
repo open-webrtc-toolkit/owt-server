@@ -34,7 +34,9 @@ public:
     virtual bool addOutput(int output,
             woogeen_base::FrameFormat,
             const woogeen_base::VideoSize&,
-            const woogeen_base::QualityLevel qualityLevel,
+            const unsigned int framerateFPS,
+            const unsigned int bitrateKbps,
+            const unsigned int keyFrameIntervalSeconds,
             woogeen_base::FrameDestination*) = 0;
     virtual void removeOutput(int output) = 0;
 

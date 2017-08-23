@@ -22,7 +22,6 @@
 #define SoftVideoCompositor_h
 
 #include <vector>
-#include <atomic>
 
 #include <boost/scoped_ptr.hpp>
 #include <boost/shared_ptr.hpp>
@@ -35,8 +34,10 @@
 #include "logger.h"
 #include "JobTimer.h"
 #include "MediaFramePipeline.h"
+#include "FrameConverter.h"
 #include "VideoFrameMixer.h"
 #include "VideoLayout.h"
+#include "I420BufferManager.h"
 
 namespace mcu {
 
@@ -78,9 +79,13 @@ public:
     boost::shared_ptr<webrtc::VideoFrame> popInput();
 
 private:
-    std::atomic<bool> m_active;
-    std::atomic<int8_t> m_busyFrame;
-    std::vector<boost::shared_ptr<webrtc::VideoFrame>> m_frames;
+    bool m_active;
+    boost::shared_ptr<webrtc::VideoFrame> m_busyFrame;
+    boost::shared_mutex m_mutex;
+
+    boost::scoped_ptr<woogeen_base::I420BufferManager> m_bufferManager;
+
+    boost::scoped_ptr<woogeen_base::FrameConverter> m_converter;
 };
 
 /**

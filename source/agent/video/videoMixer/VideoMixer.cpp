@@ -163,8 +163,11 @@ bool VideoMixer::addOutput(
     woogeen_base::FrameFormat format = getFormat(codec);
     VideoSize vSize;
     VideoResolutionHelper::getVideoSize(resolution, vSize);
-    //FIXME: Apply other video parameters here.
-    if (m_frameMixer->addOutput(m_nextOutputIndex, format, vSize, woogeen_base::QUALITY_LEVEL_STANDARD, dest)) {
+
+    if (framerateFPS != 30)
+        ELOG_WARN("Required frame rate(%d), only support frame rate(30fps)", framerateFPS);
+
+    if (m_frameMixer->addOutput(m_nextOutputIndex, format, vSize, 30, bitrateKbps, keyFrameIntervalSeconds, dest)) {
         boost::unique_lock<boost::shared_mutex> lock(m_outputsMutex);
         m_outputs[outStreamID] = m_nextOutputIndex++;
         return true;

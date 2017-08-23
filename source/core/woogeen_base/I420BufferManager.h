@@ -42,15 +42,8 @@ public:
     ~I420BufferManager();
 
     rtc::scoped_refptr<webrtc::I420Buffer> getFreeBuffer(uint32_t width, uint32_t height);
-
-    void putBusyFrame(boost::shared_ptr<webrtc::VideoFrame> frame);
-    boost::shared_ptr<webrtc::VideoFrame> getBusyFrame();
-
 private:
     boost::scoped_ptr<webrtc::I420BufferPool> m_bufferPool;
-
-    boost::shared_ptr<webrtc::VideoFrame> m_busyFrame;
-    boost::mutex m_mutex;
 };
 
 }

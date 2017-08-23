@@ -31,7 +31,6 @@ I420BufferManager::I420BufferManager(uint32_t maxFrames)
 
 I420BufferManager::~I420BufferManager()
 {
-    m_busyFrame.reset();
     m_bufferPool->Release();
 }
 
@@ -43,21 +42,6 @@ rtc::scoped_refptr<webrtc::I420Buffer> I420BufferManager::getFreeBuffer(uint32_t
     }
 
     return buffer;
-}
-
-void I420BufferManager::putBusyFrame(boost::shared_ptr<webrtc::VideoFrame> frame)
-{
-    boost::mutex::scoped_lock lock(m_mutex);
-
-    m_busyFrame = frame;
-    return;
-}
-
-boost::shared_ptr<webrtc::VideoFrame> I420BufferManager::getBusyFrame()
-{
-    boost::mutex::scoped_lock lock(m_mutex);
-
-    return m_busyFrame;
 }
 
 } /* namespace woogeen_base */

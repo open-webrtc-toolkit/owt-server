@@ -18,35 +18,52 @@
  * and approved by Intel in writing.
  */
 
-#ifndef SwFrameProcesser_h
-#define SwFrameProcesser_h
+#ifndef FrameConverter_h
+#define FrameConverter_h
 
 #include <boost/scoped_ptr.hpp>
 #include <boost/shared_ptr.hpp>
+
+#include <webrtc/api/video/i420_buffer.h>
+
 #include <logger.h>
 
-#include <webrtc/video_frame.h>
+#include "I420BufferManager.h"
 
-#include "MediaFramePipeline.h"
+#ifdef ENABLE_MSDK
+#include "MsdkBase.h"
+#include "MsdkFrame.h"
+#include "MsdkScaler.h"
+#endif
 
 namespace woogeen_base {
 
-class SwFrameProcesser : public VideoFrameProcesser {
+class FrameConverter {
     DECLARE_LOGGER();
 
 public:
-    SwFrameProcesser();
-    ~SwFrameProcesser();
+    FrameConverter(bool useMsdkVpp = true);
+    ~FrameConverter();
 
-    void onFrame(const Frame&);
-    bool init(FrameFormat format);
+#ifdef ENABLE_MSDK
+    bool convert(MsdkFrame *srcMsdkFrame, webrtc::I420Buffer *dstI420Buffer);
+    bool convert(MsdkFrame *srcMsdkFrame, MsdkFrame *dstMsdkFrame);
+
+    bool convert(webrtc::VideoFrameBuffer *srcBuffer, MsdkFrame *dstMsdkFrame);
+#endif
+    bool convert(webrtc::VideoFrameBuffer *srcBuffer, webrtc::I420Buffer *dstI420Buffer);
+
+protected:
 
 private:
-    uint32_t m_lastWidth;
-    uint32_t m_lastHeight;
+#ifdef ENABLE_MSDK
+    boost::scoped_ptr<MsdkScaler> m_scaler;
+#endif
+
+    boost::scoped_ptr<I420BufferManager> m_bufferManager;
 };
 
 } /* namespace woogeen_base */
 
-#endif /* SwFrameProcesser_h */
+#endif /* FrameConverter_h */
 
