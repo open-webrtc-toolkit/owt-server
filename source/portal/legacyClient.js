@@ -324,7 +324,7 @@ var LegacyClient = function(clientId, sigConnection, portal) {
         return safeCall(callback, 'error', 'Illegal request');
       }
 
-      var session_id = (published[message.streamId] ? message.streamId : ref2subId[message.streamId]);
+      var session_id = (ref2subId[message.streamId] ? ref2subId[message.streamId] : message.streamId);
       if (session_id) {
         portal.onSessionSignaling(clientId, session_id, message.msg);
       }
