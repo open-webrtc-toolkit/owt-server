@@ -28,6 +28,7 @@
 
 #include "MsdkBase.h"
 #include "MsdkFrameEncoder.h"
+#include "MsdkScaler.h"
 
 #define _MAX_BITSTREAM_BUFFER_ (100 * 1024 * 1024)
 
@@ -58,8 +59,12 @@ public:
         , m_encSession(NULL)
         , m_enc(NULL)
         , m_pluginID()
-        , m_vppSession(NULL)
-        , m_vpp(NULL)
+        , m_lastWidth(0)
+        , m_lastHeight(0)
+        , m_cropX(0)
+        , m_cropY(0)
+        , m_cropW(0)
+        , m_cropH(0)
         , m_enableBsDump(false)
         , m_bsDumpfp(NULL)
     {
@@ -100,7 +105,7 @@ public:
         }
         m_bitstream.reset();
 
-        closeVpp();
+        deinitScaler();
 
         if (m_bsDumpfp) {
             fclose(m_bsDumpfp);
@@ -119,7 +124,7 @@ public:
         }
     }
 
-    bool init(FrameFormat format, uint32_t width, uint32_t height, uint32_t bitrateKbps, FrameDestination* dest)
+    bool init(FrameFormat format, uint32_t width, uint32_t height, uint32_t frameRate, uint32_t bitrateKbps, uint32_t keyFrameIntervalSeconds, FrameDestination* dest)
     {
         if (!dest) {
             ELOG_ERROR("(%p)Null FrameDestination.", this);
@@ -130,7 +135,9 @@ public:
         m_format        = format;
         m_width         = width;
         m_height        = height;
+        m_frameRate     = frameRate > 0 ? frameRate : 30;
         m_bitRateKbps   = (m_mode == ENCODER_MODE_NORMAL) ? bitrateKbps : 0;
+        m_keyFrameIntervalSeconds = keyFrameIntervalSeconds;
         m_dest          = dest;
         addVideoDestination(dest);
 
@@ -412,20 +419,8 @@ protected:
             return msdkFrame;
 
         if(m_width != frame.additionalInfo.video.width || m_height != frame.additionalInfo.video.height) {
-            if (!m_vpp) {
-                ELOG_DEBUG("(%p)Init vpp for frame scaling, %dx%d -> %dx%d"
-                        , this
-                        , frame.additionalInfo.video.width
-                        , frame.additionalInfo.video.height
-                        , m_width
-                        , m_height
-                        );
-
-                initVpp(frame.additionalInfo.video.width, frame.additionalInfo.video.height);
-                if (!m_vpp) {
-                    ELOG_ERROR("(%p)Init vpp failed", this);
-                    return NULL;
-                }
+            if (!m_scaler) {
+                initScaler();
             }
 
             msdkFrame = doScale(msdkFrame);
@@ -488,7 +483,7 @@ protected:
 
         // mfx Enc
         m_encParam->mfx.TargetUsage               = 0;
-        m_encParam->mfx.GopPicSize                = 300;
+        m_encParam->mfx.GopPicSize                = 3000;
         m_encParam->mfx.GopRefDist                = 0;
         m_encParam->mfx.GopOptFlag                = 0;
         m_encParam->mfx.IdrInterval               = 0;
@@ -525,20 +520,19 @@ protected:
 
     void updateParam()
     {
+        m_encParam->mfx.FrameInfo.FrameRateExtN   = m_frameRate;
+        m_encParam->mfx.FrameInfo.FrameRateExtD   = 1;
+
         m_encParam->mfx.FrameInfo.CropX   = 0;
         m_encParam->mfx.FrameInfo.CropY   = 0;
         m_encParam->mfx.FrameInfo.CropW   = m_width;
         m_encParam->mfx.FrameInfo.CropH   = m_height;
 
-        if (m_format != FRAME_FORMAT_H265) {
-            m_encParam->mfx.FrameInfo.Width   = ALIGN16(m_width);
-            m_encParam->mfx.FrameInfo.Height  = ALIGN16(m_height);
-        } else { // HEVC. More ext params
+        if (m_format == FRAME_FORMAT_H265) {
             m_encParam->mfx.FrameInfo.Width   = ALIGN32(m_width);
             m_encParam->mfx.FrameInfo.Height  = ALIGN32(m_height);
-
             if ((!((m_encParam->mfx.FrameInfo.CropW & 15) ^ 8)) ||
-                (!((m_encParam->mfx.FrameInfo.CropH & 15) ^ 8))) {
+                    (!((m_encParam->mfx.FrameInfo.CropH & 15) ^ 8))) {
                 m_encExtHevcParam->Header.BufferId          = MFX_EXTBUFF_HEVC_PARAM;
                 m_encExtHevcParam->Header.BufferSz          = sizeof(m_encExtHevcParam);
                 m_encExtHevcParam->PicWidthInLumaSamples    = m_encParam->mfx.FrameInfo.CropW;
@@ -548,11 +542,15 @@ protected:
 
                 m_encParam->ExtParam                    = &m_encExtParams.front(); // vector is stored linearly in memory
                 m_encParam->NumExtParam                 = m_encExtParams.size();
-          }
+            }
+        } else {
+            m_encParam->mfx.FrameInfo.Width   = ALIGN16(m_width);
+            m_encParam->mfx.FrameInfo.Height  = ALIGN16(m_height);
         }
 
         m_encParam->mfx.TargetKbps        = m_bitRateKbps ? m_bitRateKbps : calcBitrate(m_width, m_height);
         m_encParam->mfx.MaxKbps           = m_encParam->mfx.TargetKbps;
+        m_encParam->mfx.GopPicSize        = m_frameRate * m_keyFrameIntervalSeconds;
     }
 
     bool isValidParam()
@@ -601,211 +599,53 @@ protected:
         }
     }
 
-    void initVppParam(int inputWidth, int inputHeight)
+    bool initScaler()
     {
-        m_vppParam.reset(new mfxVideoParam);
-        memset(m_vppParam.get(), 0, sizeof(mfxVideoParam));
-
-        // mfxVideoParam Common
-        m_vppParam->AsyncDepth              = 1;
-        m_vppParam->IOPattern               = MFX_IOPATTERN_IN_VIDEO_MEMORY | MFX_IOPATTERN_OUT_VIDEO_MEMORY;
-
-        // mfxVideoParam Vpp In
-        m_vppParam->vpp.In.FourCC           = MFX_FOURCC_NV12;
-        m_vppParam->vpp.In.ChromaFormat     = MFX_CHROMAFORMAT_YUV420;
-        m_vppParam->vpp.In.PicStruct        = MFX_PICSTRUCT_PROGRESSIVE;
-
-        m_vppParam->vpp.In.BitDepthLuma     = 0;
-        m_vppParam->vpp.In.BitDepthChroma   = 0;
-        m_vppParam->vpp.In.Shift            = 0;
-
-        m_vppParam->vpp.In.AspectRatioW     = 0;
-        m_vppParam->vpp.In.AspectRatioH     = 0;
-
-        m_vppParam->vpp.In.FrameRateExtN    = 30;
-        m_vppParam->vpp.In.FrameRateExtD    = 1;
-
-        m_vppParam->vpp.In.Width            = ALIGN16(inputWidth);
-        m_vppParam->vpp.In.Height           = ALIGN16(inputHeight);
-        m_vppParam->vpp.In.CropX            = 0;
-        m_vppParam->vpp.In.CropY            = 0;
-        m_vppParam->vpp.In.CropW            = inputWidth;
-        m_vppParam->vpp.In.CropH            = inputHeight;
-
-        // mfxVideoParam Vpp Out
-        m_vppParam->vpp.Out.FourCC          = MFX_FOURCC_NV12;
-        m_vppParam->vpp.Out.ChromaFormat    = MFX_CHROMAFORMAT_YUV420;
-        m_vppParam->vpp.Out.PicStruct       = MFX_PICSTRUCT_PROGRESSIVE;
-
-        m_vppParam->vpp.Out.BitDepthLuma    = 0;
-        m_vppParam->vpp.Out.BitDepthChroma  = 0;
-        m_vppParam->vpp.Out.Shift           = 0;
-
-        m_vppParam->vpp.Out.AspectRatioW    = 0;
-        m_vppParam->vpp.Out.AspectRatioH    = 0;
-
-        m_vppParam->vpp.Out.FrameRateExtN   = 30;
-        m_vppParam->vpp.Out.FrameRateExtD   = 1;
-
-        m_vppParam->vpp.Out.Width           = ALIGN16(m_width);
-        m_vppParam->vpp.Out.Height          = ALIGN16(m_height);
-
-        if (inputWidth * m_height > m_width * inputHeight) {
-            m_vppParam->vpp.Out.CropW   = m_width;
-            m_vppParam->vpp.Out.CropH   = inputHeight * m_width / inputWidth;
-
-            m_vppParam->vpp.Out.CropX   = 0;
-            m_vppParam->vpp.Out.CropY   = (m_height - m_vppParam->vpp.Out.CropH) / 2;
-        } else {
-            m_vppParam->vpp.Out.CropW   = inputWidth * m_height / inputHeight;
-            m_vppParam->vpp.Out.CropH   = m_height;
-
-            m_vppParam->vpp.Out.CropX   = (m_width - m_vppParam->vpp.Out.CropW) / 2;
-            m_vppParam->vpp.Out.CropY   = 0;
-        }
-    }
-
-    bool initVpp(int inputWidth, int inputHeight)
-    {
-        mfxStatus sts = MFX_ERR_NONE;
-
-        initVppParam(inputWidth, inputHeight);
-
         MsdkBase *msdkBase = MsdkBase::get();
         if(msdkBase == NULL) {
             ELOG_ERROR("(%p)Get MSDK failed.", this);
-
-            closeVpp();
-            return false;
-        }
-
-        m_vppSession = msdkBase->createSession();
-        if (!m_vppSession ) {
-            ELOG_ERROR("(%p)Create session failed.", this);
-
-            closeVpp();
             return false;
         }
 
         m_vppAllocator = msdkBase->createFrameAllocator();
         if (!m_vppAllocator) {
             ELOG_ERROR("(%p)Create frame allocator failed.", this);
-
-            closeVpp();
             return false;
         }
 
-        sts = m_vppSession->SetFrameAllocator(m_vppAllocator.get());
-        if (sts != MFX_ERR_NONE) {
-            ELOG_ERROR("(%p)Set frame allocator failed.", this);
-
-            closeVpp();
-            return false;
-        }
-
-        m_vpp = new MFXVideoVPP(*m_vppSession);
-        if (!m_vpp) {
-            ELOG_ERROR("(%p)Create vpp failed.", this);
-
-            closeVpp();
-            return false;
-        }
-
-        sts = m_vpp->Init(m_vppParam.get());
-        if (sts > 0) {
-            ELOG_TRACE("(%p)Ignore mfx warning, ret %d", this, sts);
-        }
-        else if (sts != MFX_ERR_NONE) {
-            ELOG_ERROR("(%p)mfx init failed, ret %d", this, sts);
-
-            MsdkBase::printfVideoParam(m_vppParam.get(), MFX_VPP);
-
-            closeVpp();
-            return false;
-        }
-
-        MsdkBase::printfVideoParam(m_vppParam.get(), MFX_VPP);
-
-        mfxFrameAllocRequest Request[2];
-        memset(&Request, 0, sizeof(mfxFrameAllocRequest) * 2);
-
-        sts = m_vpp->QueryIOSurf(m_vppParam.get(), Request);
-        if (MFX_WRN_PARTIAL_ACCELERATION == sts || MFX_WRN_INCOMPATIBLE_VIDEO_PARAM == sts)
-        {
-            ELOG_TRACE("(%p)Ignore warning!", this);
-        }
-        if (MFX_ERR_NONE != sts)
-        {
-            ELOG_ERROR("(%p)mfx QueryIOSurf() failed, ret %d", this, sts);
-
-            closeVpp();
-            return false;
-        }
-
-        ELOG_TRACE("(%p)mfx QueryIOSurf: In(%d), Out(%d)", this, Request[0].NumFrameSuggested, Request[1].NumFrameSuggested);
-
-        m_vppFramePool.reset(new MsdkFramePool(Request[1], m_vppAllocator));
+        m_vppFramePool.reset(new MsdkFramePool(m_width, m_height, 1, m_vppAllocator));
+        m_scaler.reset(new MsdkScaler());
         return true;
     }
 
-    void closeVpp()
+    void deinitScaler()
     {
-        if (m_vpp) {
-            m_vpp->Close();
-            delete m_vpp;
-            m_vpp = NULL;
-        }
-
-        if (m_vppSession) {
-            MsdkBase *msdkBase = MsdkBase::get();
-            if (msdkBase) {
-                msdkBase->destroySession(m_vppSession);
-            }
-        }
-
         m_vppAllocator.reset();
-
-        m_vppParam.reset();
-
         m_vppFramePool.reset();
+        m_scaler.reset();
     }
 
     boost::shared_ptr<MsdkFrame> doScale(boost::shared_ptr<MsdkFrame> src)
     {
-        mfxStatus sts = MFX_ERR_UNKNOWN;//MFX_ERR_NONE;
-
-        mfxSyncPoint syncP;
-
         boost::shared_ptr<MsdkFrame> dst = m_vppFramePool->getFreeFrame();
         if (!dst) {
             ELOG_WARN("(%p)No frame available", this);
             return NULL;
         }
 
-retry:
-        sts = m_vpp->RunFrameVPPAsync(src->getSurface(), dst->getSurface(), NULL, &syncP);
-        if (sts == MFX_WRN_DEVICE_BUSY) {
-            ELOG_TRACE("(%p)Device busy, retry!", this);
+        if (m_lastWidth != src->getVideoWidth() || m_lastHeight != src->getVideoHeight()) {
+            m_cropW = std::min(m_width, src->getVideoWidth() * m_height / src->getVideoHeight());
+            m_cropH = std::min(m_height, src->getVideoHeight()* m_width / src->getVideoWidth());
 
-            usleep(1000); //1ms
-            goto retry;
+            m_cropX = (m_width - m_cropW) / 2;
+            m_cropY = (m_height - m_cropH) / 2;
+
+            m_lastWidth = src->getVideoWidth();
+            m_lastHeight= src->getVideoHeight();
         }
-        else if (sts != MFX_ERR_NONE) {
-            ELOG_ERROR("(%p)mfx vpp error, ret %d", this, sts);
+
+        if (!m_scaler || !m_scaler->convert(src.get(), 0, 0, src->getCropW(), src->getCropH(), dst.get(), m_cropX, m_cropY, m_cropW, m_cropH))
             return NULL;
-        }
-
-        dst->setSyncPoint(syncP);
-        dst->setSyncFlag(true);
-
-#if 0
-        sts = m_vppSession->SyncOperation(syncP, MFX_INFINITE);
-        if(sts != MFX_ERR_NONE)
-        {
-            ELOG_ERROR("(%p)SyncOperation failed, ret %d", this, sts);
-            return NULL;
-        }
-#endif
 
         return dst;
     }
@@ -819,7 +659,9 @@ private:
     FrameFormat m_format;
     uint32_t m_width;
     uint32_t m_height;
+    uint32_t m_frameRate;
     uint32_t m_bitRateKbps;
+    uint32_t m_keyFrameIntervalSeconds;
     FrameDestination *m_dest;
 
     bool m_setBitRateFlag;
@@ -841,12 +683,16 @@ private:
     boost::scoped_ptr<mfxBitstream> m_bitstream;
     mfxPluginUID m_pluginID;
 
-    //vpp
-    MFXVideoSession *m_vppSession;
-    MFXVideoVPP *m_vpp;
+    //scaler
     boost::shared_ptr<mfxFrameAllocator> m_vppAllocator;
-    boost::scoped_ptr<mfxVideoParam> m_vppParam;
     boost::scoped_ptr<MsdkFramePool> m_vppFramePool;
+    boost::scoped_ptr<MsdkScaler> m_scaler;
+    uint32_t m_lastWidth;
+    uint32_t m_lastHeight;
+    uint32_t m_cropX;
+    uint32_t m_cropY;
+    uint32_t m_cropW;
+    uint32_t m_cropH;
 
     bool m_enableBsDump;
     FILE *m_bsDumpfp;
@@ -886,13 +732,14 @@ bool MsdkFrameEncoder::isIdle()
     return m_streams.size() == 0;
 }
 
-int32_t MsdkFrameEncoder::generateStream(uint32_t width, uint32_t height, uint32_t bitrateKbps, woogeen_base::FrameDestination* dest)
+int32_t MsdkFrameEncoder::generateStream(uint32_t width, uint32_t height, uint32_t frameRate, uint32_t bitrateKbps, uint32_t keyFrameIntervalSeconds, woogeen_base::FrameDestination* dest)
 {
     boost::upgrade_lock<boost::shared_mutex> lock(m_mutex);
 
     boost::shared_ptr<StreamEncoder> stream(new StreamEncoder());
-    if (!stream->init(m_encodeFormat, width, height, bitrateKbps, dest)) {
-        ELOG_ERROR("generateStream failed: {.width=%d, .height=%d, .bitrateKbps=%d}", width, height, bitrateKbps);
+    if (!stream->init(m_encodeFormat, width, height, frameRate, bitrateKbps, keyFrameIntervalSeconds, dest)) {
+        ELOG_ERROR("generateStream failed: {.width=%d, .height=%d, .frameRate=%d, .bitrateKbps=%d, .keyFrameIntervalSeconds=%d}"
+                , width, height, frameRate, bitrateKbps, keyFrameIntervalSeconds);
         return -1;
     }
 
@@ -900,7 +747,8 @@ int32_t MsdkFrameEncoder::generateStream(uint32_t width, uint32_t height, uint32
 
     m_streams[m_id] = stream;
 
-    ELOG_DEBUG("generateStream[%d]: {.width=%d, .height=%d, .bitrateKbps=%d}", m_id, width, height, bitrateKbps);
+    ELOG_DEBUG("generateStream[%d]: {.width=%d, .height=%d, .frameRate=%d, .bitrateKbps=%d, .keyFrameIntervalSeconds=%d}"
+            , m_id, width, height, frameRate, bitrateKbps, keyFrameIntervalSeconds);
 
     return m_id++;
 }

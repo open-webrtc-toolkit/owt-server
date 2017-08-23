@@ -38,6 +38,7 @@
 #include "logger.h"
 #include "I420BufferManager.h"
 #include "MediaFramePipeline.h"
+#include "FrameConverter.h"
 
 using namespace webrtc;
 
@@ -94,7 +95,7 @@ public:
     void onFrame(const Frame&);
     bool canSimulcast(FrameFormat format, uint32_t width, uint32_t height);
     bool isIdle();
-    int32_t generateStream(uint32_t width, uint32_t height, uint32_t bitrateKbps, FrameDestination* dest);
+    int32_t generateStream(uint32_t width, uint32_t height, uint32_t frameRate, uint32_t bitrateKbps, uint32_t keyFrameIntervalSeconds, FrameDestination* dest);
     void degenerateStream(int32_t streamId);
     void setBitrate(unsigned short kbps, int32_t streamId);
     void requestKeyFrame(int32_t streamId);
@@ -135,6 +136,10 @@ private:
     // workaround for simulcast
     int32_t m_width;
     int32_t m_height;
+
+    boost::scoped_ptr<FrameConverter> m_converter;
+
+    boost::shared_ptr<webrtc::VideoFrame> m_busyFrame;
 
     bool m_enableBsDump;
     FILE *m_bsDumpfp;

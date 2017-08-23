@@ -49,17 +49,19 @@ bool VCMFrameEncoderAdapter::isIdle()
     return m_encoder->isIdle();
 }
 
-int32_t VCMFrameEncoderAdapter::generateStream(uint32_t width, uint32_t height, uint32_t bitrateKbps, woogeen_base::FrameDestination* dest)
+int32_t VCMFrameEncoderAdapter::generateStream(uint32_t width, uint32_t height, uint32_t frameRate, uint32_t bitrateKbps, uint32_t keyFrameIntervalSeconds, woogeen_base::FrameDestination* dest)
 {
     if (m_streamId != -1) {
         ELOG_ERROR("Not support multiple streams");
         return -1;
     }
 
-    m_width     = width;
-    m_height    = height;
-    m_kbps      = bitrateKbps;
-    m_dest      = dest;
+    m_width         = width;
+    m_height        = height;
+    m_frameRate     = frameRate;
+    m_kbps          = bitrateKbps;
+    m_keyInterval   = keyFrameIntervalSeconds;
+    m_dest          = dest;
 
     if (m_width == 0 || m_height == 0) {
         ELOG_DEBUG("Generate adaptive encoder stream");
@@ -67,7 +69,7 @@ int32_t VCMFrameEncoderAdapter::generateStream(uint32_t width, uint32_t height, 
         return m_streamId;
     }
 
-    m_encoderStreamId = m_encoder->generateStream(m_width, m_height, m_kbps, dest);
+    m_encoderStreamId = m_encoder->generateStream(m_width, m_height, m_frameRate, m_kbps, m_keyInterval, dest);
     m_streamId = 0;
     return m_streamId;
 }
@@ -100,7 +102,7 @@ void VCMFrameEncoderAdapter::onFrame(const Frame& frame)
         m_height    = frame.additionalInfo.video.height;
         m_kbps      = calcBitrate(m_width, m_height);
 
-        m_encoderStreamId = m_encoder->generateStream(m_width, m_height, m_kbps, m_dest);
+        m_encoderStreamId = m_encoder->generateStream(m_width, m_height, m_frameRate, m_kbps, m_keyInterval, m_dest);
     }
 
     m_encoder->onFrame(frame);

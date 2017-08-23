@@ -159,7 +159,6 @@ MFXVideoSession *MsdkBase::createSession_internal(void)
     if (sts != MFX_ERR_NONE) {
         ELOG_ERROR("Init session failed.");
 
-        // todo
         delete pSession;
         return NULL;
     }
@@ -168,7 +167,6 @@ MFXVideoSession *MsdkBase::createSession_internal(void)
     if (sts != MFX_ERR_NONE) {
         ELOG_ERROR("SetHandle failed.");
 
-        // todo
         delete pSession;
         return NULL;
     }

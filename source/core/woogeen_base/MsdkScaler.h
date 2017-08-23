@@ -18,49 +18,49 @@
  * and approved by Intel in writing.
  */
 
-#ifndef VCMFrameEncoderAdapter_h
-#define VCMFrameEncoderAdapter_h
-
-#include "MediaFramePipeline.h"
+#ifndef MsdkScaler_h
+#define MsdkScaler_h
 
 #include <boost/scoped_ptr.hpp>
 #include <boost/shared_ptr.hpp>
-#include <boost/thread/shared_mutex.hpp>
+
 #include <logger.h>
 
-#include "VCMFrameEncoder.h"
+#include "MsdkFrame.h"
 
 namespace woogeen_base {
 
-class VCMFrameEncoderAdapter : public VideoFrameEncoder {
+class MsdkScaler {
     DECLARE_LOGGER();
 
 public:
-    VCMFrameEncoderAdapter(FrameFormat format);
-    ~VCMFrameEncoderAdapter();
+    MsdkScaler();
+    ~MsdkScaler();
 
-    FrameFormat getInputFormat() {return FRAME_FORMAT_I420;}
+    bool convert(MsdkFrame *srcMsdkFrame, MsdkFrame *dstMsdkFrame);
+    bool convert(MsdkFrame *srcMsdkFrame, int srcCropX, int srcCropY, int srcCropW, int srcCropH
+            , MsdkFrame *dstMsdkFrame, int dstCropX, int dstCropY, int dstCropW, int dstCropH);
 
-    // Implements VideoFrameEncoder.
-    void onFrame(const Frame&);
-    bool canSimulcast(FrameFormat format, uint32_t width, uint32_t height);
-    bool isIdle();
-    int32_t generateStream(uint32_t width, uint32_t height, uint32_t frameRate, uint32_t bitrateKbps, uint32_t keyFrameIntervalSeconds, FrameDestination* dest);
-    void degenerateStream(int32_t streamId);
-    void setBitrate(unsigned short kbps, int32_t streamId);
-    void requestKeyFrame(int32_t streamId);
+protected:
+    void initVppParam();
+    bool createVpp();
+    void destroyVpp();
+
+    void updateVppParam(int inWidth, int inHeight, int inCropX, int inCropY, int inCropW, int inCropH,
+            int outWidth, int outHeight, int outCropX, int outCropY, int outCropW, int outCropH);
+
+    bool setupVpp(int inWidth, int inHeight, int inCropX, int inCropY, int inCropW, int inCropH,
+            int outWidth, int outHeight, int outCropX, int outCropY, int outCropW, int outCropH);
+    bool doVppConvert(MsdkFrame *srcMsdkFrame, MsdkFrame *dstMsdkFrame);
 
 private:
-    boost::scoped_ptr<VCMFrameEncoder> m_encoder;
-    int32_t m_streamId;
-    int32_t m_encoderStreamId;
-    uint32_t m_width;
-    uint32_t m_height;
-    uint32_t m_frameRate;
-    uint32_t m_kbps;
-    uint32_t m_keyInterval;
-    FrameDestination *m_dest;
+    MFXVideoSession *m_session;
+    MFXVideoVPP *m_vpp;
+    boost::shared_ptr<mfxFrameAllocator> m_allocator;
+    boost::scoped_ptr<mfxVideoParam> m_vppParam;
 };
 
 } /* namespace woogeen_base */
-#endif /* VCMFrameEncoderAdapter_h */
+
+#endif /* MsdkScaler_h */
+

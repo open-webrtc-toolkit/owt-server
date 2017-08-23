@@ -194,9 +194,9 @@ DEFINE_LOGGER(SwInput, "mcu.media.SwInput");
 
 SwInput::SwInput()
     : m_active(false)
-    , m_busyFrame(-1)
 {
-    m_frames.resize(2);
+    m_bufferManager.reset(new I420BufferManager(3));
+    m_converter.reset(new woogeen_base::FrameConverter());
 }
 
 SwInput::~SwInput()
@@ -206,54 +206,47 @@ SwInput::~SwInput()
 
 void SwInput::setActive(bool active)
 {
+    boost::unique_lock<boost::shared_mutex> lock(m_mutex);
     m_active = active;
+    if (!m_active)
+        m_busyFrame.reset();
 }
 
 void SwInput::pushInput(webrtc::VideoFrame *videoFrame)
 {
-    int ret;
-    int index = (m_busyFrame + 1) % 2;
-    rtc::scoped_refptr<webrtc::VideoFrameBuffer> srcI420Buffer;
-    boost::shared_ptr<webrtc::VideoFrame> dstFrame;
-    webrtc::I420Buffer *dstI420Buffer;
-    int width = videoFrame->width();
-    int height = videoFrame->height();
-
-    if (m_frames[index] == NULL
-            || m_frames[index]->width() != width
-            || m_frames[index]->height() != height) {
-        m_frames[index].reset(new webrtc::VideoFrame(
-                webrtc::I420Buffer::Create(width, height),
-                webrtc::kVideoRotation_0,
-                0));
+    {
+        boost::unique_lock<boost::shared_mutex> lock(m_mutex);
+        if (!m_active)
+            return;
     }
 
-    dstFrame = m_frames[index];
-    dstI420Buffer = static_cast<webrtc::I420Buffer *>(dstFrame->video_frame_buffer().get());
-    srcI420Buffer = videoFrame->video_frame_buffer();
-
-    ret = libyuv::I420Copy(
-                srcI420Buffer->DataY(), srcI420Buffer->StrideY(),
-                srcI420Buffer->DataU(), srcI420Buffer->StrideU(),
-                srcI420Buffer->DataV(), srcI420Buffer->StrideV(),
-                dstI420Buffer->MutableDataY(), dstI420Buffer->StrideY(),
-                dstI420Buffer->MutableDataU(), dstI420Buffer->StrideU(),
-                dstI420Buffer->MutableDataV(), dstI420Buffer->StrideV(),
-                width, height);
-    if (ret != 0) {
-        ELOG_ERROR("I420Copy failed, ret %d", ret);
+    rtc::scoped_refptr<webrtc::I420Buffer> dstBuffer = m_bufferManager->getFreeBuffer(videoFrame->width(), videoFrame->height());
+    if (!dstBuffer) {
+        ELOG_ERROR("No free buffer");
         return;
     }
 
-    m_busyFrame = index;
+    rtc::scoped_refptr<webrtc::VideoFrameBuffer> srcI420Buffer = videoFrame->video_frame_buffer();
+    if (!m_converter->convert(srcI420Buffer, dstBuffer.get())) {
+        ELOG_ERROR("I420Copy failed");
+        return;
+    }
+
+    {
+        boost::unique_lock<boost::shared_mutex> lock(m_mutex);
+        if (m_active)
+            m_busyFrame.reset(new webrtc::VideoFrame(dstBuffer, webrtc::kVideoRotation_0, 0));
+    }
 }
 
 boost::shared_ptr<VideoFrame> SwInput::popInput()
 {
-    if(m_busyFrame == -1)
+    boost::unique_lock<boost::shared_mutex> lock(m_mutex);
+
+    if(!m_active)
         return NULL;
 
-    return m_frames[m_busyFrame];
+    return m_busyFrame;
 }
 
 DEFINE_LOGGER(SoftVideoCompositor, "mcu.media.SoftVideoCompositor");
@@ -397,74 +390,82 @@ webrtc::VideoFrame* SoftVideoCompositor::customLayout()
     for (LayoutSolution::iterator it = m_currentLayout.begin(); it != m_currentLayout.end(); ++it) {
         int index = it->input;
 
-        boost::shared_ptr<webrtc::VideoFrame> sub_image;
+        boost::shared_ptr<webrtc::VideoFrame> sub_frame;
         if (m_inputs[index]->isActive()) {
-            sub_image = m_inputs[index]->popInput();
+            sub_frame = m_inputs[index]->popInput();
         } else {
-            sub_image = m_avatarManager->getAvatarFrame(index);
+            sub_frame = m_avatarManager->getAvatarFrame(index);
         }
 
-        if (sub_image == NULL) {
+        if (sub_frame == NULL) {
             continue;
         }
 
-        rtc::scoped_refptr<webrtc::VideoFrameBuffer> i420Buffer = sub_image->video_frame_buffer();
+        rtc::scoped_refptr<webrtc::VideoFrameBuffer> i420Buffer = sub_frame->video_frame_buffer();
 
         Region region = it->region;
-
         assert(region.shape.compare("rectangle") == 0
                 && (region.area.rect.left.denominator != 0 && region.area.rect.left.denominator >= region.area.rect.left.numerator)
                 && (region.area.rect.top.denominator != 0 && region.area.rect.top.denominator >= region.area.rect.top.numerator)
                 && (region.area.rect.width.denominator != 0 && region.area.rect.width.denominator >= region.area.rect.width.numerator)
                 && (region.area.rect.height.denominator != 0 && region.area.rect.height.denominator >= region.area.rect.height.numerator));
 
-        uint32_t sub_width      = (uint64_t)m_compositeSize.width * region.area.rect.width.numerator / region.area.rect.width.denominator;
-        uint32_t sub_height     = (uint64_t)m_compositeSize.height * region.area.rect.height.numerator / region.area.rect.height.denominator;
-        uint32_t offset_width   = (uint64_t)m_compositeSize.width * region.area.rect.left.numerator / region.area.rect.left.denominator;
-        uint32_t offset_height  = (uint64_t)m_compositeSize.height * region.area.rect.top.numerator / region.area.rect.top.denominator;
+        uint32_t dst_x      = (uint64_t)m_compositeSize.width * region.area.rect.left.numerator / region.area.rect.left.denominator;
+        uint32_t dst_y      = (uint64_t)m_compositeSize.height * region.area.rect.top.numerator / region.area.rect.top.denominator;
+        uint32_t dst_width  = (uint64_t)m_compositeSize.width * region.area.rect.width.numerator / region.area.rect.width.denominator;
+        uint32_t dst_height = (uint64_t)m_compositeSize.height * region.area.rect.height.numerator / region.area.rect.height.denominator;
 
-        if (offset_width + sub_width > m_compositeSize.width)
-            sub_width = m_compositeSize.width - offset_width;
+        if (dst_x + dst_width > m_compositeSize.width)
+            dst_width = m_compositeSize.width - dst_x;
 
-        if (offset_height + sub_height > m_compositeSize.height)
-            sub_height = m_compositeSize.height - offset_height;
+        if (dst_y + dst_height > m_compositeSize.height)
+            dst_height = m_compositeSize.height - dst_y;
 
-        uint32_t cropped_sub_width;
-        uint32_t cropped_sub_height;
+        uint32_t cropped_dst_width;
+        uint32_t cropped_dst_height;
         uint32_t src_x;
         uint32_t src_y;
         uint32_t src_width;
         uint32_t src_height;
         if (m_crop) {
-            src_width   = std::min((uint32_t)i420Buffer->width(), sub_width * i420Buffer->height() / sub_height);
-            src_height  = std::min((uint32_t)i420Buffer->height(), sub_height * i420Buffer->width() / sub_width);
+            src_width   = std::min((uint32_t)i420Buffer->width(), dst_width * i420Buffer->height() / dst_height);
+            src_height  = std::min((uint32_t)i420Buffer->height(), dst_height * i420Buffer->width() / dst_width);
             src_x       = (i420Buffer->width() - src_width) / 2;
             src_y       = (i420Buffer->height() - src_height) / 2;
 
-            cropped_sub_width   = sub_width;
-            cropped_sub_height  = sub_height;
+            cropped_dst_width   = dst_width;
+            cropped_dst_height  = dst_height;
         } else {
             src_width   = i420Buffer->width();
             src_height  = i420Buffer->height();
             src_x       = 0;
             src_y       = 0;
 
-            cropped_sub_width   = std::min(sub_width, i420Buffer->width() * sub_height / i420Buffer->height());
-            cropped_sub_height  = std::min(sub_height, i420Buffer->height() * sub_width / i420Buffer->width());
+            cropped_dst_width   = std::min(dst_width, i420Buffer->width() * dst_height / i420Buffer->height());
+            cropped_dst_height  = std::min(dst_height, i420Buffer->height() * dst_width / i420Buffer->width());
         }
 
-        offset_width += (sub_width - cropped_sub_width) / 2;
-        offset_height += (sub_height - cropped_sub_height) / 2;
+        dst_x += (dst_width - cropped_dst_width) / 2;
+        dst_y += (dst_height - cropped_dst_height) / 2;
+
+        src_x               &= ~1;
+        src_y               &= ~1;
+        src_width           &= ~1;
+        src_height          &= ~1;
+        dst_x               &= ~1;
+        dst_y               &= ~1;
+        cropped_dst_width   &= ~1;
+        cropped_dst_height  &= ~1;
 
         int ret = libyuv::I420Scale(
                 i420Buffer->DataY() + src_y * i420Buffer->StrideY() + src_x, i420Buffer->StrideY(),
                 i420Buffer->DataU() + (src_y * i420Buffer->StrideU() + src_x) / 2, i420Buffer->StrideU(),
                 i420Buffer->DataV() + (src_y * i420Buffer->StrideV() + src_x) / 2, i420Buffer->StrideV(),
                 src_width, src_height,
-                m_compositeBuffer->MutableDataY() + offset_height * m_compositeBuffer->StrideY() + offset_width, m_compositeBuffer->StrideY(),
-                m_compositeBuffer->MutableDataU() + (offset_height * m_compositeBuffer->StrideU() + offset_width) / 2, m_compositeBuffer->StrideU(),
-                m_compositeBuffer->MutableDataV() + (offset_height * m_compositeBuffer->StrideV() + offset_width) / 2, m_compositeBuffer->StrideV(),
-                cropped_sub_width, cropped_sub_height,
+                m_compositeBuffer->MutableDataY() + dst_y * m_compositeBuffer->StrideY() + dst_x, m_compositeBuffer->StrideY(),
+                m_compositeBuffer->MutableDataU() + (dst_y * m_compositeBuffer->StrideU() + dst_x) / 2, m_compositeBuffer->StrideU(),
+                m_compositeBuffer->MutableDataV() + (dst_y * m_compositeBuffer->StrideV() + dst_x) / 2, m_compositeBuffer->StrideV(),
+                cropped_dst_width, cropped_dst_height,
                 libyuv::kFilterBox);
         if (ret != 0)
             ELOG_ERROR("I420Scale failed, ret %d", ret);

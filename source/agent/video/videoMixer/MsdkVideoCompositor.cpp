@@ -28,6 +28,7 @@
 
 #include "MsdkBase.h"
 #include "MsdkVideoCompositor.h"
+#include "FrameConverter.h"
 
 using namespace webrtc;
 using namespace woogeen_base;
@@ -231,43 +232,27 @@ public:
         , m_swFramePoolWidth(0)
         , m_swFramePoolHeight(0)
     {
+        m_converter.reset(new FrameConverter(false));
     }
 
     ~VppInput()
     {
-        printfFuncEnter;
-
-        {
-            boost::unique_lock<boost::shared_mutex> lock(m_mutex);
-            m_queue.clear();
-        }
-
         m_owner->flush();
+        m_busyFrame.reset();
         m_swFramePool.reset(NULL);
-
-        printfFuncExit;
     }
 
     void activate()
     {
         boost::unique_lock<boost::shared_mutex> lock(m_mutex);
-
         m_active = true;
     }
 
     void deActivate()
     {
-        {
-            boost::unique_lock<boost::shared_mutex> lock(m_mutex);
-
-            m_active = false;
-            m_queue.clear();
-        }
-
-        m_owner->flush();
-        m_swFramePool.reset(NULL);
-        m_swFramePoolWidth = 0;
-        m_swFramePoolHeight = 0;
+        boost::unique_lock<boost::shared_mutex> lock(m_mutex);
+        m_active = false;
+        m_busyFrame.reset();
     }
 
     bool isActivate()
@@ -282,14 +267,14 @@ public:
             boost::shared_ptr<MsdkFrame> msdkFrame = convert(frame);
             if (!msdkFrame)
                 return;
+
             {
                 boost::unique_lock<boost::shared_mutex> lock(m_mutex);
 
-                m_queue.push_back(msdkFrame);
-                if (m_queue.size() > MAX_DECODED_FRAME_IN_RENDERING) {
-                    ELOG_TRACE("(%p)Reach max frames in queue, drop oldest frame!", this);
-                    m_queue.pop_front();
-                }
+                if (!m_active)
+                    return;
+
+                m_busyFrame = msdkFrame;
             }
         }
     }
@@ -298,22 +283,10 @@ public:
     {
         boost::unique_lock<boost::shared_mutex> lock(m_mutex);
 
-        boost::shared_ptr<MsdkFrame> input = NULL;
-        if (!m_active)
+        if(!m_active)
             return NULL;
 
-        if (m_queue.empty())
-            return NULL;
-
-        if (m_queue.size() == 1) {
-            ELOG_TRACE("(%p)Repeated frame!", this);
-        } else {
-            // Keep at least one frame for renderer, postpone pop to next opt
-            m_queue.pop_front();
-        }
-
-        input = m_queue.front();
-        return input;
+        return m_busyFrame;
     }
 
 protected:
@@ -327,6 +300,35 @@ protected:
         return true;
     }
 
+    boost::shared_ptr<woogeen_base::MsdkFrame> getMsdkFrame(const uint32_t width, const uint32_t height)
+    {
+        if (m_msdkFrame == NULL) {
+            m_msdkFrame.reset(new MsdkFrame(width, height, m_allocator));
+            if (!m_msdkFrame->init()) {
+                m_msdkFrame.reset();
+                return NULL;
+            }
+        }
+
+        if(!(m_msdkFrame.use_count() == 1 && m_msdkFrame->isFree())) {
+            ELOG_INFO("No free frame available");
+            return NULL;
+        }
+
+        if (m_msdkFrame->getWidth() < width || m_msdkFrame->getHeight() < height) {
+            m_msdkFrame.reset(new MsdkFrame(width, height, m_allocator));
+            if (!m_msdkFrame->init()) {
+                m_msdkFrame.reset();
+                return NULL;
+            }
+        }
+
+        if (m_msdkFrame->getVideoWidth() != width || m_msdkFrame->getVideoHeight() != height)
+            m_msdkFrame->setCrop(0, 0, width, height);
+
+        return m_msdkFrame;
+    }
+
     bool processCmd(const woogeen_base::Frame& frame)
     {
         if (frame.format == FRAME_FORMAT_MSDK) {
@@ -334,9 +336,15 @@ protected:
             if (holder && holder->cmd == MsdkCmd_DEC_FLUSH) {
                 {
                     boost::unique_lock<boost::shared_mutex> lock(m_mutex);
-                    m_queue.clear();
+                    boost::shared_ptr<MsdkFrame> copyFrame;
+                    if(m_active && m_busyFrame) {
+                        copyFrame = getMsdkFrame(m_busyFrame->getVideoWidth(), m_busyFrame->getVideoHeight());
+                        if (copyFrame && !m_converter->convert(m_busyFrame.get(), copyFrame.get())) {
+                            copyFrame.reset();
+                        }
+                    }
+                    m_busyFrame = copyFrame;
                 }
-
                 m_owner->flush();
                 return true;
             }
@@ -354,21 +362,25 @@ protected:
             const struct VideoFrameSpecificInfo &video = frame.additionalInfo.video;
 
             if (m_swFramePool == NULL || m_swFramePoolWidth < video.width || m_swFramePoolHeight < video.height) {
-                if (m_swFramePool) {
-                    {
-                        boost::unique_lock<boost::shared_mutex> lock(m_mutex);
-                        m_queue.clear();
+                {
+                    boost::unique_lock<boost::shared_mutex> lock(m_mutex);
+                    boost::shared_ptr<MsdkFrame> copyFrame;
+                    if(m_active && m_busyFrame) {
+                        copyFrame = getMsdkFrame(m_busyFrame->getVideoWidth(), m_busyFrame->getVideoHeight());
+                        if (copyFrame && !m_converter->convert(m_busyFrame.get(), copyFrame.get())) {
+                            copyFrame.reset();
+                        }
                     }
-                    m_owner->flush();
+                    m_busyFrame = copyFrame;
                 }
+                m_owner->flush();
 
                 if (!initSwFramePool(video.width, video.height))
                     return NULL;
             }
 
             boost::shared_ptr<MsdkFrame> dst = m_swFramePool->getFreeFrame();
-            if (!dst)
-            {
+            if (!dst) {
                 ELOG_ERROR("(%p)No frame available in swFramePool", this);
                 return NULL;
             }
@@ -377,8 +389,7 @@ protected:
                 dst->setCrop(0, 0, video.width, video.height);
 
             VideoFrame *i420Frame = (reinterpret_cast<VideoFrame *>(frame.payload));
-            if (!dst->convertFrom(i420Frame->video_frame_buffer().get()))
-            {
+            if (!dst->convertFrom(i420Frame->video_frame_buffer().get())) {
                 ELOG_ERROR("(%p)Failed to convert I420 frame", this);
                 return NULL;
             }
@@ -393,8 +404,14 @@ protected:
 private:
     MsdkVideoCompositor *m_owner;
     boost::shared_ptr<mfxFrameAllocator> m_allocator;
+
+    boost::shared_ptr<woogeen_base::MsdkFrame> m_msdkFrame;
+    boost::scoped_ptr<FrameConverter> m_converter;
+
     bool m_active;
-    std::deque<boost::shared_ptr<MsdkFrame>> m_queue;
+    boost::shared_ptr<woogeen_base::MsdkFrame> m_busyFrame;
+
+    // todo, dont flush
     boost::scoped_ptr<MsdkFramePool> m_swFramePool;
     int m_swFramePoolWidth;
     int m_swFramePoolHeight;

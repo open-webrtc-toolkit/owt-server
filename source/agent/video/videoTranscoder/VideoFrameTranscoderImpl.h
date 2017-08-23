@@ -30,12 +30,12 @@
 #include <VideoFrameTranscoder.h>
 
 #include <VCMFrameDecoder.h>
-#include <SwFrameProcesser.h>
 #include <VCMFrameEncoderAdapter.h>
+
+#include <FrameProcesser.h>
 
 #ifdef ENABLE_MSDK
 #include <MsdkFrameDecoder.h>
-#include <MsdkFrameProcesser.h>
 #include <MsdkFrameEncoder.h>
 #endif
 
@@ -52,7 +52,9 @@ public:
     bool addOutput(int output,
             woogeen_base::FrameFormat,
             const woogeen_base::VideoSize&,
-            const woogeen_base::QualityLevel qualityLevel,
+            const unsigned int framerateFPS,
+            const unsigned int bitrateKbps,
+            const unsigned int keyFrameIntervalSeconds,
             woogeen_base::FrameDestination*);
     void removeOutput(int output);
 
@@ -151,13 +153,14 @@ inline void VideoFrameTranscoderImpl::unsetInput(int input)
 inline bool VideoFrameTranscoderImpl::addOutput(int output,
                                            woogeen_base::FrameFormat format,
                                            const woogeen_base::VideoSize& rootSize,
-                                           const woogeen_base::QualityLevel qualityLevel,
+                                           const unsigned int framerateFPS,
+                                           const unsigned int bitrateKbps,
+                                           const unsigned int keyFrameIntervalSeconds,
                                            woogeen_base::FrameDestination* dest)
 {
     boost::shared_ptr<woogeen_base::VideoFrameEncoder> encoder;
     boost::shared_ptr<woogeen_base::VideoFrameProcesser> processer;
     boost::upgrade_lock<boost::shared_mutex> lock(m_outputMutex);
-    uint32_t bitrateKbps = woogeen_base::calcBitrate(rootSize.width, rootSize.height) * woogeen_base::getQualityLevelMultiplier(woogeen_base::QUALITY_LEVEL_AUTO);
     int32_t streamId = -1;
 
 #ifdef ENABLE_MSDK
@@ -169,20 +172,15 @@ inline bool VideoFrameTranscoderImpl::addOutput(int output,
         encoder.reset(new woogeen_base::VCMFrameEncoderAdapter(format));
     }
 
-    streamId = encoder->generateStream(0, 0, bitrateKbps, dest);
+    streamId = encoder->generateStream(rootSize.width, rootSize.height, framerateFPS, bitrateKbps, keyFrameIntervalSeconds, dest);
     if (streamId < 0)
         return false;
 
-#ifdef ENABLE_MSDK
     if (!processer) {
-        processer.reset(new woogeen_base::MsdkFrameProcesser());
-    }
-#endif
-    if (!processer) {
-        processer.reset(new woogeen_base::SwFrameProcesser());
+        processer.reset(new woogeen_base::FrameProcesser());
     }
 
-    if (!processer->init(encoder->getInputFormat()))
+    if (!processer->init(encoder->getInputFormat(), rootSize.width, rootSize.height, framerateFPS))
         return false;
 
     this->addVideoDestination(processer.get());

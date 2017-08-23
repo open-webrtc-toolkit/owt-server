@@ -8,6 +8,7 @@
       '../VideoMixer.cpp',
       '../../../../core/woogeen_base/I420BufferManager.cpp',
       '../../../../core/woogeen_base/MediaFramePipeline.cpp',
+      '../../../../core/woogeen_base/FrameConverter.cpp',
       '../../../../core/woogeen_base/VCMFrameDecoder.cpp',
       '../../../../core/woogeen_base/VCMFrameEncoder.cpp',
     ],
