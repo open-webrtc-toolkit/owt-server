@@ -37,141 +37,200 @@ var V10Client = function(clientId, sigConnection, portal) {
     that.connection.sendMessage(evt, data);
   };
 
+  const onError = (method, callback) => {
+    return (err) => {
+      const err_message = getErrorMessage(err);
+      log.info(method + ' failed:', err_message);
+      safeCall(callback, 'error', err_message);
+    };
+  };
+
+  const idPattern = /^[0-9a-zA-Z\-]+$/;
+  const validateId = (type, id) => {
+    if ((typeof id === 'string') && idPattern.test(id)) {
+      return Promise.resolve(id);
+    } else {
+      return Promise.reject('Invalid ' + type);
+    }
+  };
+
+  const validateTextReq = (textReq) => {
+    if (textReq.to === '' || typeof textReq.to !== 'string') {
+      return Promise.reject('Invalid receiver');
+    } else {
+      return Promise.resolve(textReq);
+    }
+  };
+
+  const validatePubReq = (pubReq) => {
+    //FIXME: Add validation here.
+    return Promise.resolve(pubReq);
+  };
+
+  const validateStreamCtrlReq = (stCtrlReq) => {
+    return validateId('stream id', stCtrlReq.id)
+      .then(() => {
+        //FIXME: Add validation here.
+        return Promise.resolve(stCtrlReq);
+      });
+  };
+
+  const validateSubReq = (subReq) => {
+    if (!subReq.media || !(subReq.media.audio || subReq.media.video)) {
+      return Promise.reject('Bad subscription request');
+    }
+
+    //FIXME: Add validation here.
+    return Promise.resolve(subReq);
+  };
+
+  const validateSubscriptionCtrlReq = (subCtrlReq) => {
+    return validateId('subscription id', subCtrlReq.id)
+      .then(() => {
+        //FIXME: Add validation here.
+        return Promise.resolve(subCtrlReq);
+      });
+  };
+
+  const validateSOAC = (SOAC) => {
+    return validateId('session id', SOAC.id)
+      .then(() => {
+        if (SOAC.signaling.type === 'offer'
+            || SOAC.signaling.type === 'answer'
+            || SOAC.signaling.type === 'candidate') {
+          return Promise.resolve(SOAC);
+        } else {
+          return Promise.reject('Invalid signaling type');
+        }
+      });
+  };
+
+  var validateSetPermReq = (setPermReq) => {
+    return validateId('participant id', setPermReq.id)
+      .then(() => {
+        //FIXME: Add validation here.
+        return Promise.resolve(setPermReq);
+      });
+  };
+
   const listenAt = (socket) => {
     socket.on('text', function(textReq, callback) {
       if(!that.inRoom){
         return safeCall(callback, 'error', 'Illegal request');
       }
 
-      if (textReq.to === '' || typeof textReq.to !== 'string') {
-        return safeCall(callback, 'error', 'Invalid receiver');
-      }
-
-      return portal.text(clientId, textReq.to, textReq.message)
-        .then((result) => {
+      return validateTextReq(textReq)
+        .then((req) => {
+          return portal.text(clientId, req.to, req.message);
+        }).then((result) => {
           safeCall(callback, 'ok');
-        }).catch((err) => {
-          const err_message = getErrorMessage(err);
-          log.info('portal.text failed:', err_message);
-          safeCall(callback, 'error', err_message);
-        });
+        }).catch(onError('text', callback));
     });
 
     socket.on('publish', function(pubReq, callback) {
       if(!that.inRoom){
         return safeCall(callback, 'error', 'Illegal request');
       }
-      //FIXME: Add requestData validation here.
 
       var stream_id = Math.round(Math.random() * 1000000000000000000) + '';
-      return portal.publish(clientId, stream_id, pubReq)
-        .then((result) => {
+      return validatePubReq(pubReq)
+        .then((req) => {
+          return portal.publish(clientId, stream_id, req);
+        }).then((result) => {
           safeCall(callback, 'ok', {id: stream_id});
-        }).catch((err) => {
-          const err_message = getErrorMessage(err);
-          log.info('portal.publish failed:', err_message);
-          safeCall(callback, 'error', err_message);
-        });
+        }).catch(onError('publish', callback));
     });
 
     socket.on('unpublish', function(unpubReq, callback) {
       if(!that.inRoom){
         return safeCall(callback, 'error', 'Illegal request');
       }
-      //FIXME: Add requestData validation here.
 
-      return portal.unpublish(clientId, unpubReq.id)
-        .then((result) => {
+      return validateId('stream id', unpubReq.id)
+        .then((streamId) => {
+          return portal.unpublish(clientId, streamId);
+        }).then((result) => {
           safeCall(callback, 'ok');
-        }).catch((err) => {
-          const err_message = getErrorMessage(err);
-          log.info('portal.unpublish failed:', err_message);
-          safeCall(callback, 'error', err_message);
-        });
+        }).catch(onError('unpublish', callback));
     });
 
-    socket.on('stream-control', function(streamCtlReq, callback) {
+    socket.on('stream-control', function(streamCtrlReq, callback) {
       if(!that.inRoom){
         return safeCall(callback, 'error', 'Illegal request');
       }
-      //FIXME: Add requestData validation here.
 
-      return portal.streamControl(clientId, streamCtlReq.id, {operation: streamCtlReq.operation, data: streamCtlReq.data})
-        .then((result) => {
+      return validateStreamCtrlReq(streamCtrlReq)
+        .then((req) => {
+          return portal.streamControl(clientId, req.id, {operation: req.operation, data: req.data});
+        }).then((result) => {
           safeCall(callback, 'ok', result);
-        }).catch((err) => {
-          const err_message = getErrorMessage(err);
-          log.info('portal.streamControl failed:', err_message);
-          safeCall(callback, 'error', err_message);
-        });
+        }).catch(onError('stream-control', callback));
     });
 
     socket.on('subscribe', function(subReq, callback) {
       if(!that.inRoom){
         return safeCall(callback, 'error', 'Illegal request');
       }
-      //FIXME: Add requestData validation here.
-      if (!subReq.media || !(subReq.media.audio || subReq.media.video)) {
-        return safeCall(callback, 'error', 'Bad subscription request');
-      }
 
       var subscription_id = Math.round(Math.random() * 1000000000000000000) + '';
-      return portal.subscribe(clientId, subscription_id, subReq)
-        .then((result) => {
+      return validateSubReq(subReq)
+        .then((req) => {
+          return portal.subscribe(clientId, subscription_id, req);
+        }).then((result) => {
           safeCall(callback, 'ok', {id: subscription_id});
-        }).catch((err) => {
-          const err_message = getErrorMessage(err);
-          log.info('portal.subscribe failed:', err_message);
-          safeCall(callback, 'error', err_message);
-        });
+        }).catch(onError('subscribe', callback));
     });
 
     socket.on('unsubscribe', function(unsubReq, callback) {
       if(!that.inRoom){
         return safeCall(callback, 'error', 'Illegal request');
       }
-      //FIXME: Add requestData validation here.
 
-      return portal.unsubscribe(clientId, unsubReq.id)
-        .then((result) => {
+      return validateId('subscription id', unsubReq.id)
+        .then((subscriptionId) => {
+          return portal.unsubscribe(clientId, subscriptionId);
+        }).then((result) => {
           safeCall(callback, 'ok');
-        }).catch((err) => {
-          const err_message = getErrorMessage(err);
-          log.info('portal.unsubscribe failed:', err_message);
-          safeCall(callback, 'error', err_message);
-        });
+        }).catch(onError('unsubscribe', callback));
     });
 
-    socket.on('subscription-control', function(subCtlReq, callback) {
+    socket.on('subscription-control', function(subCtrlReq, callback) {
       if(!that.inRoom){
         return safeCall(callback, 'error', 'Illegal request');
       }
-      //FIXME: Add requestData validation here.
 
+      return validateSubscriptionCtrlReq(subCtrlReq)
+        .then((req) => {
+          return portal.subscriptionControl(clientId, req.id, {operation: req.operation, data: req.data});
+        }).then((result) => {
+          safeCall(callback, 'ok');
+        }).catch(onError('subscription-control', callback));
     });
 
     socket.on('soac', function(SOAC, callback) {
       if(!that.inRoom){
         return safeCall(callback, 'error', 'Illegal request');
       }
-      //FIXME: Add requestData validation here.
 
-      return portal.onSessionSignaling(clientId, SOAC.id, SOAC.signaling)
-        .then((result) => {
+      return validateSOAC(SOAC)
+        .then((soac) => {
+          return portal.onSessionSignaling(clientId, soac.id, soac.signaling);
+        }).then((result) => {
           safeCall(callback, 'ok');
-        }).catch((err) => {
-          const err_message = getErrorMessage(err);
-          log.info('portal.onSessionSignaling failed:', err_message);
-          safeCall(callback, 'error', err_message);
-        });
+        }).catch(onError('soac', callback));
     });
 
-    socket.on('set-permission', function(Permission, callback) {
+    socket.on('set-permission', function(setPermReq, callback) {
       if(!that.inRoom){
         return safeCall(callback, 'error', 'Illegal request');
       }
-      //FIXME: Add requestData validation here.
 
+      return validateSetPermReq(setPermReq)
+        .then((req) => {
+          return portal.setPermission(clientId, req.id, req.authorities);
+        }).then((result) => {
+          safeCall(callback, 'ok');
+        }).catch(onError('set-permission', callback));
     });
   };
 

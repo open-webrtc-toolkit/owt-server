@@ -330,7 +330,7 @@ describe('Logining and Relogining.', function() {
 
       client.emit('login', {token: (new Buffer(JSON.stringify('someInvalidToken'))).toString('base64'), userAgent: jsClientInfo, protocol: '1.0'}, function(status, resp) {
         expect(status).to.equal('error');
-        expect(resp).to.have.string('invalid token');
+        expect(resp).to.equal('invalid token');
         resolveJoin();
       });
     });
@@ -378,7 +378,7 @@ describe('Logining and Relogining.', function() {
 
       client.emit('login', {token: someValidToken, userAgent: 'invalidUserAgent'}, function(status, resp) {
         expect(status).to.equal('error');
-        expect(resp).to.have.string('User agent info is incorrect');
+        expect(resp).to.equal('User agent info is incorrect');
         resolveToken();
       });
     });
@@ -550,7 +550,7 @@ describe('Logining and Relogining.', function() {
       });
     });
 
-    it.skip('Components created during old client\'s lifetime can still send message after reconnection.', function(done){
+    it('Components created during old client\'s lifetime can still send message after reconnection.', function(done){
       mockPortal.publish = sinon.stub();
       mockPortal.publish.resolves('ok');
       mockPortal.leave = sinon.stub();
@@ -563,14 +563,26 @@ describe('Logining and Relogining.', function() {
         var participant_id = client1.id;
         client1.emit('login', someValidLoginInfo, function(status, resp) {
           expect(status).to.equal('success');
-          let options = {state: 'erizo', audio: true, video: {resolution: 'vga', framerate: 30, device: 'camera'}};
-          client1.emit('publish', options, undefined, function(status, id) {
-            var stream_id = id;
-            expect(status).to.equal('initializing');
-            //client1.disconnect();
+          var pub_req = {
+            type: 'webrtc',
+            media: {
+              audio: {
+                source: 'mic'
+              },
+              video: {
+                source: 'camera'
+              }
+            }
+          };
+          client1.emit('publish', pub_req, function(status, res) {
+            var stream_id = res.id;
+            expect(status).to.equal('ok');
+            client1.disconnect();
             let client2 = sioClient.connect(serverUrl, {reconnection: true, secure: false, 'force new connection': false});
-            client2.on('signaling_message_erizo', function(){
-              done();
+            client2.on('progress', function(data) {
+              if (data.status === 'soac' && data.data.type === 'candidate') {
+                done();
+              }
             });
             client2.emit('relogin', resp.reconnectionTicket, function(status, resp){
               expect(status).to.equal('success');
@@ -1114,15 +1126,38 @@ describe('Responding to clients.', function() {
           expect(result).to.equal('ok');
           client.emit('unpublish', {id: 'non-ExistStreamId'}, function(status, data) {
             expect(status).to.equal('error');
-            expect(data).to.have.string('stream does not exist');
+            expect(data).to.equal('stream does not exist');
             expect(mockPortal.unpublish.getCall(0).args).to.deep.equal([client.id, 'non-ExistStreamId']);
             done();
           });
         });
     });
 
-    it.skip('With invalid stream-id should fail.', function(done) {
-      done();
+    it('With invalid stream-id should fail.', function(done) {
+      mockPortal.unpublish = sinon.stub();
+
+      return joinFirstly()
+        .then(function(result) {
+          expect(result).to.equal('ok');
+          client.emit('unpublish', {}, function(status, data) {
+            expect(status).to.equal('error');
+            expect(data).to.equal('Invalid stream id');
+            client.emit('unpublish', {id: ''}, function(status, data) {
+              expect(status).to.equal('error');
+              expect(data).to.equal('Invalid stream id');
+              client.emit('unpublish', {id: 1234}, function(status, data) {
+                expect(status).to.equal('error');
+                expect(data).to.equal('Invalid stream id');
+                client.emit('unpublish', {id: {obj: 'yes'}}, function(status, data) {
+                  expect(status).to.equal('error');
+                  expect(data).to.equal('Invalid stream id');
+                  expect(mockPortal.unpublish.callCount).to.equal(0);
+                  done();
+                });
+              });
+            });
+          });
+        });
     });
   });
 
@@ -1154,11 +1189,11 @@ describe('Responding to clients.', function() {
         .then(function() {
           client.emit('stream-control', {id: 'streamId', operation: 'mix', data: 'view1'}, function(status, data) {
             expect(status).to.equal('error');
-            expect(data).to.have.string('stream does not exist');
+            expect(data).to.equal('stream does not exist');
 
             client.emit('stream-control', {id: 'streamId', operation: 'unmix', data: 'view2'}, function(status, data) {
               expect(status).to.equal('error');
-              expect(data).to.have.string('stream does not exist');
+              expect(data).to.equal('stream does not exist');
               done();
             });
           });
@@ -1192,11 +1227,11 @@ describe('Responding to clients.', function() {
         .then(function() {
           client.emit('stream-control', {id: 'streamId', operation: 'play', data: 'av'}, function(status, data) {
             expect(status).to.equal('error');
-            expect(data).to.have.string('stream does not exist');
+            expect(data).to.equal('stream does not exist');
 
             client.emit('stream-control', {id: 'streamId', operation: 'pause', data: 'video'}, function(status, data) {
               expect(status).to.equal('error');
-              expect(data).to.have.string('stream does not exist');
+              expect(data).to.equal('stream does not exist');
               done();
             });
           });
@@ -1234,12 +1269,12 @@ describe('Responding to clients.', function() {
           expect(result).to.equal('ok');
           client.emit('stream-control', {id: 'subStreamId', operation: 'get-region', data: 'common'}, function(status, data) {
             expect(status).to.equal('error');
-            expect(data).to.have.string('some error');
+            expect(data).to.equal('some error');
             expect(mockPortal.streamControl.getCall(0).args).to.deep.equal([client.id, 'subStreamId', {operation: 'get-region', data: 'common'}]);
 
             client.emit('stream-control', {id: 'subStreamId', operation: 'set-region', data: {view: 'common', region: '3'}}, function(status, data) {
               expect(status).to.equal('error');
-              expect(data).to.have.string('some error');
+              expect(data).to.equal('some error');
               expect(mockPortal.streamControl.getCall(1).args).to.deep.equal([client.id, 'subStreamId', {operation: 'set-region', data: {region: '3', view: 'common'}}]);
               done();
             });
@@ -1247,13 +1282,13 @@ describe('Responding to clients.', function() {
         });
     });
 
-    it.skip('With invalid stream-id or region-id should fail.', function(done) {
+    it('With invalid stream-id should fail.', function(done) {
       mockPortal.streamControl = sinon.stub();
 
       return joinFirstly()
         .then(function(result) {
           expect(result).to.equal('ok');
-          client.emit('stream-control', {id: 1234, operation: 'mix', data: 'common'}, function(status, data) {
+          client.emit('stream-control', {operation: 'mix', data: 'common'}, function(status, data) {
             expect(status).to.equal('error');
             expect(data).to.equal('Invalid stream id');
             expect(mockPortal.streamControl.callCount).to.equal(0);
@@ -1267,20 +1302,29 @@ describe('Responding to clients.', function() {
                 expect(status).to.equal('error');
                 expect(data).to.equal('Invalid stream id');
                 expect(mockPortal.streamControl.callCount).to.equal(0);
-
-                client.emit('stream-control', {id: 'subStreamId', operation: 'set-region', data: {view: 'common', region: 789}}, function(status, data) {
-                  expect(status).to.equal('error');
-                  expect(data).to.equal('Invalid region id');
-                  expect(mockPortal.streamControl.callCount).to.equal(0);
-
-                  client.emit('stream-control', {id: 'subStreamId', operation: 'set-region', data: {view: 'common', region: ''}}, function(status, data) {
-                    expect(status).to.equal('error');
-                    expect(data).to.equal('Invalid region id');
-                    expect(mockPortal.streamControl.callCount).to.equal(0);
-                    done();
-                  });
-                });
+                done();
               });
+            });
+          });
+        });
+    });
+
+    it.skip('With invalid operation or data should fail.', function(done) {
+      mockPortal.streamControl = sinon.stub();
+
+      return joinFirstly()
+        .then(function(result) {
+          expect(result).to.equal('ok');
+          client.emit('stream-control', {id: 'subStreamId', operation: 'set-region', data: {view: 'common', region: 789}}, function(status, data) {
+            expect(status).to.equal('error');
+            expect(data).to.equal('Invalid region id');
+            expect(mockPortal.streamControl.callCount).to.equal(0);
+
+            client.emit('stream-control', {id: 'subStreamId', operation: 'set-region', data: {view: 'common', region: ''}}, function(status, data) {
+              expect(status).to.equal('error');
+              expect(data).to.equal('Invalid region id');
+              expect(mockPortal.streamControl.callCount).to.equal(0);
+              done();
             });
           });
         });
@@ -1504,10 +1548,6 @@ describe('Responding to clients.', function() {
         });
     });
 
-    it.skip('Starting recording with confliction between codecs and container specification should fail.', function(done) {
-      done();
-    });
-
     it.skip('Starting pulling out rtsp/rtmp streams should fail if the url is invalid.', function(done) {
       mockPortal.subscribe = sinon.stub();
       mockPortal.subscribe.resolves({agent: 'agentId', node: 'nodeId'});
@@ -1634,53 +1674,102 @@ describe('Responding to clients.', function() {
         });
     });
 
-    it.skip('With invalid unsubRequest should fail.', function(done) {
-      done();
-    });
-  });
-
-  describe.skip('on: subscription-control', function() {
-    it('Updating out rtsp/rtmp streams without specifying a valid url should fail.', function(done) {
+    it('With invalid subscription id should fail.', function(done) {
       mockPortal.unsubscribe = sinon.stub();
 
       return joinFirstly()
         .then(function(result) {
           expect(result).to.equal('ok');
-          var options = {url: ''};
-          client.emit('updateExternalOutput', options, function(status, data) {
+          client.emit('unsubscribe', {}, function(status, data) {
             expect(status).to.equal('error');
-            expect(data).to.equal('Invalid RTSP/RTMP server url');
-            var options = {url: 7878878};
-            client.emit('updateExternalOutput', options, function(status, data) {
+            expect(data).to.equal('Invalid subscription id');
+            client.emit('unsubscribe', {id: ''}, function(status, data) {
               expect(status).to.equal('error');
-              expect(data).to.equal('Invalid RTSP/RTMP server url');
-              expect(mockPortal.unsubscribe.callCount).to.equal(0);
-              done();
+              expect(data).to.equal('Invalid subscription id');
+              client.emit('unsubscribe', {id: 1234}, function(status, data) {
+                expect(status).to.equal('error');
+                expect(data).to.equal('Invalid subscription id');
+                client.emit('unsubscribe', {id: {obj: 'yes'}}, function(status, data) {
+                  expect(status).to.equal('error');
+                  expect(data).to.equal('Invalid subscription id');
+                  expect(mockPortal.unsubscribe.callCount).to.equal(0);
+                  done();
+                });
+              });
+            });
+          });
+        });
+    });
+  });
+
+  describe('on: subscription-control', function() {
+    it('Updating subscriptions without specifying a valid subscription id should fail.', function(done) {
+      mockPortal.subscriptionControl = sinon.stub();
+
+      return joinFirstly()
+        .then(function(result) {
+          expect(result).to.equal('ok');
+          client.emit('subscription-control', {}, function(status, data) {
+            expect(status).to.equal('error');
+            expect(data).to.equal('Invalid subscription id');
+            client.emit('subscription-control', {id: ''}, function(status, data) {
+              expect(status).to.equal('error');
+              expect(data).to.equal('Invalid subscription id');
+              client.emit('subscription-control', {id: 1234}, function(status, data) {
+                expect(status).to.equal('error');
+                expect(data).to.equal('Invalid subscription id');
+                client.emit('subscription-control', {id: {obj: 'yes'}}, function(status, data) {
+                  expect(status).to.equal('error');
+                  expect(data).to.equal('Invalid subscription id');
+                  expect(mockPortal.subscriptionControl.callCount).to.equal(0);
+                  done();
+                });
+              });
             });
           });
         });
     });
 
-    it('Updating pulling out rtsp/rtmp streams should succeed if portal.subscriptionControl succeeds.', function(done) {
-      mockPortal.subscribe = sinon.stub();
-      mockPortal.subscribe.resolves('ok');
+    it('Updating subscriptions should succeed if portal.subscriptionControl succeeds.', function(done) {
       mockPortal.subscriptionControl = sinon.stub();
       mockPortal.subscriptionControl.resolves('ok');
 
       return joinFirstly()
         .then(function(result) {
           expect(result).to.equal('ok');
-          var options = {url: 'rtsp://target.host'};
-          client.emit('addExternalOutput', options, function(status, data) {
-            expect(status).to.equal('success');
-            expect(data.url).to.equal('rtsp://target.host');
-            var options1 = {url: 'rtsp://target.host', streamId: 'stream1', resolution: {width: 640, height: 480}};
-            client.emit('updateExternalOutput', options1, function(status, data) {
-              expect(status).to.equal('success');
-              expect(data.url).to.equal('rtsp://target.host');
-              expect(mockPortal.subscriptionControl.getCall(0).args[0]).to.equal(client.id);
-              expect(mockPortal.subscriptionControl.getCall(0).args[1]).to.be.a('string');
-              expect(mockPortal.subscriptionControl.getCall(0).args[2]).to.deep.equal({operation: 'update', data: {audio: {from: 'stream1'}, video: {from: 'stream1', spec: {resolution: {width: 640, height: 480}}}}});
+          var sub_ctrl_req = {
+            id: 'subscriptionId',
+            operation: 'update',
+            data: {
+              audio: {
+                from: 'stream1'
+              }
+            }
+          };
+          client.emit('subscription-control', sub_ctrl_req, function(status, data) {
+            expect(status).to.equal('ok');
+            expect(mockPortal.subscriptionControl.getCall(0).args).to.deep.equal([client.id, sub_ctrl_req.id, {operation: 'update', data: sub_ctrl_req.data}]);
+            var sub_ctrl_req1 = {
+              id: 'subscriptionId',
+              operation: 'update',
+              data: {
+                audio: {
+                  from: 'stream1'
+                },
+                video: {
+                  from: 'stream2',
+                  spec: {
+                    resolution: {width: 648, height: 480},
+                    bitrate: 300,
+                    framerate: 24,
+                    keyFrameInterval: 2
+                  }
+                }
+              }
+            };
+            client.emit('subscription-control', sub_ctrl_req1, function(status, data) {
+              expect(status).to.equal('ok');
+              expect(mockPortal.subscriptionControl.getCall(1).args).to.deep.equal([client.id, sub_ctrl_req1.id, {operation: 'update', data: sub_ctrl_req1.data}]);
               done();
             });
           });
@@ -1688,105 +1777,42 @@ describe('Responding to clients.', function() {
     });
 
     it('Updating pulling out rtsp/rtmp streams should fail if portal.subscriptionControl fails.', function(done) {
-      mockPortal.subscribe = sinon.stub();
-      mockPortal.subscribe.resolves({agent: 'agentId', node: 'nodeId'});
       mockPortal.subscriptionControl = sinon.stub();
       mockPortal.subscriptionControl.rejects('some-error');
 
       return joinFirstly()
         .then(function(result) {
           expect(result).to.equal('ok');
-          var options = {url: 'rtsp://target.host'};
-          client.emit('addExternalOutput', options, function(status, data) {
-            expect(status).to.equal('success');
-            expect(data.url).to.equal('rtsp://target.host');
-            var options1 = {url: 'rtsp://target.host', streamId: 'stream1', resolution: {width: 640, height: 480}};
-            client.emit('updateExternalOutput', options1, function(status, data) {
-              expect(status).to.equal('error');
-              expect(data).to.have.string('some-error');
-              done();
-            });
-          });
-        });
-    });
-
-    it('Contineous recording should succeed if portal.subscriptionControl succeeds', function(done) {
-      mockPortal.subscriptionControl = sinon.stub();
-      mockPortal.subscriptionControl.resolves('ok');
-
-      return joinFirstly()
-        .then(function(result) {
-          var options = {audioStreamId: 'targetStreamId-01', videoStreamId: 'targetStreamId-02', audioCodec: 'pcmu', videoCodec: 'vp8', path: '/tmp', interval: 1000};
-          client.emit('startRecorder', options, function(status, data) {
-            expect(status).to.equal('success');
-            expect(data.recorderId).to.be.a('string');
-            var recorder_id = data.recorderId;
-            var options = {recorderId: recorder_id, audioStreamId: 'stream1'};
-            client.emit('startRecorder', options, function(status, data) {
-              expect(status).to.equal('success');
-              expect(data.recorderId).to.equal(recorder_id);
-              expect(mockPortal.subscriptionControl.getCall(0).args).to.deep.equal([client.id, recorder_id, {operation: 'update', data: {audio: {from: 'stream1'}}}]);
-
-              var options = {recorderId: recorder_id, videoStreamId: 'stream2'};
-              client.emit('startRecorder', options, function(status, data) {
-                expect(status).to.equal('success');
-                expect(data.recorderId).to.equal(recorder_id);
-                expect(mockPortal.subscriptionControl.getCall(1).args).to.deep.equal([client.id, recorder_id, {operation: 'update', data: {video: {from: 'stream2'}}}]);
-                done();
-              });
-            });
-          });
-        });
-    });
-
-    it('Contineous recording should fail if portal.subscriptionControl fails', function() {
-      mockPortal.subscriptionControl = sinon.stub();
-      mockPortal.subscriptionControl.rejects('some-error');
-
-      var recorder_id = 'recorderId';
-      return joinFirstly()
-        .then(function(result) {
-          expect(result).to.equal('ok');
-          var options = {recorderId: recorder_id, audioStreamId: 'stream1'};
-          client.emit('startRecorder', options, function(status, data) {
+          var sub_ctrl_req = {
+            id: 'subscriptionId',
+            operation: 'update',
+            data: {
+              audio: {
+                from: 'stream1'
+              }
+            }
+          };
+          client.emit('subscription-control', sub_ctrl_req, function(status, data) {
             expect(status).to.equal('error');
-            expect(data).to.have.string('some-error');
-            done();
-          });
-        });
-    });
-
-    it('Contineous recording should fail if neither audioStreamId nor videoStreamId are specified', function() {
-      mockPortal.subscriptionControl = sinon.stub();
-      mockPortal.subscriptionControl.rejects('some-error');
-
-      var recorder_id = 'recorderId';
-      return joinFirstly()
-        .then(function(result) {
-          expect(result).to.equal('ok');
-          var options = {recorderId: recorder_id, audioCodec: 'aac'};
-          client.emit('startRecorder', options, function(status, data) {
-            expect(status).to.equal('error');
-            expect(data).to.equal('Neither audio.from nor video.from was specified');
-            expect(mockPortal.subscriptionControl.callCount).to.equal(0);
+            expect(data).to.equal('some-error');
             done();
           });
         });
     });
 
     it('Playing/pausing subscriptions should succeed if portal.streamControl suceeds.', function(done) {
-      mockPortal.streamControl = sinon.stub();
-      mockPortal.streamControl.resolves('ok');
+      mockPortal.subscriptionControl = sinon.stub();
+      mockPortal.subscriptionControl.resolves('ok');
 
       return joinFirstly()
         .then(function() {
-          client.emit('stream-control', {id: 'streamId', operation: 'play', data: 'av'}, function(status, data) {
+          client.emit('subscription-control', {id: 'subscriptionId', operation: 'play', data: 'av'}, function(status, data) {
             expect(status).to.equal('ok');
-            expect(mockPortal.streamControl.getCall(0).args).to.deep.equal([client.id, 'streamId', {operation: 'play', data: 'av'}]);
+            expect(mockPortal.subscriptionControl.getCall(0).args).to.deep.equal([client.id, 'subscriptionId', {operation: 'play', data: 'av'}]);
 
-            client.emit('stream-control', {id: 'streamId', operation: 'pause', data: 'video'}, function(status, data) {
+            client.emit('subscription-control', {id: 'subscriptionId', operation: 'pause', data: 'video'}, function(status, data) {
               expect(status).to.equal('ok');
-              expect(mockPortal.streamControl.getCall(1).args).to.deep.equal([client.id, 'streamId', {operation: 'pause', data: 'video'}]);
+              expect(mockPortal.subscriptionControl.getCall(1).args).to.deep.equal([client.id, 'subscriptionId', {operation: 'pause', data: 'video'}]);
               done();
             });
           });
@@ -1794,18 +1820,18 @@ describe('Responding to clients.', function() {
     });
 
     it('Playing/pausing subscriptions should fail if portal.streamControl fails.', function(done) {
-      mockPortal.streamControl = sinon.stub();
-      mockPortal.streamControl.rejects('stream does not exist');
+      mockPortal.subscriptionControl = sinon.stub();
+      mockPortal.subscriptionControl.rejects('subscription does not exist');
 
       return joinFirstly()
         .then(function() {
-          client.emit('stream-control', {id: 'streamId', operation: 'play', data: 'av'}, function(status, data) {
+          client.emit('subscription-control', {id: 'subscriptionId', operation: 'play', data: 'av'}, function(status, data) {
             expect(status).to.equal('error');
-            expect(data).to.have.string('stream does not exist');
+            expect(data).to.equal('subscription does not exist');
 
-            client.emit('stream-control', {id: 'streamId', operation: 'pause', data: 'video'}, function(status, data) {
+            client.emit('subscription-control', {id: 'subscriptionId', operation: 'pause', data: 'video'}, function(status, data) {
               expect(status).to.equal('error');
-              expect(data).to.have.string('stream does not exist');
+              expect(data).to.equal('subscription does not exist');
               done();
             });
           });
@@ -1813,31 +1839,43 @@ describe('Responding to clients.', function() {
     });
   });
 
-  describe.skip('on: setPermission', function() {
-    it('setPermission without specifying targetId should fail.', function(done) {
+  describe('on: set-permission', function() {
+    it('setPermission without specifying a valid participantId should fail.', function(done) {
       mockPortal.setPermission = sinon.stub();
 
       return joinFirstly()
         .then(function(result) {
           expect(result).to.equal('ok');
-          client.emit('setPermission', {action: 'subscribe', update: false}, function(status, data) {
+          client.emit('set-permission', {authorities: [{operation: 'publish', field: 'type.add', value: 'streaming'}]}, function(status, data) {
             expect(status).to.equal('error');
-            expect(data).to.equal('no targetId specified');
-            expect(mockPortal.setPermission.callCount).to.equal(0);
-            done();
+            expect(data).to.equal('Invalid participant id');
+            client.emit('set-permission', {id: '', authorities: [{operation: 'publish', field: 'type.add', value: 'streaming'}]}, function(status, data) {
+              expect(status).to.equal('error');
+              expect(data).to.equal('Invalid participant id');
+              client.emit('set-permission', {id: 2389, authorities: [{operation: 'publish', field: 'type.add', value: 'streaming'}]}, function(status, data) {
+                expect(status).to.equal('error');
+                expect(data).to.equal('Invalid participant id');
+                client.emit('set-permission', {id: {obj: 'yes'}, authorities: [{operation: 'publish', field: 'type.add', value: 'streaming'}]}, function(status, data) {
+                  expect(status).to.equal('error');
+                  expect(data).to.equal('Invalid participant id');
+                  expect(mockPortal.setPermission.callCount).to.equal(0);
+                  done();
+                });
+              });
+            });
           });
         });
     });
 
-    it('setPermission without specifying action should fail.', function(done) {
+    it.skip('setPermission with invalid authority should fail.', function(done) {
       mockPortal.setPermission = sinon.stub();
 
       return joinFirstly()
         .then(function(result) {
           expect(result).to.equal('ok');
-          client.emit('setPermission', {targetId: 'targetId', update: false}, function(status, data) {
+          client.emit('set-permission', {id: 'participantId', authorities: [{operation: 'lala'}]}, function(status, data) {
             expect(status).to.equal('error');
-            expect(data).to.equal('no action specified');
+            expect(data).to.equal('Invalid authority');
             expect(mockPortal.setPermission.callCount).to.equal(0);
             done();
           });
@@ -1851,9 +1889,9 @@ describe('Responding to clients.', function() {
       return joinFirstly()
         .then(function(result) {
           expect(result).to.equal('ok');
-          client.emit('setPermission', {targetId: 'targetId', action: 'subscribe', update: false}, function(status, data) {
-            expect(status).to.equal('success');
-            expect(mockPortal.setPermission.getCall(0).args).to.deep.equal([client.id, 'targetId', [{operation: 'subscribe', value: false}]]);
+          client.emit('set-permission', {id: 'participantId', authorities: [{operation: 'subscribe', value: false}]}, function(status, data) {
+            expect(status).to.equal('ok');
+            expect(mockPortal.setPermission.getCall(0).args).to.deep.equal([client.id, 'participantId', [{operation: 'subscribe', value: false}]]);
             done();
           });
         });
@@ -1885,7 +1923,7 @@ describe('Responding to clients.', function() {
           expect(result).to.equal('ok');
           client.emit('text', {to: 'all', message: 'Hi, there!'}, function(status, data) {
             expect(status).to.equal('error');
-            expect(data).to.have.string('some-error');
+            expect(data).to.equal('some-error');
             done();
           });
         });
