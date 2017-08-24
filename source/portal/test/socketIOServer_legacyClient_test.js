@@ -294,11 +294,34 @@ describe('Logining and Relogining.', function() {
            id: testStream,
            view: 'common',
            audio: true,
-           video: {device: 'mcu', resolutions: [{width: 1280, height: 720}, {width: 640, height: 480}, {width: 320, height: 240}]}, from: '', socket: ''
+           video: {
+             device: 'mcu',
+             resolutions: [{width: 1280, height: 720}, {width: 640, height: 480}, {width: 320, height: 240}],
+             layout: [
+               {
+                region: {
+                  area: {
+                    height: 1,
+                    left: 0,
+                    top: 0,
+                    width: 1
+                  },
+                  id: "1",
+                  shape: "rectangle"
+                },
+                stream: "forward-stream-id"
+              }
+             ]
+           },
+           from: '',
+           socket: '',
           }, {
            id: 'forward-stream-id',
            audio: true,
-           video: {device: 'camera'}, from: 'participant-id', socket: ''
+           video: {device: 'camera'},
+           from: 'participant-id',
+           socket: '',
+           attributes: {someKey: 'someValue'}
           }
         ];
 

@@ -297,7 +297,7 @@ describe('Logining and Relogining.', function() {
       mockServiceObserver.onJoin = sinon.spy();
 
       client.emit('login', {token: someValidToken, userAgent:iosClientInfo, protocol: '1.0'}, function(status, resp) {
-        expect(status).to.equal('success');
+        expect(status).to.equal('ok');
         expect(mockPortal.join.getCall(0).args).to.deep.equal([client.id, 'someValidToken']);
         expect(mockServiceObserver.onJoin.getCall(0).args).to.deep.equal(['tokenCode']);
         expect(resp.user).to.equal(presenter_join_result.data.user);
@@ -390,7 +390,7 @@ describe('Logining and Relogining.', function() {
       mockPortal.join.resolves(JSON.parse(JSON.stringify(presenter_join_result)));
 
       client.emit('login', {token: someValidToken, userAgent:jsClientInfo, protocol: '1.0'}, function(status, resp) {
-        expect(status).to.equal('success');
+        expect(status).to.equal('ok');
         expect(resp.reconnectionTicket).to.be.undefined;
         done();
       });
@@ -412,7 +412,7 @@ describe('Logining and Relogining.', function() {
 
     const someValidLoginInfo = {token: (new Buffer(JSON.stringify('someValidToken'))).toString('base64'), userAgent: iosClientInfo, protocol: '1.0'};
 
-    it('Relogin with correct ticket should success.', function(done){
+    it('Relogin with correct ticket should succeed.', function(done){
       mockPortal.join = sinon.stub();
       mockPortal.join.resolves(JSON.parse(JSON.stringify(presenter_join_result)));
       mockPortal.leave = sinon.stub();
@@ -430,10 +430,10 @@ describe('Logining and Relogining.', function() {
         });
       };
       reconnection_client.emit('login', someValidLoginInfo, function(status, resp){
-        expect(status).to.equal('success');
+        expect(status).to.equal('ok');
         clientDisconnect().then(reconnection).then(function(){
           reconnection_client.emit('relogin', resp.reconnectionTicket, function(status, resp){
-            expect(status).to.equal('success');
+            expect(status).to.equal('ok');
             done();
           });
         }).catch(function(err){
@@ -460,7 +460,7 @@ describe('Logining and Relogining.', function() {
         });
       };
       reconnection_client.emit('login', someValidLoginInfo, function(status, resp){
-        expect(status).to.equal('success');
+        expect(status).to.equal('ok');
         clientDisconnect().then(reconnection).then(function(){
           reconnection_client.emit('relogin', 'someInvalidReconnectionTicket', function(status, resp){
             expect(status).to.equal('error');
@@ -491,7 +491,7 @@ describe('Logining and Relogining.', function() {
         });
       };
       reconnection_client.emit('login', someValidLoginInfo, function(status, resp){
-        expect(status).to.equal('success');
+        expect(status).to.equal('ok');
         setTimeout(function(){  // Postpone disconnect. Otherwise, disconnect will be executed before establishing connection.
           reconnection_client.emit('logout');
           clientDisconnect().then(reconnection).then(function(){
@@ -515,7 +515,7 @@ describe('Logining and Relogining.', function() {
         mockPortal.join.resolves(JSON.parse(JSON.stringify(presenter_join_result)));
 
         client.emit('login', someValidLoginInfo, function(status, resp) {
-          expect(status).to.equal('success');
+          expect(status).to.equal('ok');
           ticket = resp.reconnectionTicket;
           return server.drop(client.id)
             .then(function(result) {
@@ -540,10 +540,10 @@ describe('Logining and Relogining.', function() {
         mockPortal.join.resolves(JSON.parse(JSON.stringify(presenter_join_result)));
 
         client1.emit('login', someValidLoginInfo, function(status, resp) {
-          expect(status).to.equal('success');
+          expect(status).to.equal('ok');
           let client2 = sioClient.connect(serverUrl, {reconnection: true, secure: false, 'force new connection': false});
           client2.emit('relogin', resp.reconnectionTicket, function(status, resp){
-            expect(status).to.equal('success');
+            expect(status).to.equal('ok');
             done();
           });
         });
@@ -562,7 +562,7 @@ describe('Logining and Relogining.', function() {
         mockPortal.join.resolves(JSON.parse(JSON.stringify(presenter_join_result)));
         var participant_id = client1.id;
         client1.emit('login', someValidLoginInfo, function(status, resp) {
-          expect(status).to.equal('success');
+          expect(status).to.equal('ok');
           var pub_req = {
             type: 'webrtc',
             media: {
@@ -585,7 +585,7 @@ describe('Logining and Relogining.', function() {
               }
             });
             client2.emit('relogin', resp.reconnectionTicket, function(status, resp){
-              expect(status).to.equal('success');
+              expect(status).to.equal('ok');
               server.notify(participant_id, 'progress', {id: stream_id, status: 'soac', data: {type: 'candidate', candidate: 'I\'m a candidate.'}});
             });
           });
@@ -609,14 +609,14 @@ describe('Logining and Relogining.', function() {
       });
     });
 
-    it('Logout after login should success.', function(done){
+    it('Logout after login should succeed.', function(done){
       mockPortal.join = sinon.stub();
       mockPortal.join.resolves(JSON.parse(JSON.stringify(presenter_join_result)));
 
       client.emit('login', someValidLoginInfo, function(loginStatus, resp) {
-        expect(loginStatus).to.equal('success');
+        expect(loginStatus).to.equal('ok');
         client.emit('logout', function(logoutStatus){
-          expect(logoutStatus).to.equal('success');
+          expect(logoutStatus).to.equal('ok');
           done();
         });
       });
@@ -641,7 +641,7 @@ describe('Logining and Relogining.', function() {
       mockPortal.join = sinon.stub();
       mockPortal.join.resolves(JSON.parse(JSON.stringify(presenter_join_result)));
       client.emit('login', someValidLoginInfo, function(status, resp) {
-        expect(status).to.equal('success');
+        expect(status).to.equal('ok');
         client.emit('refreshReconnectionTicket', function(status, data){
           var reconnection_ticket = JSON.parse(new Buffer(data, 'base64').toString());
           expect(reconnection_ticket.notBefore).to.be.at.most(Date.now());
@@ -677,7 +677,7 @@ describe('Logining and Relogining.', function() {
 
       client.emit('login', jsLoginInfo, function(status, resp) {
         participant_id = client.id;
-        expect(status).to.equal('success');
+        expect(status).to.equal('ok');
         client.disconnect();
       });
     });
@@ -743,7 +743,7 @@ describe('Notifying events to clients.', function() {
 
       client.emit('login', jsLoginInfo, function(status, resp) {
         mockPortal.join = null;
-        expect(status).to.equal('success');
+        expect(status).to.equal('ok');
         return server.notify(client.id, 'whatever-event', 'whatever-data')
         .then((result) => {
           expect(result).to.equal('ok');
@@ -859,7 +859,7 @@ describe('Responding to clients.', function() {
       mockPortal.join.resolves(JSON.parse(JSON.stringify(presenter_join_result)));
 
       client.emit('login', jsLoginInfo, function(status, resp) {
-        expect(status).to.equal('success');
+        expect(status).to.equal('ok');
         resolve('ok');
       });
     });
