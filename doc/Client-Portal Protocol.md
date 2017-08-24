@@ -54,7 +54,7 @@ Given that Portal has accepted Clients connecting and the socket object is ready
 ```
 serverSocket.emit(
               NotificationName,
-              NotificationData //Will be absent if no data is required.
+              NotificationData //Will be absent if no data is present.
              );
 ```
 Where
@@ -285,7 +285,7 @@ object(LoginResult)::
 **ResponseData**: undefined if **ResponseStatus** is “ok”.
 #### 3.3.3 Participant Is Dropped by MCU
 **NotificationName**: “drop”
-**NotificationData**: undefined
+**NotificationData**: absent
 #### 3.3.4 Participant Is Notified on Other Participant’s Action
 **NotificationName**: “participant”
 **NotificationData**: The ParticipantAction object with following definition:
