@@ -88,6 +88,7 @@ private:
     bool setSendCodec(FrameFormat, unsigned int width, unsigned int height);
 
     bool m_enabled;
+    bool m_enableDump;
     bool m_keyFrameArrived;
     std::unique_ptr<webrtc::RateLimiter> m_retransmissionRateLimiter;
     boost::scoped_ptr<webrtc::BitrateController> m_bitrateController;

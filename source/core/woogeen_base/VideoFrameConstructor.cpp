@@ -35,6 +35,7 @@ DEFINE_LOGGER(VideoFrameConstructor, "woogeen.VideoFrameConstructor");
 
 VideoFrameConstructor::VideoFrameConstructor()
     : m_enabled(true)
+    , m_enableDump(false)
     , m_format(FRAME_FORMAT_UNKNOWN)
     , m_width(0)
     , m_height(0)
@@ -313,9 +314,9 @@ int32_t VideoFrameConstructor::Decode(const webrtc::EncodedImage& encodedImage,
             deliverFrame(frame);
         }
 
-        //if (frame.format == FRAME_FORMAT_H264 || frame.format == FRAME_FORMAT_H265) {
-        //    dump(this, frame.format, frame.payload, frame.length);
-        //}
+        if (m_enableDump && (frame.format == FRAME_FORMAT_H264 || frame.format == FRAME_FORMAT_H265)) {
+            dump(this, frame.format, frame.payload, frame.length);
+        }
     }
     return 0;
 }

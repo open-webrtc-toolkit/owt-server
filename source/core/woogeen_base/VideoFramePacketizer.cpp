@@ -34,6 +34,7 @@ DEFINE_LOGGER(VideoFramePacketizer, "woogeen.VideoFramePacketizer");
 
 VideoFramePacketizer::VideoFramePacketizer(bool enableRed, bool enableUlpfec)
     : m_enabled(true)
+    , m_enableDump(false)
     , m_keyFrameArrived(false)
     , m_frameFormat(FRAME_FORMAT_UNKNOWN)
     , m_frameWidth(0)
@@ -308,7 +309,9 @@ void VideoFramePacketizer::onFrame(const Frame& frame)
         m_rtpRtcp->SendOutgoingData(webrtc::kVideoFrameKey, VP9_90000_PT, frame.timeStamp, frame.timeStamp / 90, frame.payload, frame.length, nullptr, &h, &transport_frame_id_out);
     } else if (frame.format == FRAME_FORMAT_H264 /*|| frame.format == FRAME_FORMAT_H265*/) {
         int frame_length = frame.length;
-        //dump(this, frame.format, frame.payload, frame_length);
+        if (m_enableDump) {
+            dump(this, frame.format, frame.payload, frame_length);
+        }
         //FIXME: temporarily filter out AUD because chrome M59 could NOT handle it correctly.
         if (frame.format == FRAME_FORMAT_H264) {
             frame_length = dropAUD(frame.payload, frame_length);
