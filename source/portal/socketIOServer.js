@@ -36,6 +36,7 @@ var Connection = function(spec, socket, reconnectionKey, portal, dock) {
   // With value of (undefined | 'initialized' | 'connecting' | 'connected' | 'waiting_for_reconnecting')
   var state;
   var client_id;
+  var protocol_version;
   var waiting_for_reconnecting_timer;
   var pending_messages = [];
 
@@ -47,8 +48,6 @@ var Connection = function(spec, socket, reconnectionKey, portal, dock) {
     if(!ua||!ua.sdk||!ua.sdk.version||!ua.sdk.type||!ua.runtime||!ua.runtime.version||!ua.runtime.name||!ua.os||!ua.os.version||!ua.os.name){
       return Promise.reject('User agent info is incorrect');
     }
-    // client_info is introduced in 3.3. It's the same version as reconnection. So it's safe to ignore SDK version.
-    // JavaScript SDK 3.3 does not support reconnection.
     return Promise.resolve(ua.sdk.type === 'Objective-C' || ua.sdk.type === 'C++' || ua.sdk.type === 'Android')
   };
 
@@ -123,6 +122,10 @@ var Connection = function(spec, socket, reconnectionKey, portal, dock) {
     }
   };
 
+  const okWord = () => {
+    return protocol_version === 'legacy' ? 'success' : 'ok';
+  };
+
   const run = () => {
     state = 'initialized';
     socket.on('login', function(login_info, callback) {
@@ -134,8 +137,10 @@ var Connection = function(spec, socket, reconnectionKey, portal, dock) {
       client_id = socket.id + '';
       var client;
       if (login_info.protocol === undefined) {
+        protocol_version = 'legacy';
         client = new LegacyClient(client_id, that, portal);
       } else if (login_info.protocol === '1.0') {
+        protocol_version = '1.0';
         client = new V10Client(client_id, that, portal);
       } else {
         safeCall(callback, 'error', 'Unknown client protocol');
@@ -157,7 +162,7 @@ var Connection = function(spec, socket, reconnectionKey, portal, dock) {
             }
             state = 'connected';
             dock.onClientJoined(client_id, client);
-            safeCall(callback, 'success', result);
+            safeCall(callback, okWord(), result);
           } else {
             client.leave(client_id);
             state = 'initialized';
@@ -205,6 +210,7 @@ var Connection = function(spec, socket, reconnectionKey, portal, dock) {
           return Promise.reject('Participant ID is not matched');
         } else {
           client_id = connectionInfo.clientId + '';
+          protocol_version = connectionInfo.protocolVersion + '';
           pending_messages = connectionInfo.pendingMessages;
           reconnection.enabled = true;
           return client.resetConnection(that);
@@ -212,7 +218,7 @@ var Connection = function(spec, socket, reconnectionKey, portal, dock) {
       }).then(() => {
         let ticket = generateReconnectionTicket();
         state = 'connected';
-        safeCall(callback, 'success', ticket);
+        safeCall(callback, okWord(), ticket);
         drainPendingMessages();
       }).catch((err) => {
         state = 'initialized';
@@ -234,7 +240,7 @@ var Connection = function(spec, socket, reconnectionKey, portal, dock) {
       }
 
       let ticket = generateReconnectionTicket();
-      safeCall(callback, 'success', ticket);
+      safeCall(callback, okWord(), ticket);
     });
 
     socket.on('logout', function(callback){
@@ -242,7 +248,7 @@ var Connection = function(spec, socket, reconnectionKey, portal, dock) {
       state = 'initialized';
       if (client_id) {
         forceClientLeave();
-        safeCall(callback, 'success');
+        safeCall(callback, okWord());
       } else {
         return safeCall(callback, 'error', 'Illegal request');
       }
@@ -278,6 +284,7 @@ var Connection = function(spec, socket, reconnectionKey, portal, dock) {
     return {
       pendingMessages: pending_messages,
       clientId: client_id,
+      protocolVersion: protocol_version,
       reconnection: reconnection
     };
   };

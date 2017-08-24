@@ -31,7 +31,7 @@ Given that Client has connected Portal successfully and the socket object is rea
 ```
 clientSocket.emit(
               RequestName,
-              RequestData, //Will be absent if no data is required.
+              RequestData,
               function(ResponseStatus, ResponseData) {
                   //Handle the status and response here.
               }
@@ -39,7 +39,7 @@ clientSocket.emit(
 ```
 Where
 1) **RequestName** must be with type of string, and with value defined in this specification;
-2) **RequestData** must be with type of javascript object(or equivalent in other programming language), and with format defined in this specification;
+2) **RequestData** must be with type of javascript object(or equivalent in other programming language), and with format defined in this specification. And will be absent if no request data is required;
 3) **ResponseStatus** must be with value either “ok” or “error”;
 4) **ResponseData** must be with type of javascript object or undefined if **ResponseStatus** equals to “ok”, and with type of ErrorDescription object defined as following if **ResponseStatus** equals to “error”.
 ```
@@ -54,12 +54,12 @@ Given that Portal has accepted Clients connecting and the socket object is ready
 ```
 serverSocket.emit(
               NotificationName,
-              NotificationData //Will be absent if no data is present.
+              NotificationData
              );
 ```
 Where
 1) **NotificationName** must be with type of string, and with value defined in this specification;
-2) **NotificationData** must be with type of object, and with format defined in this specification.
+2) **NotificationData** must be with type of object, and with format defined in this specification, and will be absent if no notification data is present.
 ### 3.2 Connection Maintenance
 #### 3.2.1 Client Connects
 Portal should be able to listen at both a secure and an insecure socket.io server port to accept Clients’ connecting requests.  If the secure socket.io server is enabled, the SSL certificate and private key store path must be correctly specified by configuration item portal.keystorePath in portal.toml.
