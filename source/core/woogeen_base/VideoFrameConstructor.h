@@ -112,6 +112,7 @@ private:
     bool init();
 
     bool m_enabled;
+    bool m_enableDump;
     FrameFormat m_format;
     uint16_t m_width;
     uint16_t m_height;
