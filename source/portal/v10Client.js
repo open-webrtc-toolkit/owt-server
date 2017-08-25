@@ -2,6 +2,7 @@
 'use strict';
 
 var log = require('./logger').logger.getLogger('V10Client');
+var requestData = require('./requestDataValidator');
 
 var idPattern = /^[0-9a-zA-Z\-]+$/;
 function isValidIdString(str) {
@@ -63,15 +64,13 @@ var V10Client = function(clientId, sigConnection, portal) {
   };
 
   const validatePubReq = (pubReq) => {
-    //FIXME: Add validation here.
-    return Promise.resolve(pubReq);
+    return requestData.validate('publication-request', pubReq);
   };
 
   const validateStreamCtrlReq = (stCtrlReq) => {
     return validateId('stream id', stCtrlReq.id)
       .then(() => {
-        //FIXME: Add validation here.
-        return Promise.resolve(stCtrlReq);
+        return requestData.validate('stream-control-info', stCtrlReq);
       });
   };
 
@@ -79,16 +78,13 @@ var V10Client = function(clientId, sigConnection, portal) {
     if (!subReq.media || !(subReq.media.audio || subReq.media.video)) {
       return Promise.reject('Bad subscription request');
     }
-
-    //FIXME: Add validation here.
-    return Promise.resolve(subReq);
+    return requestData.validate('subscription-request', subReq);
   };
 
   const validateSubscriptionCtrlReq = (subCtrlReq) => {
     return validateId('subscription id', subCtrlReq.id)
       .then(() => {
-        //FIXME: Add validation here.
-        return Promise.resolve(subCtrlReq);
+        return requestData.validate('subscription-control-info', subCtrlReq);
       });
   };
 
@@ -108,8 +104,7 @@ var V10Client = function(clientId, sigConnection, portal) {
   var validateSetPermReq = (setPermReq) => {
     return validateId('participant id', setPermReq.id)
       .then(() => {
-        //FIXME: Add validation here.
-        return Promise.resolve(setPermReq);
+        return requestData.validate('set-permission', setPermReq);
       });
   };
 

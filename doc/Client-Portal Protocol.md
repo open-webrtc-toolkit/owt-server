@@ -591,7 +591,7 @@ object(SetPermission)::
   object(Authority)::
     {
      operation: "publish" | "subscribe" | "text",
-     field: "media.audio" | "media.video" | "type.add" | "type.remove",
+     field: "media.audio" | "media.video" | "type.add" | "type.remove", // Optional
      value: true | false | "to-peer" | "to-all" | string(Type)
     }
 ```

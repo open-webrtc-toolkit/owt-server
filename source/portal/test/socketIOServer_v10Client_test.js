@@ -1096,8 +1096,30 @@ describe('Responding to clients.', function() {
         });
     });
 
-    it.skip('With invalid pubRequest should fail.', function(done) {
-      done();
+    it('With invalid pubRequest should fail.', function(done) {
+      mockPortal.publish = sinon.stub();
+
+      return joinFirstly()
+        .then(function(result) {
+          expect(result).to.equal('ok');
+          client.emit('publish', {}, function(status, data) {
+            expect(status).to.equal('error');
+            client.emit('publish', {type: 'no', media: {'audio': { source: 'mic'}}}, function(status, data) {
+              expect(status).to.equal('error');
+              client.emit('publish', {type: 'webrtc', media: {}}, function(status, data) {
+                expect(status).to.equal('error');
+                client.emit('publish', {type: 'streaming', media: {'audio': { source: 'mic'}}}, function(status, data) {
+                  expect(status).to.equal('error');
+                  client.emit('publish', {type: 'webrtc', connection: {url: 'rtmp://xxx'}, media: {'audio': 'auto'}}, function(status, data) {
+                    expect(status).to.equal('error');
+                    expect(mockPortal.publish.callCount).to.equal(0);
+                    done();
+                  });
+                });
+              });
+            });
+          });
+        });
     });
   });
 
@@ -1518,7 +1540,7 @@ describe('Responding to clients.', function() {
         .then(function(result) {
           expect(result).to.equal('ok');
           var sub_req = {
-            type: 'streaming',
+            type: 'recording',
             connection: {
               container: 'mp4'
             },
@@ -1639,8 +1661,30 @@ describe('Responding to clients.', function() {
         });
     });
 
-    it.skip('With invalid subRequest should fail.', function(done) {
-      done();
+    it('With invalid subRequest should fail.', function(done) {
+      mockPortal.subscribe = sinon.stub();
+
+      return joinFirstly()
+        .then(function(result) {
+          expect(result).to.equal('ok');
+          client.emit('subscribe', {}, function(status, data) {
+            expect(status).to.equal('error');
+            client.emit('subscribe', {type: 'no', media: {'audio': { from: 'stream-test'}}}, function(status, data) {
+              expect(status).to.equal('error');
+              client.emit('subscribe', {type: 'webrtc', media: {'audio': {} }}, function(status, data) {
+                expect(status).to.equal('error');
+                client.emit('subscribe', {type: 'streaming', media: {'audio': { from: 'stream-test'}} }, function(status, data) {
+                  expect(status).to.equal('error');
+                  client.emit('subscribe', {type: 'recording', media: {'audio': { from: 'stream-test'}} }, function(status, data) {
+                    expect(status).to.equal('error');
+                    expect(mockPortal.subscribe.callCount).to.equal(0);
+                    done();
+                  });
+                });
+              });
+            });
+          });
+        });
     });
   });
 
@@ -1889,9 +1933,9 @@ describe('Responding to clients.', function() {
       return joinFirstly()
         .then(function(result) {
           expect(result).to.equal('ok');
-          client.emit('set-permission', {id: 'participantId', authorities: [{operation: 'subscribe', value: false}]}, function(status, data) {
+          client.emit('set-permission', {id: 'participantId', authorities: [{operation: 'subscribe', field: 'type.remove', value: false}]}, function(status, data) {
             expect(status).to.equal('ok');
-            expect(mockPortal.setPermission.getCall(0).args).to.deep.equal([client.id, 'participantId', [{operation: 'subscribe', value: false}]]);
+            expect(mockPortal.setPermission.getCall(0).args).to.deep.equal([client.id, 'participantId', [{operation: 'subscribe', field: 'type.remove', value: false}]]);
             done();
           });
         });
