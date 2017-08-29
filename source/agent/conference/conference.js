@@ -205,8 +205,11 @@ var translateOldRoomConfig = (oldConfig) => {
     'uhd_4k': {width: 3840, height: 2160},
     'r360x360': {width: 360, height: 360},
     'r480x480': {width: 480, height: 480},
-    'r720x720': {width: 720, height: 720}
+    'r720x720': {width: 720, height: 720},
+    'r720x1280': {width: 720, height: 1280},
+    'r1080x1920': {width: 1080, height: 1920},
   };
+
   var qualityLevel2Factor = {
     'best_quality': 1.4,
     'better_quality': 1.2,
