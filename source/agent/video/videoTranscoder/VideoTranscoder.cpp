@@ -141,12 +141,20 @@ void VideoTranscoder::unsetInput(const std::string& inStreamID)
     }
 }
 
-bool VideoTranscoder::addOutput(const std::string& outStreamID, const std::string& codec, const std::string& resolution, woogeen_base::QualityLevel qualityLevel, woogeen_base::FrameDestination* dest)
+bool VideoTranscoder::addOutput(
+    const std::string& outStreamID
+    , const std::string& codec
+    , const std::string& resolution
+    , const unsigned int framerateFPS
+    , const unsigned int bitrateKbps
+    , const unsigned int keyFrameIntervalSeconds
+    , woogeen_base::FrameDestination* dest)
 {
     woogeen_base::FrameFormat format = getFormat(codec);
     VideoSize vSize{0, 0};
     //VideoResolutionHelper::getVideoSize(resolution, vSize);
-    if (m_frameTranscoder->addOutput(m_nextOutputIndex, format, vSize, qualityLevel, dest)) {
+    //FIXME: Apply other video parameters here.
+    if (m_frameTranscoder->addOutput(m_nextOutputIndex, format, vSize, woogeen_base::QUALITY_LEVEL_STANDARD, dest)) {
         boost::unique_lock<boost::shared_mutex> lock(m_outputsMutex);
         m_outputs[outStreamID] = m_nextOutputIndex++;
         return true;

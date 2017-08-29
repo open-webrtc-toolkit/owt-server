@@ -63,6 +63,46 @@ function isResolutionEqual(r1, r2) {
   return (r1.width === r2.width) && (r1.height === r2.height);
 }
 
+const partial_linear_bitrate = [
+  {size: 0, bitrate: 0},
+  {size: 76800, bitrate: 400},  //320*240, 30fps
+  {size: 307200, bitrate: 800}, //640*480, 30fps
+  {size: 921600, bitrate: 2000},  //1280*720, 30fps
+  {size: 2073600, bitrate: 4000}, //1920*1080, 30fps
+  {size: 8294400, bitrate: 16000} //3840*2160, 30fps
+];
+
+const standardBitrate = (width, height, framerate) => {
+  let bitrate = 0;
+  let prev = 0;
+  let next = 0;
+  let portion = 0.0;
+  let def = width * height * framerate / 30;
+
+  // find the partial linear section and calculate bitrate
+  for (var i = 0; i < partial_linear_bitrate.length - 1; i++) {
+    prev = partial_linear_bitrate[i].size;
+    next = partial_linear_bitrate[i+1].size;
+    if (def > prev && def <= next) {
+      portion = (def - prev) / (next - prev);
+      bitrate = partial_linear_bitrate[i].bitrate + (partial_linear_bitrate[i+1].bitrate - partial_linear_bitrate[i].bitrate) * portion;
+      break;
+    }
+  }
+
+  // set default bitrate for over large resolution
+  if (0 == bitrate) {
+    bitrate = 8000;
+  }
+
+  return bitrate;
+}
+
+const calcDefaultBitrate = (codec, resolution, framerate) => {
+  let factor = (codec === 'vp8' ? 0.9 : 1.0);
+  return standardBitrate(resolution.width, resolution.height, framerate) * factor;
+};
+
 // String(streamId) - Number(inputId) Map
 class StreamMap {
     constructor(maxInput) {
@@ -132,22 +172,18 @@ function VMixer(rpcClient, clusterIP) {
         belong_to,
         controller,
         view,
-        defaultQuality,
+        defaultframerate, bitrate, keyFrameInterval,
 
         supported_codecs = [],
         default_resolution = {width: 640, height: 480},
-        // Map to enum QualityLevel defined in MediaFramePipeline.h
-        supported_qualities = {
-            bestquality: 0,
-            betterquality: 1,
-            standard: 2,
-            betterspeed: 3,
-            bestspeed: 4
-        },
+        default_framerate = 30,
+        default_kfi = 1000,
 
         /*{StreamID : {codec: 'vp8' | 'h264' |...,
                        resolution: {width: Number(Width), height: Number(Height)},
-                       framerate: Number(1~120) | undefined,
+                       framerate: Number(FPS),
+                       bitrate: Number(Kbps),
+                       kfi: Number(KeyFrameIntervalSeconds),
                        dispatcher: Dispather,
                        }}*/
         outputs = {},
@@ -208,25 +244,23 @@ function VMixer(rpcClient, clusterIP) {
         }
     };
 
-    var addOutput = function (codec, resolution, quality, on_ok, on_error) {
+    var addOutput = function (codec, resolution, framerate, bitrate, keyFrameInterval, on_ok, on_error) {
+        log.debug('addOutput: codec', codec, 'resolution:', resolution, 'framerate:', framerate, 'bitrate:', bitrate, 'keyFrameInterval:', keyFrameInterval);
         if (engine) {
-            for (var id in outputs) {
-                if (outputs[id].codec === codec && isResolutionEqual(outputs[id].resolution, resolution) && outputs[id].quality === quality) {
-                    return on_ok(id);
-                }
-            }
-
-            log.debug('addOutput: codec', codec, 'resolution', resolution, 'quality', quality);
-
             var stream_id = Math.random() * 1000000000000000000 + '';
             var dispatcher = new MediaFrameMulticaster();
-            if (engine.addOutput(stream_id, codec,
-                                 resolution2String((!resolution || resolution === 'unspecified') ? default_resolution : resolution),
-                                 quality,
+            if (engine.addOutput(stream_id,
+                                 codec,
+                                 resolution2String(resolution),
+                                 framerate,
+                                 bitrate,
+                                 keyFrameInterval,
                                  dispatcher)) {
                 outputs[stream_id] = {codec: codec,
                                       resolution: resolution,
-                                      quality: quality,
+                                      framerate: framerate,
+                                      bitrate: bitrate,
+                                      kfi: keyFrameInterval,
                                       dispatcher: dispatcher,
                                       connections: {}};
                 log.debug('addOutput ok, stream_id:', stream_id);
@@ -250,6 +284,20 @@ function VMixer(rpcClient, clusterIP) {
             engine.removeOutput(stream_id);
             output.dispatcher.close();
             delete outputs[stream_id];
+        }
+    };
+
+    var getOutput = function (stream_id) {
+        if (outputs[stream_id]) {
+            return {
+                id: stream_id,
+                resolution: outputs[stream_id].resolution,
+                framerate: outputs[stream_id].framerate,
+                bitrate: outputs[stream_id].bitrate,
+                keyFrameInterval: outputs[stream_id].kfi
+            };
+        } else {
+            return undefined;
         }
     };
 
@@ -292,12 +340,14 @@ function VMixer(rpcClient, clusterIP) {
         controller = layoutcontroller;
         maxInputNum = videoConfig.maxInput;
         view = mixView;
-        defaultQuality = videoConfig.quality_level;
 
         // FIXME: The supported codec list should be a sub-list of those querried from the engine
         // and filterred out according to config.
         supported_codecs = ['vp8', 'vp9'];
         default_resolution = (videoConfig.parameters.resolution || {width: 640, height: 480});
+        default_framerate = (videoConfig.parameters.framerate || 30);
+        default_kfi = (videoConfig.parameters.keyFrameInterval || 1000);
+
         if (useHardware || openh264Enabled) {
             supported_codecs.push('h264');
         }
@@ -354,25 +404,21 @@ function VMixer(rpcClient, clusterIP) {
         callback('callback', 'ok');
     };
 
-    that.generate = function (codec, resolution, quality, callback) {
-        log.debug('generate, codec:', codec, 'resolution:', resolution, 'qualityLevel:', quality);
-        codec = codec || supported_codecs[0];
-        codec = codec.toLowerCase();
-        resolution = ((!resolution || resolution === 'unspecified') ? default_resolution : resolution);
-
-        // Map to qualityLevel enum
-        if (quality === 'unspecified') quality = defaultQuality;
-        var qualityLevel = supported_qualities[quality.toLowerCase()];
-        if (qualityLevel === undefined) {
-            qualityLevel = 2; // use 'standard' if not found
-            log.warn('Not supported quality:', quality, ', use level:', qualityLevel);
-        }
+    that.generate = function (codec, resolution, framerate, bitrate, keyFrameInterval, callback) {
+        log.debug('generate, codec:', codec, 'resolution:', resolution, 'framerate:', framerate, 'bitrate:', bitrate, 'keyFrameInterval:', keyFrameInterval);
+        codec = (codec || supported_codecs[0]).toLowerCase();
+        resolution = (resolution === 'unspecified' ? default_resolution : resolution);
+        framerate = (framerate === 'unspecified' ? default_framerate : framerate);
+        bitrate = (bitrate === 'unspecified' ? calcDefaultBitrate(codec, resolution, framerate) : bitrate);
+        keyFrameInterval = (keyFrameInterval === 'unspecified' ? default_kfi : keyFrameInterval);
 
         for (var stream_id in outputs) {
             if (outputs[stream_id].codec === codec &&
                 isResolutionEqual(outputs[stream_id].resolution, resolution) &&
-                outputs[stream_id].quality === qualityLevel) {
-                callback('callback', stream_id);
+                outputs[stream_id].framerate === framerate &&
+                outputs[stream_id].bitrate === bitrate &&
+                outputs[stream_id].kfi === keyFrameInterval) {
+                callback('callback', getOutput(stream_id));
                 return;
             }
         }
@@ -383,8 +429,8 @@ function VMixer(rpcClient, clusterIP) {
             return;
         }
 
-        addOutput(codec, resolution, qualityLevel, function (stream_id) {
-            callback('callback', stream_id);
+        addOutput(codec, resolution, framerate, bitrate, keyFrameInterval, function (stream_id) {
+            callback('callback', getOutput(stream_id));
         }, function (error_reason) {
             log.error(error_reason);
             callback('callback', 'error', error_reason);
@@ -548,11 +594,18 @@ function VTranscoder(rpcClient, clusterIP) {
         controller,
 
         supported_codecs = [],
+        default_resolution = {width: 0, height: 0},
+        default_framerate = 30,
+        default_kfi = -1,
 
         input_id = undefined,
         input_conn = undefined,
 
         /*{StreamID : {codec: 'vp8' | 'h264' |...,
+                       resolution: {width: Number(Width), height: Number(Height)},
+                       framerate: Number(FPS),
+                       bitrate: Number(Kbps),
+                       kfi: Number(KeyFrameIntervalSeconds),
                        dispatcher: Dispather,
                        }}*/
         outputs = {},
@@ -600,20 +653,23 @@ function VTranscoder(rpcClient, clusterIP) {
         }
     };
 
-    var addOutput = function (codec, on_ok, on_error) {
+    var addOutput = function (codec, resolution, framerate, bitrate, keyFrameInterval, on_ok, on_error) {
+        log.debug('addOutput: codec', codec, 'resolution:', resolution, 'framerate:', framerate, 'bitrate:', bitrate, 'keyFrameInterval:', keyFrameInterval);
         if (engine) {
-            for (var id in outputs) {
-                if (outputs[id].codec === codec) {
-                    return on_ok(id);
-                }
-            }
-
-            log.debug('addOutput: codec', codec);
-
             var stream_id = Math.random() * 1000000000000000000 + '';
             var dispatcher = new MediaFrameMulticaster();
-            if (engine.addOutput(stream_id, codec, dispatcher)) {
+            if (engine.addOutput(stream_id,
+                                 codec,
+                                 resolution2String(resolution),
+                                 framerate,
+                                 bitrate,
+                                 keyFrameInterval,
+                                 dispatcher)) {
                 outputs[stream_id] = {codec: codec,
+                                      resolution: resolution,
+                                      framerate: framerate,
+                                      bitrate: bitrate,
+                                      kfi: keyFrameInterval,
                                       dispatcher: dispatcher,
                                       connections: {}};
                 log.debug('addOutput ok, stream_id:', stream_id);
@@ -709,26 +765,34 @@ function VTranscoder(rpcClient, clusterIP) {
         callback('callback', 'ok');
     };
 
-    that.generate = function (codec, callback) {
-        log.debug('generate, codec:', codec);
-        codec = codec || supported_codecs[0];
-        codec = codec.toLowerCase();
+    that.generate = function (codec, resolution, framerate, bitrate, keyFrameInterval, callback) {
+        log.debug('generate, codec:', codec, 'resolution:', resolution, 'framerate:', framerate, 'bitrate:', bitrate, 'keyFrameInterval:', keyFrameInterval);
+        codec = (codec || supported_codecs[0]).toLowerCase();
+        resolution = (resolution === 'unspecified' ? default_resolution : resolution);
+        framerate = (framerate === 'unspecified' ? default_framerate : framerate);
+        var bitrate_factor = (typeof bitrate === 'string' ? (bitrate === 'unspecified' ? 1.0 : Number(bitrate.substring(1))) : 0);
+        bitrate = (bitrate_factor ? calcDefaultBitrate(codec, resolution, framerate) * bitrate_factor : bitrate);
+        keyFrameInterval = (keyFrameInterval === 'unspecified' ? default_kfi : keyFrameInterval);
 
         for (var stream_id in outputs) {
-            if (outputs[stream_id].codec === codec) {
-                callback('callback', stream_id);
+            if (outputs[stream_id].codec === codec &&
+                isResolutionEqual(outputs[stream_id].resolution, resolution) &&
+                outputs[stream_id].framerate === framerate &&
+                outputs[stream_id].bitrate === bitrate &&
+                outputs[stream_id].kfi === keyFrameInterval) {
+                callback('callback', getOutput(stream_id));
                 return;
             }
         }
 
         if (supported_codecs.indexOf(codec) === -1) {
-            log.error('Not supported codec:'+codec);
+            log.error('Not supported codec: '+codec);
             callback('callback', 'error', 'Not supported codec.');
             return;
         }
 
-        addOutput(codec, function (stream_id) {
-            callback('callback', stream_id);
+        addOutput(codec, resolution, framerate, bitrate, keyFrameInterval, function (stream_id) {
+            callback('callback', getOutput(stream_id));
         }, function (error_reason) {
             log.error(error_reason);
             callback('callback', 'error', error_reason);

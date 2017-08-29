@@ -44,7 +44,9 @@ public:
     bool addOutput(const std::string& outStreamID
             , const std::string& codec
             , const std::string& resolution
-            , const woogeen_base::QualityLevel qualityLevel
+            , const unsigned int framerateFPS
+            , const unsigned int bitrateKbps
+            , const unsigned int keyFrameIntervalSeconds
             , woogeen_base::FrameDestination* dest);
     void removeOutput(const std::string& outStreamID);
 

@@ -12,6 +12,46 @@ var Participant = require('./participant');
 // Logger
 var log = logger.getLogger('Conference');
 
+const partial_linear_bitrate = [
+  {size: 0, bitrate: 0},
+  {size: 76800, bitrate: 400},  //320*240, 30fps
+  {size: 307200, bitrate: 800}, //640*480, 30fps
+  {size: 921600, bitrate: 2000},  //1280*720, 30fps
+  {size: 2073600, bitrate: 4000}, //1920*1080, 30fps
+  {size: 8294400, bitrate: 16000} //3840*2160, 30fps
+];
+
+const standardBitrate = (width, height, framerate) => {
+  let bitrate = 0;
+  let prev = 0;
+  let next = 0;
+  let portion = 0.0;
+  let def = width * height * framerate / 30;
+
+  // find the partial linear section and calculate bitrate
+  for (var i = 0; i < partial_linear_bitrate.length - 1; i++) {
+    prev = partial_linear_bitrate[i].size;
+    next = partial_linear_bitrate[i+1].size;
+    if (def > prev && def <= next) {
+      portion = (def - prev) / (next - prev);
+      bitrate = partial_linear_bitrate[i].bitrate + (partial_linear_bitrate[i+1].bitrate - partial_linear_bitrate[i].bitrate) * portion;
+      break;
+    }
+  }
+
+  // set default bitrate for over large resolution
+  if (0 == bitrate) {
+    bitrate = 8000;
+  }
+
+  return bitrate;
+}
+
+const calcDefaultBitrate = (codec, resolution, framerate) => {
+  let factor = (codec === 'vp8' ? 0.9 : 1.0);
+  return standardBitrate(resolution.width, resolution.height, framerate) * factor;
+};
+
 var translateOldRoomConfig = (oldConfig) => {
   var config = {
     _id: oldConfig.id,
@@ -89,9 +129,9 @@ var translateOldRoomConfig = (oldConfig) => {
           }
         ],
         parameters: {
-          resolution: [/*'0.75x', '0.667x',*/ '0.5x', '0.333x', '0.25x', 'xga', 'svga', 'vga'/*, 'hvga', 'cif', 'sif', 'qcif'*/],
+          resolution: [/*'x3/4', 'x2/3',*/ 'x1/2', 'x1/3', 'x1/4', 'xga', 'svga', 'vga'/*, 'hvga', 'cif', 'sif', 'qcif'*/],
           framerate: [5, 15, 24, 30, 48, 60],
-          bitrate: ['1.6x', '1.4x', '1.2x', '0.8x', '0.6x', '0.4x'],
+          bitrate: ['x1.6', 'x1.4', 'x1.2', 'x0.8', 'x0.6', 'x0.4'],
           keyFrameInterval: [100, 30, 5, 2, 1]
         }
       }
@@ -167,24 +207,6 @@ var translateOldRoomConfig = (oldConfig) => {
     'r480x480': {width: 480, height: 480},
     'r720x720': {width: 720, height: 720}
   };
-  var resolutionName2StandardBitrateKbps = {
-    'cif': 100,
-    'vga': 800,
-    'svga': 1000,
-    'xga': 1200,
-    'r640x360': 600,
-    'hd720p': 2000,
-    'sif': 200,
-    'hvga': 500,
-    'r480x360': 600,
-    'qcif': 100,
-    'r192x144': 100,
-    'hd1080p': 4000,
-    'uhd_4k': 16000,
-    'r360x360': 500,
-    'r480x480': 700,
-    'r720x720': 800
-  };
   var qualityLevel2Factor = {
     'best_quality': 1.4,
     'better_quality': 1.2,
@@ -197,7 +219,7 @@ var translateOldRoomConfig = (oldConfig) => {
   }
 
   function getBitrate(old_quality_level, old_resolution) {
-    var standard_bitrate = resolutionName2StandardBitrateKbps[old_resolution] || 0.8;
+    var standard_bitrate = calcDefaultBitrate('h264', getResolution(old_resolution), 30);
     var mul_factor = qualityLevel2Factor[old_quality_level] || 1.0;
     return standard_bitrate * mul_factor;
   }
@@ -241,15 +263,15 @@ var translateOldRoomConfig = (oldConfig) => {
 
 var calcResolution = (x, baseResolution) => {
   switch (x) {
-    case '0.75x':
+    case 'x3/4':
       return {width: Math.floor(baseResolution.width * 3 / 4), height: Math.floor(baseResolution.height * 3 / 4)};
-    case '0.667x':
+    case 'x2/3':
       return {width: Math.floor(baseResolution.width * 2 / 3), height: Math.floor(baseResolution.height * 2 / 3)};
-    case '0.5x':
+    case 'x1/2':
       return {width: Math.floor(baseResolution.width / 2), height: Math.floor(baseResolution.height / 2)};
-    case '0.333x':
+    case 'x1/3':
       return {width: Math.floor(baseResolution.width / 3), height: Math.floor(baseResolution.height / 3)};
-    case '0.25x':
+    case 'x1/4':
       return {width: Math.floor(baseResolution.width / 4), height: Math.floor(baseResolution.height / 4)};
     case 'xga':
       return {width: 1024, height: 768};
@@ -271,7 +293,7 @@ var calcResolution = (x, baseResolution) => {
 };
 
 var calcBitrate = (x, baseBitrate) => {
-  return Number(x.substring(0, x.length - 1)) * baseBitrate;
+  return Number(x.substring(1)) * baseBitrate;
 };
 
 /*
@@ -391,9 +413,9 @@ var Conference = function (rpcClient, selfRpcId) {
    *    video: {
    *      format: [object(VideoFormat)],
    *      parameters: {
-   *        resolution: ['0.75x' | '0.667x' | '0.5x' | '0.333x' | '0.25x' | 'xga' | 'svga' | 'vga' | 'hvga' | 'cif' | 'sif' | 'qcif'],
+   *        resolution: ['x0.75' | 'x0.667' | 'x0.5' | 'x0.333' | 'x0.25' | 'xga' | 'svga' | 'vga' | 'hvga' | 'cif' | 'sif' | 'qcif'],
    *        framerate: [5 | 15 | 24 | 30 | 48 | 60],
-   *        bitrate: ['1.6x' | '1.4x' | '1.2x' | '0.8x' | '0.6x' | '0.4x'],
+   *        bitrate: ['x1.6' | 'x1.4' | 'x1.2' | 'x0.8' | 'x0.6' | 'x0.4'],
    *        keyFrameInterval: [100 | 30 | 5 | 2 | 1]
    *      }
    *    } | false
@@ -458,7 +480,7 @@ var Conference = function (rpcClient, selfRpcId) {
    *           parameters: {
    *             resolution: [object(Resolution)] | undefined,
    *             framerate: [number(FramerateFPS)] | undefined,
-   *             bitrate: [number(Kbps] | string(Multiple + 'x') | undefined,
+   *             bitrate: [number(Kbps] | string('x' + Multiple) | undefined,
    *             keyFrameRate: [number(Seconds)] | undefined
    *           } | undefined
    *         }
@@ -632,6 +654,10 @@ var Conference = function (rpcClient, selfRpcId) {
 
                   room_config.views.forEach((viewSettings) => {
                     var mixed_stream_id = room_id + '-' + viewSettings.label;
+                    if (viewSettings.video && viewSettings.video.parameters && viewSettings.video.parameters.bitrate === 'standard') {
+                      viewSettings.video.parameters.bitrate = calcDefaultBitrate(viewSettings.video.format.codec, viewSettings.video.parameters.resolution, viewSettings.video.parameters.framerate);
+                    }
+
                     var mixed_stream_info = {
                       id: mixed_stream_id,
                       type: 'mixed',
@@ -800,11 +826,11 @@ var Conference = function (rpcClient, selfRpcId) {
 
       if (room_config.transcoding.audio) {
         result.audio.optional = {format: []};
-        room_config.mediaOut.audio.forEach((x) => {
-          if ((x.codec !== result.audio.format.codec)
-              || (x.sampleRate !== result.audio.format.sampleRate)
-              || (x.channelNum !== result.audio.format.channelNum)) {
-            result.audio.optional.format.push(x);
+        room_config.mediaOut.audio.forEach((fmt) => {
+          if ((fmt.codec !== result.audio.format.codec)
+              || (fmt.sampleRate !== result.audio.format.sampleRate)
+              || (fmt.channelNum !== result.audio.format.channelNum)) {
+            result.audio.optional.format.push(fmt);
           }
         });
       }
@@ -825,10 +851,10 @@ var Conference = function (rpcClient, selfRpcId) {
 
       if (room_config.transcoding.video && room_config.transcoding.video.format) {
         result.video.optional = {format: []};
-        room_config.mediaOut.video.format.forEach((x) => {
-          if ((x.codec !== result.video.format.codec)
-              || (x.profile !== result.video.format.profile)) {
-            result.video.optional.format.push(x);
+        room_config.mediaOut.video.format.forEach((fmt) => {
+          if ((fmt.codec !== result.video.format.codec)
+              || (fmt.profile !== result.video.format.profile)) {
+            result.video.optional.format.push(fmt);
           }
         });
       }
@@ -883,13 +909,13 @@ var Conference = function (rpcClient, selfRpcId) {
     return new Promise((resolve, reject) => {
       roomController && roomController.subscribe(info.owner, id, locality, media, function() {
         if (participants[info.owner]) {
-          var su = {
+          var subscription = {
             id: id,
             locality: locality,
             media: media,
             info: info
           };
-          subscriptions[id] = su;
+          subscriptions[id] = subscription;
           resolve('ok');
         } else {
           roomController && roomController.unsubscribe(info.owner, id);
