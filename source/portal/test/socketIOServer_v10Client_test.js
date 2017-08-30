@@ -300,6 +300,7 @@ describe('Logining and Relogining.', function() {
         expect(status).to.equal('ok');
         expect(mockPortal.join.getCall(0).args).to.deep.equal([client.id, 'someValidToken']);
         expect(mockServiceObserver.onJoin.getCall(0).args).to.deep.equal(['tokenCode']);
+        expect(resp.id).to.be.a('string')
         expect(resp.user).to.equal(presenter_join_result.data.user);
         expect(resp.role).to.equal(presenter_join_result.data.role);
         expect(resp.permission).to.deep.equal(presenter_join_result.data.permission);

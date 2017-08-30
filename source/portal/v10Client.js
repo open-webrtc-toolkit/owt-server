@@ -238,6 +238,7 @@ var V10Client = function(clientId, sigConnection, portal) {
       .then(function(result){
         that.inRoom = result.data.room.id;
         that.tokenCode = result.tokenCode;
+        result.data.id = that.id;
         return result.data;
       });
   };
