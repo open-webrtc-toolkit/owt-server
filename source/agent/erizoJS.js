@@ -111,6 +111,7 @@ var rpc = require('./amqp_client')();
     }
 })();
 
+log.info('pid:', process.pid);
 log.info('Connecting to rabbitMQ server...');
 
 var controller;
