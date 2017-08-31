@@ -770,7 +770,7 @@ var LegacyClient = function(clientId, sigConnection, portal) {
 
   const notifyParticipantActivity = (participantActivity) => {
     if (participantActivity.action === 'join') {
-      sendMsg('user_join', {user: {id: participantActivity.data.id, name: participantActivity.data.user.name, role: participantActivity.data.role}});
+      sendMsg('user_join', {user: {id: participantActivity.data.id, name: participantActivity.data.user, role: participantActivity.data.role}});
     } else if (participantActivity.action === 'leave') {
       sendMsg('user_leave', {user: {id: participantActivity.data}});
     } else {
