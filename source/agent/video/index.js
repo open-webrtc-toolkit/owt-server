@@ -103,11 +103,14 @@ const calcDefaultBitrate = (codec, resolution, framerate) => {
   return standardBitrate(resolution.width, resolution.height, framerate) * factor;
 };
 
-// String(streamId) - Number(inputId) Map
-class StreamMap {
+class InputManager {
+
     constructor(maxInput) {
-        this.map = {};
+        // Key: stream ID, Value: input-object
+        this.inputs = {};
+        this.pendingInputs = {};
         this.freeIndex = [];
+
         // Default to 100 if not specified
         if (typeof maxInput !== 'number' || maxInput <= 0) maxInput = 100;
         for (let i = 0; i < maxInput; i++) {
@@ -118,46 +121,110 @@ class StreamMap {
 
     // Has the streamId
     has(streamId) {
-        return (this.map[streamId] !== undefined);
+        return (!!this.inputs[streamId] || !!this.pendingInputs[streamId]);
     }
 
-    // Get input from stream
+    isPending(streamId) {
+        return !!this.pendingInputs[streamId];
+    }
+
     get(streamId) {
-        if (this.map[streamId] === undefined) return -1;
-        return this.map[streamId];
+        return (this.inputs[streamId] || this.pendingInputs[streamId]);
     }
 
-    // Given String streamId, return Number inputId
-    add(streamId) {
-        if (this.map[streamId] !== undefined) {
+    add(streamId, codec, conn, avatar) {
+        if (this.inputs[streamId])
             return -1;
+
+        var input = {
+            id: this.freeIndex.pop(),
+            codec: codec,
+            conn: conn,
+            avatar: avatar,
+            primaryCount: 0
+        };
+        if (input.id === undefined) {
+            this.pendingInputs[streamId] = input;
+            return -1;
+        } else {
+            this.inputs[streamId] = input;
+            return input.id;
         }
-        if (this.freeIndex.length > 0) {
-            this.map[streamId] = this.freeIndex.pop();
-        }
-        return this.map[streamId];
     }
 
-    // Remove streamId, return Number inputId
     remove(streamId) {
-        var inputId = this.map[streamId]
-        if (inputId !== undefined) {
-            this.freeIndex.push(inputId);
-            delete this.map[streamId];
-            return inputId;
+        var input = null;
+        if (this.inputs[streamId]) {
+            input = this.inputs[streamId];
+            delete this.inputs[streamId];
+            this.freeIndex.push(input.id);
+        } else if (this.pendingInputs[streamId]) {
+            input = this.pendingInputs[streamId];
+            delete this.pendingInputs[streamId];
         }
+        return input;
+    }
+
+    enable(streamId) {
+        if (!this.pendingInputs[streamId])
+            return -1;
+
+        // Move least setPrimary input to pending
+        var toPending;
+        var k;
+        var minPrimary = Number.MAX_SAFE_INTEGER;
+        for (let k in this.inputs) {
+            if (this.inputs[k].primaryCount < minPrimary || !toPending) {
+                minPrimary = this.inputs[k].primaryCount;
+                toPending = k;
+            }
+        }
+        if (toPending) {
+            this.pendingInputs[toPending] = this.inputs[toPending];
+            delete this.inputs[toPending];
+            this.inputs[streamId] = this.pendingInputs[streamId];
+            delete this.pendingInputs[streamId];
+            // Swap their input id
+            this.inputs[streamId].id = this.pendingInputs[toPending].id;
+            this.pendingInputs[toPending].id = undefined;
+            // Return the changed input id
+            return this.inputs[streamId].id;
+        }
+
         return -1;
     }
 
-    // Return all the streams
-    streams() {
-        return Object.keys(this.map);
+    promotePendingStream(inputId) {
+        var pos = this.freeIndex.indexOf(inputId)
+        if (pos < 0)
+            return;
+
+        this.freeIndex.splice(pos, 1);
+        var streamId;
+        for (streamId in this.pendingInputs) {
+            break;
+        }
+        if (streamId) {
+            this.inputs[streamId] = this.pendingInputs[streamId];
+            this.inputs[streamId].id = inputId;
+            delete this.pendingInputs[streamId];
+            return this.inputs[streamId];
+        }
+        return null;
+    }
+
+    size() {
+        return this.inputs.size;
+    }
+
+    getStreamList() {
+        return Object.keys(this.inputs).concat(Object.keys(this.pendingInputs));
     }
 
     // Get stream from input
     getStreamFromInput(inputId) {
-        for (let streamId in this.map) {
-            if (this.map[streamId] === inputId) {
+        for (let streamId in this.inputs) {
+            if (this.inputs[streamId].id === inputId) {
                 return streamId;
             }
         }
@@ -189,7 +256,7 @@ function VMixer(rpcClient, clusterIP) {
         outputs = {},
 
         /*{StreamID : InternalIn}*/
-        inputs = {},
+        inputManager,
         maxInputNum = 0,
 
         /*{ConnectionID: {video: StreamID | undefined,
@@ -198,9 +265,6 @@ function VMixer(rpcClient, clusterIP) {
          }
          */
         connections = {};
-
-    // Map streamID {string} to {number}
-    var streamMap;
 
     var addInput = function (stream_id, codec, options, avatar, on_ok, on_error) {
         log.debug('add input', stream_id);
@@ -217,11 +281,14 @@ function VMixer(rpcClient, clusterIP) {
 
                 // Use default avatar if it is not set
                 avatar = avatar || global.config.avatar.location;
-                let inputId = streamMap.add(stream_id);
+
+                let inputId = inputManager.add(stream_id, codec, conn, avatar);
                 if (inputId >= 0 && engine.addInput(inputId, codec, conn, avatar)) {
                     layoutProcessor.addInput(inputId);
-                    inputs[stream_id] = conn;
                     log.debug('addInput ok, stream_id:', stream_id, 'codec:', codec, 'options:', options);
+                    on_ok(stream_id);
+                } else if (inputManager.isPending(stream_id)) {
+                    log.debug('addInput pending', stream_id);
                     on_ok(stream_id);
                 } else {
                     internalConnFactory.destroy(stream_id, 'in');
@@ -235,12 +302,22 @@ function VMixer(rpcClient, clusterIP) {
 
     var removeInput = function (stream_id) {
         log.debug('remove input', stream_id);
-        if (inputs[stream_id] && streamMap.has(stream_id)) {
-            let inputId = streamMap.remove(stream_id);
-            engine.removeInput(inputId);
-            layoutProcessor.removeInput(inputId);
+        if (inputManager.has(stream_id)) {
+            let input = inputManager.remove(stream_id);
+            if (input.id >= 0) {
+                // Remove activate input
+                engine.removeInput(input.id);
+                let newInput = inputManager.promotePendingStream(input.id);
+                if (newInput) {
+                    // If there's pending input
+                    if (!engine.addInput(newInput.id, newInput.codec, newInput.conn, newInput.avatar)) {
+                        layoutProcessor.removeInput(newInput.id);
+                    }
+                } else {
+                    layoutProcessor.removeInput(input.id);
+                }
+            }
             internalConnFactory.destroy(stream_id, 'in');
-            delete inputs[stream_id];
         }
     };
 
@@ -313,7 +390,7 @@ function VMixer(rpcClient, clusterIP) {
             'gaccplugin': gaccPluginEnabled,
         };
 
-        streamMap = new StreamMap(videoConfig.maxInput);
+        inputManager = new InputManager(videoConfig.maxInput);
         engine = new VideoMixer(JSON.stringify(config));
         layoutProcessor = new LayoutProcessor(videoConfig.layout.templates);
         layoutProcessor.on('error', function (e) {
@@ -329,7 +406,7 @@ function VMixer(rpcClient, clusterIP) {
 
             var streamRegions = layoutSolution.map((inputRegion) => {
                 return {
-                    stream: streamMap.getStreamFromInput(inputRegion.input),
+                    stream: inputManager.getStreamFromInput(inputRegion.input),
                     region: inputRegion.region
                 };
             });
@@ -365,7 +442,7 @@ function VMixer(rpcClient, clusterIP) {
             removeOutput(stream_id);
         }
 
-        for (var stream_id in inputs) {
+        for (let stream_id of inputManager.getStreamList()) {
             removeInput(stream_id);
         }
 
@@ -444,8 +521,8 @@ function VMixer(rpcClient, clusterIP) {
 
     that.setInputActive = function (stream_id, active, callback) {
         log.debug('setInputActive, stream_id:', stream_id, 'active:', active);
-        if (inputs[stream_id] && streamMap.has(stream_id)) {
-            let inputId = streamMap.get(stream_id);
+        if (inputManager.has(stream_id) && !inputManager.isPending(stream_id)) {
+            let inputId = inputManager.get(stream_id).id;
             engine.setInputActive(inputId, !!active);
             callback('callback', 'ok');
         } else {
@@ -463,21 +540,16 @@ function VMixer(rpcClient, clusterIP) {
             return callback('callback', 'error', 'can not publish a stream to video engine without proper video codec');
         }
 
-        if (inputs[stream_id] === undefined) {
-            log.debug('publish 1, inputs.length:', Object.keys(inputs).length, 'maxInputNum:', maxInputNum);
-            if (Object.keys(inputs).length < maxInputNum) {
-                addInput(stream_id, options.video.codec, options, options.avatar, function () {
-                    callback('callback', {ip: clusterIP, port: inputs[stream_id].getListeningPort()});
-                }, function (error_reason) {
-                    log.error(error_reason);
-                    callback('callback', 'error', error_reason);
-                });
-            } else {
-                log.error('Too many inputs in video-engine.');
-                callback('callback', 'error', 'Too many inputs in video-engine.');
-            }
+        if (!inputManager.has(stream_id)) {
+            log.debug('publish 1, inputs.length:', inputManager.size(), 'maxInputNum:', maxInputNum);
+            addInput(stream_id, options.video.codec, options, options.avatar, function () {
+                callback('callback', {ip: clusterIP, port: inputManager.get(stream_id).conn.getListeningPort()});
+            }, function (error_reason) {
+                log.error(error_reason);
+                callback('callback', 'error', error_reason);
+            });
         } else {
-            callback('callback', {ip: clusterIP, port: inputs[stream_id].getListeningPort()});
+            callback('callback', {ip: clusterIP, port: inputManager.get(stream_id).conn.getListeningPort()});
         }
     };
 
@@ -549,10 +621,23 @@ function VMixer(rpcClient, clusterIP) {
     };
 
     that.setPrimary = function (stream_id, callback) {
-        if (inputs[stream_id] && streamMap.has(stream_id)) {
-            let inputId = streamMap.get(stream_id);
+        if (inputManager.has(stream_id)) {
+            let input;
+            if (inputManager.isPending(stream_id)) {
+                inputManager.enable(stream_id);
+                input = inputManager.get(stream_id);
+                engine.removeInput(input.id);
+                if (!engine.addInput(input.id, input.codec, input.conn, input.avatar)) {
+                    layoutProcessor.removeInput(input.id);
+                    callback('callback', 'error', 'Switch input failed.');
+                    return;
+                }
+            } else {
+                input = inputManager.get(stream_id);
+            }
             //TODO: re-implement the setPrimary method
-            layoutProcessor.setPrimary(inputId);
+            layoutProcessor.setPrimary(input.id);
+            input.primaryCount++;
             callback('callback', 'ok');
         } else {
             callback('callback', 'error', 'Invalid input stream_id.');
@@ -561,8 +646,8 @@ function VMixer(rpcClient, clusterIP) {
 
     that.setRegion = function (stream_id, region_id, callback) {
         //TODO: implement the layout processor in node.js layer.
-        if (inputs[stream_id] && streamMap.has(stream_id)) {
-            let inputId = streamMap.get(stream_id);
+        if (inputManager.has(stream_id) && !inputManager.isPending(stream_id)) {
+            let inputId = inputManager.get(stream_id).id;
             if (layoutProcessor.specifyInputRegion(inputId, region_id)) {
                 callback('callback', 'ok');
             } else {
@@ -575,8 +660,8 @@ function VMixer(rpcClient, clusterIP) {
 
     that.getRegion = function (stream_id, callback) {
         //TODO: implement the layout processor in node.js layer.
-        if (inputs[stream_id] && streamMap.has(stream_id)) {
-            let inputId = streamMap.get(stream_id);
+        if (inputManager.has(stream_id) && !inputManager.isPending(stream_id)) {
+            let inputId = inputManager.get(stream_id).id;
             let region = layoutProcessor.getRegion(inputId);
             let regionId = region ? region.id : '';
             callback('callback', regionId);
