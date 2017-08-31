@@ -27,7 +27,7 @@ module.exports = function (spec, on_status) {
         videoFramePacketizer,
         wrtc;
 
-    var getAudioCodecList = function (sdp) {
+    var getAudioFmtList = function (sdp) {
         //TODO: find a better way to parse the top prior audio codec.
         var lines = sdp.toLowerCase().split('\n');
         var mline = lines.filter(function (line) {return line.startsWith('m=audio');});
@@ -39,9 +39,9 @@ module.exports = function (spec, on_status) {
                     return line.startsWith('a=rtpmap:'+fmtcodes[i]);
                 })[0].split(' ')[1].split('/'); // FIXME: making functions within a for-loop is potentially wrong.
                 if (fmtname[1] === '8000') {
-                    l.push(fmtname[0]);
+                    l.push({codec: fmtname[0]});
                 } else {
-                    l.push(fmtname.join('_'));
+                    l.push({codec: fmtname[0], sampleRate: fmtname[1], channelNum: fmtname[2]});
                 }
             }
             return l;
@@ -50,7 +50,7 @@ module.exports = function (spec, on_status) {
     };
 
 
-    var getVideoCodecList = function (sdp) {
+    var getVideoFmtList = function (sdp) {
         //TODO: find a better way to parse the top prior video codec.
         var lines = sdp.toLowerCase().split('\n');
         var mline = lines.filter(function (line) {
@@ -64,7 +64,7 @@ module.exports = function (spec, on_status) {
                     return line.startsWith('a=rtpmap:'+fmtcodes[i]);
                 })[0].split(' ')[1].split('/'); // FIXME: making functions within a for-loop is potentially wrong.
                 if (fmtname[0] !== 'red' && fmtname[0] !== 'ulpfec') {
-                    l.push(fmtname[0]);
+                    l.push({codec: fmtname[0]});
                 }
             }
             return l;
@@ -78,8 +78,8 @@ module.exports = function (spec, on_status) {
      */
     var initWebRtcConnection = function (wrtc, on_status) {
         var terminated = false;
-        var audio_codec_list_in_answer = [],
-            video_codec_list_in_answer = [];
+        var audio_fmt_list_in_answer = [],
+            video_fmt_list_in_answer = [];
 
         wrtc.addEventListener('connection', function (resp) {
           if (terminated) {
@@ -108,8 +108,8 @@ module.exports = function (spec, on_status) {
                   message = message.replace(i.private_ip_match_pattern, i.replaced_ip_address);
                 }
               });
-              audio_codec_list_in_answer = getAudioCodecList(message);
-              video_codec_list_in_answer = getVideoCodecList(message);
+              audio_fmt_list_in_answer = getAudioFmtList(message);
+              video_fmt_list_in_answer = getVideoFmtList(message);
               on_status({type: 'answer', sdp: message});
               break;
 
@@ -134,8 +134,8 @@ module.exports = function (spec, on_status) {
               //}
               on_status({
                 type: 'ready',
-                audio: audio_codec_list_in_answer.length > 0 ? {codec: audio_codec_list_in_answer[0]} : false,
-                video: video_codec_list_in_answer.length > 0 ? {codec: video_codec_list_in_answer[0]} : false
+                audio: audio_fmt_list_in_answer.length > 0 ? audio_fmt_list_in_answer[0] : false,
+                video: video_fmt_list_in_answer.length > 0 ? video_fmt_list_in_answer[0] : false
               });
               break;
             }
