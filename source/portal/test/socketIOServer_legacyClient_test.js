@@ -780,7 +780,7 @@ describe('Notifying events to clients.', function() {
       client.emit('login', jsLoginInfo, function(status, resp) {
         mockPortal.join = null;
         expect(status).to.equal('success');
-        return server.notify(client.id, 'participant', {action: 'join', data: {id: 'participantId', user: {id: 'user-id', name: 'user-name'}, role: 'presenter'}})
+        return server.notify(client.id, 'participant', {action: 'join', data: {id: 'participantId', user: 'user-name', role: 'presenter'}})
         .then((result) => {
           expect(result).to.equal('ok');
           return server.notify(client.id, 'stream', {status: 'add', id: 'streamId', data: {id: 'streamId', type: 'forward', media: {audio: {format: {codec: 'opus', sampleRate: 48000, channelNum: 2}, status: 'active'}, video: {format: {codec: 'h264', profile: 'constrained-baseline'}, source: 'camera', status: 'active'}}, info: {owner: 'participantId', type: 'webrtc', attributes: {key: 'value'}}}});

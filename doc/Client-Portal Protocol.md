@@ -566,7 +566,7 @@ object(SessionProgress)::
   {
    id: string(SessionId), /* StreamId returned in publishing or SubscriptionId returned in subscribing*/
    status: "soac" | "ready" | "error",
-   data: object(SOAPMessage)/*If status equals “soap”*/
+   data: object(OfferAnswer) | object(Candidate) /*If status equals “soac”*/
         | (undefined/*If status equals “ready” and session is NOT for recording*/
            | object(RecorderInfo)/*If status equals “ready” and session is for recording*/ )
         | string(Reason)/*If status equals “error”*/

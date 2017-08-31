@@ -805,7 +805,7 @@ var Conference = function (rpcClient, selfRpcId) {
 
       var left_user = participant.getInfo();
       delete participants[participantId];
-      room_config.notifying.participantActivities && sendMsg('room', 'all', 'participant', {action: 'leave', data: left_user});
+      room_config.notifying.participantActivities && sendMsg('room', 'all', 'participant', {action: 'leave', data: left_user.id});
     }
   };
 

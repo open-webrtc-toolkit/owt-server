@@ -255,8 +255,7 @@ const SubscriptionRequest = {
         'framerate': { type: 'number' },
         'bitrate': { type: ['string', 'number'] },
         'keyFrameInterval': { type: 'number' }
-      },
-      required: ['codec']
+      }
     }
   }
 };
