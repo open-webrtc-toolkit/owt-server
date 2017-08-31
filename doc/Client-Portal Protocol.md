@@ -471,7 +471,7 @@ object(SubscriptionRequest)::
 
       object(VideoSubSpecification)::
         {
-         codec: string(WantedVideoCodec),//Will be ignored if type equals "webrtc"
+         codec: string(WantedVideoCodec) | undefined,//Will be ignored if type equals "webrtc"
          profile: string(WantedVideoProfile) /*Will be ignored if type equals "webrtc" or codec does NOT equal "h264"*/ | undefined,
          resolution: object(Resolution) | undefined,
          framerate: number(WantedFrameRateFPS) | undefined,

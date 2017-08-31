@@ -51,38 +51,48 @@ module.exports.create = function(spec, rpcReq, onSessionEstablished, onSessionAb
 
   const onReady = (sessionId, audio, video) => {
     var session = sessions[sessionId];
+    var video_codec;
 
-    if (session.options.type === 'webrtc' && !!session.options.media.audio && !audio) {
-      var owner = session.owner, direction = session.direction;
-      terminateSession(sessionId);
-      on_session_aborted(owner, sessionId, direction, 'No proper audio codec');
-      return Promise.reject('No proper audio codec');
-    }
+    if (session.options.type === 'webrtc') {
+      if (!!session.options.media.audio && !audio) {
+        var owner = session.owner, direction = session.direction;
+        terminateSession(sessionId);
+        on_session_aborted(owner, sessionId, direction, 'No proper audio codec');
+        return Promise.reject('No proper audio codec');
+      }
 
-    if (session.options.type === 'webrtc' && !!session.options.media.video && !video) {
-      var owner = session.owner, direction = session.direction;
-      terminateSession(sessionId);
-      on_session_aborted(owner, sessionId, direction, 'No proper video codec');
-      return Promise.reject('No proper video codec');
+      if (!!session.options.media.video && !video) {
+        var owner = session.owner, direction = session.direction;
+        terminateSession(sessionId);
+        on_session_aborted(owner, sessionId, direction, 'No proper video codec');
+        return Promise.reject('No proper video codec');
+      } else {
+        video_codec = video.codec;
+      }
     }
 
     session.state = 'connected';
     var media = {}, info = {type: session.options.type, owner: session.owner};
 
-    session.options.media.audio && (media.audio = (audio || {}));
-    session.options.media.video && (media.video = (video || {}));
-
     if (session.direction === 'in') {
+      session.options.media.audio && (media.audio = (audio || {}));
       media.audio && session.options.media.audio && session.options.media.audio.source && (media.audio.source = session.options.media.audio.source);
+      session.options.media.video && (media.video = (video || {}));
       media.video && session.options.media.video && session.options.media.video.source && (media.video.source = session.options.media.video.source);
 
       session.options.attributes && (info.attributes = session.options.attributes);
     } else {
-      //FIXME: should verify whether the negotiated audio/video codec and parameters satisfy the original specification.
-      media.audio && session.options.media.audio && session.options.media.audio.from && (media.audio.from = session.options.media.audio.from);
-      media.audio && session.options.media.audio && session.options.media.audio.spec && (media.audio.spec = session.options.media.audio.spec);
-      media.video && session.options.media.video && session.options.media.video.from && (media.video.from = session.options.media.video.from);
-      media.video && session.options.media.video && session.options.media.video.spec && (media.video.spec = session.options.media.video.spec);
+      if (session.options.media.audio) {
+        media.audio = {from: session.options.media.audio.from};
+        session.options.media.audio.spec && (media.audio.spec = session.options.media.audio.spec);
+        (session.options.type === 'webrtc') && (media.audio.spec = audio);
+      }
+
+      if (session.options.media.video) {
+        media.video = {from: session.options.media.video.from};
+        session.options.media.video.spec && (media.video.spec = session.options.media.video.spec);
+        (session.options.type === 'webrtc') && (media.video.spec = (media.video.spec || {})) && (media.video.spec.codec = video_codec);
+      }
     }
 
     var session_info = {

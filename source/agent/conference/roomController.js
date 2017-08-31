@@ -847,7 +847,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
             'generate',
             [codec, resolution, framerate, bitrate, keyFrameInterval],
             function (stream) {
-                log.debug('spawnTranscodedVideo ok, stream_id:', stream_id);
+                log.debug('spawnTranscodedVideo ok, stream_id:', stream.id);
                 if (streams[stream.id] === undefined) {
                     log.debug('add to streams.');
                     streams[stream.id] = {owner: vxcoder,
@@ -984,11 +984,19 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
         }
     };
 
+    var codecStr = function (fmt) {
+        var codec_str = (fmt.codec || '');
+        fmt.sampleRate && (codec_str = codec_str + '_' + fmt.sampleRate);
+        fmt.channelNum && (codec_str = codec_str + '_' + fmt.channelNum);
+        return codec_str;
+    };
+
     var getMixedCodec = function (subMedia, supportedMixCodecs) {
         var codec = 'unavailable';
         if (subMedia.spec && subMedia.spec.codec) {
-            if (supportedMixCodecs.indexOf(subMedia.spec.codec) !== -1) {
-                codec = subMedia.spec.codec;
+            var codec_str = codecStr(subMedia.spec);
+            if (supportedMixCodecs.indexOf(codec_str) !== -1) {
+                codec = codec_str;
             }
         } else {
             codec = supportedMixCodecs[0];
@@ -998,9 +1006,10 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
 
     var getForwardCodec = function (subMedia, originalCodec, transcodingEnabled) {
         var codec = 'unavailable';
-        if (subMedia.spec && subMedia.spec.codec && (subMedia.spec.codec !== originalCodec)) {
-            if (transcodingEnabled) {
-                codec = subMedia.spec.codec;
+        if (subMedia.spec && subMedia.spec.codec) {
+            var codec_str = codecStr(subMedia.spec);
+            if ((codec_str === originalCodec) || transcodingEnabled) {
+                codec = codec_str;
             }
         } else {
             codec = originalCodec;
@@ -1183,7 +1192,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                 var terminal_owner = (streamInfo.type === 'webrtc' || streamInfo.type === 'sip') ? participantId : room_id + '-' + randomId();
                 newTerminal(terminal_id, 'participant', terminal_owner, accessNode, function () {
                     streams[streamId] = {owner: terminal_id,
-                                         audio: streamInfo.audio ? {codec: streamInfo.audio.codec,
+                                         audio: streamInfo.audio ? {codec: codecStr(streamInfo.audio),
                                                                     subscribers: []} : undefined,
                                          video: streamInfo.video ? {codec: streamInfo.video.codec,
                                                                     resolution: streamInfo.video.resolution,

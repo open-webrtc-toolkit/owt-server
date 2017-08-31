@@ -73,7 +73,7 @@ const partial_linear_bitrate = [
 ];
 
 const standardBitrate = (width, height, framerate) => {
-  let bitrate = 0;
+  let bitrate = -1;
   let prev = 0;
   let next = 0;
   let portion = 0.0;
@@ -91,15 +91,16 @@ const standardBitrate = (width, height, framerate) => {
   }
 
   // set default bitrate for over large resolution
-  if (0 == bitrate) {
-    bitrate = 8000;
+  if (-1 == bitrate) {
+    bitrate = 16000;
   }
 
   return bitrate;
 }
 
 const calcDefaultBitrate = (codec, resolution, framerate) => {
-  let factor = (codec === 'vp8' ? 0.9 : 1.0);
+  //let factor = (codec === 'vp8' ? 0.9 : 1.0);
+  let factor = 1.0;
   return standardBitrate(resolution.width, resolution.height, framerate) * factor;
 };
 
@@ -778,6 +779,20 @@ function VTranscoder(rpcClient, clusterIP) {
             engine.removeOutput(stream_id);
             output.dispatcher.close();
             delete outputs[stream_id];
+        }
+    };
+
+    var getOutput = function (stream_id) {
+        if (outputs[stream_id]) {
+            return {
+                id: stream_id,
+                resolution: outputs[stream_id].resolution,
+                framerate: outputs[stream_id].framerate,
+                bitrate: outputs[stream_id].bitrate,
+                keyFrameInterval: outputs[stream_id].kfi
+            };
+        } else {
+            return undefined;
         }
     };
 
