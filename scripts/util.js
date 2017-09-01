@@ -85,7 +85,11 @@ class OptParser {
 
       if (opt.type === 'boolean') {
         ret[opt.name] = true;
-      } else if (opt.type === 'string' && i < args.length) {
+      } else if (opt.type === 'string') {
+        if (i >= args.length || args[i][0] === '-') {
+          console.log(`\x1b[33mWarning: [${arg}] Missing argument\x1b[0m`);
+          continue;
+        }
         ret[opt.name] = args[i];
         i++;
       } else if (opt.type === 'list' && i < args.length) {

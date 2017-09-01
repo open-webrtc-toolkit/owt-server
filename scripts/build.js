@@ -10,8 +10,9 @@ const buildTargets = require('./build.json');
 
 const optParser = new OptParser();
 optParser.addOption('l', 'list', 'boolean', 'List avaliable build targets');
-optParser.addOption('t', 'target', 'list', 'Specify target to build');
-optParser.addOption('d', 'debug', 'boolean', 'Whether build debug addon');
+optParser.addOption('t', 'target', 'list', 'Specify target to build (Eg. build.js -t video-mixer-sw -t video-transcoder-sw)');
+optParser.addOption('d', 'debug', 'boolean', 'Whether build debug addon (Please add debug-addon option in packing to pack debug addon)');
+optParser.addOption('v', 'verbose', 'boolean', 'Whether use verbose level in building');
 optParser.addOption('r', 'rebuild', 'boolean', 'Whether clean before build');
 optParser.addOption('c', 'check', 'boolean', 'Whether check after build');
 
@@ -89,9 +90,10 @@ function constructBuildEnv() {
 }
 
 // Common build commands
-rebuildArgs = ['node-gyp', 'rebuild', '-j 8', '--loglevel=error'];
-configureArgs = ['node-gyp', 'configure', '--loglevel=error'];
-buildArgs = ['node-gyp', 'build', '-j 8', '--loglevel=error'];
+logLevel = options.verbose ? 'verbose' : 'error';
+rebuildArgs = ['node-gyp', 'rebuild', '-j 8', '--loglevel=' + logLevel];
+configureArgs = ['node-gyp', 'configure', '--loglevel=' + logLevel];
+buildArgs = ['node-gyp', 'build', '-j 8', '--loglevel=' + logLevel];
 
 if (options.debug) {
   rebuildArgs.push('--debug');
