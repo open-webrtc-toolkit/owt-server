@@ -31,11 +31,11 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
         view: {
             audio: {
                 mixer: 'TerminalID',
-                supported_codecs: ['opus', 'pcmu', 'pcm_raw', ...],
+                supported_formats: ['opus', 'pcmu', 'pcm_raw', ...],
             },
             video: {
                 mixer: 'TerminalID',
-                supported_codecs: ['h264', 'vp8', 'h265', 'vp9', ...],
+                supported_formats: ['h264', 'vp8', 'h265', 'vp9', ...],
             },
         }
     }
@@ -55,9 +55,9 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
 
     /*
     streams = {StreamID: {owner: terminalID,
-                audio: {codec: 'pcmu' | 'pcma' | 'isac_16000' | 'isac_32000' | 'opus_48000_2' |...
+                audio: {format: 'pcmu' | 'pcma' | 'isac_16000' | 'isac_32000' | 'opus_48000_2' |...
                         subscribers: [terminalID]} | undefined,
-                video: {codec: 'h264' | 'vp8' |...,
+                video: {format: 'h264' | 'vp8' |...,
                         resolution: {width: Number(PX), height: Number(PX)} | 'unspecified',
                         framerate: Number(FPS) | 'unspecified',
                         bitrate: Number(Kbps) | 'unspecified',
@@ -179,7 +179,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                 // Save supported info
                 mix_views[view].audio = {
                     mixer: audio_mixer,
-                    supported_codecs: supportedAudio.codecs
+                    supported_formats: supportedAudio.codecs
                 };
 
                 // Initialize video
@@ -189,7 +189,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                         // Save supported info
                         mix_views[view].video = {
                             mixer: video_mixer,
-                            supported_codecs: supportedVideo.codecs
+                            supported_formats: supportedVideo.codecs
                         };
 
                         // Enable AV coordination if specified
@@ -422,8 +422,8 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                             {
                                 controller: selfRpcId,
                                 owner: terminals[stream_owner].owner,
-                                audio: (audio ? {codec: streams[stream_id].audio.codec} : false),
-                                video: (video ? {codec: streams[stream_id].video.codec} : false),
+                                audio: (audio ? {codec: streams[stream_id].audio.format} : false),
+                                video: (video ? {codec: streams[stream_id].video.format} : false),
                                 ip: originAddr.ip,
                                 port: originAddr.port,
                             }
@@ -655,21 +655,21 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
         }
     };
 
-    var spawnMixedAudio = function (view, participant_id, audio_codec, on_ok, on_error) {
+    var spawnMixedAudio = function (view, participant_id, audio_format, on_ok, on_error) {
         var audio_mixer = getSubMediaMixer(view, 'audio');
         if (audio_mixer && terminals[audio_mixer]) {
             var amixer_node = terminals[audio_mixer].locality.node;
-            log.debug('spawnMixedAudio, for participant:', participant_id, 'audio_codec:', audio_codec);
+            log.debug('spawnMixedAudio, for participant:', participant_id, 'audio_format:', audio_format);
             makeRPC(
                 rpcClient,
                 amixer_node,
                 'generate',
-                [participant_id, audio_codec],
+                [participant_id, audio_format],
                 function (stream_id) {
                     log.debug('spawnMixedAudio ok, amixer_node:', amixer_node, 'stream_id:', stream_id);
                     if (streams[stream_id] === undefined) {
                         streams[stream_id] = {owner: audio_mixer,
-                                              audio: {codec: audio_codec,
+                                              audio: {format: audio_format,
                                                       subscribers: []},
                                               video: undefined,
                                               spread: []};
@@ -682,22 +682,22 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
         }
     };
 
-    var spawnMixedVideo = function (view, codec, resolution, framerate, bitrate, keyFrameInterval, on_ok, on_error) {
+    var spawnMixedVideo = function (view, format, resolution, framerate, bitrate, keyFrameInterval, on_ok, on_error) {
         var video_mixer = getSubMediaMixer(view, 'video');
         if (video_mixer && terminals[video_mixer]) {
             var vmixer_node = terminals[video_mixer].locality.node;
-            log.debug('spawnMixedVideo, view:', view, 'codec:', codec, 'resolution:', resolution, 'framerate, bitrate, keyFrameInterval:', framerate, bitrate, keyFrameInterval);
+            log.debug('spawnMixedVideo, view:', view, 'format:', format, 'resolution:', resolution, 'framerate, bitrate, keyFrameInterval:', framerate, bitrate, keyFrameInterval);
             makeRPC(
                 rpcClient,
                 vmixer_node,
                 'generate',
-                [codec, resolution, framerate, bitrate, keyFrameInterval],
+                [format, resolution, framerate, bitrate, keyFrameInterval],
                 function (stream) {
                     log.debug('spawnMixedVideo ok, vmixer_node:', vmixer_node, 'stream:', stream);
                     if (streams[stream.id] === undefined) {
                         streams[stream.id] = {owner: video_mixer,
                                               audio: undefined,
-                                              video: {codec: stream.codec,
+                                              video: {format: stream.format,
                                                       resolution: stream.resolution,
                                                       framerate: stream.framerate,
                                                       bitrate: stream.bitrate,
@@ -714,21 +714,21 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
         }
     };
 
-    var getMixedAudio = function (view, participant_id, audio_codec, on_ok, on_error) {
+    var getMixedAudio = function (view, participant_id, audio_format, on_ok, on_error) {
         spawnMixedAudio(view,
             participant_id,
-            audio_codec,
+            audio_format,
             on_ok,
             on_error);
     };
 
-    var getMixedVideo = function (view, codec, resolution, framerate, bitrate, keyFrameInterval, on_ok, on_error) {
+    var getMixedVideo = function (view, format, resolution, framerate, bitrate, keyFrameInterval, on_ok, on_error) {
         var video_mixer = getSubMediaMixer(view, 'video');
         var candidates = Object.keys(streams).filter(
             function (stream_id) {
                 return streams[stream_id].owner === video_mixer &&
                        streams[stream_id].video &&
-                       streams[stream_id].video.codec === codec &&
+                       streams[stream_id].video.format === format &&
                        isResolutionEqual(streams[stream_id].video.resolution, resolution) &&
                        streams[stream_id].video.framerate === framerate &&
                        streams[stream_id].video.bitrate === bitrate &&
@@ -738,7 +738,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
             on_ok(candidates[0]);
         } else {
             spawnMixedVideo(view,
-                codec,
+                format,
                 resolution,
                 framerate,
                 bitrate,
@@ -748,20 +748,20 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
         }
     };
 
-    var spawnTranscodedAudio = function (axcoder, audio_codec, on_ok, on_error) {
+    var spawnTranscodedAudio = function (axcoder, audio_format, on_ok, on_error) {
         var axcoder_node = terminals[axcoder].locality.node;
-        log.debug('spawnTranscodedAudio, audio_codec:', audio_codec);
+        log.debug('spawnTranscodedAudio, audio_format:', audio_format);
         makeRPC(
             rpcClient,
             axcoder_node,
             'generate',
-            [audio_codec, audio_codec],
+            [audio_format, audio_format],
             function (stream_id) {
                 log.debug('spawnTranscodedAudio ok, stream_id:', stream_id);
                 if (streams[stream_id] === undefined) {
                     log.debug('add transcoded stream to streams:', stream_id);
                     streams[stream_id] = {owner: axcoder,
-                                          audio: {codec: audio_codec,
+                                          audio: {format: audio_format,
                                                   subscribers: []},
                                           video: undefined,
                                           spread: []};
@@ -771,10 +771,10 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
             }, on_error);
     };
 
-    var findExistingTranscodedAudio = function (axcoder, audio_codec, on_ok, on_error) {
+    var findExistingTranscodedAudio = function (axcoder, audio_format, on_ok, on_error) {
         var published = terminals[axcoder].published;
         for (var j in published) {
-            if (streams[published[j]] && streams[published[j]].audio && streams[published[j]].audio.codec === audio_codec) {
+            if (streams[published[j]] && streams[published[j]].audio && streams[published[j]].audio.format === audio_format) {
                 on_ok(published[j]);
                 return;
             }
@@ -830,29 +830,29 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
         });
     };
 
-    var getTranscodedAudio = function (audio_codec, stream_id, on_ok, on_error) {
+    var getTranscodedAudio = function (audio_format, stream_id, on_ok, on_error) {
         getAudioTranscoder(stream_id, function (axcoder) {
-            findExistingTranscodedAudio(axcoder, audio_codec, on_ok, function () {
-                spawnTranscodedAudio(axcoder, audio_codec, on_ok, on_error);
+            findExistingTranscodedAudio(axcoder, audio_format, on_ok, function () {
+                spawnTranscodedAudio(axcoder, audio_format, on_ok, on_error);
             });
         }, on_error);
     };
 
-    var spawnTranscodedVideo = function (vxcoder, codec, resolution, framerate, bitrate, keyFrameInterval, on_ok, on_error) {
+    var spawnTranscodedVideo = function (vxcoder, format, resolution, framerate, bitrate, keyFrameInterval, on_ok, on_error) {
         var vxcoder_node = terminals[vxcoder].locality.node;
-        log.debug('spawnTranscodedVideo, codec:', codec, 'resolution:', resolution, 'framerate:', framerate, 'bitrate:', bitrate, 'keyFrameInterval:', keyFrameInterval);
+        log.debug('spawnTranscodedVideo, format:', format, 'resolution:', resolution, 'framerate:', framerate, 'bitrate:', bitrate, 'keyFrameInterval:', keyFrameInterval);
         makeRPC(
             rpcClient,
             vxcoder_node,
             'generate',
-            [codec, resolution, framerate, bitrate, keyFrameInterval],
+            [format, resolution, framerate, bitrate, keyFrameInterval],
             function (stream) {
                 log.debug('spawnTranscodedVideo ok, stream_id:', stream.id);
                 if (streams[stream.id] === undefined) {
                     log.debug('add to streams.');
                     streams[stream.id] = {owner: vxcoder,
                                           audio: undefined,
-                                          video: {codec: stream.codec,
+                                          video: {format: stream.format,
                                                   resolution: stream.resolution,
                                                   framerate: stream.framerate,
                                                   bitrate: stream.bitrate,
@@ -865,12 +865,12 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
             }, on_error);
     };
 
-    var findExistingTranscodedVideo = function (vxcoder, codec, resolution, framerate, bitrate, keyFrameInterval, on_ok, on_error) {
+    var findExistingTranscodedVideo = function (vxcoder, format, resolution, framerate, bitrate, keyFrameInterval, on_ok, on_error) {
         var published = terminals[vxcoder].published;
         for (var j in published) {
             if (streams[published[j]] &&
                 streams[published[j]].video &&
-                streams[published[j]].video.codec === codec &&
+                streams[published[j]].video.format === format &&
                 isResolutionEqual(streams[published[j]].video.resolution, resolution) &&
                 streams[published[j]].video.framerate === framerate &&
                 streams[published[j]].video.bitrate === bitrate &&
@@ -930,10 +930,10 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
         });
     };
 
-    var getTranscodedVideo = function (codec, resolution, framerate, bitrate, keyFrameInterval, stream_id, on_ok, on_error) {
+    var getTranscodedVideo = function (format, resolution, framerate, bitrate, keyFrameInterval, stream_id, on_ok, on_error) {
         getVideoTranscoder(stream_id, function (vxcoder) {
-            findExistingTranscodedVideo(vxcoder, codec, resolution, framerate, bitrate, keyFrameInterval, on_ok, function () {
-                spawnTranscodedVideo(vxcoder, codec, resolution, framerate, bitrate, keyFrameInterval, on_ok, on_error);
+            findExistingTranscodedVideo(vxcoder, format, resolution, framerate, bitrate, keyFrameInterval, on_ok, function () {
+                spawnTranscodedVideo(vxcoder, format, resolution, framerate, bitrate, keyFrameInterval, on_ok, on_error);
             });
         }, on_error);
     };
@@ -984,53 +984,53 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
         }
     };
 
-    var codecStr = function (fmt) {
-        var codec_str = (fmt.codec || '');
-        fmt.sampleRate && (codec_str = codec_str + '_' + fmt.sampleRate);
-        fmt.channelNum && (codec_str = codec_str + '_' + fmt.channelNum);
-        return codec_str;
+    var formatStr = function (fmt) {
+        var format_str = (fmt.codec || '');
+        fmt.sampleRate && (format_str = format_str + '_' + fmt.sampleRate);
+        fmt.channelNum && (format_str = format_str + '_' + fmt.channelNum);
+        return format_str;
     };
 
-    var getMixedCodec = function (subMedia, supportedMixCodecs) {
-        var codec = 'unavailable';
-        if (subMedia.spec && subMedia.spec.codec) {
-            var codec_str = codecStr(subMedia.spec);
-            if (supportedMixCodecs.indexOf(codec_str) !== -1) {
-                codec = codec_str;
+    var getMixedFormat = function (subMedia, supportedMixFormats) {
+        var format = 'unavailable';
+        if (subMedia.format) {
+            var format_str = formatStr(subMedia.format);
+            if (supportedMixFormats.indexOf(format_str) !== -1) {
+                format = format_str;
             }
         } else {
-            codec = supportedMixCodecs[0];
+            format = supportedMixFormats[0];
         }
-        return codec;
+        return format;
     };
 
-    var getForwardCodec = function (subMedia, originalCodec, transcodingEnabled) {
-        var codec = 'unavailable';
-        if (subMedia.spec && subMedia.spec.codec) {
-            var codec_str = codecStr(subMedia.spec);
-            if ((codec_str === originalCodec) || transcodingEnabled) {
-                codec = codec_str;
+    var getForwardFormat = function (subMedia, originalFormat, transcodingEnabled) {
+        var format = 'unavailable';
+        if (subMedia.format) {
+            var format_str = formatStr(subMedia.format);
+            if ((format_str === originalFormat) || transcodingEnabled) {
+                format = format_str;
             }
         } else {
-            codec = originalCodec;
+            format = originalFormat;
         }
-        return codec;
+        return format;
     };
 
-    var getAudioStream = function (participant_id, stream_id, audio_codec, on_ok, on_error) {
-        log.debug('getAudioStream, participant_id:', participant_id, 'stream:', stream_id, 'audio_codec:', audio_codec);
+    var getAudioStream = function (participant_id, stream_id, audio_format, on_ok, on_error) {
+        log.debug('getAudioStream, participant_id:', participant_id, 'stream:', stream_id, 'audio_format:', audio_format);
         var mixView = getViewOfMixStream(stream_id);
         if (mixView) {
-            getMixedAudio(mixView, participant_id, audio_codec, function (streamID) {
+            getMixedAudio(mixView, participant_id, audio_format, function (streamID) {
                 log.debug('Got mixed audio:', streamID);
                 on_ok(streamID);
             }, on_error);
         } else if (streams[stream_id]) {
             if (streams[stream_id].audio) {
-                if (streams[stream_id].audio.codec === audio_codec) {
+                if (streams[stream_id].audio.format === audio_format) {
                     on_ok(stream_id);
                 } else {
-                    getTranscodedAudio(audio_codec, stream_id, function (streamID) {
+                    getTranscodedAudio(audio_format, stream_id, function (streamID) {
                         on_ok(streamID);
                     }, on_error);
                 }
@@ -1042,24 +1042,24 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
         }
     };
 
-    var getVideoStream = function (stream_id, codec, resolution, framerate, bitrate, keyFrameInterval, on_ok, on_error) {
-        log.debug('getVideoStream, stream:', stream_id, 'codec:', codec, 'resolution:', resolution, 'framerate:', framerate, 'bitrate:', bitrate, 'keyFrameInterval', keyFrameInterval);
+    var getVideoStream = function (stream_id, format, resolution, framerate, bitrate, keyFrameInterval, on_ok, on_error) {
+        log.debug('getVideoStream, stream:', stream_id, 'format:', format, 'resolution:', resolution, 'framerate:', framerate, 'bitrate:', bitrate, 'keyFrameInterval', keyFrameInterval);
         var mixView = getViewOfMixStream(stream_id);
         if (mixView) {
-            getMixedVideo(mixView, codec, resolution, framerate, bitrate, keyFrameInterval, function (streamID) {
+            getMixedVideo(mixView, format, resolution, framerate, bitrate, keyFrameInterval, function (streamID) {
                 log.debug('Got mixed video:', streamID);
                 on_ok(streamID);
             }, on_error);
         } else if (streams[stream_id]) {
             if (streams[stream_id].video) {
-                if (streams[stream_id].video.codec === codec &&
+                if (streams[stream_id].video.format === format &&
                     (resolution === 'unspecified' &&
                      framerate === 'unspecified' &&
                      bitrate === 'unspecified' &&
                      keyFrameInterval === 'unspecified')) {
                     on_ok(stream_id);
                 } else {
-                    getTranscodedVideo(codec, resolution, framerate, bitrate, keyFrameInterval, stream_id, function (streamID) {
+                    getTranscodedVideo(format, resolution, framerate, bitrate, keyFrameInterval, stream_id, function (streamID) {
                         on_ok(streamID);
                     }, on_error);
                 }
@@ -1192,9 +1192,9 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                 var terminal_owner = (streamInfo.type === 'webrtc' || streamInfo.type === 'sip') ? participantId : room_id + '-' + randomId();
                 newTerminal(terminal_id, 'participant', terminal_owner, accessNode, function () {
                     streams[streamId] = {owner: terminal_id,
-                                         audio: streamInfo.audio ? {codec: codecStr(streamInfo.audio),
+                                         audio: streamInfo.audio ? {format: formatStr(streamInfo.audio),
                                                                     subscribers: []} : undefined,
-                                         video: streamInfo.video ? {codec: streamInfo.video.codec,
+                                         video: streamInfo.video ? {format: formatStr(streamInfo.video),
                                                                     resolution: streamInfo.video.resolution,
                                                                     framerate: streamInfo.video.framerate,
                                                                     subscribers: []} : undefined,
@@ -1236,26 +1236,26 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
         if ((!subInfo.audio || (streams[subInfo.audio.from] && streams[subInfo.audio.from].audio) || getViewOfMixStream(subInfo.audio.from))
             && (!subInfo.video || (streams[subInfo.video.from] && streams[subInfo.video.from].video) || getViewOfMixStream(subInfo.video.from))) {
 
-            var audio_codec = undefined;
+            var audio_format = undefined;
             if (subInfo.audio) {
                 var subAudioStream = subInfo.audio.from;
                 var subView = getViewOfMixStream(subAudioStream);
                 var isMixStream = !!subView;
-                audio_codec = isMixStream? getMixedCodec(subInfo.audio, mix_views[subView].audio.supported_codecs)
-                    : getForwardCodec(subInfo.audio, streams[subAudioStream].audio.codec, enable_audio_transcoding);
+                audio_format = isMixStream? getMixedFormat(subInfo.audio, mix_views[subView].audio.supported_formats)
+                    : getForwardFormat(subInfo.audio, streams[subAudioStream].audio.format, enable_audio_transcoding);
 
-                if (audio_codec === 'unavailable') {
-                    log.error('No available audio codec');
+                if (audio_format === 'unavailable') {
+                    log.error('No available audio format');
                     log.debug('subInfo.audio:', subInfo.audio, 'targetStream.audio:', streams[subAudioStream] ? streams[subAudioStream].audio : 'mixed_stream', 'enable_audio_transcoding:', enable_audio_transcoding);
-                    return on_error('No available audio codec');
+                    return on_error('No available audio format');
                 }
             }
 
-            var video_codec = undefined;
-            var resolution = undefined;
-            var framerate = undefined;
-            var bitrate = undefined;
-            var keyFrameInterval = undefined;
+            var video_format = undefined;
+            var resolution = 'unspecified';
+            var framerate = 'unspecified';
+            var bitrate = 'unspecified';
+            var keyFrameInterval = 'unspecified';
             if (subInfo.video) {
                 var subVideoStream = subInfo.video.from;
                 var subView = getViewOfMixStream(subVideoStream);
@@ -1263,27 +1263,27 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
 
                 if (isMixStream) {
                     // Is mix stream
-                    video_codec = getMixedCodec(subInfo.video, mix_views[subView].video.supported_codecs);
+                    video_format = getMixedFormat(subInfo.video, mix_views[subView].video.supported_formats);
                 } else {
                     // Is forward stream
-                    video_codec = getForwardCodec(subInfo.video, streams[subVideoStream].video.codec, enable_video_transcoding);
+                    video_format = getForwardFormat(subInfo.video, streams[subVideoStream].video.format, enable_video_transcoding);
                 }
 
-                resolution = (subInfo.video && subInfo.video.spec && subInfo.video.spec.resolution ? subInfo.video.spec.resolution : 'unspecified');
-                framerate = (subInfo.video && subInfo.video.spec && subInfo.video.spec.framerate ? subInfo.video.spec.framerate: 'unspecified');
-                bitrate = (subInfo.video && subInfo.video.spec && subInfo.video.spec.bitrate ? subInfo.video.spec.bitrate: 'unspecified');
-                keyFrameInterval = (subInfo.video && subInfo.video.spec && subInfo.video.spec.keyFrameInterval ? subInfo.video.spec.keyFrameInterval: 'unspecified');
-
-                if (video_codec === 'unavailable') {
-                    log.error('No available video codec');
+                if (video_format === 'unavailable') {
+                    log.error('No available video format');
                     log.debug('subInfo.video:', subInfo.video, 'targetStream.video:', streams[subVideoStream] ? streams[subVideoStream].video : 'mixed_stream', 'enable_video_transcoding:', enable_video_transcoding);
-                    return on_error('No available video codec');
+                    return on_error('No available video format');
                 }
+
+                subInfo.video && subInfo.video.parameters && subInfo.video.parameters.resolution && (resolution = subInfo.video.parameters.resolution);
+                subInfo.video && subInfo.video.parameters && subInfo.video.parameters.framerate && (framerate = subInfo.video.parameters.framerate);
+                subInfo.video && subInfo.video.parameters && subInfo.video.parameters.bitrate && (bitrate = subInfo.video.parameters.bitrate);
+                subInfo.video && subInfo.video.parameters && subInfo.video.parameters.keyFrameInterval && (keyFrameInterval = subInfo.video.parameters.keyFrameInterva);
             }
 
-            if ((subInfo.audio && !audio_codec) || (subInfo.video && !video_codec)) {
-                log.error('No proper audio/video codec');
-                return on_error('No proper audio/video codec');
+            if ((subInfo.audio && !audio_format) || (subInfo.video && !video_format)) {
+                log.error('No proper audio/video format');
+                return on_error('No proper audio/video format');
             }
 
             var terminal_id = subTermId(participantId, subscriptionId);
@@ -1390,12 +1390,12 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                 var audio_stream, video_stream;
                 if (subInfo.audio) {
                     log.debug('require audio track of stream:', subInfo.audio.from);
-                    getAudioStream(terminals[terminal_id].owner, subInfo.audio.from, audio_codec, function (streamID) {
+                    getAudioStream(terminals[terminal_id].owner, subInfo.audio.from, audio_format, function (streamID) {
                         audio_stream = streamID;
                         log.debug('Got audio stream:', audio_stream);
                         if (subInfo.video) {
                             log.debug('require video track of stream:', subInfo.video.from);
-                            getVideoStream(subInfo.video.from, video_codec, resolution, framerate, bitrate, keyFrameInterval, function (streamID) {
+                            getVideoStream(subInfo.video.from, video_format, resolution, framerate, bitrate, keyFrameInterval, function (streamID) {
                                 video_stream = streamID;
                                 log.debug('Got video stream:', video_stream);
                                 spread2LocalNode(audio_stream, video_stream, function () {
@@ -1420,7 +1420,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                     }, finaly_error);
                 } else if (subInfo.video) {
                     log.debug('require video track of stream:', subInfo.video.from);
-                    getVideoStream(subInfo.video.from, video_codec, resolution, framerate, bitrate, keyFrameInterval, function (streamID) {
+                    getVideoStream(subInfo.video.from, video_format, resolution, framerate, bitrate, keyFrameInterval, function (streamID) {
                         video_stream = streamID;
                         spread2LocalNode(undefined, video_stream, function () {
                             linkup(undefined, video_stream);
@@ -1572,7 +1572,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
     };
 
     var allocateMediaProcessingNode  = function (forWhom, usage) {
-        return  rpcReq.getWorkerNode(cluster, purpose, {room: room_id, task: terminal_id}, 'preference'/*FIXME: should take codecs and usage specification into preference*/);
+        return  rpcReq.getWorkerNode(cluster, purpose, {room: room_id, task: terminal_id}, 'preference'/*FIXME: should take formats and usage specification into preference*/);
     };
 
     var initMediaProcessor = function (terminal_id, parameters) {
@@ -1599,7 +1599,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                 if (mix_views[view]) {
                     mix_views[view].video = {
                         mixer: vmixerId,
-                        supported_codecs: supportedVideo.codecs
+                        supported_formats: supportedVideo.codecs
                     };
                 }
 
@@ -1666,7 +1666,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                 return Promise.all(outputs.map(function (old_st) {
                     log.debug('Resuming video mixer output:', old_st);
                     return new Promise(function (resolve, reject) {
-                        getMixedVideo(view, old_st.video.codec, old_st.video.resolution, old_st.video.quality_level, function(stream_id) {
+                        getMixedVideo(view, old_st.video.format, old_st.video.resolution, old_st.video.quality_level, function(stream_id) {
                             log.debug('Got new stream:', stream_id);
                             return Promise.all(old_st.spread.map(function(target_node) {
                                 return new Promise(function (res, rej) {
@@ -1753,7 +1753,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                 return Promise.all(outputs.map(function (old_st) {
                     log.debug('Resuming video xcoder output:', old_st);
                     return new Promise(function (resolve, reject) {
-                        getTranscodedVideo(old_st.video.codec, old_st.video.resolution, old_st.video.quality_level, input, function(stream_id) {
+                        getTranscodedVideo(old_st.video.format, old_st.video.resolution, old_st.video.quality_level, input, function(stream_id) {
                             log.debug('Got new stream:', stream_id);
                             return Promise.all(old_st.spread.map(function(target_node) {
                                 return new Promise(function (res, rej) {
@@ -1814,7 +1814,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                 if (mix_views[view]) {
                     mix_views[view].audio = {
                         mixer: amixerId,
-                        supported_codecs: supportedAudio.codecs
+                        supported_formats: supportedAudio.codecs
                     };
                 }
 
@@ -1881,7 +1881,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                 return Promise.all(outputs.map(function (old_st) {
                     log.debug('Resuming audio mixer output:', old_st, 'view:', view);
                     return new Promise(function (resolve, reject) {
-                        getMixedAudio(view, old_st.for_whom, old_st.audio.codec, function(stream_id) {
+                        getMixedAudio(view, old_st.for_whom, old_st.audio.format, function(stream_id) {
                             log.debug('Got new stream:', stream_id);
                             return Promise.all(old_st.spread.map(function(target_node) {
                                     return new Promise(function (res, rej) {
@@ -1967,7 +1967,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                 return Promise.all(outputs.map(function (old_st) {
                     log.debug('Resuming audio xcoder output:', old_st);
                     return new Promise(function (resolve, reject) {
-                        getTranscodedAudio(old_st.audio.codec, input, function(stream_id) {
+                        getTranscodedAudio(old_st.audio.format, input, function(stream_id) {
                             log.debug('Got new stream:', stream_id);
                             return Promise.all(old_st.spread.map(function(target_node) {
                                 return new Promise(function (res, rej) {

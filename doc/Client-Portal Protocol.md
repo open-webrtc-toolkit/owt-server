@@ -451,28 +451,21 @@ object(SubscriptionRequest)::
     object(AudioSubOptions)::
       {
        from: string(StreamId),
-       spec: object(AudioSubSpecification)/*If type does NOT equal "webrtc", and audio transcoding is needed or non-default mixed audio is wanted*/
-            | undefined/*If type equals "webrtc", or original forward audio or default mixed audio is wanted*/
+       format: object(AudioFormat)/*If type does NOT equal "webrtc", and audio transcoding is needed or non-default mixed audio is wanted*/
+               | undefined/*If type equals "webrtc", or original forward audio or default mixed audio is wanted*/
       }
-
-      object(AudioSubSpecification)::
-        {
-         codec: string(WantedAudioCodec),
-         sampleRate: number(WantedSampleRate) | undefined,
-         channelNum: number(WantedChannelNum) | undefined
-        }
 
     object(VideoSubOptions)::
       {
        from: string(StreamId),
-       spec: object(VideoSubSpecification)/*If video transcoding is needed or non-default mixed video is wanted*/
-            | undefined/*If original forward video or default mixed video is wanted*/
+       format: object(VideoFormat)/*If type does NOT equal "webrtc", and video transcoding is needed or non-default mixed video is wanted*/
+               | undefined/*If type equals "webrtc", or original forward video or default mixed video is wanted*/,
+       parameters: object(VideoParametersSpecification)/*If specific video parameters are wanted*/
+                   | undefined/*If default video parameters are wanted*/
       }
 
-      object(VideoSubSpecification)::
+      object(VideoParametersSpecification)::
         {
-         codec: string(WantedVideoCodec) | undefined,//Will be ignored if type equals "webrtc"
-         profile: string(WantedVideoProfile) /*Will be ignored if type equals "webrtc" or codec does NOT equal "h264"*/ | undefined,
          resolution: object(Resolution) | undefined,
          framerate: number(WantedFrameRateFPS) | undefined,
          bitrate: number(WantedBitrateKbps) | string(WantedBitrateMultiple) | undefined,
@@ -522,17 +515,10 @@ object(SubscriptionControlInfo)::
     object(VideoUpdate)::
       {
        from: string(StreamId) | undefined,
-       spec: object(VideoUpdateSpecification)/*If video transcoding is ongoing or mixed stream is being subscribed*/
-            | undefined/*If original forward video or default mixed video is wanted*/
+       parameters: object(VideoParametersSpecification)/*If any video parameters are wanted to be re-specified*/
+                   | undefined/*If the video parameters of the ongoing subscription are wanted to be kept*/
       }
 
-      object(VideoUpdateSpecification)::
-        {
-         resolution: object(Resolution) | undefined,
-         framerate: number(WantedFrameRateFPS) | undefined,
-         bitrate: number(WantedBitrateKbps) | string(WantedBitrateMultiple) | undefined,
-         keyFrameInterval: number(WantedKeyFrameIntervalSecond) | undefined
-        }
 ```
 **ResponseData**: undefined if **ResponseStatus** is “ok”.
 #### 3.3.14 Participant Sends Session Signaling
@@ -566,7 +552,7 @@ object(SessionProgress)::
   {
    id: string(SessionId), /* StreamId returned in publishing or SubscriptionId returned in subscribing*/
    status: "soac" | "ready" | "error",
-   data: object(OfferAnswer) | object(Candidate) /*If status equals “soac”*/
+   data: object(OfferAnswer) | ojbect(Candidate)/*If status equals “soac”*/
         | (undefined/*If status equals “ready” and session is NOT for recording*/
            | object(RecorderInfo)/*If status equals “ready” and session is for recording*/ )
         | string(Reason)/*If status equals “error”*/

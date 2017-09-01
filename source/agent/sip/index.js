@@ -54,10 +54,10 @@ function do_join(conference_ctl, user, room, selfPortal, ok, err) {
         [room, {id: user, user: {id: user, name: user}, role: 'sip', portal: selfPortal}], function(joinResult) {
             log.debug('join ok');
             var mixStream = null;
-            for(var index in joinResult.streams){
-                if(joinResult.streams[index].video.device === 'mcu'){
-                    if (joinResult.streams[index].view === 'common' || !mixStream) {
-                        mixStream = joinResult.streams[index];
+            for(var index in joinResult.room.streams){
+                if(joinResult.room.streams[index].type === 'mixed'){
+                    if (joinResult.room.streams[index].info.label === 'common' || !mixStream) {
+                        mixStream = joinResult.room.streams[index];
                     }
                 }
             }
@@ -187,7 +187,8 @@ module.exports = function (rpcC, spec) {
         erizo = {id:spec.id, addr:spec.addr},
         room_id,
         mixed_stream_id,
-        mixed_stream_resolutions,
+        mixed_stream_default_resolution,
+        mixed_stream_optional_resolutions = [],
         gateway,
         streams = {},
         calls = {},
@@ -204,7 +205,8 @@ module.exports = function (rpcC, spec) {
             do_join(conference_controller, client_id, room_id, erizo.id, function(mixedStream) {
                 if(mixedStream){
                     mixed_stream_id = mixedStream.id;
-                    mixed_stream_resolutions = mixedStream.video.resolutions;
+                    mixed_stream_default_resolution = mixedStream.media.video.parameters.resolution;
+                    mixed_stream_optional_resolutions = mixedStream.media.video.optional.parameters.resolution;
                     on_ok();
                 } else {
                     do_leave(conference_controller, client_id);
@@ -277,36 +279,34 @@ module.exports = function (rpcC, spec) {
                 var subInfo = { type: 'sip' };
                 if (info.audio && info.audio_dir !== 'recvonly') {
                     subInfo.audio = {
-                        fromStream: mixed_stream_id,
-                        codecs: [audio_info.codec]
+                        from: mixed_stream_id,
+                        format: {codec: audio_info.codec}
                     };
                 }
                 if (info.video && info.video_dir !== 'recvonly') {
                     //check resolution
                     var fmtp = info.videoResolution;
-                    var preferred_subscription_resolution = mixed_stream_resolutions[0];
+                    var preferred_subscription_resolution = mixed_stream_default_resolution;
+
+                    const isResolutionEqual = (r1, r2) => {return r1.width === r2.width && r1.height === r2.height;};
                     //TODO: currently we only check CIF/QCIF, there might be other options in fmtp from other devices.
-                    if((fmtp.indexOf('CIF') != -1 || fmtp.indexOf('QCIF') != -1)){
-                            if(mixed_stream_resolutions.indexOf('sif') != -1){
-                                    preferred_subscription_resolution = 'sif';
-                            }else{
-                                    log.warn('MCU does not support the resolution required by sip client');
-                                    var diff = Number.MAX_VALUE;
-                                    //looking for the resolution closest to 352 * 240(sif)
-                                    for(var index in mixed_stream_resolutions){
-                                            var current_diff = resolution_map[mixed_stream_resolutions[index]].width - 352
-                                                                 + resolution_map[mixed_stream_resolutions[index]].height - 240;
-                                            if(current_diff < diff){
-                                                    diff = current_diff;
-                                                    preferred_subscription_resolution = mixed_stream_resolutions[index];
-                                            }
-                                    }
+                    if((fmtp.indexOf('CIF') !== -1 || fmtp.indexOf('QCIF') !== -1)){
+                        var required_resolution = ((fmtp.indexOf('CIF') !== -1) ? {width: 352, height: 288} : {width: 176, height: 144});
+                        if (!isResolutionEqual(required_resolution, preferred_subscription_resolution)) {
+                            var diff = Number.MAX_VALUE;
+                            for (var index in mixed_stream_optional_resolutions) {
+                                var current_diff = (mixed_stream_optional_resolutions[index].width - 352) + (mixed_stream_optional_resolutions[index].height - 288);
+                                if (current_diff < diff){
+                                    diff = current_diff;
+                                    preferred_subscription_resolution = mixed_stream_optional_resolutions[index];
+                                }
                             }
+                        }
                     }
                     subInfo.video = {
-                        fromStream: mixed_stream_id,
-                        codecs: [video_info.codec],
-                        resolution: preferred_subscription_resolution
+                        from: mixed_stream_id,
+                        format: {codec: video_info.codec},
+                        parameters: {resolution: preferred_subscription_resolution}
                     };
                 }
                 //TODO: The subscriptions binding should be done in the success callback.

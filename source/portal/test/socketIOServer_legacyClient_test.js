@@ -1320,7 +1320,7 @@ describe('Responding to clients.', function() {
             expect(mockPortal.subscribe.getCall(0).args[0]).to.equal(client.id);
             expect(mockPortal.subscribe.getCall(0).args[1]).to.be.a('string');
             var subscription_id = mockPortal.subscribe.getCall(0).args[1];
-            expect(mockPortal.subscribe.getCall(0).args[2]).to.deep.equal({type: 'webrtc', media: {audio: {from: 'targetStreamId'}, video: {from: 'targetStreamId', spec: {resolution: {width: 640, height: 480}, bitrateLevel: '1.0x'}}}});
+            expect(mockPortal.subscribe.getCall(0).args[2]).to.deep.equal({type: 'webrtc', media: {audio: {from: 'targetStreamId'}, video: {from: 'targetStreamId', parameters: {resolution: {width: 640, height: 480}, bitrate: '1.0x'}}}});
             client.emit('signaling_message', {streamId: 'targetStreamId', msg: {type: 'offer', sdp: 'offerSDPString'}}, undefined, function() {
               expect(mockPortal.onSessionSignaling.getCall(0).args).to.deep.equal([client.id, subscription_id, {type: 'offer', sdp: 'offerSDPString'}]);
               client.emit('signaling_message', {streamId: 'targetStreamId', msg: {type: 'candidate', candidate: 'candidateString'}}, undefined, function() {
@@ -1347,13 +1347,13 @@ describe('Responding to clients.', function() {
           expect(result).to.equal('ok');
           var options = {streamId: 'targetStreamId', audio: true, video: {resolution: {width: 640, height: 480}, quality_level: 'standard'}};
           client.emit('subscribe', options, undefined, function(status, id) {
-            expect(mockPortal.subscribe.getCall(0).args[2]).to.deep.equal({type: 'webrtc', media: {audio: {from: 'targetStreamId'}, video: {from: 'targetStreamId', spec: {resolution: {width: 640, height: 480}, bitrateLevel: '1.0x'}}}});
+            expect(mockPortal.subscribe.getCall(0).args[2]).to.deep.equal({type: 'webrtc', media: {audio: {from: 'targetStreamId'}, video: {from: 'targetStreamId', parameters: {resolution: {width: 640, height: 480}, bitrate: '1.0x'}}}});
             var options1 = {streamId: 'targetStreamId1', video: {resolution: {width: 640, height: 480}, quality_level: 'standard'}};
             client.emit('subscribe', options1, undefined, function(status, id) {
-              expect(mockPortal.subscribe.getCall(0).args[2]).to.deep.equal({type: 'webrtc', media: {audio: {from: 'targetStreamId'}, video: {from: 'targetStreamId', spec: {resolution: {width: 640, height: 480}, bitrateLevel: '1.0x'}}}});
+              expect(mockPortal.subscribe.getCall(0).args[2]).to.deep.equal({type: 'webrtc', media: {audio: {from: 'targetStreamId'}, video: {from: 'targetStreamId', parameters: {resolution: {width: 640, height: 480}, bitrate: '1.0x'}}}});
               var options2 = {streamId: 'targetStreamId2', video: {resolution: 'vga', quality_level: 'standard'}};
               client.emit('subscribe', options2, undefined, function(status, id) {
-                expect(mockPortal.subscribe.getCall(0).args[2]).to.deep.equal({type: 'webrtc', media: {audio: {from: 'targetStreamId'}, video: {from: 'targetStreamId', spec: {resolution: {width: 640, height: 480}, bitrateLevel: '1.0x'}}}});
+                expect(mockPortal.subscribe.getCall(0).args[2]).to.deep.equal({type: 'webrtc', media: {audio: {from: 'targetStreamId'}, video: {from: 'targetStreamId', parameters: {resolution: {width: 640, height: 480}, bitrate: '1.0x'}}}});
                 done();
               });
             });
@@ -1460,7 +1460,7 @@ describe('Responding to clients.', function() {
             expect(mockPortal.subscribe.getCall(0).args[0]).to.equal(client.id);
             expect(mockPortal.subscribe.getCall(0).args[1]).to.be.a('string');
             var subscription_id = mockPortal.subscribe.getCall(0).args[1];
-            expect(mockPortal.subscribe.getCall(0).args[2]).to.deep.equal({type: 'streaming', media: {audio: {from: 'targetStreamId', spec: {codec: 'aac'}}, video: {from: 'targetStreamId', spec: {codec: 'h264', resolution: {width: 640, height: 480}}}}, connection: {url: 'rtsp://target.host'}});
+            expect(mockPortal.subscribe.getCall(0).args[2]).to.deep.equal({type: 'streaming', media: {audio: {from: 'targetStreamId', format: {codec: 'aac'}}, video: {from: 'targetStreamId', format: {codec: 'h264'}, parameters: {resolution: {width: 640, height: 480}}}}, connection: {url: 'rtsp://target.host'}});
             done();
           });
         });
@@ -1476,7 +1476,7 @@ describe('Responding to clients.', function() {
           var options = {url: 'rtsp://target.host', resolution: 'hd720p'};
           client.emit('addExternalOutput', options, function(status, data) {
             expect(status).to.equal('success');
-            expect(mockPortal.subscribe.getCall(0).args[2]).to.deep.equal({type: 'streaming', media: {audio: {from: testStream, spec: {codec: 'aac'}}, video: {from: testStream, spec: {codec: 'h264', resolution: {width: 1280, height: 720}}}}, connection: {url: 'rtsp://target.host'}});
+            expect(mockPortal.subscribe.getCall(0).args[2]).to.deep.equal({type: 'streaming', media: {audio: {from: testStream, format: {codec: 'aac'}}, video: {from: testStream, format: {codec: 'h264'}, parameters: {resolution: {width: 1280, height: 720}}}}, connection: {url: 'rtsp://target.host'}});
             done();
           });
         });
@@ -1580,7 +1580,7 @@ describe('Responding to clients.', function() {
               expect(data.url).to.equal('rtsp://target.host');
               expect(mockPortal.subscriptionControl.getCall(0).args[0]).to.equal(client.id);
               expect(mockPortal.subscriptionControl.getCall(0).args[1]).to.be.a('string');
-              expect(mockPortal.subscriptionControl.getCall(0).args[2]).to.deep.equal({operation: 'update', data: {audio: {from: 'stream1'}, video: {from: 'stream1', spec: {resolution: {width: 640, height: 480}}}}});
+              expect(mockPortal.subscriptionControl.getCall(0).args[2]).to.deep.equal({operation: 'update', data: {audio: {from: 'stream1'}, video: {from: 'stream1', parameters: {resolution: {width: 640, height: 480}}}}});
               done();
             });
           });
@@ -1683,7 +1683,7 @@ describe('Responding to clients.', function() {
             expect(data.host).to.equal('unknown');
             expect(mockPortal.subscribe.getCall(0).args[0]).to.equal(client.id);
             expect(mockPortal.subscribe.getCall(0).args[1]).to.equal(data.recorderId);
-            expect(mockPortal.subscribe.getCall(0).args[2]).to.deep.equal({type: 'recording', media: {audio: {from: 'targetStreamId-01', codec: 'pcmu'}, video: {from: 'targetStreamId-02', codec: 'vp8'}}, connection: {container: 'mkv'}});
+            expect(mockPortal.subscribe.getCall(0).args[2]).to.deep.equal({type: 'recording', media: {audio: {from: 'targetStreamId-01', format: {codec: 'pcmu'}}, video: {from: 'targetStreamId-02', format: {codec: 'vp8'}}}, connection: {container: 'mkv'}});
 
             options = {audioStreamId: testStream, videoStreamId: testStream, audioCodec: 'pcmu', videoCodec: 'vp8', path: '/tmp', interval: 1000};
             client.emit('startRecorder', options, function(status, data) {
@@ -1693,7 +1693,7 @@ describe('Responding to clients.', function() {
               expect(data.host).to.equal('unknown');
               expect(mockPortal.subscribe.getCall(1).args[0]).to.equal(client.id);
               expect(mockPortal.subscribe.getCall(1).args[1]).to.equal(data.recorderId);
-              expect(mockPortal.subscribe.getCall(1).args[2]).to.deep.equal({type: 'recording', media: {audio: {from: testStream, codec: 'pcmu'}, video: {from: testStream, codec: 'vp8'}}, connection: {container: 'mkv'}});
+              expect(mockPortal.subscribe.getCall(1).args[2]).to.deep.equal({type: 'recording', media: {audio: {from: testStream, format: {codec: 'pcmu'}}, video: {from: testStream, format: {codec: 'vp8'}}}, connection: {container: 'mkv'}});
               done();
             });
           });
@@ -1736,17 +1736,17 @@ describe('Responding to clients.', function() {
           client.emit('startRecorder', options, function(status, data) {
             expect(status).to.equal('success');
             expect(mockPortal.subscribe.getCall(0).args[1]).to.be.a('string');
-            expect(mockPortal.subscribe.getCall(0).args[2]).to.deep.equal({type: 'recording', media: {audio: {from: testStream, codec: 'opus_48000_2'}, video: {from: testStream, codec: 'vp8'}}, connection: {container: 'mkv'}});
+            expect(mockPortal.subscribe.getCall(0).args[2]).to.deep.equal({type: 'recording', media: {audio: {from: testStream, format: {codec: 'opus', sampleRate:48000, channelNum: 2}}, video: {from: testStream, format: {codec: 'vp8'}}}, connection: {container: 'mkv'}});
 
             var options = {audioStreamId: 'targetStreamId1', audioCodec: 'opus'}; //unspecified video stream-id, audio codec is 'opus'.
             client.emit('startRecorder', options, function(status, data) {
               expect(status).to.equal('success');
-              expect(mockPortal.subscribe.getCall(1).args[2]).to.deep.equal({type: 'recording', media: {audio: {from: 'targetStreamId1', codec: 'opus_48000_2'}, video: false}, connection: {container: 'mkv'}});
+              expect(mockPortal.subscribe.getCall(1).args[2]).to.deep.equal({type: 'recording', media: {audio: {from: 'targetStreamId1', format: {codec: 'opus', sampleRate: 48000, channelNum: 2}}, video: false}, connection: {container: 'mkv'}});
 
               var options = {videoStreamId: 'targetStreamId2', videoCodec: 'h264', interval: 2000}; //unspecified audio stream-id.
               client.emit('startRecorder', options, function(status, data) {
                 expect(status).to.equal('success');
-                expect(mockPortal.subscribe.getCall(2).args[2]).to.deep.equal({type: 'recording', media: {audio: false, video: {from: 'targetStreamId2', codec: 'h264'}}, connection: {container: 'mkv'}});
+                expect(mockPortal.subscribe.getCall(2).args[2]).to.deep.equal({type: 'recording', media: {audio: false, video: {from: 'targetStreamId2', format: {codec: 'h264'}}}, connection: {container: 'mkv'}});
                 done();
               });
             });
