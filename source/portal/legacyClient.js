@@ -275,9 +275,9 @@ var LegacyClient = function(clientId, sigConnection, portal) {
       (options.audio || options.audio === undefined) && (sub_desc.media.audio = {from: options.streamId});
       (options.video || options.video === undefined) && (sub_desc.media.video = {from: options.streamId});
       (options.video && options.video.resolution && (typeof options.video.resolution.width === 'number') && (typeof options.video.resolution.height === 'number')) &&
-      (sub_desc.media.video.spec || (sub_desc.media.video.spec = {})) && (sub_desc.media.video.spec.resolution = options.video.resolution);
+      (sub_desc.media.video.parameters || (sub_desc.media.video.parameters = {})) && (sub_desc.media.video.parameters.resolution = options.video.resolution);
       options.video && (typeof options.video.resolution === 'string') && (sub_desc.media.video.resolution = resolution2WidthHeight(options.video.resolution));
-      options.video && options.video.quality_level && (sub_desc.media.video.spec || (sub_desc.media.video.spec = {})) && (sub_desc.media.video.spec.bitrateLevel = qualityLevel2BitrateLevel(options.video.quality_level));
+      options.video && options.video.quality_level && (sub_desc.media.video.parameters || (sub_desc.media.video.parameters = {})) && (sub_desc.media.video.parameters.bitrate = qualityLevel2BitrateLevel(options.video.quality_level));
 
       if (!sub_desc.media.audio && !sub_desc.media.video) {
           return safeCall(callback, 'error', 'bad options');
@@ -364,16 +364,16 @@ var LegacyClient = function(clientId, sigConnection, portal) {
       var sub_desc = {
         type: 'streaming',
         media: {
-          audio: (options.audio === false ? false: {from: target_stream_id, spec: {codec: options.audio && options.audio.codecs ? options.audio.codecs[0] : 'aac'}}),
-          video: (options.video === false ? false: {from: target_stream_id, spec: {codec: options.video && options.video.codecs ? options.video.codecs[0] : 'h264'}})
+          audio: (options.audio === false ? false: {from: target_stream_id, format: {codec: options.audio && options.audio.codecs ? options.audio.codecs[0] : 'aac'}}),
+          video: (options.video === false ? false: {from: target_stream_id, format: {codec: options.video && options.video.codecs ? options.video.codecs[0] : 'h264'}})
         },
         connection: {
           url: parsed_url.format()
         }
       };
       ((sub_desc.media.video) && options.resolution && (typeof options.resolution.width === 'number') && (typeof options.resolution.height === 'number')) &&
-      (sub_desc.media.video.spec.resolution = options.resolution);
-      (sub_desc.media.video && (typeof options.resolution === 'string')) && (sub_desc.media.video.spec.resolution = resolution2WidthHeight(options.resolution));
+      (sub_desc.media.video.parameters || (sub_desc.media.video.parameters = {})) && (sub_desc.media.video.parameters.resolution = options.resolution);
+      (sub_desc.media.video && (typeof options.resolution === 'string')) && (sub_desc.media.video.parameters || (sub_desc.media.video.parameters = {})) && (sub_desc.media.video.parameters.resolution = resolution2WidthHeight(options.resolution));
 
       return portal.subscribe(clientId, subscription_id, sub_desc
         ).then((result) => {  
@@ -420,9 +420,9 @@ var LegacyClient = function(clientId, sigConnection, portal) {
 
       if (options.resolution) {
         update.video = (update.video || {});
-        update.video.spec = {};
-        (typeof options.resolution.width === 'number') && (typeof options.resolution.height === 'number') && (update.video.spec.resolution = options.resolution);
-        (typeof options.resolution === 'string') && (update.video.spec.resolution = resolution2WidthHeight(options.resolution));
+        update.video.parameters = {};
+        (typeof options.resolution.width === 'number') && (typeof options.resolution.height === 'number') && (update.video.parameters.resolution = options.resolution);
+        (typeof options.resolution === 'string') && (update.video.parameters.resolution = resolution2WidthHeight(options.resolution));
       }
 
       return portal.subscriptionControl(clientId, subscription_id, {operation: 'update', data: update}
@@ -503,9 +503,10 @@ var LegacyClient = function(clientId, sigConnection, portal) {
           return safeCall(callback, 'error', 'Neither audio.from nor video.from was specified');
         }
 
-      if (!ref2subId[options.recorderId]) {
-        return safeCall(callback, 'error', 'Recording does NOT exist');
-      }
+        if (!ref2subId[options.recorderId]) {
+          return safeCall(callback, 'error', 'Recording does NOT exist');
+        }
+
         var subscription_id = options.recorderId;
         var update = {
           operation: 'update',
@@ -542,10 +543,20 @@ var LegacyClient = function(clientId, sigConnection, portal) {
       };
 
       (options.audioStreamId || unspecifiedStreamIds) && (sub_desc.media.audio = {from: options.audioStreamId || that.commonViewStream});
-      sub_desc.media.audio && (sub_desc.media.audio.codec = (function(c) {return (c === 'opus' ? 'opus_48000_2' : (c === 'aac' ? 'aac_48000_2' : c));})(options.audioCodec || 'opus'));
+      sub_desc.media.audio && (sub_desc.media.audio.format = ((a) => {
+        if (a) {
+          if (a === 'opus' || a === 'aac') {
+            return {codec: a, sampleRate: 48000, channelNum: 2};
+          } else {
+            return {codec: a}
+          }
+        } else {
+          return {codec: 'opus', sampleRate: 48000, channelNum: 2};
+        }
+      })(options.audioCodec));
 
       (options.videoStreamId || unspecifiedStreamIds) && (sub_desc.media.video = {from: options.videoStreamId || that.commonViewStream});
-      sub_desc.media.video && (sub_desc.media.video.codec = (options.videoCodec || 'vp8'));
+      sub_desc.media.video && (sub_desc.media.video.format = {codec: (options.videoCodec || 'vp8')});
 
       return portal.subscribe(clientId, subscription_id, sub_desc)
         .then(function(result) {

@@ -84,14 +84,15 @@ module.exports.create = function(spec, rpcReq, onSessionEstablished, onSessionAb
     } else {
       if (session.options.media.audio) {
         media.audio = {from: session.options.media.audio.from};
-        session.options.media.audio.spec && (media.audio.spec = session.options.media.audio.spec);
-        (session.options.type === 'webrtc') && (media.audio.spec = audio);
+        session.options.media.audio.format && (media.audio.format = session.options.media.audio.format);
+        (session.options.type === 'webrtc') && (media.audio.format = audio);
       }
 
       if (session.options.media.video) {
         media.video = {from: session.options.media.video.from};
-        session.options.media.video.spec && (media.video.spec = session.options.media.video.spec);
-        (session.options.type === 'webrtc') && (media.video.spec = (media.video.spec || {})) && (media.video.spec.codec = video_codec);
+        session.options.media.video.format && (media.video.format = session.options.media.video.format);
+        (session.options.type === 'webrtc') && (media.video.format = {codec: video_codec});
+        session.options.media.video.parameters && (media.video.parameters = session.options.media.video.parameters);
       }
     }
 

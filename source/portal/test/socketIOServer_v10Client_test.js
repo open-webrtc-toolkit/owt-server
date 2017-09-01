@@ -868,86 +868,12 @@ describe('Responding to clients.', function() {
 
   it.skip('Requests before joining should fail', function(done) {
     client.emit('publish', 'options', undefined, function(status, id) {
-      console.log('status:', status, 'id:', id);
       expect(status).to.equal('error');
       expect(id).to.equal('Illegal request');
-      done();
       client.emit('unpublish', 'streamId', function(status, id) {
         expect(status).to.equal('error');
         expect(id).to.equal('Illegal request');
-      client.emit('mix', 'options', function(status, id) {
-        expect(status).to.equal('error');
-        expect(id).to.equal('Illegal request');
-      client.emit('unmix', 'options', function(status, id) {
-        expect(status).to.equal('error');
-        expect(id).to.equal('Illegal request');
-      client.emit('subscribe', 'options', undefined, function(status, id) {
-        expect(status).to.equal('error');
-        expect(id).to.equal('Illegal request');
-      client.emit('unsubscribe', 'streamId', function(status, id) {
-        expect(status).to.equal('error');
-        expect(id).to.equal('Illegal request');
-      client.emit('signaling_message', 'message', undefined, function(status, id) {
-        expect(status).to.equal('error');
-        expect(id).to.equal('Illegal request');
-      client.emit('addExternalOutput', 'options', function(status, id) {
-        expect(status).to.equal('error');
-        expect(id).to.equal('Illegal request');
-      client.emit('updateExternalOutput', 'options', function(status, id) {
-        expect(status).to.equal('error');
-        expect(id).to.equal('Illegal request');
-      client.emit('removeExternalOutput', 'options', function(status, id) {
-        expect(status).to.equal('error');
-        expect(id).to.equal('Illegal request');
-      client.emit('startRecorder', 'options', function(status, id) {
-        expect(status).to.equal('error');
-        expect(id).to.equal('Illegal request');
-      client.emit('stopRecorder', 'options', function(status, id) {
-        expect(status).to.equal('error');
-        expect(id).to.equal('Illegal request');
-      client.emit('getRegion', 'options', function(status, id) {
-        expect(status).to.equal('error');
-        expect(id).to.equal('Illegal request');
-      client.emit('setRegion', 'options', function(status, id) {
-        expect(status).to.equal('error');
-        expect(id).to.equal('Illegal request');
-      client.emit('mute', 'options', function(status, id) {
-        expect(status).to.equal('error');
-        expect(id).to.equal('Illegal request');
-      client.emit('unmute', 'options', function(status, id) {
-        expect(status).to.equal('error');
-        expect(id).to.equal('Illegal request');
-      client.emit('setPermission', 'options', function(status, id) {
-        expect(status).to.equal('error');
-        expect(id).to.equal('Illegal request');
-      client.emit('customMessage', 'msg', function(status, id) {
-        expect(status).to.equal('error');
-        expect(id).to.equal('Illegal request');
-      client.emit('logout', function(status, id) {
-        expect(status).to.equal('error');
-        expect(id).to.equal('Illegal request');
-      client.emit('refreshReconnectionTicket', function(status, id) {
-        expect(status).to.equal('error');
-        expect(id).to.equal('Illegal request');
         done();
-      });
-      });
-      });
-      });
-      });
-      });
-      });
-      });
-      });
-      });
-      });
-      });
-      });
-      });
-      });
-      });
-      });
-      });
       });
     });
   });
@@ -1392,8 +1318,10 @@ describe('Responding to clients.', function() {
               },
               video: {
                 from: 'stream2',
-                spec: {
-                  codec: 'vp8',
+                format: {
+                  codec: 'vp8'
+                },
+                parameters: {
                   resolution: {width: 1920, height: 1080}
                 }
               }
@@ -1440,8 +1368,10 @@ describe('Responding to clients.', function() {
               },
               video: {
                 from: 'stream2',
-                spec: {
-                  codec: 'vp8',
+                format: {
+                  codec: 'vp8'
+                },
+                parameters: {
                   resolution: {width: 1920, height: 1080}
                 }
               }
@@ -1472,8 +1402,10 @@ describe('Responding to clients.', function() {
               },
               video: {
                 from: 'stream2',
-                spec: {
-                  codec: 'vp8',
+                format: {
+                  codec: 'vp8'
+                },
+                parameters: {
                   resolution: {width: 1920, height: 1080}
                 }
               }
@@ -1512,8 +1444,10 @@ describe('Responding to clients.', function() {
               },
               video: {
                 from: 'stream2',
-                spec: {
-                  codec: 'vp8',
+                format: {
+                  codec: 'vp8'
+                },
+                parameters: {
                   resolution: {width: 640, height: 480},
                   bitrate: 'x0.8',
                   keyFrameInterval: 2
@@ -1551,8 +1485,10 @@ describe('Responding to clients.', function() {
               },
               video: {
                 from: 'stream2',
-                spec: {
-                  codec: 'vp8',
+                format: {
+                  codec: 'vp8'
+                },
+                parameters: {
                   resolution: {width: 640, height: 480},
                   bitrate: 600,
                   keyFrameInterval: 5
@@ -1803,7 +1739,7 @@ describe('Responding to clients.', function() {
                 },
                 video: {
                   from: 'stream2',
-                  spec: {
+                  parameters: {
                     resolution: {width: 648, height: 480},
                     bitrate: 300,
                     framerate: 24,

@@ -1167,11 +1167,11 @@ var Conference = function (rpcClient, selfRpcId) {
   };
 
   const isAudioFmtCompatible = (fmt1, fmt2) => {
-    return (fmt1.codec === fmt2.codec) && (fmt1.sampleRate === fmt2.sampleRate) && (ftm1.channelNum === fmt2.channelNum);
+    return (fmt1.codec === fmt2.codec) && (fmt1.sampleRate === fmt2.sampleRate) && (fmt1.channelNum === fmt2.channelNum);
   };
 
   const isAudioFmtAcceptable = (streamAudio, fmt) => {
-    if (isAudioFmtEqual(streamAudio.format, fmt)) {
+    if (isAudioFmtCompatible(streamAudio.format, fmt)) {
       return true;
     }
     if (streamAudio.optional && streamAudio.optional.format && (streamAudio.optional.format.filter((f) => {return isAudioFmtCompatible(f, fmt);}).length > 0)) {
@@ -1185,9 +1185,8 @@ var Conference = function (rpcClient, selfRpcId) {
       return false;
     }
 
-    if (req.spec) {
-      let req_fmt = {codec: req.spec.codec, sampleRate: req.spec.sampleRate, channelNum: req.spec.channelNum};
-      if (req_fmt.codec && !isAudioFmtAcceptable(streams[req.from].media.audio, req_fmt)) {
+    if (req.format) {
+      if (!isAudioFmtAcceptable(streams[req.from].media.audio, req.format)) {
         return false;
       }
     }
@@ -1200,7 +1199,7 @@ var Conference = function (rpcClient, selfRpcId) {
   };
 
   const isVideoFmtAcceptable = (streamVideo, fmt) => {
-    if (isVideoFmtEqual(streamVideo.format, fmt)) {
+    if (isVideoFmtCompatible(streamVideo.format, fmt)) {
       return true;
     }
     if (streamVideo.optional && streamVideo.optional.format && (streamVideo.optional.format.filter((f) => {return isVideoFmtCompatible(f, fmt);}).length > 0)) {
@@ -1258,25 +1257,24 @@ var Conference = function (rpcClient, selfRpcId) {
       return false;
     }
 
-    if (req.spec) {
-      let req_fmt = {codec: req.spec.codec, profile: req.spec.profile};
-      if (req_fmt.codec && !isVideoFmtAcceptable(streams[req.from].media.video, req_fmt)) {
+    if (req.format && !isVideoFmtAcceptable(streams[req.from].media.video, req.format)) {
+      return false;
+    }
+
+    if (req.parameters) {
+      if (req.parameters.resolution && !isResolutionAcceptable(streams[req.from].media.video, req.parameters.resolution)) {
         return false;
       }
 
-      if (req.spec.resolution && !isResolutionAcceptable(streams[req.from].media.video, req.spec.resolution)) {
+      if (req.parameters.framerate && !isFramerateAcceptable(streams[req.from].media.video, req.parameters.framerate)) {
         return false;
       }
 
-      if (req.spec.framerate && !isFramerateAcceptable(streams[req.from].media.video, req.spec.framerate)) {
+      if (req.parameters.bitrate && !isBitrateAcceptable(streams[req.from].media.video, req.parameters.bitrate)) {
         return false;
       }
 
-      if (req.spec.bitrate && !isBitrateAcceptable(streams[req.from].media.video, req.spec.bitrate)) {
-        return false;
-      }
-
-      if (req.spec.keyFrameInterval && !isKeyFrameIntervalAcceptable(streams[req.from].media.video, req.spec.keyFrameInterval)) {
+      if (req.parameters.keyFrameInterval && !isKeyFrameIntervalAcceptable(streams[req.from].media.video, req.parameters.keyFrameInterval)) {
         return false;
       }
     }
@@ -1524,22 +1522,22 @@ var Conference = function (rpcClient, selfRpcId) {
       }
 
       /*
-      if (update.video.spec) {
-        new_su.media.video.spec = (new_su.media.video.spec || {});
-        if (update.video.spec.resolution && ((update.video.spec.resolution.width !== new_su.media.video.spec.resolution.width) || (update.video.spec.resolution.height !== new_su.media.video.spec.resolution.height))) {
-          new_su.media.video.spec.resolution = update.video.spec.resolution;
+      if (update.video.parameters) {
+        new_su.media.video.parameters = (new_su.media.video.parameters || {});
+        if (update.video.parameters.resolution && ((update.video.parameters.resolution.width !== new_su.media.video.parameters.resolution.width) || (update.video.parameters.resolution.height !== new_su.media.video.parameters.resolution.height))) {
+          new_su.media.video.parameters.resolution = update.video.parameters.resolution;
           effective = true;
         }
-        if (update.video.spec.framerate && (update.video.spec.framerate !== new_su.media.video.spec.framerate)) {
-          new_su.media.video.spec.framerate = update.video.spec.framerate;
+        if (update.video.parameters.framerate && (update.video.parameters.framerate !== new_su.media.video.parameters.framerate)) {
+          new_su.media.video.parameters.framerate = update.video.parameters.framerate;
           effective = true;
         }
-        if (update.video.spec.bitrate && (update.video.spec.bitrate !== new_su.media.video.spec.bitrate)) {
-          new_su.media.video.spec.bitrate = update.video.spec.bitrate;
+        if (update.video.parameters.bitrate && (update.video.parameters.bitrate !== new_su.media.video.parameters.bitrate)) {
+          new_su.media.video.parameters.bitrate = update.video.parameters.bitrate;
           effective = true;
         }
-        if (update.video.spec.keyFrameInterval && (update.video.spec.keyFrameInterval !== new_su.media.video.spec.keyFrameInterval)) {
-          new_su.media.video.spec.keyFrameInterval = update.video.spec.keyFrameInterval;
+        if (update.video.parameters.keyFrameInterval && (update.video.parameters.keyFrameInterval !== new_su.media.video.parameters.keyFrameInterval)) {
+          new_su.media.video.parameters.keyFrameInterval = update.video.parameters.keyFrameInterval;
           effective = true;
         }
       }
