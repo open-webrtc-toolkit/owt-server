@@ -1404,7 +1404,7 @@ var Conference = function (rpcClient, selfRpcId) {
 
     var audio = (track === 'audio' || track === 'av') ? true : false,
         video = (track === 'video' || track === 'av') ? true : false,
-        status = (muted ? 'active' : 'inactive');
+        status = (muted ? 'inactive' : 'active');
 
     if (audio && !streams[streamId].media.audio) {
       return Promise.reject('Stream does NOT contain audio track');
