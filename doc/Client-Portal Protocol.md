@@ -87,7 +87,11 @@ object(LoginInfo)::
   {
    token: string(Base64EncodedToken),
    userAgent: object(ClientInfo),
-   protocol: string(ProtocolVersion) //e.g.  “1.0”
+   reconnection: object(ReconnectionOptions)/*If reconnection is required*/
+                 | false/*If reconnection is not required*/
+                 | undefined/*For compatibility (with 3.4 clients) purpose, will be considered as false or {keepTime: -1}*/,
+   protocol: string(ProtocolVersion)/*e.g.  “1.0”*/
+             | undefined/*For compatibility (with 3.4 clients) purpose, will be considered as "legacy"*/
   }
 
   object(ClientInfo)::
@@ -104,6 +108,11 @@ object(LoginInfo)::
        name: string(OSName),
        version: string(OSVersion)
       }
+    }
+
+  object(ReconnectionOptions)::
+    {
+     keepTime: number(Seconds)/*-1: Use server side configured 'reconnection_timeout' value; Others: specified keepTime in seconds*/
     }
 ```
 **ResponseData**: The LoginResult object with following definition if **ResponseStatus** is “ok”:
