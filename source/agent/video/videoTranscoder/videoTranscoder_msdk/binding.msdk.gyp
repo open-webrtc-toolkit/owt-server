@@ -10,7 +10,6 @@
       '../../../../core/woogeen_base/FrameConverter.cpp',
       '../../../../core/woogeen_base/VCMFrameDecoder.cpp',
       '../../../../core/woogeen_base/VCMFrameEncoder.cpp',
-      '../../../../core/woogeen_base/VCMFrameEncoderAdapter.cpp',
       '../../../../core/woogeen_base/FrameProcesser.cpp',
       '../../../../core/woogeen_base/MsdkFrameDecoder.cpp',
       '../../../../core/woogeen_base/MsdkFrameEncoder.cpp',

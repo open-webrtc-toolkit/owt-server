@@ -132,10 +132,13 @@ private:
     uint32_t m_incomingFrameCount;
 
     std::atomic<bool> m_requestKeyFrame;
+    std::atomic<uint32_t> m_updateBitrateKbps;
 
-    // workaround for simulcast
+    bool m_isAdaptiveMode;
     int32_t m_width;
     int32_t m_height;
+    uint32_t m_frameRate;
+    uint32_t m_bitrateKbps;
 
     boost::scoped_ptr<FrameConverter> m_converter;
 

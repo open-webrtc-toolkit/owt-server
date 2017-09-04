@@ -30,7 +30,7 @@
 #include <VideoFrameTranscoder.h>
 
 #include <VCMFrameDecoder.h>
-#include <VCMFrameEncoderAdapter.h>
+#include <VCMFrameEncoder.h>
 
 #include <FrameProcesser.h>
 
@@ -169,7 +169,7 @@ inline bool VideoFrameTranscoderImpl::addOutput(int output,
     }
 #endif
     if (!encoder) {
-        encoder.reset(new woogeen_base::VCMFrameEncoderAdapter(format));
+        encoder.reset(new woogeen_base::VCMFrameEncoder(format));
     }
 
     streamId = encoder->generateStream(rootSize.width, rootSize.height, framerateFPS, bitrateKbps, keyFrameIntervalSeconds, dest);
