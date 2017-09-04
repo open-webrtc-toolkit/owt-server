@@ -200,7 +200,6 @@ class InputManager {
         if (pos < 0)
             return;
 
-        this.freeIndex.splice(pos, 1);
         var streamId;
         for (streamId in this.pendingInputs) {
             break;
@@ -209,13 +208,14 @@ class InputManager {
             this.inputs[streamId] = this.pendingInputs[streamId];
             this.inputs[streamId].id = inputId;
             delete this.pendingInputs[streamId];
+            this.freeIndex.splice(pos, 1);
             return this.inputs[streamId];
         }
         return null;
     }
 
     size() {
-        return this.inputs.size;
+        return Object.keys(this.inputs).length;
     }
 
     getStreamList() {
@@ -284,16 +284,18 @@ function VMixer(rpcClient, clusterIP) {
                 avatar = avatar || global.config.avatar.location;
 
                 let inputId = inputManager.add(stream_id, codec, conn, avatar);
-                if (inputId >= 0 && engine.addInput(inputId, codec, conn, avatar)) {
-                    layoutProcessor.addInput(inputId);
-                    log.debug('addInput ok, stream_id:', stream_id, 'codec:', codec, 'options:', options);
-                    on_ok(stream_id);
-                } else if (inputManager.isPending(stream_id)) {
+                if (inputId >= 0) {
+                    if (engine.addInput(inputId, codec, conn, avatar)) {
+                        layoutProcessor.addInput(inputId);
+                        log.debug('addInput ok, stream_id:', stream_id, 'codec:', codec, 'options:', options);
+                        on_ok(stream_id);
+                    } else {
+                        internalConnFactory.destroy(stream_id, 'in');
+                        on_error('Failed in adding input to video-engine.');
+                    }
+                } else {
                     log.debug('addInput pending', stream_id);
                     on_ok(stream_id);
-                } else {
-                    internalConnFactory.destroy(stream_id, 'in');
-                    on_error('Failed in adding input to video-engine.');
                 }
             }
         } else {
@@ -311,14 +313,19 @@ function VMixer(rpcClient, clusterIP) {
                 let newInput = inputManager.promotePendingStream(input.id);
                 if (newInput) {
                     // If there's pending input
+                    let newStreamId = inputManager.getStreamFromInput(newInput.id);
                     if (!engine.addInput(newInput.id, newInput.codec, newInput.conn, newInput.avatar)) {
                         layoutProcessor.removeInput(newInput.id);
+                        log.error('engine fail to add pending input', newStreamId);
                     }
+                    log.debug('add pending input', newStreamId);
                 } else {
                     layoutProcessor.removeInput(input.id);
                 }
             }
             internalConnFactory.destroy(stream_id, 'in');
+        } else {
+            log.error('no such input to remove:', stream_id);
         }
     };
 
