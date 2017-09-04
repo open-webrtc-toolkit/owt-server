@@ -41,8 +41,12 @@ VCMFrameEncoder::VCMFrameEncoder(FrameFormat format, bool useSimulcast)
     , m_running(false)
     , m_incomingFrameCount(0)
     , m_requestKeyFrame(false)
+    , m_updateBitrateKbps(0)
+    , m_isAdaptiveMode(false)
     , m_width(0)
     , m_height(0)
+    , m_frameRate(0)
+    , m_bitrateKbps(0)
     , m_enableBsDump(false)
     , m_bsDumpfp(NULL)
 {
@@ -93,15 +97,19 @@ bool VCMFrameEncoder::isIdle()
 int32_t VCMFrameEncoder::generateStream(uint32_t width, uint32_t height, uint32_t frameRate, uint32_t bitrateKbps, uint32_t keyFrameIntervalSeconds, woogeen_base::FrameDestination* dest)
 {
     boost::upgrade_lock<boost::shared_mutex> lock(m_mutex);
-    //uint32_t targetKbps = bitrateKbps * (m_encodeFormat == FRAME_FORMAT_VP8 ? 0.9 : 1);
     uint32_t targetKbps = bitrateKbps;
 
     VideoCodec codecSettings;
     uint8_t simulcastId {0};
     int ret;
 
-    if (frameRate == 0)
-        frameRate = 30;
+    assert(frameRate != 0);
+    if (width == 0 || height == 0) {
+        m_isAdaptiveMode = true;
+        width = 3840;
+        height = 2160;
+        targetKbps = calcBitrate(width, height, frameRate);
+    }
 
 #if 0
     if (m_streams.size() > 0) {
@@ -237,11 +245,13 @@ int32_t VCMFrameEncoder::generateStream(uint32_t width, uint32_t height, uint32_
     encodeOut.reset(new EncodeOut(m_streamId, this, dest));
     OutStream stream = {.width = width, .height = height, .simulcastId = simulcastId, .encodeOut = encodeOut};
     m_streams[m_streamId] = stream;
-    ELOG_DEBUG_T("generateStream: {.width=%d, .height=%d, .frameRate=%d, .bitrateKbps=%d, .keyFrameIntervalSeconds=%d}, simulcastId=%d"
-            , width, height, frameRate, bitrateKbps, keyFrameIntervalSeconds, simulcastId);
+    ELOG_DEBUG_T("generateStream: {.width=%d, .height=%d, .frameRate=%d, .bitrateKbps=%d, .keyFrameIntervalSeconds=%d}, simulcastId=%d, adaptiveMode=%d"
+            , width, height, frameRate, bitrateKbps, keyFrameIntervalSeconds, simulcastId, m_isAdaptiveMode);
 
     m_width = width;
     m_height = height;
+    m_frameRate = frameRate;
+    m_bitrateKbps = bitrateKbps;
 
     if (m_enableBsDump) {
         char dumpFileName[128];
@@ -270,10 +280,15 @@ void VCMFrameEncoder::degenerateStream(int32_t streamId)
     }
 }
 
-//todo
 void VCMFrameEncoder::setBitrate(unsigned short kbps, int32_t streamId)
 {
-    ELOG_INFO_T("NOT IMPLEMENTED");
+    boost::shared_lock<boost::shared_mutex> lock(m_mutex);
+    ELOG_DEBUG_T("setBitrate(%d), %d(kbps)", streamId, kbps);
+
+    auto it = m_streams.find(streamId);
+    if (it != m_streams.end()) {
+        m_updateBitrateKbps = kbps;
+    }
 }
 
 void VCMFrameEncoder::requestKeyFrame(int32_t streamId)
@@ -289,10 +304,10 @@ void VCMFrameEncoder::requestKeyFrame(int32_t streamId)
 
 void VCMFrameEncoder::onFrame(const Frame& frame)
 {
-    if (m_width == 0 || m_height == 0)
-        return;
+    int32_t dstFrameWidth = m_isAdaptiveMode ? frame.additionalInfo.video.width : m_width;
+    int32_t dstFrameHeight = m_isAdaptiveMode ? frame.additionalInfo.video.height: m_height;
 
-    rtc::scoped_refptr<webrtc::I420Buffer> rawBuffer = m_bufferManager->getFreeBuffer(m_width, m_height);
+    rtc::scoped_refptr<webrtc::I420Buffer> rawBuffer = m_bufferManager->getFreeBuffer(dstFrameWidth, dstFrameHeight);
     if (!rawBuffer) {
         ELOG_ERROR("No valid buffer");
         return;
@@ -344,11 +359,40 @@ void VCMFrameEncoder::onFrame(const Frame& frame)
 
 void VCMFrameEncoder::doEncoding()
 {
+    int ret;
     boost::shared_ptr<webrtc::VideoFrame> frame = m_busyFrame;
     if (!frame)
         return;
 
-    int ret;
+    if (m_width != frame->width() || m_height != frame->height()) {
+        ELOG_DEBUG("Update encoder resolution %dx%d->%dx%d", m_width, m_height, frame->width(), frame->height());
+
+        ret = m_encoder->SetResolution(frame->width(), frame->height());
+        if (ret != 0) {
+            ELOG_WARN("Update Encode size error: %d", ret);
+        }
+
+        m_width = frame->width();
+        m_height = frame->height();
+        m_updateBitrateKbps = calcBitrate(m_width, m_height, m_frameRate);
+    }
+
+    if (m_updateBitrateKbps) {
+        ELOG_DEBUG("Update encoder bitrate %d(kbps)->%d(kbps)", m_bitrateKbps, m_updateBitrateKbps.load());
+
+        if (m_bitrateKbps != m_updateBitrateKbps) {
+            BitrateAllocation bitrate;
+            bitrate.SetBitrate(0, 0, m_updateBitrateKbps * 1000);
+
+            ret = m_encoder->SetRateAllocation(bitrate, m_frameRate);
+            if (ret != 0) {
+                ELOG_WARN("Update Encode bitrate error: %d", ret);
+            }
+            m_bitrateKbps = m_updateBitrateKbps;
+        }
+        m_updateBitrateKbps = 0;
+    }
+
     std::vector<FrameType> types;
     if (m_requestKeyFrame) {
         types.push_back(kVideoFrameKey);
