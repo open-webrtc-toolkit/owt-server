@@ -542,6 +542,15 @@ var Conference = function (rpcClient, selfRpcId) {
    */
   var subscriptions = {};
 
+  /*
+   * ParticipantID => [ StreamID ]
+   */
+  var sipPublications = {};
+  /*
+   * ParticipantID => [ SubscriptionID ]
+   */
+  var sipSubscriptions = {};
+
 
   var rpcChannel = require('./rpcChannel')(rpcClient),
       rpcReq = require('./rpcRequest')(rpcChannel);
@@ -818,6 +827,10 @@ var Conference = function (rpcClient, selfRpcId) {
   };
 
   const addSIPStream = (id, owner, pubInfo) => {
+    if (!sipPublications[owner]) {
+      sipPublications[owner] = [];
+    }
+    sipPublications[owner].push(id);
     return addStream(id, pubInfo.locality, pubInfo.media, {owner: owner, type: 'sip'});
   };
 
@@ -954,6 +967,10 @@ var Conference = function (rpcClient, selfRpcId) {
   };
 
   const addSIPSubscription = (id, owner, subDesc) => {
+    if (!sipSubscriptions[owner]) {
+      sipSubscriptions[owner] = [];
+    }
+    sipSubscriptions[owner].push(id);
     return addSubscription(id, subDesc.locality, subDesc.media, {owner: owner, type: 'sip'});
   };
 
@@ -1052,6 +1069,21 @@ var Conference = function (rpcClient, selfRpcId) {
       return callback('callback', 'error', 'Participant has not joined');
     }
 
+    // Remove SIP streams
+    if (sipPublications[participantId]) {
+      for (let i = 0; i < sipPublications[participantId].length; i++) {
+        removeStream(participantId, sipPublications[participantId][i]);
+      }
+      delete sipPublications[participantId];
+    }
+    // Remove SIP subscriptions
+    if (sipSubscriptions[participantId]) {
+      for (let i = 0; i < sipSubscriptions[participantId].length; i++) {
+        removeSubscription(sipSubscriptions[participantId][i]);
+      }
+      delete sipSubscriptions[participantId];
+    }
+
     return accessController.participantLeave(participantId)
       .then((result) => {
         return removeParticipant(participantId);
@@ -1103,7 +1135,7 @@ var Conference = function (rpcClient, selfRpcId) {
     }
 
     if (pubInfo.type === 'sip') {
-      return addSIPStream(participantId, streamId, pubInfo)
+      return addSIPStream(streamId, participantId, pubInfo)
       .then((result) => {
         current_publication_count += 1;
         callback('callback', result);

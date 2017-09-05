@@ -105,20 +105,20 @@ function do_publish(conference_ctl, user, stream_id, stream_info) {
             rpcClient,
             conference_ctl,
             'streamControl',
-            [user, {id: stream_id, operation: 'mix', data: 'common'}],
+            [user, stream_id, {id: stream_id, operation: 'mix', data: 'common'}],
             resolve,
             reject);
       });
     });
 }
 
-function do_subscribe(conference_ctl, user, subscription_id, accessNode, subInfo) {
+function do_subscribe(conference_ctl, user, subscription_id, subInfo) {
     return new Promise(function(resolve, reject) {
         makeRPC(
             rpcClient,
             conference_ctl,
             'subscribe',
-            [user, subscription_id, accessNode, subInfo],
+            [user, subscription_id, subInfo],
             resolve,
             reject);
     });
@@ -233,7 +233,7 @@ module.exports = function (rpcC, spec) {
             } else if (info.audio_codec === 'PCMU') {
                tmp = {codec: 'pcmu'};
             }
-            audio_info = {format: tmp};
+            audio_info = tmp;
         }
         if (info.video) {
             //TODO: device:camera, we may need to differentiate with screen sharing in the furture
@@ -244,7 +244,7 @@ module.exports = function (rpcC, spec) {
             } else {
               tmp = {codec: codec};
             }
-            video_info = {format: tmp};
+            video_info = tmp;
         }
 
         // publish stream to controller
@@ -276,11 +276,11 @@ module.exports = function (rpcC, spec) {
         // subscribe the mix streams
         if ((info.audio && info.audio_dir !== 'recvonly') || (info.video && info.video_dir !== 'recvonly')) {
             if (mixed_stream_id) {
-                var subInfo = { type: 'sip' };
+                var subInfo = { type: 'sip', media: {}, locality: {agent:that.agentID, node: erizo.id} };
                 if (info.audio && info.audio_dir !== 'recvonly') {
-                    subInfo.audio = {
+                    subInfo.media.audio = {
                         from: mixed_stream_id,
-                        format: {codec: audio_info.codec}
+                        format: audio_info
                     };
                 }
                 if (info.video && info.video_dir !== 'recvonly') {
@@ -303,9 +303,9 @@ module.exports = function (rpcC, spec) {
                             }
                         }
                     }
-                    subInfo.video = {
+                    subInfo.media.video = {
                         from: mixed_stream_id,
-                        format: {codec: video_info.codec},
+                        format: video_info,
                         parameters: {resolution: preferred_subscription_resolution}
                     };
                 }
@@ -319,7 +319,6 @@ module.exports = function (rpcC, spec) {
                 subscribed = do_subscribe(calls[client_id].conference_controller,
                                           client_id,
                                           client_id,
-                                          {agent:that.agentID, node: erizo.id},
                                           subInfo);
             } else {
                 log.warn("invalid mix stream id");
