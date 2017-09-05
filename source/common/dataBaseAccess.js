@@ -351,6 +351,10 @@ var genConfig = function (room) {
         config.views = { "common": { mediaMixing: genMediaMixing(room.mediaMixing) } };
     }
 
+    if (room.sipInfo) {
+        config.sip = room.sipInfo;
+    }
+
     return config;
 };
 
