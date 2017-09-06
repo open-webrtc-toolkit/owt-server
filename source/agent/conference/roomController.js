@@ -686,7 +686,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
         var video_mixer = getSubMediaMixer(view, 'video');
         if (video_mixer && terminals[video_mixer]) {
             var vmixer_node = terminals[video_mixer].locality.node;
-            log.debug('spawnMixedVideo, view:', view, 'format:', format, 'resolution:', resolution, 'framerate, bitrate, keyFrameInterval:', framerate, bitrate, keyFrameInterval);
+            log.debug('spawnMixedVideo, view:', view, 'format:', format, 'resolution:', resolution, 'framerate:', framerate, 'bitrate:', bitrate, 'keyFrameInterval:', keyFrameInterval);
             makeRPC(
                 rpcClient,
                 vmixer_node,

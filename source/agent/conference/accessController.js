@@ -163,7 +163,7 @@ module.exports.create = function(spec, rpcReq, onSessionEstablished, onSessionAb
     return Promise.resolve('ok');
   };
 
-  that.initiate = (participantId, sessionId, direction, origin, sessionOptions) => {
+  that.initiate = (participantId, sessionId, direction, origin, sessionOptions, formatPreference) => {
     log.debug('initiate, participantId:', participantId, 'sessionId:', sessionId, 'direction:', direction, 'origin:', origin, 'sessionOptions:', sessionOptions);
     if (sessions[sessionId]) {
       return Promise.reject('Session exists');
@@ -192,8 +192,8 @@ module.exports.create = function(spec, rpcReq, onSessionEstablished, onSessionAb
           controller: self_rpc_id
         };
         sessionOptions.connection && (options.connection = sessionOptions.connection);
-        //FIXME: should specify the desired audio/video format in the options passed to access nodes.
         sessionOptions.media && (options.media = sessionOptions.media);
+        formatPreference && (options.formatPreference = formatPreference);
         return rpcReq.initiate(locality.node,
                                sessionId,
                                sessionOptions.type,
