@@ -1482,6 +1482,9 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
         if (!mix_views[toView]) {
             return on_error('Invalid view');
         }
+        if (!streams[stream_id]) {
+            return on_error('Invalid stream');
+        }
         mixStream(stream_id, toView, on_ok, on_error);
     };
 
@@ -1489,6 +1492,9 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
         log.debug('unmix, stream_id:', stream_id, 'from view:', fromView);
         if (!mix_views[fromView]) {
             return on_error('Invalid view');
+        }
+        if (!streams[stream_id]) {
+            return on_error('Invalid stream');
         }
         unmixStream(stream_id, fromView);
         on_ok();
