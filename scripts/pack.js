@@ -452,7 +452,7 @@ function filterLib(libSrc) {
   // Remove libva
   if (libName.indexOf('libva') === 0) return false;
   // Remove libfdk-aac
-  if (libName.indexOf('libfdk-aac') === 0) return false;
+  if (libName.indexOf('libfdk-aac') === 0 && options['archive']) return false;
   // Remove libav/ffmpeg if aac
   if (libName.indexOf('libav') === 0 || libName.indexOf('libsw') === 0) {
     let output = execSync(`ldd ${libSrc}`).toString();
