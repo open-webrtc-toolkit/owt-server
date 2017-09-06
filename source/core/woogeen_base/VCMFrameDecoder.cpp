@@ -38,6 +38,7 @@ DEFINE_LOGGER(VCMFrameDecoder, "woogeen.VCMFrameDecoder");
 
 VCMFrameDecoder::VCMFrameDecoder(FrameFormat format)
     : m_needDecode(false)
+    , m_needKeyFrame(true)
 {
     memset(&m_codecInfo, 0, sizeof(m_codecInfo));
 }
@@ -93,6 +94,7 @@ bool VCMFrameDecoder::init(FrameFormat format)
     m_decoder->RegisterDecodeCompleteCallback(this);
 
     m_needDecode = true;
+    m_needKeyFrame = true;
     m_codecInfo.codecType = codecType;
     return true;
 }
@@ -120,6 +122,13 @@ void VCMFrameDecoder::onFrame(const Frame& frame)
     if (!m_needDecode)
         return;
 
+    ELOG_TRACE_T("onFrame(%s), %dx%d, length(%d)",
+            getFormatStr(frame.format),
+            frame.additionalInfo.video.width,
+            frame.additionalInfo.video.height,
+            frame.length
+            );
+
     if (frame.payload == 0 || frame.length == 0) {
         ELOG_DEBUG_T("Null frame, request key frame");
         FeedbackMsg msg {.type = VIDEO_FEEDBACK, .cmd = REQUEST_KEY_FRAME};
@@ -127,12 +136,16 @@ void VCMFrameDecoder::onFrame(const Frame& frame)
         return;
     }
 
-    ELOG_TRACE_T("onFrame(%s), %dx%d, length(%d)",
-            getFormatStr(frame.format),
-            frame.additionalInfo.video.width,
-            frame.additionalInfo.video.height,
-            frame.length
-            );
+    if (m_needKeyFrame) {
+        if (frame.additionalInfo.video.isKeyFrame) {
+            m_needKeyFrame = false;
+        } else {
+            ELOG_DEBUG_T("Request key frame");
+            FeedbackMsg msg {.type = VIDEO_FEEDBACK, .cmd = REQUEST_KEY_FRAME};
+            deliverFeedbackMsg(msg);
+            return;
+        }
+    }
 
     uint8_t *payload    = NULL;
     size_t length       = frame.length;
@@ -154,6 +167,8 @@ void VCMFrameDecoder::onFrame(const Frame& frame)
     int ret = m_decoder->Decode(image, false, nullptr, &m_codecInfo);
     if (ret != 0) {
         ELOG_ERROR_T("Decode frame error: %d", ret);
+
+        m_needKeyFrame = true;
         FeedbackMsg msg {.type = VIDEO_FEEDBACK, .cmd = REQUEST_KEY_FRAME};
         deliverFeedbackMsg(msg);
     }
