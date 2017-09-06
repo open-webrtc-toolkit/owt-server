@@ -1529,6 +1529,7 @@ var Conference = function (rpcClient, selfRpcId) {
     return op.then((result) => {
         callback('callback', result);
       }, (err) => {
+        log.info('streamControl failed', err);
         callback('callback', 'error', err.message ? err.message : err);
       });
   };
