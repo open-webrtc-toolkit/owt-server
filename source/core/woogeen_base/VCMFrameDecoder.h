@@ -45,6 +45,7 @@ public:
 
 private:
     bool m_needDecode;
+    bool m_needKeyFrame;
     webrtc::CodecSpecificInfo m_codecInfo;
     boost::scoped_ptr<webrtc::VideoDecoder> m_decoder;
 };
