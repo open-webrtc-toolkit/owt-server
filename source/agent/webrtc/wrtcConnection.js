@@ -61,8 +61,8 @@ module.exports = function (spec, on_status) {
                 })[0].split(' ')[1].split('/');
 
                 var fmt = {codec: fmtname[0].toLowerCase()};
-                fmtname[1] && (fmt.sampleRate = Number(fmtname[1]));
-                fmtname[2] && (fmt.channelNum = Number(fmtname[2]));
+                (fmt.codec !== 'pcmu' && fmt.codec !== 'pcma') && fmtname[1] && (fmt.sampleRate = Number(fmtname[1]));
+                (fmt.codec !== 'pcmu' && fmt.codec !== 'pcma') && fmtname[2] && (fmt.channelNum = Number(fmtname[2]));
 
                 fmts.push({code: fmtcodes[i], fmt: fmt});
 
