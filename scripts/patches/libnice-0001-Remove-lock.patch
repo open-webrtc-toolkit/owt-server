@@ -1,0 +1,64 @@
+From 6fb03789dac4acc86ace3caf6aef36862a965bd5 Mon Sep 17 00:00:00 2001
+From: Jianjun Zhu <jianjun.zhu@intel.com>
+Date: Mon, 4 Sep 2017 16:44:16 +0800
+Subject: [PATCH] Remove lock.
+
+---
+ agent/agent.c | 17 +++++++++++++++--
+ 1 file changed, 15 insertions(+), 2 deletions(-)
+
+diff --git a/agent/agent.c b/agent/agent.c
+index 259fdc9..9b54e98 100644
+--- a/agent/agent.c
++++ b/agent/agent.c
+@@ -4316,10 +4316,14 @@ nice_agent_send_messages_nonblocking_internal (
+   gint n_sent = -1; /* is in bytes if allow_partial is TRUE,
+                        otherwise in messages */
+   GError *child_error = NULL;
++  const gchar *lock_flag_string = g_getenv("NICE_SKIP_UDP_SEND_LOCK");
++  bool lock_flag = g_strcmp0(lock_flag_string, "true");
+ 
+   g_assert (n_messages == 1 || !allow_partial);
+ 
+-  agent_lock ();
++  if(!lock_flag) {
++    agent_lock();
++  }
+ 
+   if (!agent_find_component (agent, stream_id, component_id,
+           &stream, &component)) {
+@@ -4368,6 +4372,9 @@ nice_agent_send_messages_nonblocking_internal (
+ 
+       if (nice_socket_is_reliable (sock)) {
+         guint i;
++        if(lock_flag) {
++          agent_lock();
++        }
+ 
+         /* ICE-TCP requires that all packets be framed with RFC4571 */
+         n_sent = 0;
+@@ -4461,6 +4468,10 @@ nice_agent_send_messages_nonblocking_internal (
+           g_free (local_bufs);
+         }
+ 
++        if(lock_flag) {
++          agent_unlock_and_emit(agent);
++        }
++
+       } else {
+         n_sent = nice_socket_send_messages (sock, addr, messages, n_messages);
+       }
+@@ -4499,7 +4510,9 @@ done:
+   if (child_error != NULL)
+     g_propagate_error (error, child_error);
+ 
+-  agent_unlock_and_emit (agent);
++  if(!lock_flag) {
++    agent_unlock_and_emit (agent);
++  }
+ 
+   return n_sent;
+ }
+-- 
+2.7.4
+
