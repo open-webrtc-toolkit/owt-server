@@ -19,67 +19,166 @@ module.exports = function (spec, on_status) {
         // preferredAudioCodecs = spec.preferred_audio_codecs,
         // preferredVideoCodecs = spec.preferred_video_codecs,
         networkInterfaces = spec.network_interfaces,
-        audio = spec.audio || false,
-        video = spec.video || false,
+        audio = !!spec.media.audio,
+        video = !!spec.media.video,
+        formatPreference = spec.formatPreference,
+        audio_fmt,
+        video_fmt,
         audioFrameConstructor,
         audioFramePacketizer,
         videoFrameConstructor,
         videoFramePacketizer,
         wrtc;
 
-    var getAudioFmtList = function (sdp) {
-        //TODO: find a better way to parse the top prior audio codec.
-        var lines = sdp.toLowerCase().split('\n');
-        var mline = lines.filter(function (line) {return line.startsWith('m=audio');});
-        if (mline.length === 1) {
-            var l = [];
-            var fmtcodes = mline[0].split(' ').slice(3);
+    var isReserve = function (line, reserved) {
+        var re = new RegExp('^a=((rtpmap)|(fmtp)|(rtcp-fb))', 'i'),
+            re1 = new RegExp('^a=((rtpmap)|(fmtp)|(rtcp-fb)):(' + reserved.map(function(c){return '('+c+')';}).join('|') + ')\\s+', 'i');
+
+        return !re.test(line) || re1.test(line);
+    };
+
+    var isAudioFmtEqual = function (fmt1, fmt2) {
+      return (fmt1.codec === fmt2.codec)
+        && (((fmt1.sampleRate === fmt2.sampleRate) && (fmt1.channelNum === fmt2.channelNum))
+            || (fmt1.codec === 'pcmu') || (fmt1.codec === 'pcma'));
+    };
+
+    var determineAudioFmt = function (sdp) {
+        var lines = sdp.split('\n');
+        var a_begin = lines.findIndex(function (line) {return line.startsWith('m=audio');});
+        if ((a_begin >= 0) && formatPreference.audio) {
+            var a_end = lines.slice(a_begin + 1).findIndex(function(line) {return line.startsWith('m=');});
+                a_end = (a_end > 0 ? a_begin + a_end + 1 : lines.length);
+
+            var a_lines = lines.slice(a_begin, a_end);
+
+            var fmtcode = '';
+            var fmts = [];
+            var fmtcodes = a_lines[0].split(' ').slice(3);
             for (var i in fmtcodes) {
-                var fmtname = lines.filter(function (line) {
+                var fmtname = a_lines.filter(function (line) {
                     return line.startsWith('a=rtpmap:'+fmtcodes[i]);
-                })[0].split(' ')[1].split('/'); // FIXME: making functions within a for-loop is potentially wrong.
-                if (fmtname[1] === '8000') {
-                    l.push({codec: fmtname[0]});
+                })[0].split(' ')[1].split('/');
+
+                var fmt = {codec: fmtname[0].toLowerCase()};
+                fmtname[1] && (fmt.sampleRate = Number(fmtname[1]));
+                fmtname[2] && (fmt.channelNum = Number(fmtname[2]));
+
+                fmts.push({code: fmtcodes[i], fmt: fmt});
+
+                if ((fmtcode === '') && formatPreference.audio.preferred && isAudioFmtEqual(formatPreference.audio.preferred, fmt)) {
+                    audio_fmt = fmt;
+                    fmtcode = fmtcodes[i];
+                }
+            }
+
+            if ((fmtcode === '') && formatPreference.audio.optional) {
+                for (var j in fmts) {
+                    if (formatPreference.audio.optional.findIndex(function (o) {return isAudioFmtEqual(o, fmts[j].fmt);}) !== -1) {
+                        audio_fmt = fmts[j].fmt;
+                        fmtcode = fmts[j].code;
+                        break;
+                    }
+                }
+            }
+
+            if (fmtcode) {
+                var reserved_codes = [fmtcode];
+                fmts.forEach(function (f) {
+                    if ((f.fmt.codec === 'telephone-event')
+                        || ((f.fmt.codec === 'cn') && f.fmt.sampleRate && (f.fmt.sampleRate === audio_fmt.sampleRate))) {
+                        reserved_codes.push(f.code);
+                    }
+                });
+
+                a_lines[0] = lines[a_begin].split(' ').slice(0, 3).concat(reserved_codes).join(' ');
+                a_lines = a_lines.filter(function(line) {
+                    return isReserve(line, reserved_codes);
+                }).join('\n');
+                return lines.slice(0, a_begin).concat(a_lines).concat(lines.slice(a_end)).join('\n');
+            } else {
+                log.info('No proper audio format');
+                return sdp;
+            }
+        }
+        return sdp;
+    };
+
+    var isVideoFmtEqual = function (fmt1, fmt2) {
+      return (fmt1.codec === fmt2.codec);
+    };
+
+    var determineVideoFmt = function (sdp) {
+        var lines = sdp.split('\n');
+        var v_begin = lines.findIndex(function (line) {return line.startsWith('m=video');});
+        if ((v_begin >= 0) && formatPreference.video) {
+            var v_end = lines.slice(v_begin + 1).findIndex(function(line) {return line.startsWith('m=');});
+                v_end = (v_end > 0 ? v_begin + v_end + 1 : lines.length);
+
+            var v_lines = lines.slice(v_begin, v_end);
+
+            var fmtcode = '';
+            var fmts = [];
+            var fmtcodes = v_lines[0].split(' ').slice(3);
+            for (var i in fmtcodes) {
+                var fmtname = v_lines.filter(function (line) {
+                    return line.startsWith('a=rtpmap:'+fmtcodes[i]);
+                })[0].split(' ')[1].split('/');
+
+                var fmt = {codec: fmtname[0].toLowerCase()};
+                if (fmtname[0] === 'rtx') {
+                    var m_code = v_lines.filter(function(line) {return line.startsWith('a=fmtp:' + fmtcodes[i] + ' apt=');
+                    })[0].split(' ')[1].split('=')[1];
+                   fmts.push({code: fmtcodes[i], fmt: fmt, main_code: m_code});
                 } else {
-                    l.push({codec: fmtname[0], sampleRate: fmtname[1], channelNum: fmtname[2]});
+                   fmts.push({code: fmtcodes[i], fmt: fmt});
+                }
+
+                if ((fmtcode === '') && formatPreference.video.preferred && isVideoFmtEqual(formatPreference.video.preferred, fmt)) {
+                    video_fmt = fmt;
+                    fmtcode = fmtcodes[i];
                 }
             }
-            return l;
-        }
-        return [];
-    };
 
-
-    var getVideoFmtList = function (sdp) {
-        //TODO: find a better way to parse the top prior video codec.
-        var lines = sdp.toLowerCase().split('\n');
-        var mline = lines.filter(function (line) {
-            return line.startsWith('m=video');
-        });
-        if (mline.length === 1) {
-            var l = [];
-            var fmtcodes = mline[0].split(' ').slice(3);
-            for (var i in fmtcodes) {
-                var fmtname = lines.filter(function (line) {
-                    return line.startsWith('a=rtpmap:'+fmtcodes[i]);
-                })[0].split(' ')[1].split('/'); // FIXME: making functions within a for-loop is potentially wrong.
-                if (fmtname[0] !== 'red' && fmtname[0] !== 'ulpfec') {
-                    l.push({codec: fmtname[0]});
+            if ((fmtcode === '') && formatPreference.video.optional) {
+                for (var j in fmts) {
+                    if (formatPreference.video.optional.findIndex(function (o) {return isVideoFmtEqual(o, fmts[j].fmt);}) !== -1) {
+                        video_fmt = fmts[j].fmt;
+                        fmtcode = fmts[j].code;
+                        break;
+                    }
                 }
             }
-            return l;
+
+            if (fmtcode) {
+                var reserved_codes = [fmtcode];
+                fmts.forEach(function (f) {
+                    if ((f.fmt.codec === 'red')
+                        || (f.fmt.codec === 'ulpfec')
+                        || ((f.fmt.codec === 'rtx') && (f.main_code === fmtcode))) {
+                        reserved_codes.push(f.code);
+                    }
+                });
+
+                v_lines[0] = v_lines[0].split(' ').slice(0, 3).concat(reserved_codes).join(' ');
+                v_lines = v_lines.filter(function(line) {
+                    return isReserve(line, reserved_codes);
+                }).join('\n');
+                return lines.slice(0, v_begin).concat(v_lines).concat(lines.slice(v_end)).join('\n');
+            } else {
+                log.info('No proper video format');
+                return sdp;
+            }
         }
-        return [];
+        return sdp;
     };
 
-   var CONN_INITIAL = 101, CONN_STARTED = 102, CONN_GATHERED = 103, CONN_READY = 104, CONN_FINISHED = 105, CONN_CANDIDATE = 201, CONN_SDP = 202, CONN_FAILED = 500;
+    var CONN_INITIAL = 101, CONN_STARTED = 102, CONN_GATHERED = 103, CONN_READY = 104, CONN_FINISHED = 105, CONN_CANDIDATE = 201, CONN_SDP = 202, CONN_FAILED = 500;
     /*
      * Given a WebRtcConnection waits for the state CANDIDATES_GATHERED for set remote SDP.
      */
     var initWebRtcConnection = function (wrtc, on_status) {
         var terminated = false;
-        var audio_fmt_list_in_answer = [],
-            video_fmt_list_in_answer = [];
 
         wrtc.addEventListener('connection', function (resp) {
           if (terminated) {
@@ -102,14 +201,14 @@ module.exports = function (spec, on_status) {
 
             case CONN_SDP:
             case CONN_GATHERED:
-              log.debug('Sending SDP', message);
               networkInterfaces.forEach((i) => {
                 if (i.private_ip_match_pattern && i.replaced_ip_address) {
                   message = message.replace(i.private_ip_match_pattern, i.replaced_ip_address);
                 }
               });
-              audio_fmt_list_in_answer = getAudioFmtList(message);
-              video_fmt_list_in_answer = getVideoFmtList(message);
+              audio && (message = determineAudioFmt(message));
+              video && (message = determineVideoFmt(message));
+              log.debug('Answer SDP', message);
               on_status({type: 'answer', sdp: message});
               break;
 
@@ -134,8 +233,8 @@ module.exports = function (spec, on_status) {
               //}
               on_status({
                 type: 'ready',
-                audio: audio_fmt_list_in_answer.length > 0 ? audio_fmt_list_in_answer[0] : false,
-                video: video_fmt_list_in_answer.length > 0 ? video_fmt_list_in_answer[0] : false
+                audio: audio_fmt ? audio_fmt : false,
+                video: video_fmt ? video_fmt : false
               });
               break;
             }

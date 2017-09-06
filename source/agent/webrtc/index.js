@@ -23,8 +23,8 @@ module.exports = function (rpcClient) {
     var createWebRTCConnection = function (connectionId, direction, options, callback) {
         var connection = new WrtcConnection({
             direction: direction,
-            audio: !!options.media.audio,
-            video: !!options.media.video,
+            media: options.media,
+            formatPreference: options.formatPreference,
             network_interfaces: that.networkInterfaces
         }, function (status) {
             notifyStatus(options.controller, connectionId, direction, status);

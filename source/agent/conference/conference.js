@@ -571,7 +571,9 @@ var Conference = function (rpcClient, selfRpcId) {
         });
     } else if (direction === 'out') {
       return addSubscription(sessionId, sessionInfo.locality, sessionInfo.media, sessionInfo.info
-        ).catch((err) => {
+        ).then(() => {
+          sendMsgTo(participantId, 'progress', {id: sessionId, status: 'ready'});
+        }).catch((err) => {
           var err_msg = (err.message ? err.message : err);
           log.info('Exception:', err_msg);
           sendMsgTo(participantId, 'progress', {id: sessionId, status: 'error', data: err_msg});
@@ -1134,6 +1136,14 @@ var Conference = function (rpcClient, selfRpcId) {
       return callback('callback', 'error', 'Stream exists');
     }
 
+    if (pubInfo.media.audio && !room_config.mediaIn.audio) {
+      return callback('callback', 'error', 'Audio is forbiden');
+    }
+
+    if (pubInfo.media.video && !room_config.mediaIn.video) {
+      return callback('callback', 'error', 'Video is forbiden');
+    }
+
     if (pubInfo.type === 'sip') {
       return addSIPStream(streamId, participantId, pubInfo)
       .then((result) => {
@@ -1144,7 +1154,19 @@ var Conference = function (rpcClient, selfRpcId) {
         callback('callback', 'error', e.message ? e.message : e);
       });
     } else {
-      return accessController.initiate(participantId, streamId, 'in', participants[participantId].getOrigin(), pubInfo)
+      var format_preference;
+      if (pubInfo.type === 'webrtc') {
+        format_preference = {};
+        if (pubInfo.media.audio) {
+          format_preference.audio = {optional: room_config.mediaIn.audio};
+        }
+
+        if (pubInfo.media.video) {
+          format_preference.video = {optional: room_config.mediaIn.video};
+        }
+      }
+
+      return accessController.initiate(participantId, streamId, 'in', participants[participantId].getOrigin(), pubInfo, format_preference)
       .then((result) => {
         current_publication_count += 1;
         callback('callback', result);
@@ -1351,11 +1373,33 @@ var Conference = function (rpcClient, selfRpcId) {
         callback('callback', 'error', e.message ? e.message : e);
       });
     } else {
-      //var source_fmts = {};
-      //subDesc.media.audio && (source_fmts.audio = streams[subDesc.media.audio.from].media.audio.format);
-      //subDesc.media.video && (source_fmts.video = streams[subDesc.media.video.from].media.video.format);
+      var format_preference;
+      if (subDesc.type === 'webrtc') {
+        format_preference = {};
+        if (subDesc.media.audio) {
+          var source = streams[subDesc.media.audio.from].media.audio;
+          if (streams[subDesc.media.audio.from].type === 'forward') {
+            format_preference.audio = {preferred: source.format};
+            source.optional && source.optional.format && (format_preference.audio.optional = source.optional.format);
+          } else {
+            format_preference.audio = {optional: [source.format]};
+            source.optional && source.optional.format && (format_preference.audio.optional = format_preference.audio.optional.concat(source.optional.format));
+          }
+        }
 
-      return accessController.initiate(participantId, subscriptionId, 'out', participants[participantId].getOrigin(), subDesc)
+        if (subDesc.media.video) {
+          var source = streams[subDesc.media.video.from].media.video;
+          if (streams[subDesc.media.video.from].type === 'forward') {
+            format_preference.video = {preferred: source.format};
+            source.optional && source.optional.format && (format_preference.video.optional = source.optional.format);
+          } else {
+            format_preference.video = {optional: [source.format]};
+            source.optional && source.optional.format && (format_preference.video.optional = format_preference.video.optional.concat(source.optional.format));
+          }
+        }
+      }
+
+      return accessController.initiate(participantId, subscriptionId, 'out', participants[participantId].getOrigin(), subDesc, format_preference)
       .then((result) => {
         callback('callback', result);
       })
@@ -1535,7 +1579,7 @@ var Conference = function (rpcClient, selfRpcId) {
   };
 
   const updateSubscription = (subscriptionId, update, callback) => {
-    var old_su = subscriptions[subscriptionId];
+    var old_su = subscriptions[subscriptionId],
         new_su = JSON.parse(JSON.stringify(old_su));
 
     var effective = false;
