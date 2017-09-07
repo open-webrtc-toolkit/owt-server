@@ -24,9 +24,12 @@ global.config.webrtc.keystorePath = global.config.webrtc.keystorePath || '';
 
 global.config.video = global.config.video || {};
 global.config.video.hardwareAccelerated = !!global.config.video.hardwareAccelerated;
-global.config.video.openh264Enabled = !!global.config.video.openh264Enabled;
 global.config.video.yamiEnabled = !!global.config.video.yamiEnabled;
 global.config.video.enableBetterHEVCQuality = !!global.config.video.enableBetterHEVCQuality;
+global.config.video.codecs = {
+  decode: ['vp8', 'vp9', 'h264'],
+  encode: ['vp8', 'vp9']
+};
 
 global.config.avatar = global.config.avatar || {};
 
@@ -95,19 +98,36 @@ for (var prop in opt.options) {
 
 var rpc = require('./amqp_client')();
 
+var detectSWModeCapability = function () {
+    if (fs.existsSync('./lib/libopenh264.so.3') && (fs.statSync('./lib/libopenh264.so.3').size > 100000)) {//FIXME: The detection of installation of openh264 is not accurate here.
+        global.config.video.codecs.encode.push('h264');
+    }
+};
+
 (function init_env() {
-    if (global.config.video.hardwareAccelerated) {
-        // Query the hardware capability only if we want to try it.
-        require('child_process').exec('vainfo', function (error, stdout, stderr) {
-            if (error && error.code !== 0) {
-                log.warn('vainfo check with exit code:', error.code);
-                global.config.video.hardwareAccelerated = false;
-                return;
-            }
-            var info = stdout.toString() || stderr.toString();
-            // Check hardware codec version
-            global.config.video.hardwareAccelerated = (info.indexOf('VA-API version') != -1);
-        });
+    if (process.argv[3] === 'video') {
+        if (global.config.video.hardwareAccelerated) {
+            // Query the hardware capability only if we want to try it.
+            require('child_process').exec('vainfo', function (error, stdout, stderr) {
+                if (error && error.code !== 0) {
+                    log.warn('vainfo check with exit code:', error.code);
+                    global.config.video.hardwareAccelerated = false;
+                    return;
+                }
+                var info = stdout.toString() || stderr.toString();
+                // Check hardware codec version
+                global.config.video.hardwareAccelerated = (info.indexOf('VA-API version') != -1);
+                if (gloabel.config.video.hardwareAccelerated) {
+                    global.config.video.codecs.decode.push('h265');
+                    global.config.video.codecs.encode.push('h264');
+                    global.config.video.codecs.encode.push('h265');
+                } else {
+                    detectSWModeCapability();
+                }
+            });
+        } else {
+            detectSWModeCapability();
+        }
     }
 })();
 

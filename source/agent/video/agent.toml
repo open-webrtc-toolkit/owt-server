@@ -43,10 +43,6 @@ hardwareAccelerated = false
 #If true and hardwareAccelerate is true, use yami as video backend when hardware platform support it
 yamiEnabled = false
 
-#This configuration is only for software media engine. Hardware graphic acceleration provides H.264 by default
-#true means OpenH264 is deployed for H.264. Otherwise no support of H.264 in MCU
-openh264Enabled = false
-
 #If true and hardwareAccleration is enabled, setting this to true allows GACC HEVC encoder plugin to be used
 #for better video quality.
 #Warning: enabling this will introduce extra CPU resource consumption.
