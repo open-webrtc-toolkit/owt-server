@@ -11,6 +11,7 @@
       '../../../../core/woogeen_base/FrameConverter.cpp',
       '../../../../core/woogeen_base/VCMFrameDecoder.cpp',
       '../../../../core/woogeen_base/VCMFrameEncoder.cpp',
+      '../../../../core/woogeen_base/WGOpenH264Encoder.cpp',
       '../../../../core/woogeen_base/MsdkFrameDecoder.cpp',
       '../../../../core/woogeen_base/MsdkFrameEncoder.cpp',
       '../../../../core/woogeen_base/MsdkBase.cpp',
@@ -42,6 +43,7 @@
                       '$(CORE_HOME)/../../third_party/webrtc/src/third_party/libyuv/include',
                       '$(CORE_HOME)/../../third_party/mediasdk/samples/sample_common/include',
                       '$(CORE_HOME)/../../build/libdeps/build/include',
+                      '$(CORE_HOME)/../../third_party/openh264',
     ],
     'libraries': [
       '-lboost_thread',
