@@ -102,15 +102,15 @@ var translateOldRoomConfig = (oldConfig) => {
           codec: 'pcma'
         }, {
           codec: 'aac',
-          samepleRate: 48000,
+          sampleRate: 48000,
           channelNum: 2
         }, {
           codec: 'ac3',
-          samepleRate: 48000,
+          sampleRate: 48000,
           channelNum: 2
         }, {
           codec: 'nellymoser',
-          samepleRate: 48000,
+          sampleRate: 48000,
           channelNum: 2
         }
       ],
@@ -1225,10 +1225,11 @@ var Conference = function (rpcClient, selfRpcId) {
   };
 
   const isAudioFmtAcceptable = (streamAudio, fmt) => {
+    //log.debug('streamAudio:', JSON.stringify(streamAudio), 'fmt:', fmt);
     if (isAudioFmtCompatible(streamAudio.format, fmt)) {
       return true;
     }
-    if (streamAudio.optional && streamAudio.optional.format && (streamAudio.optional.format.filter((f) => {return isAudioFmtCompatible(f, fmt);}).length > 0)) {
+    if (streamAudio.optional && streamAudio.optional.format && (streamAudio.optional.format.findIndex((f) => {return isAudioFmtCompatible(f, fmt);}) >= 0)) {
       return true;
     }
     return false;
@@ -1253,6 +1254,7 @@ var Conference = function (rpcClient, selfRpcId) {
   };
 
   const isVideoFmtAcceptable = (streamVideo, fmt) => {
+    //log.debug('streamVideo:', JSON.stringigy(streamVideo), 'fmt:', fmt);
     if (isVideoFmtCompatible(streamVideo.format, fmt)) {
       return true;
     }
@@ -1397,6 +1399,19 @@ var Conference = function (rpcClient, selfRpcId) {
             source.optional && source.optional.format && (format_preference.video.optional = format_preference.video.optional.concat(source.optional.format));
           }
         }
+      }
+
+      if (subDesc.type === 'recording' && (!subDesc.connection.container || subDesc.connection.container === 'auto')) {
+        var audio_codec = 'none-aac';
+        if (subDesc.media.audio) {
+          if (subDesc.media.audio.format) {
+            audio_codec = subDesc.media.audio.format.codec;
+          } else {
+            audio_codec = streams[subDesc.media.audio.from].media.audio.format.codec;
+          }
+        }
+
+        subDesc.connection.container = (audio_codec === 'aac' ? 'mp4' : 'mkv');
       }
 
       return accessController.initiate(participantId, subscriptionId, 'out', participants[participantId].getOrigin(), subDesc, format_preference)
