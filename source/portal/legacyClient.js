@@ -57,14 +57,15 @@ function resolution2WidthHeight(resolution) {
 }
 
 var ql2brl = {
-  'best_quality': '1.4x',
-  'better_quality': '1.2x',
+  'bestquality': '1.4x',
+  'betterquality': '1.2x',
   'standard': '1.0x',
-  'better_speed': '0.8x',
-  'best_speed': '0.6x'
+  'betterspeed': '0.8x',
+  'bestspeed': '0.6x'
 };
 
 function qualityLevel2BitrateLevel (ql) {
+  ql = ql.toLowerCase();
   return ql2brl[ql] ? ql2brl[ql] : '1.0x';
 }
 

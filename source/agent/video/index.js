@@ -480,7 +480,8 @@ function VMixer(rpcClient, clusterIP) {
         codec = (codec || supported_codecs.encode[0]).toLowerCase();
         resolution = (resolution === 'unspecified' ? default_resolution : resolution);
         framerate = (framerate === 'unspecified' ? default_framerate : framerate);
-        bitrate = (bitrate === 'unspecified' ? calcDefaultBitrate(codec, resolution, framerate) : bitrate);
+        var bitrate_factor = (typeof bitrate === 'string' ? (bitrate === 'unspecified' ? 1.0 : (Number(bitrate.replace('x', '')) || 0)) : 0);
+        bitrate = (bitrate_factor ? calcDefaultBitrate(codec, resolution, framerate) * bitrate_factor : bitrate);
         keyFrameInterval = (keyFrameInterval === 'unspecified' ? default_kfi : keyFrameInterval);
 
         for (var stream_id in outputs) {
@@ -847,7 +848,7 @@ function VTranscoder(rpcClient, clusterIP) {
         codec = (codec || supported_codecs.encode[0]).toLowerCase();
         resolution = (resolution === 'unspecified' ? default_resolution : resolution);
         framerate = (framerate === 'unspecified' ? default_framerate : framerate);
-        var bitrate_factor = (typeof bitrate === 'string' ? (bitrate === 'unspecified' ? 1.0 : Number(bitrate.substring(1))) : 0);
+        var bitrate_factor = (typeof bitrate === 'string' ? (bitrate === 'unspecified' ? 1.0 : (Number(bitrate.replace('x', '')) || 0)) : 0);
         bitrate = (bitrate_factor ? calcDefaultBitrate(codec, resolution, framerate) * bitrate_factor : bitrate);
         keyFrameInterval = (keyFrameInterval === 'unspecified' ? default_kfi : keyFrameInterval);
 
