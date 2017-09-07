@@ -448,7 +448,8 @@ object(SubscriptionRequest)::
 
   object(RecordingStorageOptions)::
     {
-     container: "mkv" | "mp4" | "ts"/*Must be compatible with media.audo.codec and media.video.codec*/ //optional, default: determined by media.video.codec.
+     container: "mkv" | "mp4" | "ts"/*Must be compatible with media.audio.codec and media.video.codec*/
+                | "auto"/*Container type will be determined by media.audio.codec and media.video.codec.
     }
 
   object(MediaSubOptions)::
