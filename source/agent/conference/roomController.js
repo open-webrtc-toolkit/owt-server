@@ -35,8 +35,11 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
             },
             video: {
                 mixer: 'TerminalID',
-                supported_formats: ['h264', 'vp8', 'h265', 'vp9', ...],
-            },
+                supported_formats: {
+                    decode: ['h264', 'vp8', 'h265', 'vp9', ...],
+                    encode: ['h264', 'vp8', 'h265', 'vp9', ...]
+                }
+            }
         }
     }
     */
@@ -1263,7 +1266,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
 
                 if (isMixStream) {
                     // Is mix stream
-                    video_format = getMixedFormat(subInfo.video, mix_views[subView].video.supported_formats);
+                    video_format = getMixedFormat(subInfo.video, mix_views[subView].video.supported_formats.encode);
                 } else {
                     // Is forward stream
                     video_format = getForwardFormat(subInfo.video, streams[subVideoStream].video.format, enable_video_transcoding);
@@ -2057,6 +2060,28 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
             onVideoFault(type, id);
         } else if (purpose === 'audio') {
             onAudioFault(type, id);
+        }
+    };
+
+    that.getViewCapability = function (view) {
+        var audio_format_obj = function (fmtStr) {
+            var fmt_l = fmtStr.split('_'),
+                fmt = {codec: fmt_l[0]};
+            fmt_l[1] && (fmt.sampleRate = Number(fmt_l[1]));
+            fmt_l[2] && (fmt.channelNum = Number(fmt_l[2]));
+            return fmt;
+        }
+
+        if (mix_views[view]) {
+            return {
+                audio: mix_views[view].audio.supported_formats.map(function(af) {return audio_format_obj(af);}),
+                video: {
+                    encode: mix_views[view].video.supported_formats.encode.map(function(vf) {return {codec: vf};}),
+                    decode: mix_views[view].video.supported_formats.decode.map(function(vf) {return {codec: vf};})
+                }
+            };
+        } else {
+            return null;
         }
     };
 

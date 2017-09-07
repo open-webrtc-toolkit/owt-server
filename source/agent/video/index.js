@@ -14,9 +14,9 @@ var internalConnFactory = new InternalConnectionFactory;
 const { LayoutProcessor } = require('./layout');
 
 var useHardware = global.config.video.hardwareAccelerated,
-    openh264Enabled = global.config.video.openh264Enabled,
     yamiEnabled = global.config.video.yamiEnabled,
-    gaccPluginEnabled = global.config.video.enableBetterHEVCQuality;
+    gaccPluginEnabled = global.config.video.enableBetterHEVCQuality,
+    supported_codecs = global.config.video.codecs;
 
 var VideoMixer, VideoTranscoder;
 try {
@@ -242,7 +242,6 @@ function VMixer(rpcClient, clusterIP) {
         view,
         defaultframerate, bitrate, keyFrameInterval,
 
-        supported_codecs = [],
         default_resolution = {width: 640, height: 480},
         default_framerate = 30,
         default_kfi = 1000,
@@ -270,33 +269,29 @@ function VMixer(rpcClient, clusterIP) {
     var addInput = function (stream_id, codec, options, avatar, on_ok, on_error) {
         log.debug('add input', stream_id);
         if (engine) {
-            if (!useHardware && !openh264Enabled && codec === 'h264') {
-                on_error('Codec ' + codec + ' is not supported by video engine.');
-            } else {
-                var conn = internalConnFactory.fetch(stream_id, 'in');
-                if (!conn) {
-                    on_error('Create internal connection failed.');
-                    return;
-                }
-                conn.connect(options);
+            var conn = internalConnFactory.fetch(stream_id, 'in');
+            if (!conn) {
+                on_error('Create internal connection failed.');
+                return;
+            }
+            conn.connect(options);
 
-                // Use default avatar if it is not set
-                avatar = avatar || global.config.avatar.location;
+            // Use default avatar if it is not set
+            avatar = avatar || global.config.avatar.location;
 
-                let inputId = inputManager.add(stream_id, codec, conn, avatar);
-                if (inputId >= 0) {
-                    if (engine.addInput(inputId, codec, conn, avatar)) {
-                        layoutProcessor.addInput(inputId);
-                        log.debug('addInput ok, stream_id:', stream_id, 'codec:', codec, 'options:', options);
-                        on_ok(stream_id);
-                    } else {
-                        internalConnFactory.destroy(stream_id, 'in');
-                        on_error('Failed in adding input to video-engine.');
-                    }
-                } else {
-                    log.debug('addInput pending', stream_id);
+            let inputId = inputManager.add(stream_id, codec, conn, avatar);
+            if (inputId >= 0) {
+                if (engine.addInput(inputId, codec, conn, avatar)) {
+                    layoutProcessor.addInput(inputId);
+                    log.debug('addInput ok, stream_id:', stream_id, 'codec:', codec, 'options:', options);
                     on_ok(stream_id);
+                } else {
+                    internalConnFactory.destroy(stream_id, 'in');
+                    on_error('Failed in adding input to video-engine.');
                 }
+            } else {
+                log.debug('addInput pending', stream_id);
+                on_ok(stream_id);
             }
         } else {
             on_error('Video-mixer engine is not ready.');
@@ -428,20 +423,11 @@ function VMixer(rpcClient, clusterIP) {
 
         // FIXME: The supported codec list should be a sub-list of those querried from the engine
         // and filterred out according to config.
-        supported_codecs = ['vp8', 'vp9'];
         default_resolution = (videoConfig.parameters.resolution || {width: 640, height: 480});
         default_framerate = (videoConfig.parameters.framerate || 30);
         default_kfi = (videoConfig.parameters.keyFrameInterval || 1000);
 
-        if (useHardware || openh264Enabled) {
-            supported_codecs.push('h264');
-        }
-
-        if (useHardware) {
-            supported_codecs.push('h265');
-        }
-
-        log.debug('Video engine init OK');
+        log.debug('Video engine init OK, supported_codecs:', supported_codecs);
         callback('callback', {codecs: supported_codecs});
     };
 
@@ -491,7 +477,7 @@ function VMixer(rpcClient, clusterIP) {
 
     that.generate = function (codec, resolution, framerate, bitrate, keyFrameInterval, callback) {
         log.debug('generate, codec:', codec, 'resolution:', resolution, 'framerate:', framerate, 'bitrate:', bitrate, 'keyFrameInterval:', keyFrameInterval);
-        codec = (codec || supported_codecs[0]).toLowerCase();
+        codec = (codec || supported_codecs.encode[0]).toLowerCase();
         resolution = (resolution === 'unspecified' ? default_resolution : resolution);
         framerate = (framerate === 'unspecified' ? default_framerate : framerate);
         bitrate = (bitrate === 'unspecified' ? calcDefaultBitrate(codec, resolution, framerate) : bitrate);
@@ -508,7 +494,7 @@ function VMixer(rpcClient, clusterIP) {
             }
         }
 
-        if (supported_codecs.indexOf(codec) === -1) {
+        if (supported_codecs.encode.indexOf(codec) === -1) {
             log.error('Not supported codec: '+codec);
             callback('callback', 'error', 'Not supported codec.');
             return;
@@ -686,7 +672,6 @@ function VTranscoder(rpcClient, clusterIP) {
         engine,
         controller,
 
-        supported_codecs = [],
         default_resolution = {width: 0, height: 0},
         default_framerate = 30,
         default_kfi = -1,
@@ -712,25 +697,21 @@ function VTranscoder(rpcClient, clusterIP) {
 
     var setInput = function (stream_id, codec, options, on_ok, on_error) {
         if (engine) {
-            if (!useHardware && !openh264Enabled && codec === 'h264') {
-                on_error('Codec ' + codec + ' is not supported by video engine.');
-            } else {
-                var conn = internalConnFactory.fetch(stream_id, 'in');
-                if (!conn) {
-                    on_error('Create internal connection failed.');
-                    return;
-                }
-                conn.connect(options);
+            var conn = internalConnFactory.fetch(stream_id, 'in');
+            if (!conn) {
+                on_error('Create internal connection failed.');
+                return;
+            }
+            conn.connect(options);
 
-                if (engine.setInput(stream_id, codec, conn)) {
-                    input_id = stream_id;
-                    input_conn = conn;
-                    log.debug('setInput ok, stream_id:', stream_id, 'codec:', codec, 'options:', options);
-                    on_ok(stream_id);
-                } else {
-                    internalConnFactory.destroy(stream_id, 'in');
-                    on_error('Failed in setting input to video-engine.');
-                }
+            if (engine.setInput(stream_id, codec, conn)) {
+                input_id = stream_id;
+                input_conn = conn;
+                log.debug('setInput ok, stream_id:', stream_id, 'codec:', codec, 'options:', options);
+                on_ok(stream_id);
+            } else {
+                internalConnFactory.destroy(stream_id, 'in');
+                on_error('Failed in setting input to video-engine.');
             }
         } else {
             on_error('Video-transcoder engine is not ready.');
@@ -816,18 +797,7 @@ function VTranscoder(rpcClient, clusterIP) {
 
         engine = new VideoTranscoder(JSON.stringify(config));
 
-        // FIXME: The supported codec list should be a sub-list of those querried from the engine
-        // and filterred out according to config.
-        supported_codecs = ['vp8', 'vp9'];
-        if (useHardware || openh264Enabled) {
-            supported_codecs.push('h264');
-        }
-
-        if (useHardware) {
-            supported_codecs.push('h265');
-        }
-
-        log.debug('Video transcoding engine init OK');
+        log.debug('Video transcoding engine init OK, supported_codecs:', supported_codecs);
         callback('callback', {codecs: supported_codecs});
     };
 
@@ -874,7 +844,7 @@ function VTranscoder(rpcClient, clusterIP) {
 
     that.generate = function (codec, resolution, framerate, bitrate, keyFrameInterval, callback) {
         log.debug('generate, codec:', codec, 'resolution:', resolution, 'framerate:', framerate, 'bitrate:', bitrate, 'keyFrameInterval:', keyFrameInterval);
-        codec = (codec || supported_codecs[0]).toLowerCase();
+        codec = (codec || supported_codecs.encode[0]).toLowerCase();
         resolution = (resolution === 'unspecified' ? default_resolution : resolution);
         framerate = (framerate === 'unspecified' ? default_framerate : framerate);
         var bitrate_factor = (typeof bitrate === 'string' ? (bitrate === 'unspecified' ? 1.0 : Number(bitrate.substring(1))) : 0);
@@ -892,7 +862,7 @@ function VTranscoder(rpcClient, clusterIP) {
             }
         }
 
-        if (supported_codecs.indexOf(codec) === -1) {
+        if (supported_codecs.encode.indexOf(codec) === -1) {
             log.error('Not supported codec: '+codec);
             callback('callback', 'error', 'Not supported codec.');
             return;

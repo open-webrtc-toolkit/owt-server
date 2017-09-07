@@ -53,6 +53,14 @@ const calcDefaultBitrate = (codec, resolution, framerate) => {
   return standardBitrate(resolution.width, resolution.height, framerate) * factor;
 };
 
+const isAudioFmtCompatible = (fmt1, fmt2) => {
+  return (fmt1.codec === fmt2.codec) && (fmt1.sampleRate === fmt2.sampleRate) && (fmt1.channelNum === fmt2.channelNum);
+};
+
+const isVideoFmtCompatible = (fmt1, fmt2) => {
+  return (fmt1.codec === fmt2.codec); //FIXME: fmt.profile should be considered.
+};
+
 var translateOldRoomConfig = (oldConfig) => {
   var config = {
     _id: oldConfig.id,
@@ -74,14 +82,17 @@ var translateOldRoomConfig = (oldConfig) => {
         }, {
           codec: 'aac'
         }, {
+          codec: 'aac',
+          sampleRate: 48000,
+          channelNum: 2
+        }, {
           codec: 'ac3'
         }, {
           codec: 'nellymoser'
         }
       ],
       video: [{
-          codec: 'h264',
-          profile: 'high'
+          codec: 'h264'
         }, {
           codec: 'vp8'
         }, {
@@ -101,26 +112,26 @@ var translateOldRoomConfig = (oldConfig) => {
         }, {
           codec: 'pcma'
         }, {
+          codec: 'aac'
+        }, {
           codec: 'aac',
           sampleRate: 48000,
           channelNum: 2
         }, {
-          codec: 'ac3',
-          sampleRate: 48000,
-          channelNum: 2
+          codec: 'ac3'
         }, {
-          codec: 'nellymoser',
-          sampleRate: 48000,
-          channelNum: 2
+          codec: 'nellymoser'
         }
       ],
       video: {
         format: [{
             codec: 'h264',
+            /*
             profile: 'constrained-baseline'
           }, {
             codec: 'h264',
             profile: 'high'
+            */
           }, {
             codec: 'vp8'
           }, {
@@ -675,6 +686,53 @@ var Conference = function (rpcClient, selfRpcId) {
 
                   room_config.views.forEach((viewSettings) => {
                     var mixed_stream_id = room_id + '-' + viewSettings.label;
+                    var av_capability = roomController.getViewCapability(viewSettings.label);
+
+                    if (!av_capability) {
+                      log.error('No audio/video capability for view: ' + viewSettings.label);
+                      return;
+                    }
+
+                    //FIXME: Validation defaultFormat/mediaOut against av_capability here is not complete.
+                    var default_audio_fmt = false, default_video_fmt = false;
+                    if (viewSettings.audio) {
+                      if (viewSettings.audio.format && (av_capability.audio.findIndex((f) => {return isAudioFmtCompatible(viewSettings.audio.format, f);}) >= 0)) {
+                        default_audio_fmt = viewSettings.audio.format;
+                      } else {
+                        for (var i in room_config.mediaOut.audio) {
+                          var fmt = room_config.mediaOut.audio[i];
+                          if (av_capability.audio.findIndex((f) => {return isAudioFmtCompatible(fmt,f);}) >= 0) {
+                            default_audio_fmt = fmt;
+                            break;
+                          }
+                        }
+                      }
+
+                      if (!default_audio_fmt) {
+                        log.error('No capable audio format for view: ' + viewSettings.label);
+                        return;
+                      }
+                    }
+
+                    if (viewSettings.video) {
+                      if (viewSettings.video.format && (av_capability.video.encode.findIndex((f) => {return isVideoFmtCompatible(viewSettings.video.format, f);}) >= 0)) {
+                        default_video_fmt = viewSettings.video.format;
+                      } else {
+                        for (var i in room_config.mediaOut.video.format) {
+                          var fmt = room_config.mediaOut.video.format[i];
+                          if (av_capability.video.encode.findIndex((f) => {return isVideoFmtCompatible(fmt,f);}) >= 0) {
+                            default_video_fmt = fmt;
+                            break;
+                          }
+                        }
+                      }
+
+                      if (!default_video_fmt) {
+                        log.error('No capable video format for view: ' + viewSettings.label);
+                        return;
+                      }
+                    }
+
                     if (viewSettings.video && viewSettings.video.parameters && viewSettings.video.parameters.bitrate === 'standard') {
                       viewSettings.video.parameters.bitrate = calcDefaultBitrate(viewSettings.video.format.codec, viewSettings.video.parameters.resolution, viewSettings.video.parameters.framerate);
                     }
@@ -684,15 +742,15 @@ var Conference = function (rpcClient, selfRpcId) {
                       type: 'mixed',
                       media: {
                         audio: (viewSettings.audio && room_config.mediaOut.audio) ? {
-                          format: viewSettings.audio.format,
+                          format: default_audio_fmt,
                           optional: {
-                            format: room_config.mediaOut.audio
+                            format: room_config.mediaOut.audio.filter((fmt) => {return av_capability.audio.findIndex((f) => {return isAudioFmtCompatible(f, fmt);}) >= 0;})
                           }
                         } : undefined,
                         video: (viewSettings.video && room_config.mediaOut.video) ? {
-                          format: viewSettings.video.format,
+                          format: default_video_fmt,
                           optional: {
-                            format: room_config.mediaOut.video.format,
+                            format: room_config.mediaOut.video.format.filter((fmt) => {return av_capability.video.encode.findIndex((f) => {return isVideoFmtCompatible(f, fmt);}) >= 0;}),
                             parameters: {
                               resolution: room_config.mediaOut.video.parameters.resolution.map((x) => {return calcResolution(x, viewSettings.video.parameters.resolution)}).filter((reso) => {return reso.width < viewSettings.video.parameters.resolution.width && reso.height < viewSettings.video.parameters.resolution.height;}),
                               framerate: room_config.mediaOut.video.parameters.framerate.filter((x) => {return x < viewSettings.video.parameters.framerate;}),
@@ -1220,10 +1278,6 @@ var Conference = function (rpcClient, selfRpcId) {
     }
   };
 
-  const isAudioFmtCompatible = (fmt1, fmt2) => {
-    return (fmt1.codec === fmt2.codec) && (fmt1.sampleRate === fmt2.sampleRate) && (fmt1.channelNum === fmt2.channelNum);
-  };
-
   const isAudioFmtAcceptable = (streamAudio, fmt) => {
     //log.debug('streamAudio:', JSON.stringify(streamAudio), 'fmt:', fmt);
     if (isAudioFmtCompatible(streamAudio.format, fmt)) {
@@ -1247,10 +1301,6 @@ var Conference = function (rpcClient, selfRpcId) {
     }
 
     return true;
-  };
-
-  const isVideoFmtCompatible = (fmt1, fmt2) => {
-    return (fmt1.codec === fmt2.codec); //FIXME: fmt.profile should be considered.
   };
 
   const isVideoFmtAcceptable = (streamVideo, fmt) => {
