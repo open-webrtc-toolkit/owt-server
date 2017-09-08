@@ -137,6 +137,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
             return;
 
         var audio_mixer = mix_views[view].audio.mixer;
+        var video_mixer = mix_views[view].video.mixer;
         var view_config = getViewMixingConfig(view);
         if (audio_mixer && video_mixer && view_config && view_config.audio && view_config.audio.vad) {
             makeRPC(
