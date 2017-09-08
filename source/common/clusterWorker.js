@@ -31,7 +31,7 @@ module.exports = function (spec) {
         tasks = [];
 
     var rpcClient = spec.rpcClient,
-        id = spec.purpose + '-' + (spec.info.hostname || spec.info.ip) + '-' + genID(),
+        id = spec.purpose + '-' + genID() + '@' + (spec.info.hostname || spec.info.ip),
         purpose = spec.purpose,
         info = spec.info,
         cluster_name = spec.clusterName || 'woogeenCluster',

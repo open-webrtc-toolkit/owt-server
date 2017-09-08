@@ -18,7 +18,7 @@ var log = logger.getLogger('RecordingNode');
 
 var InternalConnectionFactory = require('./InternalConnectionFactory');
 
-module.exports = function (rpcClient) {
+module.exports = function (rpcClient, rpcID) {
     var that = {};
     var connections = new Connections;
     var internalConnFactory = new InternalConnectionFactory;
@@ -40,13 +40,13 @@ module.exports = function (rpcClient) {
     };
 
     var createFileOut = function (connectionId, options) {
-        var recording_path = global.config.recording.path;
+        var recording_path = path.join(global.config.recording.path, connectionId + '.' + options.connection.container);
         var avstream_options = {type: 'file',
                                 require_audio: !!options.media.audio,
                                 require_video: !!options.media.video,
                                 audio_codec: 'opus_48000_2'/*FIXME: should be removed later*/,
                                 video_codec: 'h264'/*FIXME: should be removed later*/,
-                                url: path.join(recording_path, connectionId + '.' + options.connection.container),
+                                url: recording_path,
                                 interval: 1000/*FIXME: should be removed later*/,
                                 initializeTimeout: global.config.recording.initializeTimeout};
 
@@ -55,7 +55,7 @@ module.exports = function (rpcClient) {
                 log.error('media recording init error:', error);
                 notifyStatus(options.controller, connectionId, 'out', {type: 'failed', reason: error});
             } else {
-                notifyStatus(options.controller, connectionId, 'out', {type: 'ready'});
+                notifyStatus(options.controller, connectionId, 'out', {type: 'ready', info: {host: rpcID.split('@')[1].split('_')[0], file: recording_path}});
             }
         });
         connection.addEventListener('fatal', function (error) {
