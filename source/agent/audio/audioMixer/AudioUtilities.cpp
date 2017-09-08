@@ -59,7 +59,7 @@ static const AudioCodecInsMap codecInsDB[] = {
         woogeen_base::FRAME_FORMAT_ISAC16,
         {
             ISAC_16000_PT,
-            "PCMA",
+            "ISAC",
             16000,
             480,
             1,

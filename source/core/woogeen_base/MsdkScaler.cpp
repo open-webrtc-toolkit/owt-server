@@ -243,8 +243,6 @@ bool MsdkScaler::setupVpp(int inWidth, int inHeight, int inCropX, int inCropY, i
 
 bool MsdkScaler::doVppConvert(MsdkFrame *srcMsdkFrame, MsdkFrame *dstMsdkFrame)
 {
-    ELOG_ERROR("doVppConvert");
-
     mfxStatus sts = MFX_ERR_UNKNOWN;//MFX_ERR_NONE;
     mfxSyncPoint syncP;
 
