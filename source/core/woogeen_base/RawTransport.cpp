@@ -1,20 +1,20 @@
 /*
- * Copyright 2017 Intel Corporation All Rights Reserved. 
- * 
- * The source code contained or described herein and all documents related to the 
- * source code ("Material") are owned by Intel Corporation or its suppliers or 
- * licensors. Title to the Material remains with Intel Corporation or its suppliers 
- * and licensors. The Material contains trade secrets and proprietary and 
- * confidential information of Intel or its suppliers and licensors. The Material 
- * is protected by worldwide copyright and trade secret laws and treaty provisions. 
- * No part of the Material may be used, copied, reproduced, modified, published, 
- * uploaded, posted, transmitted, distributed, or disclosed in any way without 
+ * Copyright 2017 Intel Corporation All Rights Reserved.
+ *
+ * The source code contained or described herein and all documents related to the
+ * source code ("Material") are owned by Intel Corporation or its suppliers or
+ * licensors. Title to the Material remains with Intel Corporation or its suppliers
+ * and licensors. The Material contains trade secrets and proprietary and
+ * confidential information of Intel or its suppliers and licensors. The Material
+ * is protected by worldwide copyright and trade secret laws and treaty provisions.
+ * No part of the Material may be used, copied, reproduced, modified, published,
+ * uploaded, posted, transmitted, distributed, or disclosed in any way without
  * Intel's prior express written permission.
- * 
- * No license under any patent, copyright, trade secret or other intellectual 
- * property right is granted to or conferred upon you by disclosure or delivery of 
- * the Materials, either expressly, by implication, inducement, estoppel or 
- * otherwise. Any license under such intellectual property rights must be express 
+ *
+ * No license under any patent, copyright, trade secret or other intellectual
+ * property right is granted to or conferred upon you by disclosure or delivery of
+ * the Materials, either expressly, by implication, inducement, estoppel or
+ * otherwise. Any license under such intellectual property rights must be express
  * and approved by Intel in writing.
  */
 
@@ -78,9 +78,9 @@ void RawTransport<prot>::createConnection(const std::string& ip, uint32_t port)
         } else {
             m_socket.tcp.socket.reset(new tcp::socket(m_ioService));
             tcp::resolver resolver(m_ioService);
-            tcp::resolver::query query(tcp::v4(), ip.c_str(), boost::to_string(port).c_str());
+            tcp::resolver::query query(ip.c_str(), boost::to_string(port).c_str());
             tcp::resolver::iterator iterator = resolver.resolve(query);
-
+            // TODO: Accept IPv6.
             m_socket.tcp.socket->open(boost::asio::ip::tcp::v4());
             m_socket.tcp.socket->async_connect(*iterator,
                 boost::bind(&RawTransport::connectHandler, this,
@@ -183,7 +183,7 @@ void RawTransport<prot>::listenTo(uint32_t port)
             ELOG_WARN("TCP transport existed, ignoring the listening request for port %d\n", port);
         } else {
             m_socket.tcp.socket.reset(new tcp::socket(m_ioService));
-            m_socket.tcp.acceptor.reset(new tcp::acceptor(m_ioService, tcp::endpoint(tcp::v4(), port)));
+            m_socket.tcp.acceptor.reset(new tcp::acceptor(m_ioService, tcp::endpoint(tcp::v6(), port)));
             m_socket.tcp.acceptor->async_accept(*(m_socket.tcp.socket.get()),
                 boost::bind(&RawTransport::acceptHandler, this,
                     boost::asio::placeholders::error));

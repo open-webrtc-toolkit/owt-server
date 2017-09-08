@@ -364,9 +364,6 @@ namespace erizo {
       if (cinfo.componentId !=1 || (!isBundle && cinfo.mediaType!=this->mediaType ))
         continue;
 
-      if (strstr(cinfo.hostAddress.c_str(), ":") != NULL) // We ignore IPv6 candidates at this point
-        continue;
-
       switch (cinfo.hostType) {
         case HOST:
           nice_cand_type = NICE_CANDIDATE_TYPE_HOST;
@@ -441,9 +438,6 @@ namespace erizo {
       nice_address_to_string(&cand->addr, address);
       nice_address_to_string(&cand->base_addr, baseAddress);
       candsDelivered_++;
-      if (strstr(address, ":") != NULL) { // We ignore IPv6 candidates at this point
-        continue;
-      }
       CandidateInfo cand_info;
       cand_info.componentId = cand->component_id;
       cand_info.foundation = cand->foundation;
