@@ -575,7 +575,7 @@ var Conference = function (rpcClient, selfRpcId) {
         }).catch((err) => {
           var err_msg = (err.message ? err.message : err);
           log.info('Exception:', err_msg);
-          sendMsgTo(participantId, 'progress', {id, sessionId, status: 'error', data: err_msg});
+          sendMsgTo(participantId, 'progress', {id: sessionId, status: 'error', data: err_msg});
           accessController && accessController.terminate(sessionId).catch((e) => {
             log.info('Exception:', e.message ? e.message : e);
           });
@@ -583,7 +583,11 @@ var Conference = function (rpcClient, selfRpcId) {
     } else if (direction === 'out') {
       return addSubscription(sessionId, sessionInfo.locality, sessionInfo.media, sessionInfo.info
         ).then(() => {
-          sendMsgTo(participantId, 'progress', {id: sessionId, status: 'ready'});
+          if (sessionInfo.info.location) {
+            sendMsgTo(participantId, 'progress', {id: sessionId, status: 'ready', data: sessionInfo.info.location});
+          } else {
+            sendMsgTo(participantId, 'progress', {id: sessionId, status: 'ready'});
+          }
         }).catch((err) => {
           var err_msg = (err.message ? err.message : err);
           log.info('Exception:', err_msg);

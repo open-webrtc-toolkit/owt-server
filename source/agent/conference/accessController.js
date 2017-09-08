@@ -49,7 +49,8 @@ module.exports.create = function(spec, rpcReq, onSessionEstablished, onSessionAb
     return (type === 'worker' && locality.agent === id) || (type === 'node' && locality.node === id);
   };
 
-  const onReady = (sessionId, audio, video) => {
+  const onReady = (sessionId, status) => {
+    var audio = status.audio, video = status.video;
     var session = sessions[sessionId];
     var video_codec;
 
@@ -94,6 +95,10 @@ module.exports.create = function(spec, rpcReq, onSessionEstablished, onSessionAb
         (session.options.type === 'webrtc') && (media.video.format = {codec: video_codec});
         session.options.media.video.parameters && (media.video.parameters = session.options.media.video.parameters);
       }
+
+      if (session.options.type === 'recording') {
+        info.location = status.info;
+      }
     }
 
     var session_info = {
@@ -130,7 +135,7 @@ module.exports.create = function(spec, rpcReq, onSessionEstablished, onSessionAb
     }
 
     if (status.type === 'ready') {
-      return onReady(sessionId, status.audio, status.video);
+      return onReady(sessionId, status);
     } else if (status.type === 'failed') {
       return onFailed(sessionId, status.reason);
     } else if (status.type === 'offer' || status.type === 'answer' || status.type === 'candidate') {

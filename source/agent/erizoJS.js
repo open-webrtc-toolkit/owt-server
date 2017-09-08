@@ -159,7 +159,7 @@ rpc.connect(global.config.rabbit, function () {
             controller = require('./avstream')(rpcClient);
             break;
         case 'recording':
-            controller = require('./recording')(rpcClient);
+            controller = require('./recording')(rpcClient, rpcID);
             break;
         case 'sip':
             controller = require('./sip')(rpcClient, {id:rpcID, addr:clusterIP});
