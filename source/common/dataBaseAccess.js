@@ -395,7 +395,11 @@ function deleteToken(tokenId) {
                     if (errFind || !token) {
                         reject(errFind || 'WrongToken');
                     } else {
-                        resolve(token);
+                        if (token.creationDate < expireDate) {
+                            reject('ExpiredToken');
+                        } else {
+                            resolve(token);
+                        }
                     }
                 });
         });
