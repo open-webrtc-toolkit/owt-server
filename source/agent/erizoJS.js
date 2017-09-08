@@ -99,7 +99,7 @@ for (var prop in opt.options) {
 var rpc = require('./amqp_client')();
 
 var detectSWModeCapability = function () {
-    if (fs.existsSync('./lib/libopenh264.so.3') && (fs.statSync('./lib/libopenh264.so.3').size > 100000)) {//FIXME: The detection of installation of openh264 is not accurate here.
+    if (fs.existsSync('./lib/libopenh264.so.4') && (fs.statSync('./lib/libopenh264.so.4').size > 100000)) {//FIXME: The detection of installation of openh264 is not accurate here.
         global.config.video.codecs.encode.push('h264');
     }
 };
