@@ -1530,7 +1530,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                 [stream_id, region],
                 function (data) {
                     on_ok(data);
-                    resetVAD(view);
+                    resetVAD(toView);
                 }, on_error);
         } else {
             on_error('Invalid mix view');
