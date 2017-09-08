@@ -360,7 +360,7 @@ function collectIPs () {
             for (k2 in interfaces[k]) {
                 if (interfaces[k].hasOwnProperty(k2)) {
                     address = interfaces[k][k2];
-                    if (address.family === 'IPv4' && !address.internal) {
+                    if (!address.internal) {
                         var webrtcInterface = webrtcInterfaces.find((i) => {return i.name === k;});
                         if (webrtcInterface) {
                             webrtcInterface.ip_address = address.address;

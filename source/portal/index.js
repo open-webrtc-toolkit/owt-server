@@ -67,6 +67,11 @@ var ip_address;
               addresses.push(address.address);
             }
           }
+          if (address.family === 'IPv6' && !address.internal) {
+            if (k === BINDED_INTERFACE_NAME || !BINDED_INTERFACE_NAME) {
+              addresses.push('[' + address.address + ']');
+            }
+          }
         }
       }
     }
