@@ -82,10 +82,6 @@ var translateOldRoomConfig = (oldConfig) => {
         }, {
           codec: 'aac'
         }, {
-          codec: 'aac',
-          sampleRate: 48000,
-          channelNum: 2
-        }, {
           codec: 'ac3'
         }, {
           codec: 'nellymoser'
@@ -111,8 +107,6 @@ var translateOldRoomConfig = (oldConfig) => {
           codec: 'pcmu'
         }, {
           codec: 'pcma'
-        }, {
-          codec: 'aac'
         }, {
           codec: 'aac',
           sampleRate: 48000,
@@ -994,7 +988,7 @@ var Conference = function (rpcClient, selfRpcId) {
 
   const addStream = (id, locality, media, info) => {
     return new Promise((resolve, reject) => {
-      roomController && roomController.publish(info.owner, id, locality, media, function() {
+      roomController && roomController.publish(info.owner, id, locality, media, info.type, function() {
         if (participants[info.owner]) {
           var st = {
             id: id,
@@ -1040,7 +1034,7 @@ var Conference = function (rpcClient, selfRpcId) {
 
   const addSubscription = (id, locality, media, info) => {
     return new Promise((resolve, reject) => {
-      roomController && roomController.subscribe(info.owner, id, locality, media, function() {
+      roomController && roomController.subscribe(info.owner, id, locality, media, info.type, function() {
         if (participants[info.owner]) {
           var subscription = {
             id: id,
