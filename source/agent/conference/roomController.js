@@ -1187,13 +1187,13 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
         deinitialize();
     };
 
-    that.publish = function (participantId, streamId, accessNode, streamInfo, on_ok, on_error) {
+    that.publish = function (participantId, streamId, accessNode, streamInfo, streamType, on_ok, on_error) {
         log.debug('publish, participantId: ', participantId, 'streamId:', streamId, 'accessNode:', accessNode.node, 'streamInfo:', JSON.stringify(streamInfo));
         if (streams[streamId] === undefined) {
             var currentPublisherCount = publisherCount();
             if (config.publishLimit < 0 || (config.publishLimit > currentPublisherCount)) {
                 var terminal_id = pubTermId(participantId, streamId);
-                var terminal_owner = (streamInfo.type === 'webrtc' || streamInfo.type === 'sip') ? participantId : room_id + '-' + randomId();
+                var terminal_owner = (streamType === 'webrtc' || streamType === 'sip') ? participantId : room_id + '-' + randomId();
                 newTerminal(terminal_id, 'participant', terminal_owner, accessNode, function () {
                     streams[streamId] = {owner: terminal_id,
                                          audio: streamInfo.audio ? {format: formatStr(streamInfo.audio),
@@ -1235,7 +1235,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
         deleteTerminal(terminal_id);
     };
 
-    that.subscribe = function(participantId, subscriptionId, accessNode, subInfo, on_ok, on_error) {
+    that.subscribe = function(participantId, subscriptionId, accessNode, subInfo, subType, on_ok, on_error) {
         log.debug('subscribe, participantId:', participantId, 'subscriptionId:', subscriptionId, 'accessNode:', accessNode.node, 'subInfo:', JSON.stringify(subInfo));
         if ((!subInfo.audio || (streams[subInfo.audio.from] && streams[subInfo.audio.from].audio) || getViewOfMixStream(subInfo.audio.from))
             && (!subInfo.video || (streams[subInfo.video.from] && streams[subInfo.video.from].video) || getViewOfMixStream(subInfo.video.from))) {
@@ -1439,7 +1439,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                 }
             };
 
-            var terminal_owner = (subInfo.type === 'webrtc' || subInfo.type === 'sip') ? participantId : room_id + '-' + randomId();
+            var terminal_owner = (subType === 'webrtc' || subType === 'sip') ? participantId : room_id + '-' + randomId();
             newTerminal(terminal_id, 'participant', terminal_owner, accessNode, function () {
                 doSubscribe();
             }, on_error);
