@@ -117,7 +117,7 @@ var detectSWModeCapability = function () {
                 var info = stdout.toString() || stderr.toString();
                 // Check hardware codec version
                 global.config.video.hardwareAccelerated = (info.indexOf('VA-API version') != -1);
-                if (gloabel.config.video.hardwareAccelerated) {
+                if (global.config.video.hardwareAccelerated) {
                     global.config.video.codecs.decode.push('h265');
                     global.config.video.codecs.encode.push('h264');
                     global.config.video.codecs.encode.push('h265');
