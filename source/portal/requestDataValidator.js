@@ -195,7 +195,7 @@ const SubscriptionRequest = {
     'RecordingStorageOptions': {
       type: 'object',
       properties: {
-        'container': { enum: ['mp4', 'mkv'] }
+        'container': { enum: ['mp4', 'mkv', 'ts', 'auto'] }
       }
     },
 
@@ -222,7 +222,7 @@ const SubscriptionRequest = {
       type: 'object',
       properties: {
         'from': { type: 'string' },
-        'spec': { $ref: '#/definitions/AudioSubSpecification' }
+        'format': { $ref: '#/definitions/AudioFormat' }
       },
       required: ['from']
     },
@@ -231,26 +231,34 @@ const SubscriptionRequest = {
       type: 'object',
       properties: {
         'from': { type: 'string' },
-        'spec': { $ref: '#/definitions/VideoSubSpecification' }
+        'format:': { $ref: '#/definitions/VideoFormat' },
+        'parameters': { $ref: '#/definitions/VideoParametersSpecification' }
       },
       required: ['from']
     },
 
-    'AudioSubSpecification': {
+    'AudioFormat': {
       type: 'object',
       properties: {
-        'codec': { type: 'string' },
+        'codec': { enum: ['pcmu', 'pcma', 'opus', 'g722', 'iSAC', 'iLBC', 'aac', 'ac3', 'nellymoser'] },
         'sampleRate': { type: 'number' },
         'channelNum': { type: 'number' }
       },
       required: ['codec']
     },
 
-    'VideoSubSpecification': {
+    'VideoFormat': {
       type: 'object',
       properties: {
-        'codec': { type: 'string' },//Will be ignored if type equals "webrtc"
-        'profile': { type: 'string' }, /*Will be ignored if type equals "webrtc" or codec does NOT equal "h264"*/
+        'codec': { enum: ['h264', 'h265', 'vp8', 'vp9'] },
+        'profile': { enum: ['baseline', 'constrained-baseline', 'main', 'high'] }
+      },
+      required: ['codec']
+    },
+
+    'VideoParametersSpecification': {
+      type: 'object',
+      properties: {
         'resolution': { $ref: '/Resolution' },
         'framerate': { type: 'number' },
         'bitrate': { type: ['string', 'number'] },
