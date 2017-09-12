@@ -643,7 +643,7 @@ function subs(st, codec) {
     } else if (st == 'forward') {
       for (var i in conference.remoteStreams) {
         var stream = conference.remoteStreams[i];
-        if (!(stream.isMixed()) && (!stream.isScreen()) && (stream.id() != localStream.id())) {
+        if (!(stream.isMixed()) && (!stream.isScreen())) {
           L.Logger.info('forward is true');
           L.Logger.info('*******************************************************subscribe API forward with codec:', codec);
           conference.subscribe(stream, {
@@ -1203,8 +1203,8 @@ function unsubscribe_subscribe(name) {
   var interval1 = setInterval(function() {
     x++;
     if (conference !== undefined) {
-      remoteS.hide();
       conference.unsubscribe(remoteS, function(str) {
+        remoteS.hide();
         console.log("unsubscribe local stream succeed:", str);
         conference.subscribe(remoteS, function(str) {
           displayStream(str);
@@ -1594,7 +1594,7 @@ window.onload = function() {
   var maxAudioBW = getParameterByName("maxAudioBW") || 30;
   var subscribeMix = getParameterByName("subscribeMix") || true;
   var subscribeForward = getParameterByName("subscribeForward") || true;
-  var videoCodec = getParameterByName("videoCodec") || 'vp8';
+  var videoCodec = getParameterByName("videoCodec") || 'h264';
   var audioCodec = getParameterByName("audioCodec") || 'opus';
   var mediaUrl = getParameterByName('url');
   var transport = getParameterByName('transport');
