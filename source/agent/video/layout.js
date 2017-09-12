@@ -141,7 +141,8 @@ LayoutProcessor.prototype.specifyInputRegion = function(inputId, regionId) {
         return true;
     }
 
-    if (inputPos >= 0 && regionPos < this.currentRegions.length) {
+    if (inputPos >= 0 && regionPos < this.currentRegions.length
+            && regionPos < this.inputList.length) {
         // Swap in inputList
         tmpInput = this.inputList[inputPos];
         this.inputList[inputPos] = this.inputList[regionPos];
