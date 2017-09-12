@@ -190,12 +190,12 @@ The default ffmpeg library used by MCU server has no libfdk_aac support. If you 
 
    > **Note**: The libfdk_aac is designated as "non-free", please make sure you have got proper authority before using it.
 
-1. Go to Release-<Version>/avstream_agent folder, compile ffmpeg with libfdk_acc with below command:
+1. Go to Release-<Version>/audio_agent folder, compile ffmpeg with libfdk_acc with below command:
 
         compile_ffmpeg_with_libfdkaac.sh
 > **Note**: This compiling script need install all dependencies for ffmpeg with libfdk_aac. If that is not expected on deployment machines, please run it on other proper machine.
 
-2. Copy all output libraries under ffmpeg_libfdkaac_lib folder to Release-<Version>/avstream_agent/lib to replace the existing ones.
+2. Copy all output libraries under ffmpeg_libfdkaac_lib folder to Release-<Version>/audio_agent/lib to replace the existing ones.
 
 ### 2.3.6 Use your own certificate {#Conferencesection2_3_6}
 

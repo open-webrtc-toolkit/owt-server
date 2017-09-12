@@ -17,7 +17,6 @@
             "../AgentLoader.js",
             "agent.toml",
             "log4js_configuration.json",
-            "compile_ffmpeg_with_libfdkaac.sh",
             "../index.js",
             "../log4cxx.properties",
             "../../common/amqp_client.js",
