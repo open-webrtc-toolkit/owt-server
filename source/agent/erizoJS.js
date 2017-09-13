@@ -174,17 +174,18 @@ rpc.connect(global.config.rabbit, function () {
         controller.networkInterfaces = Array.isArray(argv4) ? argv4 : [];
         controller.clusterIP = process.argv[5];
         controller.agentID = process.argv[6];
-        controller.keepAlive = function (callback) {
-            callback('callback', true);
-        };
-
         controller.networkInterfaces.forEach((i) => {
             if (i.ip_address) {
               i.private_ip_match_pattern = new RegExp(i.ip_address, 'g');
             }
         });
 
-        rpc.asRpcServer(rpcID, controller.rpcAPI || controller, function(rpcServer) {
+        var rpcAPI = (controller.rpcAPI || controller);
+        rpcAPI.keepAlive = function (callback) {
+            callback('callback', true);
+        };
+
+        rpc.asRpcServer(rpcID, rpcAPI, function(rpcServer) {
             log.info(rpcID + ' as rpc server ready');
             rpc.asMonitor(function (data) {
                 if (data.reason === 'abnormal' || data.reason === 'error' || data.reason === 'quit') {
