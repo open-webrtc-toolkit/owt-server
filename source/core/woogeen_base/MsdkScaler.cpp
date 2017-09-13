@@ -172,7 +172,7 @@ void MsdkScaler::initVppParam()
 void MsdkScaler::updateVppParam(int inWidth, int inHeight, int inCropX, int inCropY, int inCropW, int inCropH,
         int outWidth, int outHeight, int outCropX, int outCropY, int outCropW, int outCropH)
 {
-    ELOG_INFO("%dx%d(%d-%d-%d-%d), %dx%d(%d-%d-%d-%d)"
+    ELOG_DEBUG("%dx%d(%d-%d-%d-%d) -> %dx%d(%d-%d-%d-%d)"
             , inWidth, inHeight, inCropX, inCropY, inCropW, inCropH
             , outWidth, outHeight, outCropX, outCropY, outCropW, outCropH
             );
