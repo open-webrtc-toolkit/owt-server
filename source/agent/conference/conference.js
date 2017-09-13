@@ -1473,6 +1473,10 @@ var Conference = function (rpcClient, selfRpcId) {
         subDesc.connection.container = (audio_codec === 'aac' ? 'mp4' : 'mkv');
       }
 
+      if (subDesc.type === 'streaming' && subDesc.media.audio && !subDesc.media.audio.format) {//FIXME: To support audio formats other than aac_48000_2.
+        subDesc.media.audio.format = {codec: 'aac', sampleRate: 48000, channelNum: 2};
+      }
+
       return accessController.initiate(participantId, subscriptionId, 'out', participants[participantId].getOrigin(), subDesc, format_preference)
       .then((result) => {
         callback('callback', result);
