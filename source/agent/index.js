@@ -121,6 +121,9 @@ var capacity = global.config.capacity;
 var worker;
 
 function cleanupErizoJS (id) {
+    processes[id].keep_alive_interval && clearInterval(processes[id].keep_alive_interval);
+    processes[id].keep_alive_interval = undefined;
+
     delete processes[id];
     delete tasks[id];
     var index = erizos.indexOf(id);
@@ -181,6 +184,14 @@ var launchErizoJS = function() {
         log.debug('message from node', id, ':', message);
         if (message === 'READY') {
             child.READY = true;
+            child.check_alive_interval = setInterval(function() {
+              child.READY && rpcClient.remoteCall(id, 'keepAlive', [], {callback: function (result) {
+                if (result !== true) {
+                  log.info('Node(', id, ') is no longer responsive!');
+                  dropErizoJS(id);
+                }
+              }});
+            }, 3000);
         } else {
             child.READY = false;
             child.kill();
@@ -189,6 +200,7 @@ var launchErizoJS = function() {
             cleanupErizoJS(id);
         }
     });
+
     processes[id] = child;
     tasks[id] = {};
     idle_erizos.push(id);
