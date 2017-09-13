@@ -570,7 +570,7 @@ var Conference = function (rpcClient, selfRpcId) {
           var err_msg = (err.message ? err.message : err);
           log.info('Exception:', err_msg);
           sendMsgTo(participantId, 'progress', {id: sessionId, status: 'error', data: err_msg});
-          accessController && accessController.terminate(sessionId).catch((e) => {
+          accessController && accessController.terminate(sessionId, 'in').catch((e) => {
             log.info('Exception:', e.message ? e.message : e);
           });
         });
@@ -586,7 +586,7 @@ var Conference = function (rpcClient, selfRpcId) {
           var err_msg = (err.message ? err.message : err);
           log.info('Exception:', err_msg);
           sendMsgTo(participantId, 'progress', {id: sessionId, status: 'error', data: err_msg});
-          accessController && accessController.terminate(sessionId).catch((e) => {
+          accessController && accessController.terminate(sessionId, 'out').catch((e) => {
             log.info('Exception:', e.message ? e.message : e);
           });
         });
@@ -1271,7 +1271,7 @@ var Conference = function (rpcClient, selfRpcId) {
           callback('callback', 'error', e.message ? e.message : e);
         });
     } else {
-      return accessController.terminate(streamId)
+      return accessController.terminate(streamId, 'in')
         .then((result) => {
           log.debug('accessController.terminate result:', result);
           return removeStream(participantId, streamId);
@@ -1510,7 +1510,7 @@ var Conference = function (rpcClient, selfRpcId) {
           callback('callback', 'error', e.message ? e.message : e);
         });
     } else {
-      return accessController.terminate(subscriptionId)
+      return accessController.terminate(subscriptionId, 'out')
         .then((result) => {
           return removeSubscription(subscriptionId);
         }, (e) => {

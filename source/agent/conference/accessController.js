@@ -227,11 +227,11 @@ module.exports.create = function(spec, rpcReq, onSessionEstablished, onSessionAb
       });
   };
 
-  that.terminate = function(sessionId) {
-    log.debug('terminate, streamId:', sessionId);
+  that.terminate = function(sessionId, direction) {
+    log.debug('terminate, sessionId:', sessionId, 'direction:', direction);
 
     var session = sessions[sessionId];
-    if (session === undefined) {
+    if (session === undefined || (sessions[sessionId].direction !== direction)) {
       return Promise.reject('Session does NOT exist');
     }
 
