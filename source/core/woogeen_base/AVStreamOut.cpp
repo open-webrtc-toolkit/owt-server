@@ -184,8 +184,10 @@ void AVStreamOut::onFrame(const woogeen_base::Frame& frame)
 
         if (m_width != frame.additionalInfo.video.width
                 || m_height != frame.additionalInfo.video.height) {
-            ELOG_ERROR("Invalid video frame resolution: %dx%d",
-                    frame.additionalInfo.video.width, frame.additionalInfo.video.height);
+            ELOG_ERROR("Invalid video frame resolution(%dx%d), expected(%dx%d)",
+                    frame.additionalInfo.video.width, frame.additionalInfo.video.height,
+                    m_width, m_height
+                    );
 
             notifyAsyncEvent("fatal", "Invalid video frame resolution");
             return;
@@ -247,8 +249,10 @@ reconnect:
     while (m_status == AVStreamOut::Context_READY) {
         boost::shared_ptr<woogeen_base::MediaFrame> mediaFrame = m_frameQueue.popFrame(2000);
         if (!mediaFrame) {
-            ELOG_WARN("No input frames available");
-            notifyAsyncEvent("fatal", "No input frames available");
+            if (m_status == AVStreamOut::Context_READY) {
+                ELOG_WARN("No input frames available");
+                notifyAsyncEvent("fatal", "No input frames available");
+            }
             break;
         }
 

@@ -137,29 +137,11 @@ void MsdkFrameDecoder::flushOutput(void)
 
 bool MsdkFrameDecoder::resetDecoder(void)
 {
-    ELOG_TRACE_T("resetDecoder");
+    ELOG_DEBUG_T("ResetDecoder");
 
     flushOutput();
 
     if (m_dec) {
-        int previousWidth   = m_videoParam->mfx.FrameInfo.Width;
-        int previousHeight  = m_videoParam->mfx.FrameInfo.Height;
-        int previousCropW   = m_videoParam->mfx.FrameInfo.CropW;
-        int previousCropH   = m_videoParam->mfx.FrameInfo.CropH;
-
-        m_dec->GetVideoParam(m_videoParam.get());
-        MsdkBase::printfVideoParam(m_videoParam.get(), MFX_DEC);
-
-        if (previousCropW != m_videoParam->mfx.FrameInfo.CropW
-                || previousCropH != m_videoParam->mfx.FrameInfo.CropH) {
-            ELOG_INFO_T("Resolution changed %dx%d(crop %dx%d) -> %dx%d(crop %dx%d)"
-                    , previousWidth, previousHeight
-                    , previousCropW, previousCropH
-                    , m_videoParam->mfx.FrameInfo.Width, m_videoParam->mfx.FrameInfo.Height
-                    , m_videoParam->mfx.FrameInfo.CropW, m_videoParam->mfx.FrameInfo.CropH
-                    );
-        }
-
 #if 0
         sts = m_dec->Reset(m_videoParam.get());
         if (sts >= MFX_ERR_NONE) {
@@ -182,7 +164,6 @@ bool MsdkFrameDecoder::resetDecoder(void)
         return false;
     }
 
-    ELOG_DEBUG_T("Re-create decoder successfully!");
     return true;
 }
 
@@ -264,7 +245,12 @@ bool MsdkFrameDecoder::decHeader(mfxBitstream *pBitstream)
         return false;
     }
 
-    ELOG_DEBUG_T("Decode header successed after %d frames!", m_statDetectHeaderFrameCount);
+    ELOG_DEBUG_T("Decode header successed after %d frames! Resolution %dx%d(%d-%d-%d-%d)"
+            , m_statDetectHeaderFrameCount
+            , m_videoParam->mfx.FrameInfo.Width, m_videoParam->mfx.FrameInfo.Height
+            , m_videoParam->mfx.FrameInfo.CropX, m_videoParam->mfx.FrameInfo.CropY
+            , m_videoParam->mfx.FrameInfo.CropW, m_videoParam->mfx.FrameInfo.CropH
+            );
     m_statDetectHeaderFrameCount = 0;
 
     if (!allocateFrames()) {
@@ -334,7 +320,11 @@ retry:
 
             return;
         } else if (sts != MFX_ERR_NONE) {
-            ELOG_INFO_T("mfx decode error, ret %d(%s)", sts, mfxStatusToStr(sts));
+            if (sts == MFX_ERR_INCOMPATIBLE_VIDEO_PARAM) {
+                ELOG_DEBUG_T("Stream changed, %d(%s)", sts, mfxStatusToStr(sts));
+            } else {
+                ELOG_ERROR_T("mfx decode error, ret %d(%s)", sts, mfxStatusToStr(sts));
+            }
 
             workFrame.reset();
 
@@ -347,16 +337,12 @@ retry:
             pBitstream->DataOffset = m_decBsOffset;
 
             m_ready = false;
-            FeedbackMsg msg {.type = VIDEO_FEEDBACK, .cmd = REQUEST_KEY_FRAME};
-            deliverFeedbackMsg(msg);
-
             return;
         }
 
 #if 0
         sts = m_session->SyncOperation(syncP, MFX_INFINITE);
-        if(sts != MFX_ERR_NONE)
-        {
+        if(sts != MFX_ERR_NONE) {
             ELOG_ERROR_T("SyncOperation failed, ret %d", sts);
         }
 #endif
