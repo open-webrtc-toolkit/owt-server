@@ -386,7 +386,7 @@ function packAddon(target) {
   return Promise.all(packLibs)
     .then((libsOk) => {
       // Replace openh264 if needed
-      let libOpenh264 = path.join(libDist, 'libopenh264.so.3');
+      let libOpenh264 = path.join(libDist, 'libopenh264.so.4');
       if (options['archive'] && fs.existsSync(libOpenh264)) {
         let dummyOpenh264 = path.join(rootDir, 'third_party/openh264/pseudo-openh264.so');
         execSync(`cp -av ${dummyOpenh264} ${libOpenh264}`);
