@@ -1698,7 +1698,7 @@ var Conference = function (rpcClient, selfRpcId) {
     if (!effective) {
       return Promise.resolve('ok');
     } else {
-      return removeSubscription(old_su.info.owner, subscriptionId)
+      return removeSubscription(subscriptionId)
         .then((result) => {
           return addSubscription(subscriptionId, new_su.locality, new_su.media, new_su.info);
         }).catch((err) => {
