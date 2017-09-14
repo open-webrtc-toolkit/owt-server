@@ -12,13 +12,35 @@ function generateValidator(schema) {
     if (rawValidate(instance)) {
       return Promise.resolve(instance);
     } else {
-      let errPaths = rawValidate.errors.map((err) => err.dataPath);
-      let message = 'RequestData invalid ' + errPaths.join(',');
-      return Promise.reject(message);
+      return Promise.reject(getErrorMessage(rawValidate.errors));
     }
   };
 
   return validate;
+}
+
+function getErrorMessage(errors) {
+  var error = errors.shift();
+  var message = '';
+  var messages = [];
+  while (error) {
+    if (error.keyword === 'anyOf') {
+      error = errors.shift();
+      continue;
+    }
+    var message = 'request' + error.dataPath + ' ' + error.message;
+    for (let key in error.params) {
+      let param = error.params[key];
+      if (param) {
+        message += ' ' + JSON.stringify(param);
+      }
+    }
+
+    messages.push(message);
+    error = errors.shift();
+  }
+
+  return messages.join(',');
 }
 
 const Resolution = {
