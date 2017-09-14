@@ -14,7 +14,7 @@
     "LoadCollector": "INFO",
     "AmqpClient": "INFO",
     "ErizoJS": "INFO",
-    "AvstreamNode": "INFO",
+    "StreamingNode": "INFO",
     "ErizoAgent": "INFO",
     "Connections": "INFO",
     "InternalConnectionFactory": "INFO"

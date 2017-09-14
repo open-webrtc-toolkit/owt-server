@@ -14,7 +14,7 @@ var path = require('path');
 var Connections = require('./connections');
 
 // Logger
-var log = logger.getLogger('AvstreamNode');
+var log = logger.getLogger('StreamingNode');
 
 var InternalConnectionFactory = require('./InternalConnectionFactory');
 
