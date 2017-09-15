@@ -1470,6 +1470,14 @@ var Conference = function (rpcClient, selfRpcId) {
           }
         }
 
+        //FIXME: to make js sdk work with recording, forbid h264 and vp9 here
+        if (subDesc.media.video && subDesc.media.video.format) {
+          var video_codec = subDesc.media.video.format.codec;
+          if (video_codec === 'h265' || video_codec === 'vp9') {
+            return callback('callback', 'error', 'video codec not supported');
+          }
+        }
+
         subDesc.connection.container = (audio_codec === 'aac' ? 'mp4' : 'mkv');
       }
 
