@@ -37,12 +37,6 @@ namespace mcu {
 
 static void fillVppStream(mfxVPPCompInputStream *vppStream, const VideoSize& rootSize, const Region& region)
 {
-    assert(region.shape.compare("rectangle") == 0
-            && (region.area.rect.left.denominator != 0 && region.area.rect.left.denominator >= region.area.rect.left.numerator)
-            && (region.area.rect.top.denominator != 0 && region.area.rect.top.denominator >= region.area.rect.top.numerator)
-            && (region.area.rect.width.denominator != 0 && region.area.rect.width.denominator >= region.area.rect.width.numerator)
-            && (region.area.rect.height.denominator != 0 && region.area.rect.height.denominator >= region.area.rect.height.numerator));
-
     uint32_t sub_width      = (uint64_t)rootSize.width * region.area.rect.width.numerator / region.area.rect.width.denominator;
     uint32_t sub_height     = (uint64_t)rootSize.height * region.area.rect.height.numerator / region.area.rect.height.denominator;
     uint32_t offset_width   = (uint64_t)rootSize.width * region.area.rect.left.numerator / region.area.rect.left.denominator;
@@ -723,13 +717,28 @@ void MsdkVideoCompositor::updateLayoutSolution(LayoutSolution& solution)
 
     ELOG_DEBUG("updateLayoutSolution: size(%ld)", solution.size());
     for (auto& l : solution) {
-        ELOG_DEBUG("input(%d): %s, left(%.2f), top(%.2f), width(%.2f), height(%.2f)"
+        Region *pRegion = &l.region;
+
+        ELOG_DEBUG("input(%d): shape(%s), left(%d/%d), top(%d/%d), width(%d/%d), height(%d/%d)"
                 , l.input
-                , l.region.shape.c_str()
-                , (float)l.region.area.rect.left.numerator / l.region.area.rect.left.denominator
-                , (float)l.region.area.rect.top.numerator / l.region.area.rect.top.denominator
-                , (float)l.region.area.rect.width.numerator / l.region.area.rect.width.denominator
-                , (float)l.region.area.rect.height.numerator / l.region.area.rect.height.denominator);
+                , pRegion->shape.c_str()
+                , pRegion->area.rect.left.numerator, pRegion->area.rect.left.denominator
+                , pRegion->area.rect.top.numerator, pRegion->area.rect.top.denominator
+                , pRegion->area.rect.width.numerator, pRegion->area.rect.width.denominator
+                , pRegion->area.rect.height.numerator, pRegion->area.rect.height.denominator);
+
+        assert(pRegion->shape.compare("rectangle") == 0);
+        assert(pRegion->area.rect.left.denominator != 0 && pRegion->area.rect.left.denominator >= pRegion->area.rect.left.numerator);
+        assert(pRegion->area.rect.top.denominator != 0 && pRegion->area.rect.top.denominator >= pRegion->area.rect.top.numerator);
+        assert(pRegion->area.rect.width.denominator != 0 && pRegion->area.rect.width.denominator >= pRegion->area.rect.width.numerator);
+        assert(pRegion->area.rect.height.denominator != 0 && pRegion->area.rect.height.denominator >= pRegion->area.rect.height.numerator);
+
+        ELOG_DEBUG("input(%d): left(%.2f), top(%.2f), width(%.2f), height(%.2f)"
+                , l.input
+                , (float)pRegion->area.rect.left.numerator / pRegion->area.rect.left.denominator
+                , (float)pRegion->area.rect.top.numerator / pRegion->area.rect.top.denominator
+                , (float)pRegion->area.rect.width.numerator / pRegion->area.rect.width.denominator
+                , (float)pRegion->area.rect.height.numerator / pRegion->area.rect.height.denominator);
     }
 
     m_newLayout = solution;
