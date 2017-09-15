@@ -167,7 +167,7 @@ var genConfig = function (room) {
                 var mainReginRelative = new Rational(divFactor - 1, divFactor);
                 var minorRegionRelative = new Rational(1, divFactor);
 
-                var regions = [{id: '1', left: ZERO, top: ZERO, relativesize: mainReginRelative}];
+                var regions = [new Rectangle({id: '1', left: ZERO, top: ZERO, relativesize: mainReginRelative})];
                 var id = 2;
                 for (var y = 0; y < divFactor; y++) {
                     regions.push(new Rectangle({
@@ -198,7 +198,7 @@ var genConfig = function (room) {
                     var mainReginRelative = new Rational(divFactor - 2, divFactor);
                     var minorRegionRelative = new Rational(1, divFactor);
 
-                    var regions = [{id: '1', left: ZERO, top: ZERO, relativesize: mainReginRelative}];
+                    var regions = [new Rectangle({id: '1', left: ZERO, top: ZERO, relativesize: mainReginRelative})];
                     var id = 2;
                     for (var y = 0; y < divFactor - 1; y++) {
                         regions.push(new Rectangle({
@@ -239,6 +239,7 @@ var genConfig = function (room) {
                 }
             }
         }
+
         return result;
     }
 
