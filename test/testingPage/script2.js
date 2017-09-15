@@ -597,13 +597,48 @@ function fullScreen() {
   console.log('fullscreen request!');
 }
 
-function subs(st, codec) {
+
+function getRadioValue(radioName){
+  var radios = document.getElementsByName(radioName);
+  var value;
+  radios.forEach(function(ele){
+    if(ele.checked){
+       value = ele.value;
+    }
+  });
+  return value
+}
+
+function getForwardStream(){
+  var forwardStreams = [];
+  var remoteStreams = conference.remoteStreams;
+  for (var id in remoteStreams){
+    var stream = remoteStreams[id];
+    if (!stream.isMixed()){
+      forwardStreams.push(stream.id().slice(-8));
+    }
+  }
+  getOneItem("selectedforwardstream", forwardStreams, "forwardstreams", getForwardStream);
+}
+
+function getForwardResolutions (){
+  var resolutions = ["r1080x1920", "r720x1280", "r720x720", "uhd_4k", "hd1080p", "hd720p", "svga", "xga", "vga", "sif"];
+  getOneItem("selectedforwardresolution", resolutions, "forwardresolutions", getForwardResolutions);
+}
+
+function subs(st) {
   var subMixVideo = document.getElementById('subMixVideo').checked;
   var subMixAudio = document.getElementById('subMixAudio').checked;
   var subForwVideo = document.getElementById('subForwVideo').checked;
   var subForwAudio = document.getElementById('subForwAudio').checked;
+  var codec = getRadioValue("codec");
+  var subBitrate = document.getElementById('subbitrate').value;
+  var subFrameRate = document.getElementById('subframerate').value;
+  var subKeyFrameInterval = document.getElementById('subkeyframeinterval').value;
   var xResolution = document.getElementById('selectedresolution').innerText;
   var qualityLevel = document.getElementById('selectedqualitylevel').innerText || 'Standard';
+  var forwardStreamId = document.getElementById('selectedforwardstream').innerText;
+  var forwardStreamResolution = document.getElementById('selectedforwardresolution').innerText;
   var view = document.getElementById('selectedview').innerText;
   view = view.indexOf('select') != -1 ? 'common': view;
   var wh = [];
@@ -615,6 +650,23 @@ function subs(st, codec) {
        height: parseInt(wh[0])
      }
   }
+
+  function hasSelect (str){
+    return str.includes("select");
+  }
+  if (!hasSelect(forwardStreamResolution)){
+     subForwVideo = {
+       resolution: forwardStreamResolution
+     }
+  }
+  var subForwardOptions = {
+     video: subForwVideo,
+     audio: subForwAudio,
+     codec: codec,
+     birrate: subBitrate,
+     frameRate: subFrameRate,
+     keyFrameInterval: subKeyFrameInterval
+  };
   console.log('subMixVideo', subMixVideo, 'subMixAudio', subMixAudio, 'subForwVideo', subForwVideo, 'subForwAudio', subForwAudio);
   if (isValid(conference)) {
     if (st === 'mix') {
@@ -643,14 +695,15 @@ function subs(st, codec) {
     } else if (st == 'forward') {
       for (var i in conference.remoteStreams) {
         var stream = conference.remoteStreams[i];
-        if (!(stream.isMixed()) && (!stream.isScreen())) {
+        if (!(stream.isMixed())) {
           L.Logger.info('forward is true');
           L.Logger.info('*******************************************************subscribe API forward with codec:', codec);
-          conference.subscribe(stream, {
-            video: subForwVideo,
-            audio: subForwAudio,
-            videoCodec: codec
-          }, function(et) {
+          if(!hasSelect(forwardStreamId)){
+             if (!stream.id().includes(forwardStreamId)){
+                continue
+             }
+          }
+          conference.subscribe(stream, subForwardOptions, function(et) {
             recordActionResulte(true);
             L.Logger.info('subscribe stream', et.id());
             displayStream(et);
@@ -745,6 +798,33 @@ function getMixResolutions (){
    }
    selectedResolution.onclick = select;
 }
+function getOneItem(itemId, items, itemsId, fn){
+  var itemEle = document.getElementById(itemId);
+  var itemsEle = document.getElementById(itemsId);
+  itemsEle.style.display =  'inline-block';
+  var children = itemsEle.children;
+  while (children[0]){
+    itemsEle.removeChild(children[0]);
+  }
+  for(var j = 0; j < items.length; j++){
+    var child = document.createElement('li');
+    child.innerText = items[j];
+    itemsEle.appendChild(child);
+  }
+   var select =function(){
+       itemEle.innerText = this.innerText;
+       itemsEle.style.display = 'none';
+       itemEle.onclick = fn;
+       return
+   }
+
+   children = itemsEle.children
+   for(var i = 0; i < children.length; i++){
+     children[i].onclick = select;
+   }
+   itemEle.onclick = select;
+}
+
 function getQualityLevels (){
   var selectedQualityLevel = document.getElementById('selectedqualitylevel');
   var qualityLevels = ['BestQuality','BetterQuality', 'Standard', 'BetterSpeed', 'BestSpeed'];
@@ -805,6 +885,7 @@ function getViews (){
 }
 
 function unsub(st) {
+  var forwardStreamId = document.getElementById('selectedforwardstream').innerText;
   if (isValid(conference)) {
     if (st === undefined) {
       for (var i in conference.remoteStreams) {
@@ -852,7 +933,12 @@ function unsub(st) {
     } else {
       for (var i in conference.remoteStreams) {
         var stream = conference.remoteStreams[i];
-        if (!(conference.remoteStreams[i].isMixed()) && !(conference.remoteStreams[i].isScreen()) && stream.id() !== localStream.id()) {
+        if (!(stream.isMixed())) {
+          if (!forwardStreamId.includes("select")){
+             if(!stream.id().includes(forwardStreamId)){
+                continue
+             }
+          }
           stream.hide();
           conference.unsubscribe(stream, function(et) {
             recordActionResulte(true);
@@ -1598,7 +1684,7 @@ window.onload = function() {
   var audioCodec = getParameterByName("audioCodec") || 'opus';
   var mediaUrl = getParameterByName('url');
   var transport = getParameterByName('transport');
-  var bufferSize = getParameterByName('bufferSize');
+  var bufferSize = parseInt(getParameterByName('bufferSize')) || undefined;
   var video = getParameterByName("video") || 'all';
   var audio = getParameterByName("audio") || 'all';
   var unmix = getParameterByName("unmix") || false;

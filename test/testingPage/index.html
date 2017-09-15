@@ -209,7 +209,7 @@
 			display: none;
 		}
                 /*select mix resolution*/
-                #mixresolutions, #mixqualitylevels, #mixviews{
+                #mixresolutions, #mixqualitylevels, #mixviews, #forwardstreams, #forwardresolutions{
                   display: none;
                   position: absolute;
                   list-style: none;
@@ -248,7 +248,7 @@
                   width: 30%;
                   margin-bottom: 5px;
                 }
-                #mixresolutions > li, #mixqualitylevels > li, #mixviews > li, #unmixoperation li{
+                #mixresolutions > li, #mixqualitylevels > li, #mixviews > li, #unmixoperation li, #forwardstreams > li, #forwardresolutions > li{
                   border-bottom: 1px solid #e6cfcf;
                   height: 23px;
                   line-height:23px;
@@ -308,36 +308,41 @@
 					<label><input type='checkbox' id='subMixVideo' checked="checked"/> subMixVideo</label>
 					<label><input type='checkbox' id='subMixAudio' checked="checked"/> subMixAudio</label>
 				</div>
+                                <div class="suboptions">
+                                        <label><input type='radio' name='codec' value='VP8'/> VP8</label>
+                                        <label><input type='radio' name='codec' value='VP9'/> VP9</label>
+                                        <label><input type='radio' name='codec' value='H264' checked="checked"/> H264</label>
+                                        <label><input type='radio' name='codec' value='H265'/> H265</label>
+                                </div>
+                                <div class="suboptions">
+                                        <label><input type='text' id='subbitrate' placeholder='bitrate'/></label>
+                                        <label><input type='text' id='subframerate' placeholder='frameRate'/></label>
+                                        <label><input type='text' id='subkeyframeinterval' placeholder='keyFrameInterval'/></label>
+                                </div>
 				<ul>
 					<li><a href="javascript:void(0)" onclick="unsub()">unsub all</a></li>
-					<li><a href="javascript:void(0)" onclick="subs('all','vp8')">sub all vp8</a></li>
-					<li><a href="javascript:void(0)" onclick="subs('all','vp9')">sub all vp9</a></li>
-					<li><a href="javascript:void(0)" onclick="subs('all','h264')">sub all h264</a></li>
-					<li><a href="javascript:void(0)" onclick="subs('all','h265')">sub all h265</a></li>
-					<li><a href="javascript:void(0)" onclick="getMixResolutions()" id="selectedresolution">select resolution</a><ul id="mixresolutions">
+					<li><a href="javascript:void(0)" onclick="subs('all')">sub all</a></li>
+					<li><a href="javascript:void(0)" onclick="getMixResolutions()" id="selectedresolution">select mix resolution</a><ul id="mixresolutions">
                                         </ul>
                                         </li>
-					<li><a href="javascript:void(0)" onclick="getQualityLevels()" id="selectedqualitylevel">select qualityLevel</a><ul id="mixqualitylevels">
+					<li><a href="javascript:void(0)" onclick="getQualityLevels()" id="selectedqualitylevel">select mix qualityLevel</a><ul id="mixqualitylevels">
                                         </ul>
                                         </li>
-					<li><a href="javascript:void(0)" onclick="getViews()" id="selectedview">select view</a><ul id="mixviews">
+					<li><a href="javascript:void(0)" onclick="getViews()" id="selectedview">select mix view</a><ul id="mixviews">
                                         </ul>
                                         </li>
 					<li><a href="javascript:void(0)" onclick="unsub('mix')">unsub mix</a></li>
-					<li><a href="javascript:void(0)" onclick="subs('mix','vp8')">sub mix vp8</a></li>
-					<li><a href="javascript:void(0)" onclick="subs('mix','vp9')">sub mix vp9</a></li>
-					<li><a href="javascript:void(0)" onclick="subs('mix','h264')">sub mix h264</a></li>
-					<li><a href="javascript:void(0)" onclick="subs('mix','h265')">sub mix h265</a></li>
+					<li><a href="javascript:void(0)" onclick="subs('mix')">sub mix</a></li>
+                                        <li><a href="javascript:void(0)" onclick="getForwardStream()" id="selectedforwardstream">select forward stream</a><ul id="forwardstreams">
+                                        </ul>
+                                        </li>
+                                        <li><a href="javascript:void(0)" onclick="getForwardResolutions()" id="selectedforwardresolution">select forward resolution</a><ul id="forwardresolutions">
+                                        </ul>
+                                        </li>
 					<li><a href="javascript:void(0)" onclick="unsub('forward')">unsub forward</a></li>
-					<li><a href="javascript:void(0)" onclick="subs('forward','vp8')">sub forward vp8</a></li>
-					<li><a href="javascript:void(0)" onclick="subs('forward','vp9')">sub forward vp9</a></li>
-					<li><a href="javascript:void(0)" onclick="subs('forward','h264')">sub forward h264</a></li>
-					<li><a href="javascript:void(0)" onclick="subs('forward','h265')">sub forward h265</a></li>
+					<li><a href="javascript:void(0)" onclick="subs('forward')">sub forward</a></li>
 					<li><a href="javascript:void(0)" onclick="unsub('shareScreen')">unsub share screen</a></li>
-					<li><a href="javascript:void(0)" onclick="subs('shareScreen','vp8')">sub share screen vp8</a></li>
-					<li><a href="javascript:void(0)" onclick="subs('shareScreen','vp9')">sub share screen vp9</a></li>
-					<li><a href="javascript:void(0)" onclick="subs('shareScreen','h264')">sub share screen h264</a></li>
-					<li><a href="javascript:void(0)" onclick="subs('shareScreen','h265')">sub share screen h265</a></li>
+					<li><a href="javascript:void(0)" onclick="subs('shareScreen','vp8')">sub share screen</a></li>
 					<li><a href="javascript:void(0)" onclick="unmixStreams()">unmix/mix</a><div id="unmixoperation">
                                            <ul id="allremotestreams">
                                            </ul>
