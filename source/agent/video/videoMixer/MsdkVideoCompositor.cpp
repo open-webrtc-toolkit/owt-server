@@ -733,12 +733,14 @@ void MsdkVideoCompositor::updateLayoutSolution(LayoutSolution& solution)
         assert(pRegion->area.rect.width.denominator != 0 && pRegion->area.rect.width.denominator >= pRegion->area.rect.width.numerator);
         assert(pRegion->area.rect.height.denominator != 0 && pRegion->area.rect.height.denominator >= pRegion->area.rect.height.numerator);
 
+#if 0
         ELOG_DEBUG("input(%d): left(%.2f), top(%.2f), width(%.2f), height(%.2f)"
                 , l.input
                 , (float)pRegion->area.rect.left.numerator / pRegion->area.rect.left.denominator
                 , (float)pRegion->area.rect.top.numerator / pRegion->area.rect.top.denominator
                 , (float)pRegion->area.rect.width.numerator / pRegion->area.rect.width.denominator
                 , (float)pRegion->area.rect.height.numerator / pRegion->area.rect.height.denominator);
+#endif
     }
 
     m_newLayout = solution;
