@@ -91,6 +91,8 @@ bool MsdkBase::init()
         return false;
     }
 
+    ELOG_INFO("VA-API version: %d.%d", major_version, minor_version);
+
     m_mainSession = createSession_internal();
     if (!m_mainSession) {
         ELOG_ERROR("Create main session failed.");
@@ -99,6 +101,14 @@ bool MsdkBase::init()
         close(m_fd);
         m_fd = 0;
         return false;
+    }
+
+    mfxVersion ver;
+    ret = m_mainSession->QueryVersion(&ver);
+    if (ret != MFX_ERR_NONE) {
+        ELOG_WARN("QueryVersion failed.");
+    } else {
+        ELOG_INFO("Msdk version: %d.%d(%d)", ver.Major, ver.Minor, ver.Version);
     }
 
     return true;

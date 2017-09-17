@@ -399,8 +399,8 @@ LiveStreamIn::LiveStreamIn(const Options& options, EventRegistry* handle)
     , m_audioSampleRate(0)
     , m_audioChannels(0)
 {
-    ELOG_INFO_T("url: %s, audio: %s, video: %s"
-            , m_url.c_str(), m_enableAudio.c_str(), m_enableVideo.c_str());
+    ELOG_INFO_T("url: %s, audio: %s, video: %s, transport: %s, bufferSize: %d"
+            , m_url.c_str(), m_enableAudio.c_str(), m_enableVideo.c_str(), options.transport.c_str(), options.bufferSize);
 
     if (!m_enableAudio.compare("no") && !m_enableVideo.compare("no")) {
         ELOG_ERROR_T("Audio/Video not enabled");
