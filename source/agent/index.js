@@ -121,8 +121,8 @@ var capacity = global.config.capacity;
 var worker;
 
 function cleanupErizoJS (id) {
-    processes[id].keep_alive_interval && clearInterval(processes[id].keep_alive_interval);
-    processes[id].keep_alive_interval = undefined;
+    processes[id].check_alive_interval && clearInterval(processes[id].check_alive_interval);
+    processes[id].check_alive_interval = undefined;
 
     delete processes[id];
     delete tasks[id];
