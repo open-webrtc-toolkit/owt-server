@@ -801,15 +801,7 @@ var LegacyClient = function(clientId, sigConnection, portal) {
         st_update.state = streamInfo.data.value;
       } else if (streamInfo.data.field === 'video.layout') {//Mixed stream update
         st_update.event = 'VideoLayoutChanged';
-        st_update.data = streamInfo.data.value.map((stream2region) => {//FIXME: Client side need to handle the incompetibility, since the definition of region has been extended.
-          return {
-            streamId: stream2region.stream,
-            id: stream2region.region.id,
-            left: stream2region.region.area.left,
-            top: stream2region.region.area.top,
-            relativeSize: stream2region.region.area.width
-          };
-        });
+        st_update.data = streamInfo.data.value.map(convertStreamRegion);
       }
       sendMsg('update_stream', st_update);
     } else if (streamInfo.status === 'remove') {
@@ -870,6 +862,18 @@ var LegacyClient = function(clientId, sigConnection, portal) {
     }
   };
 
+  //FIXME: Client side need to handle the incompetibility, since the definition of region has been extended.
+  const convertStreamRegion = (stream2region) => {
+    var calRational = (r) => (r.numerator / r.denominator);
+    return {
+      streamId: stream2region.stream,
+      id: stream2region.region.id,
+      left: calRational(stream2region.region.area.left),
+      top: calRational(stream2region.region.area.top),
+      relativeSize: calRational(stream2region.region.area.width)
+    };
+  };
+
   const convertJoinResponse = (response) => {
     return {
       clientId: that.id,
@@ -888,7 +892,7 @@ var LegacyClient = function(clientId, sigConnection, portal) {
 
         if (st.type === 'mixed') {
           stream.view = st.info.label;
-          stream.video.layout = st.info.layout;
+          stream.video.layout = st.info.layout.map(convertStreamRegion);
           if (st.info.label === 'common') {
             that.commonViewStream = st.id;
           }
