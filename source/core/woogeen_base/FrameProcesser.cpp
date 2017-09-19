@@ -82,7 +82,7 @@ bool FrameProcesser::init(FrameFormat format, const uint32_t width, const uint32
     if (m_outFrameRate != 0) {
         m_clock = Clock::GetRealTimeClock();
 
-        m_jobTimer.reset(new JobTimer(30, this));
+        m_jobTimer.reset(new JobTimer(m_outFrameRate, this));
         m_jobTimer->start();
     }
 
