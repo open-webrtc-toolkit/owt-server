@@ -1282,7 +1282,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                 subInfo.video && subInfo.video.parameters && subInfo.video.parameters.resolution && (resolution = subInfo.video.parameters.resolution);
                 subInfo.video && subInfo.video.parameters && subInfo.video.parameters.framerate && (framerate = subInfo.video.parameters.framerate);
                 subInfo.video && subInfo.video.parameters && subInfo.video.parameters.bitrate && (bitrate = subInfo.video.parameters.bitrate);
-                subInfo.video && subInfo.video.parameters && subInfo.video.parameters.keyFrameInterval && (keyFrameInterval = subInfo.video.parameters.keyFrameInterva);
+                subInfo.video && subInfo.video.parameters && subInfo.video.parameters.keyFrameInterval && (keyFrameInterval = subInfo.video.parameters.keyFrameInterval);
             }
 
             if ((subInfo.audio && !audio_format) || (subInfo.video && !video_format)) {
