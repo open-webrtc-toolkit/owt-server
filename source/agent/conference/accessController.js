@@ -76,9 +76,9 @@ module.exports.create = function(spec, rpcReq, onSessionEstablished, onSessionAb
     var media = {}, info = {type: session.options.type, owner: session.owner};
 
     if (session.direction === 'in') {
-      session.options.media.audio && (media.audio = (audio || {}));
+      session.options.media.audio && (media.audio = (!!audio ? (audio || {}) : false));
       media.audio && session.options.media.audio && session.options.media.audio.source && (media.audio.source = session.options.media.audio.source);
-      session.options.media.video && (media.video = (video || {}));
+      session.options.media.video && (media.video = (!!video ? (video || {}) : false));
       media.video && session.options.media.video && session.options.media.video.source && (media.video.source = session.options.media.video.source);
 
       session.options.attributes && (info.attributes = session.options.attributes);
