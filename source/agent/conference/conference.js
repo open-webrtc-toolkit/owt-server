@@ -135,7 +135,7 @@ var translateOldRoomConfig = (oldConfig) => {
           }
         ],
         parameters: {
-          resolution: [/*'x3/4', 'x2/3',*/ 'x1/2', 'x1/3', 'x1/4', 'xga', 'svga', 'vga'/*, 'hvga', 'cif', 'sif', 'qcif'*/],
+          resolution: ['x3/4', 'x2/3', 'x1/2', 'x1/3', 'x1/4', 'hd1080p', 'hd720p', 'svga', 'vga', 'cif'/*, 'xvga', 'hvga', 'cif', 'sif', 'qcif'*/],
           framerate: [5, 15, 24, 30, 48, 60],
           bitrate: ['x1.6', 'x1.4', 'x1.2', 'x0.8', 'x0.6', 'x0.4'],
           keyFrameInterval: [100, 30, 5, 2, 1]
@@ -1331,40 +1331,40 @@ var Conference = function (rpcClient, selfRpcId) {
     if (streamVideo.parameters && streamVideo.parameters.resolution && isResolutionEqual(streamVideo.parameters.resolution, resolution)) {
       return true;
     }
-    if (streamVideo.optional && streamVideo.optional.parameters && streamVideo.optional.parameters.resolution && (streamVideo.optional.parameters.resolution.filter((r) => {return isResolutionEqual(r, resolution);}).length > 0)) {
+    if (streamVideo.optional && streamVideo.optional.parameters && streamVideo.optional.parameters.resolution && (streamVideo.optional.parameters.resolution.findIndex((r) => {return isResolutionEqual(r, resolution);}) >= 0)) {
       return true;
     }
-    return false
+    return false;
   };
 
   const isFramerateAcceptable = (streamVideo, framerate) => {
     if (streamVideo.parameters && streamVideo.parameters.framerate && (streamVideo.parameters.framerate === framerate)) {
       return true;
     }
-    if (streamVideo.optional && streamVideo.optional.parameters && streamVideo.optional.parameters.framerate && (streamVideo.optional.parameters.framerate.filter((f) => {return f === framerate;}).length > 0)) {
+    if (streamVideo.optional && streamVideo.optional.parameters && streamVideo.optional.parameters.framerate && (streamVideo.optional.parameters.framerate.findIndex((f) => {return f === framerate;}) >= 0)) {
       return true;
     }
-    return false
+    return false;
   };
 
   const isBitrateAcceptable = (streamVideo, bitrate) => {
-    if (streamVideo.parameters && streamVideo.parameters.resolution && (streamVideo.parameters.bitrate, bitrate)) {
+    if (streamVideo.parameters && streamVideo.parameters.resolution && (streamVideo.parameters.bitrate === bitrate)) {
       return true;
     }
-    if (streamVideo.optional && streamVideo.optional.parameters && streamVideo.optional.parameters.bitrate && (streamVideo.optional.parameters.bitrate.filter((b) => {return b === bitrate;}).length > 0)) {
+    if (streamVideo.optional && streamVideo.optional.parameters && streamVideo.optional.parameters.bitrate && (streamVideo.optional.parameters.bitrate.findIndex((b) => {return b === bitrate;}) >= 0)) {
       return true;
     }
-    return false
+    return false;
   };
 
   const isKeyFrameIntervalAcceptable = (streamVideo, keyFrameInterval) => {
-    if (streamVideo.parameters && streamVideo.parameters.resolution && (streamVideo.parameters.keyFrameInterval, keyFrameInterval)) {
+    if (streamVideo.parameters && streamVideo.parameters.resolution && (streamVideo.parameters.keyFrameInterval === keyFrameInterval)) {
       return true;
     }
-    if (streamVideo.optional && streamVideo.optional.parameters && streamVideo.optional.parameters.keyFrameInterval && (streamVideo.optional.parameters.keyFrameInterval.filter((k) => {return k === keyFrameInterval;}).length > 0)) {
+    if (streamVideo.optional && streamVideo.optional.parameters && streamVideo.optional.parameters.keyFrameInterval && (streamVideo.optional.parameters.keyFrameInterval.findIndex((k) => {return k === keyFrameInterval;}) >= 0)) {
       return true;
     }
-    return false
+    return false;
   };
 
   const validateVideoRequest = (type, req) => {
