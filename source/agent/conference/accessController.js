@@ -80,6 +80,8 @@ module.exports.create = function(spec, rpcReq, onSessionEstablished, onSessionAb
       media.audio && session.options.media.audio && session.options.media.audio.source && (media.audio.source = session.options.media.audio.source);
       session.options.media.video && (media.video = (!!video ? (video || {}) : false));
       media.video && session.options.media.video && session.options.media.video.source && (media.video.source = session.options.media.video.source);
+      media.video && session.options.media.video && session.options.media.video.parameters && session.options.media.video.parameters.resolution && (media.video.resolution = session.options.media.video.parameters.resolution);
+      media.video && session.options.media.video && session.options.media.video.parameters && session.options.media.video.parameters.framerate && (media.video.framerate = session.options.media.video.parameters.framerate);
 
       session.options.attributes && (info.attributes = session.options.attributes);
     } else {
