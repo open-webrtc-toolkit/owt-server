@@ -201,9 +201,9 @@ object(LoginResult)::
               format: [object(VideoFormat)] | undefined,
               parameters:
                 {
-                 resolution:[object(Resolution)] | undefined,
+                 resolution: [object(Resolution)] | undefined,
                  framerate: [number(FramerateFPS)] | undefined,
-                 bitrate: [number(BitrateKbps)] | [string(BitrateMultiple)] |undefined,
+                 bitrate: [number(BitrateKbps)] | [string(BitrateMultiple)] | undefined,
                  keyFrameInterval: [number(KeyFrameIntervalSecond)] | undefined
                 }
                 | undefined
@@ -348,7 +348,12 @@ object(PublicationRequest)::
            }
            | false,
      video: {
-            source: "camera"| "screen-cast"  | "raw-file" | "encoded-file"
+            source: "camera"| "screen-cast"  | "raw-file" | "encoded-file",
+            parameters:
+              {
+               resolution: object(Resolution),
+               framerate: number(FramerateFPS)
+              }
            }
            | false
     }
