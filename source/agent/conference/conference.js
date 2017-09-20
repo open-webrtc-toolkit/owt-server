@@ -302,6 +302,10 @@ var calcResolution = (x, baseResolution) => {
       return {width: 320, height: 240};
     case 'qcif':
       return {width: 176, height: 144};
+    case 'hd720p':
+      return {width: 1280, height: 720};
+    case 'hd1080p':
+      return {width: 1920, height: 1080}
     default:
       return {width: 65536, height: 65536};
   }
