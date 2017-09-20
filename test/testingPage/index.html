@@ -147,6 +147,7 @@
 		}
 		.suboptions{
 			text-align: left;
+                        border: #333333 1px solid;
 		}
 		#resultRecorder{
 			border: #333333 1px solid;
@@ -209,7 +210,7 @@
 			display: none;
 		}
                 /*select mix resolution*/
-                #mixresolutions, #mixqualitylevels, #mixviews, #forwardstreams, #forwardresolutions{
+                #mixresolutions, #mixqualitylevels, #mixviews, #forwardstreams, #forwardresolutions, .selectSomething{
                   display: none;
                   position: absolute;
                   list-style: none;
@@ -248,7 +249,7 @@
                   width: 30%;
                   margin-bottom: 5px;
                 }
-                #mixresolutions > li, #mixqualitylevels > li, #mixviews > li, #unmixoperation li, #forwardstreams > li, #forwardresolutions > li{
+                #mixresolutions > li, #mixqualitylevels > li, #mixviews > li, #unmixoperation li, #forwardstreams > li, #forwardresolutions > li, .selectSomething > li{
                   border-bottom: 1px solid #e6cfcf;
                   height: 23px;
                   line-height:23px;
@@ -315,11 +316,22 @@
                                         <label><input type='radio' name='codec' value='H265'/> H265</label>
                                 </div>
                                 <div class="suboptions">
-                                        <label><input type='text' id='subbitrate' placeholder='bitrate'/></label>
+                                        <label><input type='radio' name='streamcategory' value='mix'/> Mix</label>
+                                        <label><input type='radio' name='streamcategory' value='forward' checked/> Forward</label>
+                                        <label><input type='text' id='subbitrate' placeholder='bitrate' /></label>
                                         <label><input type='text' id='subframerate' placeholder='frameRate'/></label>
                                         <label><input type='text' id='subkeyframeinterval' placeholder='keyFrameInterval'/></label>
                                 </div>
 				<ul>
+                                        <li><a href="javascript:void(0)" onclick='getBitrate()' id='selectSupportedBitrate'>Supported bitrate</a><ul id="supportedBitrates" class="selectSomething">
+                                        </ul>
+                                        </li>
+                                        <li><a href="javascript:void(0)" onclick="getKeyFrame()" id="selecteSupportedFrameRate">Supported frameRate</a><ul id="supportedFrameRates" class="selectSomething">
+                                        </ul>
+                                        </li>
+                                        <li><a href="javascript:void(0)" onclick="getKeyFrameInterval()" id="selecteSupportedInterval">Supported Interval</a><ul id="supportedIntervals" class="selectSomething">
+                                        </ul>
+                                        </li>
 					<li><a href="javascript:void(0)" onclick="unsub()">unsub all</a></li>
 					<li><a href="javascript:void(0)" onclick="subs('all')">sub all</a></li>
 					<li><a href="javascript:void(0)" onclick="getMixResolutions()" id="selectedresolution">select mix resolution</a><ul id="mixresolutions">
