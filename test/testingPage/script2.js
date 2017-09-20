@@ -30,7 +30,9 @@ var resolutionName2Value = {
     'uhd_4k': {width: 3840, height: 2160},
     'r360x360': {width: 360, height: 360},
     'r480x480': {width: 480, height: 480},
-    'r720x720': {width: 720, height: 720}
+    'r720x720': {width: 720, height: 720},
+    'r1080x1920': {width: 1080, height: 1920},
+    'r720x1280': {width: 720, height: 1280}
 };
 function recordActionResulte(result, where) {
   var innerText = resultRecorder.value;
@@ -622,8 +624,72 @@ function getForwardStream(){
 }
 
 function getForwardResolutions (){
-  var resolutions = ["r1080x1920", "r720x1280", "r720x720", "uhd_4k", "hd1080p", "hd720p", "svga", "xga", "vga", "sif"];
+  var stream = getSpecialStream();
+  var resolutions = stream.mediaInfo().video.transcoding.parameters.resolution;
+  resolutions = JSON.parse(JSON.stringify(resolutions));
+  console.log("======Get forward resolutions:", resolutions);
+  resolutions.forEach(function(ele, index){
+    resolutions[index] = JSON.stringify(ele);
+  });
   getOneItem("selectedforwardresolution", resolutions, "forwardresolutions", getForwardResolutions);
+}
+
+function getStream (id){
+  var streams = conference.remoteStreams;
+  for (var realId in streams){
+    if (realId.includes(id)){
+      return streams[realId]
+    }
+  }
+}
+
+function getSpecialStream () {
+   var streamCategory = getRadioValue("streamcategory");
+   var view = document.getElementById("selectedview").innerText;
+   var forwardStreamId = document.getElementById('selectedforwardstream').innerText;
+   var stream;
+   if (streamCategory === "mix"){
+     if(view.includes("select")){
+       view = "common"
+     }
+     stream = getStream(view);
+     console.log("Get mix stream:", stream);
+   }else{
+     if(forwardStreamId.includes("select")){
+       console.error("Please slecte a forward stream id");
+       return
+     }
+     stream = getStream(forwardStreamId);
+   }
+   return stream;
+}
+
+function getBitrate(){
+  var stream = getSpecialStream();
+  var supportedBitrates = stream.mediaInfo().video.transcoding.parameters.bitrate;
+  getOneItem("selectSupportedBitrate", supportedBitrates, "supportedBitrates", getBitrate);
+}
+
+function getKeyFrame(){
+  var stream = getSpecialStream();
+  var supportedFrameRates = stream.mediaInfo().video.transcoding.parameters.framerate;
+  getOneItem("selecteSupportedFrameRate", supportedFrameRates, "supportedFrameRates", getKeyFrame);
+}
+
+function getKeyFrameInterval(){
+  var stream = getSpecialStream();
+  var supportedIntervals = stream.mediaInfo().video.transcoding.parameters.keyFrameInterval;
+  getOneItem("selecteSupportedInterval", supportedIntervals, "supportedIntervals", getKeyFrameInterval);
+}
+
+function analysisResolution (xResolution){
+  var wh = []
+  wh = xResolution.split('x');
+  resolution = {
+    width : parseInt(wh[1]),
+    height: parseInt(wh[0])
+  }
+  return resolution
 }
 
 function subs(st) {
@@ -632,41 +698,58 @@ function subs(st) {
   var subForwVideo = document.getElementById('subForwVideo').checked;
   var subForwAudio = document.getElementById('subForwAudio').checked;
   var codec = getRadioValue("codec");
-  var subBitrate = document.getElementById('subbitrate').value;
-  var subFrameRate = document.getElementById('subframerate').value;
-  var subKeyFrameInterval = document.getElementById('subkeyframeinterval').value;
+  var subBitrate = document.getElementById('subbitrate').value || document.getElementById("selectSupportedBitrate").innerText;
+  var subFrameRate = document.getElementById('selecteSupportedFrameRate').innerText;
+  var subKeyFrameInterval = document.getElementById('selecteSupportedInterval').innerText;
   var xResolution = document.getElementById('selectedresolution').innerText;
-  var qualityLevel = document.getElementById('selectedqualitylevel').innerText || 'Standard';
+  var qualityLevel = document.getElementById('selectedqualitylevel').innerText;
   var forwardStreamId = document.getElementById('selectedforwardstream').innerText;
   var forwardStreamResolution = document.getElementById('selectedforwardresolution').innerText;
   var view = document.getElementById('selectedview').innerText;
   view = view.indexOf('select') != -1 ? 'common': view;
-  var wh = [];
-  if(xResolution.indexOf('x') != -1){
-     subMixVideo = {qualityLevel: qualityLevel};
-     wh = xResolution.split('x');
-     subMixVideo.resolution = {
-       width : parseInt(wh[1]),
-       height: parseInt(wh[0])
-     }
-  }
 
   function hasSelect (str){
-    return str.includes("select");
+    return str.includes("select") || str.includes('Supported');
+  }
+  if(hasSelect("qualityLevel")){
+    qualityLevel = "Standard";
+  }else{
+    subMixVideo = {qualityLevel: qualityLevel}
+  }
+ if(hasSelect(subBitrate)) subBitrate = undefined;
+ if(hasSelect(subFrameRate)) subFrameRate = undefined;
+ if(hasSelect(subKeyFrameInterval)) subKeyFrameInterval = undefined;
+
+  console.log("Frame rate is:", document.getElementById('subframerate').value);
+  if(!hasSelect(xResolution)){
+    subMixVideo = {
+       bitrate: subBitrate,
+       frameRate: parseInt(subFrameRate),
+       keyFrameInterval: parseInt(subKeyFrameInterval),
+       qualityLevel: qualityLevel
+    };
+    subMixVideo.resolution = analysisResolution(xResolution);
   }
   if (!hasSelect(forwardStreamResolution)){
      subForwVideo = {
-       resolution: forwardStreamResolution
+       bitrate: subBitrate,
+       frameRate: parseInt(subFrameRate),
+       keyFrameInterval: parseInt(subKeyFrameInterval)
      }
+     console.log("forward resolution is:", forwardStreamResolution);
+     console.log("forward resolution type is:", typeof(forwardStreamResolution));
+     subForwVideo.resolution = JSON.parse(forwardStreamResolution);
   }
   var subForwardOptions = {
      video: subForwVideo,
      audio: subForwAudio,
-     codec: codec,
-     birrate: subBitrate,
-     frameRate: subFrameRate,
-     keyFrameInterval: subKeyFrameInterval
+     videoCodec: codec
   };
+  var subMixOptions = {
+     video: subMixVideo,
+     audio: subMixAudio,
+     videoCodec: codec
+  }
   console.log('subMixVideo', subMixVideo, 'subMixAudio', subMixAudio, 'subForwVideo', subForwVideo, 'subForwAudio', subForwAudio);
   if (isValid(conference)) {
     if (st === 'mix') {
@@ -677,11 +760,7 @@ function subs(st) {
 
             L.Logger.info('mix is true');
             L.Logger.info('*****************************************************************subscribe API mix with codec:', codec);
-            conference.subscribe(stream, {
-              video: subMixVideo,
-              audio: subMixAudio,
-              videoCodec: codec
-            }, function(et) {
+            conference.subscribe(stream, subMixOptions, function(et) {
               recordActionResulte(true);
               L.Logger.info('subscribe stream', et.id());
               displayStream(et);
@@ -775,6 +854,7 @@ function subs(st) {
 function getMixResolutions (){
   var selectedResolution = document.getElementById('selectedresolution');
   var resolutions = mixStream.resolutions();
+  console.log("======Get mix resolutions:", resolutions);
   var mixResolutionsD = document.getElementById('mixresolutions');
   mixResolutionsD.style.display =  'inline-block';
   var children = mixResolutionsD.children
