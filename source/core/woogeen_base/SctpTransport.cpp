@@ -114,6 +114,7 @@ SctpTransport::SctpTransport(RawTransportListener* listener, size_t initialBuffe
     , m_receivedBytes(0)
     , m_currentTsn(0)
     , m_sctpSocket(NULL)
+    , m_sending(false)
     , m_listener(listener)
 {
 }
@@ -129,6 +130,10 @@ SctpTransport::~SctpTransport()
     // We need to wait for the work thread to finish its job.
     m_workThread.join();
 
+    m_work.reset();
+    m_senderService.stop();
+    m_senderThread.join();
+
     // Close the socket after it has no work left
     if (m_udpSocket && m_udpSocket->is_open()) {
         m_udpSocket->close();
@@ -143,7 +148,8 @@ void SctpTransport::close()
 
     destroySctpSocket();
 
-    changeReadyState(false);
+    m_ready = false;
+    m_sending = false;
     m_isClosing = true;
 
     ELOG_DEBUG("Done Closing...");
@@ -179,7 +185,11 @@ void SctpTransport::handleNotification(union sctp_notification *notif, size_t n)
         break;
     case SCTP_SENDER_DRY_EVENT:
         //ELOG_DEBUG("SCTP_SENDER_DRY_EVENT");
-        changeReadyState(true);
+        if (!m_sending) {
+            m_sending = true;
+            boost::lock_guard<boost::mutex> lock(m_sendBufferMutex);
+            trySending();
+        }
         break;
     case SCTP_NOTIFICATIONS_STOPPED_EVENT:
         ELOG_DEBUG("SCTP_NOTIFICATIONS_STOPPED_EVENT");
@@ -208,14 +218,24 @@ void SctpTransport::handleAssociationChangeEvent(struct sctp_assoc_change *sac)
     switch (sac->sac_state) {
     case SCTP_COMM_UP:
         ELOG_DEBUG("SCTP_COMM_UP");
-        changeReadyState(true);
+        m_ready = true;
+        if (!m_sending) {
+            m_sending = true;
+            boost::lock_guard<boost::mutex> lock(m_sendBufferMutex);
+            trySending();
+        }
         break;
     case SCTP_COMM_LOST:
         ELOG_DEBUG("SCTP_COMM_LOST");
         break;
     case SCTP_RESTART:
         ELOG_DEBUG("SCTP_RESTART");
-        changeReadyState(true);
+        m_ready = true;
+        if (!m_sending) {
+            m_sending = true;
+            boost::lock_guard<boost::mutex> lock(m_sendBufferMutex);
+            trySending();
+        }
         break;
     case SCTP_SHUTDOWN_COMP:
         ELOG_DEBUG("SCTP_SHUTDOWN_COMP");
@@ -231,8 +251,8 @@ void SctpTransport::handleAssociationChangeEvent(struct sctp_assoc_change *sac)
     if ((sac->sac_state == SCTP_CANT_STR_ASSOC) ||
         (sac->sac_state == SCTP_SHUTDOWN_COMP) ||
         (sac->sac_state == SCTP_COMM_LOST)) {
-        ELOG_WARN("Disconnect due to notifications");
-        changeReadyState(false);
+        ELOG_INFO("Disconnect due to notifications");
+        m_ready = false;
     }
 }
 
@@ -388,7 +408,7 @@ bool SctpTransport::setupSctpPeer() {
         boost::asio::ip::udp::endpoint(boost::asio::ip::udp::v4(), 0)));
     m_localUdpPort = m_udpSocket->local_endpoint().port();
 
-    ELOG_WARN("Udp bind local port:%u", m_localUdpPort);
+    ELOG_DEBUG("Udp bind local port:%u", m_localUdpPort);
 
     // Initialize sctp socket
     if (m_sctpSocket) {
@@ -425,7 +445,7 @@ bool SctpTransport::setupSctpPeer() {
 
     usrsctp_freeladdrs(addrs);
 
-    ELOG_WARN("SCTP bind local port:%u", m_localSctpPort);
+    ELOG_DEBUG("SCTP bind local port:%u", m_localSctpPort);
 
     return true;
 }
@@ -454,7 +474,12 @@ void SctpTransport::startSctpConnection() {
         return;
     }
 
-    changeReadyState(true);
+    m_work.reset(new boost::asio::io_service::work(m_senderService));
+    m_ready = true;
+    m_sending = true;
+
+    if (m_senderThread.get_id() == boost::thread::id()) // Not-A-Thread
+        m_senderThread = boost::thread(boost::bind(&boost::asio::io_service::run, &m_senderService));
 
     // Set the MTU and disable MTU discovery.
     // We can only do this after usrsctp_connect or it has no effect.
@@ -670,14 +695,6 @@ void SctpTransport::sendData(const char* header, int headerLength, const char* d
         return;
     }
 
-    // Send data using SCTP.
-    struct sctp_sndinfo sndinfo;
-    sndinfo.snd_sid = 1;
-    sndinfo.snd_flags = 0;
-    sndinfo.snd_ppid = htonl(233);
-    sndinfo.snd_context = 0;
-    sndinfo.snd_assoc_id = 0;
-
     if (headerLength + len > MAX_MSGSIZE) {
         // We don't fragment.
         ELOG_WARN("Try to send too large message exceed send buffer, ignore it.");
@@ -705,40 +722,75 @@ void SctpTransport::sendData(const char* header, int headerLength, const char* d
     }
 
     ELOG_DEBUG("SCTP send length: %d", tData.length);
-    int send_res = usrsctp_sendv(
-        m_sctpSocket, tData.buffer.get(), static_cast<size_t>(tData.length), NULL, 0, &sndinfo,
-        static_cast<socklen_t>(sizeof(struct sctp_sndinfo)), SCTP_SENDV_SNDINFO, 0);
-    if (send_res < 0) {
-        if (errno == SCTP_EWOULDBLOCK) {
-            ELOG_WARN("usrsctp_sendv: EWOULDBLOCK returned");
 
-            changeReadyState(false);
-
-            // Double the send buffer size
-            int sndbufsize = MAX_MSGSIZE;
-            int intlen = sizeof(int);
-            if (usrsctp_getsockopt(m_sctpSocket, SOL_SOCKET, SO_SNDBUF, &sndbufsize,
-                                   (socklen_t *)&intlen) < 0) {
-                ELOG_INFO("usrsctp_getsockopt: Can not get SNDBUF");
-            } else {
-                ELOG_DEBUG("Send buffer size origin: %d", sndbufsize);
-                if (sndbufsize < MAX_MSGSIZE * 16) {
-                    sndbufsize *= 2;
-                    if (usrsctp_setsockopt(m_sctpSocket, SOL_SOCKET, SO_SNDBUF, &sndbufsize,
-                                           sizeof(int)) < 0) {
-                        ELOG_WARN("SCTP set SO_SNDBUF fail.");
-                    }
-                } else {
-                    ELOG_WARN("Send buffer size already max.");
-                }
-                ELOG_DEBUG("Send buffer size after: %d", sndbufsize);
-            }
-
-        } else {
-            ELOG_ERROR("usrsctp_sendv: %d", errno);
-        }
-    }
+    boost::lock_guard<boost::mutex> lock(m_sendBufferMutex);
+    m_sendBuffer.push(tData);
+    trySending();
 }
+
+void SctpTransport::trySending() {
+    // Need m_sendBufferMutex lock before calling
+    if (!m_sending || !m_ready || m_isClosing)
+        return;
+
+    if (m_sendBuffer.empty())
+        return;
+
+    TransportData& tData = m_sendBuffer.front();
+
+    // Make sending all in senderThread
+    m_senderService.post([this, tData]() {
+        // Send data using SCTP.
+        struct sctp_sndinfo sndinfo;
+        sndinfo.snd_sid = 1;
+        sndinfo.snd_flags = 0;
+        sndinfo.snd_ppid = htonl(233);
+        sndinfo.snd_context = 0;
+        sndinfo.snd_assoc_id = 0;
+
+        int send_res = usrsctp_sendv(
+            m_sctpSocket, tData.buffer.get(), static_cast<size_t>(tData.length), NULL, 0, &sndinfo,
+            static_cast<socklen_t>(sizeof(struct sctp_sndinfo)), SCTP_SENDV_SNDINFO, 0);
+        if (send_res < 0) {
+            if (errno == SCTP_EWOULDBLOCK) {
+                ELOG_WARN("usrsctp_sendv: EWOULDBLOCK returned");
+
+                m_sending = false;
+
+                // Double the send buffer size
+                int sndbufsize = MAX_MSGSIZE;
+                int intlen = sizeof(int);
+                if (usrsctp_getsockopt(m_sctpSocket, SOL_SOCKET, SO_SNDBUF, &sndbufsize,
+                                       (socklen_t *)&intlen) < 0) {
+                    ELOG_INFO("usrsctp_getsockopt: Can not get SNDBUF");
+                } else {
+                    ELOG_DEBUG("Send buffer size origin: %d", sndbufsize);
+                    if (sndbufsize < MAX_MSGSIZE * 16) {
+                        sndbufsize *= 2;
+                        if (usrsctp_setsockopt(m_sctpSocket, SOL_SOCKET, SO_SNDBUF, &sndbufsize,
+                                               sizeof(int)) < 0) {
+                            ELOG_WARN("SCTP set SO_SNDBUF fail.");
+                        }
+                    } else {
+                        ELOG_WARN("Send buffer size already max.");
+                    }
+                    ELOG_DEBUG("Send buffer size after: %d", sndbufsize);
+                }
+
+            } else {
+                ELOG_ERROR("usrsctp_sendv: %d", errno);
+            }
+        } else {
+            boost::lock_guard<boost::mutex> lock(m_sendBufferMutex);
+            assert(m_sendBuffer.size() > 0);
+            m_sendBuffer.pop();
+
+            if (m_sendBuffer.size() > 0)
+                trySending();
+        }
+    });
+}
+
 
 }
 /* namespace woogeen_base */

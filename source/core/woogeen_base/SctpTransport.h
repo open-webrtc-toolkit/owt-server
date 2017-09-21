@@ -26,6 +26,7 @@
 #include <boost/shared_array.hpp>
 #include <boost/thread.hpp>
 #include <boost/thread/mutex.hpp>
+#include <boost/atomic.hpp>
 #include <logger.h>
 #include <queue>
 #include "RawTransport.h"
@@ -70,10 +71,7 @@ private:
     void receiveData();
     void processPacket(const char* data, int len, uint32_t tsn);
 
-    void changeReadyState(bool isReady) {
-        boost::lock_guard<boost::mutex> lock(m_readyMutex);
-        m_ready = isReady;
-    }
+    void trySending();
 
     bool m_isClosing;
 
@@ -84,8 +82,7 @@ private:
     uint16_t m_remoteSctpPort;
 
     bool m_tag;
-    bool m_ready;
-    boost::mutex m_readyMutex;
+    boost::atomic<bool> m_ready;
 
     // Transport data
     typedef struct {
@@ -103,7 +100,7 @@ private:
     uint32_t m_receivedBytes;
     uint32_t m_currentTsn;
 
-    // Send queue data
+    // Send queue data for packet
     std::queue<TransportData> m_sendQueue;
     boost::mutex m_sendQueueMutex;
 
@@ -112,6 +109,14 @@ private:
     boost::asio::io_service m_ioService;
     boost::scoped_ptr<boost::asio::ip::udp::socket> m_udpSocket;
     struct socket* m_sctpSocket;
+
+    // Send queue data for buffer
+    boost::atomic<bool> m_sending;
+    boost::thread m_senderThread;
+    std::queue<TransportData> m_sendBuffer;
+    boost::mutex m_sendBufferMutex;
+    boost::asio::io_service m_senderService;
+    boost::scoped_ptr<boost::asio::io_service::work> m_work;
 
     RawTransportListener* m_listener;
 };
