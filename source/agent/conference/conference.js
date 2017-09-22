@@ -1352,6 +1352,11 @@ var Conference = function (rpcClient, selfRpcId) {
   };
 
   const isBitrateAcceptable = (streamVideo, bitrate) => {
+    //FIXME: accept string 'x1.2' like bitrate for quality level setting in client
+    if (typeof bitrate === 'string' && streamVideo.parameters.bitrate) {
+      bitrate = calcBitrate(bitrate, streamVideo.parameters.bitrate);
+    }
+
     if (streamVideo.parameters && streamVideo.parameters.resolution && (streamVideo.parameters.bitrate === bitrate)) {
       return true;
     }
