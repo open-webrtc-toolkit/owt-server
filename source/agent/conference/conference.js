@@ -756,7 +756,7 @@ var Conference = function (rpcClient, selfRpcId) {
                             parameters: {
                               resolution: room_config.mediaOut.video.parameters.resolution.map((x) => {return calcResolution(x, viewSettings.video.parameters.resolution)}).filter((reso) => {return reso.width < viewSettings.video.parameters.resolution.width && reso.height < viewSettings.video.parameters.resolution.height;}),
                               framerate: room_config.mediaOut.video.parameters.framerate.filter((x) => {return x < viewSettings.video.parameters.framerate;}),
-                              bitrate: room_config.mediaOut.video.parameters.bitrate.map((x) => {calcBitrate(x, viewSettings.video.parameters.bitrate)}),
+                              bitrate: room_config.mediaOut.video.parameters.bitrate.map((x) => {return calcBitrate(x, viewSettings.video.parameters.bitrate)}),
                               keyFrameInterval: room_config.mediaOut.video.parameters.keyFrameInterval.filter((x) => {return x < viewSettings.video.parameters.keyFrameInterval;})
                             }
                           },
