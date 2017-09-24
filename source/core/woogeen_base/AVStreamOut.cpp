@@ -158,14 +158,25 @@ void AVStreamOut::onFrame(const woogeen_base::Frame& frame)
             m_videoFormat   = frame.format;
         }
 
+        if (!m_videoSourceChanged
+                && (m_width != frame.additionalInfo.video.width || m_height != frame.additionalInfo.video.height)) {
+
+            ELOG_DEBUG("Video resolution changed %dx%d -> %dx%d",
+                    m_width, m_height,
+                    frame.additionalInfo.video.width, frame.additionalInfo.video.height
+                    );
+
+            m_videoSourceChanged = true;
+        }
+
         if (m_videoSourceChanged) {
             if (!frame.additionalInfo.video.isKeyFrame) {
-                ELOG_DEBUG("Request video key frame for video source change");
+                ELOG_DEBUG("Request video key frame for video changed");
                 deliverFeedbackMsg(FeedbackMsg{.type = VIDEO_FEEDBACK, .cmd = REQUEST_KEY_FRAME});
                 return;
             }
 
-            ELOG_INFO("Ready after video source change: format(%s), %dx%d",
+            ELOG_DEBUG("Ready after video changed: format(%s), %dx%d",
                     getFormatStr(frame.format),
                     frame.additionalInfo.video.width, frame.additionalInfo.video.height);
 
@@ -182,16 +193,6 @@ void AVStreamOut::onFrame(const woogeen_base::Frame& frame)
             return;
 #endif
 
-        if (m_width != frame.additionalInfo.video.width
-                || m_height != frame.additionalInfo.video.height) {
-            ELOG_ERROR("Invalid video frame resolution(%dx%d), expected(%dx%d)",
-                    frame.additionalInfo.video.width, frame.additionalInfo.video.height,
-                    m_width, m_height
-                    );
-
-            notifyAsyncEvent("fatal", "Invalid video frame resolution");
-            return;
-        }
         m_frameQueue.pushFrame(frame);
     } else {
         ELOG_WARN("Unsupported frame format: %s(%d)", getFormatStr(frame.format), frame.format);
