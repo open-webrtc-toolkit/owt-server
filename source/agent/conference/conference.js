@@ -754,7 +754,7 @@ var Conference = function (rpcClient, selfRpcId) {
                           optional: {
                             format: room_config.mediaOut.video.format.filter((fmt) => {return av_capability.video.encode.findIndex((f) => {return isVideoFmtCompatible(f, fmt);}) >= 0;}),
                             parameters: {
-                              resolution: room_config.mediaOut.video.parameters.resolution.map((x) => {return calcResolution(x, viewSettings.video.parameters.resolution)}).filter((reso) => {return reso.width < viewSettings.video.parameters.resolution.width && reso.height < viewSettings.video.parameters.resolution.height;}),
+                              resolution: room_config.mediaOut.video.parameters.resolution.map((x) => {return calcResolution(x, viewSettings.video.parameters.resolution)}).filter((reso, pos, self) => {return ((reso.width < viewSettings.video.parameters.resolution.width) && (reso.height < viewSettings.video.parameters.resolution.height)) && (self.findIndex((r) => {return r.width === reso.width && r.height === reso.height;}) === pos);}),
                               framerate: room_config.mediaOut.video.parameters.framerate.filter((x) => {return x < viewSettings.video.parameters.framerate;}),
                               bitrate: room_config.mediaOut.video.parameters.bitrate.map((x) => {return calcBitrate(x, viewSettings.video.parameters.bitrate)}),
                               keyFrameInterval: room_config.mediaOut.video.parameters.keyFrameInterval.filter((x) => {return x < viewSettings.video.parameters.keyFrameInterval;})
@@ -956,7 +956,7 @@ var Conference = function (rpcClient, selfRpcId) {
           result.video.optional.parameters = (result.video.optional.parameters || {});
 
           if (result.video.parameters && result.video.parameters.resolution) {
-            result.video.optional.parameters.resolution = room_config.mediaOut.video.parameters.resolution.map((x) => {return calcResolution(x, result.video.parameters.resolution)}).filter((reso) => {return reso.width < result.video.parameters.resolution.width && reso.height < result.video.parameters.resolution.height;});
+            result.video.optional.parameters.resolution = room_config.mediaOut.video.parameters.resolution.map((x) => {return calcResolution(x, result.video.parameters.resolution)}).filter((reso, pos, self) => {return ((reso.width < result.video.parameters.resolution.width) && (reso.height < result.video.parameters.resolution.height)) && (self.findIndex((r) => {return r.width === reso.width && r.height === reso.height;}) === pos);});
           } else {
             result.video.optional.parameters.resolution = room_config.mediaOut.video.parameters.resolution
               .filter((x) => {return (x !== 'x3/4') && (x !== 'x2/3') && (x !== 'x1/2') && (x !== 'x1/3') && (x !== 'x1/4');})//FIXME: is auto-scaling possible?
