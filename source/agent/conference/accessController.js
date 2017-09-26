@@ -59,14 +59,16 @@ module.exports.create = function(spec, rpcReq, onSessionEstablished, onSessionAb
         var owner = session.owner, direction = session.direction;
         terminateSession(sessionId);
         on_session_aborted(owner, sessionId, direction, 'No proper audio codec');
-        return Promise.reject('No proper audio codec');
+        log.error('No proper audio codec');
+        return;
       }
 
       if (!!session.options.media.video && !video) {
         var owner = session.owner, direction = session.direction;
         terminateSession(sessionId);
         on_session_aborted(owner, sessionId, direction, 'No proper video codec');
-        return Promise.reject('No proper video codec');
+        log.error('No proper video codec');
+        return;
       } else {
         video_codec = video.codec;
       }
@@ -110,7 +112,6 @@ module.exports.create = function(spec, rpcReq, onSessionEstablished, onSessionAb
     };
 
     on_session_established(session.owner, sessionId, session.direction, session_info);
-    return Promise.resolve('ok');
   };
 
   const onFailed = (sessionId, reason) => {
@@ -119,12 +120,10 @@ module.exports.create = function(spec, rpcReq, onSessionEstablished, onSessionAb
         direction = sessions[sessionId].direction;
     terminateSession(sessionId);
     on_session_aborted(owner, sessionId, direction, reason);
-    return Promise.reject(reason);
   };
 
   const onSignaling = (sessionId, signaling) => {
     on_session_signaling(sessions[sessionId].owner, sessionId, signaling);
-    return Promise.resolve('ok');
   };
 
   that.getSessionState = (sessionId) => {
@@ -133,7 +132,8 @@ module.exports.create = function(spec, rpcReq, onSessionEstablished, onSessionAb
 
   that.onSessionStatus = (sessionId, status) => {
     if (!sessions[sessionId]) {
-      return Promise.reject('Session does NOT exist');
+      log.error('Session does NOT exist');
+      return;
     }
 
     if (status.type === 'ready') {
@@ -143,7 +143,7 @@ module.exports.create = function(spec, rpcReq, onSessionEstablished, onSessionAb
     } else if (status.type === 'offer' || status.type === 'answer' || status.type === 'candidate') {
       return onSignaling(sessionId, status);
     } else {
-      return Promise.reject('Irrispective status:' + status.type);
+      log.error('Irrispective status:' + status.type);
     }
   };
 
