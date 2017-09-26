@@ -1269,6 +1269,7 @@ var Conference = function (rpcClient, selfRpcId) {
     if (streams[streamId] && (streams[streamId].info.type === 'sip')) {
       return removeStream(participantId, streamId)
         .then((result) => {
+          current_publication_count -= 1;
           callback('callback', result);
         })
         .catch((e) => {
