@@ -276,8 +276,9 @@ module.exports.create = function(spec, rpcReq, onSessionEstablished, onSessionAb
 
   that.destroy = () => {
     for (var session_id in sessions) {
+      var owner = sessions[session_id].owner;
       terminateSession(session_id);
-      on_session_aborted(sessions[session_id].owner, session_id, direction, 'Participant terminate');
+      on_session_aborted(owner, session_id, direction, 'Participant terminate');
     }
   };
 
