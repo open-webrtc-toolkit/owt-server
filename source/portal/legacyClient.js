@@ -57,16 +57,16 @@ function resolution2WidthHeight(resolution) {
 }
 
 var ql2brl = {
-  'bestquality': '1.4x',
-  'betterquality': '1.2x',
-  'standard': '1.0x',
-  'betterspeed': '0.8x',
-  'bestspeed': '0.6x'
+  'bestquality': 'x1.4',
+  'betterquality': 'x1.2',
+  'standard': 'x1.0',
+  'betterspeed': 'x0.8',
+  'bestspeed': 'x0.6'
 };
 
 function qualityLevel2BitrateLevel (ql) {
   ql = ql.toLowerCase();
-  return ql2brl[ql] ? ql2brl[ql] : '1.0x';
+  return ql2brl[ql] ? ql2brl[ql] : 'x1.0';
 }
 
 var idPattern = /^[0-9a-zA-Z\-]+$/;
