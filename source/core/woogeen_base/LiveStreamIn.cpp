@@ -432,6 +432,10 @@ LiveStreamIn::LiveStreamIn(const Options& options, EventRegistry* handle)
         }
     }
 
+    m_running = true;
+
+    srand((unsigned)time(0));
+    m_timeoutHandler = new TimeoutHandler();
     m_thread = boost::thread(&LiveStreamIn::receiveLoop, this);
 }
 
@@ -439,6 +443,7 @@ LiveStreamIn::~LiveStreamIn()
 {
     ELOG_INFO_T("Closing %s" , m_url.c_str());
     m_running = false;
+    m_timeoutHandler->stop();
     m_thread.join();
 
     if (m_videoJitterBuffer) {
@@ -479,16 +484,12 @@ bool LiveStreamIn::connect()
 {
     int res;
 
-    srand((unsigned)time(0));
-
-    m_timeoutHandler = new TimeoutHandler();
-
     m_context = avformat_alloc_context();
     m_context->interrupt_callback = {&TimeoutHandler::checkInterrupt, m_timeoutHandler};
     //m_context->max_analyze_duration = 3 * AV_TIME_BASE;
 
-    m_timeoutHandler->reset(30000);
     ELOG_DEBUG_T("Opening input");
+    m_timeoutHandler->reset(30000);
     res = avformat_open_input(&m_context, m_url.c_str(), nullptr, &m_options);
     if (res != 0) {
         ELOG_ERROR_T("Error opening input %s", ff_err2str(res));
@@ -498,8 +499,8 @@ bool LiveStreamIn::connect()
         return false;
     }
 
-    m_timeoutHandler->reset(10000);
     ELOG_DEBUG_T("Finding stream info");
+    m_timeoutHandler->reset(10000);
     res = avformat_find_stream_info(m_context, nullptr);
     if (res < 0) {
         ELOG_ERROR_T("Error finding stream info %s", ff_err2str(res));
@@ -694,16 +695,16 @@ bool LiveStreamIn::reconnect()
     m_context->interrupt_callback = {&TimeoutHandler::checkInterrupt, m_timeoutHandler};
     //m_context->max_analyze_duration = 3 * AV_TIME_BASE;
 
-    m_timeoutHandler->reset(60000);
     ELOG_DEBUG_T("Opening input");
+    m_timeoutHandler->reset(60000);
     res = avformat_open_input(&m_context, m_url.c_str(), nullptr, &m_options);
     if (res != 0) {
         ELOG_ERROR_T("Error opening input %s", ff_err2str(res));
         return false;
     }
 
-    m_timeoutHandler->reset(10000);
     ELOG_DEBUG_T("Finding stream info");
+    m_timeoutHandler->reset(10000);
     res = avformat_find_stream_info(m_context, nullptr);
     if (res < 0) {
         ELOG_ERROR_T("Error find stream info %s", ff_err2str(res));
@@ -761,10 +762,12 @@ void LiveStreamIn::receiveLoop()
     ELOG_DEBUG_T("%s", m_AsyncEvent.str().c_str());
     ::notifyAsyncEvent(m_asyncHandle, "status", m_AsyncEvent.str().c_str());
 
+    ELOG_DEBUG_T("Start playing %s", m_url.c_str() );
+
     if (m_videoStreamIndex != -1) {
         int i = 0;
 
-        while (!m_keyFrameRequest) {
+        while (m_running && !m_keyFrameRequest) {
             if (i++ >= 100) {
                 ELOG_INFO_T("No incoming key frame request");
                 break;
@@ -776,8 +779,6 @@ void LiveStreamIn::receiveLoop()
     }
 
     memset(&m_avPacket, 0, sizeof(m_avPacket));
-    m_running = true;
-    ELOG_DEBUG_T("Start playing %s", m_url.c_str() );
     while (m_running) {
         av_init_packet(&m_avPacket);
         m_timeoutHandler->reset(10000);
@@ -826,7 +827,6 @@ void LiveStreamIn::receiveLoop()
         }
         av_packet_unref(&m_avPacket);
     }
-    m_running = false;
 
     ELOG_DEBUG_T("Thread exited!");
 }

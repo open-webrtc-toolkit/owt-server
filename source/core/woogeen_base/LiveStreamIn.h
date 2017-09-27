@@ -51,12 +51,17 @@ static inline int64_t currentTimeMillis()
 
 class TimeoutHandler {
 public:
-    TimeoutHandler(int32_t timeout = 100000) : m_timeout(timeout), m_lastTime(currentTimeMillis()) { }
+    TimeoutHandler(int32_t timeout = 100000) : m_valid(true), m_timeout(timeout), m_lastTime(currentTimeMillis()) { }
 
     void reset(int32_t timeout)
     {
         m_timeout = timeout;
         m_lastTime = currentTimeMillis();
+    }
+
+    void stop()
+    {
+        m_valid = false;
     }
 
     static int checkInterrupt(void* handler)
@@ -68,9 +73,10 @@ private:
     bool isTimeout()
     {
         int32_t delay = currentTimeMillis() - m_lastTime;
-        return delay > m_timeout;
+        return m_valid ? delay > m_timeout : true;
     }
 
+    bool m_valid;
     int32_t m_timeout;
     int64_t m_lastTime;
 };
@@ -119,7 +125,7 @@ public:
         SYNC_MODE_SLAVE,
     };
 
-    JitterBuffer (std::string name, SyncMode syncMode, JitterBufferListener *listener, int64_t maxBufferingMs = 500);
+    JitterBuffer (std::string name, SyncMode syncMode, JitterBufferListener *listener, int64_t maxBufferingMs = 1000);
     virtual ~JitterBuffer ();
 
     void start(uint32_t delay = 0);
