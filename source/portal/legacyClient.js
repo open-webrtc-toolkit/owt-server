@@ -854,6 +854,8 @@ var LegacyClient = function(clientId, sigConnection, portal) {
         } else {
           sendMsg('connection_failed', {streamId: ref});
         }
+        delete ref2subId[ref];
+        delete subId2ref[id];
       } else {
         sendMsg('connection_failed', {streamId: id});
       }

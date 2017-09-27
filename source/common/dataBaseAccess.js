@@ -278,6 +278,25 @@ var genConfig = function (room) {
             var region = templates[i].region;
             if (!(region instanceof Array))
                 return false;
+            for (var j in region) {
+                if (!region[j].area || !region[j].shape) {
+                    //FIXME: to make old layout configuration work
+                    if (region[j].top && region[j].left && region[j].relativesize) {
+                        region[j].area = {
+                            left: region[j].left,
+                            top: region[j].top,
+                            width: region[j].relativesize,
+                            height: region[j].relativesize
+                        };
+                        region[j].shape = 'rectangle';
+                        delete region[j].top;
+                        delete region[j].left;
+                        delete region[j].relativesize;
+                    } else {
+                        return false;
+                    }
+                }
+            }
         }
         return true;
     }
