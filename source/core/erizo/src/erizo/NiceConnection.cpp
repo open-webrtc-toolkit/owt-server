@@ -319,11 +319,12 @@ namespace erizo {
   }
 
   int NiceConnection::sendData(unsigned int compId, const void* buf, int len) {
-    boost::mutex::scoped_lock(closeMutex_);
-
     int val = -1;
-    IceState state = this->checkIceState();
-
+    IceState state;
+    {
+      boost::mutex::scoped_lock(closeMutex_);
+      state = this->checkIceState();
+    }
     if (state == NICE_READY && running_) {
       val = nice_agent_send(agent_, 1, compId, len, reinterpret_cast<const gchar*>(buf));
     }
@@ -335,12 +336,8 @@ namespace erizo {
 
   void NiceConnection::init() {
 
-    {
-      boost::mutex::scoped_lock(closeMutex_);
-      ELOG_DEBUG("Gathering candidates %p", this);
-      nice_agent_gather_candidates(agent_, 1);
-    }
-
+    ELOG_DEBUG("Gathering candidates %p", this);
+    nice_agent_gather_candidates(agent_, 1);
     // Attach to the component to receive the data
     while(running_){
       if(this->checkIceState()>=NICE_FINISHED || !running_)
@@ -352,8 +349,6 @@ namespace erizo {
   }
 
   bool NiceConnection::setRemoteCandidates(const std::vector<CandidateInfo> &candidates, bool isBundle) {
-    boost::mutex::scoped_lock(closeMutex_);
-
     if(agent_==NULL){
       running_=false;
       return false;
@@ -585,8 +580,6 @@ namespace erizo {
 
   StunCredential NiceConnection::restart(const std::string username,
                                          const std::string password) {
-    boost::mutex::scoped_lock(closeMutex_);
-
     ELOG_DEBUG("ICE restart.");
     nice_agent_restart(agent_);
     gchar *ufrag = NULL, *upass = NULL;
