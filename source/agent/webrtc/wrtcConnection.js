@@ -177,7 +177,7 @@ module.exports = function (spec, on_status) {
     /*
      * Given a WebRtcConnection waits for the state CANDIDATES_GATHERED for set remote SDP.
      */
-    var initWebRtcConnection = function (wrtc, on_status) {
+    var initWebRtcConnection = function (wrtc) {
         var terminated = false;
 
         wrtc.addEventListener('connection', function (resp) {
@@ -300,6 +300,24 @@ module.exports = function (spec, on_status) {
         }
     };
 
+    var checkOffer = function (sdp, on_ok, on_error) {
+        var contains_audio = /(m=audio).*/g.test(sdp);
+        var contains_video = /(m=video).*/g.test(sdp);
+
+        //log.debug('checkOffer, sdp:', sdp, 'contains_audio:', contains_audio, 'contains_video:', contains_video);
+        if (audio && !contains_audio) {
+            return on_error('audio is required but not contained by offer sdp');
+        } else if (!audio && contains_audio) {
+            return on_error('audio is not required but contained by offer sdp');
+        } else if (video && !contains_video) {
+            return on_error('video is required but not contained by offer sdp');
+        } else if (!video && contains_video) {
+            return on_error('video is not required but contained by offer sdp');
+        } else {
+           on_ok();
+        }
+    };
+
     that.close = function () {
         unbindFramePacketizers();
         unbindFrameConstructors();
@@ -311,8 +329,13 @@ module.exports = function (spec, on_status) {
         var processSignalling = function() {
             if (msg.type === 'offer') {
                 log.debug('on offer:', msg.sdp);
-                wrtc.setRemoteSdp(msg.sdp);
-                wrtc.start();
+                checkOffer(msg.sdp, function() {
+                    wrtc.setRemoteSdp(msg.sdp);
+                    wrtc.start();
+                }, function (reason) {
+                    log.error('offer error:', reason);
+                    on_status({type: 'failed', reason: reason});
+                });
             } else if (msg.type === 'candidate') {
                 wrtc.addRemoteCandidate(msg.candidate.sdpMid, msg.candidate.sdpMLineIndex, msg.candidate.candidate);
             }
@@ -466,7 +489,7 @@ module.exports = function (spec, on_status) {
                 bindFramePacketizers();
             }
 
-            initWebRtcConnection(wrtc, on_status);
+            initWebRtcConnection(wrtc);
         } else {
             log.error('init error:', err);
         }
