@@ -27,6 +27,7 @@ DEFINE_LOGGER(MediaFileOut, "woogeen.media.MediaFileOut");
 MediaFileOut::MediaFileOut(const std::string& url, bool hasAudio, bool hasVideo, EventRegistry* handle, int recordingTimeout)
     : AVStreamOut(url, hasAudio, hasVideo, handle, recordingTimeout)
 {
+    start();
 }
 
 MediaFileOut::~MediaFileOut()

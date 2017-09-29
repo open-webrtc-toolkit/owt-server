@@ -63,7 +63,7 @@ AVStreamOut::AVStreamOut(const std::string& url, bool hasAudio, bool hasVideo, E
     , m_videoStream(NULL)
     , m_lastKeyFrameTimestamp(0)
 {
-    ELOG_TRACE("url %s, audio %d, video %d, timeOut %d", m_url.c_str(), m_hasAudio, m_hasVideo, m_timeOutMs);
+    ELOG_DEBUG("url %s, audio %d, video %d, timeOut %d", m_url.c_str(), m_hasAudio, m_hasVideo, m_timeOutMs);
 
     if (!m_hasAudio && !m_hasVideo) {
         ELOG_ERROR("Audio/Video not enabled");
@@ -79,8 +79,12 @@ AVStreamOut::AVStreamOut(const std::string& url, bool hasAudio, bool hasVideo, E
         av_log_set_level(AV_LOG_WARNING);
 
     m_status = Context_INITIALIZING;
-    m_thread = boost::thread(&AVStreamOut::sendLoop, this);
     notifyAsyncEvent("init", "");
+}
+
+void AVStreamOut::start(void)
+{
+    m_thread = boost::thread(&AVStreamOut::sendLoop, this);
 }
 
 AVStreamOut::~AVStreamOut()
