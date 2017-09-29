@@ -404,6 +404,9 @@ var SocketIOServer = function(spec, portal, observer) {
   };
 
   that.stop = function() {
+    for(var pid in clients) {
+      clients[pid].drop();
+    }
     clients = {};
     io && io.close();
     io = undefined;

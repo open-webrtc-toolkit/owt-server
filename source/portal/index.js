@@ -192,7 +192,8 @@ var startServers = function(id, tokenKey) {
   return socketio_server.start()
     .then(function() {
       log.info('start socket.io server ok.');
-      return rest_server.start();
+      //return rest_server.start();
+      return 'ok';
     })
     .then(function() {
       log.info('start rest server ok.');
