@@ -162,6 +162,8 @@ public:
     virtual void onVideoSourceChanged(void) {deliverFeedbackMsg(FeedbackMsg{.type = VIDEO_FEEDBACK, .cmd = REQUEST_KEY_FRAME });}
 
 protected:
+    void start(void);
+
     virtual bool isAudioFormatSupported(FrameFormat format) = 0;
     virtual bool isVideoFormatSupported(FrameFormat format) = 0;
     virtual const char *getFormatName(std::string& url) = 0;

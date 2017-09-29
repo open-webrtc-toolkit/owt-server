@@ -32,6 +32,7 @@ DEFINE_LOGGER(LiveStreamOut, "woogeen.LiveStreamOut");
 LiveStreamOut::LiveStreamOut(const std::string& url, bool hasAudio, bool hasVideo, EventRegistry* handle, int streamingTimeout)
     : AVStreamOut(url, hasAudio, hasVideo, handle, streamingTimeout)
 {
+    start();
 }
 
 LiveStreamOut::~LiveStreamOut()
