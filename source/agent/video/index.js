@@ -240,7 +240,6 @@ function VMixer(rpcClient, clusterIP) {
         belong_to,
         controller,
         view,
-        defaultframerate, bitrate, keyFrameInterval,
 
         default_resolution = {width: 640, height: 480},
         default_framerate = 30,
