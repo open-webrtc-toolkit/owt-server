@@ -756,7 +756,7 @@ var Conference = function (rpcClient, selfRpcId) {
                             parameters: {
                               resolution: room_config.mediaOut.video.parameters.resolution.map((x) => {return calcResolution(x, viewSettings.video.parameters.resolution)}).filter((reso, pos, self) => {return ((reso.width < viewSettings.video.parameters.resolution.width) && (reso.height < viewSettings.video.parameters.resolution.height)) && (self.findIndex((r) => {return r.width === reso.width && r.height === reso.height;}) === pos);}),
                               framerate: room_config.mediaOut.video.parameters.framerate.filter((x) => {return x < viewSettings.video.parameters.framerate;}),
-                              bitrate: room_config.mediaOut.video.parameters.bitrate.map((x) => {return calcBitrate(x, viewSettings.video.parameters.bitrate)}),
+                              bitrate: room_config.mediaOut.video.parameters.bitrate,//.map((x) => {return calcBitrate(x, viewSettings.video.parameters.bitrate)}),
                               keyFrameInterval: room_config.mediaOut.video.parameters.keyFrameInterval.filter((x) => {return x < viewSettings.video.parameters.keyFrameInterval;})
                             }
                           },
@@ -975,7 +975,7 @@ var Conference = function (rpcClient, selfRpcId) {
           result.video.optional = (result.video.optional || {});
           result.video.optional.parameters = (result.video.optional.parameters || {});
 
-          result.video.optional.parameters.bitrate = room_config.mediaOut.video.parameters.bitrate;
+          result.video.optional.parameters.bitrate = room_config.mediaOut.video.parameters.bitrate.filter((x) => {return Number(x.substring(1)) < 1;});
         }
 
         if (room_config.transcoding.video.parameters.keyFrameInterval) {
@@ -1353,14 +1353,6 @@ var Conference = function (rpcClient, selfRpcId) {
   };
 
   const isBitrateAcceptable = (streamVideo, bitrate) => {
-    //FIXME: accept string 'x1.2' like bitrate for quality level setting in client
-    if (typeof bitrate === 'string' && streamVideo.parameters.bitrate) {
-      bitrate = calcBitrate(bitrate, streamVideo.parameters.bitrate);
-    }
-
-    if (streamVideo.parameters && streamVideo.parameters.resolution && (streamVideo.parameters.bitrate === bitrate)) {
-      return true;
-    }
     if (streamVideo.optional && streamVideo.optional.parameters && streamVideo.optional.parameters.bitrate && (streamVideo.optional.parameters.bitrate.findIndex((b) => {return b === bitrate;}) >= 0)) {
       return true;
     }
@@ -1444,6 +1436,52 @@ var Conference = function (rpcClient, selfRpcId) {
         callback('callback', 'error', e.message ? e.message : e);
       });
     } else {
+      if (subDesc.media.video) {
+        var source = streams[subDesc.media.video.from].media.video;
+        if (streams[subDesc.media.video.from].type === 'mixed') {
+          if (subDesc.media.video.parameters) {
+            if (!subDesc.media.video.parameters.resolution && !subDesc.media.video.parameters.framerate) {
+              if (subDesc.media.video.parameters.bitrate) {
+                subDesc.media.video.parameters.bitrate = source.parameters.bitrate * Number(subDesc.media.video.parameters.bitrate.substring(1));
+              } else {
+                subDesc.media.video.parameters.bitrate = source.parameters.bitrate;
+              }
+            } else {
+              subDesc.media.video.parameters.bitrate = (subDesc.media.video.parameters.bitrate || source.parameters.bitrate);
+            }
+
+            subDesc.media.video.parameters.resolution = (subDesc.media.video.parameters.resolution || source.parameters.resolution);
+            subDesc.media.video.parameters.framerate = (subDesc.media.video.parameters.framerate || source.parameters.framerate);
+            subDesc.media.video.parameters.keyFrameInterval = (subDesc.media.video.parameters.keyFrameInterval || source.parameters.keyFrameInterval);
+          } else {
+            subDesc.media.video.parameters = source.parameters;
+          }
+        } else {
+          if (subDesc.media.video.parameters) {
+            if (!subDesc.media.video.parameters.resolution && !subDesc.media.video.parameters.framerate) {
+              if (subDesc.media.video.parameters.bitrate) {
+                source.parameters.bitrate && (subDesc.media.video.parameters.bitrate = source.parameters.bitrate * Number(subDesc.media.video.parameters.bitrate.substring(1)));
+              } else {
+                subDesc.media.video.parameters.bitrate = 'unspecified';
+              }
+            } else {
+              subDesc.media.video.parameters.bitrate = (subDesc.media.video.parameters.bitrate || source.parameters.bitrate || 'unspecified');
+            }
+
+            subDesc.media.video.parameters.resolution = (subDesc.media.video.parameters.resolution || source.parameters.resolution || 'unspecified');
+            subDesc.media.video.parameters.framerate = (subDesc.media.video.parameters.framerate || source.parameters.framerate || 'unspecified');
+            subDesc.media.video.parameters.keyFrameInterval = (subDesc.media.video.parameters.keyFrameInterval || source.parameters.keyFrameInterval || 'unspecified');
+          } else {
+            subDesc.media.video.parameters = {
+              resolution: 'unspecified',
+              framerate: 'unspecified',
+              bitrate: 'unspecified',
+              keyFrameInterval: 'unspecified'
+            };
+          }
+        }
+      }
+
       var format_preference;
       if (subDesc.type === 'webrtc') {
         format_preference = {};
