@@ -1047,14 +1047,70 @@ var Conference = function (rpcClient, selfRpcId) {
     return addSubscription(id, subDesc.locality, subDesc.media, {owner: owner, type: 'sip'});
   };
 
-  const addSubscription = (id, locality, media, info) => {
+  const addSubscription = (id, locality, mediaSpec, info) => {
+    var media = JSON.parse(JSON.stringify(mediaSpec));
+    if (media.video) {
+      var source = streams[media.video.from].media.video;
+
+      media.video.format = (media.video.format || source.format);
+
+      if (streams[media.video.from].type === 'mixed') {
+        if (media.video.parameters) {
+          if (!media.video.parameters.resolution && !media.video.parameters.framerate) {
+            if (media.video.parameters.bitrate) {
+              media.video.parameters.bitrate = source.parameters.bitrate * Number(media.video.parameters.bitrate.substring(1));
+            } else {
+              media.video.parameters.bitrate = source.parameters.bitrate;
+            }
+          } else {
+            media.video.parameters.bitrate = (media.video.parameters.bitrate || source.parameters.bitrate);
+          }
+
+          media.video.parameters.resolution = (media.video.parameters.resolution || source.parameters.resolution);
+          media.video.parameters.framerate = (media.video.parameters.framerate || source.parameters.framerate);
+          media.video.parameters.keyFrameInterval = (media.video.parameters.keyFrameInterval || source.parameters.keyFrameInterval);
+        } else {
+          media.video.parameters = source.parameters;
+        }
+      } else {
+        if (media.video.parameters) {
+          if (!media.video.parameters.resolution && !media.video.parameters.framerate) {
+            if (media.video.parameters.bitrate) {
+              source.parameters.bitrate && (media.video.parameters.bitrate = source.parameters.bitrate * Number(media.video.parameters.bitrate.substring(1)));
+            } else {
+              media.video.parameters.bitrate = 'unspecified';
+            }
+          } else {
+            media.video.parameters.bitrate = (media.video.parameters.bitrate || source.parameters.bitrate || 'unspecified');
+          }
+
+          media.video.parameters.resolution = (media.video.parameters.resolution || source.parameters.resolution || 'unspecified');
+          media.video.parameters.framerate = (media.video.parameters.framerate || source.parameters.framerate || 'unspecified');
+          media.video.parameters.keyFrameInterval = (media.video.parameters.keyFrameInterval || source.parameters.keyFrameInterval || 'unspecified');
+        } else {
+          media.video.parameters = {
+            resolution: 'unspecified',
+            framerate: 'unspecified',
+            bitrate: 'unspecified',
+            keyFrameInterval: 'unspecified'
+          };
+        }
+      }
+    }
+
+    if (media.audio) {
+      var source = streams[media.audio.from].media.audio;
+
+      media.audio.format = (media.audio.format || source.format);
+    }
+
     return new Promise((resolve, reject) => {
       roomController && roomController.subscribe(info.owner, id, locality, media, info.type, function() {
         if (participants[info.owner]) {
           var subscription = {
             id: id,
             locality: locality,
-            media: media,
+            media: mediaSpec,
             info: info
           };
           subscriptions[id] = subscription;
@@ -1436,52 +1492,6 @@ var Conference = function (rpcClient, selfRpcId) {
         callback('callback', 'error', e.message ? e.message : e);
       });
     } else {
-      if (subDesc.media.video) {
-        var source = streams[subDesc.media.video.from].media.video;
-        if (streams[subDesc.media.video.from].type === 'mixed') {
-          if (subDesc.media.video.parameters) {
-            if (!subDesc.media.video.parameters.resolution && !subDesc.media.video.parameters.framerate) {
-              if (subDesc.media.video.parameters.bitrate) {
-                subDesc.media.video.parameters.bitrate = source.parameters.bitrate * Number(subDesc.media.video.parameters.bitrate.substring(1));
-              } else {
-                subDesc.media.video.parameters.bitrate = source.parameters.bitrate;
-              }
-            } else {
-              subDesc.media.video.parameters.bitrate = (subDesc.media.video.parameters.bitrate || source.parameters.bitrate);
-            }
-
-            subDesc.media.video.parameters.resolution = (subDesc.media.video.parameters.resolution || source.parameters.resolution);
-            subDesc.media.video.parameters.framerate = (subDesc.media.video.parameters.framerate || source.parameters.framerate);
-            subDesc.media.video.parameters.keyFrameInterval = (subDesc.media.video.parameters.keyFrameInterval || source.parameters.keyFrameInterval);
-          } else {
-            subDesc.media.video.parameters = source.parameters;
-          }
-        } else {
-          if (subDesc.media.video.parameters) {
-            if (!subDesc.media.video.parameters.resolution && !subDesc.media.video.parameters.framerate) {
-              if (subDesc.media.video.parameters.bitrate) {
-                source.parameters.bitrate && (subDesc.media.video.parameters.bitrate = source.parameters.bitrate * Number(subDesc.media.video.parameters.bitrate.substring(1)));
-              } else {
-                subDesc.media.video.parameters.bitrate = 'unspecified';
-              }
-            } else {
-              subDesc.media.video.parameters.bitrate = (subDesc.media.video.parameters.bitrate || source.parameters.bitrate || 'unspecified');
-            }
-
-            subDesc.media.video.parameters.resolution = (subDesc.media.video.parameters.resolution || source.parameters.resolution || 'unspecified');
-            subDesc.media.video.parameters.framerate = (subDesc.media.video.parameters.framerate || source.parameters.framerate || 'unspecified');
-            subDesc.media.video.parameters.keyFrameInterval = (subDesc.media.video.parameters.keyFrameInterval || source.parameters.keyFrameInterval || 'unspecified');
-          } else {
-            subDesc.media.video.parameters = {
-              resolution: 'unspecified',
-              framerate: 'unspecified',
-              bitrate: 'unspecified',
-              keyFrameInterval: 'unspecified'
-            };
-          }
-        }
-      }
-
       var format_preference;
       if (subDesc.type === 'webrtc') {
         format_preference = {};
@@ -1718,54 +1728,73 @@ var Conference = function (rpcClient, selfRpcId) {
 
     var effective = false;
     if (update.audio) {
+      if (!old_su.media.audio) {
+        return Promise.reject('Target audio stream does NOT satisfy');
+      }
+
       new_su.media.audio = (new_su.media.audio || {});
       if (update.audio.from && (update.audio.from !== new_su.media.audio.from)) {
         new_su.media.audio.from = update.audio.from;
+        new_su.media.audio.format = streams[old_su.media.audio.from].media.audio.format;
         effective = true;
       }
     }
 
     if (update.video) {
+      if (!old_su.media.video) {
+        return Promise.reject('Target video stream does NOT satisfy');
+      }
+
       new_su.media.video = (new_su.media.video || {});
       if (update.video.from && (update.video.from !== new_su.media.video.from)) {
         new_su.media.video.from = update.video.from;
+        new_su.media.video.format = streams[old_su.media.video.from].media.video.format;
         effective = true;
       }
 
-      /*
       if (update.video.parameters) {
         new_su.media.video.parameters = (new_su.media.video.parameters || {});
-        if (update.video.parameters.resolution && ((update.video.parameters.resolution.width !== new_su.media.video.parameters.resolution.width) || (update.video.parameters.resolution.height !== new_su.media.video.parameters.resolution.height))) {
+        if (update.video.parameters.resolution && ((update.video.parameters.resolution.width !== old_su.media.video.parameters.resolution.width) || (update.video.parameters.resolution.height !== old_su.media.video.parameters.resolution.height))) {
           new_su.media.video.parameters.resolution = update.video.parameters.resolution;
           effective = true;
         }
-        if (update.video.parameters.framerate && (update.video.parameters.framerate !== new_su.media.video.parameters.framerate)) {
+        if (update.video.parameters.framerate && (update.video.parameters.framerate !== old_su.media.video.parameters.framerate)) {
           new_su.media.video.parameters.framerate = update.video.parameters.framerate;
           effective = true;
         }
-        if (update.video.parameters.bitrate && (update.video.parameters.bitrate !== new_su.media.video.parameters.bitrate)) {
+        if (update.video.parameters.bitrate && (update.video.parameters.bitrate !== old_su.media.video.parameters.bitrate)) {
           new_su.media.video.parameters.bitrate = update.video.parameters.bitrate;
           effective = true;
         }
-        if (update.video.parameters.keyFrameInterval && (update.video.parameters.keyFrameInterval !== new_su.media.video.parameters.keyFrameInterval)) {
+        if (update.video.parameters.keyFrameInterval && (update.video.parameters.keyFrameInterval !== old_su.media.video.parameters.keyFrameInterval)) {
           new_su.media.video.parameters.keyFrameInterval = update.video.parameters.keyFrameInterval;
           effective = true;
         }
       }
-      */
     }
 
     if (!effective) {
       return Promise.resolve('ok');
     } else {
-      return removeSubscription(subscriptionId)
-        .then((result) => {
-          return addSubscription(subscriptionId, new_su.locality, new_su.media, new_su.info);
-        }).catch((err) => {
-          log.info('Update subscription failed:', err.message ? err.message : err);
-          log.info('And is recovering the previous subscription:', JSON.stringify(old_su));
-          return addSubscription(subscriptionId, old_su.locality, old_su.media, old_su.info);
-        });
+      if (new_su.media.video && !validateVideoRequest(new_su.info.type, new_su.media.video)) {
+        return Promise.reject('Target video stream does NOT satisfy');
+      } else if (new_su.media.audio && !validateAudioRequest(new_su.info.type, new_su.media.audio)) {
+        return Promise.reject('Target audio stream does NOT satisfy');
+      } else {
+        return removeSubscription(subscriptionId)
+          .then((result) => {
+            return addSubscription(subscriptionId, new_su.locality, new_su.media, new_su.info);
+          }).catch((err) => {
+            log.info('Update subscription failed:', err.message ? err.message : err);
+            log.info('And is recovering the previous subscription:', JSON.stringify(old_su));
+            return addSubscription(subscriptionId, old_su.locality, old_su.media, old_su.info)
+              .then(() => {
+                return Promise.reject('Update subscription failed');
+              }, () => {
+                return Promise.reject('Update subscription failed');
+              });
+          });
+      }
     }
   };
 
