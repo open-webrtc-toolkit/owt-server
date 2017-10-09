@@ -365,11 +365,12 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
 
         if (original_node === target_node || hasStreamBeenSpread(stream_id, target_node)) {
             log.debug('spread already exists:', spread_id);
-            return on_ok();
+            return setTimeout(on_ok, 100);//FIXME: Temporary workround to avoid spread not being ready.
         }
         streams[stream_id].spread.push(target_node);
 
         var on_spread_failed = function(reason, cancel_pub, cancel_sub) {
+            log.error('spreadStream failed, stream_id:', stream_id, 'reason:', reason);
             var i = (streams[stream_id] ? streams[stream_id].spread.indexOf(target_node) : -1);
             if (i > -1) {
                 streams[stream_id] && streams[stream_id].spread.splice(i, 1);
@@ -477,7 +478,6 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                     function () {
                         log.debug('internally linkup ok');
                         if (streams[stream_id]) {
-                            //streams[stream_id].spread.push(target_node);
                             on_ok();
                         } else {
                             on_spread_failed('Late coming callback for spreading stream.', true, true);
