@@ -226,7 +226,7 @@ public:
         , m_swFramePoolWidth(0)
         , m_swFramePoolHeight(0)
     {
-        m_converter.reset(new FrameConverter(false));
+        m_converter.reset(new FrameConverter());
     }
 
     ~VppInput()
