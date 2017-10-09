@@ -711,34 +711,50 @@ function subs(st) {
   function hasSelect (str){
     return str.includes("select") || str.includes('Supported');
   }
-  if(hasSelect("qualityLevel")){
-    qualityLevel = "Standard";
-  }else{
-    subMixVideo = {qualityLevel: qualityLevel}
+  if(hasSelect(qualityLevel)){
+    qualityLevel = undefined;
   }
- if(hasSelect(subBitrate)) subBitrate = undefined;
- if(hasSelect(subFrameRate)) subFrameRate = undefined;
- if(hasSelect(subKeyFrameInterval)) subKeyFrameInterval = undefined;
+  if(hasSelect(xResolution)){
+    xResolution = undefined;
+  } else {
+    xResolution = analysisResolution(xResolution);
+  }
+  if(hasSelect(subBitrate)) {
+    subBitrate = undefined;
+  }
 
+  if(hasSelect(subFrameRate)) {
+    subFrameRate = undefined;
+  } else {
+    subFrameRate = parseInt(subFrameRate)
+  }
+
+  if(hasSelect(subKeyFrameInterval)) {
+    subKeyFrameInterval = undefined;
+  } else {
+    subKeyFrameInterval = parseInt(subKeyFrameInterval)
+  }
+  if(hasSelect(forwardStreamResolution)){
+    forwardStreamResolution = undefined;
+  }else{
+    forwardStreamResolution = JSON.parse(forwardStreamResolution);
+  }
   console.log("Frame rate is:", document.getElementById('subframerate').value);
-  if(!hasSelect(xResolution)){
+  if(qualityLevel || xResolution || subBitrate || subKeyFrameInterval){
     subMixVideo = {
        bitrate: subBitrate,
-       frameRate: parseInt(subFrameRate),
-       keyFrameInterval: parseInt(subKeyFrameInterval),
-       qualityLevel: qualityLevel
+       keyFrameInterval: subKeyFrameInterval,
+       qualityLevel: qualityLevel,
+       resolution: xResolution
     };
-    subMixVideo.resolution = analysisResolution(xResolution);
   }
-  if (!hasSelect(forwardStreamResolution)){
+  if (subBitrate || subFrameRate || subKeyFrameInterval || forwardStreamResolution){
      subForwVideo = {
        bitrate: subBitrate,
-       frameRate: parseInt(subFrameRate),
-       keyFrameInterval: parseInt(subKeyFrameInterval)
+       frameRate: subFrameRate,
+       keyFrameInterval: subKeyFrameInterval,
+       resolution : forwardStreamResolution
      }
-     console.log("forward resolution is:", forwardStreamResolution);
-     console.log("forward resolution type is:", typeof(forwardStreamResolution));
-     subForwVideo.resolution = JSON.parse(forwardStreamResolution);
   }
   var subForwardOptions = {
      video: subForwVideo,
@@ -1013,7 +1029,7 @@ function unsub(st) {
     } else {
       for (var i in conference.remoteStreams) {
         var stream = conference.remoteStreams[i];
-        if (!(stream.isMixed())) {
+        if (!(stream.isMixed()) && stream.mediaStream !== undefined) {
           if (!forwardStreamId.includes("select")){
              if(!stream.id().includes(forwardStreamId)){
                 continue
