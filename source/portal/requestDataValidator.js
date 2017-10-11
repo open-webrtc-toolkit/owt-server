@@ -4,7 +4,7 @@
 
 const Ajv = require('ajv');
 // Using json schema validate with 'defaults' and 'removeAdditional' properties
-const ajv = new Ajv({ useDefaults: true, removeAdditional: true });
+const ajv = new Ajv({ useDefaults: true });
 
 function generateValidator(schema) {
   var rawValidate = ajv.compile(schema);
@@ -50,6 +50,7 @@ const Resolution = {
     'width': { type: 'number' },
     'height': { type: 'number' }
   },
+  additionalProperties: false,
   required: ['width', 'height']
 };
 ajv.addSchema(Resolution);
@@ -64,6 +65,7 @@ const PublicationRequest = {
         'media': { $ref: '#/definitions/WebRTCMediaOptions' },
         'attributes': { type: 'object' }
       },
+      additionalProperties: false,
       required: ['type', 'media']
     },
     {
@@ -75,6 +77,7 @@ const PublicationRequest = {
         'media': { $ref: '#/definitions/StreamingInMediaOptions' },
         'attributes': { type: 'object' }
       },
+      additionalProperties: false,
       required: ['type', 'connection', 'media']
     }
   ],
@@ -90,6 +93,7 @@ const PublicationRequest = {
               properties: {
                 'source': { enum: ["mic", "screen-cast", "raw-file", "encoded-file"] }
               },
+              additionalProperties: false,
               required: ['source']
             },
             { 'const': false }
@@ -102,14 +106,17 @@ const PublicationRequest = {
               properties: {
                 'source': { enum: ["camera", "screen-cast", "raw-file", "encoded-file"] }
               },
+              additionalProperties: false,
               required: ['source']
             },
             { 'const': false }
           ]
         }
       },
+      additionalProperties: false,
       required: ['audio', 'video']
     },
+
 
     'StreamingInConnectionOptions': {
       type: 'object',
@@ -118,6 +125,7 @@ const PublicationRequest = {
         transportProtocol: { enum: ['tcp', 'udp'], 'default': 'tcp' }, //optional, default: "tcp"
         bufferSize: { type: 'number', 'default': 8192 }     //optional, default: 8192 bytes
       },
+      additionalProperties: false,
       required: ['url']
     },
 
@@ -127,6 +135,7 @@ const PublicationRequest = {
         'audio': { enum: ['auto', true, false] },
         'video': { enum: ['auto', true, false] }
       },
+      additionalProperties: false,
       required: ['audio', 'video']
     }
   }
@@ -135,27 +144,30 @@ const PublicationRequest = {
 // StreamControlInfo
 const StreamControlInfo = {
   type: 'object',
-  properties: {
-    'id': { type: 'string', require: true }
-  },
   anyOf: [
     {
       properties: {
+        'id': { type: 'string', require: true },
         'operation': { enum: ['mix', 'unmix', 'get-region'] },
         'data': { type: 'string' }
-      }
+      },
+      additionalProperties: false
     },
     {
       properties: {
+        'id': { type: 'string', require: true },
         'operation': { enum: ['set-region'] },
         'data': { $ref: '#/definitions/RegionSetting' }
-      }
+      },
+      additionalProperties: false
     },
     {
       properties: {
+        'id': { type: 'string', require: true },
         'operation': { enum: ['pause', 'play'] },
         'data': { enum: ['audio', 'video', 'av'] }
-      }
+      },
+      additionalProperties: false
     },
   ],
   required: ['id', 'operation', 'data'],
@@ -167,6 +179,7 @@ const StreamControlInfo = {
         'view': { type: 'string' },
         'region': { type: 'string' }
       },
+      additionalProperties: false,
       required: ['view', 'region']
     }
   }
@@ -181,6 +194,7 @@ const SubscriptionRequest = {
         'type': { 'const': 'webrtc' },
         'media': { $ref: '#/definitions/MediaSubOptions' },
       },
+      additionalProperties: false,
       required: ['type', 'media']
     },
     {
@@ -191,6 +205,7 @@ const SubscriptionRequest = {
         'connection': { $ref: '#/definitions/StreamingOutConnectionOptions' },
         'media': { $ref: '#/definitions/MediaSubOptions' },
       },
+      additionalProperties: false,
       required: ['type', 'connection', 'media']
     },
     {
@@ -201,6 +216,7 @@ const SubscriptionRequest = {
         'connection': { $ref: '#/definitions/RecordingStorageOptions' },
         'media': { $ref: '#/definitions/MediaSubOptions' },
       },
+      additionalProperties: false,
       required: ['type', 'connection', 'media']
     }
   ],
@@ -211,6 +227,7 @@ const SubscriptionRequest = {
       properties: {
         'url': { type: 'string' }
       },
+      additionalProperties: false,
       required: ['url']
     },
 
@@ -218,7 +235,8 @@ const SubscriptionRequest = {
       type: 'object',
       properties: {
         'container': { enum: ['mp4', 'mkv', 'ts', 'auto'] }
-      }
+      },
+      additionalProperties: false
     },
 
     'MediaSubOptions': {
@@ -237,6 +255,7 @@ const SubscriptionRequest = {
           ]
         }
       },
+      additionalProperties: false,
       required: ['audio', 'video']
     },
 
@@ -246,6 +265,7 @@ const SubscriptionRequest = {
         'from': { type: 'string' },
         'format': { $ref: '#/definitions/AudioFormat' }
       },
+      additionalProperties: false,
       required: ['from']
     },
 
@@ -253,9 +273,10 @@ const SubscriptionRequest = {
       type: 'object',
       properties: {
         'from': { type: 'string' },
-        'format:': { $ref: '#/definitions/VideoFormat' },
+        'format': { $ref: '#/definitions/VideoFormat' },
         'parameters': { $ref: '#/definitions/VideoParametersSpecification' }
       },
+      additionalProperties: false,
       required: ['from']
     },
 
@@ -266,6 +287,7 @@ const SubscriptionRequest = {
         'sampleRate': { type: 'number' },
         'channelNum': { type: 'number' }
       },
+      additionalProperties: false,
       required: ['codec']
     },
 
@@ -275,6 +297,7 @@ const SubscriptionRequest = {
         'codec': { enum: ['h264', 'h265', 'vp8', 'vp9'] },
         'profile': { enum: ['baseline', 'constrained-baseline', 'main', 'high'] }
       },
+      additionalProperties: false,
       required: ['codec']
     },
 
@@ -285,7 +308,8 @@ const SubscriptionRequest = {
         'framerate': { type: 'number' },
         'bitrate': { type: ['string', 'number'] },
         'keyFrameInterval': { type: 'number' }
-      }
+      },
+      additionalProperties: false
     }
   }
 };
@@ -293,21 +317,22 @@ const SubscriptionRequest = {
 // SubscriptionControlInfo
 const SubscriptionControlInfo = {
   type: 'object',
-  properties: {
-    'id': { type: 'string' },
-  },
   anyOf: [
     {
       properties: {
+        'id': { type: 'string' },
         'operation': { enum: ['update'] },
         'data': { $ref: '#/definitions/SubscriptionUpdate' }
-      }
+      },
+      additionalProperties: false
     },
     {
       properties: {
+        'id': { type: 'string' },
         'operation': { enum: ['pause', 'play'] },
         'data': { enum: ['audio', 'video', 'av'] }
-      }
+      },
+      additionalProperties: false
     }
   ],
   required: ['id', 'operation', 'data'],
@@ -318,7 +343,8 @@ const SubscriptionControlInfo = {
       properties: {
         'audio': { $ref: '#/definitions/AudioUpdate' },
         'video': { $ref: '#/definitions/VideoUpdate' }
-      }
+      },
+      additionalProperties: false
     },
 
     'AudioUpdate': {
@@ -326,6 +352,7 @@ const SubscriptionControlInfo = {
       properties: {
         'from': { type: 'string' }
       },
+      additionalProperties: false,
       required: ['from']
     },
 
@@ -335,6 +362,7 @@ const SubscriptionControlInfo = {
         'from': { type: 'string' },
         'spec': { $ref: '#/definitions/VideoUpdateSpecification' }
       },
+      additionalProperties: false,
       required: ['from']
     },
 
@@ -345,7 +373,8 @@ const SubscriptionControlInfo = {
         framerate: { type: 'number' },
         bitrate: { type: ['number', 'string'] },
         keyFrameInterval: { type: 'number' }
-      }
+      },
+      additionalProperties: false
     }
   }
 };
@@ -360,6 +389,7 @@ const SetPermission = {
       items: { $ref: '#/definitions/Authority' }
     }
   },
+  additionalProperties: false,
   required: ['id', 'authorities'],
 
   definitions: {
@@ -370,6 +400,7 @@ const SetPermission = {
         'field': { enum: ['media.audio', 'media.video', 'type.add', 'type.remove'] },
         'value': { type: ['boolean', 'string'] }
       },
+      additionalProperties: false,
       required: ['operation', 'value']
     }
   }
