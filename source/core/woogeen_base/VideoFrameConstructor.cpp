@@ -113,14 +113,11 @@ bool VideoFrameConstructor::init()
         assert(!"register H264 decoder failed");
     m_videoReceiver->SetReceiveCodec(video_codec);
 
-#if 0
-    memset(&video_codec, 0, sizeof(VideoCodec));
-    video_codec.codecType = webrtc::kVideoCodecH265;
-    strcpy(video_codec.plName, "H265");
+    VideoCodingModule::Codec(webrtc::kVideoCodecH265, &video_codec);
     video_codec.plType = H265_90000_PT;
-    m_vcm->RegisterReceiveCodec(&video_codec, 1, true);
+    if (m_video_receiver->RegisterReceiveCodec(&video_codec, 1, true) != VCM_OK)
+        assert(!"register H265 decoder failed");
     m_videoReceiver->SetReceiveCodec(video_codec);
-#endif
 
     memset(&video_codec, 0, sizeof(VideoCodec));
     video_codec.codecType = webrtc::kVideoCodecRED;
@@ -224,17 +221,15 @@ void VideoFrameConstructor::ResetStatistics(uint32_t ssrc)
 int32_t VideoFrameConstructor::InitDecode(const webrtc::VideoCodec* codecSettings, int32_t numberOfCores)
 {
     assert(codecSettings->codecType == webrtc::kVideoCodecVP8 || codecSettings->codecType == webrtc::kVideoCodecH264
-           /*|| codecSettings->codecType == webrtc::kVideoCodecH265*/ || codecSettings->codecType == webrtc::kVideoCodecVP9);
+           || codecSettings->codecType == webrtc::kVideoCodecH265 || codecSettings->codecType == webrtc::kVideoCodecVP9);
     if (codecSettings->codecType == webrtc::kVideoCodecVP8)
         m_format = woogeen_base::FRAME_FORMAT_VP8;
     else if (codecSettings->codecType == webrtc::kVideoCodecVP9)
         m_format = woogeen_base::FRAME_FORMAT_VP9;
     else if (codecSettings->codecType == webrtc::kVideoCodecH264)
         m_format = woogeen_base::FRAME_FORMAT_H264;
-/*
     else if (codecSettings->codecType == webrtc::kVideoCodecH265)
         m_format = woogeen_base::FRAME_FORMAT_H265;
-*/
 
     return 0;
 }
@@ -271,11 +266,11 @@ int32_t VideoFrameConstructor::Decode(const webrtc::EncodedImage& encodedImage,
         case webrtc::kVideoCodecH264:
             format = FRAME_FORMAT_H264;
             break;
-/*
+
         case webrtc::kVideoCodecH265:
             format = FRAME_FORMAT_H265;
             break;
-*/
+
         default:
             ELOG_ERROR("Unknown format");
             return 0;

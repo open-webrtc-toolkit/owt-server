@@ -54,11 +54,9 @@ public:
             case webrtc::kVideoCodecH264:
                 format = FRAME_FORMAT_H264;
                 break;
-/*
             case webrtc::kVideoCodecH265:
                 format = FRAME_FORMAT_H265;
                 break;
-*/
             default:
                 break;
             }

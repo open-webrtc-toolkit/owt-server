@@ -116,13 +116,11 @@ bool VideoFramePacketizer::setSendCodec(FrameFormat frameFormat, unsigned int wi
         strcpy(codec.plName, "H264");
         codec.plType = H264_90000_PT;
         break;
-/*
     case FRAME_FORMAT_H265:
         codec.codecType = webrtc::kVideoCodecH265;
         strcpy(codec.plName, "H265");
         codec.plType = H265_90000_PT;
         break;
-*/
     case FRAME_FORMAT_I420:
     default:
         return false;
@@ -307,7 +305,7 @@ void VideoFramePacketizer::onFrame(const Frame& frame)
         h.codecHeader.VP9.InitRTPVideoHeaderVP9();
         boost::shared_lock<boost::shared_mutex> lock(m_rtpRtcpMutex);
         m_rtpRtcp->SendOutgoingData(webrtc::kVideoFrameKey, VP9_90000_PT, frame.timeStamp, frame.timeStamp / 90, frame.payload, frame.length, nullptr, &h, &transport_frame_id_out);
-    } else if (frame.format == FRAME_FORMAT_H264 /*|| frame.format == FRAME_FORMAT_H265*/) {
+    } else if (frame.format == FRAME_FORMAT_H264 || frame.format == FRAME_FORMAT_H265) {
         int frame_length = frame.length;
         if (m_enableDump) {
             dump(this, frame.format, frame.payload, frame_length);
@@ -326,8 +324,7 @@ void VideoFramePacketizer::onFrame(const Frame& frame)
         RTPFragmentationHeader frag_info;
 
 
-        //h.codec = (frame.format == FRAME_FORMAT_H264)?(webrtc::kRtpVideoH264):(webrtc::kRtpVideoH265);
-        h.codec = webrtc::kRtpVideoH264;
+        h.codec = (frame.format == FRAME_FORMAT_H264)?(webrtc::kRtpVideoH264):(webrtc::kRtpVideoH265);
         while (buffer_length > 0) {
             nalu_found_length = findNALU(buffer_start, buffer_length, &nalu_start_offset, &nalu_end_offset);
             if (nalu_found_length < 0) {
@@ -348,7 +345,7 @@ void VideoFramePacketizer::onFrame(const Frame& frame)
         if (frame.format == FRAME_FORMAT_H264) {
           m_rtpRtcp->SendOutgoingData(webrtc::kVideoFrameKey, H264_90000_PT, frame.timeStamp, frame.timeStamp / 90, frame.payload, frame_length, &frag_info, &h, &transport_frame_id_out);
         } else {
-          //m_rtpRtcp->SendOutgoingData(webrtc::kVideoFrameKey, H265_90000_PT, frame.timeStamp, frame.timeStamp / 90, frame.payload, frame_length, &frag_info, &h, &transport_frame_id_out);
+          m_rtpRtcp->SendOutgoingData(webrtc::kVideoFrameKey, H265_90000_PT, frame.timeStamp, frame.timeStamp / 90, frame.payload, frame_length, &frag_info, &h, &transport_frame_id_out);
         }
     }
 }
