@@ -59,14 +59,14 @@ function resolution2WidthHeight(resolution) {
 var ql2brl = {
   'bestquality': 'x1.4',
   'betterquality': 'x1.2',
-  'standard': 'x1.0',
+  'standard': undefined,
   'betterspeed': 'x0.8',
   'bestspeed': 'x0.6'
 };
 
 function qualityLevel2BitrateLevel (ql) {
   ql = ql.toLowerCase();
-  return ql2brl[ql] ? ql2brl[ql] : 'x1.0';
+  return ql2brl[ql] ? ql2brl[ql] : undefined;
 }
 
 var idPattern = /^[0-9a-zA-Z\-]+$/;

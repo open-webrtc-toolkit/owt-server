@@ -1739,7 +1739,7 @@ describe('Responding to clients.', function() {
                 },
                 video: {
                   from: 'stream2',
-                  parameters: {
+                  spec: {
                     resolution: {width: 648, height: 480},
                     bitrate: 300,
                     framerate: 24,

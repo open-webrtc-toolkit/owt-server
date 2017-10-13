@@ -124,10 +124,10 @@ const presenter_join_result = {
                   id: '1',
                   shape: 'rectangle',
                   area: {
-                    left: 0.0,
-                    top: 0.0,
-                    width: 1.0,
-                    height: 1.0
+                    left: { numerator: 0, denominator: 1},
+                    top: { numerator: 0, denominator: 1},
+                    width: { numerator: 1, denominator: 1},
+                    height: { numerator: 1, denominator: 1}
                   }
                 }
               }
@@ -299,17 +299,11 @@ describe('Logining and Relogining.', function() {
             resolutions: [{width: 1280, height: 720}, {width: 640, height: 480}, {width: 320, height: 240}],
             layout: [
             {
-              region: {
-                area: {
-                  height: 1,
-                  left: 0,
-                  top: 0,
-                  width: 1
-                },
-                id: "1",
-                shape: "rectangle"
-              },
-              stream: "forward-stream-id"
+              id: "1",
+              left: 0,
+              top: 0,
+              relativeSize: 1,
+              streamId: "forward-stream-id"
             }
            ]
           },
@@ -1320,7 +1314,7 @@ describe('Responding to clients.', function() {
             expect(mockPortal.subscribe.getCall(0).args[0]).to.equal(client.id);
             expect(mockPortal.subscribe.getCall(0).args[1]).to.be.a('string');
             var subscription_id = mockPortal.subscribe.getCall(0).args[1];
-            expect(mockPortal.subscribe.getCall(0).args[2]).to.deep.equal({type: 'webrtc', media: {audio: {from: 'targetStreamId'}, video: {from: 'targetStreamId', parameters: {resolution: {width: 640, height: 480}, bitrate: '1.0x'}}}});
+            expect(mockPortal.subscribe.getCall(0).args[2]).to.deep.equal({type: 'webrtc', media: {audio: {from: 'targetStreamId'}, video: {from: 'targetStreamId', parameters: {resolution: {width: 640, height: 480}, bitrate: undefined}}}});
             client.emit('signaling_message', {streamId: 'targetStreamId', msg: {type: 'offer', sdp: 'offerSDPString'}}, undefined, function() {
               expect(mockPortal.onSessionSignaling.getCall(0).args).to.deep.equal([client.id, subscription_id, {type: 'offer', sdp: 'offerSDPString'}]);
               client.emit('signaling_message', {streamId: 'targetStreamId', msg: {type: 'candidate', candidate: 'candidateString'}}, undefined, function() {
@@ -1347,13 +1341,13 @@ describe('Responding to clients.', function() {
           expect(result).to.equal('ok');
           var options = {streamId: 'targetStreamId', audio: true, video: {resolution: {width: 640, height: 480}, quality_level: 'standard'}};
           client.emit('subscribe', options, undefined, function(status, id) {
-            expect(mockPortal.subscribe.getCall(0).args[2]).to.deep.equal({type: 'webrtc', media: {audio: {from: 'targetStreamId'}, video: {from: 'targetStreamId', parameters: {resolution: {width: 640, height: 480}, bitrate: '1.0x'}}}});
+            expect(mockPortal.subscribe.getCall(0).args[2]).to.deep.equal({type: 'webrtc', media: {audio: {from: 'targetStreamId'}, video: {from: 'targetStreamId', parameters: {resolution: {width: 640, height: 480}, bitrate: undefined}}}});
             var options1 = {streamId: 'targetStreamId1', video: {resolution: {width: 640, height: 480}, quality_level: 'standard'}};
             client.emit('subscribe', options1, undefined, function(status, id) {
-              expect(mockPortal.subscribe.getCall(0).args[2]).to.deep.equal({type: 'webrtc', media: {audio: {from: 'targetStreamId'}, video: {from: 'targetStreamId', parameters: {resolution: {width: 640, height: 480}, bitrate: '1.0x'}}}});
+              expect(mockPortal.subscribe.getCall(0).args[2]).to.deep.equal({type: 'webrtc', media: {audio: {from: 'targetStreamId'}, video: {from: 'targetStreamId', parameters: {resolution: {width: 640, height: 480}, bitrate: undefined}}}});
               var options2 = {streamId: 'targetStreamId2', video: {resolution: 'vga', quality_level: 'standard'}};
               client.emit('subscribe', options2, undefined, function(status, id) {
-                expect(mockPortal.subscribe.getCall(0).args[2]).to.deep.equal({type: 'webrtc', media: {audio: {from: 'targetStreamId'}, video: {from: 'targetStreamId', parameters: {resolution: {width: 640, height: 480}, bitrate: '1.0x'}}}});
+                expect(mockPortal.subscribe.getCall(0).args[2]).to.deep.equal({type: 'webrtc', media: {audio: {from: 'targetStreamId'}, video: {from: 'targetStreamId', parameters: {resolution: {width: 640, height: 480}, bitrate: undefined}}}});
                 done();
               });
             });
