@@ -284,6 +284,7 @@ void VideoFramePacketizer::onFrame(const Frame& frame)
     }
 
     webrtc::RTPVideoHeader h;
+    memset(&h, 0, sizeof(webrtc::RTPVideoHeader));
     uint32_t transport_frame_id_out = 0;
 
     if (frame.format != m_frameFormat
