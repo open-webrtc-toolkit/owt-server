@@ -65,7 +65,7 @@
 			text-align: center;
 		}
 
-		ul{
+		li{
 			list-style: none;
 		}
 
@@ -87,6 +87,7 @@
 			border-top: 1px solid #ddd;
 			overflow: hidden;
 			white-space: nowrap;
+                        text-align: center;
 		}
 		a:hover{
 			background-color: #33C583;
@@ -353,8 +354,6 @@
                                         </li>
 					<li><a href="javascript:void(0)" onclick="unsub('forward')">unsub forward</a></li>
 					<li><a href="javascript:void(0)" onclick="subs('forward')">sub forward</a></li>
-					<li><a href="javascript:void(0)" onclick="unsub('shareScreen')">unsub share screen</a></li>
-					<li><a href="javascript:void(0)" onclick="subs('shareScreen','vp8')">sub share screen</a></li>
 					<li><a href="javascript:void(0)" onclick="unmixStreams()">unmix/mix</a><div id="unmixoperation">
                                            <ul id="allremotestreams">
                                            </ul>
@@ -459,9 +458,19 @@
 					</div>
 					<h3>RTMP TEST</h3>
 					<div class="rtmp">
-						<label><span>Server URL:</span> <input type='text' id='rtmpserverurl' value='rtmp://10.239.44.138:1935/liveshow/zhenqi' /></label>
+						<label><span>Server URL:</span> <input type='text' id='rtmpserverurl' value='rtmp://webrtc-vca.sh.intel.com:1935/liveshow/xie' /></label>
 						<label><span>Stream id:</span> <input type='text' id='rtmpstreamid' /></label>
-						<label><span>Resolution:</span> <input type='text' id='rtmpresolution' /></label>
+                                                <ul>
+                                                  <li>
+                                                     <a href="javascript:void(0)" onclick="getAllStreams()" id="selectedstreamid">select stream</a><ul id="streamids" class="selectSomething">
+                                                     </ul>
+                                                  </li>
+                                                  <li>
+                                                     <a href="javascript:void(0)" onclick="getRTMPResolutions()" id="selectedrtmpresolution">Supported resolution</a>
+                                                     <ul id="rtmpresolutions" class="selectSomething">
+                                                     </ul>
+                                                  </li>
+                                                </ul>
 						<button type='button' id='startrtmp'onclick="startRTMP()">start RTMP</button>
 						<button type='button' id='stoprtmp'onclick="stopRTMP()">stop RTMP</button>
 						<button type='button' id='updatertmp'onclick="updateRTMP()">update RTMP</button>

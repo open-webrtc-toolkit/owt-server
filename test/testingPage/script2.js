@@ -623,15 +623,43 @@ function getForwardStream(){
   getOneItem("selectedforwardstream", forwardStreams, "forwardstreams", getForwardStream);
 }
 
+function getSupportedResolutions(stream){
+  if(stream.isMixed()){
+    var resolutions = JSON.parse(JSON.stringify(stream.resolutions()));
+    console.log("======Get mix resolutions:", resolutions);
+    resolutions.forEach(function(ele, index){
+      resolutions[index] = ele.width + "x" + ele.height;
+    });
+    return resolutions
+  }else{
+    var resolutions = stream.mediaInfo().video.transcoding.parameters.resolution;
+    resolutions = JSON.parse(JSON.stringify(resolutions));
+    console.log("======Get forward resolutions:", resolutions);
+    resolutions.forEach(function(ele, index){
+      resolutions[index] = ele.width + "x" + ele.height;
+    });
+    return resolutions
+  }
+}
 function getForwardResolutions (){
   var stream = getSpecialStream();
-  var resolutions = stream.mediaInfo().video.transcoding.parameters.resolution;
-  resolutions = JSON.parse(JSON.stringify(resolutions));
-  console.log("======Get forward resolutions:", resolutions);
-  resolutions.forEach(function(ele, index){
-    resolutions[index] = JSON.stringify(ele);
-  });
+  var resolutions = getSupportedResolutions(stream);
   getOneItem("selectedforwardresolution", resolutions, "forwardresolutions", getForwardResolutions);
+}
+
+function getRTMPResolutions(){
+  var streamId = document.getElementById("selectedstreamid").innerText;
+  if(!streamId.includes("select")){
+    var stream = conference.remoteStreams[streamId];
+    var resolutions = getSupportedResolutions(stream);
+    getOneItem("selectedrtmpresolution", resolutions, "rtmpresolutions", getRTMPResolutions);
+  }else{
+    console.warn("Please select a stream id.");
+  }
+}
+function getAllStreams(){
+  var allStreams = Object.keys(conference.remoteStreams);
+  getOneItem("selectedstreamid", allStreams, "streamids", getAllStreams);
 }
 
 function getStream (id){
@@ -686,8 +714,8 @@ function analysisResolution (xResolution){
   var wh = []
   wh = xResolution.split('x');
   resolution = {
-    width : parseInt(wh[1]),
-    height: parseInt(wh[0])
+    width : parseInt(wh[0]),
+    height: parseInt(wh[1])
   }
   return resolution
 }
@@ -737,10 +765,10 @@ function subs(st) {
   if(hasSelect(forwardStreamResolution)){
     forwardStreamResolution = undefined;
   }else{
-    forwardStreamResolution = JSON.parse(forwardStreamResolution);
+    forwardStreamResolution = analysisResolution(forwardStreamResolution);
   }
   console.log("Frame rate is:", document.getElementById('subframerate').value);
-  if(qualityLevel || xResolution || subBitrate || subKeyFrameInterval){
+  if((qualityLevel || xResolution || subBitrate || subKeyFrameInterval) && subMixVideo){
     subMixVideo = {
        bitrate: subBitrate,
        keyFrameInterval: subKeyFrameInterval,
@@ -748,7 +776,7 @@ function subs(st) {
        resolution: xResolution
     };
   }
-  if (subBitrate || subFrameRate || subKeyFrameInterval || forwardStreamResolution){
+  if ((subBitrate || subFrameRate || subKeyFrameInterval || forwardStreamResolution) && subForwVideo){
      subForwVideo = {
        bitrate: subBitrate,
        frameRate: subFrameRate,
@@ -879,7 +907,7 @@ function getMixResolutions (){
   }
   for(var j = 0; j < resolutions.length; j++){
     var child = document.createElement('li');
-    child.innerText = resolutions[j].height + 'x' + resolutions[j].width;
+    child.innerText = resolutions[j].width + 'x' + resolutions[j].height;
     mixResolutionsD.appendChild(child);
   }
   var select = function(){
@@ -1575,14 +1603,16 @@ function qualityTest(){
 function startRTMP (url, options){
     url = document.getElementById('rtmpserverurl').value;
     options = {};
-    var streamId = document.getElementById('rtmpstreamid').value;
-    var resolution = document.getElementById('rtmpresolution').value;
+    var streamId = document.getElementById('selectedstreamid').innerText;
+    var resolution = document.getElementById('selectedrtmpresolution').innerText;
 
+    if(resolution.includes("Supported")) resolution = undefined;
+    if(streamId.includes("select")) streamId = undefined;
     if(streamId){
         options.streamId = streamId;
     }
     if(resolution){
-        options.resolution = resolutionName2Value[resolution];
+        options.resolution = analysisResolution(resolution);
     }
     conference.addExternalOutput(url, options, function(){
         console.log('start rtmp success.');
@@ -1594,8 +1624,8 @@ function startRTMP (url, options){
 function updateRTMP (url, options){
     url = document.getElementById('rtmpserverurl').value;
     options = {};
-    var streamId = document.getElementById('rtmpstreamid').value;
-    var resolution = document.getElementById('rtmpresolution').value;
+    var streamId = document.getElementById('selectedstreamid').innerText;
+    var resolution = document.getElementById('selectedrtmpresolution').innerText;
 
     if(streamId){
         options.streamId = streamId;
@@ -1779,7 +1809,7 @@ window.onload = function() {
   var videoCodec = getParameterByName("videoCodec") || 'h264';
   var audioCodec = getParameterByName("audioCodec") || 'opus';
   var mediaUrl = getParameterByName('url');
-  var transport = getParameterByName('transport');
+  var transport = getParameterByName('transport') || undefined;
   var bufferSize = parseInt(getParameterByName('bufferSize')) || undefined;
   var video = getParameterByName("video") || 'all';
   var audio = getParameterByName("audio") || 'all';
