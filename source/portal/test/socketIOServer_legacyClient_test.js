@@ -1454,7 +1454,7 @@ describe('Responding to clients.', function() {
             expect(mockPortal.subscribe.getCall(0).args[0]).to.equal(client.id);
             expect(mockPortal.subscribe.getCall(0).args[1]).to.be.a('string');
             var subscription_id = mockPortal.subscribe.getCall(0).args[1];
-            expect(mockPortal.subscribe.getCall(0).args[2]).to.deep.equal({type: 'streaming', media: {audio: {from: 'targetStreamId', format: {codec: 'aac'}}, video: {from: 'targetStreamId', format: {codec: 'h264'}, parameters: {resolution: {width: 640, height: 480}}}}, connection: {url: 'rtsp://target.host'}});
+            expect(mockPortal.subscribe.getCall(0).args[2]).to.deep.equal({type: 'streaming', media: {audio: {from: 'targetStreamId', format: {codec: 'aac', sampleRate: 48000, channelNum: 2}}, video: {from: 'targetStreamId', format: {codec: 'h264'}, parameters: {resolution: {width: 640, height: 480}}}}, connection: {url: 'rtsp://target.host'}});
             done();
           });
         });
@@ -1470,7 +1470,7 @@ describe('Responding to clients.', function() {
           var options = {url: 'rtsp://target.host', resolution: 'hd720p'};
           client.emit('addExternalOutput', options, function(status, data) {
             expect(status).to.equal('success');
-            expect(mockPortal.subscribe.getCall(0).args[2]).to.deep.equal({type: 'streaming', media: {audio: {from: testStream, format: {codec: 'aac'}}, video: {from: testStream, format: {codec: 'h264'}, parameters: {resolution: {width: 1280, height: 720}}}}, connection: {url: 'rtsp://target.host'}});
+            expect(mockPortal.subscribe.getCall(0).args[2]).to.deep.equal({type: 'streaming', media: {audio: {from: testStream, format: {codec: 'aac', sampleRate: 48000, channelNum: 2}}, video: {from: testStream, format: {codec: 'h264'}, parameters: {resolution: {width: 1280, height: 720}}}}, connection: {url: 'rtsp://target.host'}});
             done();
           });
         });
