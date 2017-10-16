@@ -119,7 +119,7 @@ void RawTransport<prot>::connectHandler(const boost::system::error_code& ec)
     if (!ec) {
         switch (prot) {
         case TCP:
-            ELOG_DEBUG("Local TCP port: %d", m_socket.tcp.socket->local_endpoint().port());
+            ELOG_DEBUG("Connect ok, local TCP port: %d", m_socket.tcp.socket->local_endpoint().port());
             // Disable Nagle's algorithm in the underlying TCP stack.
             // FIXME: Re-enable it later if we prove that the remote endpoing can correctly handle TCP reassembly
             // because that should improve the transmission efficiency.
@@ -137,7 +137,7 @@ void RawTransport<prot>::connectHandler(const boost::system::error_code& ec)
         if (!m_isClosing)
             receiveData();
     } else {
-        ELOG_DEBUG("Error establishing the %s connection: %s", prot == UDP ? "UDP" : "TCP", ec.message().c_str());
+        ELOG_ERROR("Error establishing the %s connection: %s", prot == UDP ? "UDP" : "TCP", ec.message().c_str());
         // Notify the listener about the socket error if the listener is not closing me.
         if (!m_isClosing)
             m_listener->onTransportError();
@@ -150,7 +150,7 @@ void RawTransport<prot>::acceptHandler(const boost::system::error_code& ec)
     if (!ec) {
         switch (prot) {
         case TCP:
-            ELOG_DEBUG("Local TCP port: %d", m_socket.tcp.socket->local_endpoint().port());
+            ELOG_DEBUG("Accept ok, local TCP listening port: %d", m_socket.tcp.socket->local_endpoint().port());
             // Disable Nagle's algorithm in the underlying TCP stack.
             // FIXME: Re-enable it later if we prove that the remote endpoing can correctly handle TCP reassembly
             // because that should improve the transmission efficiency.
@@ -167,7 +167,7 @@ void RawTransport<prot>::acceptHandler(const boost::system::error_code& ec)
         if (!m_isClosing)
             receiveData();
     } else {
-        ELOG_DEBUG("Error accepting the %s connection: %s", prot == UDP ? "UDP" : "TCP", ec.message().c_str());
+        ELOG_ERROR("Error accepting the %s connection: %s", prot == UDP ? "UDP" : "TCP", ec.message().c_str());
         // Notify the listener about the socket error if the listener is not closing me.
         if (!m_isClosing)
             m_listener->onTransportError();
@@ -183,10 +183,11 @@ void RawTransport<prot>::listenTo(uint32_t port)
             ELOG_WARN("TCP transport existed, ignoring the listening request for port %d\n", port);
         } else {
             m_socket.tcp.socket.reset(new tcp::socket(m_ioService));
-            m_socket.tcp.acceptor.reset(new tcp::acceptor(m_ioService, tcp::endpoint(tcp::v6(), port)));
+            m_socket.tcp.acceptor.reset(new tcp::acceptor(m_ioService, tcp::endpoint(tcp::v4(), port)));
             m_socket.tcp.acceptor->async_accept(*(m_socket.tcp.socket.get()),
                 boost::bind(&RawTransport::acceptHandler, this,
                     boost::asio::placeholders::error));
+            ELOG_DEBUG("TCP transport listening on %s:%d", m_socket.tcp.acceptor->local_endpoint().address().to_string().c_str(), m_socket.tcp.acceptor->local_endpoint().port());
         }
         break;
     }
@@ -247,10 +248,12 @@ void RawTransport<prot>::listenTo(uint32_t minPort, uint32_t maxPort)
 
             m_socket.tcp.acceptor->listen(boost::asio::socket_base::max_connections, ec);
             if (!ec) {
-                ELOG_DEBUG("TCP transport listening request for port %d\n", m_socket.tcp.acceptor->local_endpoint().port());
+                ELOG_DEBUG("TCP transport listening on %s:%d(range:%d ~ %d)", m_socket.tcp.acceptor->local_endpoint().address().to_string().c_str(), m_socket.tcp.acceptor->local_endpoint().port(), minPort, maxPort);
                 m_socket.tcp.acceptor->async_accept(*(m_socket.tcp.socket.get()),
                 boost::bind(&RawTransport::acceptHandler, this,
                     boost::asio::placeholders::error));
+            } else {
+                ELOG_ERROR("Error(%s) in listening on port range %d ~ %d, last try on %d", ec.message().c_str(), minPort, maxPort, m_socket.tcp.acceptor->local_endpoint().port());
             }
         }
         break;
@@ -368,8 +371,7 @@ void RawTransport<prot>::readHandler(const boost::system::error_code& ec, std::s
 template<Protocol prot>
 void RawTransport<prot>::readPacketHandler(const boost::system::error_code& ec, std::size_t bytes)
 {
-    unsigned char *p = reinterpret_cast<unsigned char*>(&(m_receiveData.buffer.get())[0]);
-    ELOG_DEBUG("readPacketHandler(%zu): [%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x...%x,%x,%x,%x]", bytes, p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7], p[8], p[9], p[10], p[11], p[12], p[13], p[14], p[15], p[bytes-4], p[bytes-3], p[bytes-2], p[bytes-1]);
+    ELOG_DEBUG("Port#%d recieved data(%zu)", m_socket.tcp.acceptor->local_endpoint().port(), bytes);
     uint32_t expectedLen = ntohl(*(reinterpret_cast<uint32_t*>(m_readHeader)));
     if (!ec || ec == boost::asio::error::message_size) {
         switch (prot) {
@@ -408,11 +410,9 @@ void RawTransport<prot>::doSend()
 {
     TransportData& data = m_sendQueue.front();
 
-    unsigned char *p = reinterpret_cast<unsigned char *>(&(data.buffer.get())[0]);
-    ELOG_DEBUG("doSend(%d): [%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x...%x,%x,%x,%x]", data.length, p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7], p[8], p[9], p[10], p[11], p[12], p[13], p[14], p[15], p[data.length-4], p[data.length-3], p[data.length-2], p[data.length-1]);
-
     switch (prot) {
     case TCP:
+        ELOG_DEBUG("Port#%d to send(%d)", m_socket.tcp.socket->local_endpoint().port(), data.length);
         assert(m_socket.tcp.socket);
         boost::asio::async_write(*(m_socket.tcp.socket), boost::asio::buffer(data.buffer.get(), data.length),
             boost::bind(&RawTransport::writeHandler, this,
@@ -445,7 +445,7 @@ template<Protocol prot>
 void RawTransport<prot>::writeHandler(const boost::system::error_code& ec, std::size_t bytes)
 {
     if (ec) {
-        ELOG_DEBUG("%s wrote data error: %s", prot == UDP ? "UDP" : "TCP", ec.message().c_str());
+        ELOG_ERROR("%s wrote data error: %s", prot == UDP ? "UDP" : "TCP", ec.message().c_str());
     }
 
     ELOG_DEBUG("writeHandler(%zu)", bytes);
@@ -494,9 +494,6 @@ void RawTransport<prot>::dumpTcpSSLv3Header(const char* buf, int len)
 template<Protocol prot>
 void RawTransport<prot>::sendData(const char* buf, int len)
 {
-    unsigned char *p = reinterpret_cast<unsigned char *>(const_cast<char *>(buf));
-    ELOG_DEBUG("sendData(%d): [%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x...%x,%x,%x,%x]", len, p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7], p[8], p[9], p[10], p[11], p[12], p[13], p[14], p[15], p[len-4], p[len-3], p[len-2], p[len-1]);
-
     TransportData data;
     if (m_tag) {
         data.buffer.reset(new char[len + 4]);

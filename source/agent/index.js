@@ -365,7 +365,7 @@ function collectIPs () {
                         if (webrtcInterface) {
                             webrtcInterface.ip_address = address.address;
                         }
-                        if (!clusterInterface && (k === global.config.internal.network_interface || !global.config.internal.network_interface)) {
+                        if (address.family === 'IPv4' && !clusterInterface && (k === global.config.internal.network_interface || !global.config.internal.network_interface)) {
                             clusterInterface = k;
                             clusterAddress = address.address;
                         }
