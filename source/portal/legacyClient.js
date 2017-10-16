@@ -372,6 +372,10 @@ var LegacyClient = function(clientId, sigConnection, portal) {
           url: parsed_url.format()
         }
       };
+      if (sub_desc.media.audio && sub_desc.media.audio.format && sub_desc.media.audio.format.codec === 'aac' || sub_desc.media.audio.format.codec === 'opus') {
+        sub_desc.media.audio.format.sampleRate = 48000;
+        sub_desc.media.audio.format.channelNum = 2;
+      }
       ((sub_desc.media.video) && options.resolution && (typeof options.resolution.width === 'number') && (typeof options.resolution.height === 'number')) &&
       (sub_desc.media.video.parameters || (sub_desc.media.video.parameters = {})) && (sub_desc.media.video.parameters.resolution = options.resolution);
       (sub_desc.media.video && (typeof options.resolution === 'string')) && (sub_desc.media.video.parameters || (sub_desc.media.video.parameters = {})) && (sub_desc.media.video.parameters.resolution = resolution2WidthHeight(options.resolution));
