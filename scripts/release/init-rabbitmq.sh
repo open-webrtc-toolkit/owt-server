@@ -69,21 +69,23 @@ install_deps() {
 start_up() {
   local OS=`${this}/detectOS.sh | awk '{print tolower($0)}'`
 
-  if ! pgrep -x rabbitmq-server >/dev/null; then
-    # Use default configuration
-    if [[ "$OS" =~ .*centos.* ]]
-    then
+  # Use default configuration
+  if [[ "$OS" =~ .*centos.* ]]
+  then
+    if ! sudo systemctl status rabbitmq-server >/dev/null; then
       echo "Start rabbitmq-server - \"systemctl start rabbitmq-server\""
       sudo systemctl start rabbitmq-server
-    elif [[ "$OS" =~ .*ubuntu.* ]]
-    then
+    else
+      echo -e "\x1b[32mRabbitmq-server already running\x1b[0m"
+    fi
+  elif [[ "$OS" =~ .*ubuntu.* ]]
+  then
+    if ! sudo service rabbitmq-server status >/dev/null; then
       echo "Start rabbitmq-server - \"service rabbitmq-server start\""
       sudo service rabbitmq-server start
     else
-      echo -e "\x1b[32mUnsupported platform...\x1b[0m"
+      echo -e "\x1b[32mRabbitmq-server already running\x1b[0m"
     fi
-  else
-    echo -e "\x1b[32mRabbitmq-server already running\x1b[0m"
   fi
 }
 
