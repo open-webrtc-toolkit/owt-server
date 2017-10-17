@@ -85,9 +85,9 @@ public:
     bool convertFrom(webrtc::VideoFrameBuffer *buffer);
     bool convertTo(webrtc::I420Buffer *buffer);
 
-protected:
     void sync(void);
 
+protected:
     bool nv12ConvertTo(mfxFrameInfo& pInfo, mfxFrameData& pData, webrtc::I420Buffer *buffer);
 
 private:
