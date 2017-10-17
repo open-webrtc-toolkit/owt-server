@@ -1443,6 +1443,10 @@ var Conference = function (rpcClient, selfRpcId) {
         return false;
       }
 
+      //FIXME: allow bitrate 1.0x for client-sdk
+      if (req.parameters.bitrate === 'x1.0') {
+        req.parameters.bitrate = undefined;
+      }
       if (req.parameters.bitrate && !isBitrateAcceptable(streams[req.from].media.video, req.parameters.bitrate)) {
         return false;
       }
