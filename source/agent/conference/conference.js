@@ -1077,7 +1077,7 @@ var Conference = function (rpcClient, selfRpcId) {
         if (media.video.parameters) {
           if (!media.video.parameters.resolution && !media.video.parameters.framerate) {
             if (media.video.parameters.bitrate) {
-              source.parameters.bitrate && (media.video.parameters.bitrate = source.parameters.bitrate * Number(media.video.parameters.bitrate.substring(1)));
+              (source.parameters && source.parameters.bitrate) && (media.video.parameters.bitrate = source.parameters.bitrate * Number(media.video.parameters.bitrate.substring(1)));
             } else {
               media.video.parameters.bitrate = 'unspecified';
             }
