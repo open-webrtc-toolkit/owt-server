@@ -769,7 +769,7 @@ void LiveStreamIn::receiveLoop()
 
         while (m_running && !m_keyFrameRequest) {
             if (i++ >= 100) {
-                ELOG_INFO_T("No incoming key frame request");
+                ELOG_DEBUG_T("No incoming key frame request");
                 break;
             }
             deliverNullVideoFrame();

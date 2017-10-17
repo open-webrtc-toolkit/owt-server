@@ -338,6 +338,8 @@ protected:
                         }
                     }
                     m_busyFrame = copyFrame;
+                    if (m_busyFrame)
+                        m_busyFrame->sync();
                 }
                 m_owner->flush();
                 return true;
