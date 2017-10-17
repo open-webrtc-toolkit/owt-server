@@ -104,7 +104,14 @@ const PublicationRequest = {
             {
               type: 'object',
               properties: {
-                'source': { enum: ["camera", "screen-cast", "raw-file", "encoded-file"] }
+                'source': { enum: ["camera", "screen-cast", "raw-file", "encoded-file"] },
+                'parameters': {
+                  type: 'object',
+                  properties: {
+                    'resolution': { $ref: '/Resolution' },
+                    'framerate': { type: 'number' }
+                  }
+                }
               },
               additionalProperties: false,
               required: ['source']
