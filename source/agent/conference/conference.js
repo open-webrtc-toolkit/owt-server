@@ -1053,6 +1053,7 @@ var Conference = function (rpcClient, selfRpcId) {
       var source = streams[media.video.from].media.video;
 
       media.video.format = (media.video.format || source.format);
+      mediaSpec.video.format = media.video.format;
 
       if (streams[media.video.from].type === 'mixed') {
         if (media.video.parameters) {
@@ -1102,6 +1103,7 @@ var Conference = function (rpcClient, selfRpcId) {
       var source = streams[media.audio.from].media.audio;
 
       media.audio.format = (media.audio.format || source.format);
+      mediaSpec.audio.format = media.audio.format;
     }
 
     return new Promise((resolve, reject) => {
@@ -1739,7 +1741,6 @@ var Conference = function (rpcClient, selfRpcId) {
       new_su.media.audio = (new_su.media.audio || {});
       if (update.audio.from && (update.audio.from !== new_su.media.audio.from)) {
         new_su.media.audio.from = update.audio.from;
-        new_su.media.audio.format = streams[old_su.media.audio.from].media.audio.format;
         effective = true;
       }
     }
@@ -1752,7 +1753,6 @@ var Conference = function (rpcClient, selfRpcId) {
       new_su.media.video = (new_su.media.video || {});
       if (update.video.from && (update.video.from !== new_su.media.video.from)) {
         new_su.media.video.from = update.video.from;
-        new_su.media.video.format = streams[old_su.media.video.from].media.video.format;
         effective = true;
       }
 
