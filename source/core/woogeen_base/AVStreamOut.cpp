@@ -62,6 +62,7 @@ AVStreamOut::AVStreamOut(const std::string& url, bool hasAudio, bool hasVideo, E
     , m_audioStream(NULL)
     , m_videoStream(NULL)
     , m_lastKeyFrameTimestamp(0)
+    , m_lastVideoDts(AV_NOPTS_VALUE)
 {
     ELOG_DEBUG("url %s, audio %d, video %d, timeOut %d", m_url.c_str(), m_hasAudio, m_hasVideo, m_timeOutMs);
 
@@ -118,6 +119,12 @@ void AVStreamOut::onFrame(const woogeen_base::Frame& frame)
             m_audioFormat   = frame.format;
         }
 
+        if (m_audioFormat != frame.format) {
+            ELOG_ERROR("Expected codec(%s), got(%s)", getFormatStr(m_audioFormat), getFormatStr(frame.format));
+            notifyAsyncEvent("fatal", "Unexpected audio codec");
+            return;
+        }
+
         if (m_status != AVStreamOut::Context_READY)
             return;
 
@@ -160,6 +167,12 @@ void AVStreamOut::onFrame(const woogeen_base::Frame& frame)
             m_width         = frame.additionalInfo.video.width;
             m_height        = frame.additionalInfo.video.height;
             m_videoFormat   = frame.format;
+        }
+
+        if (m_videoFormat != frame.format) {
+            ELOG_ERROR("Expected codec(%s), got(%s)", getFormatStr(m_videoFormat), getFormatStr(frame.format));
+            notifyAsyncEvent("fatal", "Unexpected video codec");
+            return;
         }
 
         if (!m_videoSourceChanged
@@ -459,6 +472,12 @@ bool AVStreamOut::writeFrame(AVStream *stream, boost::shared_ptr<MediaFrame> med
             m_lastKeyFrameTimestamp = currentTimeMs();
             deliverFeedbackMsg(FeedbackMsg{.type = VIDEO_FEEDBACK, .cmd = REQUEST_KEY_FRAME});
         }
+
+        if (m_lastVideoDts == pkt.dts) {
+            pkt.dts++;
+            pkt.pts = pkt.dts;
+        }
+        m_lastVideoDts = pkt.dts;
     }
 
     ELOG_TRACE("Send %s frame, timestamp %ld, size %4d%s"
