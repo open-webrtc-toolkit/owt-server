@@ -57,7 +57,7 @@ exports.addService = function (service, callback) {
     service.rooms = [];
     db.services.save(service, function (error, saved) {
         if (error) log.info('MongoDB: Error adding service: ', error);
-        callback(saved._id+'');
+        callback(saved);
     });
 };
 
