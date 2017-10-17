@@ -229,6 +229,7 @@ protected:
     AVStream *m_videoStream;
 
     int64_t m_lastKeyFrameTimestamp;
+    int64_t m_lastVideoDts;
     char m_errbuff[500];
 
     boost::thread m_thread;
