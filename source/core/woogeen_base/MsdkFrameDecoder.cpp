@@ -418,7 +418,7 @@ void MsdkFrameDecoder::updateBitstream(const Frame& frame)
             assert(0);
         }
 
-        ELOG_WARN_T("bitstream buffer need to remalloc %d -> %d"
+        ELOG_DEBUG_T("bitstream buffer need to remalloc %d -> %d"
                 , m_bitstream->MaxLength
                 , newSize
                 );

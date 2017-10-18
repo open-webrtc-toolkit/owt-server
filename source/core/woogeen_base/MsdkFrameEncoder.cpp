@@ -333,8 +333,7 @@ retry:
                 assert(0);
             }
 
-            ELOG_WARN("(%p)bitstream buffer need to remalloc %d -> %d"
-                    , this
+            ELOG_DEBUG_T("bitstream buffer need to remalloc %d -> %d"
                     , m_bitstream->MaxLength
                     , newSize
                     );
