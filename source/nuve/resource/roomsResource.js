@@ -55,7 +55,7 @@ exports.createRoom = function (req, res) {
                 res.send(result);
 
                 // Notify SIP portal if SIP room created
-                if (result.sipInfo) {
+                if (result && result.sipInfo) {
                     log.info('Notify SIP Portal on create Room');
                     cloudHandler.notifySipPortal('create', result, function(){});
                 }
@@ -80,7 +80,7 @@ exports.createRoom = function (req, res) {
             });
 
             // Notify SIP portal if SIP room created
-            if (result.sipInfo) {
+            if (result && result.sipInfo) {
                 log.debug('Notify SIP Portal on create Room');
                 cloudHandler.notifySipPortal('create', result, function(){});
             }
