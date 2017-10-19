@@ -223,6 +223,10 @@ Room.prototype.validate = function() {
         return null;
     }
 
+    if (!this.views && !this.mediaMixing) {
+        this.views = { "common": {} };
+    }
+
     // Validate views
     if (typeof this.views === 'object') {
         for (var viewLabel in this.views) {
@@ -249,7 +253,7 @@ Room.createDefault = function (name) {
         publishLimit: -1,
         userLimit: -1,
         enableMixing: 1,
-        mediaMixing: defaultMediaMixing()
+        views: { "common": { mediaMixing: defaultMediaMixing() } }
     });
 };
 
