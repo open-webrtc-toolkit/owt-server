@@ -14,6 +14,7 @@ var audioLocal = true;
 var options = document.getElementById('streamIds').children;
 var resultRecorder = document.getElementById('resultRecorder');
 var maxVideoBW;
+var refresh = false
 var resolutionName2Value = {
     'cif': {width: 352, height: 288},
     'vga': {width: 640, height: 480},
@@ -371,16 +372,13 @@ function remoteplayaudio() {
 function remotepauseaudio() {
   for (var i in conference.remoteStreams) {
     var stream = conference.remoteStreams[i];
-    if (stream.id() !== localStream.id()) {
-      //stream.pauseAudio();
-      conference.pauseAudio(stream, function() {
-        console.log('pause remote audio success');
+      conference.pauseAudio(stream, function(res) {
+        console.log('pause remote audio success', res);
         recordActionResulte(true);
       }, function(err) {
         recordActionResulte(false);
         console.log("pause remote audio failed", err);
-      });
-    }
+      })
   }
 }
 
@@ -388,16 +386,14 @@ function remotepauseaudio() {
 function remotepausevideo() {
   for (var i in conference.remoteStreams) {
     var stream = conference.remoteStreams[i];
-    if (stream.id() !== localStream.id()) {
-      conference.pauseVideo(stream, function() {
+      conference.pauseVideo(stream, function(res) {
           recordActionResulte(true);
-          console.log("yes")
-        }),
+          console.log("pause video success: ", res)
+        },
         function(err) {
           recordActionResulte(false);
           console.log('failed', err)
-        };
-    }
+        })
   }
 }
 
@@ -1080,6 +1076,11 @@ function unsub(st) {
 function room_disconn() {
   if (isValid(conference)) {
     conference.leave();
+    var remoteStreams = conference.remoteStreams;
+    for (let id in remoteStreams){
+       var stream = remoteStreams[id];
+       stream.hide();
+    }
     if (localStream) {
       // localStream.close();
     }
@@ -1640,14 +1641,8 @@ function updateRTMP (url, options){
     });
 }
 
-function stopRTMP (url, options){
+function stopRTMP (url){
     url = document.getElementById('rtmpserverurl').value;
-    options = {};
-    var streamId = document.getElementById('rtmpstreamid').value;
-
-    if(streamId){
-        options.streamId = streamId;
-    }
     conference.removeExternalOutput(url, function(){
         console.log('stop rtmp success.');
     }, function(err){
@@ -1817,6 +1812,8 @@ window.onload = function() {
   var onlyJoin = getParameterByName("onlyJoin") || false;
   var isp = getParameterByName('isp') || 'isp';
   var region = getParameterByName('region') || 'region';
+  var refresh = getParameterByName('refresh') || false;
+  var interval = parseInt(getParameterByName('interval')) || 1000*60;
 
 if(!maxVideoBW){
   switch (resolution){
@@ -2094,15 +2091,13 @@ if(!maxVideoBW){
 
 
   });
- //setTimeout(function(){location.reload()}, 1000*60);
+  refresh && setTimeout(function(){location.reload()}, interval);
 };
 
-function openWindow() {
-  console.log(location.pathname);
-  for (var i = 0; i < 4; i++) {
-
-    window.open('/');
-  };
+function openWindow(number = 8, url = location.href) {
+  for (let i = 0; i < number; i++){
+    window.open(url);
+  }
 }
 
 window.onbeforeunload = function() {
