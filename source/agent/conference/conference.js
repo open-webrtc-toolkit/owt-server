@@ -1650,7 +1650,10 @@ var Conference = function (rpcClient, selfRpcId) {
         audio && (streams[streamId].media.audio.status = status);
         video && (streams[streamId].media.video.status = status);
         roomController.updateStream(streamId, track, status);
-        room_config.notifying.streamChange && sendMsg('room', 'all', 'stream', {status: 'update', id: streamId, data: {field: track + '.status', value: status}});
+        var updateFields = (track === 'av') ? ['audio.status', 'video.status'] : [track + '.status'];
+        room_config.notifying.streamChange && updateFields.forEach((fieldData) => {
+          sendMsg('room', 'all', 'stream', {status: 'update', id: streamId, data: {field: fieldData, value: status}});
+        });
         return 'ok';
       }, function(reason) {
         log.warn('accessController set mute failed:', reason);
@@ -1898,7 +1901,7 @@ var Conference = function (rpcClient, selfRpcId) {
       return callback('callback', 'error', 'Target participant does NOT exist: ' + toParticipantId);
     }
 
-    sendMsg(fromParticipantId, toParticipantId, 'custom_message', {from: fromParticipantId, to: toParticipantId, data: msg});
+    sendMsg(fromParticipantId, toParticipantId, 'text', {from: fromParticipantId, to: toParticipantId, data: msg});
     callback('callback', 'ok');
   };
 
