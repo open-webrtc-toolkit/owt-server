@@ -933,6 +933,11 @@ var Conference = function (rpcClient, selfRpcId) {
         format: {codec: media.video.codec}
       };
 
+      //FIXME: sometimes, streaming send invalid resolution { width: 0, height: 0}
+      if (media.video.resolution && (!media.video.resolution.height && !media.video.resolution.width)) {
+        delete media.video.resolution;
+      }
+
       media.video.source && (result.video.source = media.video.source);
       media.video.profile && (result.video.format.profile = media.video.profile);
       media.video.resolution && (result.video.parameters || (result.video.parameters = {})) && (result.video.parameters.resolution = media.video.resolution);
