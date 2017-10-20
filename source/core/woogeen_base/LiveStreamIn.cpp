@@ -426,7 +426,7 @@ LiveStreamIn::LiveStreamIn(const Options& options, EventRegistry* handle)
 
             av_dict_set(&m_options, "rtsp_transport", "udp", 0);
             ELOG_INFO_T("rtsp, transport: udp(%u)" , buffer_size);
-        } else {
+        } else if (options.transport.compare("tcp") == 0) {
             av_dict_set(&m_options, "rtsp_transport", "tcp", 0);
             ELOG_INFO_T("rtsp, transport: tcp");
         }
@@ -511,7 +511,7 @@ bool LiveStreamIn::connect()
     }
 
     ELOG_DEBUG_T("Dump format");
-    av_dump_format(m_context, 0, nullptr, 0);
+    av_dump_format(m_context, 0, m_url.c_str(), 0);
 
     m_AsyncEvent.str("");
     m_AsyncEvent << "{\"type\":\"ready\"";
@@ -712,7 +712,7 @@ bool LiveStreamIn::reconnect()
     }
 
     ELOG_DEBUG_T("Dump format");
-    av_dump_format(m_context, 0, nullptr, 0);
+    av_dump_format(m_context, 0, m_url.c_str(), 0);
 
     if (m_videoStreamIndex != -1) {
         int streamNo = av_find_best_stream(m_context, AVMEDIA_TYPE_VIDEO, -1, -1, nullptr, 0);
