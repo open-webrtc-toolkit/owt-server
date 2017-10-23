@@ -39,4 +39,4 @@ minport = 0 #default: 0
 #The storage availability of the recording path needs to be guaranteed when using media recording.
 [recording]
 path = "/tmp"
-initialize_timeout = 2000 #default: 2000
+initialize_timeout = 3000 #default: 3000

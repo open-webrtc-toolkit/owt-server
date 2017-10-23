@@ -62,6 +62,7 @@ AVStreamOut::AVStreamOut(const std::string& url, bool hasAudio, bool hasVideo, E
     , m_audioStream(NULL)
     , m_videoStream(NULL)
     , m_lastKeyFrameTimestamp(0)
+    , m_lastAudioDts(AV_NOPTS_VALUE)
     , m_lastVideoDts(AV_NOPTS_VALUE)
 {
     ELOG_DEBUG("url %s, audio %d, video %d, timeOut %d", m_url.c_str(), m_hasAudio, m_hasVideo, m_timeOutMs);
@@ -109,10 +110,12 @@ void AVStreamOut::onFrame(const woogeen_base::Frame& frame)
         }
 
         if (m_audioFormat == FRAME_FORMAT_UNKNOWN) {
-            ELOG_INFO("Initial audio options format(%s), sample rate(%d), channels(%d)"
+            ELOG_INFO("Initial audio options format(%s), sample rate(%d), channels(%d), isRtpPacket(%d)"
                     , getFormatStr(frame.format)
                     , frame.additionalInfo.audio.sampleRate
-                    , frame.additionalInfo.audio.channels);
+                    , frame.additionalInfo.audio.channels
+                    , frame.additionalInfo.audio.isRtpPacket
+                    );
 
             m_sampleRate    = frame.additionalInfo.audio.sampleRate;
             m_channels      = frame.additionalInfo.audio.channels;
@@ -235,7 +238,12 @@ reconnect:
             goto exit;
 
         if (timeOut >= m_timeOutMs) {
-            ELOG_ERROR("No a/v frames, timeOut %d", m_timeOutMs);
+            ELOG_ERROR("No a/v frames, hasAudio(%d) - ready(%d), hasVideo(%d) - ready(%d), timeOutMs %d"
+                    , m_hasAudio
+                    , (m_audioFormat != FRAME_FORMAT_UNKNOWN)
+                    , m_hasVideo
+                    , (m_videoFormat != FRAME_FORMAT_UNKNOWN)
+                    , m_timeOutMs);
             notifyAsyncEvent("fatal", "No a/v frames");
             goto exit;
         }
@@ -243,7 +251,7 @@ reconnect:
         timeOut += waitMs;
         usleep(waitMs * 1000);
 
-        ELOG_DEBUG("Wait for av options available, hasAudio %d(rcv %d), hasVideo %d(rcv %d), waitMs %d"
+        ELOG_DEBUG("Wait for av options available, hasAudio(%d) - ready(%d), hasVideo(%d) - ready(%d), waitMs %d"
                 , m_hasAudio, m_audioFormat != FRAME_FORMAT_UNKNOWN, m_hasVideo, m_videoFormat != FRAME_FORMAT_UNKNOWN, timeOut);
     }
 
@@ -465,26 +473,35 @@ bool AVStreamOut::writeFrame(AVStream *stream, boost::shared_ptr<MediaFrame> med
 
     if (isVideoFrame(mediaFrame->m_frame)) {
         if (mediaFrame->m_frame.additionalInfo.video.isKeyFrame) {
-            pkt.flags = mediaFrame->m_frame.additionalInfo.video.isKeyFrame;
-            m_lastKeyFrameTimestamp = currentTimeMs();
-        } else if (m_lastKeyFrameTimestamp + getKeyFrameInterval() < currentTimeMs()) {
+            pkt.flags |= AV_PKT_FLAG_KEY;
+        }
+
+        if (m_lastKeyFrameTimestamp + getKeyFrameInterval() < currentTimeMs()) {
             ELOG_DEBUG("Request video key frame");
             m_lastKeyFrameTimestamp = currentTimeMs();
             deliverFeedbackMsg(FeedbackMsg{.type = VIDEO_FEEDBACK, .cmd = REQUEST_KEY_FRAME});
         }
 
         if (m_lastVideoDts == pkt.dts) {
+            ELOG_DEBUG("Video timestamp is not incremental");
             pkt.dts++;
             pkt.pts = pkt.dts;
         }
         m_lastVideoDts = pkt.dts;
+    } else {
+        if (m_lastAudioDts == pkt.dts) {
+            ELOG_DEBUG("Audio timestamp is not incremental");
+            pkt.dts++;
+            pkt.pts = pkt.dts;
+        }
+        m_lastAudioDts = pkt.dts;
     }
 
     ELOG_TRACE("Send %s frame, timestamp %ld, size %4d%s"
             , isVideoFrame(mediaFrame->m_frame) ? "video" : "audio"
             , pkt.dts
             , pkt.size
-            , pkt.flags == AV_PKT_FLAG_KEY ? " - key" : ""
+            , (pkt.flags & AV_PKT_FLAG_KEY) ? " - key" : ""
             );
 
     ret = av_interleaved_write_frame(m_context, &pkt);

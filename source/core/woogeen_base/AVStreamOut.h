@@ -62,6 +62,7 @@ public:
                 payload += headerLength;
                 length -= headerLength;
                 m_frame.additionalInfo.audio.isRtpPacket = false;
+                m_frame.length = length;
             }
 
             m_frame.payload = (uint8_t *)malloc(length);
@@ -229,7 +230,9 @@ protected:
     AVStream *m_videoStream;
 
     int64_t m_lastKeyFrameTimestamp;
+    int64_t m_lastAudioDts;
     int64_t m_lastVideoDts;
+
     char m_errbuff[500];
 
     boost::thread m_thread;
