@@ -1055,6 +1055,10 @@ var Conference = function (rpcClient, selfRpcId) {
   const addSubscription = (id, locality, mediaSpec, info) => {
     var media = JSON.parse(JSON.stringify(mediaSpec));
     if (media.video) {
+      if (streams[media.video.from] === undefined) {
+        return Promise.reject('Video source early released');
+      }
+
       var source = streams[media.video.from].media.video;
 
       media.video.format = (media.video.format || source.format);
@@ -1105,6 +1109,10 @@ var Conference = function (rpcClient, selfRpcId) {
     }
 
     if (media.audio) {
+      if (streams[media.audio.from] === undefined) {
+        return Promise.reject('Audio source early released');
+      }
+
       var source = streams[media.audio.from].media.audio;
 
       media.audio.format = (media.audio.format || source.format);
