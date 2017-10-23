@@ -37,10 +37,10 @@ global.config.audio = global.config.audio || {};
 
 global.config.recording = global.config.recording || {};
 global.config.recording.path = global.config.recording.path || '/tmp';
-global.config.recording.initializeTimeout = global.config.recording.initialize_timeout || 2000;
+global.config.recording.initializeTimeout = global.config.recording.initialize_timeout || 3000;
 
 global.config.avstream = global.config.avstream || {};
-global.config.avstream.initializeTimeout = global.config.avstream.initialize_timeout || 2000;
+global.config.avstream.initializeTimeout = global.config.avstream.initialize_timeout || 3000;
 
 global.config.internal = global.config.internal || {};
 global.config.internal.protocol = global.config.internal.protocol || 'sctp';

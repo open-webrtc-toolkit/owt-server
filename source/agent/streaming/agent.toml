@@ -39,4 +39,4 @@ maxport = 0 #default: 0
 minport = 0 #default: 0
 
 [avstream]
-initialize_timeout = 2000 #default: 2000
+initialize_timeout = 3000 #default: 3000
