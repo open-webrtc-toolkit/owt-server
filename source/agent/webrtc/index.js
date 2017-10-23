@@ -114,7 +114,7 @@ module.exports = function (rpcClient) {
             case 'internal':
                 conn = internalConnFactory.fetch(connectionId, 'out');
                 if (conn)
-                    conn.connect(options);
+                    conn.connect(options);//FIXME: May FAIL here!!!!!
                 break;
             case 'webrtc':
                 conn = createWebRTCConnection(connectionId, 'out', options, callback);
