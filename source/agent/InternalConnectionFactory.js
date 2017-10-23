@@ -106,13 +106,13 @@ module.exports = function() {
 
         if (preparedSet[connId]) {
             log.warn('Internal Connection already prepared:', connId);
-            return preparedSet[connId].connection.getListeningPort();
-        } else {
-            var conn = (direction === 'in')? InConnection(prot, minport, maxport) : OutConnection(prot, minport, maxport);
-
-            preparedSet[connId] = {connection: conn, direction: direction};
-            return conn.getListeningPort();
+            preparedSet[connId].connection.destroy();
+            delete preparedSet[connId];
         }
+        var conn = (direction === 'in')? InConnection(prot, minport, maxport) : OutConnection(prot, minport, maxport);
+
+        preparedSet[connId] = {connection: conn, direction: direction};
+        return conn.getListeningPort();
     };
 
     // Return the created connections
