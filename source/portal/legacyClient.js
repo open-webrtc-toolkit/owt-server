@@ -872,7 +872,7 @@ var LegacyClient = function(clientId, sigConnection, portal) {
   const convertStreamRegion = (stream2region) => {
     var calRational = (r) => (r.numerator / r.denominator);
     return {
-      streamId: stream2region.stream,
+      streamID: stream2region.stream,
       id: stream2region.region.id,
       left: calRational(stream2region.region.area.left),
       top: calRational(stream2region.region.area.top),
