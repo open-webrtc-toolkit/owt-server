@@ -22,7 +22,21 @@ var databaseUrl = global.config.mongo.dataBaseURL;
  */
 
 var collections = ['rooms', 'tokens', 'services', 'roles', 'permissions'];
-var db = require('mongojs')(databaseUrl, collections);
+
+var mdb = null;
+var handler = {
+    get: function(target, name) {
+        if (!mdb) {
+            mdb = require('mongojs')(databaseUrl, collections);
+            mdb.on('error', function (e) {
+                console.log('Mongodb connection error:', e.message);
+                mdb = null;
+            });
+        }
+        return mdb[name];
+    }
+};
+var db = new Proxy({}, handler);
 
 /**
  *@function getRolesOfRoom
