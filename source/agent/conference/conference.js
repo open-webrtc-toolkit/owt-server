@@ -1909,7 +1909,7 @@ var Conference = function (rpcClient, selfRpcId) {
       return callback('callback', 'error', 'Target participant does NOT exist: ' + toParticipantId);
     }
 
-    sendMsg(fromParticipantId, toParticipantId, 'text', {from: fromParticipantId, to: toParticipantId, data: msg});
+    sendMsg(fromParticipantId, toParticipantId, 'text', {from: fromParticipantId, message: msg});
     callback('callback', 'ok');
   };
 
