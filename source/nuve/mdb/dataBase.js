@@ -20,7 +20,21 @@ var databaseUrl = global.config.mongo.dataBaseURL;
  *
  */
 var collections = ['rooms', 'tokens', 'services', 'key'];
-exports.db = require('mongojs')(databaseUrl, collections);
+
+var db = null;
+var handler = {
+    get: function(target, name) {
+        if (!db) {
+            db = require('mongojs')(databaseUrl, collections);
+            db.on('error', function (e) {
+                console.log('Mongodb connection error:', e.message);
+                db = null;
+            });
+        }
+        return db[name];
+    }
+};
+exports.db = new Proxy({}, handler);
 
 // Superservice ID
 exports.superService = global.config.nuve.superserviceID;
