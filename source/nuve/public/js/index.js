@@ -488,10 +488,6 @@ function tableHandlerRoom(rooms) {
           <td id="avCoordinated" class="value-num-edit" data-value={{avCoordinated}}></td>\
         </tr>\
         <tr>\
-          <td colspan="2">multistreaming</td>\
-          <td id="multistreaming" class="value-num-edit" data-value={{multistreaming}}></td>\
-        </tr>\
-        <tr>\
           <td colspan="2">crop</td>\
           <td id="crop" class="value-num-edit" data-value={{crop}}></td>\
         </tr>\
