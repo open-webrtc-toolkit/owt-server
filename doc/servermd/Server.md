@@ -80,7 +80,7 @@ If you want to set up video conference service with H.264 codec support powered 
 
 If you want to set up video conference service powered by GPU-accelerated MCU server through Intel® Media Server Studio, please follow the below instructions to install server side SDK on CentOS* 7.2 where the video-agents run.
 
-If you are working on the following platforms with the integrated graphics, please install Intel® Media Server Studio for Linux* 2017 R2.
+If you are working on the following platforms with the integrated graphics, please install Intel® Media Server Studio for Linux* 2017 R3.
 
  - Intel® Xeon® E3-1200 v4 Family with C226 chipset
  - Intel® Xeon® E3-1200 and E3-1500 v5 Family with C236 chipset
@@ -97,7 +97,7 @@ Either Professional Edition or Community Edition is applicable. For download or 
 The external stream output (rtsp/rtmp) feature relies on AAC encoder libfdk_aac support in ffmpeg library, please see [Compile and deploy ffmpeg with libfdk_aac](#Conferencesection2_3_5) section for detailed instructions.
 
  **Table 2-2. Client compatibility**
-Application Name|Google Chrome* 60|Mozilla Firefox* 55|Microsoft Edge* 40.15063|Intel CS for WebRTC Client SDK for Android | Intel CS for WebRTC Client SDK for iOS | Intel CS for WebRTC Client SDK for Windows
+Application Name|Google Chrome* 62|Mozilla Firefox* 56|Microsoft Edge* 40.15063|Intel CS for WebRTC Client SDK for Android | Intel CS for WebRTC Client SDK for iOS | Intel CS for WebRTC Client SDK for Windows
 --------|--------|--------|--------|--------|--------|--------
 MCU Client|YES|YES|YES|YES|YES|YES
 Management Console|YES|YES|YES|N/A|N/A|N/A
@@ -193,7 +193,7 @@ The default ffmpeg library used by MCU server has no libfdk_aac support. If you 
 1. Go to Release-<Version>/audio_agent folder, compile ffmpeg with libfdk_acc with below command:
 
         compile_ffmpeg_with_libfdkaac.sh
-> **Note**: This compiling script need install all dependencies for ffmpeg with libfdk_aac. If that is not expected on deployment machines, please run it on other proper machine.
+> **Note**: This compiling script will install all dependencies for ffmpeg with libfdk_aac. If those dependencies are not expected on deployment machines, please run the script on other proper machine.
 
 2. Copy all output libraries under ffmpeg_libfdkaac_lib folder to Release-<Version>/audio_agent/lib to replace the existing ones.
 
@@ -234,7 +234,7 @@ To launch the MCU server on one machine, follow steps below:
         bin/start-all.sh
    > **Note**: If you want to run start-all in a combined command like "ssh remote-host MCU-installed-path/bin/start-all", the environment $DISPLAY needs to be explicitly specified as "export DISPLAY=:0.0".
 
-3. To verify whether the server started successfully, launch your browser and connect to the MCU server at https://XXXXX:3004. Replace XXXXX with the IP address or machine name of your MCU server.
+3. To verify whether the server has started successfully, launch your browser and connect to the MCU server at https://XXXXX:3004. Replace XXXXX with the IP address or machine name of your MCU server.
 
 > **Note**: The procedures in this guide use the default room in the sample.
 
@@ -249,11 +249,11 @@ Run the following commands to stop the MCU:
 Component Name|Deployment Number|Responsibility
 --------|--------|--------
 nuve|1 or many|The entrance of MCU service, keeping the configurations of all rooms, generating and verifying the tokens. Application can implement load balancing strategy across multiple nuve instances
-cluster-manager|1 or many|The manager of all active workers in the cluster, checking their lives, scheduling workers with the specified purposes according to the configured policies. One elected master, it will provide service at one time; others will be standby
+cluster-manager|1 or many|The manager of all active workers in the cluster, checking their lives, scheduling workers with the specified purposes according to the configured policies. If one has been elected as master, it will provide service; others will be standby
 portal|1 or many|The signaling server, handling service requests from Socket.IO clients
-session-agent|1 or many|This agent handles room controller logics
+conference-agent|1 or many|This agent handles room controller logics
 webrtc-agent|1 or many|This agent spawning webrtc accessing nodes which establish peer-connections with webrtc clients, receive media streams from and send media streams to webrtc clients
-avstream-agent|0 or many|This agent spawning avstream accessing nodes which pull external streams from sources and push streams to rtmp/rtsp destinations
+streaming-agent|0 or many|This agent spawning streaming accessing nodes which pull external streams from sources and push streams to rtmp/rtsp destinations
 recording-agent|0 or many|This agent spawning recording nodes which record the specified audio/video streams to permanent storage facilities
 audio-agent|1 or many|This agent spawning audio processing nodes which perform audio transcoding and mixing
 video-agent|1 or many|This agent spawning video processing nodes which perform video transcoding and mixing
@@ -324,26 +324,26 @@ Follow the steps below to set up a MCU cluster:
         cd Release-<Version>/
         bin/daemon.sh start portal
 
-13. Choose a worker machine to run session-agent and/or webrtc-agent and/or avstream-agent and/or recording-agent and/or audio-agent and/or video-agent and/or sip-agent. This machine must be visible to other agent machines. If webrtc-agent or sip-agent is running on it, it must be visible to clients.
+13. Choose a worker machine to run conference-agent and/or webrtc-agent and/or streaming-agent and/or recording-agent and/or audio-agent and/or video-agent and/or sip-agent. This machine must be visible to other agent machines. If webrtc-agent or sip-agent is running on it, it must be visible to clients.
 
-    - If you want to use Intel<sup>®</sup> Visual Compute Accelerator (VCA) to run video agents, please follow section [Configure VCA nodes](#Conferencesection2_3_10) to enable nodes of Intel VCA as a visible seperated machine.
+    - If you want to use Intel<sup>®</sup> Visual Compute Accelerator (VCA) to run video agents, please follow section [Configure VCA nodes](#Conferencesection2_3_10) to enable nodes of Intel VCA as a visible separated machine.
 
-14. Edit the configuration items in Release-<Version>/{audio,video,session,webrtc,avstream,recording,sip}_agent/agent.toml.
+14. Edit the configuration items in Release-<Version>/{audio, video, conference, webrtc, streaming, recording, sip}_agent/agent.toml.
     - Make sure the [rabbit.port] and [rabbit.host] point to the RabbitMQ server
     - Make sure the [cluster.ip_address] or [cluster.network_interface] points to the correct network interface through which the media streams will flow to other cluster nodes.
 
-    Special for session-agent, edit session_agent/agent.toml
+    Special for conference-agent, edit conference_agent/agent.toml
     - Make sure the [mongo.dataBaseURL] points to the MongoDB instance.
-    - The [session.roles.<role>] section defines the authorized action list for specific role and the [session.roles.<role>.<action>] section defines the action attributes for this role.
+    - The [conference.roles.<role>] section defines the authorized action list for specific role and the [conference.roles.<role>.<action>] section defines the action attributes for this role.
 
 15. Initialize and run agent worker.
 
     1) Initialize agent workers for the first time execution if necessary
 
-       For webrtc-agent, video-agent, avstream-agent or recording-agent, follow these steps:
+       For webrtc-agent, video-agent, streaming-agent or recording-agent, follow these steps:
 
             cd Release-<Version>/
-            [webrtc/video/avstream/recording]_agent/install_deps.sh
+            [webrtc/video/streaming/recording]_agent/install_deps.sh
 
        If you want to enable GPU-acceleration for video-agent through Media Server Studio, follow these steps:
 
@@ -354,7 +354,7 @@ Follow the steps below to set up a MCU cluster:
     2) Run the following commands to launch agent worker:
 
         cd Release-<Version>/
-        bin/daemon.sh start [session-agent/webrtc-agent/avstream-agent/audio-agent/video-agent/recording-agent/sip-agent]
+        bin/daemon.sh start [conference-agent/webrtc-agent/streaming-agent/audio-agent/video-agent/recording-agent/sip-agent]
 
 16. Repeat step 13 to 15 to launch as many MCU agent worker machines as you need.
 
@@ -364,14 +364,14 @@ Follow the steps below to set up a MCU cluster:
         bin/daemon.sh start sip-portal
 
 ### 2.3.10 Configure VCA nodes as seperated machines to run video-agent {#Conferencesection2_3_10}
-To setup VCA nodes as separate machines, two approaches are provided. One is network bridging provided by VCA software stack. The other is IP forwarding rules setting through iptables.
+To setup VCA nodes as separate machines, two approaches are provided. One is the network bridging provided by VCA software stack. The other is IP forwarding rules setting through iptables.
 
 VCA built-in software stack provides network bridging support. Follow section 8 - Configuring nodes for bridged mode operation in VCA_SoftwareUserGuide_1_3.pdf. In this approach, all network traffic will go through one Ethernet interface.
 
 If you want to map each VCA node to different Ethernet interface, IP forwarding can be one alternative to achieve this goal. Follow these steps:
 1. Make sure one VCA card is correctly installed and VCA nodes successfully boot up.
 2. Make sure the host machine has enough ethernet interface for VCA nodes. Eg: host IP is "10.239.44.100" and 3 ethernet interfaces for 3 nodes of 1 VCA card, and the IP of ethernet Interfaces are "10.239.44.1", "10.239.44.2", "10.239.44.3".
-3. Make sure your ip routing tables(please get it with "route -n") on host machine is like below :
+3. Make sure your ip routing tables(please get it with "route -n") on host machine are like below :
 
         Destination     Gateway         Genmask         Flags Metric Ref    Use Iface
         0.0.0.0         10.239.44.241   0.0.0.0         UG    100    0        0 enp132s0f0
@@ -433,7 +433,7 @@ To stop the MCU cluster, follow these steps:
 3. Run the following commands on worker machines to stop cluster workers:
 
         cd Release-<Version>/
-        bin/daemon.sh stop [portal/session-agent/webrtc-agent/avstream-agent/audio-agent/video-agent/recording-agent/sip-agent/sip-portal]
+        bin/daemon.sh stop [portal/conference-agent/webrtc-agent/streaming-agent/audio-agent/video-agent/recording-agent/sip-agent/sip-portal]
 
 ### 2.3.12 MCU cluster’s fault tolerance / resilience {#Conferencesection2_3_12}
 
@@ -445,9 +445,9 @@ Component Name|Server Reaction|Client Awareness
 nuve|Multiple nuve instances provide stateless services at the same time. If application implements node failure detection and rescheduling strategy, when one node fails, other nodes can take over when the further requests are assigned to any of them.|Nuve RESTful request fail
 cluster-manager|Auto elect another cluster-manager node as master and provide service.|Transparent
 portal|All signaling connections on this portal will be disconnected, all actions through this portal will be dropped. Client needs to re-login the session.|server-disconnected event
-session-agent/node|All sessions impacted will be destroyed and all their participants will be forced disconnected and all actions will be dropped. Client needs to re-login the session.|server-disconnected event
+conference-agent/node|All sessions impacted will be destroyed and all their participants will be forced disconnected and all actions will be dropped. Client needs to re-login the session.|server-disconnected event
 webrtc-agent/node|All webrtc stream actions assign to this node will be dropped. Client needs to redo these actions.|stream-failed event
-avstream-agent/node|All external stream actions assign to this node will be dropped. Client needs to redo these actions.|stream-failed event
+streaming-agent/node|All external stream actions assign to this node will be dropped. Client needs to redo these actions.|stream-failed event
 recording-agent/node|All recording actions assign to this node will be dropped. Client needs to redo these actions.|recorder-removed event
 audio-agent/node|Auto schedule new audio-agent/node resource to recover the session context.|Transparent
 video-agent/node|Auto schedule new video-agent/node resource to recover the session context.|Transparent
@@ -531,7 +531,7 @@ The MCU Management Console is the frontend console to manage the MCU server. It 
 ## 3.2 Access {#Conferencesection3_2}
 Once you have launched MCU servers, you can then access the console via a browser at http://XXXX:3000/console/. You will be asked for your the service-id and service-key in order to access the service.
 
-After inputting your service-id and service-key in the dialog prompt, choose ‘remember me' and click ‘save changes' to save your session. If you want to switch to another service, click the ‘profile' button on the upper-right corner to get in this dialog prompt and do the similar procedure again. If you want log out the management console, click the red ‘clear cookie' button in the dialog prompt.
+After inputting your service-id and service-key in the dialog prompt, choose ‘remember me' and click ‘save changes' to save your session. If you want to switch to another service, click the ‘profile' button on the upper-right corner to get in this dialog prompt and do the similar procedure again. If you want to log out the management console, click the red ‘clear cookie' button in the dialog prompt.
 
 If you have not launched MCU severs, you should launch the nuve server before accessing the management console:
 
@@ -664,12 +664,12 @@ Make the "Enable SIP" option checked and input the "SIP server", "User Name", "P
 After the SIP settings have been done, click the "Apply" button at the right side of the Room row to let it take effect. If the "Update Room Success" message shows up and the SIP related information is correct, then SIP clients should be able to join this room via the registered SIP server.
 
 ## 3.6 Cluster Worker Scheduling Policy Introduction {#Conferencesection3_6}
-All workers including portals, session-agents, webrtc-agents, avstream-agents, recording-agents, audio-agents, video-agents, sip-agents in the cluster are scheduled by the cluster-manager with respect to the configured scheduling strategies in cluster_manager/cluster_manager.toml.  For example, the configuration item "portal = last-used" means the scheduling policy of workers with purposes of "portal" are set to "last-used". The following built-in scheduling strategies are provided:
-1. last-used: If more than 1 worker with the specified purpose are alive and available, the last used one will be scheduled.
-2. least-used: If more than 1 worker with the specified purpose are alive and available, the one with the least work-load will be scheduled.
-3. most-used: If more than 1 worker with the specified purpose are alive and available, the one with the heavist work-load will be scheduled.
-4. round-robin: If more than 1 worker with the specified purpose are alive and available, they will be scheduled one by one circularly.
-5. randomly-pick: If more than 1 worker with the specified purpose are alive and available, they will be scheduled randomly.
+All workers including portals, conference-agents, webrtc-agents, streaming-agents, recording-agents, audio-agents, video-agents, sip-agents in the cluster are scheduled by the cluster-manager with respect to the configured scheduling strategies in cluster_manager/cluster_manager.toml.  For example, the configuration item "portal = last-used" means the scheduling policy of workers with purposes of "portal" is set to "last-used". The following built-in scheduling strategies are provided:
+1. last-used: If more than 1 worker with the specified purpose is alive and available, the last used one will be scheduled.
+2. least-used: If more than 1 worker with the specified purpose is alive and available, the one with the least work-load will be scheduled.
+3. most-used: If more than 1 worker with the specified purpose is alive and available, the one with the heavist work-load will be scheduled.
+4. round-robin: If more than 1 worker with the specified purpose is alive and available, they will be scheduled one by one circularly.
+5. randomly-pick: If more than 1 worker with the specified purpose is alive and available, they will be scheduled randomly.
 
 For portal and webrtc-agent workers, the "isp" and "region" preferences can be specified in portal and webrtc-agent configurations. Pass the preferred "isp" and "region" when creating a token, then cluster-manager will only schedule the corresponding worker nodes to the client requests that match "isp" and "region" preferences. The portal and webrtc-agent will serve all the isp and region if corresponding configuration items under "capacity" are set to empty lists. If no preferences are specified for clients when creating token, then only those portal and webrtc-agent with empty isp and region setting will serve them.
 
