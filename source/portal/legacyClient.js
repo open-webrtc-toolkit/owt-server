@@ -421,6 +421,9 @@ var LegacyClient = function(clientId, sigConnection, portal) {
       if (options.streamId) {
         update.audio = {from: options.streamId};
         update.video = {from: options.streamId};
+      } else {
+        update.audio = {from: that.commonViewStream};
+        update.video = {from: that.commonViewStream};
       }
 
       if (options.resolution) {
