@@ -476,6 +476,9 @@ bool AVStreamOut::writeFrame(AVStream *stream, boost::shared_ptr<MediaFrame> med
             pkt.flags |= AV_PKT_FLAG_KEY;
         }
 
+        if (m_lastKeyFrameTimestamp == 0)
+            m_lastKeyFrameTimestamp = currentTimeMs();
+
         if (m_lastKeyFrameTimestamp + getKeyFrameInterval() < currentTimeMs()) {
             ELOG_DEBUG("Request video key frame");
             m_lastKeyFrameTimestamp = currentTimeMs();
