@@ -303,7 +303,7 @@ describe('Logining and Relogining.', function() {
               left: 0,
               top: 0,
               relativeSize: 1,
-              streamId: "forward-stream-id"
+              streamID: "forward-stream-id"
             }
            ]
           },
@@ -2170,6 +2170,23 @@ describe('Responding to clients.', function() {
               done();
             });
           });
+        });
+    });
+  });
+
+  describe('Receive message from conference', function() {
+    it('Should emit event for text message', function(done) {
+
+      return joinFirstly()
+        .then(function(result) {
+          expect(result).to.equal('ok');
+          client.on('custom_message', function (data) {
+            expect(data).to.deep.equal({from: "fromUser", to: "toUser", data: "messageContent"});
+            done();
+          });
+
+          console.log('$$$', client);
+          server.notify(client.id, 'text', {from: "fromUser", to: "toUser", message: "messageContent"});
         });
     });
   });
