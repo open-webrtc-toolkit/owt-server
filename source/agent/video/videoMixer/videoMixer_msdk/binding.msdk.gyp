@@ -26,7 +26,6 @@
         '-O$(OPTIMIZATION_LEVEL)',
         '-g',
         '-std=c++11',
-        '-frtti',
         '-DWEBRTC_POSIX',
         '-DENABLE_MSDK',
         '-DMFX_DISPATCHER_EXPOSED_PREFIX',

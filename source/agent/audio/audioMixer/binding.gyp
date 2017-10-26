@@ -21,7 +21,6 @@
         '-O$(OPTIMIZATION_LEVEL)',
         '-g',
         '-std=c++11',
-        '-frtti',
         '-DWEBRTC_POSIX',
     ],
     'cflags_cc!': [
