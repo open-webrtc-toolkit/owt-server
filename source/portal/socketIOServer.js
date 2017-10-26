@@ -427,12 +427,10 @@ var SocketIOServer = function(spec, portal, observer) {
       for(var pid in clients) {
         clients[pid].drop();
       }
-      return Promise.resolve('ok');
     } else if (clients[participantId]) {
       clients[participantId].drop();
-      return Promise.resolve('ok');
     } else {
-      return Promise.reject('user not in room');
+      log.debug('user not in room', participantId);
     }
   };
 
