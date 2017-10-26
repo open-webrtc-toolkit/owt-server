@@ -97,10 +97,10 @@ Either Professional Edition or Community Edition is applicable. For download or 
 The external stream output (rtsp/rtmp) feature relies on AAC encoder libfdk_aac support in ffmpeg library, please see [Compile and deploy ffmpeg with libfdk_aac](#Conferencesection2_3_5) section for detailed instructions.
 
  **Table 2-2. Client compatibility**
-Application Name|Google Chrome* 62|Mozilla Firefox* 56|Microsoft Edge* 40.15063|Intel CS for WebRTC Client SDK for Android | Intel CS for WebRTC Client SDK for iOS | Intel CS for WebRTC Client SDK for Windows
+Application Name|Google Chrome\* 62|Mozilla Firefox\* 56|Microsoft Edge\* 40.15063|Safari\* 11|Intel CS for WebRTC Client SDK for Android | Intel CS for WebRTC Client SDK for iOS | Intel CS for WebRTC Client SDK for Windows
 --------|--------|--------|--------|--------|--------|--------
-MCU Client|YES|YES|YES|YES|YES|YES
-Management Console|YES|YES|YES|N/A|N/A|N/A
+MCU Client|YES|YES|YES|YES|YES|YES|YES
+Management Console|YES|YES|YES|YES|N/A|N/A|N/A
 
 ## 2.3 Install the MCU server {#Conferencesection2_3}
 This section describes the dependencies and steps for installing the MCU.
