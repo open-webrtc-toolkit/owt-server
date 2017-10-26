@@ -567,7 +567,7 @@ The following example shows the details:
         "id": "1",
         "shape": "rectangle",
         "area": {
-            "left": 0,
+            "left": 0,  // numbers will be converted to rational object { "numerator": a, "denominator": b }, string value like "1/3" is also supported.
             "top": 0,
             "width": 1,
             "height": 1
