@@ -297,7 +297,7 @@ Follow the steps below to set up a MCU cluster:
         cd Release-<Version>/
         bin/daemon.sh start nuve
 
-6. Choose any nuve instance machine to run th sample application server for quick MCU service validation.
+6. Choose any nuve instance machine to run the sample application server for quick MCU service validation.
 
         cd Release-<Version>/
         bin/daemon.sh start app
@@ -448,7 +448,6 @@ portal|All signaling connections on this portal will be disconnected, all action
 conference-agent/node|All sessions impacted will be destroyed and all their participants will be forced disconnected and all actions will be dropped. Client needs to re-login the session.|server-disconnected event
 webrtc-agent/node|All webrtc stream actions assign to this node will be dropped. Client needs to redo these actions.|stream-failed event
 streaming-agent/node|All external stream actions assign to this node will be dropped. Client needs to redo these actions.|stream-failed event
-recording-agent/node|All recording actions assign to this node will be dropped. Client needs to redo these actions.|recorder-removed event
 audio-agent/node|Auto schedule new audio-agent/node resource to recover the session context.|Transparent
 video-agent/node|Auto schedule new video-agent/node resource to recover the session context.|Transparent
 sip-agent/node|All sip participants it carries should be dropped by session nodes.|SIP BYE signaling event
