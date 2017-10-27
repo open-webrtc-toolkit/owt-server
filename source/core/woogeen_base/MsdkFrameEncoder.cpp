@@ -127,7 +127,7 @@ public:
     }
 
     void onTimeout() {
-        if (m_format == FRAME_FORMAT_H265 {
+        if (m_format == FRAME_FORMAT_H265) {
             //TODO: remove this workaround for H265
             m_requestKeyFrameFlag = true;
         }
