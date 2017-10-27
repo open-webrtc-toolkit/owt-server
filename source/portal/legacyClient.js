@@ -508,7 +508,8 @@ var LegacyClient = function(clientId, sigConnection, portal) {
       //as a contineous recording request in v3.5 and later releases.
       if (options.recorderId) {
         if ((options.audioStreamId === undefined) && (options.videoStreamId === undefined)) {
-          return safeCall(callback, 'error', 'Neither audio.from nor video.from was specified');
+          options.audioStreamId = that.commonViewStream;
+          options.videoStreamId = that.commonViewStream;
         }
 
         if (!ref2subId[options.recorderId]) {
