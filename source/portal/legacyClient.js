@@ -547,7 +547,7 @@ var LegacyClient = function(clientId, sigConnection, portal) {
           video: false
         },
         connection: {
-          container: (options.audioCodec === 'aac' ? 'mp4' : 'mkv')
+          container: 'auto'
         }
       };
 
