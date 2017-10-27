@@ -1549,7 +1549,7 @@ var Conference = function (rpcClient, selfRpcId) {
 
         //FIXME: to make js sdk work with recording, forbid h264 and vp9 here
         if (subDesc.media.video && subDesc.media.video.format) {
-          video_codec = subDesc.media.video.format.codec;
+          video_codec = (subDesc.media.video.format.codec || streams[subDesc.media.video.from].media.video.format.codec);
           if (video_codec === 'h265' || video_codec === 'vp9') {
             return callback('callback', 'error', 'video codec not supported');
           }
