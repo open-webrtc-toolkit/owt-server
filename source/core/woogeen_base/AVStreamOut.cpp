@@ -485,16 +485,16 @@ bool AVStreamOut::writeFrame(AVStream *stream, boost::shared_ptr<MediaFrame> med
             deliverFeedbackMsg(FeedbackMsg{.type = VIDEO_FEEDBACK, .cmd = REQUEST_KEY_FRAME});
         }
 
-        if (m_lastVideoDts == pkt.dts) {
+        if (pkt.dts <= m_lastVideoDts) {
             ELOG_DEBUG("Video timestamp is not incremental");
-            pkt.dts++;
+            pkt.dts = m_lastVideoDts + 1;
             pkt.pts = pkt.dts;
         }
         m_lastVideoDts = pkt.dts;
     } else {
-        if (m_lastAudioDts == pkt.dts) {
+        if (pkt.dts <= m_lastAudioDts) {
             ELOG_DEBUG("Audio timestamp is not incremental");
-            pkt.dts++;
+            pkt.dts = m_lastAudioDts + 1;
             pkt.pts = pkt.dts;
         }
         m_lastAudioDts = pkt.dts;
