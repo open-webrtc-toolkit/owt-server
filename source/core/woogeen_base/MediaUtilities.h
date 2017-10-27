@@ -53,11 +53,12 @@ inline unsigned int calcBitrate(unsigned int width, unsigned int height, float f
     return bitrate;
 }
 
-inline int findNALU(uint8_t* buf, int size, int* nal_start, int* nal_end)
+inline int findNALU(uint8_t* buf, int size, int* nal_start, int* nal_end, int* sc_len)
 {
     int i = 0;
     *nal_start = 0;
     *nal_end = 0;
+    *sc_len = 0;
 
     while (true) {
         if (size < i + 3)
@@ -66,12 +67,14 @@ inline int findNALU(uint8_t* buf, int size, int* nal_start, int* nal_end)
         /* ( next_bits( 24 ) == {0, 0, 1} ) */
         if (buf[i] == 0 && buf[i + 1] == 0 && buf[i + 2] == 1) {
             i += 3;
+            *sc_len = 3;
             break;
         }
 
         /* ( next_bits( 32 ) == {0, 0, 0, 1} ) */
         if (size > i + 3 && buf[i] == 0 && buf[i + 1] == 0 && buf[i + 2] == 0 && buf[i + 3] == 1) {
             i += 4;
+            *sc_len = 4;
             break;
         }
 

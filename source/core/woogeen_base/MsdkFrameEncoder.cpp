@@ -29,6 +29,7 @@
 #include "MsdkBase.h"
 #include "MsdkFrameEncoder.h"
 #include "MsdkScaler.h"
+#include <JobTimer.h>
 
 #define _MAX_BITSTREAM_BUFFER_ (100 * 1024 * 1024)
 
@@ -38,7 +39,7 @@ namespace woogeen_base {
 
 DEFINE_LOGGER(MsdkFrameEncoder, "woogeen.MsdkFrameEncoder");
 
-class StreamEncoder : public FrameSource
+class StreamEncoder : public FrameSource, public JobTimerListener
 {
     DECLARE_LOGGER()
 
@@ -69,12 +70,13 @@ public:
         , m_bsDumpfp(NULL)
     {
         initDefaultParam();
+        m_feedbackTimer.reset(new JobTimer(1, this));
     }
 
     ~StreamEncoder()
     {
         printfFuncEnter;
-
+        m_feedbackTimer->stop();
         removeVideoDestination(m_dest);
 
         if (m_enc) {
@@ -121,6 +123,13 @@ public:
             } else if (msg.cmd == SET_BITRATE) {
                 setBitrate(msg.data.kbps);
             }
+        }
+    }
+
+    void onTimeout() {
+        if (m_format == FRAME_FORMAT_H265 {
+            //TODO: remove this workaround for H265
+            m_requestKeyFrameFlag = true;
         }
     }
 
@@ -693,6 +702,7 @@ private:
 
     bool m_enableBsDump;
     FILE *m_bsDumpfp;
+    boost::scoped_ptr<JobTimer> m_feedbackTimer;
 };
 
 DEFINE_LOGGER(StreamEncoder, "woogeen.StreamEncoder");

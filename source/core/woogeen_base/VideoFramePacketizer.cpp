@@ -322,12 +322,13 @@ void VideoFramePacketizer::onFrame(const Frame& frame)
         int buffer_length = frame_length;
         int nalu_start_offset = 0;
         int nalu_end_offset = 0;
+        int sc_len = 0;
         RTPFragmentationHeader frag_info;
 
 
         h.codec = (frame.format == FRAME_FORMAT_H264)?(webrtc::kRtpVideoH264):(webrtc::kRtpVideoH265);
         while (buffer_length > 0) {
-            nalu_found_length = findNALU(buffer_start, buffer_length, &nalu_start_offset, &nalu_end_offset);
+            nalu_found_length = findNALU(buffer_start, buffer_length, &nalu_start_offset, &nalu_end_offset, &sc_len);
             if (nalu_found_length < 0) {
                 /* Error, should never happen */
                 break;
@@ -335,8 +336,13 @@ void VideoFramePacketizer::onFrame(const Frame& frame)
                 /* SPS, PPS, I, P*/
                 uint16_t last = frag_info.fragmentationVectorSize;
                 frag_info.VerifyAndAllocateFragmentationHeader(last + 1);
-                frag_info.fragmentationOffset[last] = nalu_start_offset + (buffer_start - frame.payload);
-                frag_info.fragmentationLength[last] = nalu_found_length;
+                if (frame.format == FRAME_FORMAT_H265) {
+                    frag_info.fragmentationOffset[last] = nalu_start_offset + (buffer_start - frame.payload) - sc_len;
+                    frag_info.fragmentationLength[last] = nalu_found_length + sc_len;
+                } else {
+                    frag_info.fragmentationOffset[last] = nalu_start_offset + (buffer_start - frame.payload);
+                    frag_info.fragmentationLength[last] = nalu_found_length;
+                }
                 buffer_start += (nalu_start_offset + nalu_found_length);
                 buffer_length -= (nalu_start_offset + nalu_found_length);
             }
