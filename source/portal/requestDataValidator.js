@@ -367,7 +367,7 @@ const SubscriptionControlInfo = {
       type: 'object',
       properties: {
         'from': { type: 'string' },
-        'spec': { $ref: '#/definitions/VideoUpdateSpecification' }
+        'parameters': { $ref: '#/definitions/VideoUpdateSpecification' }
       },
       additionalProperties: false,
       required: ['from']
