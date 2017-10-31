@@ -526,7 +526,7 @@ var LegacyClient = function(clientId, sigConnection, portal) {
         options.videoStreamId && (update.data.video = {from: options.videoStreamId});
         return portal.subscriptionControl(clientId, subscription_id, update)
           .then((result) => {
-            safeCall(callback, 'success', {recorderId: options.recorderId});
+            safeCall(callback, 'success', {recorderId: options.recorderId, path: ""});
           }).catch(function(err) {
             const err_message = getErrorMessage(err);
             log.info('portal.subscribe failed:', err_message);
