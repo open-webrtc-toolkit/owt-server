@@ -1774,6 +1774,9 @@ var Conference = function (rpcClient, selfRpcId) {
 
       if (update.video.parameters) {
         new_su.media.video.parameters = (new_su.media.video.parameters || {});
+        old_su.media.video.parameters = (old_su.media.video.parameters || {});
+        old_su.media.video.parameters.resolution = (old_su.media.video.parameters.resolution || {});
+
         if (update.video.parameters.resolution && ((update.video.parameters.resolution.width !== old_su.media.video.parameters.resolution.width) || (update.video.parameters.resolution.height !== old_su.media.video.parameters.resolution.height))) {
           new_su.media.video.parameters.resolution = update.video.parameters.resolution;
           effective = true;
