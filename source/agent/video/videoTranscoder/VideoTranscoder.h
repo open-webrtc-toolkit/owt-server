@@ -31,11 +31,15 @@
 
 namespace mcu {
 
+struct VideoTranscoderConfig {
+    bool useGacc;
+};
+
 class VideoTranscoder {
     DECLARE_LOGGER();
 
 public:
-    VideoTranscoder(const std::string& config);
+    VideoTranscoder(const VideoTranscoderConfig& config);
     virtual ~VideoTranscoder();
 
     bool setInput(const std::string& inStreamID, const std::string& codec, woogeen_base::FrameSource* source);

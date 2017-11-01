@@ -18,9 +18,6 @@
  * and approved by Intel in writing.
  */
 
-#include <boost/property_tree/json_parser.hpp>
-#include <boost/property_tree/ptree.hpp>
-
 #include <webrtc/base/logging.h>
 #include <webrtc/system_wrappers/include/trace.h>
 
@@ -35,9 +32,9 @@ namespace mcu {
 
 DEFINE_LOGGER(VideoMixer, "mcu.media.VideoMixer");
 
-VideoMixer::VideoMixer(const std::string& configStr)
+VideoMixer::VideoMixer(const VideoMixerConfig& config)
     : m_nextOutputIndex(0)
-    , m_maxInputCount(0)
+    , m_maxInputCount(16)
 {
     if (ELOG_IS_TRACE_ENABLED()) {
         rtc::LogMessage::LogToDebug(rtc::LS_VERBOSE);
@@ -60,48 +57,30 @@ VideoMixer::VideoMixer(const std::string& configStr)
         webrtc::Trace::set_level_filter(kTraceFilter);
     }
 
-    boost::property_tree::ptree config;
-    std::istringstream is(configStr);
-    boost::property_tree::read_json(is, config);
-
-    m_maxInputCount = config.get<uint32_t>("maxinput", 16);
-
-    bool cropVideo = config.get<bool>("crop");
-
-#ifdef ENABLE_MSDK
-    bool useGacc = config.get<bool>("gaccplugin", false);
-
-    MsdkBase *msdkBase = MsdkBase::get();
-    if(msdkBase != NULL) {
-        msdkBase->setConfigHevcEncoderGaccPlugin(useGacc);
-    }
-#endif
+    m_maxInputCount = config.maxInput;
 
     VideoSize rootSize;
-    std::string resolution = config.get<std::string>("resolution");
-    if (!VideoResolutionHelper::getVideoSize(resolution, rootSize)) {
+    if (!VideoResolutionHelper::getVideoSize(config.resolution, rootSize)) {
         ELOG_WARN("configured resolution is invalid!");
         VideoResolutionHelper::getVideoSize("vga", rootSize);
     }
 
     YUVColor bgColor;
-    std::string color = config.get<std::string>("backgroundcolor");
-    if (!VideoColorHelper::getVideoColor(color, bgColor)) {
-        // Try the RGB configuration mode
-        boost::property_tree::ptree pt = config.get_child("backgroundcolor");
-        int r = pt.get<int>("r", -1);
-        int g = pt.get<int>("g", -1);
-        int b = pt.get<int>("b", -1);
-
-        if (!VideoColorHelper::getVideoColor(r, g, b, bgColor)) {
-            ELOG_WARN("configured background color is invalid!");
-            VideoColorHelper::getVideoColor("black", bgColor);
-        }
+    if (!VideoColorHelper::getVideoColor(config.bgColor.r, config.bgColor.g, config.bgColor.b, bgColor)) {
+        ELOG_WARN("configured background color is invalid!");
+        VideoColorHelper::getVideoColor("black", bgColor);
     }
+
+#ifdef ENABLE_MSDK
+    MsdkBase *msdkBase = MsdkBase::get();
+    if(msdkBase != NULL) {
+        msdkBase->setConfigHevcEncoderGaccPlugin(config.useGacc);
+    }
+#endif
 
     ELOG_DEBUG("Init maxInput(%u), rootSize(%u, %u), bgColor(%u, %u, %u)", m_maxInputCount, rootSize.width, rootSize.height, bgColor.y, bgColor.cb, bgColor.cr);
 
-    m_frameMixer.reset(new VideoFrameMixerImpl(m_maxInputCount, rootSize, bgColor, true, cropVideo));
+    m_frameMixer.reset(new VideoFrameMixerImpl(m_maxInputCount, rootSize, bgColor, true, config.crop));
 }
 
 VideoMixer::~VideoMixer()

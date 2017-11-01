@@ -34,11 +34,23 @@ namespace mcu {
 
 class VideoFrameMixer;
 
+struct VideoMixerConfig {
+    uint32_t maxInput;
+    bool crop;
+    std::string resolution;
+    struct {
+        int r;
+        int g;
+        int b;
+    } bgColor;
+    bool useGacc;
+};
+
 class VideoMixer {
     DECLARE_LOGGER();
 
 public:
-    VideoMixer(const std::string& config);
+    VideoMixer(const VideoMixerConfig& config);
     virtual ~VideoMixer();
 
     bool addInput(const int inputIndex, const std::string& codec, woogeen_base::FrameSource* source, const std::string& avatar);

@@ -18,9 +18,6 @@
  * and approved by Intel in writing.
  */
 
-#include <boost/property_tree/json_parser.hpp>
-#include <boost/property_tree/ptree.hpp>
-
 #include <webrtc/base/logging.h>
 #include <webrtc/system_wrappers/include/trace.h>
 
@@ -34,7 +31,7 @@ namespace mcu {
 
 DEFINE_LOGGER(VideoTranscoder, "mcu.media.VideoTranscoder");
 
-VideoTranscoder::VideoTranscoder(const std::string& configStr)
+VideoTranscoder::VideoTranscoder(const VideoTranscoderConfig& config)
     : m_inputCount(0)
     , m_maxInputCount(1)
     , m_nextOutputIndex(0)
@@ -60,21 +57,16 @@ VideoTranscoder::VideoTranscoder(const std::string& configStr)
         webrtc::Trace::set_level_filter(kTraceFilter);
     }
 
-    boost::property_tree::ptree config;
-    std::istringstream is(configStr);
-    boost::property_tree::read_json(is, config);
-
-#ifdef ENABLE_MSDK
-    bool useGacc = config.get<bool>("gaccplugin", false);
-    MsdkBase *msdkBase = MsdkBase::get();
-    if(msdkBase != NULL) {
-        msdkBase->setConfigHevcEncoderGaccPlugin(useGacc);
-    }
-#endif
-
     m_freeInputIndexes.reserve(m_maxInputCount);
     for (size_t i = 0; i < m_maxInputCount; ++i)
         m_freeInputIndexes.push_back(true);
+
+#ifdef ENABLE_MSDK
+    MsdkBase *msdkBase = MsdkBase::get();
+    if(msdkBase != NULL) {
+        msdkBase->setConfigHevcEncoderGaccPlugin(config.useGacc);
+    }
+#endif
 
     ELOG_DEBUG("Init");
 
