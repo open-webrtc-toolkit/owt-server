@@ -54,8 +54,24 @@ void VideoMixer::New(const v8::FunctionCallbackInfo<v8::Value>& args) {
   Isolate* isolate = Isolate::GetCurrent();
   HandleScope scope(isolate);
 
-  String::Utf8Value param0(args[0]->ToString());
-  std::string config = std::string(*param0);
+  Local<Object> options = args[0]->ToObject();
+  mcu::VideoMixerConfig config;
+
+  config.maxInput = options->Get(String::NewFromUtf8(isolate, "maxinput"))->Int32Value();
+  config.crop = options->Get(String::NewFromUtf8(isolate, "crop"))->ToBoolean()->BooleanValue();
+
+  Local<Value> resolution = options->Get(String::NewFromUtf8(isolate, "resolution"));
+  if (resolution->IsString()) {
+    config.resolution = std::string(*String::Utf8Value(resolution->ToString()));
+  }
+
+  Local<Value> background = options->Get(String::NewFromUtf8(isolate, "backgroundcolor"));
+  if (background->IsObject()) {
+    Local<Object> colorObj = background->ToObject();
+    config.bgColor.r = colorObj->Get(String::NewFromUtf8(isolate, "r"))->Int32Value();
+    config.bgColor.g = colorObj->Get(String::NewFromUtf8(isolate, "g"))->Int32Value();
+    config.bgColor.b = colorObj->Get(String::NewFromUtf8(isolate, "b"))->Int32Value();
+  }
 
   VideoMixer* obj = new VideoMixer();
   obj->me = new mcu::VideoMixer(config);

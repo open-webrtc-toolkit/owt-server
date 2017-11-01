@@ -51,8 +51,9 @@ void VideoTranscoder::New(const v8::FunctionCallbackInfo<v8::Value>& args) {
   Isolate* isolate = Isolate::GetCurrent();
   HandleScope scope(isolate);
 
-  String::Utf8Value param0(args[0]->ToString());
-  std::string config = std::string(*param0);
+  Local<Object> options = args[0]->ToObject();
+  mcu::VideoTranscoderConfig config;
+  config.useGacc = options->Get(String::NewFromUtf8(isolate, "gaccplugin"))->ToBoolean()->BooleanValue();
 
   VideoTranscoder* obj = new VideoTranscoder();
   obj->me = new mcu::VideoTranscoder(config);

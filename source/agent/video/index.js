@@ -15,7 +15,7 @@ const { LayoutProcessor } = require('./layout');
 
 var useHardware = global.config.video.hardwareAccelerated,
     yamiEnabled = global.config.video.yamiEnabled,
-    gaccPluginEnabled = global.config.video.enableBetterHEVCQuality,
+    gaccPluginEnabled = global.config.video.enableBetterHEVCQuality || false,
     supported_codecs = global.config.video.codecs;
 
 var VideoMixer, VideoTranscoder;
@@ -102,6 +102,11 @@ const calcDefaultBitrate = (codec, resolution, framerate) => {
   //let factor = (codec === 'vp8' ? 0.9 : 1.0);
   let factor = 1.0;
   return standardBitrate(resolution.width, resolution.height, framerate) * factor;
+};
+
+const colorMap = {
+  'white': { r: 255, g: 255, b: 255 },
+  'black': { r: 0, g: 0, b: 0 }
 };
 
 class InputManager {
@@ -381,19 +386,19 @@ function VMixer(rpcClient, clusterIP) {
     };
 
     that.initialize = function (videoConfig, belongTo, layoutcontroller, mixView, callback) {
-        //log.debug('initEngine, videoConfig:', JSON.stringify(videoConfig));
+        log.debug('initEngine, videoConfig:', JSON.stringify(videoConfig));
         var config = {
             'hardware': useHardware,
-            'maxinput': videoConfig.maxInput,
+            'maxinput': videoConfig.maxInput || 16,
             'resolution': resolution2String(videoConfig.parameters.resolution),
-            'backgroundcolor': videoConfig.bgColor,
+            'backgroundcolor': (typeof videoConfig.bgColor === 'string') ? colorMap[videoConfig.bgColor] : videoConfig.bgColor,
             'layout': videoConfig.layout.templates,
             'crop': videoConfig.layout.crop,
             'gaccplugin': gaccPluginEnabled,
         };
 
         inputManager = new InputManager(videoConfig.maxInput);
-        engine = new VideoMixer(JSON.stringify(config));
+        engine = new VideoMixer(config);
         layoutProcessor = new LayoutProcessor(videoConfig.layout.templates);
         layoutProcessor.on('error', function (e) {
             log.warn('layout error:', e);
@@ -795,7 +800,7 @@ function VTranscoder(rpcClient, clusterIP) {
 
         controller = ctrlr;
 
-        engine = new VideoTranscoder(JSON.stringify(config));
+        engine = new VideoTranscoder(config);
 
         log.debug('Video transcoding engine init OK, supported_codecs:', supported_codecs);
         callback('callback', {codecs: supported_codecs});
