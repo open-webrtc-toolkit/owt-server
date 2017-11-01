@@ -1,6 +1,6 @@
 {
-  "name": "WooGeen-MCU-Session-Controller",
-  "version":"3.3.0",
+  "name": "WooGeen-MCU-Conference-Controller",
+  "version":"3.5.0",
   "dependencies": {
     "amqp": "*",
     "express": "*",
