@@ -1453,9 +1453,26 @@ describe('Responding to clients.', function() {
             expect(data.url).to.equal('rtsp://target.host');
             expect(mockPortal.subscribe.getCall(0).args[0]).to.equal(client.id);
             expect(mockPortal.subscribe.getCall(0).args[1]).to.be.a('string');
-            var subscription_id = mockPortal.subscribe.getCall(0).args[1];
             expect(mockPortal.subscribe.getCall(0).args[2]).to.deep.equal({type: 'streaming', media: {audio: {from: 'targetStreamId', format: {codec: 'aac', sampleRate: 48000, channelNum: 2}}, video: {from: 'targetStreamId', format: {codec: 'h264'}, parameters: {resolution: {width: 640, height: 480}}}}, connection: {url: 'rtsp://target.host'}});
-            done();
+
+            options = {streamId: 'targetStreamId', video: true, audio: false, resolution: {width: 640, height: 480}, url: 'rtsp://target2.host'};
+            client.emit('addExternalOutput', options, function(status, data) {
+              expect(status).to.equal('success');
+              expect(data.url).to.equal('rtsp://target2.host');
+              expect(mockPortal.subscribe.getCall(1).args[0]).to.equal(client.id);
+              expect(mockPortal.subscribe.getCall(1).args[1]).to.be.a('string');
+              expect(mockPortal.subscribe.getCall(1).args[2]).to.deep.equal({type: 'streaming', media: {audio: false, video: {from: 'targetStreamId', format: {codec: 'h264'}, parameters: {resolution: {width: 640, height: 480}}}}, connection: {url: 'rtsp://target2.host'}});
+
+              options = {streamId: 'targetStreamId', video: false, audio: true, resolution: {width: 640, height: 480}, url: 'rtsp://target3.host'};
+              client.emit('addExternalOutput', options, function(status, data) {
+                expect(status).to.equal('success');
+                expect(data.url).to.equal('rtsp://target3.host');
+                expect(mockPortal.subscribe.getCall(2).args[0]).to.equal(client.id);
+                expect(mockPortal.subscribe.getCall(2).args[1]).to.be.a('string');
+                expect(mockPortal.subscribe.getCall(2).args[2]).to.deep.equal({type: 'streaming', media: {audio: {from: 'targetStreamId', format: {codec: 'aac', sampleRate: 48000, channelNum: 2}}, video: false }, connection: {url: 'rtsp://target3.host'}});
+                done();
+              });
+            });
           });
         });
     });
