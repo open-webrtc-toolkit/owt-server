@@ -62,13 +62,13 @@ VideoMixer::VideoMixer(const VideoMixerConfig& config)
     VideoSize rootSize;
     if (!VideoResolutionHelper::getVideoSize(config.resolution, rootSize)) {
         ELOG_WARN("configured resolution is invalid!");
-        VideoResolutionHelper::getVideoSize("vga", rootSize);
+        rootSize = DEFAULT_VIDEO_SIZE;
     }
 
     YUVColor bgColor;
     if (!VideoColorHelper::getVideoColor(config.bgColor.r, config.bgColor.g, config.bgColor.b, bgColor)) {
         ELOG_WARN("configured background color is invalid!");
-        VideoColorHelper::getVideoColor("black", bgColor);
+        bgColor = DEFAULT_VIDEO_BG_COLOR;
     }
 
 #ifdef ENABLE_MSDK

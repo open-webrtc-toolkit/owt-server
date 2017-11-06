@@ -29,7 +29,6 @@
 #include <MediaDefinitions.h>
 #include <string>
 #include "MediaFramePipeline.h"
-#include "VideoHelper.h"
 
 extern "C" {
 #include <libavformat/avformat.h>
@@ -214,7 +213,8 @@ private:
 
     int m_videoStreamIndex;
     FrameFormat m_videoFormat;
-    VideoSize m_videoSize;
+    uint32_t m_videoWidth;
+    uint32_t m_videoHeight;
     bool m_needCheckVBS;
     bool m_needApplyVBSF;
     AVBSFContext *m_vbsf;

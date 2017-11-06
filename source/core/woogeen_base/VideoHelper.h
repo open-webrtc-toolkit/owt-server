@@ -75,22 +75,8 @@ public:
     }
 };
 
-// Video background colors definition
-const std::map<std::string, YUVColor> VideoColors =
-    {{"black", {0x00, 0x80, 0x80}},
-     {"white", {0xFF, 0x80, 0x80}}};
-
 class VideoColorHelper {
 public:
-    static bool getVideoColor(const std::string& name, YUVColor& color) {
-        std::map<std::string, YUVColor>::const_iterator it = VideoColors.find(name);
-        if (it != VideoColors.end()) {
-            color = it->second;
-            return true;
-        }
-        return false;
-    }
-
     static bool getVideoColor(int r, int g, int b, YUVColor& color) {
         // Make sure the RGB values make sense
         if (r < 0 || r > 255 || g < 0 || g > 255 || b < 0 || b > 255)

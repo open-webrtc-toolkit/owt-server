@@ -391,6 +391,8 @@ LiveStreamIn::LiveStreamIn(const Options& options, EventRegistry* handle)
     , m_timeoutHandler(nullptr)
     , m_videoStreamIndex(-1)
     , m_videoFormat(FRAME_FORMAT_UNKNOWN)
+    , m_videoWidth(0)
+    , m_videoHeight(0)
     , m_needCheckVBS(true)
     , m_needApplyVBSF(false)
     , m_vbsf(nullptr)
@@ -552,8 +554,8 @@ bool LiveStreamIn::connect()
             }
 
             if (m_videoFormat != FRAME_FORMAT_UNKNOWN) {
-                m_videoSize.width = video_st->codecpar->width;
-                m_videoSize.height = video_st->codecpar->height;
+                m_videoWidth = video_st->codecpar->width;
+                m_videoHeight = video_st->codecpar->height;
                 m_AsyncEvent << ",\"resolution\":" << "{\"width\":" << video_st->codecpar->width << ", \"height\":" << video_st->codecpar->height << "}}";
 
                 if (!isRtsp())
@@ -1067,8 +1069,8 @@ void LiveStreamIn::deliverVideoFrame(AVPacket *pkt)
     frame.payload = reinterpret_cast<uint8_t*>(pkt->data);
     frame.length = pkt->size;
     frame.timeStamp = timeRescale(pkt->dts, m_msTimeBase, m_videoTimeBase);
-    frame.additionalInfo.video.width = m_videoSize.width;
-    frame.additionalInfo.video.height = m_videoSize.height;
+    frame.additionalInfo.video.width = m_videoWidth;
+    frame.additionalInfo.video.height = m_videoHeight;
     frame.additionalInfo.video.isKeyFrame = (pkt->flags & AV_PKT_FLAG_KEY);
     deliverFrame(frame);
 
