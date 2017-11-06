@@ -22,7 +22,6 @@
 #include <MediaFramePipeline.h>
 #include <MediaFileOut.h>
 #include <LiveStreamOut.h>
-#include <VideoHelper.h>
 
 using namespace v8;
 
