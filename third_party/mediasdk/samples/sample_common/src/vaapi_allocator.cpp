@@ -120,7 +120,7 @@ vaapiFrameAllocator::~vaapiFrameAllocator()
 
 mfxStatus vaapiFrameAllocator::Init(mfxAllocatorParams *pParams)
 {
-    vaapiAllocatorParams* p_vaapiParams = dynamic_cast<vaapiAllocatorParams*>(pParams);
+    vaapiAllocatorParams* p_vaapiParams = static_cast<vaapiAllocatorParams*>(pParams);
 
     if ((NULL == p_vaapiParams) || (NULL == p_vaapiParams->m_dpy))
         return MFX_ERR_NOT_INITIALIZED;
