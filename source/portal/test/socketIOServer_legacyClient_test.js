@@ -547,10 +547,7 @@ describe('Logining and Relogining.', function() {
         client.emit('login', someValidLoginInfo, function(status, resp) {
           expect(status).to.equal('success');
           ticket = resp.reconnectionTicket;
-          return server.drop(client.id)
-            .then(function(result) {
-              expect(result).to.equal('ok');
-            });
+          server.drop(client.id);
         });
       });
       client.on('disconnect', function(){
@@ -815,10 +812,6 @@ describe('Drop users from sessions.', function() {
     server.stop();
   });
 
-  it('Dropping unconnected users should fail.', function() {
-    return expect(server.drop('unconnectedUser', 'anyRoom')).to.be.rejectedWith('user not in room');
-  });
-
   it('Dropping users after joining should succeed.', function(done) {
     var client = sioClient.connect(serverUrl, {reconnect: false, secure: false, 'force new connection': true});
 
@@ -830,13 +823,10 @@ describe('Drop users from sessions.', function() {
       mockServiceObserver.onLeave = sinon.spy();
 
       client.emit('login', jsLoginInfo, function(status, resp) {
-        return server.drop(client.id)
-          .then(function(result) {
-            expect(result).to.equal('ok');
-            expect(mockServiceObserver.onLeave.getCall(0).args).to.deep.equal(['tokenCode']);
-            expect(mockPortal.leave.getCall(0).args).to.deep.equal([client.id]);
-            done();
-          });
+        server.drop(client.id);
+        expect(mockServiceObserver.onLeave.getCall(0).args).to.deep.equal(['tokenCode']);
+        expect(mockPortal.leave.getCall(0).args).to.deep.equal([client.id]);
+        done();
       });
     });
   });
@@ -850,12 +840,9 @@ describe('Drop users from sessions.', function() {
       mockServiceObserver.onLeave = sinon.spy();
 
       client.emit('login', jsLoginInfo, function(status, resp) {
-        return server.drop('all')
-          .then(function(result) {
-            expect(result).to.equal('ok');
-            expect(mockServiceObserver.onLeave.getCall(0).args).to.deep.equal(['tokenCode']);
-            done();
-          });
+        server.drop('all');
+        expect(mockServiceObserver.onLeave.getCall(0).args).to.deep.equal(['tokenCode']);
+        done();
       });
     });
   });
@@ -1694,7 +1681,7 @@ describe('Responding to clients.', function() {
             expect(data.host).to.equal('unknown');
             expect(mockPortal.subscribe.getCall(0).args[0]).to.equal(client.id);
             expect(mockPortal.subscribe.getCall(0).args[1]).to.equal(data.recorderId);
-            expect(mockPortal.subscribe.getCall(0).args[2]).to.deep.equal({type: 'recording', media: {audio: {from: 'targetStreamId-01', format: {codec: 'pcmu'}}, video: {from: 'targetStreamId-02', format: {codec: 'vp8'}}}, connection: {container: 'mkv'}});
+            expect(mockPortal.subscribe.getCall(0).args[2]).to.deep.equal({type: 'recording', media: {audio: {from: 'targetStreamId-01', format: {codec: 'pcmu'}}, video: {from: 'targetStreamId-02', format: {codec: 'vp8'}}}, connection: {container: 'auto'}});
 
             options = {audioStreamId: testStream, videoStreamId: testStream, audioCodec: 'pcmu', videoCodec: 'vp8', path: '/tmp', interval: 1000};
             client.emit('startRecorder', options, function(status, data) {
@@ -1704,7 +1691,7 @@ describe('Responding to clients.', function() {
               expect(data.host).to.equal('unknown');
               expect(mockPortal.subscribe.getCall(1).args[0]).to.equal(client.id);
               expect(mockPortal.subscribe.getCall(1).args[1]).to.equal(data.recorderId);
-              expect(mockPortal.subscribe.getCall(1).args[2]).to.deep.equal({type: 'recording', media: {audio: {from: testStream, format: {codec: 'pcmu'}}, video: {from: testStream, format: {codec: 'vp8'}}}, connection: {container: 'mkv'}});
+              expect(mockPortal.subscribe.getCall(1).args[2]).to.deep.equal({type: 'recording', media: {audio: {from: testStream, format: {codec: 'pcmu'}}, video: {from: testStream, format: {codec: 'vp8'}}}, connection: {container: 'auto'}});
               done();
             });
           });
@@ -1747,17 +1734,17 @@ describe('Responding to clients.', function() {
           client.emit('startRecorder', options, function(status, data) {
             expect(status).to.equal('success');
             expect(mockPortal.subscribe.getCall(0).args[1]).to.be.a('string');
-            expect(mockPortal.subscribe.getCall(0).args[2]).to.deep.equal({type: 'recording', media: {audio: {from: testStream, format: {codec: 'opus', sampleRate:48000, channelNum: 2}}, video: {from: testStream, format: {codec: 'vp8'}}}, connection: {container: 'mkv'}});
+            expect(mockPortal.subscribe.getCall(0).args[2]).to.deep.equal({type: 'recording', media: {audio: {from: testStream, format: {codec: 'opus', sampleRate:48000, channelNum: 2}}, video: {from: testStream, format: {codec: 'vp8'}}}, connection: {container: 'auto'}});
 
             var options = {audioStreamId: 'targetStreamId1', audioCodec: 'opus'}; //unspecified video stream-id, audio codec is 'opus'.
             client.emit('startRecorder', options, function(status, data) {
               expect(status).to.equal('success');
-              expect(mockPortal.subscribe.getCall(1).args[2]).to.deep.equal({type: 'recording', media: {audio: {from: 'targetStreamId1', format: {codec: 'opus', sampleRate: 48000, channelNum: 2}}, video: false}, connection: {container: 'mkv'}});
+              expect(mockPortal.subscribe.getCall(1).args[2]).to.deep.equal({type: 'recording', media: {audio: {from: 'targetStreamId1', format: {codec: 'opus', sampleRate: 48000, channelNum: 2}}, video: false}, connection: {container: 'auto'}});
 
               var options = {videoStreamId: 'targetStreamId2', videoCodec: 'h264', interval: 2000}; //unspecified audio stream-id.
               client.emit('startRecorder', options, function(status, data) {
                 expect(status).to.equal('success');
-                expect(mockPortal.subscribe.getCall(2).args[2]).to.deep.equal({type: 'recording', media: {audio: false, video: {from: 'targetStreamId2', format: {codec: 'h264'}}}, connection: {container: 'mkv'}});
+                expect(mockPortal.subscribe.getCall(2).args[2]).to.deep.equal({type: 'recording', media: {audio: false, video: {from: 'targetStreamId2', format: {codec: 'h264'}}}, connection: {container: 'auto'}});
                 done();
               });
             });

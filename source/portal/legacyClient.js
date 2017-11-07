@@ -570,8 +570,8 @@ var LegacyClient = function(clientId, sigConnection, portal) {
       return portal.subscribe(clientId, subscription_id, sub_desc)
         .then(function(result) {
           log.debug('portal.subscribe succeeded, result:', result);
-
-          var recording_file = subscription_id + '.' + sub_desc.connection.container;
+          var container = ((options.audioCodec === 'aac' && (!options.videoCodec || (options.videoCodec === 'h264'))) ? 'mp4' : 'mkv');
+          var recording_file = subscription_id + '.' + container;
           safeCall(callback, 'success', {recorderId: recorder_id, path: recording_file, host: 'unknown'});
         }).catch(function(err) {
           const err_message = getErrorMessage(err);
