@@ -80,10 +80,10 @@ install_ffmpeg(){
 install_libnice(){
   if [ -d $LIB_DIR ]; then
     cd $LIB_DIR
-    wget -c http://nice.freedesktop.org/releases/libnice-0.1.13.tar.gz
-    tar -zxvf libnice-0.1.13.tar.gz
-    cd libnice-0.1.13
-    patch -p1 < $PATHNAME/libnice-0113.patch
+    wget -c http://nice.freedesktop.org/releases/libnice-0.1.14.tar.gz
+    tar -zxvf libnice-0.1.14.tar.gz
+    cd libnice-0.1.14
+    patch -p1 < $PATHNAME/patches/libnice-0114.patch
     #patch -p1 < $PATHNAME/patches/libnice-0001-Remove-lock.patch
     PKG_CONFIG_PATH=$PREFIX_DIR"/lib/pkgconfig":$PREFIX_DIR"/lib64/pkgconfig":$PKG_CONFIG_PATH ./configure --prefix=$PREFIX_DIR && make -s V= && make install
     cd $CURRENT_DIR
