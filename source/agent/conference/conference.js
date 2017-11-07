@@ -279,15 +279,15 @@ var translateOldRoomConfig = (oldConfig) => {
 var calcResolution = (x, baseResolution) => {
   switch (x) {
     case 'x3/4':
-      return {width: Math.floor(baseResolution.width * 3 / 4), height: Math.floor(baseResolution.height * 3 / 4)};
+      return {width: Math.ceil(baseResolution.width * 3 / 4), height: Math.ceil(baseResolution.height * 3 / 4)};
     case 'x2/3':
-      return {width: Math.floor(baseResolution.width * 2 / 3), height: Math.floor(baseResolution.height * 2 / 3)};
+      return {width: Math.ceil(baseResolution.width * 2 / 3), height: Math.ceil(baseResolution.height * 2 / 3)};
     case 'x1/2':
-      return {width: Math.floor(baseResolution.width / 2), height: Math.floor(baseResolution.height / 2)};
+      return {width: Math.ceil(baseResolution.width / 2), height: Math.ceil(baseResolution.height / 2)};
     case 'x1/3':
-      return {width: Math.floor(baseResolution.width / 3), height: Math.floor(baseResolution.height / 3)};
+      return {width: Math.ceil(baseResolution.width / 3), height: Math.ceil(baseResolution.height / 3)};
     case 'x1/4':
-      return {width: Math.floor(baseResolution.width / 4), height: Math.floor(baseResolution.height / 4)};
+      return {width: Math.ceil(baseResolution.width / 4), height: Math.ceil(baseResolution.height / 4)};
     case 'xga':
       return {width: 1024, height: 768};
     case 'svga':
