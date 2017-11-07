@@ -518,10 +518,7 @@ describe('Logining and Relogining.', function() {
         client.emit('login', someValidLoginInfo, function(status, resp) {
           expect(status).to.equal('ok');
           ticket = resp.reconnectionTicket;
-          return server.drop(client.id)
-            .then(function(result) {
-              expect(result).to.equal('ok');
-            });
+          server.drop(client.id);
         });
       });
       client.on('disconnect', function(){
@@ -776,10 +773,6 @@ describe('Drop users from sessions.', function() {
     server.stop();
   });
 
-  it('Dropping unconnected users should fail.', function() {
-    return expect(server.drop('unconnectedUser', 'anyRoom')).to.be.rejectedWith('user not in room');
-  });
-
   it('Dropping users after joining should succeed.', function(done) {
     var client = sioClient.connect(serverUrl, {reconnect: false, secure: false, 'force new connection': true});
 
@@ -791,13 +784,10 @@ describe('Drop users from sessions.', function() {
       mockServiceObserver.onLeave = sinon.spy();
 
       client.emit('login', jsLoginInfo, function(status, resp) {
-        return server.drop(client.id)
-          .then(function(result) {
-            expect(result).to.equal('ok');
-            expect(mockServiceObserver.onLeave.getCall(0).args).to.deep.equal(['tokenCode']);
-            expect(mockPortal.leave.getCall(0).args).to.deep.equal([client.id]);
-            done();
-          });
+        server.drop(client.id);
+        expect(mockServiceObserver.onLeave.getCall(0).args).to.deep.equal(['tokenCode']);
+        expect(mockPortal.leave.getCall(0).args).to.deep.equal([client.id]);
+        done();
       });
     });
   });
@@ -811,12 +801,9 @@ describe('Drop users from sessions.', function() {
       mockServiceObserver.onLeave = sinon.spy();
 
       client.emit('login', jsLoginInfo, function(status, resp) {
-        return server.drop('all')
-          .then(function(result) {
-            expect(result).to.equal('ok');
-            expect(mockServiceObserver.onLeave.getCall(0).args).to.deep.equal(['tokenCode']);
-            done();
-          });
+        server.drop('all');
+        expect(mockServiceObserver.onLeave.getCall(0).args).to.deep.equal(['tokenCode']);
+        done();
       });
     });
   });
@@ -1739,7 +1726,7 @@ describe('Responding to clients.', function() {
                 },
                 video: {
                   from: 'stream2',
-                  spec: {
+                  parameters: {
                     resolution: {width: 648, height: 480},
                     bitrate: 300,
                     framerate: 24,
