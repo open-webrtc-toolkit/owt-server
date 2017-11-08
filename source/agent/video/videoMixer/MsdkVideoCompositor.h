@@ -82,6 +82,8 @@ class MsdkVideoCompositor : public VideoFrameCompositor,
     enum LayoutSolutionState{UN_INITIALIZED = 0, CHANGING, IN_WORK};
     const uint32_t kMsToRtpTimestamp = 90;
 
+    const uint8_t NumOfRootFrames = 3;
+
 public:
     MsdkVideoCompositor(uint32_t maxInput, woogeen_base::VideoSize rootSize, woogeen_base::YUVColor bgColor, bool crop);
     ~MsdkVideoCompositor();

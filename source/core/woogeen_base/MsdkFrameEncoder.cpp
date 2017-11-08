@@ -24,6 +24,8 @@
 #include <stdio.h>
 #include <assert.h>
 
+#include <boost/thread.hpp>
+
 #include "MediaUtilities.h"
 
 #include "MsdkBase.h"
@@ -44,6 +46,13 @@ class StreamEncoder : public FrameSource, public JobTimerListener
     DECLARE_LOGGER()
 
     enum EncoderMode{ENCODER_MODE_NORMAL = 0, ENCODER_MODE_AUTO};
+
+    typedef struct {
+        boost::shared_ptr<mfxBitstream> bsBuffer;
+        mfxSyncPoint syncp;
+    } bsBufferSync_t;
+
+    const uint8_t NumOfAsyncEnc = 3;
 
 public:
     StreamEncoder()
@@ -71,11 +80,19 @@ public:
     {
         initDefaultParam();
         m_feedbackTimer.reset(new JobTimer(1, this));
+
+        m_syncThreadRunning = true;
+        m_syncThread = boost::thread(&StreamEncoder::syncLoop, this);
     }
 
     ~StreamEncoder()
     {
         printfFuncEnter;
+
+        m_syncThreadRunning = false;
+        m_syncCond.notify_one();
+        m_syncThread.join();
+
         m_feedbackTimer->stop();
         removeVideoDestination(m_dest);
 
@@ -101,12 +118,7 @@ public:
         m_encExtHevcParam.reset();
         m_encExtParams.clear();
 
-        if (m_bitstream && m_bitstream->Data) {
-            free(m_bitstream->Data);
-            m_bitstream->Data = NULL;
-        }
-        m_bitstream.reset();
-
+        deinitBitstreamBuffers();
         deinitScaler();
 
         if (m_bsDumpfp) {
@@ -166,7 +178,8 @@ public:
                 ELOG_ERROR("(%p)Unspported video frame format %s(%d)", this, getFormatStr(m_format), m_format);
                 return false;
         }
-        ELOG_DEBUG("(%p)Created encoder %s(%d)", this, getFormatStr(m_format), m_format);
+        ELOG_DEBUG_T("Created encoder %s(%d), resolution(%dx%d), frame rate(%d), kbps(%d), keyFrameIntervalSeconds(%d)"
+                , getFormatStr(m_format), m_format, m_width, m_height, m_frameRate, m_bitRateKbps, m_keyFrameIntervalSeconds);
 
         mfxStatus sts = MFX_ERR_NONE;
 
@@ -211,13 +224,7 @@ public:
 
         ELOG_TRACE("(%p)Init bistream buffer, size(%d)", this, size);
 
-        m_bitstream.reset(new mfxBitstream);
-        memset((void *)m_bitstream.get(), 0, sizeof(mfxBitstream));
-
-        m_bitstream->Data         = (mfxU8 *)malloc(size);
-        m_bitstream->MaxLength    = size;
-        m_bitstream->DataOffset   = 0;
-        m_bitstream->DataLength   = 0;
+        initBitstreamBuffers(size);
 
         resetEnc();
 
@@ -281,6 +288,17 @@ public:
         mfxSyncPoint syncp;
         boost::scoped_ptr<mfxEncodeCtrl> ctrl;
 
+        if (!m_syncThreadRunning) {
+            ELOG_INFO_T("Drop frame, sync thread not running");
+            return;
+        }
+
+        boost::shared_ptr<mfxBitstream> bsBuffer = getBitstreamBuffer();
+        if (!bsBuffer) {
+            ELOG_INFO_T("Drop frame, no bitstream buffer available");
+            return;
+        }
+
         if (m_mode == ENCODER_MODE_AUTO) {
             if(m_width != frame.additionalInfo.video.width || m_height != frame.additionalInfo.video.height) {
                 ELOG_DEBUG("(%p)Encoder resolution changed, %dx%d -> %dx%d", this
@@ -323,7 +341,7 @@ public:
         }
 
 retry:
-        sts = m_enc->EncodeFrameAsync(ctrl.get(), inFrame->getSurface(), m_bitstream.get(), &syncp);
+        sts = m_enc->EncodeFrameAsync(ctrl.get(), inFrame->getSurface(), bsBuffer.get(), &syncp);
         if (sts == MFX_WRN_DEVICE_BUSY) {
             ELOG_TRACE("(%p)Device busy, retry!", this);
 
@@ -331,10 +349,10 @@ retry:
             goto retry;
         }
         else if (sts == MFX_ERR_NOT_ENOUGH_BUFFER) {
-            ELOG_WARN("(%p)Require more bitstream buffer, %d!", this, m_bitstream->MaxLength);
+            ELOG_WARN("(%p)Require more bitstream buffer, %d!", this, bsBuffer->MaxLength);
 
-            uint32_t newSize = m_bitstream->MaxLength * 2;
-            while (newSize < m_bitstream->DataLength + frame.length)
+            uint32_t newSize = bsBuffer->MaxLength * 2;
+            while (newSize < bsBuffer->DataLength + frame.length)
                 newSize *= 2;
 
             if (newSize > _MAX_BITSTREAM_BUFFER_) {
@@ -343,12 +361,12 @@ retry:
             }
 
             ELOG_DEBUG_T("bitstream buffer need to remalloc %d -> %d"
-                    , m_bitstream->MaxLength
+                    , bsBuffer->MaxLength
                     , newSize
                     );
 
-            m_bitstream->Data         = (mfxU8 *)realloc(m_bitstream->Data, newSize);
-            m_bitstream->MaxLength    = newSize;
+            bsBuffer->Data         = (mfxU8 *)realloc(bsBuffer->Data, newSize);
+            bsBuffer->MaxLength    = newSize;
 
             goto retry;
         }
@@ -357,32 +375,43 @@ retry:
             return;
         }
 
+        boost::shared_ptr<bsBufferSync_t> bsBufferSync(new bsBufferSync_t);
+        bsBufferSync->bsBuffer = bsBuffer;
+        bsBufferSync->syncp = syncp;
+
+        {
+            boost::mutex::scoped_lock lock(m_syncMutex);
+            m_bsBufferSyncQueue.push_back(bsBufferSync);
+            m_syncCond.notify_one();
+        }
+
+#if 0
         sts = m_encSession->SyncOperation(syncp, MFX_INFINITE);
         if(sts != MFX_ERR_NONE) {
             ELOG_ERROR("(%p)SyncOperation failed, ret %d", this, sts);
             return;
         }
 
-        if (m_bitstream->DataLength <= 0) {
+        if (bsBuffer->DataLength <= 0) {
             ELOG_ERROR("(%p)No output bitstream buffer", this);
             return;
         }
 
         ELOG_TRACE("(%p)Output FrameType %s(0x%x), DataOffset %d , DataLength %d", this,
-                getFrameType(m_bitstream->FrameType),
-                m_bitstream->FrameType,
-                m_bitstream->DataOffset,
-                m_bitstream->DataLength
+                getFrameType(bsBuffer->FrameType),
+                bsBuffer->FrameType,
+                bsBuffer->DataOffset,
+                bsBuffer->DataLength
               );
 
         Frame outFrame;
         memset(&outFrame, 0, sizeof(outFrame));
         outFrame.format = m_format;
-        outFrame.payload = m_bitstream->Data + m_bitstream->DataOffset;
-        outFrame.length = m_bitstream->DataLength;
+        outFrame.payload = bsBuffer->Data + bsBuffer->DataOffset;
+        outFrame.length = bsBuffer->DataLength;
         outFrame.additionalInfo.video.width = m_width;
         outFrame.additionalInfo.video.height = m_height;
-        outFrame.additionalInfo.video.isKeyFrame = isKeyFrame(m_bitstream->FrameType);
+        outFrame.additionalInfo.video.isKeyFrame = isKeyFrame(bsBuffer->FrameType);
         outFrame.timeStamp = (m_frameCount++) * 1000 / 30 * 90;
 
         ELOG_TRACE_T("deliverFrame, %s, %dx%d(%s), length(%d)",
@@ -396,8 +425,9 @@ retry:
 
         deliverFrame(outFrame);
 
-        m_bitstream->DataOffset   = 0;
-        m_bitstream->DataLength   = 0;
+        bsBuffer->DataOffset   = 0;
+        bsBuffer->DataLength   = 0;
+#endif
     }
 
     void setBitrate(unsigned short kbps)
@@ -619,7 +649,7 @@ protected:
             return false;
         }
 
-        m_vppFramePool.reset(new MsdkFramePool(m_width, m_height, 1, m_vppAllocator));
+        m_vppFramePool.reset(new MsdkFramePool(m_width, m_height, NumOfAsyncEnc, m_vppAllocator));
         m_scaler.reset(new MsdkScaler());
         return true;
     }
@@ -656,6 +686,119 @@ protected:
         return dst;
     }
 
+    void initBitstreamBuffers(uint32_t bufferSize)
+    {
+        m_bitstreamBuffers.resize(NumOfAsyncEnc);
+        for (auto& bsBuffer : m_bitstreamBuffers) {
+            bsBuffer.reset(new mfxBitstream);
+            memset((void *)bsBuffer.get(), 0, sizeof(mfxBitstream));
+
+            bsBuffer->Data         = (mfxU8 *)malloc(bufferSize);
+            bsBuffer->MaxLength    = bufferSize;
+            bsBuffer->DataOffset   = 0;
+            bsBuffer->DataLength   = 0;
+        }
+    }
+
+    void deinitBitstreamBuffers()
+    {
+        for (auto& bsBuffer : m_bitstreamBuffers) {
+            if (bsBuffer && bsBuffer->Data) {
+                free(bsBuffer->Data);
+                bsBuffer->Data = NULL;
+            }
+        }
+        m_bitstreamBuffers.clear();
+    }
+
+    boost::shared_ptr<mfxBitstream> getBitstreamBuffer()
+    {
+        for (auto& bsBuffer : m_bitstreamBuffers) {
+            if (bsBuffer && bsBuffer.use_count() == 1) {
+                return bsBuffer;
+            }
+        }
+        return NULL;
+    }
+
+    void syncLoop()
+    {
+        ELOG_INFO_T("Sync thread running!");
+
+        while (true) {
+            boost::shared_ptr<bsBufferSync_t> bsBufferSync;
+            {
+                boost::mutex::scoped_lock lock(m_syncMutex);
+                while (m_syncThreadRunning && m_bsBufferSyncQueue.size() == 0) {
+                    m_syncCond.wait(lock);
+                }
+
+                if (m_bsBufferSyncQueue.size() > 0) {
+                    if (m_bsBufferSyncQueue.size() > 1)
+                        ELOG_DEBUG_T("Pending sync queue(%ld)", m_bsBufferSyncQueue.size());
+
+                    bsBufferSync = m_bsBufferSyncQueue.front();
+                    m_bsBufferSyncQueue.pop_front();
+                }
+            }
+
+            if (bsBufferSync) {
+                mfxStatus sts = MFX_ERR_NONE;
+                mfxSyncPoint syncp = bsBufferSync->syncp;
+                boost::shared_ptr<mfxBitstream> bsBuffer = bsBufferSync->bsBuffer;
+
+                sts = m_encSession->SyncOperation(syncp, MFX_INFINITE);
+                if(sts != MFX_ERR_NONE) {
+                    ELOG_ERROR("(%p)SyncOperation failed, ret %d", this, sts);
+                    return;
+                }
+
+                if (bsBuffer->DataLength <= 0) {
+                    ELOG_ERROR("(%p)No output bitstream buffer", this);
+                    return;
+                }
+
+                ELOG_TRACE("(%p)Output FrameType %s(0x%x), DataOffset %d , DataLength %d", this,
+                        getFrameType(bsBuffer->FrameType),
+                        bsBuffer->FrameType,
+                        bsBuffer->DataOffset,
+                        bsBuffer->DataLength
+                        );
+
+                Frame outFrame;
+                memset(&outFrame, 0, sizeof(outFrame));
+                outFrame.format = m_format;
+                outFrame.payload = bsBuffer->Data + bsBuffer->DataOffset;
+                outFrame.length = bsBuffer->DataLength;
+                outFrame.additionalInfo.video.width = m_width;
+                outFrame.additionalInfo.video.height = m_height;
+                outFrame.additionalInfo.video.isKeyFrame = isKeyFrame(bsBuffer->FrameType);
+                outFrame.timeStamp = (m_frameCount++) * 1000 / 30 * 90;
+
+                ELOG_TRACE_T("deliverFrame, %s, %dx%d(%s), length(%d)",
+                        getFormatStr(outFrame.format),
+                        outFrame.additionalInfo.video.width,
+                        outFrame.additionalInfo.video.height,
+                        outFrame.additionalInfo.video.isKeyFrame ? "key" : "delta",
+                        outFrame.length);
+
+                dump(outFrame.payload, outFrame.length);
+
+                deliverFrame(outFrame);
+
+                bsBuffer->DataOffset   = 0;
+                bsBuffer->DataLength   = 0;
+            }
+
+            // exit if queue is empty
+            if (!m_syncThreadRunning && m_bsBufferSyncQueue.size() == 0)
+                break;
+        }
+
+        ELOG_DEBUG_T("Sync thread exited!");
+        return;
+    }
+
 private:
     enum EncoderMode m_mode;
     bool m_ready;
@@ -686,7 +829,7 @@ private:
     boost::scoped_ptr<mfxExtCodingOption2> m_encExtCodingOpt2;
     boost::scoped_ptr<mfxExtHEVCParam> m_encExtHevcParam;
 
-    boost::scoped_ptr<mfxBitstream> m_bitstream;
+    std::vector<boost::shared_ptr<mfxBitstream>> m_bitstreamBuffers;
     mfxPluginUID m_pluginID;
 
     //scaler
@@ -703,6 +846,13 @@ private:
     bool m_enableBsDump;
     FILE *m_bsDumpfp;
     boost::scoped_ptr<JobTimer> m_feedbackTimer;
+
+    bool m_syncThreadRunning;
+    boost::thread m_syncThread;
+
+    std::deque<boost::shared_ptr<bsBufferSync_t>> m_bsBufferSyncQueue;
+    boost::mutex m_syncMutex;
+    boost::condition_variable m_syncCond;
 };
 
 DEFINE_LOGGER(StreamEncoder, "woogeen.StreamEncoder");
