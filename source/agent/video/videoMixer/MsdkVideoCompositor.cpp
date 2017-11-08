@@ -663,8 +663,8 @@ bool MsdkVideoCompositor::resetVpp()
             m_vppReady = false;
             return false;
         }
-        ELOG_TRACE("mfx QueryIOSurf: In(%d), Out(%d)", Request[0].NumFrameSuggested, Request[1].NumFrameSuggested);
 
+        Request[1].NumFrameSuggested = NumOfRootFrames;
         m_framePool.reset(new MsdkFramePool(Request[1], m_allocator));
 
         m_defaultRootFrame.reset(new MsdkFrame(m_rootSize.width, m_rootSize.height, m_allocator));
