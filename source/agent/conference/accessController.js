@@ -32,10 +32,9 @@ module.exports.create = function(spec, rpcReq, onSessionEstablished, onSessionAb
     var session = sessions[sessionId];
     if (session.state === 'connecting' || session.state === 'connected') {
       rpcReq.terminate(session.locality.node, sessionId, session.direction)
-        .catch(function(reason) {
-          log.debug('rpcRequest.terminate fail:', reason);
-        });
-      rpcReq.recycleWorkerNode(session.locality.agent, session.locality.node, {room: in_room, task: sessionId})
+        .then(function() {
+          return rpcReq.recycleWorkerNode(session.locality.agent, session.locality.node, {room: in_room, task: sessionId})
+        })
         .catch(function(reason) {
           log.debug('AccessNode not recycled', session.locality);
         });
@@ -229,7 +228,7 @@ module.exports.create = function(spec, rpcReq, onSessionEstablished, onSessionAb
       });
   };
 
-  that.terminate = function(sessionId, direction) {
+  that.terminate = function(sessionId, direction, reason) {
     log.debug('terminate, sessionId:', sessionId, 'direction:', direction);
 
     var session = sessions[sessionId];
@@ -238,7 +237,7 @@ module.exports.create = function(spec, rpcReq, onSessionEstablished, onSessionAb
     }
 
     terminateSession(sessionId);
-    on_session_aborted(session.owner, sessionId, session.direction, 'Participant terminate');
+    on_session_aborted(session.owner, sessionId, session.direction, reason);
     return Promise.resolve('ok');
   };
 
@@ -279,7 +278,7 @@ module.exports.create = function(spec, rpcReq, onSessionEstablished, onSessionAb
       var owner = sessions[session_id].owner;
       var direction = sessions[session_id].direction;
       terminateSession(session_id);
-      on_session_aborted(owner, session_id, direction, 'Participant terminate');
+      on_session_aborted(owner, session_id, direction, 'Room destruction');
     }
   };
 

@@ -573,8 +573,7 @@ var Conference = function (rpcClient, selfRpcId) {
         }).catch((err) => {
           var err_msg = (err.message ? err.message : err);
           log.info('Exception:', err_msg);
-          sendMsgTo(participantId, 'progress', {id: sessionId, status: 'error', data: err_msg});
-          accessController && accessController.terminate(sessionId, 'in').catch((e) => {
+          accessController && accessController.terminate(sessionId, 'in', err_msg).catch((e) => {
             log.info('Exception:', e.message ? e.message : e);
           });
         });
@@ -589,8 +588,7 @@ var Conference = function (rpcClient, selfRpcId) {
         }).catch((err) => {
           var err_msg = (err.message ? err.message : err);
           log.info('Exception:', err_msg);
-          sendMsgTo(participantId, 'progress', {id: sessionId, status: 'error', data: err_msg});
-          accessController && accessController.terminate(sessionId, 'out').catch((e) => {
+          accessController && accessController.terminate(sessionId, 'out', err_msg).catch((e) => {
             log.info('Exception:', e.message ? e.message : e);
           });
         });
@@ -1023,16 +1021,12 @@ var Conference = function (rpcClient, selfRpcId) {
   const removeStream = (participantId, streamId) => {
     return new Promise((resolve, reject) => {
       if (streams[streamId]) {
-        var dropped_subscriptions = [];
         for (var sub_id in subscriptions) {
           if ((subscriptions[sub_id].media.audio && (subscriptions[sub_id].media.audio.from === streamId))
             || (subscriptions[sub_id].media.video && (subscriptions[sub_id].media.video.from === streamId))) {
-            roomController && roomController.unsubscribe(subscriptions[sub_id].info.owner, sub_id);
-            dropped_subscriptions.push(sub_id);
-            sendMsg('room', subscriptions[sub_id].info.owner, 'progress', {id: sub_id, status: 'error', data: 'Source stream loss'});
+            accessController && accessController.terminate(sub_id, 'out', 'Source stream loss');
           }
         }
-        dropped_subscriptions.forEach((sub_id) => {delete subscriptions[sub_id];});
 
         roomController && roomController.unpublish(participantId, streamId);
         delete streams[streamId];
@@ -1347,7 +1341,7 @@ var Conference = function (rpcClient, selfRpcId) {
           callback('callback', 'error', e.message ? e.message : e);
         });
     } else {
-      return accessController.terminate(streamId, 'in')
+      return accessController.terminate(streamId, 'in', 'Participant terminate')
         .then((result) => {
           log.debug('accessController.terminate result:', result);
           return removeStream(participantId, streamId);
@@ -1599,7 +1593,7 @@ var Conference = function (rpcClient, selfRpcId) {
           callback('callback', 'error', e.message ? e.message : e);
         });
     } else {
-      return accessController.terminate(subscriptionId, 'out')
+      return accessController.terminate(subscriptionId, 'out', 'Participant terminate')
         .then((result) => {
           return removeSubscription(subscriptionId);
         }, (e) => {
