@@ -288,6 +288,21 @@ install_usrsctp() {
   fi
 }
 
+install_glib() {
+  if [ -d $LIB_DIR ]; then
+    local VERSION="2.54.1"
+    cd $LIB_DIR
+    wget -c https://github.com/GNOME/glib/archive/${VERSION}.tar.gz -O glib-${VERSION}.tar.gz
+
+    tar -xvzf glib-${VERSION}.tar.gz ;cd glib-${VERSION}
+    ./autogen.sh --enable-libmount=no --prefix=${PREFIX_DIR}
+    LD_LIBRARY_PATH=${PREFIX_DIR}/lib:$LD_LIBRARY_PATH make && make install
+  else
+    mkdir -p $LIB_DIR
+    install_glib
+  fi
+}
+
 install_gcc(){
   if [ -d $LIB_DIR ]; then
     local VERSION="4.8.4"

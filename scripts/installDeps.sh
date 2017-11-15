@@ -88,6 +88,9 @@ fi
 pause "Installing node building tools... [press Enter]"
 install_node_tools
 
+pause "Installing glib library...  [press Enter]"
+install_glib
+
 pause "Installing libnice library...  [press Enter]"
 install_libnice
 
