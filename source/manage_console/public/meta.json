@@ -1,0 +1,14 @@
+{
+  "mode": ["hybrid"],
+  "mediaMixing": {
+    "video": {
+      "resolution": ["vga", "sif", "xga", "svga", "hd720p", "hd1080p", "uhd_4k", "r720x720", "r720x1280", "r1080x1920"],
+      "quality_level": ["bestquality", "betterquality", "standard", "betterspeed", "bestspeed"],
+      "bkColor": ["black", "white"],
+      "layout": {
+        "base": ["fluid", "lecture", "void"]
+      }
+    },
+    "audio": {}
+  }
+}

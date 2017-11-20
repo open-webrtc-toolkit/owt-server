@@ -1,0 +1,12 @@
+{
+  "name": "WooGeen-MCU-Manage-Console",
+  "version":"3.5.0",
+  "dependencies": {
+    "express": "*",
+    "toml": "*",
+    "http-proxy": "*"
+  },
+  "engine": {
+    "node": "6.9.5"
+  }
+}

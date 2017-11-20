@@ -1,0 +1,20 @@
+{
+    "name": "manage-console",
+    "dest": "manage_console",
+    "common": {
+        "package": "package.json",
+        "files": [
+            "./*",
+            "../common/cipher.js",
+            "../../scripts/release/initcert.js",
+            "../../scripts/detectOS.sh"
+        ],
+        "folders": {
+            "cert": [
+                "../../cert/*.pfx",
+                "../../cert/.woogeen.keystore"
+            ]
+        }
+    },
+    "start": "node ."
+}

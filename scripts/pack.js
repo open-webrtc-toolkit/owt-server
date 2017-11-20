@@ -300,7 +300,6 @@ function packCommon(target) {
     // Copy common folders
     for (const folder in common.folders) {
       let folderDist = path.join(packDist, folder);
-      execSync(`rm -rf ${folderDist}`);
       execSync(`mkdir -p ${folderDist}`);
       for (const file of common.folders[folder]) {
         // Copy in-folder files or folders
