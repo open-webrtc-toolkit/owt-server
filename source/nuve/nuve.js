@@ -28,7 +28,6 @@ var usersResource = require('./resource/usersResource');
 var userResource = require('./resource/userResource');
 var clusterResource = require('./resource/clusterResource');
 
-app.use('/console', express.static(__dirname + '/public'));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({
     extended: true

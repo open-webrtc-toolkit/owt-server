@@ -1,6 +1,6 @@
 /* global module, require */
 'use strict';
-var meta = require('../public/meta.json');
+var meta = require('../meta.json');
 var log = require('./../logger').logger.getLogger('Room');
 
 function defaultMediaMixing () {

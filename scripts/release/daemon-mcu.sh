@@ -184,6 +184,12 @@ case $startStop in
           > "${stdout}" 2>&1 </dev/null &
         echo $! > ${pid}
         ;;
+      manage-console )
+        cd ${WOOGEEN_HOME}/manage_console
+        nohup nice -n ${WOOGEEN_NICENESS} node . \
+          > "${stdout}" 2>&1 </dev/null &
+        echo $! > ${pid}
+        ;;
       app )
         cd ${WOOGEEN_HOME}/extras/basic_example/
         nohup nice -n ${WOOGEEN_NICENESS} node basicServer.js \
