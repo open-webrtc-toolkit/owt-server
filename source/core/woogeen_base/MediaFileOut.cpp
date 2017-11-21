@@ -52,7 +52,9 @@ bool MediaFileOut::isVideoFormatSupported(FrameFormat format)
 {
     switch (format) {
         case FRAME_FORMAT_VP8:
+        case FRAME_FORMAT_VP9:
         case FRAME_FORMAT_H264:
+        case FRAME_FORMAT_H265:
             return true;
         default:
             return false;
