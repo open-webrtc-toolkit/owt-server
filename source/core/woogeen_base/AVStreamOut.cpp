@@ -26,8 +26,12 @@ inline AVCodecID frameFormat2AVCodecID(int frameFormat)
     switch (frameFormat) {
         case FRAME_FORMAT_VP8:
             return AV_CODEC_ID_VP8;
+        case FRAME_FORMAT_VP9:
+            return AV_CODEC_ID_VP9;
         case FRAME_FORMAT_H264:
             return AV_CODEC_ID_H264;
+        case FRAME_FORMAT_H265:
+            return AV_CODEC_ID_H265;
         case FRAME_FORMAT_PCMU:
             return AV_CODEC_ID_PCM_MULAW;
         case FRAME_FORMAT_PCMA:
@@ -421,7 +425,7 @@ bool AVStreamOut::addVideoStream(FrameFormat format, uint32_t width, uint32_t he
     par->codec_id   = codec_id;
     par->width      = width;
     par->height     = height;
-    if (codec_id == AV_CODEC_ID_H264) { //extradata
+    if (codec_id == AV_CODEC_ID_H264 || codec_id == AV_CODEC_ID_H265) { //extradata
         AVCodecParserContext *parser = av_parser_init(codec_id);
         if (!parser) {
             ELOG_ERROR("Cannot find video parser");

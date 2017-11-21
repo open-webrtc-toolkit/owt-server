@@ -1541,15 +1541,11 @@ var Conference = function (rpcClient, selfRpcId) {
           }
         }
 
-        //FIXME: to make js sdk work with recording, forbid h264 and vp9 here
         if (subDesc.media.video) {
           video_codec = ((subDesc.media.video.format && subDesc.media.video.format.codec) || streams[subDesc.media.video.from].media.video.format.codec);
-          if (video_codec === 'h265' || video_codec === 'vp9') {
-            return callback('callback', 'error', 'video codec not supported');
-          }
         }
 
-        subDesc.connection.container = ((audio_codec === 'aac' && (!video_codec || (video_codec === 'h264'))) ? 'mp4' : 'mkv');
+        subDesc.connection.container = ((audio_codec === 'aac' && (!video_codec || (video_codec === 'h264') || (video_codec === 'h265'))) ? 'mp4' : 'mkv');
       }
 
       if (subDesc.type === 'streaming' && subDesc.media.audio && !subDesc.media.audio.format) {//FIXME: To support audio formats other than aac_48000_2.
