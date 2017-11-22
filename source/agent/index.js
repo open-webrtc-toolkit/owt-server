@@ -360,12 +360,12 @@ function collectIPs () {
             for (k2 in interfaces[k]) {
                 if (interfaces[k].hasOwnProperty(k2)) {
                     address = interfaces[k][k2];
-                    if (!address.internal) {
+                    if (address.family === 'IPv4' && !address.internal) {
                         var webrtcInterface = webrtcInterfaces.find((i) => {return i.name === k;});
                         if (webrtcInterface) {
                             webrtcInterface.ip_address = address.address;
                         }
-                        if (address.family === 'IPv4' && !clusterInterface && (k === global.config.internal.network_interface || !global.config.internal.network_interface)) {
+                        if (!clusterInterface && (k === global.config.internal.network_interface || !global.config.internal.network_interface)) {
                             clusterInterface = k;
                             clusterAddress = address.address;
                         }
