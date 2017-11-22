@@ -1,8 +1,7 @@
 /*global exports, require, Buffer*/
 'use strict';
-var tokenRegistry = require('./../mdb/tokenRegistry');
-var serviceRegistry = require('./../mdb/serviceRegistry');
-var dataBase = require('./../mdb/dataBase');
+
+var dataAccess = require('../data_access');
 var crypto = require('crypto');
 var cloudHandler = require('../cloudHandler');
 var logger = require('./../logger').logger;
@@ -14,14 +13,17 @@ var log = logger.getLogger('TokensResource');
  * Gets the service and the room for the proccess of the request.
  */
 var doInit = function (currentService, roomId, callback) {
-    serviceRegistry.getRoomForService(roomId, currentService, function (room) {
-        //log.info(room);
-        callback(room);
+    dataAccess.room.get(currentService._id, roomId, function (room) {
+        if (room) {
+            callback(room);
+        } else {
+            callback();
+        }
     });
 };
 
 var getTokenString = function (id, token) {
-    return dataBase.getKey().then(function(nuveKey) {
+    return dataAccess.token.key().then(function(nuveKey) {
         var toSign = id + ',' + token.host,
             hex = crypto.createHmac('sha256', nuveKey).update(toSign).digest('hex'),
             signed = (new Buffer(hex)).toString('base64'),
@@ -72,71 +74,34 @@ var generateToken = function (currentRoom, authData, type, origin, callback) {
     // Values to be filled from the erizoController
     token.secure = false;
 
-    r = currentRoom._id;
-    tr = undefined;
+    cloudHandler.schedulePortal (token.code, origin, function (ec) {
+        if (ec === 'timeout') {
+            callback('error');
+            return;
+        }
 
-    if (currentService.testRoom !== undefined) {
-        tr = currentService.testRoom._id;
-    }
-
-    if (tr === r) {
-        if (currentService.testToken === undefined) {
-            token.use = 0;
-            token.host = dataBase.testErizoController;
-
-            log.info('Creating testToken');
-
-            tokenRegistry.addToken(token, function (id) {
-                token._id = id;
-                currentService.testToken = token;
-                serviceRegistry.updateService(currentService);
-                getTokenString(id, token)
-                    .then((tokenS) => {
-                        callback(tokenS);
-                    });
-                return;
-            });
+        token.secure = ec.ssl;
+        if (ec.hostname !== '') {
+            token.host = ec.hostname;
         } else {
-            token = currentService.testToken;
-            log.info('TestToken already exists, sending it', token);
+            token.host = ec.ip;
+        }
+
+        if (type === 'rest') {
+            token.host += ':' + ec.rest_port;
+        } else if (type === 'socketio') {
+            token.host += ':' + ec.port;
+        } else {
+            return callback('error');
+        }
+
+        dataAccess.token.create(token, function(id) {
             getTokenString(id, token)
                 .then((tokenS) => {
                     callback(tokenS);
                 });
-            return;
-        }
-    } else {
-
-        cloudHandler.schedulePortal (token.code, origin, function (ec) {
-
-            if (ec === 'timeout') {
-                callback('error');
-                return;
-            }
-
-            token.secure = ec.ssl;
-            if (ec.hostname !== '') {
-                token.host = ec.hostname;
-            } else {
-                token.host = ec.ip;
-            }
-
-            if (type === 'rest') {
-                token.host += ':' + ec.rest_port;
-            } else if (type === 'socketio') {
-                token.host += ':' + ec.port;
-            } else {
-                return callback('error');
-            }
-
-            tokenRegistry.addToken(token, function (id) {
-                getTokenString(id, token)
-                    .then((tokenS) => {
-                        callback(tokenS);
-                    });
-            });
         });
-    }
+    });
 };
 
 /*

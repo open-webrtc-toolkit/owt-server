@@ -1,6 +1,6 @@
 /*global require, exports, Buffer, global*/
 'use strict';
-var serviceRegistry = require('./../mdb/serviceRegistry');
+var dataAccess = require('../data_access');
 var mauthParser = require('./mauthParser');
 var cipher = require('../cipher');
 var log = require('./../logger').logger.getLogger('NuveAuthenticator');
@@ -66,7 +66,7 @@ exports.authenticate = function (req, res, next) {
         params = mauthParser.parseHeader(authHeader);
 
         // Get the service from the data base.
-        serviceRegistry.getService(params.serviceid, function (serv) {
+        dataAccess.service.get(params.serviceid, function (serv) {
             if (serv === undefined || serv === null) {
                 log.info('[Auth] Unknow service:', params.serviceid);
                 res.status(401).send({'WWW-Authenticate': challengeReq});

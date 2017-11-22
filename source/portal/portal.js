@@ -5,7 +5,7 @@ var path = require('path');
 var url = require('url');
 var crypto = require('crypto');
 var log = require('./logger').logger.getLogger('Portal');
-var dbAccess = require('./dataBaseAccess');
+var dataAccess = require('./data_access');
 
 var Portal = function(spec, rpcReq) {
   var that = {},
@@ -52,7 +52,7 @@ var Portal = function(spec, rpcReq) {
     return validateToken(token)
       .then(function(validToken) {
         log.debug('token validation ok.');
-        return dbAccess.deleteToken(validToken.tokenId);
+        return dataAccess.token.delete(validToken.tokenId);
       })
       .then(function(deleteTokenResult) {
         log.debug('login ok.', deleteTokenResult);

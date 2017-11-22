@@ -1,6 +1,6 @@
 /*global exports, require*/
 'use strict';
-var serviceRegistry = require('./../mdb/serviceRegistry');
+var dataAccess = require('../data_access');
 var cloudHandler = require('../cloudHandler');
 
 var logger = require('./../logger').logger;
@@ -12,8 +12,12 @@ var log = logger.getLogger('UsersResource');
  * Gets the service and the room for the proccess of the request.
  */
 var doInit = function (currentService, roomId, callback) {
-    serviceRegistry.getRoomForService(roomId, currentService, function (room) {
-        callback(room);
+    dataAccess.room.get(currentService._id, roomId, function (room) {
+        if (room) {
+            callback(room);
+        } else {
+            callback();
+        }
     });
 };
 

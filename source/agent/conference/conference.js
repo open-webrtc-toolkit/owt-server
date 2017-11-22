@@ -5,7 +5,7 @@ var logger = require('./logger').logger;
 
 var AccessController = require('./accessController');
 var RoomController = require('./roomController');
-var dbAccess = require('./dataBaseAccess');
+var dataAccess = require('./data_access');
 var Participant = require('./participant');
 //var Stream = require('./stream');
 
@@ -657,7 +657,7 @@ var Conference = function (rpcClient, selfRpcId) {
       }
     } else {
       is_initializing = true;
-      return dbAccess.getRoomConfig(roomId)
+      return dataAccess.room.config(roomId)
         .then(function(config) {
             //log.debug('initializing room:', roomId, 'got config:', JSON.stringify(config));
             //FIXME: To refine the configuration data structure and remove the following translating logic later.

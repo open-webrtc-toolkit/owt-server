@@ -27,7 +27,7 @@ config.cluster.name = config.cluster.name || 'woogeen-cluster';
 
 global.config = config;
 
-var dbAccess = require('./dataBaseAccess');
+var dataAccess = require('./data_access');
 
 // Use promise to make the update on the same room execute in order.
 var roomPromises = {};
@@ -93,7 +93,7 @@ function initSipRooms() {
         });
     }
 
-    dbAccess.getSipRooms()
+    dataAccess.room.sips()
         .then(function(rooms) {
             // Get sip rooms here
             if (!Array.isArray(rooms)) {

@@ -1,4 +1,5 @@
 /*global require, exports, global*/
+//FIXEME: copy from nuve, will be removed later
 'use strict';
 
 global.config = global.config || {};

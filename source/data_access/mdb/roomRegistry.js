@@ -2,7 +2,7 @@
 'use strict';
 var db = require('./dataBase').db;
 
-var logger = require('./../logger').logger;
+var logger = require('./../../logger').logger;
 
 // Logger
 var log = logger.getLogger('RoomRegistry');
@@ -23,7 +23,7 @@ var hasRoom = exports.hasRoom = function (id, callback) {
         if (room === undefined) {
             callback(false);
         } else {
-            callback(true);
+            callback(room);
         }
     });
 };
@@ -46,8 +46,10 @@ exports.removeRoom = function (id, callback) {
         if (hasR) {
             db.rooms.remove({_id: db.ObjectId(id)}, function (error, removed) {
                 if (error) log.warn('MongoDB: Error romoving room: ', error);
-                callback(removed);
+                callback(hasR);
             });
+        } else {
+            callback(null);
         }
     });
 };

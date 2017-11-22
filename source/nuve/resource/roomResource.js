@@ -1,20 +1,11 @@
 /*global exports, require*/
 'use strict';
-var roomRegistry = require('./../mdb/roomRegistry');
-var serviceRegistry = require('./../mdb/serviceRegistry');
+var dataAccess = require('../data_access');
 var cloudHandler = require('../cloudHandler');
-var Room = require('./room');
 var logger = require('./../logger').logger;
 
 // Logger
 var log = logger.getLogger('RoomResource');
-
-/*
- * Gets the service and the room for the proccess of the request.
- */
-var doInit = function (currentService, roomId, callback) {
-    serviceRegistry.getRoomForService(roomId, currentService, callback);
-};
 
 /*
  * Get Room. Represents a determined room.
@@ -28,8 +19,8 @@ exports.represent = function (req, res) {
         return;
     }
 
-    doInit(authData.service, req.params.room, function (room) {
-        if (room === undefined) {
+    dataAccess.room.get(authData.service._id, req.params.room, function (room) {
+        if (!room) {
             log.info('Room ', req.params.room, ' does not exist');
             res.status(404).send('Room does not exist');
         } else {
@@ -52,49 +43,21 @@ exports.deleteRoom = function (req, res) {
     }
     var currentService = authData.service;
 
-    doInit(currentService, req.params.room, function (room) {
-        if (room === undefined) {
+    dataAccess.room.delete(authData.service._id, req.params.room, function(room) {
+        if (!room) {
             log.info('Room ', req.params.room, ' does not exist');
             res.status(404).send('Room does not exist');
         } else {
-            log.info('Preparing deleting room', room._id);
-            var id = room._id + '';
-            roomRegistry.removeRoom(id, function (removed) {
-                if (!removed) {
-                    log.info('Room ', req.params.room, ' does not exist');
-                    res.status(404).send('Room does not exist');
-                } else {
-                    var found = false;
-                    currentService.rooms.map(function (r, index) {
-                        if (r._id === room._id) {
-                            found = true;
-                            currentService.rooms.splice(index, 1);
+            var id = req.params.room;
+            log.debug('Room ', id, ' deleted for service ', authData.service._id);
+            cloudHandler.deleteRoom(id, function () {});
+            res.send('Room deleted');
 
-                            serviceRegistry.deleteRoomInService(currentService._id, r, function (err, ret) {
-                                if (!err) {
-                                    log.debug('Room ', id, ' deleted for service ', currentService._id);
-                                    cloudHandler.deleteRoom(id, function () {});
-                                    res.send('Room deleted');
-                                } else {
-                                    log.info('Room ', req.params.room, ' does not exist');
-                                    res.status(404).send('Room does not exist');
-                                }
-                            });
-
-                            // Notify SIP portal if SIP room deleted
-                            if (room.sipInfo) {
-                                log.debug('Notify SIP Portal on delete Room');
-                                cloudHandler.notifySipPortal('delete', room, function(){});
-                            }
-                        }
-                    });
-
-                    if (!found) {
-                        log.info('Room ', req.params.room, ' does not exist');
-                        res.status(404).send('Room does not exist');
-                    }
-                }
-            });
+            // Notify SIP portal if SIP room deleted
+            if (room.sipInfo) {
+                log.debug('Notify SIP Portal on delete Room');
+                cloudHandler.notifySipPortal('delete', room, function(){});
+            }
         }
     });
 };
@@ -108,78 +71,32 @@ exports.updateRoom = function (req, res) {
         return;
     }
     var currentService = authData.service;
-
-    doInit(currentService, req.params.room, function (room) {
-        if (currentService === undefined) {
-            res.status(401).send('Client unathorized');
-        } else if (room === undefined) {
+    var updates = req.body;
+    dataAccess.room.get(currentService._id, req.params.room, function (room) {
+        if (!room) {
             log.info('Room ', req.params.room, ' does not exist');
             res.status(404).send('Room does not exist');
         } else {
             var updates = req.body;
-            if (typeof updates === 'object' && updates !== null) {
-                log.info('Room', 'updateRoom updates', updates);
-                var newRoom = Room.create(updates);
-                if (newRoom === null) {
-                    return res.status(400).send('Bad room configuration');
-                }
-
-                var hasSip = !!room.sipInfo;
-                Object.keys(updates).map(function (k) {
-                    if (newRoom.hasOwnProperty(k)) {
-                        if (k === 'views') {
-                            room[k] = newRoom[k];
-                            // Remove old style media mixing configuration
-                            delete room['mediaMixing'];
-                        } else if (k !== 'mediaMixing') {
-                            room[k] = newRoom[k];
-                        } else if (typeof updates.mediaMixing.video === 'object') {
-                            room.mediaMixing = room.mediaMixing || {};
-                            room.mediaMixing.video = room.mediaMixing.video || {};
-                            Object.keys(updates.mediaMixing.video).map(function (k) {
-                                if (newRoom.mediaMixing.video.hasOwnProperty(k)) {
-                                    if (k !== 'layout') {
-                                        room.mediaMixing.video[k] = newRoom.mediaMixing.video[k];
-                                    } else if (typeof updates.mediaMixing.video.layout === 'object') {
-                                        room.mediaMixing.video.layout = room.mediaMixing.video.layout || {};
-                                        Object.keys(updates.mediaMixing.video.layout).map(function (k) {
-                                            if (newRoom.mediaMixing.video.layout.hasOwnProperty(k)) {
-                                                room.mediaMixing.video.layout[k] = newRoom.mediaMixing.video.layout[k];
-                                            }
-                                        });
-                                    }
-                                }
-                            });
+            dataAccess.room.update(currentService._id, req.params.room, updates, function(result) {
+                if (result) {
+                    res.send(result);
+                    // Notify SIP portal if SIP room updated
+                    if (updates.hasOwnProperty('sipInfo')) {
+                        log.debug('Notify SIP Portal on update Room', updates);
+                        var changeType = 'update';
+                        if (!hasSip && result.sipInfo) {
+                            changeType = 'create';
+                        } else if (hasSip && !result.sipInfo) {
+                            changeType = 'delete';
                         }
+                        log.debug('Change type', changeType);
+                        cloudHandler.notifySipPortal(changeType, result, function(){});
                     }
-                });
-
-                roomRegistry.addRoom(room, function (result) {
-                    log.debug('currentService:', currentService);
-                    serviceRegistry.updateRoomInService(currentService._id, result, function(err, updated) {
-                        if (err) {
-                            res.send(room);
-                        } else {
-                            // Notify SIP portal if SIP room updated
-                            if (updates.hasOwnProperty('sipInfo')) {
-                                log.debug('Notify SIP Portal on update Room', updates);
-                                var changeType = 'update';
-                                if (!hasSip && result.sipInfo) {
-                                    changeType = 'create';
-                                } else if (hasSip && !result.sipInfo) {
-                                    changeType = 'delete';
-                                }
-                                log.debug('Change type', changeType);
-                                cloudHandler.notifySipPortal(changeType, result, function(){});
-                            }
-                            res.send(result);
-                        }
-                    });
-                });
-
-            } else {
-                res.status(400).send('Bad room configuration');
-            }
+                } else {
+                    res.status(400).send('Bad room configuration');
+                }
+            });
         }
     });
 };
