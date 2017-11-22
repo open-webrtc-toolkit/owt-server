@@ -1,7 +1,7 @@
 /*global exports, require*/
 'use strict';
 
-var serviceRegistry = require('./../mdb/serviceRegistry');
+var dataAccess = require('../data_access');
 var logger = require('./../logger').logger;
 var cipher = require('../cipher');
 
@@ -12,7 +12,7 @@ var log = logger.getLogger('ServicesResource');
  * Gets the service and checks if it is superservice. Only superservice can do actions about services.
  */
 var doInit = function (currentService) {
-    var superService = require('./../mdb/dataBase').superService;
+    var superService = global.config.nuve.superserviceID;
     currentService._id = currentService._id + '';
     return (currentService._id === superService);
 };
@@ -44,7 +44,7 @@ exports.create = function (req, res) {
 
     service.encrypted = true;
     service.key = cipher.encrypt(cipher.k, service.key);
-    serviceRegistry.addService(service, function (result) {
+    dataAccess.service.create(service, function(result) {
         log.info('Service created: ', service.name);
         res.send(result);
     });
@@ -68,7 +68,7 @@ exports.represent = function (req, res) {
         return;
     }
 
-    serviceRegistry.getList(function (list) {
+    dataAccess.service.list(function(list) {
         log.info('Representing services');
         res.send(list);
     });

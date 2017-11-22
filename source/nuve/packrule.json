@@ -14,6 +14,9 @@
             "cert": [
                 "../../cert/*.pfx",
                 "../../cert/.woogeen.keystore"
+            ],
+            "data_access": [
+                "../data_access/*"
             ]
         }
     },

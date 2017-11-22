@@ -90,8 +90,8 @@ var dropAll = function() {
 };
 
 var getTokenKey = function(id, on_key, on_error) {
-  var dbAccess = require('./dataBaseAccess');
-  dbAccess.getKey(id).then(function (key) {
+  var dataAccess = require('./data_access');
+  dataAccess.token.key(id).then(function (key) {
     on_key(key);
   }).catch(function (err) {
     log.info('Failed to get token key. err:', err.message ? err.message : err);

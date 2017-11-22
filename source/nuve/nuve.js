@@ -26,7 +26,7 @@ var servicesResource = require('./resource/servicesResource');
 var serviceResource = require('./resource/serviceResource');
 var usersResource = require('./resource/usersResource');
 var userResource = require('./resource/userResource');
-var clusterResource = require('./resource/clusterResource');
+//var clusterResource = require('./resource/clusterResource');
 
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({
@@ -95,10 +95,10 @@ app.get('/rooms/:room/users', usersResource.getList);
 app.get('/rooms/:room/users/:user', userResource.getUser);
 app.delete('/rooms/:room/users/:user', userResource.deleteUser);
 
-app.get('/cluster/nodes', clusterResource.getNodes);
-app.get('/cluster/nodes/:node', clusterResource.getNode);
-app.get('/cluster/rooms', clusterResource.getRooms);
-app.get('/cluster/nodes/:node/config', clusterResource.getNodeConfig);
+// app.get('/cluster/nodes', clusterResource.getNodes);
+// app.get('/cluster/nodes/:node', clusterResource.getNode);
+// app.get('/cluster/rooms', clusterResource.getRooms);
+// app.get('/cluster/nodes/:node/config', clusterResource.getNodeConfig);
 
 var nuveConfig = global.config.nuve || {};
 // Mutiple process setup
@@ -113,7 +113,8 @@ if (cluster.isMaster) {
     // FIXME: we should check if nuve key already exists
     // in cache/database before generating a new one when
     // there are multiple machine running nuve.
-    require('./mdb/dataBase').saveKey();
+    var dataAccess = require('./data_access');
+    dataAccess.token.genKey();
 
     for (var i = 0; i < numCPUs; i++) {
         cluster.fork();

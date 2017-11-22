@@ -1,6 +1,6 @@
 /*global exports, require*/
 'use strict';
-var serviceRegistry = require('./../mdb/serviceRegistry');
+var dataAccess = require('../data_access');
 var logger = require('./../logger').logger;
 
 // Logger
@@ -10,14 +10,14 @@ var log = logger.getLogger('ServiceResource');
  * Gets the service and checks if it is superservice. Only superservice can do actions about services.
  */
 
-var superService = require('./../mdb/dataBase').superService;
+var superService = global.config.nuve.superserviceID;
 
 var doInit = function (currentService, serv, callback) {
     currentService._id = currentService._id + '';
     if (currentService._id !== superService) {
         callback('error');
     } else {
-        serviceRegistry.getService(serv, function (ser) {
+        dataAccess.service.get(serv, function (ser) {
             callback(ser);
         });
     }
@@ -78,8 +78,9 @@ exports.deleteService = function (req, res) {
             res.status(401).send('Super service not permitted to be deleted');
             return;
         }
-        serviceRegistry.removeService(id);
-        log.info('Serveice ', id, ' deleted');
-        res.send('Service deleted');
+        dataAccess.service.delete(id, function(result) {
+            log.info('Serveice ', id, ' deleted');
+            res.send('Service deleted');
+        });
     });
 };

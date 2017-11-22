@@ -21,7 +21,6 @@
             "../common/logger.js",
             "../common/makeRPC.js",
             "../common/rpcChannel.js",
-            "../common/dataBaseAccess.js",
             "../../scripts/release/initcert.js",
             "../../scripts/detectOS.sh"
         ],
@@ -29,6 +28,9 @@
             "cert": [
                 "../../cert/certificate.pfx",
                 "../../cert/.woogeen.keystore"
+            ],
+            "data_access": [
+                "../data_access/*"
             ]
         }
     },

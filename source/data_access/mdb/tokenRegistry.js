@@ -1,7 +1,7 @@
 /*global require, exports*/
 'use strict';
 var db = require('./dataBase').db;
-var logger = require('./../logger').logger;
+var logger = require('./../../logger').logger;
 
 // Logger
 var log = logger.getLogger('TokenRegistry');

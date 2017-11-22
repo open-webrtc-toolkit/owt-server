@@ -1,8 +1,6 @@
 /*global exports, require*/
 'use strict';
-var roomRegistry = require('./../mdb/roomRegistry');
-var serviceRegistry = require('./../mdb/serviceRegistry');
-var Room = require('./room');
+var dataAccess = require('../data_access');
 var logger = require('./../logger').logger;
 var cloudHandler = require('../cloudHandler');
 
@@ -39,53 +37,24 @@ exports.createRoom = function (req, res) {
     }
 
     req.body.options = req.body.options || {};
-    var room;
 
-    if (req.body.options.test) {
-        if (currentService.testRoom !== undefined) {
-            log.info('TestRoom already exists for service', currentService.name);
-            res.send(currentService.testRoom);
-        } else {
-            room = {name: 'testRoom'};
-            roomRegistry.addRoom(room, function (result) {
-                currentService.testRoom = result;
-                currentService.rooms.push(result);
-                serviceRegistry.updateService(currentService);
-                log.info('TestRoom created for service', currentService.name);
-                res.send(result);
-
-                // Notify SIP portal if SIP room created
-                if (result && result.sipInfo) {
-                    log.info('Notify SIP Portal on create Room');
-                    cloudHandler.notifySipPortal('create', result, function(){});
-                }
-            });
-        }
-    } else {
-        var options = req.body.options;
-        options.name = req.body.name;
-        room = Room.create(options);
-        if (room === null) {
-            return res.status(400).send('Bad room configuration');
-        }
-        roomRegistry.addRoom(room, function (result) {
-            currentService.rooms.push(result);
-            serviceRegistry.addRoomInService(currentService._id, result, function (err, ret) {
-                if (!err) {
-                    log.debug('Room created:', req.body.name, 'for service', currentService.name);
-                    res.send(result);
-                } else {
-                    res.status(400).send(ret);
-                }
-            });
+    var options = req.body.options;
+    options.name = req.body.name;
+    dataAccess.room.create(currentService._id, options, function(result) {
+        if (result) {
+            log.debug('Room created:', req.body.name, 'for service', currentService.name);
+            res.send(result);
 
             // Notify SIP portal if SIP room created
             if (result && result.sipInfo) {
-                log.debug('Notify SIP Portal on create Room');
+                log.info('Notify SIP Portal on create Room');
                 cloudHandler.notifySipPortal('create', result, function(){});
             }
-        });
-    }
+        } else {
+            log.info('Room creation failed', options);
+            res.status(400).send();
+        }
+    });
 };
 
 /*
@@ -105,6 +74,14 @@ exports.represent = function (req, res) {
         res.status(404).send('Service not found');
         return;
     }
-    log.debug('Representing rooms for service ', currentService._id);
-    res.send(currentService.rooms);
+
+    dataAccess.room.list(currentService._id, function (rooms) {
+        if (rooms) {
+            log.debug('Representing rooms for service ', currentService._id);
+            res.send(currentService.rooms);
+        } else {
+            log.info('Failed to representing rooms');
+            res.status(400).send();
+        }
+    });
 };

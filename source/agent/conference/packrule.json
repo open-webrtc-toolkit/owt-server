@@ -20,9 +20,13 @@
             "../../common/loadCollector.js",
             "../../common/logger.js",
             "../../common/makeRPC.js",
-            "../../common/rpcChannel.js",
-            "../../common/dataBaseAccess.js"
-        ]
+            "../../common/rpcChannel.js"
+        ],
+        "folders": {
+            "data_access": [
+                "../../data_access/*"
+            ]
+        }
     },
     "debug": {
         "folders": {
