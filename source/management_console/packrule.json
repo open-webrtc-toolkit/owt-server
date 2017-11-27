@@ -1,6 +1,6 @@
 {
-    "name": "manage-console",
-    "dest": "manage_console",
+    "name": "management-console",
+    "dest": "management_console",
     "common": {
         "package": "package.json",
         "files": [

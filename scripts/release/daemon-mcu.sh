@@ -184,8 +184,8 @@ case $startStop in
           > "${stdout}" 2>&1 </dev/null &
         echo $! > ${pid}
         ;;
-      manage-console )
-        cd ${WOOGEEN_HOME}/manage_console
+      management-console )
+        cd ${WOOGEEN_HOME}/management_console
         nohup nice -n ${WOOGEEN_NICENESS} node . \
           > "${stdout}" 2>&1 </dev/null &
         echo $! > ${pid}

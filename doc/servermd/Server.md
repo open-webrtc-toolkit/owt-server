@@ -199,7 +199,7 @@ The default ffmpeg library used by MCU server has no libfdk_aac support. If you 
 
 ### 2.3.6 Use your own certificate {#Conferencesection2_3_6}
 
-The default certificate (certificate.pfx) for the MCU is located in the Release-<Version>/<Component>/cert folder. When using HTTPS and/or secure socket.io connection, you should use your own certificate for each server. First, you should edit nuve/nuve.toml, webrtc_agent/agent.toml, portal/portal.toml to provide the path of each certificate for each server, under the key keystorePath. See Table 2-4 for details.
+The default certificate (certificate.pfx) for the MCU is located in the Release-<Version>/<Component>/cert folder. When using HTTPS and/or secure socket.io connection, you should use your own certificate for each server. First, you should edit nuve/nuve.toml, webrtc_agent/agent.toml, portal/portal.toml, management_console/management_console.toml to provide the path of each certificate for each server, under the key keystorePath. See Table 2-4 for details.
 
 We use PFX formatted certificates in MCU. See https://nodejs.org/api/tls.html for how to generate a self-signed certificate by openssl utility. We recommend using 2048-bit private key for the certificates. But if you meet DTLS SSL connection error in your environment, please use 1024-bit instead of 2048-bit private key because of a known network MTU issue.
 
@@ -211,6 +211,7 @@ After editing the configuration file, you should run `./initcert.js` inside each
 | nuve HTTPS | nuve/nuve.toml |
 | portal secured Socket.io | portal/portal.toml |
 | DTLS-SRTP | webrtc_agent/agent.toml |
+| management-console HTTPS | management_console/management_console.toml |
 
 For MCU sample application's certificate configuration, please follow the instruction file 'README.md' located at Release-<Version>/extras/basic_example/.
 
@@ -260,6 +261,7 @@ video-agent|1 or many|This agent spawning video processing nodes which perform v
 sip-agent|0 or many|This agent spawning sip processing nodes which handle sip connections
 sip-portal|0 or 1|The portal for initializing rooms' sip settings and scheduling sip agents to serve for them
 app|0 or 1|The sample web application for reference, users should use their own application server
+management-console|0 or 1|The console for conference management
 
 Follow the steps below to set up a MCU cluster:
 
@@ -362,6 +364,11 @@ Follow the steps below to set up a MCU cluster:
 
         cd Release-<Version>/
         bin/daemon.sh start sip-portal
+
+18. Choose one worker machine to run management-console if you need to create/update/delete services and rooms on web page.:
+
+        cd Release-<Version>/
+        bin/daemon.sh start management-console
 
 ### 2.3.10 Configure VCA nodes as seperated machines to run video-agent {#Conferencesection2_3_10}
 To setup VCA nodes as separate machines, two approaches are provided. One is the network bridging provided by VCA software stack. The other is IP forwarding rules setting through iptables.
@@ -528,7 +535,7 @@ The following instructions are provided only as recommendations regarding securi
 ## 3.1 Introduction {#Conferencesection3_1}
 The MCU Management Console is the frontend console to manage the MCU server. It is built with MCU's server-side APIs and it provides the management interface to MCU administrators.
 ## 3.2 Access {#Conferencesection3_2}
-Once you have launched MCU servers, you can then access the console via a browser at http://XXXX:3000/console/. You will be asked for your the service-id and service-key in order to access the service.
+Once you have launched MCU servers, you can then access the console via a browser at http://XXXX:3300/console/ by default. You will be asked for your the service-id and service-key in order to access the service.
 
 After inputting your service-id and service-key in the dialog prompt, choose ‘remember me' and click ‘save changes' to save your session. If you want to switch to another service, click the ‘profile' button on the upper-right corner to get in this dialog prompt and do the similar procedure again. If you want to log out the management console, click the red ‘clear cookie' button in the dialog prompt.
 
@@ -536,9 +543,10 @@ If you have not launched MCU severs, you should launch the nuve server before ac
 
     cd Release-<Version>/
     bin/daemon.sh start nuve
+    bin/daemon.sh start management-console
 
 ## 3.3 Source Code {#Conferencesection3_3}
-The source code of the management console is in Release-<Version>/nuve/public/.
+The source code of the management console is in Release-<Version>/management_console/public/.
 ## 3.4 Service Management {#Conferencesection3_4}
 Only super service user can access service management, in the ‘overview' tab to create or delete services.
 > **Note**: Super service cannot be deleted.
