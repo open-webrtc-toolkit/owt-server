@@ -225,7 +225,7 @@ var translateOldRoomConfig = (oldConfig) => {
   var qualityLevel2Factor = {
     'best_quality': 1.4,
     'better_quality': 1.2,
-    'standart': 1.0,
+    'standard': 1.0,
     'better_speed': 0.8,
     'best_speed': 0.6
   };
