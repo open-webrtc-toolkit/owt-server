@@ -71,7 +71,7 @@ if (config.console.ssl) {
           passphrase: passphrase
         }, app).listen(port);
 
-        console.log('Start manage-console HTTPS server');
+        console.log('Start management-console HTTPS server');
       } catch (e) {
         err = e;
       }
@@ -82,5 +82,5 @@ if (config.console.ssl) {
   });
 } else {
   app.listen(port);
-  console.log('Start manage-console HTTP server');
+  console.log('Start management-console HTTP server');
 }
