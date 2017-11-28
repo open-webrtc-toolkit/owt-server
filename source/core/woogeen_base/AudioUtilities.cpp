@@ -25,7 +25,7 @@
 
 using namespace webrtc;
 
-namespace mcu {
+namespace woogeen_base {
 
 struct AudioCodecInsMap {
     woogeen_base::FrameFormat format;
@@ -99,11 +99,46 @@ static const AudioCodecInsMap codecInsDB[] = {
             768000
         }
     },
+    {
+        woogeen_base::FRAME_FORMAT_ILBC,
+        {
+            ILBC_8000_PT,
+            "ILBC",
+            8000,
+            240,
+            1,
+            13300
+        }
+    },
+    {
+        woogeen_base::FRAME_FORMAT_G722_16000_1,
+        {
+            G722_16000_1_PT,
+            "G722",
+            16000,
+            320,
+            1,
+            64000
+        }
+    },
+    {
+        woogeen_base::FRAME_FORMAT_G722_16000_2,
+        {
+            G722_16000_2_PT,
+            "G722",
+            16000,
+            320,
+            2,
+            64000
+        }
+    },
 };
+
+static const int numCodecIns = sizeof(codecInsDB) / sizeof(codecInsDB[0]);
 
 bool getAudioCodecInst(woogeen_base::FrameFormat format, CodecInst& audioCodec)
 {
-    for (size_t i = 0; i < sizeof(codecInsDB); i++) {
+    for (size_t i = 0; i < numCodecIns; i++) {
         if (codecInsDB[i].format == format) {
             audioCodec = codecInsDB[i].codec;
             return true;
@@ -115,13 +150,24 @@ bool getAudioCodecInst(woogeen_base::FrameFormat format, CodecInst& audioCodec)
 
 int getAudioPltype(woogeen_base::FrameFormat format)
 {
-    for (size_t i = 0; i < sizeof(codecInsDB); i++) {
+    for (size_t i = 0; i < numCodecIns; i++) {
         if (codecInsDB[i].format == format) {
             return codecInsDB[i].codec.pltype;
         }
     }
 
     return INVALID_PT;
+}
+
+FrameFormat getAudioFrameFormat(int pltype)
+{
+    for (size_t i = 0; i < numCodecIns; i++) {
+        if (codecInsDB[i].codec.pltype == pltype) {
+            return codecInsDB[i].format;
+        }
+    }
+
+    return FRAME_FORMAT_UNKNOWN;
 }
 
 int32_t getAudioSampleRate(const woogeen_base::FrameFormat format) {
@@ -136,7 +182,7 @@ int32_t getAudioSampleRate(const woogeen_base::FrameFormat format) {
             break;
     }
 
-    for (size_t i = 0; i < sizeof(codecInsDB); i++) {
+    for (size_t i = 0; i < numCodecIns; i++) {
         if (codecInsDB[i].format == format) {
             return codecInsDB[i].codec.plfreq;
         }
@@ -157,7 +203,7 @@ uint32_t getAudioChannels(const woogeen_base::FrameFormat format) {
             break;
     }
 
-    for (size_t i = 0; i < sizeof(codecInsDB); i++) {
+    for (size_t i = 0; i < numCodecIns; i++) {
         if (codecInsDB[i].format == format) {
             return codecInsDB[i].codec.channels;
         }
@@ -166,4 +212,4 @@ uint32_t getAudioChannels(const woogeen_base::FrameFormat format) {
     return 0;
 }
 
-} /* namespace mcu */
+} /* namespace woogeen_base */

@@ -11,6 +11,7 @@
       '../../addons/common/NodeEventRegistry.cc',
       '../../../core/woogeen_base/AudioFrameConstructor.cpp',
       '../../../core/woogeen_base/AudioFramePacketizer.cpp',
+      '../../../core/woogeen_base/AudioUtilities.cpp',
       '../../../core/woogeen_base/MediaFramePipeline.cpp',
       '../../../core/woogeen_base/VideoFrameConstructor.cpp',
       '../../../core/woogeen_base/VideoFramePacketizer.cpp',

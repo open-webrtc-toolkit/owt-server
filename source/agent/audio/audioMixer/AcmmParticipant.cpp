@@ -69,6 +69,9 @@ bool AcmmParticipant::setInput(FrameFormat format, FrameSource* source)
         case FRAME_FORMAT_OPUS:
         case FRAME_FORMAT_ISAC16:
         case FRAME_FORMAT_ISAC32:
+        case FRAME_FORMAT_ILBC:
+        case FRAME_FORMAT_G722_16000_1:
+        case FRAME_FORMAT_G722_16000_2:
             m_input.reset(new AcmInput(format));
             break;
         default:
@@ -114,6 +117,9 @@ bool AcmmParticipant::setOutput(FrameFormat format, FrameDestination* destinatio
         case FRAME_FORMAT_OPUS:
         case FRAME_FORMAT_ISAC16:
         case FRAME_FORMAT_ISAC32:
+        case FRAME_FORMAT_ILBC:
+        case FRAME_FORMAT_G722_16000_1:
+        case FRAME_FORMAT_G722_16000_2:
             m_output.reset(new AcmOutput(format));
             break;
         default:
