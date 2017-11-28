@@ -277,17 +277,22 @@ var translateOldRoomConfig = (oldConfig) => {
 };
 
 var calcResolution = (x, baseResolution) => {
+  var floatToSize = (n) => {
+    var x = Math.floor(n);
+    return (x % 2 === 0) ? x : (x - 1);
+  };
+
   switch (x) {
     case 'x3/4':
-      return {width: Math.ceil(baseResolution.width * 3 / 4), height: Math.ceil(baseResolution.height * 3 / 4)};
+      return {width: floatToSize(baseResolution.width * 3 / 4), height: floatToSize(baseResolution.height * 3 / 4)};
     case 'x2/3':
-      return {width: Math.ceil(baseResolution.width * 2 / 3), height: Math.ceil(baseResolution.height * 2 / 3)};
+      return {width: floatToSize(baseResolution.width * 2 / 3), height: floatToSize(baseResolution.height * 2 / 3)};
     case 'x1/2':
-      return {width: Math.ceil(baseResolution.width / 2), height: Math.ceil(baseResolution.height / 2)};
+      return {width: floatToSize(baseResolution.width / 2), height: floatToSize(baseResolution.height / 2)};
     case 'x1/3':
-      return {width: Math.ceil(baseResolution.width / 3), height: Math.ceil(baseResolution.height / 3)};
+      return {width: floatToSize(baseResolution.width / 3), height: floatToSize(baseResolution.height / 3)};
     case 'x1/4':
-      return {width: Math.ceil(baseResolution.width / 4), height: Math.ceil(baseResolution.height / 4)};
+      return {width: floatToSize(baseResolution.width / 4), height: floatToSize(baseResolution.height / 4)};
     case 'xga':
       return {width: 1024, height: 768};
     case 'svga':
