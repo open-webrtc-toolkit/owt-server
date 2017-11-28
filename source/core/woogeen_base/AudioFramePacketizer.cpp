@@ -19,7 +19,7 @@
  */
 
 #include "AudioFramePacketizer.h"
-#include "MediaUtilities.h"
+#include "AudioUtilities.h"
 
 #include "WebRTCTaskRunner.h"
 
@@ -121,22 +121,9 @@ void AudioFramePacketizer::onFrame(const Frame& frame)
     }
     lock1.unlock();
 
-    int payloadType = INVALID_PT;
-
-    // TODO: A static map between the FrameFormat and the payload type.
-    switch (frame.format) {
-    case FRAME_FORMAT_PCMU:
-        payloadType = PCMU_8000_PT;
-        break;
-    case FRAME_FORMAT_PCMA:
-        payloadType = PCMA_8000_PT;
-        break;
-    case FRAME_FORMAT_OPUS:
-        payloadType = OPUS_48000_PT;
-        break;
-    default:
+    int payloadType = getAudioPltype(frame.format);
+    if (payloadType == INVALID_PT)
         return;
-    }
 
     boost::shared_lock<boost::shared_mutex> lock(m_rtpRtcpMutex);
     // FIXME: The frame type information is lost. We treat every frame a kAudioFrameSpeech frame for now.
@@ -164,35 +151,8 @@ bool AudioFramePacketizer::setSendCodec(FrameFormat format)
 {
     webrtc::CodecInst codec;
 
-    // TODO: A static map between the FrameFormat and the payload type.
-    switch (m_frameFormat) {
-    case FRAME_FORMAT_PCMU:
-        strcpy(codec.plname, "PCMU");
-        codec.pltype = PCMU_8000_PT;
-        codec.plfreq = 8000;
-        codec.pacsize = 160;
-        codec.channels = 1;
-        codec.rate = 64000;
-        break;
-    case FRAME_FORMAT_PCMA:
-        strcpy(codec.plname, "PCMA");
-        codec.pltype = PCMA_8000_PT;
-        codec.plfreq = 8000;
-        codec.pacsize = 160;
-        codec.channels = 1;
-        codec.rate = 64000;
-        break;
-    case FRAME_FORMAT_OPUS:
-        strcpy(codec.plname, "opus");
-        codec.pltype = OPUS_48000_PT;
-        codec.plfreq = 48000;
-        codec.pacsize = 960;
-        codec.channels = 2;
-        codec.rate = 64000;
-        break;
-    default:
+    if (!getAudioCodecInst(m_frameFormat, codec))
         return false;
-    }
 
     boost::shared_lock<boost::shared_mutex> lock(m_rtpRtcpMutex);
     m_rtpRtcp->RegisterSendPayload(codec);

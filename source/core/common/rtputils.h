@@ -81,6 +81,9 @@ struct redheader {
 #define CN_32000_PT         106 // CN Audio Codec
 #define CN_48000_PT         107 // CN Audio Codec
 #define TEL_8000_PT         126 // Tel Audio Events
+#define ILBC_8000_PT        102 // ILBC Audio Codec
+#define G722_16000_1_PT     9   // G722 Mono Audio Codec
+#define G722_16000_2_PT     119 // G722 Stereo Audio Codec
 
 #define L16_48000_PT        83  // PCM 48khz Stereo
 

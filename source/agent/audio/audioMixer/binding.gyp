@@ -12,9 +12,9 @@
       'AcmOutput.cpp',
       'PcmOutput.cpp',
       'FfOutput.cpp',
-      'AudioUtilities.cpp',
       '../../addons/common/NodeEventRegistry.cc',
       '../../../core/woogeen_base/MediaFramePipeline.cpp',
+      '../../../core/woogeen_base/AudioUtilities.cpp',
     ],
     'cflags_cc': [
         '-Wall',

@@ -168,7 +168,15 @@ void AcmInput::onFrame(const Frame& frame)
 
     ret = m_audioCodingModule->IncomingPacket(payload, length, rtp_header);
     if (ret != 0) {
-        ELOG_ERROR_T("Fail to insert compressed into acm");
+        ELOG_ERROR_T("Fail to insert compressed into acm, format(%s), sampleRate(%d), channels(%d), timeStamp(%d), length(%ld), seqNum(%d), %s",
+                getFormatStr(frame.format),
+                frame.additionalInfo.audio.sampleRate,
+                frame.additionalInfo.audio.channels,
+                rtp_header.header.timestamp * 1000 / frame.additionalInfo.audio.sampleRate,
+                length,
+                rtp_header.header.sequenceNumber,
+                frame.additionalInfo.audio.isRtpPacket ? "RtpPacket" : "NonRtpPacket"
+                );
     }
 }
 

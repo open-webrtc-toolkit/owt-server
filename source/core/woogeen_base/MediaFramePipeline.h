@@ -50,6 +50,9 @@ enum FrameFormat {
     FRAME_FORMAT_OPUS,
     FRAME_FORMAT_ISAC16,
     FRAME_FORMAT_ISAC32,
+    FRAME_FORMAT_ILBC,
+    FRAME_FORMAT_G722_16000_1,
+    FRAME_FORMAT_G722_16000_2,
 
     FRAME_FORMAT_AAC,           // ignore sample rate and channels for decoder, default is 48000_2
     FRAME_FORMAT_AAC_48000_2,   // specify sample rate and channels for encoder
@@ -104,6 +107,12 @@ inline FrameFormat getFormat(const std::string& codec) {
         return woogeen_base::FRAME_FORMAT_ISAC16;
     } else if (codec == "isac_32000") {
         return woogeen_base::FRAME_FORMAT_ISAC32;
+    } else if (codec == "ilbc") {
+        return woogeen_base::FRAME_FORMAT_ILBC;
+    } else if (codec == "g722_16000_1") {
+        return woogeen_base::FRAME_FORMAT_G722_16000_1;
+    } else if (codec == "g722_16000_2") {
+        return woogeen_base::FRAME_FORMAT_G722_16000_2;
     } else if (codec == "opus_48000_2") {
         return woogeen_base::FRAME_FORMAT_OPUS;
     } else if (codec.compare(0, 3, "aac") == 0) {
@@ -150,6 +159,12 @@ inline const char *getFormatStr(const FrameFormat &format) {
             return "ISAC16";
         case FRAME_FORMAT_ISAC32:
             return "ISAC32";
+        case FRAME_FORMAT_ILBC:
+            return "ILBC";
+        case FRAME_FORMAT_G722_16000_1:
+            return "G722_16000_1";
+        case FRAME_FORMAT_G722_16000_2:
+            return "G722_16000_2";
         case FRAME_FORMAT_AAC:
             return "AAC";
         case FRAME_FORMAT_AAC_48000_2:
@@ -170,6 +185,9 @@ inline bool isAudioFrame(const Frame& frame) {
           || frame.format == FRAME_FORMAT_OPUS
           || frame.format == FRAME_FORMAT_ISAC16
           || frame.format == FRAME_FORMAT_ISAC32
+          || frame.format == FRAME_FORMAT_ILBC
+          || frame.format == FRAME_FORMAT_G722_16000_1
+          || frame.format == FRAME_FORMAT_G722_16000_2
           || frame.format == FRAME_FORMAT_AAC
           || frame.format == FRAME_FORMAT_AAC_48000_2
           || frame.format == FRAME_FORMAT_AC3

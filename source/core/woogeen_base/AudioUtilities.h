@@ -25,9 +25,7 @@
 
 #include "MediaFramePipeline.h"
 
-using namespace webrtc;
-
-namespace mcu {
+namespace woogeen_base {
 
 static inline int64_t currentTimeMs()
 {
@@ -36,11 +34,12 @@ static inline int64_t currentTimeMs()
     return ((time.tv_sec * 1000) + (time.tv_usec / 1000));
 }
 
-bool getAudioCodecInst(woogeen_base::FrameFormat format, CodecInst& audioCodec);
+FrameFormat getAudioFrameFormat(int pltype);
+bool getAudioCodecInst(woogeen_base::FrameFormat format, webrtc::CodecInst& audioCodec);
 int getAudioPltype(woogeen_base::FrameFormat format);
 int32_t getAudioSampleRate(const woogeen_base::FrameFormat format);
 uint32_t getAudioChannels(const woogeen_base::FrameFormat format);
 
-} /* namespace mcu */
+} /* namespace woogeen_base */
 
 #endif /* AudioUtilities_h */
