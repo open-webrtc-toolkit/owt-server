@@ -1,0 +1,17 @@
+#!/usr/bin/env groovy
+pipeline{
+    agent any
+    stages{
+        stage('build-pack'){
+            steps{
+                sh "echo 'build-pack...'"
+                script{
+                    def pip = load '/home/zhenqic/czq/jenkins/Jenkinsfile'
+                    pip.pipeline()
+                }
+            }
+        }
+        
+    }
+    
+}
