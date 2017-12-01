@@ -7,7 +7,7 @@ var url = require('url');
 
 var config;
 try {
-  config = toml.parse(fs.readFileSync('./manage_console.toml'));
+  config = toml.parse(fs.readFileSync('./management_console.toml'));
 } catch (e) {
   console.log('Parsing config error on line ' + e.line + ', column ' + e.column + ': ' + e.message);
   process.exit(1);
