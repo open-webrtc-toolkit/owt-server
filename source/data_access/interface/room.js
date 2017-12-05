@@ -334,6 +334,10 @@ Room.genConfig = function (room) {
         config.views = { "common": { mediaMixing: genMediaMixing(room.mediaMixing) } };
     }
 
+    if (room.sipInfo) {
+        config.sip = room.sipInfo;
+    }
+
     return config;
 };
 
@@ -385,39 +389,66 @@ function validateRGBValue(val) {
     return false;
 }
 
+function Rational(num, den) {
+    this.numerator = num;
+    this.denominator = den;
+}
+
+const ZERO = new Rational(0, 1);
+const ONE = new Rational(1, 1);
+const ONE_THIRD = new Rational(1, 3);
+const TWO_THIRDs = new Rational(2, 3);
+
+function Rectangle({id = '', left, top, relativesize} = {}) {
+    this.id = id;
+    this.shape = 'rectangle',
+    this.area = {
+        left: left || ZERO,
+        top: top || ZERO,
+        width: relativesize || ZERO,
+        height: relativesize || ZERO
+    };
+}
+
 function generateLectureTemplates (maxInput) {
-    var result = [ {region:[{id: '1', left: 0, top: 0, relativesize: 1.0, priority: 1.0}]},
-                   {region:[{id: '1', left: 0, top: 0, relativesize: 0.667, priority: 1.0},
-                              {id: '2', left: 0.667, top: 0, relativesize: 0.333, priority: 1.0},
-                              {id: '3', left: 0.667, top: 0.333, relativesize: 0.333, priority: 1.0},
-                              {id: '4', left: 0.667, top: 0.667, relativesize: 0.333, priority: 1.0},
-                              {id: '5', left: 0.333, top: 0.667, relativesize: 0.333, priority: 1.0},
-                              {id: '6', left: 0, top: 0.667, relativesize: 0.333, priority: 1.0}]}];
+    var result = [
+        {region:[new Rectangle({id: '1', left: ZERO, top: ZERO, relativesize: ONE })]},
+        {region:[
+            new Rectangle({id: '1', left: ZERO, top: ZERO, relativesize: TWO_THIRDs}),
+            new Rectangle({id: '2', left: TWO_THIRDs, top: ZERO, relativesize: ONE_THIRD}),
+            new Rectangle({id: '3', left: TWO_THIRDs, top: ONE_THIRD, relativesize: ONE_THIRD}),
+            new Rectangle({id: '4', left: TWO_THIRDs, top: TWO_THIRDs, relativesize: ONE_THIRD}),
+            new Rectangle({id: '5', left: ONE_THIRD, top: TWO_THIRDs, relativesize: ONE_THIRD}),
+            new Rectangle({id: '6', left: ZERO, top: TWO_THIRDs, relativesize: ONE_THIRD})
+        ]}
+    ];
     if (maxInput > 6) { // for maxInput: 8, 10, 12, 14
         var maxDiv = maxInput / 2;
         maxDiv = (maxDiv > Math.floor(maxDiv)) ? (maxDiv + 1) : maxDiv;
         maxDiv = maxDiv > 7 ? 7 : maxDiv;
 
         for (var divFactor = 4; divFactor <= maxDiv; divFactor++) {
-            var mainReginRelative = ((divFactor - 1) * 1.0 / divFactor);
-            var minorRegionRelative = 1.0 / divFactor;
+            var mainReginRelative = new Rational(divFactor - 1, divFactor);
+            var minorRegionRelative = new Rational(1, divFactor);
 
-            var regions = [{id: '1', left: 0, top: 0, relativesize: mainReginRelative, priority: 1.0}];
+            var regions = [new Rectangle({id: '1', left: ZERO, top: ZERO, relativesize: mainReginRelative})];
             var id = 2;
             for (var y = 0; y < divFactor; y++) {
-                regions.push({id: ''+(id++),
-                              left: mainReginRelative,
-                              top: y*1.0 / divFactor,
-                              relativesize: minorRegionRelative,
-                              priority: 1.0});
+                regions.push(new Rectangle({
+                    id: ''+(id++),
+                    left: mainReginRelative,
+                    top: new Rational(y, divFactor),
+                    relativesize: minorRegionRelative,
+                }));
             }
 
             for (var x = divFactor - 2; x >= 0; x--) {
-                regions.push({id: ''+(id++),
-                              left: x*1.0 / divFactor,
-                              top: mainReginRelative,
-                              relativesize: minorRegionRelative,
-                              priority: 1.0});
+                regions.push(new Rectangle({
+                    id: ''+(id++),
+                    left: new Rational(x, divFactor),
+                    top: mainReginRelative,
+                    relativesize: minorRegionRelative,
+                }));
             }
             result.push({region: regions});
         }
@@ -428,46 +459,51 @@ function generateLectureTemplates (maxInput) {
             maxDiv = maxDiv > 7 ? 7 : maxDiv;
 
             for (var divFactor = 4; divFactor <= maxDiv; divFactor++) {
-                var mainReginRelative = ((divFactor - 2) * 1.0 / divFactor);
-                var minorRegionRelative = 1.0 / divFactor;
+                var mainReginRelative = new Rational(divFactor - 2, divFactor);
+                var minorRegionRelative = new Rational(1, divFactor);
 
-                var regions = [{id: '1', left: 0, top: 0, relativesize: mainReginRelative, priority: 1.0}];
+                var regions = [new Rectangle({id: '1', left: ZERO, top: ZERO, relativesize: mainReginRelative})];
                 var id = 2;
                 for (var y = 0; y < divFactor - 1; y++) {
-                    regions.push({id: ''+(id++),
-                                  left: mainReginRelative,
-                                  top: y*1.0 / divFactor,
-                                  relativesize: minorRegionRelative,
-                                  priority: 1.0});
+                    regions.push(new Rectangle({
+                        id: ''+(id++),
+                        left: mainReginRelative,
+                        top: new Rational(y, divFactor),
+                        relativesize: minorRegionRelative,
+                    }));
                 }
 
                 for (var x = divFactor - 3; x >= 0; x--) {
-                    regions.push({id: ''+(id++),
-                                  left: x*1.0 / divFactor,
-                                  top: mainReginRelative,
-                                  relativesize: minorRegionRelative,
-                                  priority: 1.0});
+                    regions.push(new Rectangle({
+                        id: ''+(id++),
+                        left: new Rational(x, divFactor),
+                        top: mainReginRelative,
+                        relativesize: minorRegionRelative,
+                    }));
                 }
 
                 for (var y = 0; y < divFactor; y++) {
-                    regions.push({id: ''+(id++),
-                                  left: mainReginRelative + minorRegionRelative,
-                                  top: y*1.0 / divFactor,
-                                  relativesize: minorRegionRelative,
-                                  priority: 1.0});
+                    regions.push(new Rectangle({
+                        id: ''+(id++),
+                        left: new Rational(divFactor - 1, divFactor),
+                        top: new Rational(y, divFactor),
+                        relativesize: minorRegionRelative
+                    }));
                 }
 
                 for (var x = divFactor - 2; x >= 0; x--) {
-                    regions.push({id: ''+(id++),
-                                  left: x*1.0 / divFactor,
-                                  top: mainReginRelative + minorRegionRelative,
-                                  relativesize: minorRegionRelative,
-                                  priority: 1.0});
+                    regions.push(new Rectangle({
+                        id: ''+(id++),
+                        left: new Rational(x, divFactor),
+                        top: new Rational(divFactor - 1, divFactor),
+                        relativesize: minorRegionRelative
+                    }));
                 }
                 result.push({region: regions});
             }
         }
     }
+
     return result;
 }
 
@@ -481,15 +517,14 @@ function generateFluidTemplates (maxInput) {
 
     for (var divFactor = 1; divFactor <= maxDiv; divFactor++) {
         var regions = [];
-        var relativeSize = 1.0 / divFactor;
+        var relativeSize = new Rational(1, divFactor);
         var id = 1;
         for (var y = 0; y < divFactor; y++)
             for(var x = 0; x < divFactor; x++) {
-                var region = {id: String(id++),
-                              left: x*1.0 / divFactor,
-                              top: y*1.0 / divFactor,
-                              relativesize: relativeSize,
-                              priority: 1.0};
+                var region = new Rectangle({id: String(id++),
+                              left: new Rational(x, divFactor),
+                              top: new Rational(y, divFactor),
+                              relativesize: relativeSize});
                 regions.push(region);
             }
 
@@ -503,67 +538,27 @@ function isTemplatesValid (templates) {
         return false;
     }
 
-    var isRatio = (num) => (num >= 0.0 && num <= 1.0);
-    var toRational = (floatValue) => {
-        var dec = 10000;
-        return {
-            numerator: Math.round(floatValue * dec),
-            denominator: dec
-        };
-    };
-    var parseRatio = (val) => {
-        if (typeof val ==='object') return val;
-        if (typeof val === 'number') return toRational(val);
-        if (typeof val !== 'string') return { numerator: 1, denominator: 1 };
-
-        var numerator = 1;
-        var denominator = 1;
-        var strs = val.split('/');
-        if (strs.length === 2) {
-            numerator = parseInt(strs[0]) || 0;
-            denominator = parseInt(strs[1]) || 1;
-        } else if (strs.length === 1) {
-            numerator = parseInt(strs[0]);
-        }
-
-        return {
-            numerator,
-            denominator
-        };
-    };
-    var validLength = (r) => (r.denominator > 0 && r.numerator > 0 && r.denominator >= r.numerator);
-    var validPos = (r) => (r.denominator > 0 && r.numerator >= 0 && r.denominator >= r.numerator);
-
     for (var i in templates) {
         var region = templates[i].region;
         if (!(region instanceof Array))
             return false;
-        for (var k = 0; k < region.length; k++) {
-            if (isRatio(region[k].relativesize) && isRatio(region[k].left) && isRatio(region[k].top)) {
-                // convert to new format region
-                region[k].shape = 'rectangle';
-                region[k].area = {
-                    left: toRational(region[k].left),
-                    top: toRational(region[k].top),
-                    width: toRational(region[k].relativesize),
-                    height: toRational(region[k].relativesize)
-                };
-                delete region[k].left;
-                delete region[k].top;
-                delete region[k].relativesize;
-            } else if (region[k].shape === 'rectangle') {
-                if (!region[k].area) return false;
-                region[k].area.left = parseRatio(region[k].area.left);
-                region[k].area.top = parseRatio(region[k].area.top);
-                region[k].area.width = parseRatio(region[k].area.width);
-                region[k].area.height = parseRatio(region[k].area.height);
-            } else {
-                return false;
-            }
-
-            if (!validPos(region[k].area.left) || !validPos(region[k].area.top)
-                    || !validLength(region[k].area.width) || !validLength(region[k].area.height)) {
-                return false;
+        for (var j in region) {
+            if (!region[j].area || !region[j].shape) {
+                //FIXME: to make old layout configuration work
+                if (region[j].top && region[j].left && region[j].relativesize) {
+                    region[j].area = {
+                        left: region[j].left,
+                        top: region[j].top,
+                        width: region[j].relativesize,
+                        height: region[j].relativesize
+                    };
+                    region[j].shape = 'rectangle';
+                    delete region[j].top;
+                    delete region[j].left;
+                    delete region[j].relativesize;
+                } else {
+                    return false;
+                }
             }
         }
     }
