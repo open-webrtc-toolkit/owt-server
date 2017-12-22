@@ -135,7 +135,7 @@ VideoFrameMixerImpl::~VideoFrameMixerImpl()
     {
         boost::unique_lock<boost::shared_mutex> lock(m_outputMutex);
         for (auto it = m_outputs.begin(); it != m_outputs.end(); ++it) {
-            m_compositor->removeVideoDestination(it->second.encoder.get());
+            m_compositor->removeOutput(it->second.encoder.get());
             it->second.encoder->degenerateStream(it->second.streamId);
         }
         m_outputs.clear();
@@ -242,7 +242,7 @@ inline void VideoFrameMixerImpl::requestKeyFrame(int output)
 
 inline bool VideoFrameMixerImpl::addOutput(int output,
                                            woogeen_base::FrameFormat format,
-                                           const woogeen_base::VideoSize& rootSize,
+                                           const woogeen_base::VideoSize& outputSize,
                                            const unsigned int framerateFPS,
                                            const unsigned int bitrateKbps,
                                            const unsigned int keyFrameIntervalSeconds,
@@ -254,14 +254,14 @@ inline bool VideoFrameMixerImpl::addOutput(int output,
     // find a reusable encoder.
     auto it = m_outputs.begin();
     for (; it != m_outputs.end(); ++it) {
-        if (it->second.encoder->canSimulcast(format, rootSize.width, rootSize.height))
+        if (it->second.encoder->canSimulcast(format, outputSize.width, outputSize.height))
             break;
     }
 
     int32_t streamId = -1;
     if (it != m_outputs.end()) { // Found a reusable encoder
         encoder = it->second.encoder;
-        streamId = encoder->generateStream(rootSize.width, rootSize.height, framerateFPS, bitrateKbps, keyFrameIntervalSeconds, dest);
+        streamId = encoder->generateStream(outputSize.width, outputSize.height, framerateFPS, bitrateKbps, keyFrameIntervalSeconds, dest);
         if (streamId < 0)
             return false;
     } else { // Never found a reusable encoder.
@@ -278,11 +278,12 @@ inline bool VideoFrameMixerImpl::addOutput(int output,
         if (!encoder)
             encoder.reset(new woogeen_base::VCMFrameEncoder(format, m_useSimulcast));
 
-        streamId = encoder->generateStream(rootSize.width, rootSize.height, framerateFPS, bitrateKbps, keyFrameIntervalSeconds, dest);
+        streamId = encoder->generateStream(outputSize.width, outputSize.height, framerateFPS, bitrateKbps, keyFrameIntervalSeconds, dest);
         if (streamId < 0)
             return false;
 
-        m_compositor->addVideoDestination(encoder.get());
+        if (!m_compositor->addOutput(outputSize.width, outputSize.height, framerateFPS, encoder.get()))
+            return false;
     }
 
     boost::upgrade_to_unique_lock<boost::shared_mutex> uniqueLock(lock);
@@ -298,7 +299,7 @@ inline void VideoFrameMixerImpl::removeOutput(int32_t output)
     if (it != m_outputs.end()) {
         it->second.encoder->degenerateStream(it->second.streamId);
         if (it->second.encoder->isIdle()) {
-            m_compositor->removeVideoDestination(it->second.encoder.get());
+            m_compositor->removeOutput(it->second.encoder.get());
         }
         boost::upgrade_to_unique_lock<boost::shared_mutex> ulock(lock);
         m_outputs.erase(output);

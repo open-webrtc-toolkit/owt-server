@@ -40,9 +40,11 @@
 #include "I420BufferManager.h"
 
 namespace mcu {
+class SoftVideoCompositor;
 
 class AvatarManager {
     DECLARE_LOGGER();
+
 public:
     AvatarManager(uint8_t size);
     ~AvatarManager();
@@ -65,15 +67,15 @@ private:
     boost::shared_mutex m_mutex;
 };
 
-class SwInput {
+class SoftInput {
     DECLARE_LOGGER();
 
 public:
-    SwInput();
-    ~SwInput();
+    SoftInput();
+    ~SoftInput();
 
     void setActive(bool active);
-    bool isActive(void) {return m_active;}
+    bool isActive(void);
 
     void pushInput(webrtc::VideoFrame *videoFrame);
     boost::shared_ptr<webrtc::VideoFrame> popInput();
@@ -88,18 +90,82 @@ private:
     boost::scoped_ptr<woogeen_base::FrameConverter> m_converter;
 };
 
-/**
- * composite a sequence of frames into one frame based on current layout config,
- * there is a question of how many streams to be composited if there are 16 participants
- * but only 6 regions are configed. current implementation will only show 6 participants but
- * still 16 audios will be mixed. In the future, we may enable the video rotation based on VAD history.
- */
-class SoftVideoCompositor : public VideoFrameCompositor,
-                            public JobTimerListener {
+class SoftFrameGenerator : public JobTimerListener
+{
     DECLARE_LOGGER();
 
-    enum LayoutSolutionState{UN_INITIALIZED = 0, CHANGING, IN_WORK};
     const uint32_t kMsToRtpTimestamp = 90;
+
+    struct Output_t {
+        uint32_t width;
+        uint32_t height;
+        uint32_t fps;
+        woogeen_base::FrameDestination *dest;
+    };
+
+public:
+    SoftFrameGenerator(
+            SoftVideoCompositor *owner,
+            woogeen_base::VideoSize &size,
+            woogeen_base::YUVColor &bgColor,
+            const bool crop,
+            const uint32_t maxFps,
+            const uint32_t minFps);
+
+    ~SoftFrameGenerator();
+
+    void updateLayoutSolution(LayoutSolution& solution);
+
+    bool isSupported(uint32_t width, uint32_t height, uint32_t fps);
+
+    bool addOutput(const uint32_t width, const uint32_t height, const uint32_t fps, woogeen_base::FrameDestination *dst);
+    bool removeOutput(woogeen_base::FrameDestination *dst);
+
+    void onTimeout() override;
+
+protected:
+    rtc::scoped_refptr<webrtc::VideoFrameBuffer> generateFrame();
+    rtc::scoped_refptr<webrtc::VideoFrameBuffer> layout();
+
+    void reconfigureIfNeeded();
+
+public:
+    const webrtc::Clock *m_clock;
+
+    SoftVideoCompositor *m_owner;
+    uint32_t m_maxSupportedFps;
+    uint32_t m_minSupportedFps;
+
+    uint32_t m_counter;
+    uint32_t m_counterMax;
+
+    std::vector<std::list<Output_t>>    m_outputs;
+    boost::shared_mutex                 m_outputMutex;
+
+    // configure
+    woogeen_base::VideoSize     m_size;
+    woogeen_base::YUVColor      m_bgColor;
+    bool                        m_crop;
+
+    // reconfifure
+    LayoutSolution              m_layout;
+    LayoutSolution              m_newLayout;
+    bool                        m_configureChanged;
+    boost::shared_mutex         m_configMutex;
+
+    boost::scoped_ptr<woogeen_base::I420BufferManager> m_bufferManager;
+
+    boost::scoped_ptr<JobTimer> m_jobTimer;
+};
+
+/**
+ * composite a sequence of frames into one frame based on current layout config,
+ * In the future, we may enable the video rotation based on VAD history.
+ */
+class SoftVideoCompositor : public VideoFrameCompositor {
+    DECLARE_LOGGER();
+
+    friend class SoftFrameGenerator;
 
 public:
     SoftVideoCompositor(uint32_t maxInput, woogeen_base::VideoSize rootSize, woogeen_base::YUVColor bgColor, bool crop);
@@ -115,34 +181,19 @@ public:
     void updateBackgroundColor(woogeen_base::YUVColor& bgColor);
     void updateLayoutSolution(LayoutSolution& solution);
 
-    void onTimeout();
+    bool addOutput(const uint32_t width, const uint32_t height, const uint32_t framerateFPS, woogeen_base::FrameDestination *dst) override;
+    bool removeOutput(woogeen_base::FrameDestination *dst) override;
 
 protected:
-    webrtc::VideoFrame* layout();
-    webrtc::VideoFrame* customLayout();
-    void generateFrame();
-    bool commitLayout();
-    void setBackgroundColor();
+    boost::shared_ptr<webrtc::VideoFrame> getInputFrame(int index);
 
 private:
-    const webrtc::Clock *m_clock;
-
     uint32_t m_maxInput;
-    woogeen_base::VideoSize m_compositeSize;
-    woogeen_base::VideoSize m_newCompositeSize;
-    woogeen_base::YUVColor m_bgColor;
-    LayoutSolution m_currentLayout;
-    LayoutSolution m_newLayout;
-    LayoutSolutionState m_solutionState;
-    bool m_crop;
 
-    rtc::scoped_refptr<webrtc::I420Buffer> m_compositeBuffer;
-    boost::shared_ptr<webrtc::VideoFrame> m_compositeFrame;
-    std::vector<boost::shared_ptr<SwInput>> m_inputs;
+    std::vector<boost::shared_ptr<SoftFrameGenerator>> m_generators;
 
+    std::vector<boost::shared_ptr<SoftInput>> m_inputs;
     boost::scoped_ptr<AvatarManager> m_avatarManager;
-
-    boost::scoped_ptr<JobTimer> m_jobTimer;
 };
 
 }

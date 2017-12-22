@@ -21,7 +21,6 @@
 #include "SoftVideoCompositor.h"
 
 #include "libyuv/convert.h"
-#include "libyuv/planar_functions.h"
 #include "libyuv/scale.h"
 
 #include <iostream>
@@ -190,21 +189,20 @@ boost::shared_ptr<webrtc::VideoFrame> AvatarManager::getAvatarFrame(uint8_t inde
     return frame;
 }
 
-DEFINE_LOGGER(SwInput, "mcu.media.SwInput");
+DEFINE_LOGGER(SoftInput, "mcu.media.SoftVideoCompositor.SoftInput");
 
-SwInput::SwInput()
+SoftInput::SoftInput()
     : m_active(false)
 {
     m_bufferManager.reset(new I420BufferManager(3));
     m_converter.reset(new woogeen_base::FrameConverter());
 }
 
-SwInput::~SwInput()
+SoftInput::~SoftInput()
 {
-
 }
 
-void SwInput::setActive(bool active)
+void SoftInput::setActive(bool active)
 {
     boost::unique_lock<boost::shared_mutex> lock(m_mutex);
     m_active = active;
@@ -212,7 +210,12 @@ void SwInput::setActive(bool active)
         m_busyFrame.reset();
 }
 
-void SwInput::pushInput(webrtc::VideoFrame *videoFrame)
+bool SoftInput::isActive(void)
+{
+    return m_active;
+}
+
+void SoftInput::pushInput(webrtc::VideoFrame *videoFrame)
 {
     {
         boost::unique_lock<boost::shared_mutex> lock(m_mutex);
@@ -239,7 +242,7 @@ void SwInput::pushInput(webrtc::VideoFrame *videoFrame)
     }
 }
 
-boost::shared_ptr<VideoFrame> SwInput::popInput()
+boost::shared_ptr<VideoFrame> SoftInput::popInput()
 {
     boost::unique_lock<boost::shared_mutex> lock(m_mutex);
 
@@ -249,55 +252,324 @@ boost::shared_ptr<VideoFrame> SwInput::popInput()
     return m_busyFrame;
 }
 
+DEFINE_LOGGER(SoftFrameGenerator, "mcu.media.SoftVideoCompositor.SoftFrameGenerator");
+
+SoftFrameGenerator::SoftFrameGenerator(
+            SoftVideoCompositor *owner,
+            woogeen_base::VideoSize &size,
+            woogeen_base::YUVColor &bgColor,
+            const bool crop,
+            const uint32_t maxFps,
+            const uint32_t minFps)
+    : m_clock(Clock::GetRealTimeClock())
+    , m_owner(owner)
+    , m_maxSupportedFps(maxFps)
+    , m_minSupportedFps(minFps)
+    , m_counter(0)
+    , m_counterMax(0)
+    , m_size(size)
+    , m_bgColor(bgColor)
+    , m_crop(crop)
+    , m_configureChanged(false)
+{
+    ELOG_DEBUG_T("Support fps max(%d), min(%d)", m_maxSupportedFps, m_minSupportedFps);
+
+    uint32_t fps = m_minSupportedFps;
+    while (fps <= m_maxSupportedFps) {
+        if (fps == m_maxSupportedFps)
+            break;
+
+        fps *= 2;
+    }
+    if (fps > m_maxSupportedFps) {
+        ELOG_WARN_T("Invalid fps min(%d), max(%d) --> mix(%d), max(%d)"
+                , m_minSupportedFps, m_maxSupportedFps
+                , m_minSupportedFps, m_minSupportedFps
+                );
+        m_maxSupportedFps = m_minSupportedFps;
+    }
+
+    m_counter = 0;
+    m_counterMax = m_maxSupportedFps / m_minSupportedFps;
+
+    m_outputs.resize(m_maxSupportedFps / m_minSupportedFps);
+
+    m_bufferManager.reset(new I420BufferManager(1));
+
+    m_jobTimer.reset(new JobTimer(m_maxSupportedFps, this));
+    m_jobTimer->start();
+}
+
+SoftFrameGenerator::~SoftFrameGenerator()
+{
+    ELOG_DEBUG_T("Exit");
+
+    m_jobTimer->stop();
+
+    for (uint32_t i = 0; i <  m_outputs.size(); i++) {
+        if (m_outputs[i].size())
+            ELOG_WARN_T("Outputs not empty!!!");
+    }
+}
+
+void SoftFrameGenerator::updateLayoutSolution(LayoutSolution& solution)
+{
+    boost::unique_lock<boost::shared_mutex> lock(m_configMutex);
+
+    m_newLayout         = solution;
+    m_configureChanged  = true;
+}
+
+bool SoftFrameGenerator::isSupported(uint32_t width, uint32_t height, uint32_t fps)
+{
+    if (fps > m_maxSupportedFps || fps < m_minSupportedFps)
+        return false;
+
+    uint32_t n = m_minSupportedFps;
+    while (n <= m_maxSupportedFps) {
+        if (n == fps)
+            return true;
+
+        n *= 2;
+    }
+
+    return false;
+}
+
+bool SoftFrameGenerator::addOutput(const uint32_t width, const uint32_t height, const uint32_t fps, woogeen_base::FrameDestination *dst) {
+    assert(isSupported(width, height, fps));
+
+    boost::unique_lock<boost::shared_mutex> lock(m_outputMutex);
+
+    int index = m_maxSupportedFps / fps - 1;
+
+    Output_t output{.width = width, .height = height, .fps = fps, .dest = dst};
+    m_outputs[index].push_back(output);
+    return true;
+}
+
+bool SoftFrameGenerator::removeOutput(woogeen_base::FrameDestination *dst) {
+    boost::unique_lock<boost::shared_mutex> lock(m_outputMutex);
+
+    for (uint32_t i = 0; i < m_outputs.size(); i++) {
+        for (auto it = m_outputs[i].begin(); it != m_outputs[i].end(); ++it) {
+            if (it->dest == dst) {
+                m_outputs[i].erase(it);
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
+
+void SoftFrameGenerator::onTimeout()
+{
+    bool hasValidOutput = false;
+    {
+        boost::unique_lock<boost::shared_mutex> lock(m_outputMutex);
+        for (uint32_t i = 0; i < m_outputs.size(); i++) {
+            if (m_counter % (i + 1))
+                continue;
+
+            if (m_outputs[i].size() > 0) {
+                hasValidOutput = true;
+                break;
+            }
+        }
+    }
+
+    if (hasValidOutput) {
+        rtc::scoped_refptr<webrtc::VideoFrameBuffer> compositeBuffer = generateFrame();
+        if (compositeBuffer) {
+            webrtc::VideoFrame compositeFrame(
+                    compositeBuffer,
+                    webrtc::kVideoRotation_0,
+                    m_clock->TimeInMilliseconds()
+                    );
+            compositeFrame.set_timestamp(compositeFrame.timestamp_us() * kMsToRtpTimestamp);
+
+            woogeen_base::Frame frame;
+            memset(&frame, 0, sizeof(frame));
+            frame.format = woogeen_base::FRAME_FORMAT_I420;
+            frame.payload = reinterpret_cast<uint8_t*>(&compositeFrame);
+            frame.length = 0; // unused.
+            frame.timeStamp = compositeFrame.timestamp();
+            frame.additionalInfo.video.width = compositeFrame.width();
+            frame.additionalInfo.video.height = compositeFrame.height();
+
+            {
+                boost::unique_lock<boost::shared_mutex> lock(m_outputMutex);
+                for (uint32_t i = 0; i <  m_outputs.size(); i++) {
+                    if (m_counter % (i + 1))
+                        continue;
+
+                    for (auto it = m_outputs[i].begin(); it != m_outputs[i].end(); ++it) {
+                        ELOG_TRACE_T("+++deliverFrame(%d), dst(%p), fps(%d), timestamp(%d)"
+                                , m_counter, it->dest, m_maxSupportedFps / (i + 1), frame.timeStamp / 90);
+
+                        it->dest->onFrame(frame);
+                    }
+                }
+            }
+        }
+    }
+
+    m_counter = (m_counter + 1) % m_counterMax;
+}
+
+rtc::scoped_refptr<webrtc::VideoFrameBuffer> SoftFrameGenerator::generateFrame()
+{
+    reconfigureIfNeeded();
+    return layout();
+}
+
+rtc::scoped_refptr<webrtc::VideoFrameBuffer> SoftFrameGenerator::layout()
+{
+    rtc::scoped_refptr<webrtc::I420Buffer> compositeBuffer = m_bufferManager->getFreeBuffer(m_size.width, m_size.height);
+    if (!compositeBuffer) {
+        ELOG_ERROR("No valid composite buffer");
+        return NULL;
+    }
+
+    // Set the background color
+    libyuv::I420Rect(
+            compositeBuffer->MutableDataY(), compositeBuffer->StrideY(),
+            compositeBuffer->MutableDataU(), compositeBuffer->StrideU(),
+            compositeBuffer->MutableDataV(), compositeBuffer->StrideV(),
+            0, 0, compositeBuffer->width(), compositeBuffer->height(),
+            m_bgColor.y, m_bgColor.cb, m_bgColor.cr);
+
+    for (LayoutSolution::iterator it = m_layout.begin(); it != m_layout.end(); ++it) {
+        int index = it->input;
+
+        boost::shared_ptr<webrtc::VideoFrame> inputFrame = m_owner->getInputFrame(index);
+        if (inputFrame == NULL) {
+            continue;
+        }
+
+        rtc::scoped_refptr<webrtc::VideoFrameBuffer> inputBuffer = inputFrame->video_frame_buffer();
+
+        Region region = it->region;
+        uint32_t dst_x      = (uint64_t)m_size.width * region.area.rect.left.numerator / region.area.rect.left.denominator;
+        uint32_t dst_y      = (uint64_t)m_size.height * region.area.rect.top.numerator / region.area.rect.top.denominator;
+        uint32_t dst_width  = (uint64_t)m_size.width * region.area.rect.width.numerator / region.area.rect.width.denominator;
+        uint32_t dst_height = (uint64_t)m_size.height * region.area.rect.height.numerator / region.area.rect.height.denominator;
+
+        if (dst_x + dst_width > m_size.width)
+            dst_width = m_size.width - dst_x;
+
+        if (dst_y + dst_height > m_size.height)
+            dst_height = m_size.height - dst_y;
+
+        uint32_t cropped_dst_width;
+        uint32_t cropped_dst_height;
+        uint32_t src_x;
+        uint32_t src_y;
+        uint32_t src_width;
+        uint32_t src_height;
+        if (m_crop) {
+            src_width   = std::min((uint32_t)inputBuffer->width(), dst_width * inputBuffer->height() / dst_height);
+            src_height  = std::min((uint32_t)inputBuffer->height(), dst_height * inputBuffer->width() / dst_width);
+            src_x       = (inputBuffer->width() - src_width) / 2;
+            src_y       = (inputBuffer->height() - src_height) / 2;
+
+            cropped_dst_width   = dst_width;
+            cropped_dst_height  = dst_height;
+        } else {
+            src_width   = inputBuffer->width();
+            src_height  = inputBuffer->height();
+            src_x       = 0;
+            src_y       = 0;
+
+            cropped_dst_width   = std::min(dst_width, inputBuffer->width() * dst_height / inputBuffer->height());
+            cropped_dst_height  = std::min(dst_height, inputBuffer->height() * dst_width / inputBuffer->width());
+        }
+
+        dst_x += (dst_width - cropped_dst_width) / 2;
+        dst_y += (dst_height - cropped_dst_height) / 2;
+
+        src_x               &= ~1;
+        src_y               &= ~1;
+        src_width           &= ~1;
+        src_height          &= ~1;
+        dst_x               &= ~1;
+        dst_y               &= ~1;
+        cropped_dst_width   &= ~1;
+        cropped_dst_height  &= ~1;
+
+        int ret = libyuv::I420Scale(
+                inputBuffer->DataY() + src_y * inputBuffer->StrideY() + src_x, inputBuffer->StrideY(),
+                inputBuffer->DataU() + (src_y * inputBuffer->StrideU() + src_x) / 2, inputBuffer->StrideU(),
+                inputBuffer->DataV() + (src_y * inputBuffer->StrideV() + src_x) / 2, inputBuffer->StrideV(),
+                src_width, src_height,
+                compositeBuffer->MutableDataY() + dst_y * compositeBuffer->StrideY() + dst_x, compositeBuffer->StrideY(),
+                compositeBuffer->MutableDataU() + (dst_y * compositeBuffer->StrideU() + dst_x) / 2, compositeBuffer->StrideU(),
+                compositeBuffer->MutableDataV() + (dst_y * compositeBuffer->StrideV() + dst_x) / 2, compositeBuffer->StrideV(),
+                cropped_dst_width, cropped_dst_height,
+                libyuv::kFilterBox);
+        if (ret != 0)
+            ELOG_ERROR("I420Scale failed, ret %d", ret);
+    }
+
+    return compositeBuffer;
+}
+
+void SoftFrameGenerator::reconfigureIfNeeded()
+{
+    {
+        boost::unique_lock<boost::shared_mutex> lock(m_configMutex);
+        if (!m_configureChanged)
+            return;
+
+        m_layout = m_newLayout;
+        m_configureChanged = false;
+    }
+
+    ELOG_DEBUG_T("reconfigure");
+}
+
 DEFINE_LOGGER(SoftVideoCompositor, "mcu.media.SoftVideoCompositor");
 
 SoftVideoCompositor::SoftVideoCompositor(uint32_t maxInput, VideoSize rootSize, YUVColor bgColor, bool crop)
-    : m_clock(Clock::GetRealTimeClock())
-    , m_maxInput(maxInput)
-    , m_compositeSize(rootSize)
-    , m_bgColor(bgColor)
-    , m_solutionState(UN_INITIALIZED)
-    , m_crop(crop)
+    : m_maxInput(maxInput)
 {
-    m_compositeBuffer = webrtc::I420Buffer::Create(m_compositeSize.width, m_compositeSize.height);
-    m_compositeFrame.reset(new webrtc::VideoFrame(
-                m_compositeBuffer,
-                webrtc::kVideoRotation_0,
-                0));
-
     m_inputs.resize(m_maxInput);
     for (auto& input : m_inputs) {
-        input.reset(new SwInput());
+        input.reset(new SoftInput());
     }
 
     m_avatarManager.reset(new AvatarManager(maxInput));
 
-    m_jobTimer.reset(new JobTimer(30, this));
-    m_jobTimer->start();
+    m_generators.resize(2);
+    m_generators[0].reset(new SoftFrameGenerator(this, rootSize, bgColor, crop, 60, 15));
+    m_generators[1].reset(new SoftFrameGenerator(this, rootSize, bgColor, crop, 48, 6));
 }
 
 SoftVideoCompositor::~SoftVideoCompositor()
 {
-    m_jobTimer->stop();
+    m_generators.clear();
+    m_avatarManager.reset();
+    m_inputs.clear();
 }
 
-void SoftVideoCompositor::updateRootSize(VideoSize& videoSize)
+void SoftVideoCompositor::updateRootSize(VideoSize& rootSize)
 {
-    m_newCompositeSize = videoSize;
-    m_solutionState = CHANGING;
+    ELOG_WARN("Not support updateRootSize: %dx%d", rootSize.width, rootSize.height);
 }
 
 void SoftVideoCompositor::updateBackgroundColor(YUVColor& bgColor)
 {
-    m_bgColor = bgColor;
+    ELOG_WARN("Not support updateBackgroundColor: YCbCr(0x%x, 0x%x, 0x%x)", bgColor.y, bgColor.cb, bgColor.cr);
 }
 
 void SoftVideoCompositor::updateLayoutSolution(LayoutSolution& solution)
 {
-    ELOG_DEBUG("Configuring layout");
-    m_newLayout = solution;
-    m_solutionState = CHANGING;
-    ELOG_DEBUG("configChanged is true");
+    assert(solution.size() < m_maxInput);
+
+    for (auto& generator : m_generators) {
+        generator->updateLayoutSolution(solution);
+    }
 }
 
 bool SoftVideoCompositor::activateInput(int input)
@@ -329,151 +601,46 @@ void SoftVideoCompositor::pushInput(int input, const Frame& frame)
     m_inputs[input]->pushInput(i420Frame);
 }
 
-void SoftVideoCompositor::onTimeout()
+bool SoftVideoCompositor::addOutput(const uint32_t width, const uint32_t height, const uint32_t framerateFPS, woogeen_base::FrameDestination *dst)
 {
-    generateFrame();
-}
+    ELOG_DEBUG("addOutput, %dx%d, fps(%d), dst(%p)", width, height, framerateFPS, dst);
 
-void SoftVideoCompositor::generateFrame()
-{
-    VideoFrame* compositeFrame = layout();
-
-    woogeen_base::Frame frame;
-    memset(&frame, 0, sizeof(frame));
-    frame.format = woogeen_base::FRAME_FORMAT_I420;
-    frame.payload = reinterpret_cast<uint8_t*>(compositeFrame);
-    frame.length = 0; // unused.
-    frame.timeStamp = compositeFrame->timestamp();
-    frame.additionalInfo.video.width = compositeFrame->width();
-    frame.additionalInfo.video.height = compositeFrame->height();
-
-    deliverFrame(frame);
-}
-
-void SoftVideoCompositor::setBackgroundColor()
-{
-    if (m_compositeBuffer) {
-        // Set the background color
-        libyuv::I420Rect(
-                m_compositeBuffer->MutableDataY(), m_compositeBuffer->StrideY(),
-                m_compositeBuffer->MutableDataU(), m_compositeBuffer->StrideU(),
-                m_compositeBuffer->MutableDataV(), m_compositeBuffer->StrideV(),
-                0, 0, m_compositeBuffer->width(), m_compositeBuffer->height(),
-                m_bgColor.y, m_bgColor.cb, m_bgColor.cr);
-    }
-}
-
-bool SoftVideoCompositor::commitLayout()
-{
-    // Update the current video layout
-    // m_compositeSize = m_newCompositeSize;
-    m_currentLayout = m_newLayout;
-    ELOG_DEBUG("commit customlayout");
-
-    m_solutionState = IN_WORK;
-    ELOG_DEBUG("configChanged sets to false after commitLayout!");
-    return true;
-}
-
-webrtc::VideoFrame* SoftVideoCompositor::layout()
-{
-    if (m_solutionState == CHANGING)
-        commitLayout();
-
-    // Update the background color
-    setBackgroundColor();
-    return customLayout();
-}
-
-webrtc::VideoFrame* SoftVideoCompositor::customLayout()
-{
-    for (LayoutSolution::iterator it = m_currentLayout.begin(); it != m_currentLayout.end(); ++it) {
-        int index = it->input;
-
-        boost::shared_ptr<webrtc::VideoFrame> sub_frame;
-        if (m_inputs[index]->isActive()) {
-            sub_frame = m_inputs[index]->popInput();
-        } else {
-            sub_frame = m_avatarManager->getAvatarFrame(index);
+    for (auto& generator : m_generators) {
+        if (generator->isSupported(width, height, framerateFPS)) {
+            return generator->addOutput(width, height, framerateFPS, dst);
         }
-
-        if (sub_frame == NULL) {
-            continue;
-        }
-
-        rtc::scoped_refptr<webrtc::VideoFrameBuffer> i420Buffer = sub_frame->video_frame_buffer();
-
-        Region region = it->region;
-        assert(region.shape.compare("rectangle") == 0
-                && (region.area.rect.left.denominator != 0 && region.area.rect.left.denominator >= region.area.rect.left.numerator)
-                && (region.area.rect.top.denominator != 0 && region.area.rect.top.denominator >= region.area.rect.top.numerator)
-                && (region.area.rect.width.denominator != 0 && region.area.rect.width.denominator >= region.area.rect.width.numerator)
-                && (region.area.rect.height.denominator != 0 && region.area.rect.height.denominator >= region.area.rect.height.numerator));
-
-        uint32_t dst_x      = (uint64_t)m_compositeSize.width * region.area.rect.left.numerator / region.area.rect.left.denominator;
-        uint32_t dst_y      = (uint64_t)m_compositeSize.height * region.area.rect.top.numerator / region.area.rect.top.denominator;
-        uint32_t dst_width  = (uint64_t)m_compositeSize.width * region.area.rect.width.numerator / region.area.rect.width.denominator;
-        uint32_t dst_height = (uint64_t)m_compositeSize.height * region.area.rect.height.numerator / region.area.rect.height.denominator;
-
-        if (dst_x + dst_width > m_compositeSize.width)
-            dst_width = m_compositeSize.width - dst_x;
-
-        if (dst_y + dst_height > m_compositeSize.height)
-            dst_height = m_compositeSize.height - dst_y;
-
-        uint32_t cropped_dst_width;
-        uint32_t cropped_dst_height;
-        uint32_t src_x;
-        uint32_t src_y;
-        uint32_t src_width;
-        uint32_t src_height;
-        if (m_crop) {
-            src_width   = std::min((uint32_t)i420Buffer->width(), dst_width * i420Buffer->height() / dst_height);
-            src_height  = std::min((uint32_t)i420Buffer->height(), dst_height * i420Buffer->width() / dst_width);
-            src_x       = (i420Buffer->width() - src_width) / 2;
-            src_y       = (i420Buffer->height() - src_height) / 2;
-
-            cropped_dst_width   = dst_width;
-            cropped_dst_height  = dst_height;
-        } else {
-            src_width   = i420Buffer->width();
-            src_height  = i420Buffer->height();
-            src_x       = 0;
-            src_y       = 0;
-
-            cropped_dst_width   = std::min(dst_width, i420Buffer->width() * dst_height / i420Buffer->height());
-            cropped_dst_height  = std::min(dst_height, i420Buffer->height() * dst_width / i420Buffer->width());
-        }
-
-        dst_x += (dst_width - cropped_dst_width) / 2;
-        dst_y += (dst_height - cropped_dst_height) / 2;
-
-        src_x               &= ~1;
-        src_y               &= ~1;
-        src_width           &= ~1;
-        src_height          &= ~1;
-        dst_x               &= ~1;
-        dst_y               &= ~1;
-        cropped_dst_width   &= ~1;
-        cropped_dst_height  &= ~1;
-
-        int ret = libyuv::I420Scale(
-                i420Buffer->DataY() + src_y * i420Buffer->StrideY() + src_x, i420Buffer->StrideY(),
-                i420Buffer->DataU() + (src_y * i420Buffer->StrideU() + src_x) / 2, i420Buffer->StrideU(),
-                i420Buffer->DataV() + (src_y * i420Buffer->StrideV() + src_x) / 2, i420Buffer->StrideV(),
-                src_width, src_height,
-                m_compositeBuffer->MutableDataY() + dst_y * m_compositeBuffer->StrideY() + dst_x, m_compositeBuffer->StrideY(),
-                m_compositeBuffer->MutableDataU() + (dst_y * m_compositeBuffer->StrideU() + dst_x) / 2, m_compositeBuffer->StrideU(),
-                m_compositeBuffer->MutableDataV() + (dst_y * m_compositeBuffer->StrideV() + dst_x) / 2, m_compositeBuffer->StrideV(),
-                cropped_dst_width, cropped_dst_height,
-                libyuv::kFilterBox);
-        if (ret != 0)
-            ELOG_ERROR("I420Scale failed, ret %d", ret);
     }
 
-    m_compositeFrame->set_timestamp_us(m_clock->TimeInMilliseconds());
-    m_compositeFrame->set_timestamp(m_compositeFrame->timestamp_us() * kMsToRtpTimestamp);
-    return m_compositeFrame.get();
+    ELOG_ERROR("Can not addOutput, %dx%d, fps(%d), dst(%p)", width, height, framerateFPS, dst);
+    return false;
+}
+
+bool SoftVideoCompositor::removeOutput(woogeen_base::FrameDestination *dst)
+{
+    ELOG_DEBUG("removeOutput, dst(%p)", dst);
+
+    for (auto& generator : m_generators) {
+        if (generator->removeOutput(dst)) {
+            return true;
+        }
+    }
+
+    ELOG_ERROR("Can not removeOutput, dst(%p)", dst);
+    return false;
+}
+
+boost::shared_ptr<webrtc::VideoFrame> SoftVideoCompositor::getInputFrame(int index)
+{
+    boost::shared_ptr<webrtc::VideoFrame> src;
+
+    auto& input = m_inputs[index];
+    if (input->isActive()) {
+        src = input->popInput();
+    } else {
+        src = m_avatarManager->getAvatarFrame(index);
+    }
+
+    return src;
 }
 
 }
