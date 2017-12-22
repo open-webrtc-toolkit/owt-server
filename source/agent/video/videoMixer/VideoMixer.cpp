@@ -143,10 +143,7 @@ bool VideoMixer::addOutput(
     VideoSize vSize;
     VideoResolutionHelper::getVideoSize(resolution, vSize);
 
-    if (framerateFPS != 30)
-        ELOG_WARN("Required frame rate(%d), only support frame rate(30fps)", framerateFPS);
-
-    if (m_frameMixer->addOutput(m_nextOutputIndex, format, vSize, 30, bitrateKbps, keyFrameIntervalSeconds, dest)) {
+    if (m_frameMixer->addOutput(m_nextOutputIndex, format, vSize, framerateFPS, bitrateKbps, keyFrameIntervalSeconds, dest)) {
         boost::unique_lock<boost::shared_mutex> lock(m_outputsMutex);
         m_outputs[outStreamID] = m_nextOutputIndex++;
         return true;
@@ -171,12 +168,40 @@ void VideoMixer::removeOutput(const std::string& outStreamID)
 }
 
 void VideoMixer::updateLayoutSolution(LayoutSolution& solution) {
+    ELOG_DEBUG("updateLayoutSolution, size(%ld)", solution.size());
+
+    for (auto& l : solution) {
+        Region *pRegion = &l.region;
+
+        ELOG_DEBUG("input(%d): shape(%s), left(%d/%d), top(%d/%d), width(%d/%d), height(%d/%d)"
+                , l.input
+                , pRegion->shape.c_str()
+                , pRegion->area.rect.left.numerator, pRegion->area.rect.left.denominator
+                , pRegion->area.rect.top.numerator, pRegion->area.rect.top.denominator
+                , pRegion->area.rect.width.numerator, pRegion->area.rect.width.denominator
+                , pRegion->area.rect.height.numerator, pRegion->area.rect.height.denominator);
+
+        assert(pRegion->shape.compare("rectangle") == 0);
+        assert(pRegion->area.rect.left.denominator != 0 && pRegion->area.rect.left.denominator >= pRegion->area.rect.left.numerator);
+        assert(pRegion->area.rect.top.denominator != 0 && pRegion->area.rect.top.denominator >= pRegion->area.rect.top.numerator);
+        assert(pRegion->area.rect.width.denominator != 0 && pRegion->area.rect.width.denominator >= pRegion->area.rect.width.numerator);
+        assert(pRegion->area.rect.height.denominator != 0 && pRegion->area.rect.height.denominator >= pRegion->area.rect.height.numerator);
+
+        ELOG_TRACE("input(%d): left(%.2f), top(%.2f), width(%.2f), height(%.2f)"
+                , l.input
+                , (float)pRegion->area.rect.left.numerator / pRegion->area.rect.left.denominator
+                , (float)pRegion->area.rect.top.numerator / pRegion->area.rect.top.denominator
+                , (float)pRegion->area.rect.width.numerator / pRegion->area.rect.width.denominator
+                , (float)pRegion->area.rect.height.numerator / pRegion->area.rect.height.denominator);
+    }
+
     m_frameMixer->updateLayoutSolution(solution);
 }
 
 void VideoMixer::closeAll()
 {
     ELOG_DEBUG("closeAll");
+
     auto it = m_inputs.begin();
     while (it != m_inputs.end()) {
         m_frameMixer->removeInput(*it);
