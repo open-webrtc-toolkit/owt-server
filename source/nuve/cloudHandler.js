@@ -28,130 +28,230 @@ exports.schedulePortal = function (tokenCode, origin, callback) {
     tryFetchingPortal(60);
 };
 
-exports.getUsersInRoom = function (roomId, callback) {
-    rpc.callRpc(cluster_name, 'getScheduled', ['conference', roomId], {callback: function (r) {
-        if (r === 'timeout' || r === 'error') {
-            callback([]);
-        } else {
-            log.info('getUsersInRoom:', roomId, 'conference agent:', r);
-            rpc.callRpc(r, 'queryNode', [roomId], {callback: function(r1) {
-                if (r1 === 'timeout' || r1 === 'error') {
-                    callback([]);
-                } else {
-                    log.info('getUsersInRoom:', roomId, 'conference node:', r1);
-                    rpc.callRpc(r1, 'getUsers', [], {callback: function (users) {
-                        log.info('got users:', users);
-                        if (users === 'timeout' || users === 'error') {
-                            callback([]);
-                        } else {
-                            callback(users);
-                        }
-                    }});
-                }
-            }});
-        }
-    }});
+var scheduleRoomController = function (roomId) {
+  return new Promise((resolve, reject) => {
+      rpc.callRpc(cluster_name, 'schedule', ['conference', roomId, 'preference', 30 * 1000], {callback: function (result) {
+          if (result === 'timeout' || result === 'error') {
+              reject('Error in scheduling room controller');
+          } else {
+              rpc.callRpc(result, 'getNode', [{room: roomId, task: roomId}], {callback: function (result) {
+                  if (result === 'timeout' || result === 'error') {
+                      reject('Error in scheduling room controller');
+                  } else {
+                      resolve(result);
+                  }
+              }});
+          }
+      }});
+  });
+};
+
+var getRoomController = (roomId) => {
+  return new Promise((resolve, reject) => {
+    rpc.callRpc(cluster_name, 'getScheduled', ['conference', roomId], {callback: (agent) => {
+      if (agent === 'timeout' || agent === 'error') {
+        reject('Room is inactive');
+      } else {
+        rpc.callRpc(agent, 'queryNode', [roomId], {callback: (node) => {
+          if (node === 'timeout' || node === 'error') {
+            reject('Room is inactive');
+          } else {
+            resolve(node);
+          }
+        }});
+      }
+  }});
+  });
 };
 
 exports.deleteRoom = function (roomId, callback) {
-    rpc.callRpc(cluster_name, 'getScheduled', ['conference', roomId], {callback: function (r) {
-        if (r === 'timeout' || r === 'error') {
-            callback([]);
-        } else {
-            rpc.callRpc(r, 'queryNode', [roomId], {callback: function(r1) {
-                if (r1 === 'timeout' || r1 === 'error') {
-                    callback([]);
-                } else {
-                    rpc.callRpc(r1, 'destroy', [], {callback: function (result) {
-                        callback(result);
-                    }});
-                }
-            }});
-        }
-    }});
-};
-
-exports.deleteUser = function (user, roomId, callback) {
-    rpc.callRpc(cluster_name, 'getScheduled', ['conference', roomId], {callback: function (r) {
-        if (r === 'timeout' || r === 'error') {
-            callback([]);
-        } else {
-            rpc.callRpc(r, 'queryNode', [roomId], {callback: function(r1) {
-                if (r1 === 'timeout' || r1 === 'error') {
-                    callback([]);
-                } else {
-                    rpc.callRpc(r1, 'deleteUser', [user], {callback: function (result) {
-                        callback(result);
-                    }});
-                }
-            }});
-        }
-    }});
-};
-
-exports.getPortals = function (callback) {
-    rpc.callRpc(cluster_name, 'getWorkers', ['portal'], {callback: function (result) {
-        if (result === 'timeout' || result === 'error') {
-            callback([]);
-        } else {
-            var res = [];
-            result.forEach(function (worker) {
-                rpc.callRpc(cluster_name, 'getWorkerAttr', [worker], {callback: function (r) {
-                    if (r === 'timeout' || r === 'error') {
-                        res.push('error');
-                    } else {
-                        res.push(r);
-                        if (res.length === result.length) {
-                            callback(res.filter(function (e) { return e !== 'error';}));
-                        }
-                    }
-                }});
-            });
-        }
-    }});
-};
-
-exports.getPortal = function (node, callback) {
-    rpc.callRpc(cluster_name, 'getWorkerAttr', [node], {callback: function (r) {
-        callback(r);
-    }});
-};
-
-//To be deleted
-exports.getEcConfig = function getEcConfig (rpcID, callback) {
-    /*
-    rpc.callRpc(rpcID, 'getConfig', [], {callback: function (result) {
+  return getRoomController(roomId)
+    .then((controller) => {
+      rpc.callRpc(controller, 'destroy', [], {callback: function (result) {
         callback(result);
-    }});
-    */
-    callback({});
+      }});
+    }).catch(() => {
+      callback([]);
+    });
 };
 
-//To be deleted
-exports.getHostedRooms = function getHostedRooms (callback) {
-    /*
-    rpc.callRpc(cluster_name, 'getWorkers', ['portal'], {callback: function (result) {
-        if (result === 'timeout' || result === 'error') {
-            callback([]);
+exports.getParticipantsInRoom = function (roomId, callback) {
+  return getRoomController(roomId)
+    .then((controller) => {
+      rpc.callRpc(controller, 'getParticipants', [], {callback: function (participants) {
+        log.debug('Got participants:', participants);
+        if (participants === 'timeout' || participants === 'error') {
+          callback('error');
         } else {
-            var res = [], async_back = 0;
-            result.forEach(function (worker) {
-                rpc.callRpc(cluster_name, 'getTasks', [worker], {callback: function (r) {
-                    async_back += 1;
-                    if (!(r === 'timeout' || r === 'error')) {
-                        r.forEach(function (t) {
-                             res.push({id: t, ec: worker});
-                        });
-                    }
-                    if (async_back === result.length) {
-                        callback(res);
-                    }
-                }});
-            });
+          callback(participants);
         }
-    }});
-    */
-    callback([]);
+      }});
+    }).catch((err) => {
+      log.info('getParticipantsInRoom failed, reason:', err.message ? err.message : err);
+      callback('error');
+    });
+};
+
+exports.updateParticipant = function (roomId, participant, updates, callback) {
+  return getRoomController(roomId)
+    .then((controller) => {
+      rpc.callRpc(controller, 'controlParticipant', [participant, updates], {callback: function (result) {
+        if (result === 'error' || result === 'timeout') {
+          callback('error');
+        } else {
+          callback(result);
+        }
+      }});
+    }).catch((err) => {
+      callback('error');
+    });
+};
+
+exports.deleteParticipant = function (roomId, participant, callback) {
+  return getRoomController(roomId)
+    .then((controller) => {
+      rpc.callRpc(controller, 'dropParticipant', [participant], {callback: function (result) {
+        if (result === 'error' || result === 'timeout') {
+          callback('error');
+        } else {
+          callback(result);
+        }
+      }});
+    }).catch((err) => {
+      callback('error');
+    });
+};
+
+exports.getStreamsInRoom = function (roomId, callback) {
+  return getRoomController(roomId)
+    .then((controller) => {
+      rpc.callRpc(controller, 'getStreams', [], {callback: function (streams) {
+        log.debug('Got streams:', streams);
+        if (streams === 'timeout' || streams === 'error') {
+          callback('error');
+        } else {
+          callback(streams);
+        }
+      }});
+    }).catch((err) => {
+      log.info('getStreamsInRoom failed, reason:', err.message ? err.message : err);
+      callback('error');
+    });
+};
+
+exports.addStreamingIn = function (roomId, pubReq, callback) {
+  return getRoomController(roomId)
+    .then((controller) => {
+      return controller;
+    }, (e) => {
+      return scheduleRoomController(roomId);
+    }).then((controller) => {
+      rpc.callRpc(controller, 'addStreamingIn', [roomId, pubReq], {callback: function (result) {
+        if (result === 'error' || result === 'timeout') {
+          callback('error');
+        } else {
+          callback(result);
+        }
+      }});
+    }).catch((err) => {
+      callback('error');
+    });
+};
+
+exports.controlStream = function (roomId, stream, cmds, callback) {
+  return getRoomController(roomId)
+    .then((controller) => {
+      rpc.callRpc(controller, 'controlStream', [stream, cmds], {callback: function (result) {
+        if (result === 'error' || result === 'timeout') {
+          callback('error');
+        } else {
+          callback(result);
+        }
+      }});
+    }).catch((err) => {
+      callback('error');
+    });
+};
+
+exports.deleteStream = function (roomId, stream, callback) {
+  return getRoomController(roomId)
+    .then((controller) => {
+      rpc.callRpc(controller, 'deleteStream', [stream], {callback: function (result) {
+        if (result === 'error' || result === 'timeout') {
+          callback('error');
+        } else {
+          callback(result);
+        }
+      }});
+    }).catch((err) => {
+      callback('error');
+    });
+};
+
+exports.getSubscriptionsInRoom = function (roomId, type, callback) {
+  return getRoomController(roomId)
+    .then((controller) => {
+      rpc.callRpc(controller, 'getSubscriptions', [type], {callback: function (subscriptions) {
+        log.debug('Got subscriptions:', subscriptions);
+        if (subscriptions === 'timeout' || subscriptions === 'error') {
+          callback('error');
+        } else {
+          callback(subscriptions);
+        }
+      }});
+    }).catch((err) => {
+      log.info('getSubscriptionsInRoom failed, reason:', err.message ? err.message : err);
+      callback('error');
+    });
+};
+
+exports.addServerSideSubscription = function (roomId, subReq, callback) {
+  return getRoomController(roomId)
+    .then((controller) => {
+      return controller;
+    }, (e) => {
+      return scheduleRoomController(roomId);
+    }).then((controller) => {
+      rpc.callRpc(controller, 'addServerSideSubscription', [roomId, subReq], {callback: function (result) {
+        if (result === 'error' || result === 'timeout') {
+          callback('error');
+        } else {
+          callback(result);
+        }
+      }});
+    }).catch((err) => {
+      callback('error');
+    });
+};
+
+exports.controlSubscription = function (roomId, subId, cmds, callback) {
+  return getRoomController(roomId)
+    .then((controller) => {
+      rpc.callRpc(controller, 'controlSubscription', [subId, cmds], {callback: function (result) {
+        if (result === 'error' || result === 'timeout') {
+          callback('error');
+        } else {
+          callback(result);
+        }
+      }});
+    }).catch((err) => {
+      callback('error');
+    });
+};
+
+exports.deleteSubscription = function (roomId, subId, callback) {
+  return getRoomController(roomId)
+    .then((controller) => {
+      rpc.callRpc(controller, 'deleteSubscription', [subId], {callback: function (result) {
+        if (result === 'error' || result === 'timeout') {
+          callback('error');
+        } else {
+          callback(result);
+        }
+      }});
+    }).catch((err) => {
+      callback('error');
+    });
 };
 
 exports.notifySipPortal = function (changeType, room, callback) {

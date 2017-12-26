@@ -25,6 +25,10 @@
     "RPCPublic": "INFO",
     "RPC": "INFO",
     "Nuve": "INFO",
-    "Room": "INFO"
+    "Room": "INFO",
+    "StreamsResource": "INFO",
+    "ParticipantsResource": "INFO",
+    "StreamingOutsResource": "INFO",
+    "RecordingsResource": "INFO"
   }
 }

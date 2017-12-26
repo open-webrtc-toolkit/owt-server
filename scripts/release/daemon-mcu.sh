@@ -192,7 +192,7 @@ case $startStop in
         ;;
       app )
         cd ${WOOGEEN_HOME}/extras/basic_example/
-        nohup nice -n ${WOOGEEN_NICENESS} node basicServer.js \
+        nohup nice -n ${WOOGEEN_NICENESS} node sampleRTCService.js \
           > "${stdout}" 2>&1 </dev/null &
         echo $! > ${pid}
         ;;

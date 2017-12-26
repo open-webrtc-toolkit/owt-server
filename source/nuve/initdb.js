@@ -73,5 +73,15 @@ prepareService('superService', function (service) {
          if (err) return console.log(err);
       });
     });
+    var sampleServiceFile = path.resolve(__dirname, '../extras/basic_example/sampleRTCService.js');
+    fs.readFile(sampleServiceFile, 'utf8', function (err, data) {
+      if (err) {
+        return console.log(err);
+      }
+      data = data.replace(/icsREST\.API\.init\('[^']*', '[^']*'/, 'icsREST.API.init(\''+sampleServiceId+'\', \''+sampleServiceKey+'\'');
+      fs.writeFile(sampleServiceFile, data, 'utf8', function (err) {
+         if (err) return console.log(err);
+      });
+    });
   });
 });

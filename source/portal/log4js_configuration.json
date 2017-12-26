@@ -16,7 +16,6 @@
     "LegacyClient": "INFO",
     "V10Client": "INFO",
     "SocketIOServer": "INFO",
-    "RestServer": "INFO",
     "Portal": "INFO",
     "RpcClient": "INFO",
     "AmqpClient": "INFO"

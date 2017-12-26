@@ -513,6 +513,7 @@ var Conference = function (rpcClient, selfRpcId) {
    *     info: object(PublicationInfo):: {
    *       owner: string(ParticipantId),
    *       type: 'webrtc' | 'streaming' | 'sip',
+   *       inViews: [string(ViewLabel)],
    *       attributes: object(ExternalDefinedObj)
    *     } | object(ViewInfo):: {
    *       label: string(ViewLabel),
@@ -529,6 +530,8 @@ var Conference = function (rpcClient, selfRpcId) {
   /*
    * {
    *   SubscriptionId: {
+   *     id: string(SubscriptionId),
+         locality: {agent: string(AgentRpcId), node: string(NodeRpcId)}
    *     media: {
    *       audio: {
    *         from: string(StreamId),
@@ -549,7 +552,9 @@ var Conference = function (rpcClient, selfRpcId) {
    *     },
    *     info: object(SubscriptionInfo):: {
    *       owner: string(ParticipantId),
-   *       type: 'webrtc' | 'streaming' | 'recording' | 'sip'
+   *       type: 'webrtc' | 'streaming' | 'recording' | 'sip',
+   *       location: {host: string(HostIPorDN), path: string(FileFullPath)} | undefined,
+   *       url: string(URLofStreamingOut) | undefined
    *     }
    *   }
    * }
@@ -782,6 +787,15 @@ var Conference = function (rpcClient, selfRpcId) {
                     room_config.notifying.streamChange && sendMsg('room', 'all', 'stream', {id: mixed_stream_id, status: 'add', data: mixed_stream_info});
                   });
 
+                  participants['admin'] = Participant({
+                                                       id: 'admin',
+                                                       user: 'admin',
+                                                       role: 'admin',
+                                                       portal: undefined,
+                                                       origin: {isp: 'isp', region: 'region'},//FIXME: hard coded.
+                                                       permission: {}
+                                                      }, rpcReq);
+
                   accessController = AccessController.create({clusterName: global.config.cluster.name || 'woogeen-cluster',
                                                               selfRpcId: selfRpcId,
                                                               inRoom: room_id,
@@ -833,13 +847,15 @@ var Conference = function (rpcClient, selfRpcId) {
   };
 
   const sendMsgTo = function(to, msg, data) {
-    if (participants[to]) {
-      rpcReq.sendMsg(participants[to].getPortal(), to, msg, data)
-        .catch(function(reason) {
-          log.debug('sendMsg fail:', reason);
-        });
-    } else {
-      log.warn('Can not send message to:', to);
+    if (to !== 'admin') {
+      if (participants[to]) {
+        participants[to].notify(msg, data)
+          .catch(function(reason) {
+            log.debug('sendMsg fail:', reason);
+          });
+      } else {
+        log.warn('Can not send message to:', to);
+      }
     }
   };
 
@@ -1008,6 +1024,7 @@ var Conference = function (rpcClient, selfRpcId) {
             media: constructMediaInfo(media),
             info: info
           };
+          st.info.inViews = [];
           streams[id] = st;
           setTimeout(() => {
             room_config.notifying.streamChange && sendMsg('room', 'all', 'stream', {id: id, status: 'add', data: st});
@@ -1062,6 +1079,7 @@ var Conference = function (rpcClient, selfRpcId) {
 
       media.video.format = (media.video.format || source.format);
       mediaSpec.video.format = media.video.format;
+      mediaSpec.video.status = (media.video.status || 'active');
 
       if (streams[media.video.from].type === 'mixed') {
         if (media.video.parameters) {
@@ -1116,6 +1134,7 @@ var Conference = function (rpcClient, selfRpcId) {
 
       media.audio.format = (media.audio.format || source.format);
       mediaSpec.audio.format = media.audio.format;
+      mediaSpec.audio.status = (media.audio.status || 'active');
     }
 
     return new Promise((resolve, reject) => {
@@ -1150,6 +1169,12 @@ var Conference = function (rpcClient, selfRpcId) {
     });
   };
 
+  const selfClean = () => {
+    if ((Object.keys(participants).length === 1) && (Object.keys(streams).length === 0) && (Object.keys(subscriptions).length === 0)) {
+      destroyRoom(false);
+    }
+  };
+
   that.join = function(roomId, participantInfo, callback) {
     log.debug('participant:', participantInfo, 'join room:', roomId);
     var permission;
@@ -1181,7 +1206,9 @@ var Conference = function (rpcClient, selfRpcId) {
             current_streams = [];
 
         for (var participant_id in participants) {
-          current_participants.push(participants[participant_id].getInfo());
+          if (participant_id !== 'admin') {
+            current_participants.push(participants[participant_id].getInfo());
+          }
         }
 
         for (var stream_id in streams) {
@@ -1232,9 +1259,7 @@ var Conference = function (rpcClient, selfRpcId) {
         return removeParticipant(participantId);
       }).then((result) => {
         callback('callback', 'ok');
-        if (Object.keys(participants).length === 0) {
-          destroyRoom(false);
-        }
+        selfClean();
       }, (e) => {
         callback('callback', 'error', e.message ? e.message : e);
       });
@@ -1612,6 +1637,7 @@ var Conference = function (rpcClient, selfRpcId) {
   const mix = function(streamId, toView) {
     return new Promise((resolve, reject) => {
       roomController.mix(streamId, toView, function() {
+        streams[streamId].info.inViews.push(toView);
         resolve('ok');
       }, function(reason) {
         log.info('roomController.mix failed, reason:', reason);
@@ -1623,6 +1649,7 @@ var Conference = function (rpcClient, selfRpcId) {
   const unmix = function(streamId, fromView) {
     return new Promise((resolve, reject) => {
       roomController.unmix(streamId, fromView, function() {
+        streams[streamId].info.inViews.splice(streams[streamId].info.inViews.indexOf(fromView), 1);
         resolve('ok');
       }, function(reason) {
         log.info('roomController.unmix failed, reason:', reason);
@@ -1739,7 +1766,7 @@ var Conference = function (rpcClient, selfRpcId) {
       });
   };
 
-  const updateSubscription = (subscriptionId, update, callback) => {
+  const updateSubscription = (subscriptionId, update) => {
     var old_su = subscriptions[subscriptionId],
         new_su = JSON.parse(JSON.stringify(old_su));
 
@@ -1829,7 +1856,12 @@ var Conference = function (rpcClient, selfRpcId) {
       return Promise.reject('Subscription does NOT contain video track');
     }
 
-    return accessController.setMute(subscriptionId, track, muted);
+    return accessController.setMute(subscriptionId, track, muted)
+      .then(() => {
+        audio && (subscriptions[subscriptionId].media.audio.status = status);
+        video && (subscriptions[subscriptionId].media.video.status = status);
+        return 'ok';
+      });
   };
 
   that.subscriptionControl = (participantId, subscriptionId, command, callback) => {
@@ -1944,32 +1976,406 @@ var Conference = function (rpcClient, selfRpcId) {
   };
 
   //The following interfaces are reserved to serve nuve
-  that.getUsers = function(callback) {
-    log.debug('getUsers, room_id:', room_id);
+  that.getParticipants = function(callback) {
+    log.debug('getParticipants, room_id:', room_id);
     var result = [];
     for (var participant_id in participants) {
-      result.push(participants[participant_id].getInfo());
+      (participant_id !== 'admin') && result.push(participants[participant_id].getDetail());
     }
     callback('callback', result);
   };
 
-  that.deleteUser = function(user, callback) {
-    log.debug('deleteUser', user);
+  //FIXME: Should handle updates other than authorities as well.
+  that.controlParticipant = function(participantId, authorities, callback) {
+    log.debug('controlParticipant', participantId, 'authorities:', authorities);
+    if (participants[participantId] === undefined) {
+      callback('callback', 'error', 'Participant does NOT exist');
+    }
+
+    return Promise.all(
+      authorities.map((auth) => {
+        return participants[participantId].update(auth.op, auth.path, auth.value);
+      })
+    ).then(() => {
+      callback('callback', participants[participantId].getDetail());
+    }, (err) => {
+      callback('callback', 'error', err.message ? err.message : err);
+    });
+  };
+
+  that.dropParticipant = function(participantId, callback) {
+    log.debug('dropParticipant', participantId);
     var deleted = null;
-    for (var participant_id in participants) {
-      if (participant_id === user) {
-        deleted = participants[participant_id];
-        rpcReq.dropUser(participants[participant_id].getPortal(), participant_id)
-          .then(function(result) {
-            return removeParticipant(participant_id);
-          }).catch(function(reason) {
-            log.debug('dropUser fail:', reason);
-          });
-        break;
-      }
+    if (participants[participantId] && participantId !== 'admin') {
+      deleted = participants[participantId];
+      participants[participantId].drop()
+        .then(function(result) {
+          return removeParticipant(participantId);
+        }).catch(function(reason) {
+          log.debug('dropParticipant fail:', reason);
+        });
     }
 
     callback('callback', deleted);
+  };
+
+  that.getStreams = function(callback) {
+    log.debug('getStreams, room_id:', room_id);
+    var result = [];
+    for (var stream_id in streams) {
+      result.push(streams[stream_id]);
+    }
+    callback('callback', result);
+  };
+
+  that.getStreamInfo = function(streamId, callback) {
+    log.debug('getStreamInfo, room_id:', room_id, 'streamId:', streamId);
+    if (streams[streamId]) {
+      callback('callback', streams[streamId]);
+    } else {
+      callback('callback', 'error', 'Stream does NOT exist');
+    }
+  };
+
+  that.addStreamingIn = function(roomId, pubInfo, callback) {
+    log.debug('addStreamingIn, roomId:', roomId, 'pubInfo:', JSON.stringify(pubInfo));
+
+    if (pubInfo.type === 'streaming') {
+      var stream_id = Math.round(Math.random() * 1000000000000000000) + '';
+      return initRoom(roomId)
+      .then(() => {
+        if (room_config.publishLimit >= 0 && (room_config.publishLimit <= current_publication_count)) {
+          return Promise.reject('Too many publications');
+        }
+
+        if (pubInfo.media.audio && !room_config.mediaIn.audio) {
+          return Promise.reject('Audio is forbiden');
+        }
+
+        if (pubInfo.media.video && !room_config.mediaIn.video) {
+          return Promise.reject('Video is forbiden');
+        }
+
+        return accessController.initiate('admin', stream_id, 'in', participants['admin'].getOrigin(), pubInfo);
+      }).then((result) => {
+        current_publication_count += 1;
+        return 'ok';
+      }).then(() => {
+        return new Promise((resolve, reject) => {
+          var count = 0, wait = 200;
+          var interval = setInterval(() => {
+            if (count > wait) {
+              clearInterval(interval);
+              accessController.terminate('admin', stream_id, 'Participant terminate');
+              reject('Access timeout');
+            } else {
+              if (streams[stream_id]) {
+                clearInterval(interval);
+                resolve('ok');
+              } else {
+                count = count + 1;
+              }
+            }
+          }, 60);
+        });
+      }).then(() => {
+        callback('callback', streams[stream_id]);
+      }).catch((e) => {
+        callback('callback', 'error', e.message ? e.message : e);
+        selfClean();
+      });
+    } else {
+      callback('callback', 'error', 'Invalid publication type');
+    }
+  };
+
+  that.controlStream = function(streamId, commands, callback) {
+    log.debug('controlStream', streamId, 'commands:', commands);
+    if (streams[streamId] === undefined) {
+      callback('callback', 'error', 'Stream does NOT exist');
+    }
+
+    return Promise.all(
+      commands.map((cmd) => {
+        var exe;
+        switch (cmd.op) {
+          case 'add':
+            if (cmd.path === '/info/inViews') {
+              exe = mix(streamId, cmd.value);
+            } else {
+              exe = Promise.reject('Invalid path');
+            }
+            break;
+          case 'remove':
+            if (cmd.path === '/info/inViews') {
+              exe = unmix(streamId, cmd.value);
+            } else {
+              exe = Promise.reject('Invalid path');
+            }
+            break;
+          case 'replace':
+            if ((cmd.path === '/media/audio/status') && (cmd.value === 'inactive' || cmd.value === 'active')) {
+              if (streams[streamId].media.audio.status !== cmd.value) {
+                exe = setStreamMute(streamId, 'audio', (cmd.value === 'inactive'));
+              } else {
+                exe = Promise.resolve('ok');
+              }
+            } else if ((cmd.path === '/media/video/status') && (cmd.value === 'inactive' || cmd.value === 'active')) {
+              if (streams[streamId].media.video.status !== cmd.value) {
+                exe = setStreamMute(streamId, 'video', (cmd.value === 'inactive'));
+              } else {
+                exe = Promise.resolve('ok');
+              }
+            } else if ((cmd.path.startsWith('/info/layout/') && streams[cmd.value] && (streams[cmd.value].type !== 'mixed'))) {
+              var path = cmd.path.split('/');
+              var region_id = streams[streamId].info.layout[Number(path[2])].region.id;
+              exe = setRegion(cmd.value, region_id, streams[streamId].info.label);
+            } else {
+              exe = Promise.reject('Invalid path or value');
+            }
+            break;
+          default:
+            exe = Promise.reject('Invalid stream control operation');
+        }
+        return exe;
+      })
+    ).then(() => {
+      callback('callback', streams[streamId]);
+    }, (err) => {
+      callback('callback', 'error', err.message ? err.message : err);
+    });
+  };
+
+  that.deleteStream = function(streamId, callback) {
+    log.debug('deleteStream, streamId:', streamId);
+    if (!accessController || !roomController) {
+      return callback('callback', 'error', 'Controllers are not ready');
+    }
+
+    return accessController.terminate(streamId, 'in', 'Participant terminate')
+      .then((result) => {
+        log.debug('accessController.terminate result:', result);
+        return removeStream('admin', streamId);
+      }, (e) => {
+        return Promise.reject('Failed in terminating session');
+      })
+      .then((result) => {
+        callback('callback', result);
+        selfClean();
+      })
+      .catch((e) => {
+        callback('callback', 'error', e.message ? e.message : e);
+      });
+  };
+
+  const subscriptionAbstract = (subId) => {
+    var result = {id: subId, media: subscriptions[subId].media};
+    if (subscriptions[subId].info.type === 'streaming') {
+      result.url = subscriptions[subId].info.url;
+    } else if (subscriptions[subId].info.type === 'recording') {
+      result.storage = subscriptions[subId].info.location;
+    }
+    return result;
+  };
+
+  that.getSubscriptions = function(type, callback) {
+    log.debug('getSubscriptions, room_id:', room_id, 'type:', type);
+    var result = [];
+    for (var sub_id in subscriptions) {
+      if (subscriptions[sub_id].info.type === type) {
+        result.push(subscriptionAbstract(sub_id));
+      }
+    }
+    callback('callback', result);
+  };
+
+  that.getSubscriptionInfo = function(subId, callback) {
+    log.debug('getSubscriptionInfo, room_id:', room_id, 'subId:', subId);
+    if (subscriptions[subId]) {
+      callback('callback', subscriptionAbstract(subId));
+    } else {
+      callback('callback', 'error', 'Stream does NOT exist');
+    }
+  };
+
+  that.addServerSideSubscription = function(roomId, subDesc, callback) {
+    log.debug('addServerSideSubscription, roomId:', roomId, 'subDesc:', JSON.stringify(subDesc));
+
+    if (subDesc.type === 'streaming' || subDesc.type === 'recording') {
+      var subscription_id = Math.round(Math.random() * 1000000000000000000) + '';
+      return initRoom(roomId)
+      .then(() => {
+        if (subDesc.media.audio && !room_config.mediaOut.audio) {
+          return Promise.reject('Audio is forbiden');
+        }
+
+        if (subDesc.media.video && !room_config.mediaOut.video) {
+          return Promise.reject('Video is forbiden');
+        }
+
+        if (subDesc.media.audio && !validateAudioRequest(subDesc.type, subDesc.media.audio)) {
+          return Promise.reject('Target audio stream does NOT satisfy');
+        }
+
+        if (subDesc.media.video && !validateVideoRequest(subDesc.type, subDesc.media.video)) {
+          return Promise.reject('Target video stream does NOT satisfy');
+        }
+
+        if (subDesc.type === 'recording' && (!subDesc.connection.container || subDesc.connection.container === 'auto')) {
+          var audio_codec = 'none-aac', video_codec;
+          if (subDesc.media.audio) {
+            if (subDesc.media.audio.format) {
+              audio_codec = subDesc.media.audio.format.codec;
+            } else {
+              audio_codec = streams[subDesc.media.audio.from].media.audio.format.codec;
+            }
+          }
+
+          if (subDesc.media.video) {
+            video_codec = ((subDesc.media.video.format && subDesc.media.video.format.codec) || streams[subDesc.media.video.from].media.video.format.codec);
+          }
+
+          subDesc.connection.container = ((audio_codec === 'aac' && (!video_codec || (video_codec === 'h264') || (video_codec === 'h265'))) ? 'mp4' : 'mkv');
+        }
+
+        if (subDesc.type === 'streaming' && subDesc.media.audio && !subDesc.media.audio.format) {//FIXME: To support audio formats other than aac_48000_2.
+          subDesc.media.audio.format = {codec: 'aac', sampleRate: 48000, channelNum: 2};
+        }
+
+        return accessController.initiate('admin', subscription_id, 'out', participants['admin'].getOrigin(), subDesc);
+      }).then(() => {
+        return new Promise((resolve, reject) => {
+          var count = 0, wait = 200;
+          var interval = setInterval(() => {
+            if (count > wait) {
+              clearInterval(interval);
+              accessController.terminate('admin', subscription_id, 'Participant terminate');
+              reject('Access timeout');
+            } else {
+              if (subscriptions[subscription_id]) {
+                clearInterval(interval);
+                resolve('ok');
+              } else {
+                count = count + 1;
+              }
+            }
+          }, 60);
+        });
+      }).then(() => {
+        callback('callback', subscriptionAbstract(subscription_id));
+      }).catch((e) => {
+        callback('callback', 'error', e.message ? e.message : e);
+        selfClean();
+      });
+    } else {
+      callback('callback', 'error', 'Invalid subscription type');
+    }
+  };
+
+  that.controlSubscription = function(subId, commands, callback) {
+    log.debug('controlSubscription', subId, 'commands:', commands);
+    if (subscriptions[subId] === undefined) {
+      callback('callback', 'error', 'Subscription does NOT exist');
+    }
+
+    var subUpdate;
+    return Promise.all(
+      commands.map((cmd) => {
+        var exe;
+        switch (cmd.op) {
+          case'replace':
+            if ((cmd.path === '/media/audio/status') && (cmd.value === 'inactive' || cmd.value === 'active')) {
+              if (subscriptions[subId].media.audio.status !== cmd.value) {
+                exe = setSubscriptionMute(subId, 'audio', (cmd.value === 'inactive'));
+              } else {
+                exe = Promise.resolve('ok');
+              }
+            } else if ((cmd.path === '/media/video/status') && (cmd.value === 'inactive' || cmd.value === 'active')) {
+              if (subscriptions[subId].media.video.status !== cmd.value) {
+                exe = setSubscriptionMute(subId, 'video', (cmd.value === 'inactive'));
+              } else {
+                exe = Promise.resolve('ok');
+              }
+            } else if ((cmd.path === '/media/audio/from') && streams[cmd.value]) {
+              subUpdate = (subUpdate || {});
+              subUpdate.audio = (subUpdate.audio || {});
+              subUpdate.audio.from = cmd.value
+              exe = Promise.resolve('ok');
+            } else if ((cmd.path === '/media/video/from') && streams[cmd.value]) {
+              subUpdate = (subUpdate || {});
+              subUpdate.video = (subUpdate.video || {});
+              subUpdate.video.from = cmd.value;
+              exe = Promise.resolve('ok');
+            } else if (cmd.path === '/media/video/parameters/resolution') {
+              subUpdate = (subUpdate || {});
+              subUpdate.video = (subUpdate.video || {});
+              subUpdate.video.parameters = (subUpdate.video.parameters || {});
+              subUpdate.video.parameters.resolution = cmd.value;
+              exe = Promise.resolve('ok');
+            } else if (cmd.path === '/media/video/parameters/framerate') {
+              subUpdate = (subUpdate || {});
+              subUpdate.video = (subUpdate.video || {});
+              subUpdate.video.parameters = (subUpdate.video.parameters || {});
+              subUpdate.video.parameters.framerate = Number(cmd.value);
+              exe = Promise.resolve('ok');
+            } else if (cmd.path === '/media/video/parameters/bitrate') {
+              subUpdate = (subUpdate || {});
+              subUpdate.video = (subUpdate.video || {});
+              subUpdate.video.parameters = (subUpdate.video.parameters || {});
+              subUpdate.video.parameters.bitrate = cmd.value;
+              exe = Promise.resolve('ok');
+            } else if (cmd.path === '/media/video/parameters/keyFrameInterval') {
+              subUpdate = (subUpdate || {});
+              subUpdate.video = (subUpdate.video || {});
+              subUpdate.video.parameters = (subUpdate.video.parameters || {});
+              subUpdate.video.parameters.keyFrameInterval = cmd.value;
+              exe = Promise.resolve('ok');
+            } else {
+              exe = Promise.reject('Invalid path or value');
+            }
+            break;
+          default:
+            exe = Promise.reject('Invalid subscription control operation');
+        }
+        return exe;
+      })
+    ).then(() => {
+      if (subUpdate) {
+        return updateSubscription(subId, subUpdate);
+      } else {
+        return 'ok';
+      }
+    }).then(() => {
+      if (subscriptions[subId]) {
+        callback('callback', subscriptionAbstract(subId));
+      } else {
+        callback('callback', 'error', 'Subscription does NOT exist');
+      }
+    }, (err) => {
+      callback('callback', 'error', err.message ? err.message : err);
+    });
+  };
+
+  that.deleteSubscription = function(subId, callback) {
+    log.debug('deleteSubscription, subId:', subId);
+    if (!accessController || !roomController) {
+      return callback('callback', 'error', 'Controllers are not ready');
+    }
+
+    return accessController.terminate(subId, 'out', 'Participant terminate')
+      .then((result) => {
+        log.debug('accessController.terminate result:', result);
+        return removeSubscription(subId);
+      }, (e) => {
+        return Promise.reject('Failed in terminating session');
+      })
+      .then((result) => {
+        callback('callback', result);
+        selfClean();
+      })
+      .catch((e) => {
+        callback('callback', 'error', e.message ? e.message : e);
+      });
   };
 
   that.destroy = function(callback) {
@@ -1978,6 +2384,7 @@ var Conference = function (rpcClient, selfRpcId) {
     callback('callback', 'Success');
   };
 
+  //This interface is for fault tolerance.
   that.onFaultDetected = function (message) {
     if (message.purpose === 'portal' || message.purpose === 'sip') {
       dropParticipants(message.id);
@@ -2025,8 +2432,19 @@ module.exports = function (rpcClient, selfRpcId) {
     onVideoLayoutChange: conference.onVideoLayoutChange,
 
     //rpc from OAM component.
-    deleteUser: conference.deleteUser,
-    getUsers: conference.getUsers,
+    getParticipants: conference.getParticipants,
+    controlParticipant: conference.controlParticipant,
+    dropParticipant: conference.dropParticipant,
+    getStreams: conference.getStreams,
+    getStreamInfo: conference.getStreamInfo,
+    addStreamingIn: conference.addStreamingIn,
+    controlStream: conference.controlStream,
+    deleteStream: conference.deleteStream,
+    getSubscriptions: conference.getSubscriptions,
+    getSubscriptionInfo: conference.getSubscriptionInfo,
+    addServerSideSubscription: conference.addServerSideSubscription,
+    controlSubscription: conference.controlSubscription,
+    deleteSubscription: conference.deleteSubscription,
     destroy: conference.destroy
   };
 

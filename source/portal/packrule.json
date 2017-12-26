@@ -8,7 +8,6 @@
             "log4js_configuration.json",
             "portal.js",
             "portal.toml",
-            "restServer.js",
             "rpcRequest.js",
             "socketIOServer.js",
             "legacyClient.js",
@@ -38,7 +37,6 @@
         "folders": {
             "test": [
                 "test/portal_test.js",
-                "test/restServer_test.js",
                 "test/rpcRequest_test.js",
                 "test/socketIOServer_legacyClient_test.js",
                 "test/socketIOServer_v10Client_test.js"

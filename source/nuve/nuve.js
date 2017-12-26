@@ -26,7 +26,10 @@ var servicesResource = require('./resource/servicesResource');
 var serviceResource = require('./resource/serviceResource');
 var usersResource = require('./resource/usersResource');
 var userResource = require('./resource/userResource');
-//var clusterResource = require('./resource/clusterResource');
+var participantsResource = require('./resource/participantsResource');
+var streamsResource = require('./resource/streamsResource');
+var streamingOutsResource = require('./resource/streamingOutsResource');
+var recordingsResource = require('./resource/recordingsResource');
 
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({
@@ -68,21 +71,12 @@ app.options('*', function(req, res) {
 });
 
 // Only following paths need authentication.
-var authPaths = ['/rooms*', '/services*', '/cluster*'];
+var authPaths = ['/rooms*', '/v1/rooms*', '/services*', '/cluster*'];
 app.get(authPaths, nuveAuthenticator.authenticate);
 app.post(authPaths, nuveAuthenticator.authenticate);
 app.delete(authPaths, nuveAuthenticator.authenticate);
 app.put(authPaths, nuveAuthenticator.authenticate);
-
-app.post('/rooms', roomsResource.createRoom);
-app.get('/rooms', roomsResource.represent);
-
-app.get('/rooms/:room', roomResource.represent);
-app.delete('/rooms/:room', roomResource.deleteRoom);
-app.put('/rooms/:room', roomResource.updateRoom);
-
-app.post('/rooms/:room/tokens', tokensResource.create);
-app.post('/rooms/:room/tokens/:type', tokensResource.create);
+app.patch(authPaths, nuveAuthenticator.authenticate);
 
 app.post('/services', servicesResource.create);
 app.get('/services', servicesResource.represent);
@@ -90,15 +84,72 @@ app.get('/services', servicesResource.represent);
 app.get('/services/:service', serviceResource.represent);
 app.delete('/services/:service', serviceResource.deleteService);
 
+////////////////////////////////////////////////////////////////////////////////////////////
+// legacy interface begin -- to be deprecated, used by management-console only
+// /////////////////////////////////////////////////////////////////////////////////////////
+app.post('/rooms', roomsResource.createRoom);
+app.get('/rooms', roomsResource.represent);
+
+app.get('/rooms/:room', roomResource.represent);
+app.delete('/rooms/:room', roomResource.deleteRoom);
+app.put('/rooms/:room', roomResource.updateRoom);
+
+app.post('/rooms/:room/tokens/:type', tokensResource.create);
+
 app.get('/rooms/:room/users', usersResource.getList);
 
 app.get('/rooms/:room/users/:user', userResource.getUser);
 app.delete('/rooms/:room/users/:user', userResource.deleteUser);
+////////////////////////////////////////////////////////////////////////////////////////////
+// legacy interface end -- to be deprecated, used by management-console only
+// /////////////////////////////////////////////////////////////////////////////////////////
 
-// app.get('/cluster/nodes', clusterResource.getNodes);
-// app.get('/cluster/nodes/:node', clusterResource.getNode);
-// app.get('/cluster/rooms', clusterResource.getRooms);
-// app.get('/cluster/nodes/:node/config', clusterResource.getNodeConfig);
+
+////////////////////////////////////////////////////////////////////////////////////////////
+// v1 interface begin
+// /////////////////////////////////////////////////////////////////////////////////////////
+
+//Room management
+app.post('/v1/rooms', roomsResource.createRoom); //FIXME: The definition of 'options' needs to be refined.
+app.get('/v1/rooms', roomsResource.represent); //FIXME: The list result needs to be simplified.
+app.get('/v1/rooms/:room', roomResource.represent); //FIXME: The detailed format of a complete room configuration data object needs to be refined.
+app.delete('/v1/rooms/:room', roomResource.deleteRoom);
+app.put('/v1/rooms/:room', roomResource.updateRoom);
+app.patch('/v1/rooms/:room', function(req, res) {res.status(401).send("Not implemented");}); //FIXME: To be implemented.
+
+//Participant management
+app.get('/v1/rooms/:room/participants', participantsResource.getList); //FIXME: The permission definition needs to be refined.
+app.get('/v1/rooms/:room/participants/:participant', participantsResource.get);
+app.patch('/v1/rooms/:room/participants/:participant', participantsResource.patch);
+app.delete('/v1/rooms/:room/participants/:participant', participantsResource.delete);
+
+//Stream(including external streaming-in) management
+app.get('/v1/rooms/:room/streams', streamsResource.getList);
+app.get('/v1/rooms/:room/streams/:stream', streamsResource.get);
+app.patch('/v1/rooms/:room/streams/:stream', streamsResource.patch);
+app.delete('/v1/rooms/:room/streams/:stream', streamsResource.delete);
+app.post('/v1/rooms/:room/streaming-ins', streamsResource.addStreamingIn);//FIXME: Validation on body.type === 'streaming' is needed.
+app.delete('/v1/rooms/:room/streaming-ins/:stream', streamsResource.delete);
+
+//External streaming-out management
+app.get('/v1/rooms/:room/streaming-outs', streamingOutsResource.getList);
+app.post('/v1/rooms/:room/streaming-outs', streamingOutsResource.add);//FIXME: Validation on body.type === 'streaming' is needed.
+app.patch('/v1/rooms/:room/streaming-outs/:id', streamingOutsResource.patch);
+app.delete('/v1/rooms/:room/streaming-outs/:id', streamingOutsResource.delete);
+
+//Server side recording management
+app.get('/v1/rooms/:room/recordings', recordingsResource.getList);
+app.post('/v1/rooms/:room/recordings', recordingsResource.add);//FIXME: Validation on body.type === 'recording' is needed.
+app.patch('/v1/rooms/:room/recordings/:id', recordingsResource.patch);
+app.delete('/v1/rooms/:room/recordings/:id', recordingsResource.delete);
+
+//Create token.
+app.post('/v1/rooms/:room/tokens', tokensResource.create);
+
+////////////////////////////////////////////////////////////////////////////////////////////
+// v1 interface end
+// /////////////////////////////////////////////////////////////////////////////////////////
+
 
 var nuveConfig = global.config.nuve || {};
 // Mutiple process setup

@@ -41,7 +41,7 @@ exports.getUser = function (req, res) {
         }
 
         var user = req.params.user;
-        cloudHandler.getUsersInRoom(currentRoom._id, function (users) {
+        cloudHandler.getParticipantsInRoom(currentRoom._id, function (users) {
             if (users === 'error') {
                 res.status(404).send('Operation failed');
                 return;
@@ -80,16 +80,12 @@ exports.deleteUser = function (req, res) {
         }
 
         var user = req.params.user;
-        cloudHandler.deleteUser(user, currentRoom._id, function (result) {
+        cloudHandler.deleteParticipant(currentRoom._id, user, function (result) {
             log.debug('result', result);
-            if (result !== null) {
-                if (typeof result === 'object') {
-                    res.send('User deleted');
-                } else {
-                    res.status(404).send('Operation failed');
-                }
+            if (result === 'error') {
+                res.status(404).send('Operation failed');
             } else {
-                res.status(404).send('User does not exist');
+                res.send('User deleted');
             }
         });
     });

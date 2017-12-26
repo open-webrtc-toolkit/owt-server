@@ -236,6 +236,7 @@ object(LoginResult)::
         {
          owner: string(ParticipantId),
          type: "webrtc" | "streaming" | "sip",
+         inViews: [String(ViewLabel)],
          attributes: object(ClientDefinedAttributes)
         }
 
