@@ -17,7 +17,6 @@ config.portal = config.portal || {};
 config.portal.ip_address = config.portal.ip_address || '';
 config.portal.hostname = config.portal.hostname|| '';
 config.portal.port = config.portal.port || 8080;
-config.portal.rest_port = config.portal.rest_port || 8081;
 config.portal.ssl = config.portal.ssl || false;
 config.portal.reconnection_ticket_lifetime = config.portal.reconnection_ticket_lifetime || 600;
 config.portal.reconnection_timeout = Number.isInteger(config.portal.reconnection_timeout) ? config.portal.reconnection_timeout : 60;
@@ -44,7 +43,6 @@ global.config = config;
 var amqper = require('./amqp_client')();
 var rpcClient;
 var socketio_server;
-var rest_server;
 var portal;
 var worker;
 
@@ -86,7 +84,6 @@ var ip_address;
 
 var dropAll = function() {
   socketio_server && socketio_server.drop('all');
-  rest_server && rest_server.drop('all');
 };
 
 var getTokenKey = function(id, on_key, on_error) {
@@ -124,7 +121,6 @@ var joinCluster = function (on_ok) {
               info: {ip: ip_address,
                      hostname: config.portal.hostname,
                      port: config.portal.port,
-                     rest_port: config.portal.rest_port,
                      ssl: config.portal.ssl,
                      state: 2,
                      max_load: config.cluster.max_load,
@@ -184,19 +180,9 @@ var startServers = function(id, tokenKey) {
                                                  pingTimeout: config.portal.ping_timeout},
                                                  portal,
                                                  serviceObserver);
-  rest_server = require('./restServer')({port: config.portal.rest_port,
-                                         ssl: config.portal.ssl,
-                                         keystorePath: config.portal.keystorePath},
-                                         portal,
-                                         serviceObserver);
   return socketio_server.start()
     .then(function() {
       log.info('start socket.io server ok.');
-      //return rest_server.start();
-      return 'ok';
-    })
-    .then(function() {
-      log.info('start rest server ok.');
       refreshTokenKey(id, portal, tokenKey);
     })
     .catch(function(err) {
@@ -208,8 +194,6 @@ var startServers = function(id, tokenKey) {
 var stopServers = function() {
   socketio_server && socketio_server.stop();
   socketio_server = undefined;
-  rest_server && rest_server.stop();
-  rest_server = undefined;
   worker && worker.quit();
   worker = undefined;
 };
@@ -217,16 +201,14 @@ var stopServers = function() {
 var rpcPublic = {
   drop: function(participantId, callback) {
     socketio_server && socketio_server.drop(participantId);
-    rest_server && rest_server.drop(participantId);
     callback('callback', 'ok');
   },
   notify: function(participantId, event, data, callback) {
-    // The "notify" is called on both socket.io and rest servers,
+    // The "notify" is called on socket.io server,
     // but one client ID should not be exists in both servers,
     // there must be one failure, ignore this notify error here.
     var notifyFail = (err) => {};
     socketio_server && socketio_server.notify(participantId, event, data).catch(notifyFail);
-    rest_server && rest_server.notify(participantId, event, data).catch(notifyFail);
     callback('callback', 'ok');
   }
 };
@@ -248,7 +230,6 @@ amqper.connect(config.rabbit, function () {
                         impactedParticipants.forEach(function(participantId) {
                           log.error('Fault on conference controller(type:', data.message.type, 'id:', data.message.id, ') of participant', participantId, 'was detected, drop it.');
                           socketio_server && socketio_server.drop(participantId);
-                          rest_server && rest_server.drop(participantId);
                         });
                       });
                   }

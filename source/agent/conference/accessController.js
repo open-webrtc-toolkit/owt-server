@@ -102,6 +102,10 @@ module.exports.create = function(spec, rpcReq, onSessionEstablished, onSessionAb
       if (session.options.type === 'recording') {
         info.location = status.info;
       }
+
+      if (session.options.type === 'streaming') {
+        info.url = status.info
+      }
     }
 
     var session_info = {

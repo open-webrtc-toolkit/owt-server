@@ -58,7 +58,7 @@ module.exports = function (rpcClient) {
                 log.error('avstream-out init error:', error);
                 notifyStatus(options.controller, connectionId, 'out', {type: 'failed', reason: error});
             } else {
-                notifyStatus(options.controller, connectionId, 'out', {type: 'ready'});
+                notifyStatus(options.controller, connectionId, 'out', {type: 'ready', info: options.connection.url});
             }
         });
         connection.addEventListener('fatal', function (error) {

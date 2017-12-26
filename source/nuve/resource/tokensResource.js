@@ -48,7 +48,7 @@ var getTokenString = function (id, token) {
  * The format of a token is:
  * {tokenId: id, host: erizoController host, signature: signature of the token};
  */
-var generateToken = function (currentRoom, authData, type, origin, callback) {
+var generateToken = function (currentRoom, authData, origin, callback) {
     var currentService = authData.service,
         user = authData.user,
         role = authData.role,
@@ -87,13 +87,7 @@ var generateToken = function (currentRoom, authData, type, origin, callback) {
             token.host = ec.ip;
         }
 
-        if (type === 'rest') {
-            token.host += ':' + ec.rest_port;
-        } else if (type === 'socketio') {
-            token.host += ':' + ec.port;
-        } else {
-            return callback('error');
-        }
+        token.host += ':' + ec.port;
 
         dataAccess.token.create(token, function(id) {
             getTokenString(id, token)
@@ -108,9 +102,10 @@ var generateToken = function (currentRoom, authData, type, origin, callback) {
  * Post Token. Creates a new token for a determined room of a service.
  */
 exports.create = function (req, res) {
-    var authData = req.authData || {},
-        type = req.params.type || 'socketio',
-        origin = (req.body && req.body.preference) || {isp: 'isp', region: 'region'};
+    var authData = (req.authData || {});
+      authData.user = (req.authData.user || (req.body && req.body.user));
+      authData.role = (req.authData.role || (req.body && req.body.role));
+    var origin = ((req.body && req.body.preference) || {isp: 'isp', region: 'region'});
 
     if (authData.service === undefined) {
         log.info('Service not found');
@@ -125,7 +120,7 @@ exports.create = function (req, res) {
             return;
         }
 
-        generateToken(currentRoom, authData, type, origin, function (tokenS) {
+        generateToken(currentRoom, authData, origin, function (tokenS) {
             if (tokenS === undefined) {
                 log.info('Name and role?');
                 res.status(401).send('Name and role?');
