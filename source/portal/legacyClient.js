@@ -710,15 +710,7 @@ var LegacyClient = function(clientId, sigConnection, portal) {
       if (!options.action) {
         return safeCall(callback, 'error', 'no action specified');
       }
-
-      return portal.setPermission(clientId, options.targetId, [{operation: options.action, value: options.update}])
-      .then(function() {
-        safeCall(callback, 'success');
-      }).catch(function(err) {
-        const err_message = getErrorMessage(err);
-        log.info('portal.setPermission failed:', err_message);
-        safeCall(callback, 'error', err_message);
-      });
+      safeCall(callback, 'error', 'Please use REST interface to set permissions');
     })
 
     socket.on('customMessage', function(msg, callback) {

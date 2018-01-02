@@ -167,9 +167,7 @@ var translateOldRoomConfig = (oldConfig) => {
     var role_def = {
       role: r,
       publish: !!global.config.conference.roles[r].publish ? {type: ['webrtc', 'streaming'], media: {audio: true, video: true}} : false,
-      subscribe: !!global.config.conference.roles[r].subscribe ? {type: ['webrtc'], media: {audio: true, video: true}} : false,
-      text: (global.config.conference.roles[r].text === undefined) ? 'to-all' : !!global.config.conference.roles[r].text,
-      manage: !!global.config.conference.roles[r].manage
+      subscribe: !!global.config.conference.roles[r].subscribe ? {type: ['webrtc'], media: {audio: true, video: true}} : false
     };
     if (typeof global.config.conference.roles[r].publish === 'object') {
       role_def.publish.media.audio = !!global.config.conference.roles[r].publish.audio;
@@ -339,9 +337,7 @@ var calcBitrate = (x, baseBitrate) => {
    *          audio: true | false,
    *          video: true | false
    *        }
-   *      } | false,
-   *      text: 'to-peer' | 'to-all' | false,
-   *      manage: true | false
+   *      } | false
    *    }
    *
    *    object(AudioFormat):: {
@@ -1729,8 +1725,7 @@ var Conference = function (rpcClient, selfRpcId) {
       return callback('callback', 'error', 'Stream does NOT exist');
     }
 
-    if ((streams[streamId].info.owner !== participantId)
-        && !participants[participantId].isManagePermitted()) {
+    if (streams[streamId].info.owner !== participantId) {
       return callback('callback', 'error', 'unauthorized');
     }
 
@@ -1875,8 +1870,7 @@ var Conference = function (rpcClient, selfRpcId) {
       return callback('callback', 'error', 'Subscription does NOT exist');
     }
 
-    if ((subscriptions[subscriptionId].info.owner !== participantId)
-        && !participants[participantId].isManagePermitted()) {
+    if (subscriptions[subscriptionId].info.owner !== participantId) {
       return callback('callback', 'error', 'unauthorized');
     }
 
@@ -1902,37 +1896,9 @@ var Conference = function (rpcClient, selfRpcId) {
       });
   };
 
-  that.setPermission = (participantId, anotherParticipantId, authorities, callback) => {
-    if (participants[participantId] === undefined) {
-      return callback('callback', 'error', 'Participant has not joined');
-    }
-
-    if (!participants[participantId].isManagePermitted()) {
-      return callback('callback', 'error', 'unauthorized');
-    }
-
-    if (participants[anotherParticipantId] === undefined) {
-      return callback('callback', 'error', 'Target participant does NOT exist')
-    }
-
-    return Promise.all(
-      authorities.map((auth) => {
-        return participants[anotherParticipantId].setPermission(auth.operation, auth.field, auth.value);
-      })
-    ).then(() => {
-      callback('callback', 'ok');
-    }, (err) => {
-      callback('callback', 'error', err.message ? err.message : err);
-    });
-  };
-
   that.text = function(fromParticipantId, toParticipantId, msg, callback) {
     if (participants[fromParticipantId] === undefined) {
       return callback('callback', 'error', 'Participant has not joined');
-    }
-
-    if (!participants[fromParticipantId].isTextPermitted(toParticipantId)) {
-      return callback('callback', 'error', 'unauthorized');
     }
 
     if ((toParticipantId !== 'all') && (participants[toParticipantId] === undefined)) {
@@ -2419,7 +2385,6 @@ module.exports = function (rpcClient, selfRpcId) {
     unsubscribe: conference.unsubscribe,
     subscriptionControl: conference.subscriptionControl,
     onSessionSignaling: conference.onSessionSignaling,
-    setPermission: conference.setPermission,
 
     //rpc from access nodes.
     onSessionProgress: conference.onSessionProgress,

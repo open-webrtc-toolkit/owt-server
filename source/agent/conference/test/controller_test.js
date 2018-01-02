@@ -88,8 +88,8 @@ describe("MultipleViewController", () => {
         rpcReq.recycleMediaNode = () => Promise.resolve('ok');
 
         mockery.registerAllowable("assert");
-        mockery.registerAllowable("../controller");
-        Controller = require("../controller");
+        mockery.registerAllowable("../roomController");
+        Controller = require("../roomController");
     });
 
     after(() => {

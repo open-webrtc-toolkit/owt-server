@@ -23,10 +23,6 @@ var RpcRequest = function(rpcChannel) {
     return rpcChannel.makeRPC(controller, 'text', [fromWhom, toWhom, message], 4000);
   };
 
-  that.setPermission = function(controller, participantId, anotherParticipantId, authorities) {
-    return rpcChannel.makeRPC(controller, 'setPermission', [participantId, anotherParticipantId, authorities]);
-  };
-
   that.publish = function(controller, participantId, streamId, Options) {
     return rpcChannel.makeRPC(controller, 'publish', [participantId, streamId, Options]);
   };

@@ -180,16 +180,6 @@ var Portal = function(spec, rpcReq) {
     return rpcReq.onSessionSignaling(participants[participantId].controller, sessionId, signaling);
   };
 
-  that.setPermission = function(participantId, anotherParticipantId, authorities) {
-    log.debug('setPermission, participantId:', participantId, 'anotherParticipantId:', anotherParticipantId, 'authorities:', authorities);
-
-    if (participants[participantId] === undefined) {
-      return Promise.reject('Participant has NOT joined');
-    }
-
-    return rpcReq.setPermission(participants[participantId].controller, participantId, anotherParticipantId, authorities);
-  };
-
   that.text = function(participantId, to, msg) {
     log.debug('text, participantId:', participantId, 'to:', to, 'msg:', msg);
     if (participants[participantId] === undefined) {

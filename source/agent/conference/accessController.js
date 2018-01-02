@@ -136,18 +136,21 @@ module.exports.create = function(spec, rpcReq, onSessionEstablished, onSessionAb
   that.onSessionStatus = (sessionId, status) => {
     if (!sessions[sessionId]) {
       log.error('Session does NOT exist');
-      return;
+      return Promise.reject('Session does NOT exist');
     }
 
     if (status.type === 'ready') {
-      return onReady(sessionId, status);
+      onReady(sessionId, status);
     } else if (status.type === 'failed') {
-      return onFailed(sessionId, status.reason);
+      onFailed(sessionId, status.reason);
     } else if (status.type === 'offer' || status.type === 'answer' || status.type === 'candidate') {
-      return onSignaling(sessionId, status);
+      onSignaling(sessionId, status);
     } else {
       log.error('Irrispective status:' + status.type);
+      return Promise.reject('Irrispective status');
     }
+
+    return Promise.resolve('ok');
   };
 
   that.onSessionSignaling = (sessionId, signaling) => {
