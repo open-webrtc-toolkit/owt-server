@@ -234,8 +234,8 @@ describe('accessController.initiate/accessController.terminate: for publishing',
         .then(function(result) {
           expect(result).to.equal('ok');
           expect(spyOnSessionEstablished.getCall(0).args).to.deep.equal([testParticipantId, session_id, 'out',  {locality: {agent: 'rpcIdOfAccessAgent', node: 'rpcIdOfAccessNode'}, media: {
-            audio: {codec: 'opus', sampleRate: 48000, channelNum: 2, from: 'stream1'},
-            video: {codec: 'h264', from: 'stream2'}
+            audio: {format: {codec: 'opus', sampleRate: 48000, channelNum: 2}, from: 'stream1'},
+            video: {format: {codec: 'h264'}, from: 'stream2'}
           }, info: {owner: testParticipantId, type: 'webrtc'}}]);
         });
     });
@@ -343,12 +343,12 @@ describe('accessController.initiate/accessController.terminate: for publishing',
             }
           });
           expect(accessController.getSessionState(session_id)).to.equal('connecting');
-          return accessController.onSessionStatus(session_id, {type: 'ready'});
+          return accessController.onSessionStatus(session_id, {type: 'ready', info: 'rtmp://user:pwd@1.1.1.1:9000/url-of-avstream'});
         })
         .then(function(result) {
           expect(result).to.equal('ok');
           expect(accessController.getSessionState(session_id)).to.equal('connected');
-          expect(spyOnSessionEstablished.getCall(0).args).to.deep.equal([testParticipantId, session_id, 'out',  {locality: {agent: 'rpcIdOfAccessAgent', node: 'rpcIdOfAccessNode'}, media: {audio: {from: 'stream1', spec: {codec: 'aac', sampleRate: 48000, channelNum: 2}}, video: {from: 'stream2', spec: {codec: 'h264'}}}, info: {owner: testParticipantId, type: 'streaming'}}]);
+          expect(spyOnSessionEstablished.getCall(0).args).to.deep.equal([testParticipantId, session_id, 'out',  {locality: {agent: 'rpcIdOfAccessAgent', node: 'rpcIdOfAccessNode'}, media: {audio: {from: 'stream1'}, video: {from: 'stream2'}}, info: {owner: testParticipantId, type: 'streaming', url: 'rtmp://user:pwd@1.1.1.1:9000/url-of-avstream'}}]);
         });
     });
 
@@ -397,12 +397,12 @@ describe('accessController.initiate/accessController.terminate: for publishing',
             }
           });
           expect(accessController.getSessionState(session_id)).to.equal('connecting');
-          return accessController.onSessionStatus(session_id, {type: 'ready'});
+          return accessController.onSessionStatus(session_id, {type: 'ready', info: {host: 'hostname', file: 'file-full-path'}});
         })
         .then(function(result) {
           expect(result).to.equal('ok');
           expect(accessController.getSessionState(session_id)).to.equal('connected');
-          expect(spyOnSessionEstablished.getCall(0).args).to.deep.equal([testParticipantId, session_id, 'out',  {locality: {agent: 'rpcIdOfAccessAgent', node: 'rpcIdOfAccessNode'}, media: {audio: {from: 'stream1', spec: {codec: 'opus', sampleRate: 48000, channelNum: 2}}, video: {from: 'stream2', spec: {codec: 'h264'}}}, info: {owner: testParticipantId, type: 'recording'}}]);
+          expect(spyOnSessionEstablished.getCall(0).args).to.deep.equal([testParticipantId, session_id, 'out',  {locality: {agent: 'rpcIdOfAccessAgent', node: 'rpcIdOfAccessNode'}, media: {audio: {from: 'stream1'}, video: {from: 'stream2'}}, info: {owner: testParticipantId, type: 'recording', location: {host: 'hostname', file: 'file-full-path'}}}]);
         });
     });
 
@@ -441,10 +441,8 @@ describe('accessController.initiate/accessController.terminate: for publishing',
         .then(function(result) {
           expect(result).to.equal('ok');
           return accessController.onSessionStatus(session_id, {type: 'failed', reason: 'network error'});
-        }).then(function(runInHere) {
-          expect(runInHere).to.be.false;
-        }, function(err) {
-          expect(err).to.equal('network error');
+        }).then(function(result) {
+          expect(result).to.equal('ok');
           expect(mockrpcReq.terminate.getCall(0).args).to.deep.equal(['rpcIdOfAccessNode', session_id, 'in']);
           expect(mockrpcReq.recycleWorkerNode.getCall(0).args).to.deep.equal(['rpcIdOfAccessAgent', 'rpcIdOfAccessNode', {room: testRoom, task: session_id}]);
           expect(spyOnSessionEstablished.callCount).to.equal(0);
@@ -608,8 +606,8 @@ describe('accessController.initiate/accessController.terminate: for publishing',
         .then(function(result) {
           expect(result).to.equal('ok');
           return accessController.onSessionStatus(session_id, {type: 'ready', audio: {codec: 'opus', sampleRate: 48000, channelNum: 2}, video: false});
-        }).then(function(runInHere) {
-          expect(runInHere).to.be.false;
+        }).then(function(result) {
+          expect(result).to.equal('ok');
         }, function(err) {
           expect(err).to.equal('No proper video codec');
           expect(spyOnSessionEstablished.callCount).to.equal(0);
@@ -634,8 +632,6 @@ describe('accessController.initiate/accessController.terminate: for publishing',
               return accessController.onSessionStatus(session_id1, {type: 'ready', audio: false, video: {codec: 'h264'}});
             }).then(function(runInHere) {
               expect(runInHere).to.be.false;
-            }, function(err) {
-              expect(err).to.equal('No proper audio codec');
               expect(spyOnSessionEstablished.callCount).to.equal(0);
               expect(spyOnSessionAborted.getCall(1).args).to.deep.equal([testParticipantId, session_id1, 'in', 'No proper audio codec']);
               expect(mockrpcReq.terminate.getCall(1).args).to.deep.equal(['rpcIdOfAccessNode', session_id1, 'in']);
@@ -674,10 +670,8 @@ describe('accessController.initiate/accessController.terminate: for publishing',
           expect(result).to.equal('ok');
           return accessController.onSessionStatus(session_id, {type: 'failed', reason: 'some reason'});
         })
-        .then(function(statusResult) {
-          expect('run into here').to.be.false;
-        }, function(err) {
-          expect(err).to.equal('some reason');
+        .then(function(result) {
+          expect(result).to.equal('ok');
           expect(spyOnSessionEstablished.callCount).to.equal(0);
           expect(spyOnSessionAborted.getCall(0).args).to.deep.equal([testParticipantId, session_id, 'in', 'some reason']);
           expect(mockrpcReq.terminate.getCall(0).args).to.deep.equal(['rpcIdOfAccessNode', session_id, 'in']);
@@ -797,11 +791,11 @@ describe('accessController.initiate/accessController.terminate: for publishing',
                                        })
         .then(function(result) {
           expect(result).to.equal('ok');
-          return accessController.terminate(session_id);
+          return accessController.terminate(session_id, 'in');
         })
         .then(function(result) {
           expect(result).to.equal('ok');
-          expect(spyOnSessionAborted.getCall(0).args).to.deep.equal([testParticipantId, session_id, 'in', 'Participant terminate']);
+          expect(spyOnSessionAborted.getCall(0).args).to.deep.equal([testParticipantId, session_id, 'in', undefined]);
           expect(mockrpcReq.terminate.getCall(0).args).to.deep.equal(['rpcIdOfAccessNode', session_id, 'in']);
           expect(mockrpcReq.recycleWorkerNode.getCall(0).args).to.deep.equal(['rpcIdOfAccessAgent', 'rpcIdOfAccessNode', {room: testRoom, task: session_id}]);
         });

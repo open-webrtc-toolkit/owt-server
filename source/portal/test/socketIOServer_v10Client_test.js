@@ -43,9 +43,7 @@ const presenter_join_result = {
           audio: true,
           video: true
         }
-      },
-      text: 'to-all',
-      manage: false
+      }
     },
     room: {
       id: testRoom,
@@ -1804,65 +1802,6 @@ describe('Responding to clients.', function() {
             });
           });
       });
-    });
-  });
-
-  describe('on: set-permission', function() {
-    it('setPermission without specifying a valid participantId should fail.', function(done) {
-      mockPortal.setPermission = sinon.stub();
-
-      return joinFirstly()
-        .then(function(result) {
-          expect(result).to.equal('ok');
-          client.emit('set-permission', {authorities: [{operation: 'publish', field: 'type.add', value: 'streaming'}]}, function(status, data) {
-            expect(status).to.equal('error');
-            expect(data).to.equal('Invalid participant id');
-            client.emit('set-permission', {id: '', authorities: [{operation: 'publish', field: 'type.add', value: 'streaming'}]}, function(status, data) {
-              expect(status).to.equal('error');
-              expect(data).to.equal('Invalid participant id');
-              client.emit('set-permission', {id: 2389, authorities: [{operation: 'publish', field: 'type.add', value: 'streaming'}]}, function(status, data) {
-                expect(status).to.equal('error');
-                expect(data).to.equal('Invalid participant id');
-                client.emit('set-permission', {id: {obj: 'yes'}, authorities: [{operation: 'publish', field: 'type.add', value: 'streaming'}]}, function(status, data) {
-                  expect(status).to.equal('error');
-                  expect(data).to.equal('Invalid participant id');
-                  expect(mockPortal.setPermission.callCount).to.equal(0);
-                  done();
-                });
-              });
-            });
-          });
-        });
-    });
-
-    it.skip('setPermission with invalid authority should fail.', function(done) {
-      mockPortal.setPermission = sinon.stub();
-
-      return joinFirstly()
-        .then(function(result) {
-          expect(result).to.equal('ok');
-          client.emit('set-permission', {id: 'participantId', authorities: [{operation: 'lala'}]}, function(status, data) {
-            expect(status).to.equal('error');
-            expect(data).to.equal('Invalid authority');
-            expect(mockPortal.setPermission.callCount).to.equal(0);
-            done();
-          });
-        });
-    });
-
-    it('setPermission should succeed if portal.setPermission succeeds.', function(done) {
-      mockPortal.setPermission = sinon.stub();
-      mockPortal.setPermission.resolves('ok');
-
-      return joinFirstly()
-        .then(function(result) {
-          expect(result).to.equal('ok');
-          client.emit('set-permission', {id: 'participantId', authorities: [{operation: 'subscribe', field: 'type.remove', value: false}]}, function(status, data) {
-            expect(status).to.equal('ok');
-            expect(mockPortal.setPermission.getCall(0).args).to.deep.equal([client.id, 'participantId', [{operation: 'subscribe', field: 'type.remove', value: false}]]);
-            done();
-          });
-        });
     });
   });
 

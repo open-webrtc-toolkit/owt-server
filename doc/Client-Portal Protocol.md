@@ -143,9 +143,7 @@ object(LoginResult)::
          audio: true | false,
          video: true | false
        }
-     } | false,
-     text: "to-all" | "to-peer" | false,
-     manage: true | false
+     } | false
     }
 
   object(RoomInfo)::
@@ -580,24 +578,6 @@ object(SessionProgress)::
      file: string(FullPathNameOfRecordedFile)
     }
 ```
-#### 3.3.16 Participant Sets Permission of another Participant
-**RequestName**:  “set-permission”
-**RequestData**: The SetPermission object with following definition:
-```
-object(SetPermission)::
-  {
-   id: string(ParticipantId),
-   authorities: [object(Authority)]
-  }
-
-  object(Authority)::
-    {
-     operation: "publish" | "subscribe" | "text",
-     field: "media.audio" | "media.video" | "type.add" | "type.remove", // Optional
-     value: true | false | "to-peer" | "to-all" | string(Type)
-    }
-```
-**ResponseData**: undefined if **ResponseStatus** is “ok”.
 
 ## 4. RESTful Signaling
 ### 4.1 Connection Maintenance

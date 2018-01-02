@@ -19,9 +19,7 @@ describe('participant.isPublishPermitted', function() {
           audio: true,
           video: true
         }
-      },
-      text: 'to-all',
-      manage: false
+      }
     };
     var participant = Participant(participant_spec, mockrpcReq);
 
@@ -46,9 +44,7 @@ describe('participant.isPublishPermitted', function() {
           audio: true,
           video: true
         }
-      },
-      text: 'to-all',
-      manage: false
+      }
     };
     var participant = Participant(participant_spec, mockrpcReq);
 
@@ -73,9 +69,7 @@ describe('participant.isPublishPermitted', function() {
           audio: true,
           video: true
         }
-      },
-      text: 'to-all',
-      manage: false
+      }
     };
     var participant = Participant(participant_spec, mockrpcReq);
 
@@ -100,9 +94,7 @@ describe('participant.isPublishPermitted', function() {
           audio: true,
           video: true
         }
-      },
-      text: 'to-all',
-      manage: false
+      }
     };
     var participant1 = Participant(participant_spec, mockrpcReq);
 
@@ -125,9 +117,7 @@ describe('participant.isPublishPermitted', function() {
           audio: true,
           video: true
         }
-      },
-      text: 'to-all',
-      manage: false
+      }
     };
     var participant2 = Participant(participant_spec, mockrpcReq);
 
@@ -152,9 +142,7 @@ describe('participant.isPublishPermitted', function() {
           audio: true,
           video: true
         }
-      },
-      text: 'to-all',
-      manage: false
+      }
     };
     var participant = Participant(participant_spec, mockrpcReq);
 

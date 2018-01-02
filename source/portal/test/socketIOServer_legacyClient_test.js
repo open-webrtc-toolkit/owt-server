@@ -42,9 +42,7 @@ const presenter_join_result = {
           audio: true,
           video: true
         }
-      },
-      text: 'to-all',
-      manage: false
+      }
     },
     room: {
       id: testRoom,
@@ -750,7 +748,7 @@ describe('Notifying events to clients.', function() {
     client.on('user_join', function(data) {
       expect(data).to.deep.equal({user: {id: 'participantId', name: 'user-name', role: 'presenter'}});
       client.on('add_stream', function(data) {
-        expect(data).to.deep.equal({id: 'streamId', audio: true, video: {device: 'camera'}, from: 'participantId', attributes: {key: 'value'}});
+        expect(data).to.deep.equal({id: 'streamId', audio: true, video: {device: 'camera'}, from: 'participantId', socket: '', attributes: {key: 'value'}});
         client.on('update_stream', function(data) {
           expect(data).to.deep.equal({id: 'streamId', event: 'StateChange', state: 'inactive'});
           client.on('remove_stream', function(data) {
@@ -1942,53 +1940,6 @@ describe('Responding to clients.', function() {
               expect(data).to.have.string('Invalid recorder id');
               done();
             });
-          });
-        });
-    });
-  });
-
-  describe('on: setPermission', function() {
-    it('setPermission without specifying targetId should fail.', function(done) {
-      mockPortal.setPermission = sinon.stub();
-
-      return joinFirstly()
-        .then(function(result) {
-          expect(result).to.equal('ok');
-          client.emit('setPermission', {action: 'subscribe', update: false}, function(status, data) {
-            expect(status).to.equal('error');
-            expect(data).to.equal('no targetId specified');
-            expect(mockPortal.setPermission.callCount).to.equal(0);
-            done();
-          });
-        });
-    });
-
-    it('setPermission without specifying action should fail.', function(done) {
-      mockPortal.setPermission = sinon.stub();
-
-      return joinFirstly()
-        .then(function(result) {
-          expect(result).to.equal('ok');
-          client.emit('setPermission', {targetId: 'targetId', update: false}, function(status, data) {
-            expect(status).to.equal('error');
-            expect(data).to.equal('no action specified');
-            expect(mockPortal.setPermission.callCount).to.equal(0);
-            done();
-          });
-        });
-    });
-
-    it('setPermission should succeed if portal.setPermission succeeds.', function(done) {
-      mockPortal.setPermission = sinon.stub();
-      mockPortal.setPermission.resolves('ok');
-
-      return joinFirstly()
-        .then(function(result) {
-          expect(result).to.equal('ok');
-          client.emit('setPermission', {targetId: 'targetId', action: 'subscribe', update: false}, function(status, data) {
-            expect(status).to.equal('success');
-            expect(mockPortal.setPermission.getCall(0).args).to.deep.equal([client.id, 'targetId', [{operation: 'subscribe', value: false}]]);
-            done();
           });
         });
     });

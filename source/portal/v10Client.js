@@ -101,13 +101,6 @@ var V10Client = function(clientId, sigConnection, portal) {
       });
   };
 
-  var validateSetPermReq = (setPermReq) => {
-    return validateId('participant id', setPermReq.id)
-      .then(() => {
-        return requestData.validate('set-permission', setPermReq);
-      });
-  };
-
   const listenAt = (socket) => {
     socket.on('text', function(textReq, callback) {
       if(!that.inRoom){
@@ -219,13 +212,7 @@ var V10Client = function(clientId, sigConnection, portal) {
       if(!that.inRoom){
         return safeCall(callback, 'error', 'Illegal request');
       }
-
-      return validateSetPermReq(setPermReq)
-        .then((req) => {
-          return portal.setPermission(clientId, req.id, req.authorities);
-        }).then((result) => {
-          safeCall(callback, 'ok');
-        }).catch(onError('set-permission', callback));
+      safeCall(callback, 'error', 'Please use REST interface to set permissions');
     });
   };
 

@@ -23,8 +23,10 @@ dbAccess = {
     mockDb[userId] = permission;
     return Promise.resolve(mockDb[userId]);
   },
+  token: {
+  }
 };
-mockery.registerMock("./dataBaseAccess", dbAccess);
+mockery.registerMock("./data_access", dbAccess);
 
 after(function(){
     mockery.disable();
@@ -64,9 +66,7 @@ const join_room_result = {
         audio: true,
         video: true
       }
-    },
-    text: 'to-all',
-    manage: false
+    }
   },
   room: {
     id: testRoom,
@@ -227,7 +227,7 @@ const join_room_result = {
 describe('portal.updateTokenKey: update the token key.', function() {
   it('Joining with a valid token will fail if the token key is out of time, and success when token key is updated', function() {
     var mockrpcReq = sinon.createStubInstance(rpcReq);
-    dbAccess.deleteToken = sinon.stub();
+    dbAccess.token.delete = sinon.stub();
     mockrpcReq.getController = sinon.stub();
     mockrpcReq.join = sinon.stub();
 
@@ -237,7 +237,7 @@ describe('portal.updateTokenKey: update the token key.', function() {
 
     var portal = Portal(portalSpecWitpauseTokenKey, mockrpcReq);
 
-    dbAccess.deleteToken.resolves(delete_token_result);
+    dbAccess.token.delete.resolves(delete_token_result);
     mockrpcReq.getController.resolves('rpcIdOfController');
     mockrpcReq.join.resolves(join_room_result);
 
@@ -258,13 +258,13 @@ describe('portal.updateTokenKey: update the token key.', function() {
 describe('portal.join: Participants join.', function() {
   it('Joining with valid token should succeed.', function() {
     var mockrpcReq = sinon.createStubInstance(rpcReq);
-    dbAccess.deleteToken = sinon.stub();
+    dbAccess.token.delete = sinon.stub();
     mockrpcReq.getController = sinon.stub();
     mockrpcReq.join = sinon.stub();
 
     var portal = Portal(testPortalSpec, mockrpcReq);
 
-    dbAccess.deleteToken.resolves(delete_token_result);
+    dbAccess.token.delete.resolves(delete_token_result);
     mockrpcReq.getController.resolves('rpcIdOfController');
     mockrpcReq.join.resolves(join_room_result);
 
@@ -279,13 +279,13 @@ describe('portal.join: Participants join.', function() {
 
   it('The same participant re-joining should succeed.', function() {
     var mockrpcReq = sinon.createStubInstance(rpcReq);
-    dbAccess.deleteToken = sinon.stub();
+    dbAccess.token.delete = sinon.stub();
     mockrpcReq.getController = sinon.stub();
     mockrpcReq.join = sinon.stub();
 
     var portal = Portal(testPortalSpec, mockrpcReq);
 
-    dbAccess.deleteToken.resolves(delete_token_result);
+    dbAccess.token.delete.resolves(delete_token_result);
     mockrpcReq.getController.resolves('rpcIdOfController');
     mockrpcReq.join.resolves(join_room_result);
 
@@ -299,7 +299,7 @@ describe('portal.join: Participants join.', function() {
 
   it('Tokens with incorect signature should fail joining.', function() {
     var mockrpcReq = sinon.createStubInstance(rpcReq);
-    dbAccess.deleteToken = sinon.stub();
+    dbAccess.token.delete = sinon.stub();
     mockrpcReq.getController = sinon.stub();
     mockrpcReq.join = sinon.stub();
     var portal = Portal(testPortalSpec, mockrpcReq);
@@ -311,26 +311,26 @@ describe('portal.join: Participants join.', function() {
     return expect(portal.join(testParticipantId, tokenWithInvalidSignature)).to.be.rejectedWith('Invalid token signature');//Note: The error message is not strictly equality checked, instead it will be fullfiled when the actual error message includes the given string here. That is the inherint behavor of 'rejectedWith'.
   });
 
-  it('deleteToken timeout or error should fail joining.', function() {
+  it('token.delete timeout or error should fail joining.', function() {
     var mockrpcReq = sinon.createStubInstance(rpcReq);
-    dbAccess.deleteToken = sinon.stub();
+    dbAccess.token.delete = sinon.stub();
     mockrpcReq.getController = sinon.stub();
     mockrpcReq.join = sinon.stub();
     var portal = Portal(testPortalSpec, mockrpcReq);
 
-    dbAccess.deleteToken.rejects('timeout or error');
+    dbAccess.token.delete.rejects('timeout or error');
 
     return expect(portal.join(testParticipantId, testToken)).to.be.rejectedWith('timeout or error');
   });
 
   it('rpcReq.getController timeout or error should fail joining.', function() {
     var mockrpcReq = sinon.createStubInstance(rpcReq);
-    dbAccess.deleteToken = sinon.stub();
+    dbAccess.token.delete = sinon.stub();
     mockrpcReq.getController = sinon.stub();
     mockrpcReq.join = sinon.stub();
     var portal = Portal(testPortalSpec, mockrpcReq);
 
-    dbAccess.deleteToken.resolves(delete_token_result);
+    dbAccess.token.delete.resolves(delete_token_result);
 
     mockrpcReq.getController.rejects('timeout or error');
 
@@ -339,12 +339,12 @@ describe('portal.join: Participants join.', function() {
 
   it('rpcReq.join timeout or error should fail joining.', function() {
     var mockrpcReq = sinon.createStubInstance(rpcReq);
-    dbAccess.deleteToken = sinon.stub();
+    dbAccess.token.delete = sinon.stub();
     mockrpcReq.getController = sinon.stub();
     mockrpcReq.join = sinon.stub();
     var portal = Portal(testPortalSpec, mockrpcReq);
 
-    dbAccess.deleteToken.resolves(delete_token_result);
+    dbAccess.token.delete.resolves(delete_token_result);
 
     mockrpcReq.getController.resolves('theRpcIdOfController');
 
@@ -372,14 +372,14 @@ describe('portal.leave: Participants leave.', function() {
 
   it('Should succeed if rpcRequest succeeds.', function() {
     var mockrpcReq = sinon.createStubInstance(rpcReq);
-    dbAccess.deleteToken = sinon.stub();
+    dbAccess.token.delete = sinon.stub();
     mockrpcReq.getController = sinon.stub();
     mockrpcReq.join = sinon.stub();
     mockrpcReq.leave = sinon.stub();
 
     var portal = Portal(testPortalSpec, mockrpcReq);
 
-    dbAccess.deleteToken.resolves(delete_token_result);
+    dbAccess.token.delete.resolves(delete_token_result);
     mockrpcReq.getController.resolves('rpcIdOfController');
     mockrpcReq.join.resolves(join_room_result);
     mockrpcReq.leave.resolves('ok');
@@ -397,14 +397,14 @@ describe('portal.leave: Participants leave.', function() {
 
   it('Should succeed even if rpcRequest fails.', function() {
     var mockrpcReq = sinon.createStubInstance(rpcReq);
-    dbAccess.deleteToken = sinon.stub();
+    dbAccess.token.delete = sinon.stub();
     mockrpcReq.getController = sinon.stub();
     mockrpcReq.join = sinon.stub();
     mockrpcReq.leave = sinon.stub();
 
     var portal = Portal(testPortalSpec, mockrpcReq);
 
-    dbAccess.deleteToken.resolves(delete_token_result);
+    dbAccess.token.delete.resolves(delete_token_result);
     mockrpcReq.getController.resolves('rpcIdOfController');
     mockrpcReq.join.resolves(join_room_result);
     mockrpcReq.leave.rejects('some error');
@@ -421,7 +421,7 @@ describe('portal.leave: Participants leave.', function() {
   });
 });
 
-describe('portal.publish/portal.unpublish/portal.streamControl/portal.onSessionSignaling/portal.subscribe/portal.unsubscribe/portal.updateSubscription/portal.setPermission', function() {
+describe('portal.publish/portal.unpublish/portal.streamControl/portal.onSessionSignaling/portal.subscribe/portal.unsubscribe/portal.updateSubscription', function() {
   it('Before logining should fail.', function() {
     var mockrpcReq = sinon.createStubInstance(rpcReq);
     var portal = Portal(testPortalSpec, mockrpcReq);
@@ -433,7 +433,6 @@ describe('portal.publish/portal.unpublish/portal.streamControl/portal.onSessionS
     var streamCtrl = portal.streamControl(testParticipantId, 'streamId', {operation: 'mix', data: 'common'});
     var subscriptionCtrl = portal.subscriptionControl(testParticipantId, 'subscriptionId', {operation: 'update', data: {audio: {from: 'stream3'}, video: {from: 'stream4'}}});
     var onSessionSignaling = portal.onSessionSignaling(testParticipantId, 'sessionId', {type: 'offer', sdp: 'offerSDPString'});
-    var setPermission = portal.setPermission(testParticipantId, 'anotherParticipnatId', {authorities: [{operation: 'publish', item: 'media.video', value: false}]});
     var text = portal.text(testParticipantId, 'anotherParticipnatId', 'Hello');
 
     return Promise.all([
@@ -444,7 +443,6 @@ describe('portal.publish/portal.unpublish/portal.streamControl/portal.onSessionS
         expect(streamCtrl).to.be.rejectedWith('Participant has NOT joined'),
         expect(subscriptionCtrl).to.be.rejectedWith('Participant has NOT joined'),
         expect(onSessionSignaling).to.be.rejectedWith('Participant has NOT joined'),
-        expect(setPermission).to.be.rejectedWith('Participant has NOT joined'),
         expect(text).to.be.rejectedWith('Participant has NOT joined')
       ]);
   });
@@ -453,8 +451,8 @@ describe('portal.publish/portal.unpublish/portal.streamControl/portal.onSessionS
     var mockrpcReq = sinon.createStubInstance(rpcReq);
     var portal = Portal(testPortalSpec, mockrpcReq);
 
-    dbAccess.deleteToken = sinon.stub();
-    dbAccess.deleteToken.resolves(delete_token_result);
+    dbAccess.token.delete = sinon.stub();
+    dbAccess.token.delete.resolves(delete_token_result);
     mockrpcReq.getController = sinon.stub();
     mockrpcReq.getController.resolves('rpcIdOfController');
     mockrpcReq.join = sinon.stub();
@@ -474,8 +472,6 @@ describe('portal.publish/portal.unpublish/portal.streamControl/portal.onSessionS
     mockrpcReq.subscriptionControl.rejects('some error reason');
     mockrpcReq.onSessionSignaling = sinon.stub();
     mockrpcReq.onSessionSignaling.rejects('some error reason');
-    mockrpcReq.setPermission = sinon.stub();
-    mockrpcReq.setPermission.rejects('some error reason');
     mockrpcReq.text = sinon.stub();
     mockrpcReq.text.rejects('some error reason');
 
@@ -488,7 +484,6 @@ describe('portal.publish/portal.unpublish/portal.streamControl/portal.onSessionS
         var streamCtrl = portal.streamControl(testParticipantId, 'streamId', {operation: 'mix', data: 'common'});
         var subscriptionCtrl = portal.subscriptionControl(testParticipantId, 'subscriptionId', {operation: 'update', data: {audio: {from: 'stream3'}, video: {from: 'stream4'}}});
         var onSessionSignaling = portal.onSessionSignaling(testParticipantId, 'sessionId', {type: 'offer', sdp: 'offerSDPString'});
-        var setPermission = portal.setPermission(testParticipantId, 'anotherParticipnatId', {authorities: [{operation: 'publish', item: 'media.video', value: false}]});
         var text = portal.text(testParticipantId, 'anotherParticipnatId', 'Hello');
         return Promise.all([
             expect(pub).to.be.rejectedWith('some error reason'),
@@ -498,7 +493,6 @@ describe('portal.publish/portal.unpublish/portal.streamControl/portal.onSessionS
             expect(streamCtrl).to.be.rejectedWith('some error reason'),
             expect(subscriptionCtrl).to.be.rejectedWith('some error reason'),
             expect(onSessionSignaling).to.be.rejectedWith('some error reason'),
-            expect(setPermission).to.be.rejectedWith('some error reason'),
             expect(text).to.be.rejectedWith('some error reason')
           ]);
       });
@@ -508,8 +502,8 @@ describe('portal.publish/portal.unpublish/portal.streamControl/portal.onSessionS
     var mockrpcReq = sinon.createStubInstance(rpcReq);
     var portal = Portal(testPortalSpec, mockrpcReq);
 
-    dbAccess.deleteToken = sinon.stub();
-    dbAccess.deleteToken.resolves(delete_token_result);
+    dbAccess.token.delete = sinon.stub();
+    dbAccess.token.delete.resolves(delete_token_result);
     mockrpcReq.getController = sinon.stub();
     mockrpcReq.getController.resolves('rpcIdOfController');
     mockrpcReq.join = sinon.stub();
@@ -529,8 +523,6 @@ describe('portal.publish/portal.unpublish/portal.streamControl/portal.onSessionS
     mockrpcReq.subscriptionControl.resolves('ok');
     mockrpcReq.onSessionSignaling = sinon.stub();
     mockrpcReq.onSessionSignaling.resolves('ok');
-    mockrpcReq.setPermission = sinon.stub();
-    mockrpcReq.setPermission.resolves('ok');
     mockrpcReq.text = sinon.stub();
     mockrpcReq.text.resolves('ok');
 
@@ -543,7 +535,6 @@ describe('portal.publish/portal.unpublish/portal.streamControl/portal.onSessionS
         var streamCtrl = portal.streamControl(testParticipantId, 'streamId', {operation: 'mix', data: 'common'});
         var subscriptionCtrl = portal.subscriptionControl(testParticipantId, 'subscriptionId', {operation: 'update', data: {audio: {from: 'stream3'}, video: {from: 'stream4'}}});
         var onSessionSignaling = portal.onSessionSignaling(testParticipantId, 'sessionId', {type: 'offer', sdp: 'offerSDPString'});
-        var setPermission = portal.setPermission(testParticipantId, 'anotherParticipnatId', {authorities: [{operation: 'publish', item: 'media.video', value: false}]});
         var text = portal.text(testParticipantId, 'anotherParticipnatId', 'Hello');
         return Promise.all([
             expect(pub).to.become('ok'),
@@ -553,7 +544,6 @@ describe('portal.publish/portal.unpublish/portal.streamControl/portal.onSessionS
             expect(streamCtrl).to.become('ok'),
             expect(subscriptionCtrl).to.become('ok'),
             expect(onSessionSignaling).to.become('ok'),
-            expect(setPermission).to.become('ok'),
             expect(text).to.become('ok')
           ]);
       });

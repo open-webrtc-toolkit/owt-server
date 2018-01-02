@@ -43,7 +43,7 @@ describe('rpcRequest.getController', function() {
   });
 });
 
-describe('rpcRequest.join/leave/publish/unpublish/subscribe/unsubscribe/onSessionSignaling/streamControl/subscriptionControl/text/setPermission', function() {
+describe('rpcRequest.join/leave/publish/unpublish/subscribe/unsubscribe/onSessionSignaling/streamControl/subscriptionControl/text', function() {
   it('Should succeed if rpcChannel.makeRPC succeeds.', function() {
     var mockRpcChannel = sinon.createStubInstance(rpcChannel);
     mockRpcChannel.makeRPC = sinon.stub();
@@ -61,7 +61,6 @@ describe('rpcRequest.join/leave/publish/unpublish/subscribe/unsubscribe/onSessio
     var streamControl = req.streamControl('rpcIdOfAccessNode', 'streamId', {operation: 'pause', data: 'video'});
     var subscriptionControl = req.subscriptionControl('rpcIdOfAccessNode', 'subscriptionId', {operation: 'update', data: {video: {from: 'streamxx'}}});
     var text = req.text('rpcIdOfController', 'fromWhom', 'toWhom', 'message body');
-    var setPermission = req.setPermission('rpcIdOfController', 'fromWhom', 'toWhom', 'authorities');
 
     return Promise.all([
       expect(join).to.become('ok-or-data'),
@@ -74,10 +73,9 @@ describe('rpcRequest.join/leave/publish/unpublish/subscribe/unsubscribe/onSessio
       expect(streamControl).to.become('ok-or-data'),
       expect(subscriptionControl).to.become('ok-or-data'),
       expect(text).to.become('ok-or-data'),
-      expect(setPermission).to.become('ok-or-data')
       ])
       .then(function() {
-        expect(mockRpcChannel.makeRPC.callCount).to.equal(11);
+        expect(mockRpcChannel.makeRPC.callCount).to.equal(10);
       });
   });
 
@@ -98,7 +96,6 @@ describe('rpcRequest.join/leave/publish/unpublish/subscribe/unsubscribe/onSessio
     var streamControl = req.streamControl('rpcIdOfAccessNode', 'streamId', {operation: 'pause', data: 'video'});
     var subscriptionControl = req.subscriptionControl('rpcIdOfAccessNode', 'subscriptionId', {operation: 'update', data: {video: {from: 'streamxx'}}});
     var text = req.text('rpcIdOfController', 'fromWhom', 'toWhom', 'message body');
-    var setPermission = req.setPermission('rpcIdOfController', 'fromWhom', 'toWhom', 'authorities');
 
     return Promise.all([
       expect(join).to.be.rejectedWith('error or timeout'),
@@ -111,10 +108,9 @@ describe('rpcRequest.join/leave/publish/unpublish/subscribe/unsubscribe/onSessio
       expect(streamControl).to.be.rejectedWith('error or timeout'),
       expect(subscriptionControl).to.be.rejectedWith('error or timeout'),
       expect(text).to.be.rejectedWith('error or timeout'),
-      expect(setPermission).to.be.rejectedWith('error or timeout')
       ])
       .then(function() {
-        expect(mockRpcChannel.makeRPC.callCount).to.equal(11);
+        expect(mockRpcChannel.makeRPC.callCount).to.equal(10);
       });
   });
 });
