@@ -31,8 +31,6 @@
 #include <boost/shared_ptr.hpp>
 #include <logger.h>
 #include <MediaDefinitions.h>
-#include <MediaDefinitionExtra.h>
-
 #include <JobTimer.h>
 #include <webrtc/modules/remote_bitrate_estimator/include/remote_bitrate_estimator.h>
 #include <webrtc/modules/rtp_rtcp/include/rtp_rtcp.h>
@@ -102,8 +100,8 @@ public:
 
 
     // Implements the MediaSink interfaces.
-    // int deliverAudioData(char*, int len);
-    // int deliverVideoData(char*, int len);
+    int deliverAudioData(char*, int len);
+    int deliverVideoData(char*, int len);
 
     // Implements the FrameSource interfaces.
     void onFeedback(const FeedbackMsg& msg);
@@ -125,7 +123,7 @@ private:
     boost::scoped_ptr<webrtc::RemoteBitrateEstimator> m_remoteBitrateEstimator;
     boost::scoped_ptr<webrtc::ViEReceiver> m_videoReceiver;
     boost::scoped_ptr<webrtc::RtpRtcp> m_rtpRtcp;
-    boost::shared_ptr<WebRTCTransport<erizoExtra::VIDEO>> m_videoTransport;
+    boost::shared_ptr<WebRTCTransport<erizo::VIDEO>> m_videoTransport;
 
     boost::shared_ptr<WebRTCTaskRunner> m_taskRunner;
 
@@ -133,12 +131,6 @@ private:
     boost::shared_mutex m_transport_mutex;
     boost::scoped_ptr<JobTimer> m_feedbackTimer;
     uint32_t m_pendingKeyFrameRequests;
-
-    ////////////// NEW INTERFACE ///////////
-    int deliverAudioData_(std::shared_ptr<erizo::DataPacket> audio_packet) override;
-    int deliverVideoData_(std::shared_ptr<erizo::DataPacket> video_packet) override;
-    int deliverEvent_(erizo::MediaEventPtr event) override;
-    void close();
 };
 
 class DummyRemoteBitrateObserver : public webrtc::RemoteBitrateObserver {

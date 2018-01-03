@@ -2,7 +2,7 @@
 'use strict';
 require = require('module')._load('./AgentLoader');
 var woogeenWebrtc = require('./webrtcLib/build/Release/webrtc');
-var WebRtcConnection = woogeenWebrtc.WebRtcConnection;
+// var WebRtcConnection = woogeenWebrtc.WebRtcConnection;
 var AudioFrameConstructor = woogeenWebrtc.AudioFrameConstructor;
 var VideoFrameConstructor = woogeenWebrtc.VideoFrameConstructor;
 var AudioFramePacketizer = woogeenWebrtc.AudioFramePacketizer;
@@ -13,9 +13,34 @@ var cipher = require('./cipher');
 // Logger
 var log = logger.getLogger('WrtcConnection');
 
+var addon = require('./webrtcLib/build/Release/webrtc');//require('./erizo/build/Release/addon');
+
+function createWrtc(id, threadPool, ioThreadPool, mediaConfiguration) {
+    var wrtc = new addon.WebRtcConnection(
+        threadPool, ioThreadPool, id,
+        global.config.webrtc.stunserver,
+        global.config.webrtc.stunport,
+        global.config.webrtc.minport,
+        global.config.webrtc.maxport,
+        false, // should trickle
+        '', // rtp_media_config
+        false, // useNicer
+        '', // turnserver,
+        '', // turnport,
+        '', //turnusername,
+        '', //turnpass,
+        '' //networkinterface
+    );
+
+    return wrtc;
+}
+
 module.exports = function (spec, on_status) {
     var that = {},
         direction = spec.direction,
+        wrtcId = spec.connectionId,
+        threadPool = spec.threadPool,
+        ioThreadPool = spec.ioThreadPool,
         // preferredAudioCodecs = spec.preferred_audio_codecs,
         // preferredVideoCodecs = spec.preferred_video_codecs,
         networkInterfaces = spec.network_interfaces,
@@ -179,81 +204,73 @@ module.exports = function (spec, on_status) {
      * Given a WebRtcConnection waits for the state CANDIDATES_GATHERED for set remote SDP.
      */
     var initWebRtcConnection = function (wrtc) {
-        var terminated = false;
 
-        wrtc.addEventListener('connection', function (resp) {
-          if (terminated) {
-            return;
-          }
-          var info = JSON.parse(resp);
-          var status = info.status;
-          var message = info.message;
+        wrtc.init(function (newStatus, mess) {
+            log.info('message: WebRtcConnection status update, ' +
+                     'id: ' + wrtc.wrtcId + ', status: ' + newStatus + ', mess:' + mess);
 
-          log.debug('connection status:', status, message);
+            var message = mess;
 
-          switch (status) {
-            case CONN_FINISHED:
-              terminated = true;
-              break;
+            switch(newStatus) {
+                case CONN_INITIAL:
+                    //callback('callback', {type: 'started'});
+                    break;
 
-            case CONN_INITIAL:
-              //on_status({type: 'started'});
-              break;
+                case CONN_SDP:
+                case CONN_GATHERED:
+                    networkInterfaces.forEach((i) => {
+                        if (i.private_ip_match_pattern && i.replaced_ip_address) {
+                            message = message.replace(i.private_ip_match_pattern, i.replaced_ip_address);
+                        }
+                    });
+                    audio && (message = determineAudioFmt(message));
+                    video && (message = determineVideoFmt(message));
+                    log.debug('Answer SDP', message);
+                    on_status({type: 'answer', sdp: message});
+                    break;
 
-            case CONN_SDP:
-            case CONN_GATHERED:
-              networkInterfaces.forEach((i) => {
-                if (i.private_ip_match_pattern && i.replaced_ip_address) {
-                  message = message.replace(i.private_ip_match_pattern, i.replaced_ip_address);
-                }
-              });
-              audio && (message = determineAudioFmt(message));
-              video && (message = determineVideoFmt(message));
-              log.debug('Answer SDP', message);
-              on_status({type: 'answer', sdp: message});
-              break;
+                case CONN_CANDIDATE:
+                    networkInterfaces.forEach((i) => {
+                        if (i.private_ip_match_pattern && i.replaced_ip_address) {
+                          message = message.replace(i.private_ip_match_pattern, i.replaced_ip_address);
+                        }
+                      });
+                    on_status({type: 'candidate', candidate: message});
 
-            case CONN_CANDIDATE:
-              networkInterfaces.forEach((i) => {
-                if (i.private_ip_match_pattern && i.replaced_ip_address) {
-                  message = message.replace(i.private_ip_match_pattern, i.replaced_ip_address);
-                }
-              });
-              on_status({type: 'candidate', candidate: message});
-              break;
+                case CONN_FAILED:
+                    log.warn('message: failed the ICE process, ' +
+                             'code: ' + ', id: ' + wrtc.wrtcId);
+                    on_status({type: 'failed', reason: 'Ice procedure failed.'});
+                    break;
 
-            case CONN_FAILED:
-              on_status({type: 'failed', reason: 'Ice procedure failed.'});
-              break;
-
-            case CONN_READY: {
-              // If I'm a subscriber and I'm bowser, I ask for a PLI
-              //if (id_sub && browser === 'bowser') {
-                //log.info('SENDING PLI from ', id_pub, ' to ', id_sub);
-                //publishers[id_pub].muxer.sendPLI();
-              //}
-              on_status({
-                type: 'ready',
-                audio: audio_fmt ? audio_fmt : false,
-                video: video_fmt ? video_fmt : false
-              });
-              break;
+                case CONN_READY:
+                    log.debug('message: connection ready, ' +
+                              'id: ' + wrtc.wrtcId + ', ' +
+                              'status: ' + newStatus);
+                    // If I'm a subscriber and I'm bowser, I ask for a PLI
+                    on_status({
+                        type: 'ready',
+                        audio: audio_fmt ? audio_fmt : false,
+                        video: video_fmt ? video_fmt : false
+                    });
+                    break;
+                default:
+                    log.warn('Status not proccess:', newStatus);
+                    break;
             }
-
-            default:
-              break;
-          }
         });
     };
 
     var bindFrameConstructors = function () {
         if (audio) {
             audioFrameConstructor = new AudioFrameConstructor();
+            //wrtc.setAudioReceiver(audioFrameConstructor);
             audioFrameConstructor.bindTransport(wrtc);
         }
 
         if (video) {
             videoFrameConstructor = new VideoFrameConstructor();
+            //wrtc.setVideoReceiver(videoFrameConstructor);
             videoFrameConstructor.bindTransport(wrtc);
         }
     };
@@ -332,7 +349,6 @@ module.exports = function (spec, on_status) {
                 log.debug('on offer:', msg.sdp);
                 checkOffer(msg.sdp, function() {
                     wrtc.setRemoteSdp(msg.sdp);
-                    wrtc.start();
                 }, function (reason) {
                     log.error('offer error:', reason);
                     on_status({type: 'failed', reason: reason});
@@ -469,18 +485,7 @@ module.exports = function (spec, on_status) {
                 ipAddresses.push(i.ip_address);
               }
             });
-            wrtc = new WebRtcConnection(
-                !!audio, !!video,
-                true/*FIXME: hash264:hard coded*/,
-                global.config.webrtc.stunserver,
-                global.config.webrtc.stunport,
-                global.config.webrtc.minport,
-                global.config.webrtc.maxport,
-                global.config.webrtc.keystorePath,
-                global.config.webrtc.keystorePath,
-                passphrase,
-                true, true,true, true, false,
-                ipAddresses);
+            wrtc = createWrtc(wrtcId, threadPool, ioThreadPool, 'rtp_media_config');
 
             if (direction === 'in') {
                 bindFrameConstructors();

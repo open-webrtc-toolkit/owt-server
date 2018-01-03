@@ -27,7 +27,6 @@
 #include "SsrcGenerator.h"
 
 #include <MediaDefinitions.h>
-#include <MediaDefinitionExtra.h>
 
 #include <boost/scoped_ptr.hpp>
 #include <boost/shared_ptr.hpp>
@@ -49,7 +48,7 @@ namespace woogeen_base {
 class VideoFramePacketizer : public FrameDestination,
                              public erizo::MediaSource,
                              public erizo::FeedbackSink,
-                             public erizoExtra::RTPDataReceiver,
+                             public erizo::RTPDataReceiver,
                              public webrtc::BitrateObserver,
                              public webrtc::RtcpIntraFrameObserver {
     DECLARE_LOGGER();
@@ -69,10 +68,10 @@ public:
     int sendFirPacket();
 
     // Implements FeedbackSink.
-    // int deliverFeedback(char* buf, int len);
+    int deliverFeedback(char* buf, int len);
 
     // Implements RTPDataReceiver.
-    void receiveRtpData(char*, int len, erizoExtra::DataType, uint32_t channelId);
+    void receiveRtpData(char*, int len, erizo::DataType, uint32_t channelId);
 
     // Implements webrtc::RtcpIntraFrameObserver.
     void OnReceivedIntraFrameRequest(uint32_t ssrc);
@@ -109,10 +108,6 @@ private:
     SsrcGenerator* const m_ssrc_generator;
 
     boost::shared_mutex m_transport_mutex;
-
-    ///// NEW INTERFACE ///////////
-    int deliverFeedback_(std::shared_ptr<erizo::DataPacket> data_packet);
-    int sendPLI();
 };
 
 }

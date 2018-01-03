@@ -23,33 +23,38 @@
 
 #include "MediaDefinitions.h"
 #include <AudioFrameConstructor.h>
+#include <WebRtcConnection.h>
+#include "WebRtcConnection.h"
 #include <node.h>
 #include <node_object_wrap.h>
+#include <nan.h>
 
 /*
  * Wrapper class of woogeen_base::AudioFrameConstructor
  */
 class AudioFrameConstructor : public MediaSink {
  public:
-  static void Init(v8::Local<v8::Object> exports);
+  static NAN_MODULE_INIT(Init);
   woogeen_base::AudioFrameConstructor* me;
   woogeen_base::FrameSource* src;
 
  private:
   AudioFrameConstructor();
   ~AudioFrameConstructor();
-  static v8::Persistent<v8::Function> constructor;
 
-  static void New(const v8::FunctionCallbackInfo<v8::Value>& args);
-  static void close(const v8::FunctionCallbackInfo<v8::Value>& args);
+  static NAN_METHOD(New);
 
-  static void bindTransport(const v8::FunctionCallbackInfo<v8::Value>& args);
-  static void unbindTransport(const v8::FunctionCallbackInfo<v8::Value>& args);
+  static NAN_METHOD(close);
 
-  static void enable(const v8::FunctionCallbackInfo<v8::Value>& args);
+  static NAN_METHOD(bindTransport);
+  static NAN_METHOD(unbindTransport);
 
-  static void addDestination(const v8::FunctionCallbackInfo<v8::Value>& args);
-  static void removeDestination(const v8::FunctionCallbackInfo<v8::Value>& args);
+  static NAN_METHOD(enable);
+
+  static NAN_METHOD(addDestination);
+  static NAN_METHOD(removeDestination);
+
+  static Nan::Persistent<v8::Function> constructor;
 };
 
 #endif

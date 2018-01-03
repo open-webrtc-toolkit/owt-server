@@ -24,111 +24,99 @@
 
 #include "AudioFrameConstructorWrapper.h"
 #include "../../addons/common/MediaFramePipelineWrapper.h"
-#include "WebRtcConnection.h"
 
 using namespace v8;
 
-Persistent<Function> AudioFrameConstructor::constructor;
-AudioFrameConstructor::AudioFrameConstructor() {};
-AudioFrameConstructor::~AudioFrameConstructor() {};
+Nan::Persistent<Function> AudioFrameConstructor::constructor;
 
-void AudioFrameConstructor::Init(v8::Local<v8::Object> exports) {
-  Isolate* isolate = Isolate::GetCurrent();
+AudioFrameConstructor::AudioFrameConstructor() {}
+AudioFrameConstructor::~AudioFrameConstructor() {}
+
+NAN_MODULE_INIT(AudioFrameConstructor::Init) {
   // Prepare constructor template
-  Local<FunctionTemplate> tpl = FunctionTemplate::New(isolate, New);
-  tpl->SetClassName(String::NewFromUtf8(isolate, "AudioFrameConstructor"));
+  Local<FunctionTemplate> tpl = Nan::New<FunctionTemplate>(New);
+  tpl->SetClassName(Nan::New("AudioFrameConstructor").ToLocalChecked());
   tpl->InstanceTemplate()->SetInternalFieldCount(1);
+
   // Prototype
-  NODE_SET_PROTOTYPE_METHOD(tpl, "close", close);
+  Nan::SetPrototypeMethod(tpl, "close", close);
+  Nan::SetPrototypeMethod(tpl, "bindTransport", bindTransport);
+  Nan::SetPrototypeMethod(tpl, "unbindTransport", unbindTransport);
+  Nan::SetPrototypeMethod(tpl, "enable", enable);
+  Nan::SetPrototypeMethod(tpl, "addDestination", addDestination);
+  Nan::SetPrototypeMethod(tpl, "removeDestination", removeDestination);
 
-  NODE_SET_PROTOTYPE_METHOD(tpl, "bindTransport", bindTransport);
-  NODE_SET_PROTOTYPE_METHOD(tpl, "unbindTransport", unbindTransport);
-  NODE_SET_PROTOTYPE_METHOD(tpl, "enable", enable);
-  NODE_SET_PROTOTYPE_METHOD(tpl, "addDestination", addDestination);
-  NODE_SET_PROTOTYPE_METHOD(tpl, "removeDestination", removeDestination);
-
-  constructor.Reset(isolate, tpl->GetFunction());
-  exports->Set(String::NewFromUtf8(isolate, "AudioFrameConstructor"), tpl->GetFunction());
+  constructor.Reset(tpl->GetFunction());
+  Nan::Set(target, Nan::New("AudioFrameConstructor").ToLocalChecked(), Nan::GetFunction(tpl).ToLocalChecked());
 }
 
-void AudioFrameConstructor::New(const FunctionCallbackInfo<Value>& args) {
-  Isolate* isolate = Isolate::GetCurrent();
-  HandleScope scope(isolate);
+NAN_METHOD(AudioFrameConstructor::New) {
+  if (info.IsConstructCall()) {
+    AudioFrameConstructor* obj = new AudioFrameConstructor();
+    obj->me = new woogeen_base::AudioFrameConstructor();
+    obj->src = obj->me;
+    obj->msink = obj->me;
 
-  AudioFrameConstructor* obj = new AudioFrameConstructor();
-  obj->me = new woogeen_base::AudioFrameConstructor();
-  obj->src = obj->me;
-  obj->msink = obj->me;
-
-  obj->Wrap(args.This());
-  args.GetReturnValue().Set(args.This());
+    obj->Wrap(info.This());
+    info.GetReturnValue().Set(info.This());
+  } else {
+    // const int argc = 1;
+    // v8::Local<v8::Value> argv[argc] = {info[0]};
+    // v8::Local<v8::Function> cons = Nan::New(constructor);
+    // info.GetReturnValue().Set(cons->NewInstance(argc, argv));
+  }
 }
 
-void AudioFrameConstructor::close(const FunctionCallbackInfo<Value>& args) {
-  Isolate* isolate = Isolate::GetCurrent();
-  HandleScope scope(isolate);
-  AudioFrameConstructor* obj = ObjectWrap::Unwrap<AudioFrameConstructor>(args.Holder());
+NAN_METHOD(AudioFrameConstructor::close) {
+  AudioFrameConstructor* obj = Nan::ObjectWrap::Unwrap<AudioFrameConstructor>(info.Holder());
   woogeen_base::AudioFrameConstructor* me = obj->me;
   delete me;
 }
 
-void AudioFrameConstructor::bindTransport(const FunctionCallbackInfo<Value>& args) {
-  Isolate* isolate = Isolate::GetCurrent();
-  HandleScope scope(isolate);
-
-  AudioFrameConstructor* obj = ObjectWrap::Unwrap<AudioFrameConstructor>(args.Holder());
+NAN_METHOD(AudioFrameConstructor::bindTransport) {
+  AudioFrameConstructor* obj = Nan::ObjectWrap::Unwrap<AudioFrameConstructor>(info.Holder());
   woogeen_base::AudioFrameConstructor* me = obj->me;
 
-  WebRtcConnection* param = ObjectWrap::Unwrap<WebRtcConnection>(args[0]->ToObject());
-  erizo::WebRtcConnection* transport = param->me;
+  WebRtcConnection* param = Nan::ObjectWrap::Unwrap<WebRtcConnection>(Nan::To<v8::Object>(info[0]).ToLocalChecked());
+  auto wr = std::shared_ptr<erizo::WebRtcConnection>(param->me).get();
 
-  me->bindTransport(transport, transport);
+  //MediaSink* param = Nan::ObjectWrap::Unwrap<MediaSink>(args[0]->ToObject());
+  erizo::MediaSource* source = wr;
+  me->bindTransport(source, source->getFeedbackSink());
 }
 
-void AudioFrameConstructor::unbindTransport(const FunctionCallbackInfo<Value>& args) {
-  Isolate* isolate = Isolate::GetCurrent();
-  HandleScope scope(isolate);
-
-  AudioFrameConstructor* obj = ObjectWrap::Unwrap<AudioFrameConstructor>(args.Holder());
+NAN_METHOD(AudioFrameConstructor::unbindTransport) {
+  AudioFrameConstructor* obj = Nan::ObjectWrap::Unwrap<AudioFrameConstructor>(info.Holder());
   woogeen_base::AudioFrameConstructor* me = obj->me;
 
   me->unbindTransport();
 }
 
-void AudioFrameConstructor::addDestination(const FunctionCallbackInfo<Value>& args) {
-  Isolate* isolate = Isolate::GetCurrent();
-  HandleScope scope(isolate);
-
-  AudioFrameConstructor* obj = ObjectWrap::Unwrap<AudioFrameConstructor>(args.Holder());
+NAN_METHOD(AudioFrameConstructor::addDestination) {
+  AudioFrameConstructor* obj = Nan::ObjectWrap::Unwrap<AudioFrameConstructor>(info.Holder());
   woogeen_base::AudioFrameConstructor* me = obj->me;
 
-  FrameDestination* param = ObjectWrap::Unwrap<FrameDestination>(args[0]->ToObject());
+  FrameDestination* param = node::ObjectWrap::Unwrap<FrameDestination>(info[0]->ToObject());
   woogeen_base::FrameDestination* dest = param->dest;
 
   me->addAudioDestination(dest);
 }
 
-void AudioFrameConstructor::removeDestination(const FunctionCallbackInfo<Value>& args) {
-  Isolate* isolate = Isolate::GetCurrent();
-  HandleScope scope(isolate);
-
-  AudioFrameConstructor* obj = ObjectWrap::Unwrap<AudioFrameConstructor>(args.Holder());
+NAN_METHOD(AudioFrameConstructor::removeDestination) {
+  AudioFrameConstructor* obj = Nan::ObjectWrap::Unwrap<AudioFrameConstructor>(info.Holder());
   woogeen_base::AudioFrameConstructor* me = obj->me;
 
-  FrameDestination* param = ObjectWrap::Unwrap<FrameDestination>(args[0]->ToObject());
+  FrameDestination* param = node::ObjectWrap::Unwrap<FrameDestination>(info[0]->ToObject());
   woogeen_base::FrameDestination* dest = param->dest;
 
   me->removeAudioDestination(dest);
 }
 
-void AudioFrameConstructor::enable(const v8::FunctionCallbackInfo<v8::Value>& args) {
-  Isolate* isolate = Isolate::GetCurrent();
-  HandleScope scope(isolate);
-
-  AudioFrameConstructor* obj = ObjectWrap::Unwrap<AudioFrameConstructor>(args.Holder());
+NAN_METHOD(AudioFrameConstructor::enable) {
+  AudioFrameConstructor* obj = Nan::ObjectWrap::Unwrap<AudioFrameConstructor>(info.Holder());
   woogeen_base::AudioFrameConstructor* me = obj->me;
 
-  bool b = (args[0]->ToBoolean())->BooleanValue();
+  bool b = (info[0]->ToBoolean())->BooleanValue();
   me->enable(b);
 }
 

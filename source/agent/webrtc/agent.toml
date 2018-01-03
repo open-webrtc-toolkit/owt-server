@@ -62,3 +62,6 @@ minport = 0 #default: 0
 #if "" is used, the address is discovered locally
 stunport = 0 #default: 0
 stunserver = "" #default: ""
+
+#ThreadPool worker numbers for peer connection
+num_workers = 24 #default: 24
