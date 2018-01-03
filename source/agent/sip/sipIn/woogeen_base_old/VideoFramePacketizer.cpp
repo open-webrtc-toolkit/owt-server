@@ -20,7 +20,9 @@
 
 #include "VideoFramePacketizer.h"
 #include "MediaUtilities.h"
-#include <rtputils.h>
+
+using namespace webrtc;
+using namespace erizo;
 
 namespace woogeen_base {
 
@@ -41,10 +43,10 @@ VideoFramePacketizer::VideoFramePacketizer(bool enableRed, bool enableUlpfec)
     , m_ssrc(0)
     , m_ssrc_generator(SsrcGenerator::GetSsrcGenerator())
 {
-    video_sink_ = nullptr;
+    videoSink_ = nullptr;
     m_ssrc = m_ssrc_generator->CreateSsrc();
     m_ssrc_generator->RegisterSsrc(m_ssrc);
-    m_videoTransport.reset(new WebRTCTransport<erizoExtra::VIDEO>(this, nullptr));
+    m_videoTransport.reset(new WebRTCTransport<erizo::VIDEO>(this, nullptr));
     m_taskRunner.reset(new woogeen_base::WebRTCTaskRunner("VideoFramePacketizer"));
     m_taskRunner->Start();
     init(enableRed, enableUlpfec);
@@ -62,10 +64,9 @@ VideoFramePacketizer::~VideoFramePacketizer()
 void VideoFramePacketizer::bindTransport(erizo::MediaSink* sink)
 {
     boost::unique_lock<boost::shared_mutex> lock(m_transport_mutex);
-    ELOG_INFO("bindTransport. %p", sink);
-    video_sink_ = sink;
-    video_sink_->setVideoSinkSSRC(m_rtpRtcp->SSRC());
-    erizo::FeedbackSource* fbSource = video_sink_->getFeedbackSource();
+    videoSink_ = sink;
+    videoSink_->setVideoSinkSSRC(m_rtpRtcp->SSRC());
+    erizo::FeedbackSource* fbSource = videoSink_->getFeedbackSource();
     if (fbSource)
         fbSource->setFeedbackSink(this);
 }
@@ -73,11 +74,11 @@ void VideoFramePacketizer::bindTransport(erizo::MediaSink* sink)
 void VideoFramePacketizer::unbindTransport()
 {
     boost::unique_lock<boost::shared_mutex> lock(m_transport_mutex);
-    if (video_sink_) {
-        erizo::FeedbackSource* fbSource = video_sink_->getFeedbackSource();
+    if (videoSink_) {
+        erizo::FeedbackSource* fbSource = videoSink_->getFeedbackSource();
         if (fbSource)
             fbSource->setFeedbackSink(nullptr);
-        video_sink_ = nullptr;
+        videoSink_ = nullptr;
     }
 }
 
@@ -87,13 +88,11 @@ void VideoFramePacketizer::enable(bool enabled)
     if (m_enabled) {
         FeedbackMsg feedback = {.type = VIDEO_FEEDBACK, .cmd = REQUEST_KEY_FRAME};
         deliverFeedbackMsg(feedback);
-        m_keyFrameArrived = false;
     }
 }
 
 bool VideoFramePacketizer::setSendCodec(FrameFormat frameFormat, unsigned int width, unsigned int height)
 {
-    using namespace webrtc;
     // The send video format should be identical to the input video format,
     // because we (VideoFramePacketizer) don't have the transcoding capability.
     assert(frameFormat == m_frameFormat);
@@ -143,61 +142,26 @@ bool VideoFramePacketizer::setSendCodec(FrameFormat frameFormat, unsigned int wi
 
 void VideoFramePacketizer::OnReceivedIntraFrameRequest(uint32_t ssrc)
 {
-    // ELOG_DEBUG("onReceivedIntraFrameRequest.");
+    ELOG_DEBUG("onReceivedIntraFrameRequest.");
     FeedbackMsg feedback = {.type = VIDEO_FEEDBACK, .cmd = REQUEST_KEY_FRAME};
     deliverFeedbackMsg(feedback);
 }
 
-int VideoFramePacketizer::deliverFeedback_(std::shared_ptr<erizo::DataPacket> data_packet)
+int VideoFramePacketizer::deliverFeedback(char* buf, int len)
 {
-    // ELOG_INFO("deliverFeedback_ %p", this);
     boost::shared_lock<boost::shared_mutex> lock(m_rtpRtcpMutex);
-    return m_rtpRtcp->IncomingRtcpPacket(reinterpret_cast<uint8_t*>(data_packet->data), data_packet->length) == -1 ? 0 : data_packet->length;
+    return m_rtpRtcp->IncomingRtcpPacket(reinterpret_cast<uint8_t*>(buf), len) == -1 ? 0 : len;
 }
 
-void VideoFramePacketizer::receiveRtpData(char* buf, int len, erizoExtra::DataType type, uint32_t channelId)
+void VideoFramePacketizer::receiveRtpData(char* buf, int len, erizo::DataType type, uint32_t channelId)
 {
     boost::shared_lock<boost::shared_mutex> lock(m_transport_mutex);
-    if (!video_sink_) {
+    if (!videoSink_) {
         return;
     }
 
-    assert(type == erizoExtra::VIDEO);
-    // char* p = buf;
-    // unsigned int payloadlen = len;
-    // ELOG_INFO("receiveRtpData(%zu): [%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x...%x,%x,%x,%x]", payloadlen, p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7], p[8], p[9], p[10], p[11], p[12], p[13], p[14], p[15], p[payloadlen-4], p[payloadlen-3], p[payloadlen-2], p[payloadlen-1]);
-
-   RTPHeader* head = (RTPHeader*) buf;
-    if (head->getPayloadType() == RED_90000_PT) {
-        int totalLength = head->getHeaderLength();
-        int rtpHeaderLength = totalLength;
-        redheader *redhead = (redheader*) (buf + totalLength);
-
-        //redhead->payloadtype = remoteSdp_.inOutPTMap[redhead->payloadtype];
-        if (true) {
-            while (redhead->follow) {
-                totalLength += redhead->getLength() + 4; // RED header
-                redhead = (redheader*) (buf + totalLength);
-            }
-            // Parse RED packet to VP8 packet.
-            // Copy RTP header
-            static char deliverMediaBuffer[3000];
-            int newLen = len - 1 - totalLength + rtpHeaderLength;
-            assert(newLen <= 3000);
-
-            memcpy(deliverMediaBuffer, buf, rtpHeaderLength);
-            // Copy payload data
-            memcpy(deliverMediaBuffer + totalLength, buf + totalLength + 1, newLen - rtpHeaderLength);
-            // Copy payload type
-            RTPHeader* mediahead = (RTPHeader*) deliverMediaBuffer;
-            mediahead->setPayloadType(redhead->payloadtype);
-
-            video_sink_->deliverVideoData(std::make_shared<erizo::DataPacket>(0, deliverMediaBuffer, newLen, erizo::VIDEO_PACKET));
-            return;
-      }
-    }
-
-    video_sink_->deliverVideoData(std::make_shared<erizo::DataPacket>(0, buf, len, erizo::VIDEO_PACKET));
+    assert(type == erizo::VIDEO);
+    videoSink_->deliverVideoData(buf, len);
 }
 
 void VideoFramePacketizer::OnNetworkChanged(const uint32_t target_bitrate, const uint8_t fraction_loss, const int64_t rtt)
@@ -304,7 +268,6 @@ static void dump(void* index, FrameFormat format, uint8_t* buf, int len)
 
 void VideoFramePacketizer::onFrame(const Frame& frame)
 {
-    using namespace webrtc;
     if (!m_enabled) {
         return;
     }
@@ -403,7 +366,6 @@ int VideoFramePacketizer::sendFirPacket()
 
 bool VideoFramePacketizer::init(bool enableRed, bool enableUlpfec)
 {
-    using namespace webrtc;
     m_retransmissionRateLimiter.reset(new webrtc::RateLimiter(Clock::GetRealTimeClock(), 1000));
     m_bitrateController.reset(webrtc::BitrateController::CreateBitrateController(Clock::GetRealTimeClock(), this, &m_rtcEventLog));
     m_bandwidthObserver.reset(m_bitrateController->CreateRtcpBandwidthObserver());
@@ -441,21 +403,17 @@ bool VideoFramePacketizer::init(bool enableRed, bool enableUlpfec)
 void VideoFramePacketizer::close()
 {
     boost::unique_lock<boost::shared_mutex> lock(m_transport_mutex);
-    if (video_sink_) {
-        erizo::FeedbackSource* fbSource = video_sink_->getFeedbackSource();
+    if (videoSink_) {
+        erizo::FeedbackSource* fbSource = videoSink_->getFeedbackSource();
         if (fbSource)
             fbSource->setFeedbackSink(nullptr);
-        video_sink_ = nullptr;
+        videoSink_ = nullptr;
     }
     lock.unlock();
     // M53 does not support removing observer
     //if (m_bitrateController)
     //   m_bitrateController->RemoveBitrateObserver(this);
     m_taskRunner->DeRegisterModule(m_rtpRtcp.get());
-}
-
-int VideoFramePacketizer::sendPLI() {
-    return 0;
 }
 
 }

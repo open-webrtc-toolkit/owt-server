@@ -27,6 +27,7 @@
 #include "webrtc/modules/remote_bitrate_estimator/remote_bitrate_estimator_single_stream.h"
 
 using namespace webrtc;
+using namespace erizo;
 
 namespace woogeen_base {
 
@@ -43,8 +44,8 @@ VideoFrameConstructor::VideoFrameConstructor()
     , m_transport(nullptr)
     , m_pendingKeyFrameRequests(0)
 {
-    m_videoTransport.reset(new WebRTCTransport<erizoExtra::VIDEO>(nullptr, nullptr));
-    sink_fb_source_ = m_videoTransport.get();
+    m_videoTransport.reset(new WebRTCTransport<erizo::VIDEO>(nullptr, nullptr));
+    sinkfbSource_ = m_videoTransport.get();
     m_taskRunner.reset(new woogeen_base::WebRTCTaskRunner("VideoFrameConstructor"));
     m_taskRunner->Start();
     m_feedbackTimer.reset(new JobTimer(1, this));
@@ -152,11 +153,9 @@ bool VideoFrameConstructor::init()
 
 void VideoFrameConstructor::bindTransport(erizo::MediaSource* source, erizo::FeedbackSink* fbSink)
 {
-    // ELOG_INFO("bindTransport source %p fbsink %p this %p", source, fbSink, this);
     boost::unique_lock<boost::shared_mutex> lock(m_transport_mutex);
     m_transport = source;
     m_transport->setVideoSink(this);
-    m_transport->setEventSink(this);
     m_videoTransport->setFeedbackSink(fbSink);
 }
 
@@ -165,7 +164,6 @@ void VideoFrameConstructor::unbindTransport()
     boost::unique_lock<boost::shared_mutex> lock(m_transport_mutex);
     if (m_transport) {
         m_transport->setVideoSink(nullptr);
-        m_transport->setEventSink(nullptr);
         m_videoTransport->setFeedbackSink(nullptr);
         m_transport = nullptr;
     }
@@ -192,7 +190,6 @@ int32_t VideoFrameConstructor::ResendPackets(const uint16_t* sequenceNumbers, ui
 
 int32_t VideoFrameConstructor::RequestKeyFrame()
 {
-    // ELOG_INFO("RequestKeyFrame");
     return m_rtpRtcp->RequestKeyFrame();
 }
 
@@ -206,7 +203,6 @@ int32_t VideoFrameConstructor::OnInitializeDecoder(
     // TODO: In M59 rtp_video_receiver will never invoke OnInitializeDecoder
     // from RtpFeedback. So moving the external decoder register to
     // somewhere else and remove the workaround in rtp_rtcp module.
-    // ELOG_INFO("OnInitializeDecoder");
     m_video_receiver->RegisterExternalDecoder(this, payload_type);
     return 0;
 }
@@ -259,7 +255,6 @@ int32_t VideoFrameConstructor::Decode(const webrtc::EncodedImage& encodedImage,
     FrameFormat format = FRAME_FORMAT_UNKNOWN;
     bool resolutionChanged = false;
 
-    // ELOG_INFO("encodedImage._length %d", encodedImage._length);
     if (encodedImage._length > 0) {
         switch (codecSpecificInfo->codecType) {
         case webrtc::kVideoCodecVP8:
@@ -311,7 +306,6 @@ int32_t VideoFrameConstructor::Decode(const webrtc::EncodedImage& encodedImage,
         frame.additionalInfo.video.isKeyFrame = (encodedImage._frameType == webrtc::kVideoFrameKey);
 
         if (m_enabled) {
-            // ELOG_INFO("DELIVER FRAME !!!");
             deliverFrame(frame);
         }
 
@@ -322,17 +316,17 @@ int32_t VideoFrameConstructor::Decode(const webrtc::EncodedImage& encodedImage,
     return 0;
 }
 
-int VideoFrameConstructor::deliverVideoData_(std::shared_ptr<erizo::DataPacket> video_packet)
+int VideoFrameConstructor::deliverVideoData(char* buf, int len)
 {
-    RTCPHeader* chead = reinterpret_cast<RTCPHeader*>(video_packet->data);
+    RTCPHeader* chead = reinterpret_cast<RTCPHeader*>(buf);
     uint8_t packetType = chead->getPacketType();
 
     assert(packetType != RTCP_Receiver_PT && packetType != RTCP_PS_Feedback_PT && packetType != RTCP_RTP_Feedback_PT);
     if (packetType == RTCP_Sender_PT)
-        return m_videoReceiver->ReceivedRTCPPacket(video_packet->data, video_packet->length) == -1 ? 0 : video_packet->length;
+        return m_videoReceiver->ReceivedRTCPPacket(buf, len) == -1 ? 0 : len;
 
     PacketTime current;
-    if (m_videoReceiver->ReceivedRTPPacket(video_packet->data, video_packet->length, current) != -1) {
+    if (m_videoReceiver->ReceivedRTPPacket(buf, len, current) != -1) {
         // FIXME: Decode should be invoked as often as possible.
         // To invoke it in current work thread is not a good idea. We may need to create
         // a dedicated thread to keep on invoking vcm::VideoReceiver::Decode, and, with a wait time other than 0.
@@ -340,13 +334,13 @@ int VideoFrameConstructor::deliverVideoData_(std::shared_ptr<erizo::DataPacket> 
         uint16_t maxWaitInterval = 0;
         int32_t ret = m_video_receiver->Decode(maxWaitInterval);
         ELOG_TRACE("receivedRtpData decode result = %d",  ret);
-        return video_packet->length;
+        return len;
     }
 
     return 0;
 }
 
-int VideoFrameConstructor::deliverAudioData_(std::shared_ptr<erizo::DataPacket> audio_packet)
+int VideoFrameConstructor::deliverAudioData(char* buf, int len)
 {
     assert(false);
     return 0;
@@ -354,32 +348,21 @@ int VideoFrameConstructor::deliverAudioData_(std::shared_ptr<erizo::DataPacket> 
 
 void VideoFrameConstructor::onTimeout()
 {
-    if (m_pendingKeyFrameRequests > 1) {
+    if (m_pendingKeyFrameRequests > 0) {
         this->RequestKeyFrame();
+        m_pendingKeyFrameRequests = 0;
     }
-    m_pendingKeyFrameRequests = 0;
 }
 
 void VideoFrameConstructor::onFeedback(const FeedbackMsg& msg)
 {
     if (msg.type == woogeen_base::VIDEO_FEEDBACK) {
         if (msg.cmd == REQUEST_KEY_FRAME) {
-            if (!m_pendingKeyFrameRequests) {
-                this->RequestKeyFrame();
-            }
             ++m_pendingKeyFrameRequests;
         } else if (msg.cmd == SET_BITRATE) {
             this->setBitrate(msg.data.kbps);
         }
     }
-}
-
-int VideoFrameConstructor::deliverEvent_(erizo::MediaEventPtr event){
-    return 0;
-}
-
-void VideoFrameConstructor::close(){
-    unbindTransport();
 }
 
 }

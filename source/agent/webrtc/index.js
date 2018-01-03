@@ -11,6 +11,19 @@ var logger = require('./logger').logger;
 // Logger
 var log = logger.getLogger('WebrtcNode');
 
+var addon = require('./webrtcLib/build/Release/webrtc');
+
+var threadPool = new addon.ThreadPool(global.config.webrtc.num_workers || 24);
+threadPool.start();
+
+// We don't use Nicer connection now
+var ioThreadPool = new addon.IOThreadPool(global.config.webrtc.io_workers || 1);
+
+if (global.config.webrtc.use_nicer) {
+  log.info('Starting ioThreadPool');
+  ioThreadPool.start();
+}
+
 module.exports = function (rpcClient) {
     var that = {};
     var connections = new Connections;
@@ -22,6 +35,9 @@ module.exports = function (rpcClient) {
 
     var createWebRTCConnection = function (connectionId, direction, options, callback) {
         var connection = new WrtcConnection({
+            connectionId: connectionId,
+            threadPool: threadPool,
+            ioThreadPool: ioThreadPool,
             direction: direction,
             media: options.media,
             formatPreference: options.formatPreference,

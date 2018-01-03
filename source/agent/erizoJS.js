@@ -21,6 +21,9 @@ global.config.webrtc.stunport = global.config.webrtc.stunport || 0;
 global.config.webrtc.minport = global.config.webrtc.minport || 0;
 global.config.webrtc.maxport = global.config.webrtc.maxport || 0;
 global.config.webrtc.keystorePath = global.config.webrtc.keystorePath || '';
+global.config.webrtc.num_workers = global.config.webrtc.num_workers || 24;
+global.config.webrtc.use_nicer = global.config.webrtc.use_nicer || false;
+global.config.webrtc.io_workers = global.config.webrtc.io_workers || 1;
 
 global.config.video = global.config.video || {};
 global.config.video.hardwareAccelerated = !!global.config.video.hardwareAccelerated;

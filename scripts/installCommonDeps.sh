@@ -83,10 +83,10 @@ install_libnice0114(){
     rm -f libnice-0.1.*
     rm -f ../build/lib/libnice.*
     rm -rf libnice-0.1.*
-    wget -c http://nice.freedesktop.org/releases/libnice-0.1.14.tar.gz
-    tar -zxvf libnice-0.1.14.tar.gz
-    cd libnice-0.1.14
-    patch -p1 < $PATHNAME/patches/libnice-0114.patch
+    wget -c http://nice.freedesktop.org/releases/libnice-0.1.4.tar.gz
+    tar -zxvf libnice-0.1.4.tar.gz
+    cd libnice-0.1.4
+    #patch -p1 < $PATHNAME/patches/libnice-0114.patch
     #patch -p1 < $PATHNAME/patches/libnice-0001-Remove-lock.patch
     PKG_CONFIG_PATH=$PREFIX_DIR"/lib/pkgconfig":$PREFIX_DIR"/lib64/pkgconfig":$PKG_CONFIG_PATH ./configure --prefix=$PREFIX_DIR && make -s V= && make install
     cd $CURRENT_DIR
@@ -228,6 +228,37 @@ install_webrtc(){
   popd
 }
 
+install_licode(){
+  local COMMIT="4c92ddb42ad8bd2eab4dfb39bbb49f985b454fc9" #pre-v5.1
+  local LINK_PATH="$ROOT/source/agent/webrtc/webrtcLib"
+  pushd ${ROOT}/third_party >/dev/null
+  rm -rf licode
+  git clone https://github.com/lynckia/licode.git
+  pushd licode >/dev/null
+  git reset --hard $COMMIT
+  # APPLY PATCH
+  patch -p1 < $PATHNAME/patches/licode-01-base.patch
+  if [ -L ${LINK_PATH}/erizo ]; then
+    unlink ${LINK_PATH}/erizo
+  fi
+  ln -s ${ROOT}/third_party/licode/erizo ${LINK_PATH}/
+  popd >/dev/null
+  popd >/dev/null
+}
+
+install_nicer(){
+  local COMMIT="24d88e95e18d7948f5892d04589acce3cc9a5880"
+  pushd ${ROOT}/third_party >/dev/null
+  rm -rf nICEr
+  git clone https://github.com/lynckia/nICEr.git
+  pushd nICEr >/dev/null
+  git reset --hard $COMMIT
+  cmake -DCMAKE_C_FLAGS="-std=c99" -DCMAKE_INSTALL_PREFIX:PATH=${ROOT}/third_party/nICEr/out
+  make && make install
+  popd >/dev/null
+  popd >/dev/null
+}
+
 install_oovoosdk(){
   mkdir -p $PREFIX_DIR/lib
   if [[ "$OS" =~ .*ubuntu.* ]]
@@ -274,6 +305,9 @@ install_node() {
 
 install_node_tools() {
   npm install -g --loglevel error node-gyp grunt-cli underscore jsdoc
+  pushd ${ROOT} >/dev/null
+  npm install nan
+  popd >/dev/null
   local GATEWAY_SDK_DIR="${ROOT}/source/client_sdk"
   cd ${GATEWAY_SDK_DIR}
   mkdir -p node_modules && npm install --prefix . --development --loglevel error

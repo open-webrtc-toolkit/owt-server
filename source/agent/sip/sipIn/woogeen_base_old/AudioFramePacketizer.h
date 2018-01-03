@@ -31,7 +31,6 @@
 #include <boost/shared_ptr.hpp>
 #include <boost/thread/shared_mutex.hpp>
 #include <MediaDefinitions.h>
-#include <MediaDefinitionExtra.h>
 #include <webrtc/modules/rtp_rtcp/include/rtp_rtcp.h>
 
 
@@ -45,7 +44,7 @@ class WebRTCTaskRunner;
 class AudioFramePacketizer : public FrameDestination,
                              public erizo::MediaSource,
                              public erizo::FeedbackSink,
-                             public erizoExtra::RTPDataReceiver {
+                             public erizo::RTPDataReceiver {
     DECLARE_LOGGER();
 
 public:
@@ -60,13 +59,13 @@ public:
     void onFrame(const Frame&);
 
     // Implements FeedbackSink.
-    //int deliverFeedback(char* buf, int len);
+    int deliverFeedback(char* buf, int len);
 
     // Implements erizo::MediaSource.
-    //int sendFirPacket() {return 0;}
+    int sendFirPacket() {return 0;}
 
     // Implements RTPDataReceiver.
-    void receiveRtpData(char*, int len, erizoExtra::DataType, uint32_t channelId);
+    void receiveRtpData(char*, int len, erizo::DataType, uint32_t channelId);
 
 private:
     bool init();
@@ -86,10 +85,6 @@ private:
     uint16_t m_seqNo;
     uint32_t m_ssrc;
     SsrcGenerator* const m_ssrc_generator;
-
-    ///// NEW INTERFACE ///////////
-    int deliverFeedback_(std::shared_ptr<erizo::DataPacket> data_packet);
-    int sendPLI();
 };
 
 }

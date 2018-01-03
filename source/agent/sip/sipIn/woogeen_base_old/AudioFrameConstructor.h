@@ -25,7 +25,6 @@
 
 #include <logger.h>
 #include <MediaDefinitions.h>
- #include <MediaDefinitionExtra.h>
 
 
 namespace woogeen_base {
@@ -48,8 +47,8 @@ public:
     void enable(bool enabled) {m_enabled = enabled;}
 
     // Implements the MediaSink interfaces.
-    // int deliverAudioData(char*, int len);
-    // int deliverVideoData(char*, int len);
+    int deliverAudioData(char*, int len);
+    int deliverVideoData(char*, int len);
 
     // Implements the FrameSource interfaces.
     void onFeedback(const FeedbackMsg& msg);
@@ -58,12 +57,6 @@ private:
     bool m_enabled;
     erizo::MediaSource* m_transport;
     boost::shared_mutex m_transport_mutex;
-
-    ////////////// NEW INTERFACE ///////////
-    int deliverAudioData_(std::shared_ptr<erizo::DataPacket> audio_packet) override;
-    int deliverVideoData_(std::shared_ptr<erizo::DataPacket> video_packet) override;
-    int deliverEvent_(erizo::MediaEventPtr event) override;
-    void close();
 };
 
 }

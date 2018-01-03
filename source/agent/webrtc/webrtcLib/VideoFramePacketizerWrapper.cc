@@ -24,6 +24,7 @@
 
 #include "MediaDefinitions.h"
 #include "VideoFramePacketizerWrapper.h"
+#include <WebRtcConnection.h>
 #include "WebRtcConnection.h"
 
 using namespace v8;
@@ -78,8 +79,11 @@ void VideoFramePacketizer::bindTransport(const FunctionCallbackInfo<Value>& args
   VideoFramePacketizer* obj = ObjectWrap::Unwrap<VideoFramePacketizer>(args.Holder());
   woogeen_base::VideoFramePacketizer* me = obj->me;
 
-  WebRtcConnection* param = ObjectWrap::Unwrap<WebRtcConnection>(args[0]->ToObject());
-  erizo::WebRtcConnection* transport = param->me;
+  WebRtcConnection* param = Nan::ObjectWrap::Unwrap<WebRtcConnection>(Nan::To<v8::Object>(args[0]).ToLocalChecked());
+  auto wr = std::shared_ptr<erizo::WebRtcConnection>(param->me).get();
+
+  //MediaSink* param = Nan::ObjectWrap::Unwrap<MediaSink>(args[0]->ToObject());
+  erizo::MediaSink* transport = wr;
 
   me->bindTransport(transport);
 }

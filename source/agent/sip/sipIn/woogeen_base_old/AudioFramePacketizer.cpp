@@ -24,6 +24,7 @@
 #include "WebRTCTaskRunner.h"
 
 using namespace webrtc;
+using namespace erizo;
 
 namespace woogeen_base {
 
@@ -36,10 +37,10 @@ AudioFramePacketizer::AudioFramePacketizer()
     , m_ssrc(0)
     , m_ssrc_generator(SsrcGenerator::GetSsrcGenerator())
 {
-    audio_sink_ = nullptr;
+    audioSink_ = nullptr;
     m_ssrc = m_ssrc_generator->CreateSsrc();
     m_ssrc_generator->RegisterSsrc(m_ssrc);
-    m_audioTransport.reset(new WebRTCTransport<erizoExtra::AUDIO>(this, nullptr));
+    m_audioTransport.reset(new WebRTCTransport<erizo::AUDIO>(this, nullptr));
     m_taskRunner.reset(new woogeen_base::WebRTCTaskRunner("AudioFramePacketizer"));
     m_taskRunner->Start();
     init();
@@ -57,9 +58,9 @@ AudioFramePacketizer::~AudioFramePacketizer()
 void AudioFramePacketizer::bindTransport(erizo::MediaSink* sink)
 {
     boost::unique_lock<boost::shared_mutex> lock(m_transport_mutex);
-    audio_sink_ = sink;
-    audio_sink_->setAudioSinkSSRC(m_rtpRtcp->SSRC());
-    erizo::FeedbackSource* fbSource = audio_sink_->getFeedbackSource();
+    audioSink_ = sink;
+    audioSink_->setAudioSinkSSRC(m_rtpRtcp->SSRC());
+    erizo::FeedbackSource* fbSource = audioSink_->getFeedbackSource();
     if (fbSource)
         fbSource->setFeedbackSink(this);
 }
@@ -67,29 +68,29 @@ void AudioFramePacketizer::bindTransport(erizo::MediaSink* sink)
 void AudioFramePacketizer::unbindTransport()
 {
     boost::unique_lock<boost::shared_mutex> lock(m_transport_mutex);
-    if (audio_sink_) {
-        erizo::FeedbackSource* fbSource = audio_sink_->getFeedbackSource();
+    if (audioSink_) {
+        erizo::FeedbackSource* fbSource = audioSink_->getFeedbackSource();
         if (fbSource)
             fbSource->setFeedbackSink(nullptr);
-        audio_sink_ = nullptr;
+        audioSink_ = nullptr;
     }
 }
 
-int AudioFramePacketizer::deliverFeedback_(std::shared_ptr<erizo::DataPacket> data_packet)
+int AudioFramePacketizer::deliverFeedback(char* buf, int len)
 {
     boost::shared_lock<boost::shared_mutex> lock(m_rtpRtcpMutex);
-    return m_rtpRtcp->IncomingRtcpPacket(reinterpret_cast<uint8_t*>(data_packet->data), data_packet->length) == -1 ? 0 : data_packet->length;
+    return m_rtpRtcp->IncomingRtcpPacket(reinterpret_cast<uint8_t*>(buf), len) == -1 ? 0 : len;
 }
 
-void AudioFramePacketizer::receiveRtpData(char* buf, int len, erizoExtra::DataType type, uint32_t channelId)
+void AudioFramePacketizer::receiveRtpData(char* buf, int len, erizo::DataType type, uint32_t channelId)
 {
     boost::shared_lock<boost::shared_mutex> lock(m_transport_mutex);
-    if (!audio_sink_) {
+    if (!audioSink_) {
         return;
     }
 
-    assert(type == erizoExtra::AUDIO);
-    audio_sink_->deliverAudioData(std::make_shared<erizo::DataPacket>(0, buf, len, erizo::AUDIO_PACKET));
+    assert(type == erizo::AUDIO);
+    audioSink_->deliverAudioData(buf, len);
 }
 
 
@@ -100,7 +101,7 @@ void AudioFramePacketizer::onFrame(const Frame& frame)
     }
 
     boost::shared_lock<boost::shared_mutex> lock1(m_transport_mutex);
-    if (!audio_sink_) {
+    if (!audioSink_) {
         return;
     }
 
@@ -115,7 +116,7 @@ void AudioFramePacketizer::onFrame(const Frame& frame)
     if (frame.additionalInfo.audio.isRtpPacket) { // FIXME: Temporarily use Frame to carry rtp-packets due to the premature AudioFrameConstructor implementation.
         //reinterpret_cast<RTPHeader*>(frame.payload)->setSeqNumber(m_seqNo++);
         updateSeqNo(frame.payload);
-        audio_sink_->deliverAudioData(std::make_shared<erizo::DataPacket>(0, reinterpret_cast<char*>(frame.payload), frame.length, erizo::AUDIO_PACKET));
+        audioSink_->deliverAudioData(reinterpret_cast<char*>(frame.payload), frame.length);
         return;
     }
     lock1.unlock();
@@ -161,11 +162,11 @@ bool AudioFramePacketizer::setSendCodec(FrameFormat format)
 void AudioFramePacketizer::close()
 {
     boost::unique_lock<boost::shared_mutex> lock(m_transport_mutex);
-    if (audio_sink_) {
-        erizo::FeedbackSource* fbSource = audio_sink_->getFeedbackSource();
+    if (audioSink_) {
+        erizo::FeedbackSource* fbSource = audioSink_->getFeedbackSource();
         if (fbSource)
             fbSource->setFeedbackSink(nullptr);
-        audio_sink_ = nullptr;
+        audioSink_ = nullptr;
     }
     lock.unlock();
     m_taskRunner->DeRegisterModule(m_rtpRtcp.get());
@@ -173,10 +174,6 @@ void AudioFramePacketizer::close()
 
 void AudioFramePacketizer::updateSeqNo(uint8_t* rtp) {
     *(reinterpret_cast<uint16_t*>(&rtp[2])) = htons(m_seqNo++);
-}
-
-int AudioFramePacketizer::sendPLI() {
-    return 0;
 }
 
 }

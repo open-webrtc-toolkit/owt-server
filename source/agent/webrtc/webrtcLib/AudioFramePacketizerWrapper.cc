@@ -25,6 +25,7 @@
 #include "AudioFramePacketizerWrapper.h"
 #include "MediaDefinitions.h"
 #include "WebRtcConnection.h"
+#include <WebRtcConnection.h>
 
 using namespace v8;
 
@@ -76,8 +77,8 @@ void AudioFramePacketizer::bindTransport(const FunctionCallbackInfo<Value>& args
   AudioFramePacketizer* obj = ObjectWrap::Unwrap<AudioFramePacketizer>(args.Holder());
   woogeen_base::AudioFramePacketizer* me = obj->me;
 
-  WebRtcConnection* param = ObjectWrap::Unwrap<WebRtcConnection>(args[0]->ToObject());
-  erizo::WebRtcConnection* transport = param->me;
+  MediaSink* param = Nan::ObjectWrap::Unwrap<MediaSink>(args[0]->ToObject());
+  erizo::MediaSink* transport = param->msink;
 
   me->bindTransport(transport);
 }

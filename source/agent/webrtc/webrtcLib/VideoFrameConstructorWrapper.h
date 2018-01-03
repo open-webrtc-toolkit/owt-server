@@ -24,38 +24,41 @@
 #include "MediaDefinitions.h"
 #include "../../addons/common/MediaFramePipelineWrapper.h"
 #include <VideoFrameConstructor.h>
+#include <WebRtcConnection.h>
+#include "WebRtcConnection.h"
 #include <node.h>
 #include <node_object_wrap.h>
+#include <nan.h>
 
 /*
  * Wrapper class of woogeen_base::VideoFrameConstructor
  */
 class VideoFrameConstructor : public MediaSink {
  public:
-  static void Init(v8::Local<v8::Object> exports);
+  static NAN_MODULE_INIT(Init);
   woogeen_base::VideoFrameConstructor* me;
   woogeen_base::FrameSource* src;
 
  private:
   VideoFrameConstructor();
   ~VideoFrameConstructor();
-  static v8::Persistent<v8::Function> constructor;
 
-  static void New(const v8::FunctionCallbackInfo<v8::Value>& args);
-  static void close(const v8::FunctionCallbackInfo<v8::Value>& args);
+  static NAN_METHOD(New);
+  static NAN_METHOD(close);
 
-  static void bindTransport(const v8::FunctionCallbackInfo<v8::Value>& args);
-  static void unbindTransport(const v8::FunctionCallbackInfo<v8::Value>& args);
+  static NAN_METHOD(bindTransport);
+  static NAN_METHOD(unbindTransport);
 
-  static void enable(const v8::FunctionCallbackInfo<v8::Value>& args);
+  static NAN_METHOD(enable);
 
-  static void addDestination(const v8::FunctionCallbackInfo<v8::Value>& args);
-  static void removeDestination(const v8::FunctionCallbackInfo<v8::Value>& args);
+  static NAN_METHOD(addDestination);
+  static NAN_METHOD(removeDestination);
 
-  static void setBitrate(const v8::FunctionCallbackInfo<v8::Value>& args);
+  static NAN_METHOD(setBitrate);
 
-  //FIXME: Temporarily add this interface to workround the hardware mode's absence of feedback mechanism.
-  static void requestKeyFrame(const v8::FunctionCallbackInfo<v8::Value>& args);
+  static NAN_METHOD(requestKeyFrame);
+
+  static Nan::Persistent<v8::Function> constructor;
 };
 
 #endif

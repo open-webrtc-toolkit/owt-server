@@ -23,6 +23,8 @@
 
 #include <rtputils.h>
 
+using namespace erizo;
+
 namespace woogeen_base {
 
 DEFINE_LOGGER(AudioFrameConstructor, "woogeen.AudioFrameConstructor");
@@ -31,8 +33,8 @@ AudioFrameConstructor::AudioFrameConstructor()
   : m_enabled(true)
   , m_transport(nullptr)
 {
-    boost::mutex::scoped_lock lock(monitor_mutex_);
-    sink_fb_source_ = this;
+    sinkfbSource_ = this;
+    fbSink_ = nullptr;
 }
 
 AudioFrameConstructor::~AudioFrameConstructor()
@@ -42,12 +44,10 @@ AudioFrameConstructor::~AudioFrameConstructor()
 
 void AudioFrameConstructor::bindTransport(erizo::MediaSource* source, erizo::FeedbackSink* fbSink)
 {
-    ELOG_INFO("bindTransport ");
     boost::unique_lock<boost::shared_mutex> lock(m_transport_mutex);
     m_transport = source;
     m_transport->setAudioSink(this);
-    m_transport->setEventSink(this);
-    setFeedbackSink(fbSink);
+    fbSink_ = fbSink;
 }
 
 void AudioFrameConstructor::unbindTransport()
@@ -55,30 +55,23 @@ void AudioFrameConstructor::unbindTransport()
     boost::unique_lock<boost::shared_mutex> lock(m_transport_mutex);
     if (m_transport) {
         m_transport->setAudioSink(nullptr);
-        m_transport->setEventSink(nullptr);
-        fb_sink_ = nullptr;
+        fbSink_ = nullptr;
         m_transport = nullptr;
     }
 }
 
-int AudioFrameConstructor::deliverVideoData_(std::shared_ptr<erizo::DataPacket> video_packet)
+int AudioFrameConstructor::deliverVideoData(char* packet, int len)
 {
     assert(false);
     return 0;
 }
 
-int AudioFrameConstructor::deliverAudioData_(std::shared_ptr<erizo::DataPacket> audio_packet)
+int AudioFrameConstructor::deliverAudioData(char* buf, int len)
 {
-    // ELOG_INFO("deliverAudioData_ ");
-    if (audio_packet->length <= 0)
-      return 0;
-
-    boost::unique_lock<boost::mutex> lock(monitor_mutex_);
-
     FrameFormat frameFormat;
     Frame frame;
     memset(&frame, 0, sizeof(frame));
-    RTPHeader* head = (RTPHeader*) (audio_packet->data);
+    RTPHeader* head = (RTPHeader*) buf;
 
     frameFormat = getAudioFrameFormat(head->getPayloadType());
     if (frameFormat == FRAME_FORMAT_UNKNOWN)
@@ -88,32 +81,24 @@ int AudioFrameConstructor::deliverAudioData_(std::shared_ptr<erizo::DataPacket> 
     frame.additionalInfo.audio.channels = getAudioChannels(frameFormat);
 
     frame.format = frameFormat;
-    frame.payload = reinterpret_cast<uint8_t*>(audio_packet->data);
-    frame.length = audio_packet->length;
+    frame.payload = reinterpret_cast<uint8_t*>(buf);
+    frame.length = len;
     frame.timeStamp = head->getTimestamp();
     frame.additionalInfo.audio.isRtpPacket = 1;
 
     if (m_enabled) {
         deliverFrame(frame);
     }
-    return 0;
+    return len;
 }
 
 void AudioFrameConstructor::onFeedback(const FeedbackMsg& msg)
 {
     if (msg.type == woogeen_base::AUDIO_FEEDBACK) {
         boost::shared_lock<boost::shared_mutex> lock(m_transport_mutex);
-        if (msg.cmd == RTCP_PACKET && fb_sink_)
-            fb_sink_->deliverFeedback(std::make_shared<erizo::DataPacket>(0, msg.data.rtcp.buf, msg.data.rtcp.len, erizo::AUDIO_PACKET));
+        if (msg.cmd == RTCP_PACKET && fbSink_)
+            fbSink_->deliverFeedback(const_cast<char*>(msg.data.rtcp.buf), msg.data.rtcp.len);
     }
-}
-
-int AudioFrameConstructor::deliverEvent_(erizo::MediaEventPtr event){
-    return 0;
-}
-
-void AudioFrameConstructor::close(){
-    unbindTransport();
 }
 
 }
