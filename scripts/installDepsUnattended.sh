@@ -82,7 +82,7 @@ if [ "$NIGHTLY" != "true" ]; then
     install_glib
   fi
 
-  install_libnice
+  install_libnice014
 
   install_openssl
 
