@@ -77,9 +77,12 @@ install_ffmpeg(){
   popd
 }
 
-install_libnice(){
+install_libnice0114(){
   if [ -d $LIB_DIR ]; then
     cd $LIB_DIR
+    rm -f libnice-0.1.*
+    rm -f ../build/lib/libnice.*
+    rm -rf libnice-0.1.*
     wget -c http://nice.freedesktop.org/releases/libnice-0.1.14.tar.gz
     tar -zxvf libnice-0.1.14.tar.gz
     cd libnice-0.1.14
@@ -89,7 +92,25 @@ install_libnice(){
     cd $CURRENT_DIR
   else
     mkdir -p $LIB_DIR
-    install_libnice
+    install_libnice0114
+  fi
+}
+
+install_libnice014(){
+  if [ -d $LIB_DIR ]; then
+    cd $LIB_DIR
+    rm -f libnice-0.1.*
+    rm -f ../build/lib/libnice.*
+    rm -rf libnice-0.1.*
+    wget -c http://nice.freedesktop.org/releases/libnice-0.1.4.tar.gz
+    tar -zxvf libnice-0.1.4.tar.gz
+    cd libnice-0.1.4
+    patch -p1 < $PATHNAME/patches/libnice-014.patch
+    PKG_CONFIG_PATH=$PREFIX_DIR"/lib/pkgconfig":$PREFIX_DIR"/lib64/pkgconfig":$PKG_CONFIG_PATH ./configure --prefix=$PREFIX_DIR && make -s V= && make install
+    cd $CURRENT_DIR
+  else
+    mkdir -p $LIB_DIR
+    install_libnice014
   fi
 }
 

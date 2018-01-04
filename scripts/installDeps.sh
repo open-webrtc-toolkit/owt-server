@@ -92,7 +92,7 @@ pause "Installing glib library...  [press Enter]"
 install_glib
 
 pause "Installing libnice library...  [press Enter]"
-install_libnice
+install_libnice014
 
 pause "Installing openssl library...  [press Enter]"
 install_openssl
