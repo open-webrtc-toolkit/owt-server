@@ -34,7 +34,7 @@ var scheduleRoomController = function (roomId) {
           if (result === 'timeout' || result === 'error') {
               reject('Error in scheduling room controller');
           } else {
-              rpc.callRpc(result, 'getNode', [{room: roomId, task: roomId}], {callback: function (result) {
+              rpc.callRpc(result.id, 'getNode', [{room: roomId, task: roomId}], {callback: function (result) {
                   if (result === 'timeout' || result === 'error') {
                       reject('Error in scheduling room controller');
                   } else {
