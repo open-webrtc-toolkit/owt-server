@@ -12,7 +12,7 @@ var exc;
 exports.connect = function (addr) {
     connection = amqp.createConnection(addr);
     connection.on('ready', function () {
-        log.info('Conected to rabbitMQ server');
+        log.info('Connected to rabbitMQ server');
 
         //Create a direct exchange
         exc = connection.exchange('woogeenRpc', {type: 'direct'}, function (exchange) {
