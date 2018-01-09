@@ -506,6 +506,9 @@ function encrypt(target) {
       return exec(`babel --presets es2015,stage-0 ${line} -o "${line}.es5"`, { env })
         .then(() => {
           return exec(`uglifyjs ${line}.es5 -o ${line} -c -m`, { env });
+        })
+        .then(() => {
+          return exec(`rm "${line}.es5"`);
         });
     });
     return Promise.all(jsJobs);
