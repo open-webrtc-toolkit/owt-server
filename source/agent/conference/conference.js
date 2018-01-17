@@ -1976,13 +1976,15 @@ var Conference = function (rpcClient, selfRpcId) {
       deleted = participants[participantId];
       participants[participantId].drop()
         .then(function(result) {
-          return removeParticipant(participantId);
+          removeParticipant(participantId);
+          callback('callback', deleted);
         }).catch(function(reason) {
           log.debug('dropParticipant fail:', reason);
+          callback('callback', 'error', 'Drop participant failed');
         });
+    } else {
+      callback('callback', 'error', 'Participant does NOT exist');
     }
-
-    callback('callback', deleted);
   };
 
   that.getStreams = function(callback) {
