@@ -241,6 +241,7 @@ install_licode(){
   patch -p1 < $PATHNAME/patches/licode-02-foundation.patch
   patch -p1 < $PATHNAME/patches/licode-03-generation.patch
   patch -p1 < $PATHNAME/patches/licode-04-ipaddresses.patch
+  patch -p1 < $PATHNAME/patches/licode-05-ignoreIp6.patch
 
   if [ -L ${LINK_PATH}/erizo ]; then
     unlink ${LINK_PATH}/erizo
