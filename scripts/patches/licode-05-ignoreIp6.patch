@@ -1,0 +1,29 @@
+diff --git a/erizo/src/erizo/LibNiceConnection.cpp b/erizo/src/erizo/LibNiceConnection.cpp
+index b24dc78..058238f 100644
+--- a/erizo/src/erizo/LibNiceConnection.cpp
++++ b/erizo/src/erizo/LibNiceConnection.cpp
+@@ -266,6 +266,9 @@ bool LibNiceConnection::setRemoteCandidates(const std::vector<CandidateInfo> &ca
+     if (cinfo.componentId != 1 || (!is_bundle && cinfo.mediaType != ice_config_.media_type ))
+       continue;
+ 
++    if (strstr(cinfo.hostAddress.c_str(), ":") != NULL) // We ignore IPv6 candidates at this point
++      continue;
++
+     switch (cinfo.hostType) {
+       case HOST:
+         nice_cand_type = NICE_CANDIDATE_TYPE_HOST;
+diff --git a/erizo/src/erizo/SdpInfo.cpp b/erizo/src/erizo/SdpInfo.cpp
+index dfeb2be..3228df3 100644
+--- a/erizo/src/erizo/SdpInfo.cpp
++++ b/erizo/src/erizo/SdpInfo.cpp
+@@ -685,7 +685,9 @@ namespace erizo {
+         hasAudio = true;
+       }
+       if (isCand != std::string::npos) {
+-        std::vector<std::string> pieces = stringutil::splitOneOf(line, " :");
++        std::vector<std::string> pieces = stringutil::splitOneOf(line, " ");
++        pieces[0] = stringutil::splitOneOf(pieces[0], ":")[1];
++        pieces.insert(pieces.begin(), "");
+         processCandidate(pieces, mtype, line);
+       }
+       if (isCrypt != std::string::npos) {
