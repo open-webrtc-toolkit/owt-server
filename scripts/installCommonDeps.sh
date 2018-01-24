@@ -239,6 +239,7 @@ install_licode(){
   # APPLY PATCH
   patch -p1 < $PATHNAME/patches/licode-01-base.patch
   patch -p1 < $PATHNAME/patches/licode-02-foundation.patch
+  patch -p1 < $PATHNAME/patches/licode-03-generation.patch
 
   if [ -L ${LINK_PATH}/erizo ]; then
     unlink ${LINK_PATH}/erizo

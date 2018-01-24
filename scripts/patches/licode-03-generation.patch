@@ -1,0 +1,71 @@
+diff --git a/erizo/src/erizo/SdpInfo.cpp b/erizo/src/erizo/SdpInfo.cpp
+index dfeb2be..17e5943 100644
+--- a/erizo/src/erizo/SdpInfo.cpp
++++ b/erizo/src/erizo/SdpInfo.cpp
+@@ -77,7 +77,7 @@ namespace erizo {
+   }
+ 
+   std::string SdpInfo::stringifyCandidate(const CandidateInfo & candidate) {
+-    std::string generation = " generation 0";
++    std::string generation_str = " generation ";
+     std::string hostType_str;
+     std::ostringstream sdp;
+     switch (candidate.hostType) {
+@@ -107,7 +107,10 @@ namespace erizo {
+       sdp << " raddr " << candidate.rAddress << " rport " << candidate.rPort;
+     }
+ 
+-    sdp << generation;
++    if (candidate.generation >= 0) {
++      sdp << generation_str << candidate.generation;
++    }
++
+     return sdp.str();
+   }
+ 
+@@ -1126,6 +1129,24 @@ namespace erizo {
+       ELOG_DEBUG("Parsing raddr srlfx or relay %s, %u \n", cand.rAddress.c_str(), cand.rPort);
+     }
+     cand.sdp = line;
++
++    if (cand.hostType == SRFLX || cand.hostType == RELAY ||
++        cand.hostType == PRFLX) {
++      if (pieces.size() > 13) {
++        cand.generation = (int)strtoul(pieces[13].c_str(), NULL, 10);
++      } else {
++        ELOG_DEBUG(
++            "Cannot find generation info while parsing srflx/relay/prflx "
++            "candidate.");
++      }
++    } else {
++      if (pieces.size() > 9) {
++        cand.generation = (int)strtoul(pieces[9].c_str(), NULL, 10);
++      } else {
++        ELOG_DEBUG("Cannot find generation info while parsing host candidate.");
++      }
++    }
++
+     candidateVector_.push_back(cand);
+     return true;
+   }
+diff --git a/erizo/src/erizo/SdpInfo.h b/erizo/src/erizo/SdpInfo.h
+index 61bab33..236e721 100644
+--- a/erizo/src/erizo/SdpInfo.h
++++ b/erizo/src/erizo/SdpInfo.h
+@@ -72,7 +72,7 @@ class CryptoInfo {
+ class CandidateInfo {
+  public:
+     CandidateInfo() :
+-            tag(0) {
++            tag(0), generation(-1) {
+     }
+     bool isBundle;
+     int tag;
+@@ -90,6 +90,7 @@ class CandidateInfo {
+     std::string password;
+     MediaType mediaType;
+     std::string sdp;
++    int generation;
+ };
+ 
+ /**
