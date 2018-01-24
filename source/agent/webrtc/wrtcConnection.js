@@ -15,7 +15,7 @@ var log = logger.getLogger('WrtcConnection');
 
 var addon = require('./webrtcLib/build/Release/webrtc');//require('./erizo/build/Release/addon');
 
-function createWrtc(id, threadPool, ioThreadPool, mediaConfiguration) {
+function createWrtc(id, threadPool, ioThreadPool, mediaConfiguration, ipAddresses) {
     var wrtc = new addon.WebRtcConnection(
         threadPool, ioThreadPool, id,
         global.config.webrtc.stunserver,
@@ -29,7 +29,8 @@ function createWrtc(id, threadPool, ioThreadPool, mediaConfiguration) {
         '', // turnport,
         '', //turnusername,
         '', //turnpass,
-        '' //networkinterface
+        '', //networkinterface
+        ipAddresses //ipAddresses
     );
 
     return wrtc;
@@ -485,7 +486,7 @@ module.exports = function (spec, on_status) {
                 ipAddresses.push(i.ip_address);
               }
             });
-            wrtc = createWrtc(wrtcId, threadPool, ioThreadPool, 'rtp_media_config');
+            wrtc = createWrtc(wrtcId, threadPool, ioThreadPool, 'rtp_media_config', ipAddresses);
 
             if (direction === 'in') {
                 bindFrameConstructors();

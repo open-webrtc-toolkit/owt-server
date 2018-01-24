@@ -1,0 +1,29 @@
+diff --git a/erizo/src/erizo/IceConnection.h b/erizo/src/erizo/IceConnection.h
+index a575e0f..15e5ffa 100644
+--- a/erizo/src/erizo/IceConnection.h
++++ b/erizo/src/erizo/IceConnection.h
+@@ -49,6 +49,7 @@ class IceConfig {
+     std::string username, password;
+     std::string turn_server, turn_username, turn_pass;
+     std::string stun_server, network_interface;
++    std::vector<std::string> ip_addresses;
+     uint16_t stun_port, turn_port, min_port, max_port;
+     bool should_trickle;
+     bool use_nicer;
+diff --git a/erizo/src/erizo/LibNiceConnection.cpp b/erizo/src/erizo/LibNiceConnection.cpp
+index b24dc78..6441678 100644
+--- a/erizo/src/erizo/LibNiceConnection.cpp
++++ b/erizo/src/erizo/LibNiceConnection.cpp
+@@ -215,6 +215,12 @@ void LibNiceConnection::start() {
+       }
+     }
+ 
++    if (ice_config_.ip_addresses.size() > 0) {
++      for (const auto& ipAddress : ice_config_.ip_addresses) {
++        lib_nice_->NiceAgentAddLocalAddress(agent_, ipAddress.c_str());
++      }
++    }
++
+     if (ice_config_.turn_server.compare("") != 0 && ice_config_.turn_port != 0) {
+       ELOG_DEBUG("%s message: configuring TURN, turn_server: %s , turn_port: %d, turn_username: %s, turn_pass: %s",
+                  toLog(), ice_config_.turn_server.c_str(),
