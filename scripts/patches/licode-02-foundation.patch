@@ -1,0 +1,12 @@
+diff --git a/erizo/src/erizo/LibNiceConnection.cpp b/erizo/src/erizo/LibNiceConnection.cpp
+index b24dc78..0b1149a 100644
+--- a/erizo/src/erizo/LibNiceConnection.cpp
++++ b/erizo/src/erizo/LibNiceConnection.cpp
+@@ -287,6 +287,7 @@ bool LibNiceConnection::setRemoteCandidates(const std::vector<CandidateInfo> &ca
+       continue;
+     }
+     NiceCandidate* thecandidate = nice_candidate_new(nice_cand_type);
++    g_strlcpy(thecandidate->foundation, cinfo.foundation.c_str(), NICE_CANDIDATE_MAX_FOUNDATION);
+     thecandidate->username = strdup(cinfo.username.c_str());
+     thecandidate->password = strdup(cinfo.password.c_str());
+     thecandidate->stream_id = (guint) 1;

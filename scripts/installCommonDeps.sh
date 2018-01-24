@@ -238,6 +238,8 @@ install_licode(){
   git reset --hard $COMMIT
   # APPLY PATCH
   patch -p1 < $PATHNAME/patches/licode-01-base.patch
+  patch -p1 < $PATHNAME/patches/licode-02-foundation.patch
+
   if [ -L ${LINK_PATH}/erizo ]; then
     unlink ${LINK_PATH}/erizo
   fi
