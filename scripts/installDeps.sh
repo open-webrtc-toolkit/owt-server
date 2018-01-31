@@ -161,6 +161,27 @@ case $yn in
   * ) ;;
 esac
 
+read -p "Installing libsrtp? [No/yes]" yn
+case $yn in
+  [Yy]* ) install_libsrtp;;
+  [Nn]* ) ;;
+  * ) ;;
+esac
+
+read -p "Installing nicer? [No/yes]" yn
+case $yn in
+  [Yy]* ) install_nicer;;
+  [Nn]* ) ;;
+  * ) ;;
+esac
+
+read -p "Installing licode? [No/yes]" yn
+case $yn in
+  [Yy]* ) install_licode;;
+  [Nn]* ) ;;
+  * ) ;;
+esac
+
 if [ "$CLEANUP" = "true" ]; then
   echo "Cleaning up..."
   cleanup
