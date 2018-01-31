@@ -95,6 +95,12 @@ if [ "$NIGHTLY" != "true" ]; then
   install_libre
 
   install_usrsctp
+
+  install_libsrtp
+
+  install_nicer
+
+  install_licode
 fi
 
 ${NO_INTERNAL} || install_webrtc

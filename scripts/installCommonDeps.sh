@@ -264,6 +264,21 @@ install_nicer(){
   popd >/dev/null
 }
 
+install_libsrtp(){
+  if [ -d $LIB_DIR ]; then
+    cd $LIB_DIR
+    curl -o libsrtp-2.1.0.tar.gz https://codeload.github.com/cisco/libsrtp/tar.gz/v2.1.0
+    tar -zxvf libsrtp-2.1.0.tar.gz
+    cd libsrtp-2.1.0
+    CFLAGS="-fPIC" ./configure --enable-openssl --prefix=$PREFIX_DIR --with-openssl-dir=$PREFIX_DIR
+    make $FAST_MAKE -s V=0 && make uninstall && make install
+    cd $CURRENT_DIR
+  else
+    mkdir -p $LIB_DIR
+    install_libsrtp
+  fi
+}
+
 install_oovoosdk(){
   mkdir -p $PREFIX_DIR/lib
   if [[ "$OS" =~ .*ubuntu.* ]]
