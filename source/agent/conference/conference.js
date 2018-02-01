@@ -2096,7 +2096,7 @@ var Conference = function (rpcClient, selfRpcId) {
               }
             } else if ((cmd.path.startsWith('/info/layout/') && streams[cmd.value] && (streams[cmd.value].type !== 'mixed'))) {
               var path = cmd.path.split('/');
-              var region_id = streams[streamId].info.layout[Number(path[2])].region.id;
+              var region_id = streams[streamId].info.layout[Number(path[3])].region.id;
               exe = setRegion(cmd.value, region_id, streams[streamId].info.label);
             } else {
               exe = Promise.reject('Invalid path or value');
