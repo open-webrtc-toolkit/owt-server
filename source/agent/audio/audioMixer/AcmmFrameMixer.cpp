@@ -89,10 +89,13 @@ boost::shared_ptr<AcmmParticipant> AcmmFrameMixer::getParticipant(const std::str
 
 int32_t AcmmFrameMixer::addParticipant(const std::string& participant)
 {
-    m_ids[participant] = getFreeId();
-    m_participants[m_ids[participant]] = NULL;
+    int32_t id = getFreeId();
 
-    return m_ids[participant];
+    if (id >= 0) {
+        m_ids[participant] = id;
+        m_participants[m_ids[participant]] = NULL;
+    }
+    return id;
 }
 
 void AcmmFrameMixer::removeParticipant(const std::string& participant)
@@ -111,7 +114,8 @@ int32_t AcmmFrameMixer::getFreeId()
         }
     }
 
-    assert(false);
+    ELOG_WARN("No free Id, max participants reached(%d)!", MAX_PARTICIPANTS);
+    return -1;
 }
 
 void AcmmFrameMixer::setEventRegistry(EventRegistry* handle)
@@ -159,6 +163,10 @@ bool AcmmFrameMixer::addInput(const std::string& participant, const FrameFormat 
 
     if (!acmmParticipant) {
         int32_t id = addParticipant(participant);
+        if (id < 0) {
+            ELOG_WARN("Can not add input participant");
+            return false;
+        }
 
         acmmParticipant.reset(new AcmmParticipant(id));
         m_participants[id] = acmmParticipant;
@@ -238,6 +246,10 @@ bool AcmmFrameMixer::addOutput(const std::string& participant, const FrameFormat
 
     if (!acmmParticipant) {
         int32_t id = addParticipant(participant);
+        if (id < 0) {
+            ELOG_WARN("Can not add output participant");
+            return false;
+        }
 
         acmmParticipant.reset(new AcmmParticipant(id));
         m_participants[id] = acmmParticipant;
