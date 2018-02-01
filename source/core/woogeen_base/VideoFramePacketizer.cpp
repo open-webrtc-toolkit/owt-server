@@ -88,6 +88,7 @@ void VideoFramePacketizer::enable(bool enabled)
     if (m_enabled) {
         FeedbackMsg feedback = {.type = VIDEO_FEEDBACK, .cmd = REQUEST_KEY_FRAME};
         deliverFeedbackMsg(feedback);
+        m_keyFrameArrived = false;
     }
 }
 

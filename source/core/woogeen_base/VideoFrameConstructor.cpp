@@ -348,16 +348,19 @@ int VideoFrameConstructor::deliverAudioData(char* buf, int len)
 
 void VideoFrameConstructor::onTimeout()
 {
-    if (m_pendingKeyFrameRequests > 0) {
+    if (m_pendingKeyFrameRequests > 1) {
         this->RequestKeyFrame();
-        m_pendingKeyFrameRequests = 0;
     }
+    m_pendingKeyFrameRequests = 0;
 }
 
 void VideoFrameConstructor::onFeedback(const FeedbackMsg& msg)
 {
     if (msg.type == woogeen_base::VIDEO_FEEDBACK) {
         if (msg.cmd == REQUEST_KEY_FRAME) {
+            if (!m_pendingKeyFrameRequests) {
+                this->RequestKeyFrame();
+            }
             ++m_pendingKeyFrameRequests;
         } else if (msg.cmd == SET_BITRATE) {
             this->setBitrate(msg.data.kbps);
