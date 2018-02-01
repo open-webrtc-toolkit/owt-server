@@ -42,7 +42,8 @@ exports.getList = function (req, res) {
         log.debug('Representing recordings for room ', currentRoom._id, 'and service', currentService._id);
         cloudHandler.getSubscriptionsInRoom (currentRoom._id, 'recording', function (recordings) {
             if (recordings === 'error') {
-                res.status(404).send('Operation failed');
+                //res.status(404).send('Operation failed');
+                res.send([]);
                 return;
             }
             res.send(recordings);
