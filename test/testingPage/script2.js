@@ -41,7 +41,9 @@ class EventMap{
             }
         }
     }
-
+    forEach(cb){
+        this._store.forEach(cb);
+    }
     getMap(){
         return this._store
     }
@@ -59,9 +61,10 @@ let {
         LocalStream,
         MediaStreamFactory,
         StreamSourceInfo,
+        StreamConstraints,
         MediaStreamDeviceConstraints,
-        MediaStreamTrackDeviceConstraintsForAudio,
-        MediaStreamTrackDeviceConstraintsForVideo,
+        AudioTrackConstraints,
+        VideoTrackConstraints,
         Resolution
     } = Ics.Base,
     {ConferenceClient} = Ics.Conference;
@@ -416,7 +419,7 @@ var createToken = function(room, user, role, ok_cb, err_cb) {
 //restful action
 
 function getRestfulParmas () {
-    let roomId = $('#roomlist').val(),
+    let roomId = $('#roomlist').val() || defaultRoomId,
         participantId = $('#participantlist').val(),
         forwardStreamId = $('#forwardstreamlist').val(),
         view = $('#viewlist').val(),
@@ -428,6 +431,7 @@ function getRestfulParmas () {
         rtmpUrl = $('#rtmpurl').val(),
         recorderId = $('#recorderid').val();
         regionId = $('#regionid').val();
+        streamingOutId = $('#streamingoutid').val();
     return {
         roomId,
         participantId,
@@ -441,6 +445,7 @@ function getRestfulParmas () {
         rtmpUrl,
         recorderId,
         regionId,
+        streamingOutId,
     }
 }
 ////room action
@@ -449,6 +454,7 @@ function restListRooms () {
         rooms = JSON.parse(rooms);
         $('#roomlist option:not(:first)').remove();
         rooms.forEach((item)=>{
+            if (item.name === 'sampleRoom' && !defaultRoomId) defaultRoomId = item._id;
             allRooms.set(item._id, item);
         })
         console.log('list rooms sucess: ', rooms);
@@ -638,16 +644,16 @@ function restStopStreamingIn () {
     })
 }
 function restStartStreamingOut () {
-    let {roomId, rtmpUrl} = getRestfulParmas();
-    startStreamingOut(roomId, rtmpUrl, (resp)=>{
+    let {roomId, rtmpUrl, audioFrom, videoFrom} = getRestfulParmas();
+    startStreamingOut(roomId, rtmpUrl, audioFrom, videoFrom, (resp)=>{
         console.log('start rtmp out success: ', resp);
     }, err=>{
         console.log('start rtmp out failed: ', err);
     })
 }
 function restStopStreamingOut () {
-    let {roomId, forwardStreamId} = getRestfulParmas();
-    stopStreamingOut(roomId, forwardStreamId, (resp)=>{
+    let {roomId, streamingOutId} = getRestfulParmas();
+    stopStreamingOut(roomId, streamingOutId, (resp)=>{
         console.log('stop rtmp out success: ', resp);
     }, err=>{
         console.log('stop rtmp out failed: ', err);
@@ -662,8 +668,8 @@ function restListStreamingOuts () {
     })
 }
 function restUpdateStreamingOut () {
-    let {roomId, forwardStreamId, audioFrom, videoFrom} = getRestfulParmas();
-    updateStreamingOut(roomId, forwardStreamId, audioFrom, videoFrom, (resp)=>{
+    let {roomId, streamingOutId, audioFrom, videoFrom} = getRestfulParmas();
+    updateStreamingOut(roomId, streamingOutId, audioFrom, videoFrom, (resp)=>{
         console.log('update rtmp out success: ', resp);
     }, err=>{
         console.log('update rtmp out failed: ', err);
@@ -792,15 +798,16 @@ function setWH(ele, percent, parentEleId) {
 function subs(stream) {
      client.subscribe(stream, {audio: true, video: true})
      .then((subscription)=>{
+        subscription.origin = stream.id;
         subscriptions.set(subscription.id, subscription);
         displayStream(stream);
      }, (err)=>{
         console.log(`subscribe ${stream.id} failed: ${err}`);
      })
 }
-//distroyStreamUi
-function distroyStreamUi (stream) {
-    $(`#test${stream.id}`).remove();
+//destroyStreamUi
+function destroyStreamUi (stream) {
+    $(`#test${stream.origin || stream.id}`).remove();
 }
 
 //event
@@ -889,6 +896,7 @@ function streamEvent (stream) {
             console.log(`remote stream ${stream.id} is ended`);
             remoteStreamMap.delete(stream.id);
         }
+        destroyStreamUi(stream);
     };
     stream.addEventListener('ended', enedListener)
 }
@@ -1066,14 +1074,15 @@ $('#availableremotestream').change(function () {
 
 function getSubOptions () {
     let remoteStreamId = $('#availableremotestream').val();
-    let trackKind = $('#subscribetrackkind').val();
-    let videoCodec = JSON.parse($('#supportedvideocodec').val());
-    let audioCodec = JSON.parse($('#supportedaudiocodec').val());
-    let bitrate = parseFloat($('#supportedbitrate').val());
-    let resolution = JSON.parse($('#supportedresolution').val());
-    let frameRate = parseInt($('#supportedframerate').val());
-    let kfi = parseInt($('#supportedkfi').val());
-    let subscriptionId = $('#availablesubscription').val();
+    if(!remoteStreamId) throw new Error('You must select one remote stream');
+    let trackKind = $('#subscribetrackkind').val() || $('#subscribetrackkind option:last').val();
+    let videoCodec = JSON.parse($('#supportedvideocodec').val() || $('#supportedvideocodec option:eq(1)').val());
+    let audioCodec = JSON.parse($('#supportedaudiocodec').val() || $('#supportedaudiocodec option:eq(1)').val());
+    let bitrate = parseFloat($('#supportedbitrate').val() || '1');
+    let resolution = JSON.parse($('#supportedresolution').val() || JSON.stringify({width:640, height:480}));
+    let frameRate = parseInt($('#supportedframerate').val() || '30');
+    let kfi = parseInt($('#supportedkfi').val() || '5');
+    let subscriptionId = $('#availablesubscription').val() || $('#availablesubscription option:eq(1)').val();
     return {
         remoteStreamId,
         trackKind,
@@ -1112,6 +1121,7 @@ function subscribe () {
     }
     client.subscribe(remoteStreamMap.get(remoteStreamId), subOptions)
     .then((subscription)=>{
+        subscription.origin = remoteStreamId;
         subscriptions.set(subscription.id, subscription);
         displayStream(remoteStreamMap.get(remoteStreamId));
         console.log('subscribe success: ', subscription);
@@ -1131,82 +1141,117 @@ function sendMessage () {
 }
 //publication action
 function getPublicationParams () {
-     return [publications.get($('#availablepublication').val()), $('#publicationtrackkind').val()]
+    let publicationArr = [];
+    let id = $('#availablepublication').val();
+    if(id === 'all'){
+        publications.forEach((value)=>{
+            publicationArr.push(value);
+        })
+    }else{
+        publicationArr.push(publications.get(id));
+    }
+    return [publicationArr, $('#publicationtrackkind').val()]
 }
 function publicationMute() {
-    let [publication, trackKind] = getPublicationParams();
-    publication.mute(trackKind)
-    .then(()=>{
-        console.log(`${publication.id} mute ${trackKind} success`)
-    }, err=>{
-        console.log(`${publication.id} mute failed: `, err);
+    let [publicationArr, trackKind] = getPublicationParams();
+    publicationArr.forEach((publication)=>{
+        publication.mute(trackKind)
+        .then(()=>{
+            console.log(`${publication.id} mute ${trackKind} success`)
+        }, err=>{
+            console.log(`${publication.id} mute failed: `, err);
+        })
     })
 }
 function publicationUnmute() {
-    let [publication, trackKind] = getPublicationParams();
-    publication.unmute(trackKind)
-    .then(()=>{
-        console.log(`${publication.id} unmute ${trackKind} success`)
-    }, err=>{
-        console.log(`${publication.id} unmute failed: `, err);
+    let [publicationArr, trackKind] = getPublicationParams();
+    publicationArr.forEach((publication)=>{
+        publication.unmute(trackKind)
+        .then(()=>{
+            console.log(`${publication.id} unmute ${trackKind} success`)
+        }, err=>{
+            console.log(`${publication.id} unmute failed: `, err);
+        })
     })
 }
 function publicationGetStats() {
-    let [publication] = getPublicationParams();
-    publication.getStats()
-    .then((stats)=>{
-        console.log(`${publication.id} getStats success`, stats);
-    }, err=>{
-        console.log(`${publication.id} getStats failed: `, err);
+    let [publicationArr] = getPublicationParams();
+    publicationArr.forEach((publication)=>{
+        publication.getStats()
+        .then((stats)=>{
+            console.log(`${publication.id} getStats success`, stats);
+        }, err=>{
+            console.log(`${publication.id} getStats failed: `, err);
+        })
     })
 }
 function publicationStop() {
-    let [publication] = getPublicationParams();
-    publication.stop()
-    .then((stats)=>{
-        console.log(`${publication.id} stop success`);
-    }, err=>{
-        console.log(`${publication.id} stop failed: `, err);
+    let [publicationArr] = getPublicationParams();
+    publicationArr.forEach((publication)=>{
+        publication.stop()
+        .then((stats)=>{
+            console.log(`${publication.id} stop success`);
+        }, err=>{
+            console.log(`${publication.id} stop failed: `, err);
+        })
     })
 }
 //subscription action
 function getSubcriptionParams () {
-     return [subscriptions.get($('#availablesubscription').val()), $('#subscriptiontrackkind').val()]
+    let subscriptionArr = [];
+    let id = $('#availablesubscription').val();
+    if(id === 'all'){
+        subscriptions.forEach((value)=>{
+            subscriptionArr.push(value);
+        })
+    }else{
+        subscriptionArr.push(subscriptions.get(id));
+    }
+    return [subscriptionArr, $('#subscriptiontrackkind').val()]
 }
 function subscriptionMute() {
-    let [subscription, trackKind] = getSubcriptionParams();
-    subscription.mute(trackKind)
-    .then(()=>{
-        console.log(`${subscription.id} mute ${trackKind} success`)
-    }, err=>{
-        console.log(`${subscription.id} mute failed: `, err);
+    let [subscriptionArr, trackKind] = getSubcriptionParams();
+    subscriptionArr.forEach(subscription=>{
+        subscription.mute(trackKind)
+        .then(()=>{
+            console.log(`${subscription.id} mute ${trackKind} success`)
+        }, err=>{
+            console.log(`${subscription.id} mute failed: `, err);
+        })
     })
 }
 function subscriptionUnmute() {
-    let [subscription, trackKind] = getSubcriptionParams();
-   subscriptionn.unmute(trackKind)
-    .then(()=>{
-        console.log(`${subscription.id} unmute ${trackKind} success`)
-    }, err=>{
-        console.log(`${subscription.id} unmute failed: `, err);
+    let [subscriptionArr, trackKind] = getSubcriptionParams();
+    subscriptionArr.forEach(subscription=>{
+        subscriptionn.unmute(trackKind)
+        .then(()=>{
+            console.log(`${subscription.id} unmute ${trackKind} success`)
+        }, err=>{
+            console.log(`${subscription.id} unmute failed: `, err);
+        })
     })
 }
 function subscriptionGetStats() {
-    let [subscription] = getSubcriptionParams();
-    subscription.getStats()
-    .then((stats)=>{
-        console.log(`${subscription.id} getStats success`, stats);
-    }, err=>{
-        console.log(`${subscription.id} getStats failed: `, err);
+    let [subscriptionArr] = getSubcriptionParams();
+    subscriptionArr.forEach(subscription=>{
+        subscription.getStats()
+        .then((stats)=>{
+            console.log(`${subscription.id} getStats success`, stats);
+        }, err=>{
+            console.log(`${subscription.id} getStats failed: `, err);
+        })
     })
 }
 function subscriptionStop() {
-    let [subscription] = getSubcriptionParams();
-    subscription.stop()
-    .then((stats)=>{
-        console.log(`${subscription.id} stop success`);
-    }, err=>{
-        console.log(`${subscription.id} stop failed: `, err);
+    let [subscriptionArr] = getSubcriptionParams();
+    subscriptionArr.forEach(subscription=>{
+        subscription.stop()
+        .then((stats)=>{
+            destroyStreamUi(subscription);
+            console.log(`${subscription.id} stop success`);
+        }, err=>{
+            console.log(`${subscription.id} stop failed: `, err);
+        })
     })
 }
 
@@ -1276,11 +1321,9 @@ window.onload = function() {
             participantArr.forEach((participant)=>{
                 participants.set(participant.id, participant);
             })
-            let mstdcForMic = new MediaStreamTrackDeviceConstraintsForAudio();
-            let mstdcForCamera = new MediaStreamTrackDeviceConstraintsForVideo({
-                resolution: new Resolution(resolution.width, resolution.height),
-            });
-            MediaStreamFactory.createMediaStream(new MediaStreamDeviceConstraints(mstdcForMic,mstdcForCamera))
+            let mstdcForMic = new AudioTrackConstraints('mic');
+            let mstdcForCamera = new VideoTrackConstraints('camera');
+            MediaStreamFactory.createMediaStream(new StreamConstraints(mstdcForMic, mstdcForCamera))
             .then((mediaStream)=>{
                 console.log('media stream is', mediaStream);
                 return new LocalStream(mediaStream, new StreamSourceInfo('mic', 'camera'));
