@@ -131,19 +131,13 @@ object(LoginResult)::
   object(Permission)::
     {
      publish: {
-       type: ["webrtc" | "streaming"],
-       media: {
-         audio: true | false,
-         video: true | false
-       }
-     } | false,
+       audio: true | false,
+       video: true | false
+     },
      subscribe: {
-       type: ["webrtc" | "recording" | "streaming"],
-       media: {
-         audio: true | false,
-         video: true | false
-       }
-     } | false
+       audio: true | false,
+       video: true | false
+     }
     }
 
   object(RoomInfo)::
@@ -157,9 +151,10 @@ object(LoginResult)::
     object(StreamInfo)::
       {
        id: string(StreamID),
-       type: "forward" | "mixed",
+       type: "forward" | "augmented" | "mixed",
        media: object(MediaInfo),
        info: object(PublicationInfo)/*If type equals "forward"*/
+            | object(AugmentInfo)/*If type equals "augmented"*/
             | object(ViewInfo)/*If type equals "mixed"*/
       }
 
@@ -236,6 +231,12 @@ object(LoginResult)::
          type: "webrtc" | "streaming" | "sip",
          inViews: [String(ViewLabel)],
          attributes: object(ClientDefinedAttributes)
+        }
+
+      object(AugmentInfo):
+        {
+         origin: String(OriginStreamId),
+         description: String(EffectDescription)
         }
 
       object(ViewInfo):
@@ -326,17 +327,13 @@ object(TextReceiveMessage)::
    message: string(Message)
   }
 ```
-#### 3.3.7 Participant Starts Publishing a Stream to Room
+#### 3.3.7 Participant Starts Publishing a WebRTC Stream to Room
 **RequestName**:  “publish”
 **RequestData**: The PublicationRequest object with following definition:
 ```
 object(PublicationRequest)::
   {
-   type: "webrtc" | "streaming",
-   connection: undefined/*If type equals "webrtc"*/
-             | object(StreamingInConnectionOptions)/*If type equals "streaming"*/,
-   media: object(WebRTCMediaOptions)/*If type equals "webrtc"*/
-         | object(StreamingInMediaOptions)/*If type equals "streaming"*/,
+   media: object(WebRTCMediaOptions)
    attributes: object(ClientDefinedAttributes)
   }
 
@@ -355,19 +352,6 @@ object(PublicationRequest)::
               }
            }
            | false
-    }
-
-  object(StreamingInConnectionOptions):://Should categorize protocols.
-    {
-     url: string(URLOfSourceStreaming),
-     transportProtocol: "tcp" | "udp", //optional, default: "tcp"
-     bufferSize: number(BufferSizeBytes)      //optional, default: 8192 bytes
-    }
-
-  object(StreamingInMediaOptions)::
-    {
-     audio: "auto" | true | false,
-     video: "auto" | true | false,
     }
 ```
 **ResponseData**: The PublicationResult object with following definition if **ResponseStatus** is “ok”:
@@ -432,29 +416,14 @@ object(RegionInfo)::
    region: string(RegionId)
   }
 ```
-#### 3.3.11 Participant Starts a Subscription
+#### 3.3.11 Participant Subscribes a Stream to WebRTC Endpoint
 **RequestName**:  “subscribe”
 **RequestData**: The SubscriptionRequest object with following definition:
 ```
 object(SubscriptionRequest)::
   {
-   type: "webrtc" | "streaming" | "recording",
-   connection: undefined/*If type equals "webrtc"*/
-             | object(StreamingOutConnectionOptions)/*If type equals "streaming"*/
-             | object(RecordingStorageOptions)/*If type equals "recording"*/,
    media: object(MediaSubOptions)
   }
-
-  object(StreamingOutConnectionOptions)::
-    {
-     url: string(TargetStreamingURL)
-    }
-
-  object(RecordingStorageOptions)::
-    {
-     container: "mkv" | "mp4" | "ts"/*Must be compatible with media.audio.codec and media.video.codec*/
-                | "auto"/*Container type will be determined by media.audio.codec and media.video.codec.
-    }
 
   object(MediaSubOptions)::
     {
