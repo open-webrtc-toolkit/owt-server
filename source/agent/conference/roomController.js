@@ -682,7 +682,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                     if (streams[stream.id] === undefined) {
                         streams[stream.id] = {owner: video_mixer,
                                               audio: undefined,
-                                              video: {format: stream.format,
+                                              video: {format: format,
                                                       resolution: stream.resolution,
                                                       framerate: stream.framerate,
                                                       bitrate: stream.bitrate,
