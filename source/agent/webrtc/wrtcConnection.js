@@ -39,7 +39,7 @@ module.exports = function (spec, on_status) {
 
     var isAudioFmtEqual = function (fmt1, fmt2) {
       return (fmt1.codec === fmt2.codec)
-        && (((fmt1.sampleRate === fmt2.sampleRate) && (fmt1.channelNum === fmt2.channelNum))
+        && (((fmt1.sampleRate === fmt2.sampleRate) && ((fmt1.channelNum === fmt2.channelNum) || (fmt1.channelNum === 1 && fmt2.channelNum === undefined) || (fmt1.channelNum === undefined && fmt2.channelNum === 1)))
             || (fmt1.codec === 'pcmu') || (fmt1.codec === 'pcma'));
     };
 
@@ -63,6 +63,7 @@ module.exports = function (spec, on_status) {
                 var fmt = {codec: fmtname[0].toLowerCase()};
                 (fmt.codec !== 'pcmu' && fmt.codec !== 'pcma') && fmtname[1] && (fmt.sampleRate = Number(fmtname[1]));
                 (fmt.codec !== 'pcmu' && fmt.codec !== 'pcma') && fmtname[2] && (fmt.channelNum = Number(fmtname[2]));
+                (fmt.code === 'g722') && (fmt.sampleRate = 16000);
 
                 fmts.push({code: fmtcodes[i], fmt: fmt});
 
