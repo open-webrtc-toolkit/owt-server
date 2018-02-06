@@ -80,6 +80,22 @@ var translateOldRoomConfig = (oldConfig) => {
         }, {
           codec: 'pcma'
         }, {
+          codec: 'isac',
+          sampleRate: 16000
+        }, {
+          codec: 'isac',
+          sampleRate: 32000
+        }, {
+          codec: 'ilbc'
+        }, {
+          codec: 'g722',
+          sampleRate: 16000,
+          channelNum: 1
+        }, {
+          codec: 'g722',
+          sampleRate: 16000,
+          channelNum: 2
+        }, {
           codec: 'aac'
         }, {
           codec: 'ac3'
@@ -107,6 +123,22 @@ var translateOldRoomConfig = (oldConfig) => {
           codec: 'pcmu'
         }, {
           codec: 'pcma'
+        }, {
+          codec: 'isac',
+          sampleRate: 16000
+        }, {
+          codec: 'isac',
+          sampleRate: 32000
+        }, {
+          codec: 'ilbc'
+        }, {
+          codec: 'g722',
+          sampleRate: 16000,
+          channelNum: 1
+        }, {
+          codec: 'g722',
+          sampleRate: 16000,
+          channelNum: 2
         }, {
           codec: 'aac',
           sampleRate: 48000,

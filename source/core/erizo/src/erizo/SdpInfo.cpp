@@ -141,6 +141,33 @@ namespace erizo {
     isac32.enable = true;
     internalPayloadVector_.push_back(isac32);
 
+    RtpMap ilbc;
+    ilbc.payloadType = ILBC_8000_PT;
+    ilbc.encodingName = "ILBC";
+    ilbc.clockRate = 8000;
+    ilbc.channels = 1;
+    ilbc.mediaType = AUDIO_TYPE;
+    ilbc.enable = true;
+    internalPayloadVector_.push_back(ilbc);
+
+    RtpMap g722_1;
+    g722_1.payloadType = G722_16000_1_PT;
+    g722_1.encodingName = "G722";
+    g722_1.clockRate = 8000;
+    g722_1.channels = 1;
+    g722_1.mediaType = AUDIO_TYPE;
+    g722_1.enable = true;
+    internalPayloadVector_.push_back(g722_1);
+
+    RtpMap g722_2;
+    g722_2.payloadType = G722_16000_2_PT;
+    g722_2.encodingName = "G722";
+    g722_2.clockRate = 8000;
+    g722_2.channels = 2;
+    g722_2.mediaType = AUDIO_TYPE;
+    g722_2.enable = true;
+    internalPayloadVector_.push_back(g722_2);
+
     RtpMap pcmu;
     pcmu.payloadType = PCMU_8000_PT;
     pcmu.encodingName = "PCMU";
