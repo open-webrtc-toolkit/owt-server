@@ -10,6 +10,7 @@
       'WebRtcConnection.cc',
       'ThreadPool.cc',
       'IOThreadPool.cc',
+      'conn_handler/WoogeenHandler.cpp',
       '<!@(find erizo/src/erizo/ -maxdepth 1 -name "*.cpp")',
       '<!@(find erizo/src/erizo/lib  -name "*.cpp")',
       '<!@(find erizo/src/erizo/dtls -name "*.cpp")',
@@ -33,6 +34,7 @@
     'include_dirs': [
       "<!(node -e \"require('nan')\")",
       '../../../core/common',
+      'conn_handler',
       'erizo/src/erizo',
       'erizo/src/erizo/lib',
       'erizo/src/erizo/dtls',

@@ -237,16 +237,14 @@ install_licode(){
   pushd licode >/dev/null
   git reset --hard $COMMIT
   # APPLY PATCH
-  patch -p1 < $PATHNAME/patches/licode-01-base.patch
-  patch -p1 < $PATHNAME/patches/licode-02-foundation.patch
-  patch -p1 < $PATHNAME/patches/licode-03-generation.patch
-  patch -p1 < $PATHNAME/patches/licode-04-ipaddresses.patch
-  patch -p1 < $PATHNAME/patches/licode-05-ignoreIp6.patch
+  git am $PATHNAME/patches/licode/*.patch
 
   if [ -L ${LINK_PATH}/erizo ]; then
     unlink ${LINK_PATH}/erizo
   fi
   ln -s ${ROOT}/third_party/licode/erizo ${LINK_PATH}/
+  cp ${ROOT}/third_party/licode/erizoAPI/ThreadPool.* ${LINK_PATH}/
+  cp ${ROOT}/third_party/licode/erizoAPI/IOThreadPool.* ${LINK_PATH}/
   popd >/dev/null
   popd >/dev/null
 }
@@ -264,7 +262,7 @@ install_nicer(){
   popd >/dev/null
 }
 
-install_libsrtp(){
+install_libsrtp2(){
   if [ -d $LIB_DIR ]; then
     cd $LIB_DIR
     curl -o libsrtp-2.1.0.tar.gz https://codeload.github.com/cisco/libsrtp/tar.gz/v2.1.0
@@ -275,7 +273,7 @@ install_libsrtp(){
     cd $CURRENT_DIR
   else
     mkdir -p $LIB_DIR
-    install_libsrtp
+    install_libsrtp2
   fi
 }
 

@@ -1,3 +1,13 @@
+From 6cb136b2fa51725d35af33fa137412c54642073f Mon Sep 17 00:00:00 2001
+From: Chen Li1 <li1.chen@intel.com>
+Date: Wed, 7 Feb 2018 14:00:52 +0800
+Subject: [PATCH 4/5] Enable IP addresses setting for connection
+
+---
+ erizo/src/erizo/IceConnection.h       | 1 +
+ erizo/src/erizo/LibNiceConnection.cpp | 6 ++++++
+ 2 files changed, 7 insertions(+)
+
 diff --git a/erizo/src/erizo/IceConnection.h b/erizo/src/erizo/IceConnection.h
 index a575e0f..15e5ffa 100644
 --- a/erizo/src/erizo/IceConnection.h
@@ -11,7 +21,7 @@ index a575e0f..15e5ffa 100644
      bool should_trickle;
      bool use_nicer;
 diff --git a/erizo/src/erizo/LibNiceConnection.cpp b/erizo/src/erizo/LibNiceConnection.cpp
-index b24dc78..6441678 100644
+index 0b1149a..bd6afff 100644
 --- a/erizo/src/erizo/LibNiceConnection.cpp
 +++ b/erizo/src/erizo/LibNiceConnection.cpp
 @@ -215,6 +215,12 @@ void LibNiceConnection::start() {
@@ -27,3 +37,6 @@ index b24dc78..6441678 100644
      if (ice_config_.turn_server.compare("") != 0 && ice_config_.turn_port != 0) {
        ELOG_DEBUG("%s message: configuring TURN, turn_server: %s , turn_port: %d, turn_username: %s, turn_pass: %s",
                   toLog(), ice_config_.turn_server.c_str(),
+-- 
+1.9.1
+

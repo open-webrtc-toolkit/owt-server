@@ -96,7 +96,7 @@ if [ "$NIGHTLY" != "true" ]; then
 
   install_usrsctp
 
-  install_libsrtp
+  install_libsrtp2
 
   install_nicer
 

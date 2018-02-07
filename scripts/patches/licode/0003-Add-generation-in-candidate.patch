@@ -1,5 +1,15 @@
+From 81afcdbd5e2bbc2836acc417983a2f8cfa17b157 Mon Sep 17 00:00:00 2001
+From: Chen Li1 <li1.chen@intel.com>
+Date: Wed, 7 Feb 2018 13:59:52 +0800
+Subject: [PATCH 3/5] Add generation in candidate
+
+---
+ erizo/src/erizo/SdpInfo.cpp | 25 +++++++++++++++++++++++--
+ erizo/src/erizo/SdpInfo.h   |  3 ++-
+ 2 files changed, 25 insertions(+), 3 deletions(-)
+
 diff --git a/erizo/src/erizo/SdpInfo.cpp b/erizo/src/erizo/SdpInfo.cpp
-index dfeb2be..17e5943 100644
+index d218b35..c864503 100644
 --- a/erizo/src/erizo/SdpInfo.cpp
 +++ b/erizo/src/erizo/SdpInfo.cpp
 @@ -77,7 +77,7 @@ namespace erizo {
@@ -69,3 +79,6 @@ index 61bab33..236e721 100644
  };
  
  /**
+-- 
+1.9.1
+

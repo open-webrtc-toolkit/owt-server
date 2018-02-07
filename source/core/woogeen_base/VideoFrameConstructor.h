@@ -139,6 +139,8 @@ private:
     int deliverVideoData_(std::shared_ptr<erizo::DataPacket> video_packet) override;
     int deliverEvent_(erizo::MediaEventPtr event) override;
     void close();
+
+    char buf[1500];
 };
 
 class DummyRemoteBitrateObserver : public webrtc::RemoteBitrateObserver {
