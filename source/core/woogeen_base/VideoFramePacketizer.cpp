@@ -163,39 +163,6 @@ void VideoFramePacketizer::receiveRtpData(char* buf, int len, erizoExtra::DataTy
     }
 
     assert(type == erizoExtra::VIDEO);
-    // char* p = buf;
-    // unsigned int payloadlen = len;
-    // ELOG_INFO("receiveRtpData(%zu): [%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x...%x,%x,%x,%x]", payloadlen, p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7], p[8], p[9], p[10], p[11], p[12], p[13], p[14], p[15], p[payloadlen-4], p[payloadlen-3], p[payloadlen-2], p[payloadlen-1]);
-
-   RTPHeader* head = (RTPHeader*) buf;
-    if (head->getPayloadType() == RED_90000_PT) {
-        int totalLength = head->getHeaderLength();
-        int rtpHeaderLength = totalLength;
-        redheader *redhead = (redheader*) (buf + totalLength);
-
-        //redhead->payloadtype = remoteSdp_.inOutPTMap[redhead->payloadtype];
-        if (true) {
-            while (redhead->follow) {
-                totalLength += redhead->getLength() + 4; // RED header
-                redhead = (redheader*) (buf + totalLength);
-            }
-            // Parse RED packet to VP8 packet.
-            // Copy RTP header
-            static char deliverMediaBuffer[3000];
-            int newLen = len - 1 - totalLength + rtpHeaderLength;
-            assert(newLen <= 3000);
-
-            memcpy(deliverMediaBuffer, buf, rtpHeaderLength);
-            // Copy payload data
-            memcpy(deliverMediaBuffer + totalLength, buf + totalLength + 1, newLen - rtpHeaderLength);
-            // Copy payload type
-            RTPHeader* mediahead = (RTPHeader*) deliverMediaBuffer;
-            mediahead->setPayloadType(redhead->payloadtype);
-
-            video_sink_->deliverVideoData(std::make_shared<erizo::DataPacket>(0, deliverMediaBuffer, newLen, erizo::VIDEO_PACKET));
-            return;
-      }
-    }
 
     video_sink_->deliverVideoData(std::make_shared<erizo::DataPacket>(0, buf, len, erizo::VIDEO_PACKET));
 }

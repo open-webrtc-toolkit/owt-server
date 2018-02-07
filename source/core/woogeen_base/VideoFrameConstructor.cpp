@@ -324,15 +324,18 @@ int32_t VideoFrameConstructor::Decode(const webrtc::EncodedImage& encodedImage,
 
 int VideoFrameConstructor::deliverVideoData_(std::shared_ptr<erizo::DataPacket> video_packet)
 {
-    RTCPHeader* chead = reinterpret_cast<RTCPHeader*>(video_packet->data);
+    // Copy data
+    memcpy(buf, video_packet->data, video_packet->length);
+
+    RTCPHeader* chead = reinterpret_cast<RTCPHeader*>(buf);
     uint8_t packetType = chead->getPacketType();
 
     assert(packetType != RTCP_Receiver_PT && packetType != RTCP_PS_Feedback_PT && packetType != RTCP_RTP_Feedback_PT);
     if (packetType == RTCP_Sender_PT)
-        return m_videoReceiver->ReceivedRTCPPacket(video_packet->data, video_packet->length) == -1 ? 0 : video_packet->length;
+        return m_videoReceiver->ReceivedRTCPPacket(buf, video_packet->length) == -1 ? 0 : video_packet->length;
 
     PacketTime current;
-    if (m_videoReceiver->ReceivedRTPPacket(video_packet->data, video_packet->length, current) != -1) {
+    if (m_videoReceiver->ReceivedRTPPacket(buf, video_packet->length, current) != -1) {
         // FIXME: Decode should be invoked as often as possible.
         // To invoke it in current work thread is not a good idea. We may need to create
         // a dedicated thread to keep on invoking vcm::VideoReceiver::Decode, and, with a wait time other than 0.

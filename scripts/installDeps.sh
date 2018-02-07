@@ -161,9 +161,9 @@ case $yn in
   * ) ;;
 esac
 
-read -p "Installing libsrtp? [No/yes]" yn
+read -p "Installing libsrtp2? [No/yes]" yn
 case $yn in
-  [Yy]* ) install_libsrtp;;
+  [Yy]* ) install_libsrtp2;;
   [Nn]* ) ;;
   * ) ;;
 esac

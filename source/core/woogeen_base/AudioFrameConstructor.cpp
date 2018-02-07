@@ -31,7 +31,6 @@ AudioFrameConstructor::AudioFrameConstructor()
   : m_enabled(true)
   , m_transport(nullptr)
 {
-    boost::mutex::scoped_lock lock(monitor_mutex_);
     sink_fb_source_ = this;
 }
 
@@ -69,11 +68,8 @@ int AudioFrameConstructor::deliverVideoData_(std::shared_ptr<erizo::DataPacket> 
 
 int AudioFrameConstructor::deliverAudioData_(std::shared_ptr<erizo::DataPacket> audio_packet)
 {
-    // ELOG_INFO("deliverAudioData_ ");
     if (audio_packet->length <= 0)
       return 0;
-
-    boost::unique_lock<boost::mutex> lock(monitor_mutex_);
 
     FrameFormat frameFormat;
     Frame frame;
@@ -96,7 +92,7 @@ int AudioFrameConstructor::deliverAudioData_(std::shared_ptr<erizo::DataPacket> 
     if (m_enabled) {
         deliverFrame(frame);
     }
-    return 0;
+    return audio_packet->length;
 }
 
 void AudioFrameConstructor::onFeedback(const FeedbackMsg& msg)

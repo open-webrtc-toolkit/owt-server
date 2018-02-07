@@ -77,8 +77,10 @@ void AudioFramePacketizer::bindTransport(const FunctionCallbackInfo<Value>& args
   AudioFramePacketizer* obj = ObjectWrap::Unwrap<AudioFramePacketizer>(args.Holder());
   woogeen_base::AudioFramePacketizer* me = obj->me;
 
-  MediaSink* param = Nan::ObjectWrap::Unwrap<MediaSink>(args[0]->ToObject());
-  erizo::MediaSink* transport = param->msink;
+  WebRtcConnection* param = Nan::ObjectWrap::Unwrap<WebRtcConnection>(Nan::To<v8::Object>(args[0]).ToLocalChecked());
+  auto wr = std::shared_ptr<erizo::WebRtcConnection>(param->me).get();
+
+  erizo::MediaSink* transport = wr;
 
   me->bindTransport(transport);
 }
