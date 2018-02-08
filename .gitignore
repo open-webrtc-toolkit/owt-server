@@ -3,6 +3,11 @@ dist/
 third_party/node-v*
 third_party/libyami/
 third_party/usrsctp/
+third_party/nICEr
+third_party/licode/
+source/agent/webrtc/webrtcLib/erizo
+source/agent/webrtc/webrtcLib/ThreadPool.*
+source/agent/webrtc/webrtcLib/IOThreadPool.*
 node_modules/
 *.o
 *.d
