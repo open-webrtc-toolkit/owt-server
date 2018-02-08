@@ -23,13 +23,21 @@ const EventEmitter = require('events').EventEmitter;
  * @property {number} numerator
  * @property {number} denominator
  */
+/**
+ * @typedef Rectangle
+ * @type {object}
+ * @property {Rational} left
+ * @property {Rational} top
+ * @property {Rational} height
+ * @property {Rational} width
+ */
 
 /**
  * @constructor Region
- * @param {string} id
- * @param {Rational} left
- * @param {Rational} top
- * @param {Rational} relativeSize
+ * @param {object} options
+ * @property {string} options.id
+ * @property {string} options.shape 'rectangle'
+ * @property {object} options.area
  */
 function Region(options = {}) {
     this.id = options.id;

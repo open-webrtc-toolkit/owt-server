@@ -335,17 +335,6 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
         return terminals[terminal_id] && terminals[terminal_id].published.length === 0 && (Object.keys(terminals[terminal_id].subscribed).length === 0) ? true : false;
     };
 
-    var publisherCount = function () {
-        var count = 0;
-        for (var t in terminals) {
-            if (terminals[t].type === 'participant' &&
-                terminals[t].published.length > 0) {
-                count = count + 1;
-            }
-        }
-        return count;
-    };
-
     var spreadStream = function (stream_id, target_node, target_node_type, on_ok, on_error) {
         log.debug('spreadStream, stream_id:', stream_id, 'target_node:', target_node, 'target_node_type:', target_node_type);
 
@@ -896,7 +885,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                     rpcClient,
                     terminals[vxcoder].locality.node,
                     'init',
-                    ['transcoding', {}, stream_id, selfRpcId, 'transcoder'],
+                    ['transcoding', {motionFactor: 1.0}, stream_id, selfRpcId, 'transcoder'],
                     function (supported_video) {
                         var target_node = terminals[vxcoder].locality.node,
                             spread_id = stream_id + '@' + target_node;
@@ -1171,28 +1160,23 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
     that.publish = function (participantId, streamId, accessNode, streamInfo, streamType, on_ok, on_error) {
         log.debug('publish, participantId: ', participantId, 'streamId:', streamId, 'accessNode:', accessNode.node, 'streamInfo:', JSON.stringify(streamInfo));
         if (streams[streamId] === undefined) {
-            var currentPublisherCount = publisherCount();
-            if (config.publishLimit < 0 || (config.publishLimit > currentPublisherCount)) {
-                var terminal_id = pubTermId(participantId, streamId);
-                var terminal_owner = (streamType === 'webrtc' || streamType === 'sip') ? participantId : room_id + '-' + randomId();
-                newTerminal(terminal_id, 'participant', terminal_owner, accessNode, function () {
-                    streams[streamId] = {owner: terminal_id,
-                                         audio: streamInfo.audio ? {format: formatStr(streamInfo.audio),
-                                                                    subscribers: []} : undefined,
-                                         video: streamInfo.video ? {format: formatStr(streamInfo.video),
-                                                                    resolution: streamInfo.video.resolution,
-                                                                    framerate: streamInfo.video.framerate,
-                                                                    subscribers: []} : undefined,
-                                         spread: []
-                                         };
-                    terminals[terminal_id].published.push(streamId);
-                    on_ok();
-                }, function (error_reason) {
-                    on_error(error_reason);
-                });
-            } else {
-                on_error('Too many publishers.');
-            }
+            var terminal_id = pubTermId(participantId, streamId);
+            var terminal_owner = (streamType === 'webrtc' || streamType === 'sip') ? participantId : room_id + '-' + randomId();
+            newTerminal(terminal_id, 'participant', terminal_owner, accessNode, function () {
+                streams[streamId] = {owner: terminal_id,
+                                     audio: streamInfo.audio ? {format: formatStr(streamInfo.audio),
+                                                                subscribers: []} : undefined,
+                                     video: streamInfo.video ? {format: formatStr(streamInfo.video),
+                                                                resolution: streamInfo.video.resolution,
+                                                                framerate: streamInfo.video.framerate,
+                                                                subscribers: []} : undefined,
+                                     spread: []
+                                     };
+                terminals[terminal_id].published.push(streamId);
+                on_ok();
+            }, function (error_reason) {
+                on_error(error_reason);
+            });
         } else {
             on_error('Stream[' + streamId + '] already set for ' + participantId);
         }

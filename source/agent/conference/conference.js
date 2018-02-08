@@ -47,10 +47,25 @@ const standardBitrate = (width, height, framerate) => {
   return bitrate;
 }
 
-const calcDefaultBitrate = (codec, resolution, framerate) => {
-  //let factor = (codec === 'vp8' ? 0.9 : 1.0);
-  let factor = 1.0;
-  return standardBitrate(resolution.width, resolution.height, framerate) * factor;
+const calcDefaultBitrate = (codec, resolution, framerate, motionFactor) => {
+  let codec_factor = 1.0;
+  switch (codec) {
+    case 'h264':
+      codec_factor = 1.0;
+      break;
+    case 'vp8':
+      codec_factor = 1.0;
+      break;
+    case 'vp9':
+      codec_factor = 0.8;//FIXME: Theoretically it should be 0.5, not appliable before encoder is improved.
+      break;
+    case 'h265':
+      codec_factor = 0.9;//FIXME: Theoretically it should be 0.5, not appliable before encoder is improved.
+      break;
+    default:
+      break;
+  }
+  return standardBitrate(resolution.width, resolution.height, framerate) * codec_factor * motionFactor;
 };
 
 const isAudioFmtCompatible = (fmt1, fmt2) => {
@@ -65,9 +80,8 @@ var translateOldRoomConfig = (oldConfig) => {
   var config = {
     _id: oldConfig.id,
     name: oldConfig.name,
-    publishLimit: oldConfig.publishLimit,
-    userLimit: oldConfig.userLimit,
-    avatar: 'local',
+    inputLimit: oldConfig.publishLimit,
+    participantLimit: oldConfig.userLimit,
     roles: [],
     views: [],
     mediaIn: {
@@ -169,7 +183,7 @@ var translateOldRoomConfig = (oldConfig) => {
         parameters: {
           resolution: ['x3/4', 'x2/3', 'x1/2', 'x1/3', 'x1/4', 'hd1080p', 'hd720p', 'svga', 'vga', 'cif'/*, 'xvga', 'hvga', 'cif', 'sif', 'qcif'*/],
           framerate: [6, 12, 15, 24, 30, 48, 60],
-          bitrate: ['x1.6', 'x1.4', 'x1.2', 'x0.8', 'x0.6', 'x0.4'],
+          bitrate: ['x0.8', 'x0.6', 'x0.4', 'x0.2'],
           keyFrameInterval: [100, 30, 5, 2, 1]
         }
       }
@@ -263,8 +277,8 @@ var translateOldRoomConfig = (oldConfig) => {
      return resolutionName2Value[old_resolution] || {width: 640, height: 480};
   }
 
-  function getBitrate(old_quality_level, old_resolution) {
-    var standard_bitrate = calcDefaultBitrate('h264', getResolution(old_resolution), 30);
+  function calcBaseBitrate(codec, old_resolution, framerate, motionFactor, old_quality_level) {
+    var standard_bitrate = calcDefaultBitrate(codec, getResolution(old_resolution), framerate, motionFactor);
     var mul_factor = qualityLevel2Factor[old_quality_level] || 1.0;
     return standard_bitrate * mul_factor;
   }
@@ -279,23 +293,24 @@ var translateOldRoomConfig = (oldConfig) => {
           sampleRate: 48000,
           channelNum: 2
         },
-        vad: (!!old_view.video && old_view.video.avCoordinated) ? {detectInterval: 1000} : false
+        vad: (!!old_view.video && old_view.video.avCoordinated) ? true : false
       },
       video: (!!old_view.video ? {
         format: {
           codec: 'h264',
           profile: 'high'
         },
+        motionFactor: 0.8,
         parameters: {
           resolution: getResolution(old_view.video.resolution),
-          framerate: 30,
-          bitrate: getBitrate(old_view.video.quality_level, old_view.video.resolution),
+          framerate: 24,
+          bitrate: calcBaseBitrate('h264', old_view.video.resolution, 24, 0.8, old_view.video.quality_level),
           keyFrameInterval: 100
         },
         maxInput: old_view.video.maxInput,
         bgColor: old_view.video.bkColor,
         layout: {
-          crop: old_view.video.crop,
+          fitPolity: old_view.video.crop ? 'crop' : 'letterbox',
           setRegionEffect: 'insert',
           templates: old_view.video.layout
         }
@@ -357,23 +372,17 @@ var calcBitrate = (x, baseBitrate) => {
    *    object(Role):: {
    *      role: string(RoleName),
    *      publish: {
-   *        type: ['webrtc' | 'streaming'],
-   *        media: {
-   *          audio: true | false,
-   *          video: true | false
-   *        }
-   *      } | false,
+   *        audio: true | false,
+   *        video: true | false
+   *      },
    *      subscribe: {
-   *        type: ['webrtc' | 'streaming' | 'recording'],
-   *        media: {
-   *          audio: true | false,
-   *          video: true | false
-   *        }
-   *      } | false
+   *        audio: true | false,
+   *        video: true | false
+   *      }
    *    }
    *
    *    object(AudioFormat):: {
-   *      codec: 'opus' | 'pcma' | 'pcmu' | 'aac' | 'ac3' | 'nellymoser',
+   *      codec: 'opus' | 'pcma' | 'pcmu' | 'isac' | 'ilbc' | 'g722' | 'aac' | 'ac3' | 'nellymoser',
    *      sampleRate: 8000 | 16000 | 32000 | 48000 | 44100 | undefined,
    *      channelNum: 1 | 2 | undefined
    *    }
@@ -388,18 +397,23 @@ var calcBitrate = (x, baseBitrate) => {
    *      height: number(HeightPX)
    *    },
    *
+   *    object(Rational):: {
+   *      numerator: number(Numerator),
+   *      denominator: number(Denominator)
+   *    },
+   *
    *    object(Region):: {
    *      id: string(RegionID),
    *      shape: 'rectangle' | 'circle',
    *      area: object(Rectangle):: {
-   *        left: number(LeftRatio),
-   *        top: nmber(TopRatio),
-   *        width: number(WidthRatio),
-   *        height: number(HeightRatio)
+   *        left: object(Rational),
+   *        top: object(Rational),
+   *        width: object(Rational),
+   *        height: object(Rational),
    *      } | object(Circle):: {
-   *        centerW: number(CenterWRatio),
-   *        centerH: number(CenterHRatio),
-   *        radius: number(RadiusWRatio)
+   *        centerW: object(Rational),
+   *        centerH: object(Rational),
+   *        radius: object(Rational),
    *      }
    *    }
    *
@@ -413,7 +427,7 @@ var Conference = function (rpcClient, selfRpcId) {
   var that = {},
       is_initializing = false,
       room_id,
-      current_publication_count = 0,
+      current_input_count = 0,
       roomController,
       accessController;
 
@@ -421,21 +435,19 @@ var Conference = function (rpcClient, selfRpcId) {
    * {
    *  _id: string(RoomID),
    *  name: string(RoomName),
-   *  publishLimit: number(PublishLimit),
-   *  userLimit: number(UserLimit),
-   *  avatar: string(AvatarStorageURL),
+   *  inputLimit: number(InputLimit),
+   *  participantLimit: number(ParticipantLimit),
    *  roles: [object(Role)],
    *  views: [
    *    object(MixedViewSettings):: {
    *      label: string(ViewLabel),
    *      audio: {
    *        format: object(AudioFormat),
-   *        vad: {
-   *          detectInterval: number(Milliseconds)
-   *        } | false
-   *      },
+   *        vad: true | false
+   *      } | false,
    *      video: {
    *        format: object(VideoFormat),
+   *        motionFactor: Number(MotionFactor), //0.5~1.0, indicates the motion severity and affects the encoding bitrate, suggest to set 0.8 for conferencing scenario and 1.0 for sports scenario.
    *        parameters: {
    *          resolution: object(Resolution),
    *          framerate: number(FramerateFPS),
@@ -443,9 +455,9 @@ var Conference = function (rpcClient, selfRpcId) {
    *          keyFrameInterval: number(Seconds)
    *        }
    *        maxInput: number(MaxInput),
-   *        bkColor: 'black' | 'white' | 'blue' | 'green',
+   *        bgColor: object(RGB)::{r: number(R), g: number(G), b: number(B)},
    *        layout: {
-   *          fillInEffect: 'crop' | 'margin' | 'stretching',
+   *          fitPolicy: 'crop' | 'letterbox' | 'stretch',
    *          setRegionEffect: 'exchange' | 'insert',
    *          templates: [
    *            object(LayoutTemplate):: {
@@ -454,7 +466,7 @@ var Conference = function (rpcClient, selfRpcId) {
    *            }
    *          ]
    *        }
-   *      }
+   *      } | false
    *  ],
    *  mediaIn: {
    *    audio: [object(AudioFormat)] | false,
@@ -465,9 +477,9 @@ var Conference = function (rpcClient, selfRpcId) {
    *    video: {
    *      format: [object(VideoFormat)],
    *      parameters: {
-   *        resolution: ['x0.75' | 'x0.667' | 'x0.5' | 'x0.333' | 'x0.25' | 'xga' | 'svga' | 'vga' | 'hvga' | 'cif' | 'sif' | 'qcif'],
+   *        resolution: ['x3/4' | 'x2/3' | 'x1/2' | 'x1/3' | 'x1/4' | 'xga' | 'svga' | 'vga' | 'hvga' | 'cif' | 'sif' | 'qcif'],
    *        framerate: [6 | 12 | 15 | 24 | 30 | 48 | 60],
-   *        bitrate: ['x1.6' | 'x1.4' | 'x1.2' | 'x0.8' | 'x0.6' | 'x0.4'],
+   *        bitrate: ['x0.8' | 'x0.6' | 'x0.4' | 'x0.2'],
    *        keyFrameInterval: [100 | 30 | 5 | 2 | 1]
    *      }
    *    } | false
@@ -638,7 +650,7 @@ var Conference = function (rpcClient, selfRpcId) {
   var onSessionAborted = (participantId, sessionId, direction, reason) => {
     log.debug('onSessionAborted, participantId:', participantId, 'sessionId:', sessionId, 'direction:', direction, 'reason:', reason);
     if (direction === 'in') {
-      current_publication_count -= 1;
+      current_input_count -= 1;
       if (reason !== 'Participant terminate') {
         removeStream(participantId, sessionId)
           .catch((err) => {
@@ -700,7 +712,7 @@ var Conference = function (rpcClient, selfRpcId) {
 
             room_config.internalConnProtocol = global.config.internal.protocol;
 
-            if (room_config.userLimit === 0) {
+            if (room_config.participantLimit === 0) {
               log.error('Room', roomID, 'disabled');
               is_initializing = false;
               return Promise.reject('Room' + roomID + 'disabled');
@@ -769,10 +781,6 @@ var Conference = function (rpcClient, selfRpcId) {
                         log.error('No capable video format for view: ' + viewSettings.label);
                         return;
                       }
-                    }
-
-                    if (viewSettings.video && viewSettings.video.parameters && viewSettings.video.parameters.bitrate === 'standard') {
-                      viewSettings.video.parameters.bitrate = calcDefaultBitrate(viewSettings.video.format.codec, viewSettings.video.parameters.resolution, viewSettings.video.parameters.framerate);
                     }
 
                     var mixed_stream_info = {
@@ -1208,8 +1216,8 @@ var Conference = function (rpcClient, selfRpcId) {
     var permission;
     return initRoom(roomId)
       .then(function() {
-        log.debug('room_config.userLimit:', room_config.userLimit, 'current users count:', Object.keys(participants).length);
-        if (room_config.userLimit > 0 && (Object.keys(participants).length >= room_config.userLimit)) {
+        log.debug('room_config.participantLimit:', room_config.participantLimit, 'current participants count:', Object.keys(participants).length);
+        if (room_config.participantLimit > 0 && (Object.keys(participants).length >= room_config.participantLimit)) {
           log.warn('Room is full');
           callback('callback', 'error', 'Room is full');
           return Promise.reject('Room is full');
@@ -1322,8 +1330,8 @@ var Conference = function (rpcClient, selfRpcId) {
       return callback('callback', 'error', 'unauthorized');
     }
 
-    if (room_config.publishLimit >= 0 && (room_config.publishLimit <= current_publication_count)) {
-      return callback('callback', 'error', 'Too many publications');
+    if (room_config.inputLimit >= 0 && (room_config.inputLimit <= current_input_count)) {
+      return callback('callback', 'error', 'Too many inputs');
     }
 
     if (streams[streamId]) {
@@ -1341,7 +1349,7 @@ var Conference = function (rpcClient, selfRpcId) {
     if (pubInfo.type === 'sip') {
       return addSIPStream(streamId, participantId, pubInfo)
       .then((result) => {
-        current_publication_count += 1;
+        current_input_count += 1;
         callback('callback', result);
       })
       .catch((e) => {
@@ -1362,7 +1370,7 @@ var Conference = function (rpcClient, selfRpcId) {
 
       return accessController.initiate(participantId, streamId, 'in', participants[participantId].getOrigin(), pubInfo, format_preference)
       .then((result) => {
-        current_publication_count += 1;
+        current_input_count += 1;
         callback('callback', result);
       })
       .catch((e) => {
@@ -1392,7 +1400,7 @@ var Conference = function (rpcClient, selfRpcId) {
     if (streams[streamId] && (streams[streamId].info.type === 'sip')) {
       return removeStream(participantId, streamId)
         .then((result) => {
-          current_publication_count -= 1;
+          current_input_count -= 1;
           callback('callback', result);
         })
         .catch((e) => {
@@ -2044,8 +2052,8 @@ var Conference = function (rpcClient, selfRpcId) {
       var stream_id = Math.round(Math.random() * 1000000000000000000) + '';
       return initRoom(roomId)
       .then(() => {
-        if (room_config.publishLimit >= 0 && (room_config.publishLimit <= current_publication_count)) {
-          return Promise.reject('Too many publications');
+        if (room_config.inputLimit >= 0 && (room_config.inputLimit <= current_input_count)) {
+          return Promise.reject('Too many inputs');
         }
 
         if (pubInfo.media.audio && !room_config.mediaIn.audio) {
@@ -2058,7 +2066,7 @@ var Conference = function (rpcClient, selfRpcId) {
 
         return accessController.initiate('admin', stream_id, 'in', participants['admin'].getOrigin(), pubInfo);
       }).then((result) => {
-        current_publication_count += 1;
+        current_input_count += 1;
         return 'ok';
       }).then(() => {
         return new Promise((resolve, reject) => {

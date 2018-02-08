@@ -98,10 +98,25 @@ const standardBitrate = (width, height, framerate) => {
   return bitrate;
 }
 
-const calcDefaultBitrate = (codec, resolution, framerate) => {
-  //let factor = (codec === 'vp8' ? 0.9 : 1.0);
-  let factor = 1.0;
-  return standardBitrate(resolution.width, resolution.height, framerate) * factor;
+const calcDefaultBitrate = (codec, resolution, framerate, motionFactor) => {
+  let codec_factor = 1.0;
+  switch (codec) {
+    case 'h264':
+      codec_factor = 1.0;
+      break;
+    case 'vp8':
+      codec_factor = 1.0;
+      break;
+    case 'vp9':
+      codec_factor = 0.8;//FIXME: Theoretically it should be 0.5, not appliable before encoder is improved.
+      break;
+    case 'h265':
+      codec_factor = 0.9;//FIXME: Theoretically it should be 0.5, not appliable before encoder is improved.
+      break;
+    default:
+      break;
+  }
+  return standardBitrate(resolution.width, resolution.height, framerate) * codec_factor * motionFactor;
 };
 
 const colorMap = {
@@ -246,6 +261,7 @@ function VMixer(rpcClient, clusterIP) {
         controller,
         view,
 
+        motion_factor = 0.8,
         default_resolution = {width: 640, height: 480},
         default_framerate = 30,
         default_kfi = 1000,
@@ -393,7 +409,7 @@ function VMixer(rpcClient, clusterIP) {
             'resolution': resolution2String(videoConfig.parameters.resolution),
             'backgroundcolor': (typeof videoConfig.bgColor === 'string') ? colorMap[videoConfig.bgColor] : videoConfig.bgColor,
             'layout': videoConfig.layout.templates,
-            'crop': videoConfig.layout.crop,
+            'crop': (videoConfig.layout.fitPolity === 'crop' ? true : false),
             'gaccplugin': gaccPluginEnabled,
         };
 
@@ -427,6 +443,7 @@ function VMixer(rpcClient, clusterIP) {
 
         // FIXME: The supported codec list should be a sub-list of those querried from the engine
         // and filterred out according to config.
+        motion_factor = (videoConfig.motionFactor || 0.8);
         default_resolution = (videoConfig.parameters.resolution || {width: 640, height: 480});
         default_framerate = (videoConfig.parameters.framerate || 30);
         default_kfi = (videoConfig.parameters.keyFrameInterval || 1000);
@@ -485,7 +502,7 @@ function VMixer(rpcClient, clusterIP) {
         resolution = (resolution === 'unspecified' ? default_resolution : resolution);
         framerate = (framerate === 'unspecified' ? default_framerate : framerate);
         var bitrate_factor = (typeof bitrate === 'string' ? (bitrate === 'unspecified' ? 1.0 : (Number(bitrate.replace('x', '')) || 0)) : 0);
-        bitrate = (bitrate_factor ? calcDefaultBitrate(codec, resolution, framerate) * bitrate_factor : bitrate);
+        bitrate = (bitrate_factor ? calcDefaultBitrate(codec, resolution, framerate, motion_factor) * bitrate_factor : bitrate);
         keyFrameInterval = (keyFrameInterval === 'unspecified' ? default_kfi : keyFrameInterval);
 
         for (var stream_id in outputs) {
@@ -677,6 +694,7 @@ function VTranscoder(rpcClient, clusterIP) {
         engine,
         controller,
 
+        motion_factor = 1.0,
         default_resolution = {width: 0, height: 0},
         default_framerate = 30,
         default_kfi = 1000,
@@ -789,7 +807,7 @@ function VTranscoder(rpcClient, clusterIP) {
         }
     };
 
-    that.initialize = function (ctrlr, callback) {
+    that.initialize = function (motionFactor, ctrlr, callback) {
         log.debug('to initialize video transcoder');
         var config = {
             'hardware': useHardware,
@@ -802,6 +820,7 @@ function VTranscoder(rpcClient, clusterIP) {
 
         engine = new VideoTranscoder(config);
 
+        motion_factor = (motionFactor || 1.0);
         log.debug('Video transcoding engine init OK, supported_codecs:', supported_codecs);
         callback('callback', {codecs: supported_codecs});
     };
@@ -853,7 +872,7 @@ function VTranscoder(rpcClient, clusterIP) {
         resolution = (resolution === 'unspecified' ? default_resolution : resolution);
         framerate = (framerate === 'unspecified' ? default_framerate : framerate);
         var bitrate_factor = (typeof bitrate === 'string' ? (bitrate === 'unspecified' ? 1.0 : (Number(bitrate.replace('x', '')) || 0)) : 0);
-        bitrate = (bitrate_factor ? calcDefaultBitrate(codec, resolution, framerate) * bitrate_factor : bitrate);
+        bitrate = (bitrate_factor ? calcDefaultBitrate(codec, resolution, framerate, motion_factor) * bitrate_factor : bitrate);
         keyFrameInterval = (keyFrameInterval === 'unspecified' ? default_kfi : keyFrameInterval);
 
         for (var stream_id in outputs) {
@@ -988,7 +1007,7 @@ module.exports = function (rpcClient, clusterIP) {
                 that.__proto__ = processor;
             } else if (service === 'transcoding') {
                 processor = new VTranscoder(rpcClient, clusterIP);
-                processor.initialize(controller, callback);
+                processor.initialize(config.motionFactor, controller, callback);
                 that.__proto__ = processor;
             } else {
                 log.error('Unknown service type to init a video node:', service);
