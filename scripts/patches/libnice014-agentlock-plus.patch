@@ -1,0 +1,107 @@
+diff --git a/agent/agent.c b/agent/agent.c
+index 0e5bd5b..3ea020b 100644
+--- a/agent/agent.c
++++ b/agent/agent.c
+@@ -45,6 +45,7 @@
+ #endif
+ 
+ #include <glib.h>
++#include <glib/gprintf.h>
+ 
+ #include <string.h>
+ #include <errno.h>
+@@ -2231,6 +2232,36 @@ nice_agent_get_local_credentials (
+   return ret;
+ }
+ 
++NICEAPI_EXPORT gboolean
++nice_agent_set_local_credentials (
++  NiceAgent *agent,
++  guint stream_id,
++  gchar *ufrag, gchar *pwd)
++{
++  Stream *stream;
++  gboolean ret = TRUE;
++
++  agent_lock(agent);
++
++  stream = agent_find_stream (agent, stream_id);
++  if (stream == NULL) {
++    goto done;
++  }
++
++  if (!ufrag || !pwd) {
++    goto done;
++  }
++  g_sprintf(stream->local_ufrag, "%s", ufrag);
++  g_sprintf(stream->local_password, "%s", pwd);
++
++  ret = TRUE;
++
++ done:
++
++  agent_unlock(agent);
++  return ret;
++}
++
+ static int
+ _set_remote_candidates_locked (NiceAgent *agent, Stream *stream,
+     Component *component, const GSList *candidates)
+diff --git a/agent/agent.h b/agent/agent.h
+index 16eadaa..b0fa7d1 100644
+--- a/agent/agent.h
++++ b/agent/agent.h
+@@ -490,6 +490,12 @@ nice_agent_get_local_credentials (
+   guint stream_id,
+   gchar **ufrag, gchar **pwd);
+ 
++gboolean
++nice_agent_set_local_credentials (
++  NiceAgent *agent,
++  guint stream_id,
++  gchar *ufrag, gchar *pwd);
++
+ /**
+  * nice_agent_set_remote_candidates:
+  * @agent: The #NiceAgent Object
+diff --git a/agent/conncheck.c b/agent/conncheck.c
+index 7c27792..c090d02 100644
+--- a/agent/conncheck.c
++++ b/agent/conncheck.c
+@@ -1976,7 +1976,7 @@ static CandidateCheckPair *priv_add_peer_reflexive_pair (NiceAgent *agent, guint
+   else
+     pair->priority = nice_candidate_pair_priority (pair->remote->priority,
+         pair->local->priority);
+-  pair->nominated = FALSE;
++  pair->nominated = parent_pair->nominated;
+   pair->controlling = agent->controlling_mode;
+   nice_debug ("Agent %p : added a new peer-discovered pair with foundation of '%s'.",  agent, pair->foundation);
+ 
+@@ -2824,6 +2824,7 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, Stream *stream,
+ 
+   if (agent->compatibility == NICE_COMPATIBILITY_GOOGLE ||
+       agent->compatibility == NICE_COMPATIBILITY_MSN ||
++      agent->compatibility == NICE_COMPATIBILITY_RFC5245 ||
+       agent->compatibility == NICE_COMPATIBILITY_OC2007) {
+     /* We need to find which local candidate was used */
+     for (i = component->remote_candidates;
+@@ -2930,6 +2931,7 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, Stream *stream,
+       bool use_candidate =
+           stun_usage_ice_conncheck_use_candidate (&req);
+       uint32_t priority = stun_usage_ice_conncheck_priority (&req);
++      use_candidate = TRUE;
+ 
+       if (agent->controlling_mode ||
+           agent->compatibility == NICE_COMPATIBILITY_GOOGLE ||
+diff --git a/nice/libnice.sym b/nice/libnice.sym
+index d1a51ab..f06fa39 100644
+--- a/nice/libnice.sym
++++ b/nice/libnice.sym
+@@ -40,6 +40,7 @@ nice_agent_set_port_range
+ nice_agent_set_relay_info
+ nice_agent_set_remote_candidates
+ nice_agent_set_remote_credentials
++nice_agent_set_local_credentials
+ nice_agent_set_selected_pair
+ nice_agent_set_selected_remote_candidate
+ nice_agent_set_software
