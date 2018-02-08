@@ -105,7 +105,8 @@ install_libnice014(){
     wget -c http://nice.freedesktop.org/releases/libnice-0.1.4.tar.gz
     tar -zxvf libnice-0.1.4.tar.gz
     cd libnice-0.1.4
-    patch -p1 < $PATHNAME/patches/libnice-014.patch
+    patch -p1 < $PATHNAME/patches/libnice014-agentlock.patch
+    patch -p1 < $PATHNAME/patches/libnice014-agentlock-plus.patch
     PKG_CONFIG_PATH=$PREFIX_DIR"/lib/pkgconfig":$PREFIX_DIR"/lib64/pkgconfig":$PKG_CONFIG_PATH ./configure --prefix=$PREFIX_DIR && make -s V= && make install
     cd $CURRENT_DIR
   else
