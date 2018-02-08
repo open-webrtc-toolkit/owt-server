@@ -195,6 +195,36 @@ NAN_METHOD(WebRtcConnection::New) {
       rtp_map.channels = 1;
       rtp_mappings.push_back(rtp_map);
     }
+    // ILBC
+    {
+      erizo::RtpMap rtp_map;
+      rtp_map.payload_type = 102;
+      rtp_map.encoding_name = "ILBC";
+      rtp_map.media_type = erizo::AUDIO_TYPE;
+      rtp_map.clock_rate = 8000;
+      rtp_map.channels = 1;
+      rtp_mappings.push_back(rtp_map);
+    }
+    // G722 1
+    {
+      erizo::RtpMap rtp_map;
+      rtp_map.payload_type = 9;
+      rtp_map.encoding_name = "G722";
+      rtp_map.media_type = erizo::AUDIO_TYPE;
+      rtp_map.clock_rate = 8000;
+      rtp_map.channels = 1;
+      rtp_mappings.push_back(rtp_map);
+    }
+    // G722 2
+    {
+      erizo::RtpMap rtp_map;
+      rtp_map.payload_type = 119;
+      rtp_map.encoding_name = "G722";
+      rtp_map.media_type = erizo::AUDIO_TYPE;
+      rtp_map.clock_rate = 8000;
+      rtp_map.channels = 2;
+      rtp_mappings.push_back(rtp_map);
+    }
 
     std::vector<erizo::ExtMap> ext_mappings;
     unsigned int value = 0;
