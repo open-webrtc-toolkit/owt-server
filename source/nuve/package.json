@@ -8,7 +8,9 @@
     "mongojs": "",
     "toml": "*",
     "ajv": "^5.2.2",
-    "body-parser": "*"
+    "body-parser": "*",
+    "mongoose": "^4.13.6",
+    "fraction.js": "*"
   },
   "engine": {
     "node": "6.9.5"

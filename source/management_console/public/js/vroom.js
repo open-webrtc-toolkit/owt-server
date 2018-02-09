@@ -124,12 +124,35 @@ var viewItem = {
   required: ['label']
 };
 
+var roleItem = {
+  type: 'object',
+  properties: {
+    role: { type: 'string' },
+    publish: {
+      type: 'object',
+      properties: {
+        audio: { type: 'boolean' },
+        video: { type: 'boolean' }
+      }
+    },
+    subscribe: {
+      type: 'object',
+      properties: {
+        audio: { type: 'boolean' },
+        video: { type: 'boolean' }
+      }
+    }
+  },
+  required: ['role']
+};
+
 var RoomSchema = {
   type: 'object',
   properties: {
     name: { type: 'string' },
     inputLimit: { type: 'number', minimum: -1 },
     participantLimit: { type: 'number', minimum: -1 },
+    roles: { type: 'array', items: roleItem },
     views: { type: 'array', items: viewItem },
     mediaIn: {
       type: 'object',

@@ -12,7 +12,7 @@ var log = logger.getLogger('ParticipantsResource');
  * Gets the service and the room for the proccess of the request.
  */
 var doInit = function (currentService, roomId, callback) {
-    dataAccess.room.get(currentService._id, roomId, function (room) {
+    dataAccess.room.get(currentService._id, roomId, function (err, room) {
         if (room) {
             callback(room);
         } else {

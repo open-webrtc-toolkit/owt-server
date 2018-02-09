@@ -40,8 +40,8 @@ exports.createRoom = function (req, res) {
 
     var options = req.body.options;
     options.name = req.body.name;
-    dataAccess.room.create(currentService._id, options, function(result) {
-        if (result) {
+    dataAccess.room.create(currentService._id, options, function(err, result) {
+        if (!err && result) {
             log.debug('Room created:', req.body.name, 'for service', currentService.name);
             res.send(result);
 
@@ -51,7 +51,7 @@ exports.createRoom = function (req, res) {
                 cloudHandler.notifySipPortal('create', result, function(){});
             }
         } else {
-            log.info('Room creation failed', options);
+            log.info('Room creation failed', err ? err.message : options);
             res.status(400).send();
         }
     });
@@ -75,7 +75,7 @@ exports.represent = function (req, res) {
         return;
     }
 
-    dataAccess.room.list(currentService._id, function (rooms) {
+    dataAccess.room.list(currentService._id, function (err, rooms) {
         if (rooms) {
             log.debug('Representing rooms for service ', currentService._id);
             res.send(currentService.rooms);

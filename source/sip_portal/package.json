@@ -5,6 +5,7 @@
     "amqp": "*",
     "log4js": "^1.1.1",
     "mongojs": "",
-    "toml": "*"
+    "toml": "*",
+    "mongoose": "^4.13.6"
   }
 }

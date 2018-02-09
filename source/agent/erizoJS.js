@@ -50,18 +50,6 @@ global.config.internal.protocol = global.config.internal.protocol || 'sctp';
 global.config.internal.minport = global.config.internal.minport || 0;
 global.config.internal.maxport = global.config.internal.maxport || 0;
 
-global.config.conference = global.config.conference || {};
-global.config.conference.roles =
-    global.config.conference.roles ||
-    {
-        'admin':{'publish': true, 'subscribe':true, 'record':true, 'addExternalOutput':true},
-        'presenter':{'publish': true, 'subscribe':true, 'record':true, 'addExternalOutput':true},
-        'audio_only_presenter':{'publish': {'audio': true}, 'subscribe':{'audio': true}},
-        'viewer':{'subscribe':true},
-        'video_only_viewer':{'subscribe':{'video': true}},
-        'no_text_viewer': {'subscribe': true, 'text': false}
-    };
-
 // Parse command line arguments
 var getopt = new Getopt([
   ['r' , 'rabbit-host=ARG'            , 'RabbitMQ Host'],

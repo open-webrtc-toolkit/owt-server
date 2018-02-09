@@ -1,27 +1,97 @@
 /*global exports, require*/
 'use strict';
-var roomRegistry = require('./../mdb/roomRegistry');
-var serviceRegistry = require('./../mdb/serviceRegistry');
-var Room = require('./room');
-var db = require('./../mdb/dataBase').db;
+var mongoose = require('mongoose');
+var Room = require('./../model/roomModel');
+var Service = require('./../model/serviceModel');
+
+var DEFAULT_AUDIO = [
+  { codec: 'opus', sampleRate: 48000, channelNum: 2 },
+  { codec: 'isac', sampleRate: 16000 },
+  { codec: 'isac', sampleRate: 32000 },
+  { codec: 'g722', sampleRate: 16000, channelNum: 1 },
+  { codec: 'g722', sampleRate: 16000, channelNum: 2 },
+  { codec: 'pcma' },
+  { codec: 'pcmu' },
+  { codec: 'aac' },
+  { codec: 'ac3' },
+  { codec: 'nellymoser' },
+];
+var DEFAULT_VIDEO = [
+  { codec: 'h264' },
+  { codec: 'h264' },
+  { codec: 'vp8' },
+  { codec: 'vp9' },
+];
+var DEFAULT_VIDEO_PARA = {
+  resolution: ['x3/4', 'x2/3', 'x1/2', 'x1/3', 'x1/4', 'hd1080p', 'hd720p', 'svga', 'vga', 'cif'],
+  framerate: [6, 12, 15, 24, 30, 48, 60],
+  bitrate: ['x0.8', 'x0.6', 'x0.4', 'x0.2'],
+  keyFrameInterval: [100, 30, 5, 2, 1]
+};
+var DEFAULT_ROLES = [
+  {
+    role: 'presenter',
+    publish: { audio: true, video: true },
+    subscribe: { audio: true, video: true }
+  },
+  {
+    role: 'viewer',
+    publish: {audio: false, video: false },
+    subscribe: {audio: true, video: true }
+  },
+  {
+    role: 'audio_only_presenter',
+    publish: {audio: true, video: false },
+    subscribe: {audio: true, video: false }
+  },
+  {
+    role: 'video_only_viewer',
+    publish: {audio: false, video: false },
+    subscribe: {audio: false, video: true }
+  },
+  {
+    role: 'sip',
+    publish: { audio: true, video: true },
+    subscribe: { audio: true, video: true }
+  }
+];
 
 /*
  * Create Room.
  */
 exports.create = function (serviceId, roomOption, callback) {
-  var room = Room.create(roomOption);
-  if (room === null) {
-    callback(null);
-    return;
-  }
-  roomRegistry.addRoom(room, function (result) {
-    serviceRegistry.addRoomInService(serviceId, result, function (err, ret) {
-      if (!err) {
-        callback(result);
-      } else {
-        callback(null);
+  if (!roomOption.mediaOut) {
+    roomOption.mediaOut = {
+      audio: DEFAULT_AUDIO,
+      video: {
+        format: DEFAULT_VIDEO,
+        parameters: DEFAULT_VIDEO_PARA
       }
+    };
+  }
+  if (!roomOption.mediaIn) {
+    roomOption.mediaIn = {
+      audio: DEFAULT_AUDIO,
+      video: DEFAULT_VIDEO
+    };
+  }
+  if (!roomOption.views) {
+    roomOption.views = [{}];
+  }
+  if (!roomOption.roles) {
+    roomOption.roles = DEFAULT_ROLES;
+  }
+
+  var room = new Room(roomOption);
+  room.save().then((saved) => {
+    Service.findById(serviceId).then((service) => {
+      service.rooms.push(saved._id);
+      service.save().then(() => {
+        callback(null, saved.toObject());
+      });
     });
+  }).catch((err) => {
+    callback(err, null);
   });
 };
 
@@ -29,12 +99,12 @@ exports.create = function (serviceId, roomOption, callback) {
  * List Rooms.
  */
 exports.list = function (serviceId, callback) {
-  serviceRegistry.getService(serviceId, function (service) {
-    if (service) {
-      callback(service.rooms);
-    } else {
-      callback([]);
+  Service.findById(serviceId).populate('rooms').lean().exec(function (err, service) {
+    if (err) {
+      callback(err);
+      return;
     }
+    callback(null, service.rooms);
   });
 };
 
@@ -42,12 +112,17 @@ exports.list = function (serviceId, callback) {
  * Get Room. Represents a determined room.
  */
 exports.get = function (serviceId, roomId, callback) {
-  serviceRegistry.getService(serviceId, function (service) {
-    if (service) {
-      serviceRegistry.getRoomForService(roomId, service, callback);
-    } else {
-      callback(null);
+  Service.findById(serviceId).populate('rooms').lean().exec(function (err, service) {
+    if (err) return callback(err, null);
+
+    var i;
+    for (i = 0; i < service.rooms.length; i++) {
+      if (service.rooms[i]._id.toString() === roomId) {
+        callback(null, service.rooms[i]);
+        return;
+      }
     }
+    callback(null, null);
   });
 };
 
@@ -55,28 +130,12 @@ exports.get = function (serviceId, roomId, callback) {
  * Delete Room. Removes a determined room from the data base.
  */
 exports.delete = function (serviceId, roomId, callback) {
-  serviceRegistry.getService(serviceId, function (service) {
-    roomRegistry.removeRoom(roomId, function (removed) {
-      if (service) {
-        for (let r of service.rooms) {
-          if (r._id + '' === roomId) {
-            serviceRegistry.deleteRoomInService(serviceId, r, function (err, ret) {
-              if (err) {
-                callback(null);
-              } else {
-                callback(r);
-              }
-            });
-            return;
-          }
-        }
-      }
-      if (removed) {
-        callback(removed);
-      } else {
-        callback(null);
-      }
-    });
+  Room.remove({_id: roomId}, function(err0) {
+    Service.findByIdAndUpdate(serviceId, { '$pull' : { 'rooms' : roomId } },
+      function (err1, service) {
+        if (err1) console.log('Pull rooms fail:', err1.message);
+        callback(err0, roomId);
+      });
   });
 };
 
@@ -84,67 +143,10 @@ exports.delete = function (serviceId, roomId, callback) {
  * Update Room. Update a determined room from the data base.
  */
 exports.update = function (serviceId, roomId, updates, callback) {
-  if (typeof updates === 'object' && updates !== null) {
-    console.log('Room', 'updateRoom updates', updates);
-    var newRoom = Room.create(updates);
-    if (newRoom === null) {
-      console.log('Room', 'invalid configuration');
-      callback(null);
-      return;
-    }
-
-    roomRegistry.getRoom(roomId, function (room) {
-      if (!room) {
-        callback(null);
-        return;
-      }
-
-      Object.keys(updates).map(function (k) {
-        if (newRoom.hasOwnProperty(k)) {
-          if (k === 'views') {
-            room[k] = newRoom[k];
-            // Remove old style media mixing configuration
-            delete room['mediaMixing'];
-          } else if (k !== 'mediaMixing') {
-            room[k] = newRoom[k];
-          } else if (typeof updates.mediaMixing.video === 'object') {
-            room.mediaMixing = room.mediaMixing || {};
-            room.mediaMixing.video = room.mediaMixing.video || {};
-            Object.keys(updates.mediaMixing.video).map(function (k) {
-              if (newRoom.mediaMixing.video.hasOwnProperty(k)) {
-                if (k !== 'layout') {
-                  room.mediaMixing.video[k] = newRoom.mediaMixing.video[k];
-              } else if (typeof updates.mediaMixing.video.layout === 'object') {
-                  room.mediaMixing.video.layout = room.mediaMixing.video.layout || {};
-                  Object.keys(updates.mediaMixing.video.layout).map(function (k) {
-                    if (newRoom.mediaMixing.video.layout.hasOwnProperty(k)) {
-                      room.mediaMixing.video.layout[k] = newRoom.mediaMixing.video.layout[k];
-                    }
-                  });
-                }
-              }
-            });
-          }
-        }
-      });
-
-      roomRegistry.addRoom(room, function (result) {
-        if (!room) {
-          callback(null);
-          return;
-        }
-        serviceRegistry.updateRoomInService(serviceId, result, function(err, updated) {
-          if (err) {
-            callback(null);
-          } else {
-            callback(result);
-          }
-        });
-      });
-    });
-  } else {
-    callback(null);
-  }
+  Room.findOneAndUpdate({ _id: roomId }, updates, { overwrite: true }, function (err, ret) {
+    if (err) return callback(err, null);
+    callback(null, ret.toObject());
+  });
 };
 
 /*
@@ -152,11 +154,12 @@ exports.update = function (serviceId, roomId, updates, callback) {
  */
 exports.config = function (roomId) {
   return new Promise((resolve, reject) => {
-    db.rooms.findOne({_id: db.ObjectId(roomId)}, function (err, room) {
+    Room.findById(roomId, function (err, room) {
       if (err || !room) {
         reject(err);
       } else {
-        resolve(Room.genConfig(room));
+        var config = Room.processLayout(room.toObject());
+        resolve(config);
       }
     });
   });
@@ -167,7 +170,7 @@ exports.config = function (roomId) {
  */
 exports.sips = function () {
   return new Promise((resolve, reject) => {
-    db.rooms.find({'sipInfo.sipServer': {$ne: null}}, function(err, rooms) {
+    Room.find({'sipInfo.sipServer': {$ne: null}}, function(err, rooms) {
       if (err || !rooms) {
         resolve([]);
       } else {
