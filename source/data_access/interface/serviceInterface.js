@@ -1,14 +1,14 @@
 /*global exports, require*/
 'use strict';
-var serviceRegistry = require('./../mdb/serviceRegistry');
-var db = require('./../mdb/dataBase').db;
+var Service = require('./../model/serviceModel');
 
 /*
  * Create Service.
  */
-exports.create = function (service, callback) {
-  serviceRegistry.addService(service, function (result) {
-    callback(result);
+exports.create = function (config, callback) {
+  var service = new Service(config);
+  service.save(function (err, saved) {
+    callback(err, saved);
   });
 };
 
@@ -16,21 +16,17 @@ exports.create = function (service, callback) {
  * List Service.
  */
 exports.list = function (callback) {
-  serviceRegistry.getList(function (list) {
-        callback(list);
-    });
+  Service.find().populate('rooms').lean().exec(function (err, services) {
+    callback(err, services);
+  });
 };
 
 /*
  * Get Service.
  */
 exports.get = function (serviceId, callback) {
-  serviceRegistry.getService(serviceId, function (service) {
-    if (service) {
-      callback(service);
-    } else {
-      callback(null);
-    }
+  Service.findById(serviceId).populate('rooms').lean().exec(function (err, service) {
+    callback(err, service);
   });
 };
 
@@ -38,6 +34,8 @@ exports.get = function (serviceId, callback) {
  * Delete Service.
  */
 exports.delete = function (serviceId, callback) {
-  serviceRegistry.removeService(serviceId);
-  callback(serviceId);
+  Service.remove({_id: serviceId}, function(err, ret) {
+    if (ret.n === 0) serviceId = null;
+    callback(err, serviceId);
+  });
 };

@@ -10,7 +10,9 @@
     "node-getopt": "*",
     "toml": "*",
     "sprintf-js": "^1.0.3",
-    "mongojs": ""
+    "mongojs": "",
+    "mongoose": "^4.13.6",
+    "fraction.js": "*"
   },
   "devDependencies": {
     "mocha": "^2.2.5",

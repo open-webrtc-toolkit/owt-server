@@ -44,7 +44,12 @@ exports.create = function (req, res) {
 
     service.encrypted = true;
     service.key = cipher.encrypt(cipher.k, service.key);
-    dataAccess.service.create(service, function(result) {
+    dataAccess.service.create(service, function(err, result) {
+        if (err) {
+            log.warn('Failed to create service:', err.message);
+            res.status(401).send('Operation failed');
+            return;
+        }
         log.info('Service created: ', service.name);
         res.send(result);
     });
@@ -68,7 +73,12 @@ exports.represent = function (req, res) {
         return;
     }
 
-    dataAccess.service.list(function(list) {
+    dataAccess.service.list(function(err, list) {
+        if (err) {
+            log.warn('Failed to list services:', err.message);
+            res.status(401).send('Operation failed');
+            return;
+        }
         log.info('Representing services');
         res.send(list);
     });

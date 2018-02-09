@@ -17,7 +17,11 @@ var doInit = function (currentService, serv, callback) {
     if (currentService._id !== superService) {
         callback('error');
     } else {
-        dataAccess.service.get(serv, function (ser) {
+        dataAccess.service.get(serv, function (err, ser) {
+            if (err) {
+                log.warn('Failed to get service:', err.message);
+                return callback(null);
+            }
             callback(ser);
         });
     }
@@ -78,7 +82,8 @@ exports.deleteService = function (req, res) {
             res.status(401).send('Super service not permitted to be deleted');
             return;
         }
-        dataAccess.service.delete(id, function(result) {
+        dataAccess.service.delete(id, function(err, result) {
+            if (err) log.warn('Failed to delete service:', err.message);
             log.info('Serveice ', id, ' deleted');
             res.send('Service deleted');
         });

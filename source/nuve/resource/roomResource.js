@@ -19,7 +19,7 @@ exports.represent = function (req, res) {
         return;
     }
 
-    dataAccess.room.get(authData.service._id, req.params.room, function (room) {
+    dataAccess.room.get(authData.service._id, req.params.room, function (err, room) {
         if (!room) {
             log.info('Room ', req.params.room, ' does not exist');
             res.status(404).send('Room does not exist');
@@ -43,7 +43,7 @@ exports.deleteRoom = function (req, res) {
     }
     var currentService = authData.service;
 
-    dataAccess.room.delete(authData.service._id, req.params.room, function(room) {
+    dataAccess.room.delete(authData.service._id, req.params.room, function(err, room) {
         if (!room) {
             log.info('Room ', req.params.room, ' does not exist');
             res.status(404).send('Room does not exist');
@@ -72,13 +72,13 @@ exports.updateRoom = function (req, res) {
     }
     var currentService = authData.service;
     var updates = req.body;
-    dataAccess.room.get(currentService._id, req.params.room, function (room) {
+    dataAccess.room.get(currentService._id, req.params.room, function (err, room) {
         if (!room) {
             log.info('Room ', req.params.room, ' does not exist');
             res.status(404).send('Room does not exist');
         } else {
             var updates = req.body;
-            dataAccess.room.update(currentService._id, req.params.room, updates, function(result) {
+            dataAccess.room.update(currentService._id, req.params.room, updates, function(err, result) {
                 if (result) {
                     res.send(result);
                     // Notify SIP portal if SIP room updated

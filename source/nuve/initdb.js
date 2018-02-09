@@ -15,24 +15,36 @@ try {
   console.error('config file not found');
   process.exit(1);
 }
-var db = require('mongojs')(dbURL, ['services']);
+
+require('./data_access');
+var Service = require('./data_access/model/serviceModel');
 var cipher = require('./cipher');
 
 function prepareService (serviceName, next) {
-  db.services.findOne({name: serviceName}, function cb (err, service) {
+  Service.findOne({name: serviceName}, function cb (err, service) {
     if (err || !service) {
       var crypto = require('crypto');
       var key = crypto.pbkdf2Sync(crypto.randomBytes(64).toString('hex'), crypto.randomBytes(32).toString('hex'), 4000, 128, 'sha256').toString('base64');
       service = {name: serviceName, key: cipher.encrypt(cipher.k, key), encrypted: true, rooms: []};
-      db.services.save(service, function cb (err, saved) {
+      Service.create(service, function cb (err, saved) {
         if (err) {
           console.log('mongodb: error in adding', serviceName);
-          return db.close();
+          Service.base.connection.close();
+          return;
         }
-        saved.key = key;
-        next(saved);
+        service = saved.toObject();
+        service.key = key;
+        next(service);
       });
     } else {
+      if (typeof service.__v !== 'number') {
+        console.log(`The existed service "${serviceName}" is not in 4.0 format.`);
+        console.log('Please use nuve/SchemaUpdate3to4.js to upgrade your database.');
+        setTimeout(()=>Service.base.connection.close(), 2000);
+        return;
+      }
+
+      service = service.toObject();
       if (service.encrypted === true) {
         service.key = cipher.decrypt(cipher.k, service.key);
       }
@@ -62,7 +74,8 @@ prepareService('superService', function (service) {
     var sampleServiceKey = service.key;
     console.log('sampleServiceId:', sampleServiceId);
     console.log('sampleServiceKey:', sampleServiceKey);
-    db.close();
+
+    Service.base.connection.close();
     var sampleAppFile = path.resolve(__dirname, '../extras/basic_example/basicServer.js');
     fs.readFile(sampleAppFile, 'utf8', function (err, data) {
       if (err) {

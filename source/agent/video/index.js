@@ -409,7 +409,7 @@ function VMixer(rpcClient, clusterIP) {
             'resolution': resolution2String(videoConfig.parameters.resolution),
             'backgroundcolor': (typeof videoConfig.bgColor === 'string') ? colorMap[videoConfig.bgColor] : videoConfig.bgColor,
             'layout': videoConfig.layout.templates,
-            'crop': (videoConfig.layout.fitPolity === 'crop' ? true : false),
+            'crop': (videoConfig.layout.fitPolicy === 'crop' ? true : false),
             'gaccplugin': gaccPluginEnabled,
         };
 

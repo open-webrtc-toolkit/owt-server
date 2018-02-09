@@ -66,8 +66,8 @@ exports.authenticate = function (req, res, next) {
         params = mauthParser.parseHeader(authHeader);
 
         // Get the service from the data base.
-        dataAccess.service.get(params.serviceid, function (serv) {
-            if (serv === undefined || serv === null) {
+        dataAccess.service.get(params.serviceid, function (err, serv) {
+            if (err || serv === undefined || serv === null) {
                 log.info('[Auth] Unknow service:', params.serviceid);
                 res.status(401).send({'WWW-Authenticate': challengeReq});
                 return;

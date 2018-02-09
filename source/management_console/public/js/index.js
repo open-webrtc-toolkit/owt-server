@@ -236,7 +236,7 @@ function tableHandlerRoom(rooms) {
     }
     var roomId = p.find('td:first').text();
     if (roomId !== '') {
-      var updates = {};
+      var updates = roomCache[roomId];
       unsaved.map(function(index, each) {
         var key = $(each).attr('data-spin');
         var valueObj = $(each).editable('getValue');
