@@ -452,7 +452,6 @@ function getRestfulParmas () {
 function restListRooms () {
     listRooms((rooms)=>{
         rooms = JSON.parse(rooms);
-        $('#roomlist option:not(:first)').remove();
         rooms.forEach((item)=>{
             if (item.name === 'sampleRoom' && !defaultRoomId) defaultRoomId = item._id;
             allRooms.set(item._id, item);
@@ -474,7 +473,19 @@ function restGetRoom () {
     })
 }
 function restCreateRoom () {
-    createRoom('testCreateRoom', undefined, (room)=>{
+    let options = {
+        name: 'testRoom',
+        viewports: [{
+            name: 'common1',
+            mediaMixing: {
+                audio: null,
+                video: {
+                    resolution: 'hd720p'
+                }
+            }
+        }]
+    }
+    createRoom('testCreateRoom', options, (room)=>{
         room = JSON.parse(room);
         console.log('create room success: ', room);
     }, (err)=>{
@@ -798,7 +809,7 @@ function setWH(ele, percent, parentEleId) {
 function subs(stream) {
      client.subscribe(stream, {audio: true, video: true})
      .then((subscription)=>{
-        subscription.origin = stream.id;
+        subscription.originId = stream.id;
         subscriptions.set(subscription.id, subscription);
         displayStream(stream);
      }, (err)=>{
@@ -807,7 +818,7 @@ function subs(stream) {
 }
 //destroyStreamUi
 function destroyStreamUi (stream) {
-    $(`#test${stream.origin || stream.id}`).remove();
+    $(`#test${stream.originId || stream.id}`).remove();
 }
 
 //event
@@ -837,6 +848,7 @@ function clientEvent (client) {
     client.addEventListener('messagereceived', messagereceivedListener);
     client.addEventListener("serverdisconnected", serverdisconnectedListener);
 }
+client.clearEventListener('streamadded');
 clientEvent(client);
 
 function publicationEvent (publication) {
@@ -855,12 +867,20 @@ function publicationEvent (publication) {
         },
         videounmuteListener = ()=>{
             console.log(`publication ${publication.id} video unmute`);
+        },
+        muteListener = (event)=>{
+            console.log(`publication ${publication.id} muted ${event.kind}`);
+        },
+        unmuteListener = (event)=>{
+            console.log(`publication ${publication.id} unmuted ${event.kind}`);
         };
     publication.addEventListener('ended', endedListener);
     publication.addEventListener('audiomute', audiomuteListener);
     publication.addEventListener('audiounmute', audiounmuteListener);
     publication.addEventListener('videomute', videomuteListener);
     publication.addEventListener('videounmute', videounmuteListener);
+    publication.addEventListener('mute', muteListener);
+    publication.addEventListener('unmute', unmuteListener);
 }
 
 function subscriptionEvent (subscription) {
@@ -879,12 +899,20 @@ function subscriptionEvent (subscription) {
         },
         videounmuteListener = ()=>{
             console.log(`subscription ${subscription.id} video unmute`);
+        },
+        muteListener = (event)=>{
+            console.log(`subscription ${subscription.id} muted ${event.kind}`);
+        },
+        unmuteListener = (event)=>{
+            console.log(`subscription ${subscription.id} unmuted ${event.kind}`);
         };
     subscription.addEventListener('ended', endedListener);
     subscription.addEventListener('audiomute', audiomuteListener);
     subscription.addEventListener('audiounmute', audiounmuteListener);
     subscription.addEventListener('videomute', videomuteListener);
     subscription.addEventListener('videounmute', videounmuteListener);
+    subscription.addEventListener('mute', muteListener);
+    subscription.addEventListener('unmute', unmuteListener);
 }
 
 function streamEvent (stream) {
@@ -968,18 +996,28 @@ allRooms.onLengthRemove((key)=>{
 
 
 //LocalStream action
+function stopLocal (name='camera') {
+    let localStream = localStreams.get(name);
+    if(localStream){
+        localStream.mediaStream.getTracks().forEach(track=>{
+            track.stop();
+        })
+        localStreams.delete(name);
+    }
+}
 function createLocalStream () {
+    stopLocal();
     let videoSource = $('input[name="videosource"]:checked').val();
     let audioSource = $('input[name="audiosource"]:checked').val();
     let extensionId = $('#extensionid').val();
-    let resolution = resolutionName2Value[$('#resolution:checked').val()] || {width: 640, height: 480};
+    let resolution = resolutionName2Value[$('#resolution').val()] || {width: 640, height: 480};
     let mediaStreamDeviceConstraints = {
         audio:{
             source: audioSource
         },
         video:{
             source: videoSource,
-            resolution: new Resolution(resolution.width, resolution.height)
+            resolution: resolution
         }
     };
     let streamSourceInfo = new StreamSourceInfo(audioSource, videoSource);
@@ -1035,14 +1073,15 @@ function publish () {
     let localStream = localStreams.get($('#localstreamid').val());
     let audioCodec = $('#audiocodec').val();
     let videoCodec = $('#videocodec').val();
-    client.publish(localStreams.get(localStream.source.video), {
-        audio:{
+    let options = {
+        audio:[{
             codec: audioCodec,
-        },
-        video:{
+        }],
+        video:[{
             codec: videoCodec,
-        }
-    }).then((publication)=>{
+        }]
+    };
+    client.publish(localStreams.get(localStream.source.video), options).then((publication)=>{
         publications.set(publication.id, publication);
         console.log(`get publication ${publication.id}`);
     },(err)=>{
@@ -1075,13 +1114,13 @@ $('#availableremotestream').change(function () {
 function getSubOptions () {
     let remoteStreamId = $('#availableremotestream').val();
     if(!remoteStreamId) throw new Error('You must select one remote stream');
-    let trackKind = $('#subscribetrackkind').val() || $('#subscribetrackkind option:last').val();
-    let videoCodec = JSON.parse($('#supportedvideocodec').val() || $('#supportedvideocodec option:eq(1)').val());
-    let audioCodec = JSON.parse($('#supportedaudiocodec').val() || $('#supportedaudiocodec option:eq(1)').val());
-    let bitrate = parseFloat($('#supportedbitrate').val() || '1');
-    let resolution = JSON.parse($('#supportedresolution').val() || JSON.stringify({width:640, height:480}));
-    let frameRate = parseInt($('#supportedframerate').val() || '30');
-    let kfi = parseInt($('#supportedkfi').val() || '5');
+    let trackKind = $('#subscribetrackkind').val() || undefined;
+    let videoCodec = $('#supportedvideocodec').val()?JSON.parse($('#supportedvideocodec').val()):undefined;
+    let audioCodec = $('#supportedaudiocodec').val()?JSON.parse($('#supportedaudiocodec').val()):undefined;
+    let bitrate = $('#supportedbitrate').val()?parseFloat($('#supportedbitrate').val()):undefined;
+    let resolution = $('#supportedresolution').val()?JSON.parse($('#supportedresolution').val()):undefined;
+    let frameRate =$('#supportedframerate').val()?parseInt($('#supportedframerate').val()):undefined;
+    let kfi = $('#supportedkfi').val()?parseInt($('#supportedkfi').val()):undefined;
     let subscriptionId = $('#availablesubscription').val() || $('#availablesubscription option:eq(1)').val();
     return {
         remoteStreamId,
@@ -1121,7 +1160,7 @@ function subscribe () {
     }
     client.subscribe(remoteStreamMap.get(remoteStreamId), subOptions)
     .then((subscription)=>{
-        subscription.origin = remoteStreamId;
+        subscription.originId = remoteStreamId;
         subscriptions.set(subscription.id, subscription);
         displayStream(remoteStreamMap.get(remoteStreamId));
         console.log('subscribe success: ', subscription);
@@ -1223,7 +1262,7 @@ function subscriptionMute() {
 function subscriptionUnmute() {
     let [subscriptionArr, trackKind] = getSubcriptionParams();
     subscriptionArr.forEach(subscription=>{
-        subscriptionn.unmute(trackKind)
+        subscription.unmute(trackKind)
         .then(()=>{
             console.log(`${subscription.id} unmute ${trackKind} success`)
         }, err=>{
@@ -1292,7 +1331,7 @@ window.onload = function() {
     defaultRoomId = getParameterByName("room");
     role = getParameterByName('role') || 'presenter';
     isPublish = getParameterByName('publish') === 'false'?false:true;
-    resolution = resolutionName2Value[getParameterByName('resolution')] || 'vga';
+    resolution = resolutionName2Value[getParameterByName('resolution') || 'vga'];
     videoCodec = getParameterByName('videoCodec') || 'h264';
     audioCodec = getParameterByName('audioCodec') || 'opus';
     hasVideo = getParameterByName('hasVideo') === 'false'?false:true;
@@ -1323,7 +1362,23 @@ window.onload = function() {
             })
             let mstdcForMic = new AudioTrackConstraints('mic');
             let mstdcForCamera = new VideoTrackConstraints('camera');
-            MediaStreamFactory.createMediaStream(new StreamConstraints(mstdcForMic, mstdcForCamera))
+            mstdcForCamera.resolution = resolution;
+            let streamConstraints = new StreamConstraints(mstdcForMic, mstdcForCamera);
+            MediaStreamFactory.createMediaStream({
+                audio: {
+                    source: 'mic',
+                    deviceId: undefined,
+                    volume: undefined,
+                    sampleRate: undefined,
+                    channelCount: undefined,
+                },
+                video: {
+                    resolution: resolution,
+                    frameRate: undefined,
+                    deviceId: undefined,
+                    source: 'camera',
+                }
+            })
             .then((mediaStream)=>{
                 console.log('media stream is', mediaStream);
                 return new LocalStream(mediaStream, new StreamSourceInfo('mic', 'camera'));
@@ -1334,7 +1389,7 @@ window.onload = function() {
                 localStreams.set("camera", localStream);
                 console.log('local stream is:', localStream);
                 displayStream(localStream, 'local');
-                client.publish(localStream, publishOputions)
+                isPublish && client.publish(localStream, publishOputions)
                 .then((publication)=>{
                     publications.set(publication.id, publication);
                     console.log('publish success:', publication);
