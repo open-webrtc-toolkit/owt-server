@@ -61,24 +61,11 @@ const PublicationRequest = {
     { // Webrtc Publication
       type: 'object',
       properties: {
-        'type': { 'const': 'webrtc' },
         'media': { $ref: '#/definitions/WebRTCMediaOptions' },
         'attributes': { type: 'object' }
       },
       additionalProperties: false,
-      required: ['type', 'media']
-    },
-    {
-      // Streaming Publication
-      type: 'object',
-      properties: {
-        'type': { 'const': 'streaming' },
-        'connection': { $ref: '#/definitions/StreamingInConnectionOptions' },
-        'media': { $ref: '#/definitions/StreamingInMediaOptions' },
-        'attributes': { type: 'object' }
-      },
-      additionalProperties: false,
-      required: ['type', 'connection', 'media']
+      required: ['media']
     }
   ],
 
@@ -122,28 +109,6 @@ const PublicationRequest = {
       },
       additionalProperties: false,
       required: ['audio', 'video']
-    },
-
-
-    'StreamingInConnectionOptions': {
-      type: 'object',
-      properties: {
-        url: { type: 'string' },
-        transportProtocol: { enum: ['tcp', 'udp'], 'default': 'tcp' }, //optional, default: "tcp"
-        bufferSize: { type: 'number', 'default': 8192 }     //optional, default: 8192 bytes
-      },
-      additionalProperties: false,
-      required: ['url']
-    },
-
-    'StreamingInMediaOptions': {
-      type: 'object',
-      properties: {
-        'audio': { enum: ['auto', true, false] },
-        'video': { enum: ['auto', true, false] }
-      },
-      additionalProperties: false,
-      required: ['audio', 'video']
     }
   }
 };
@@ -184,7 +149,7 @@ const StreamControlInfo = {
       type: 'object',
       properties: {
         'view': { type: 'string' },
-        'region': { type: 'string' }
+        'region': { type: 'string',  minLength: 1}
       },
       additionalProperties: false,
       required: ['view', 'region']
@@ -198,54 +163,14 @@ const SubscriptionRequest = {
     { // Webrtc Subscription
       type: 'object',
       properties: {
-        'type': { 'const': 'webrtc' },
         'media': { $ref: '#/definitions/MediaSubOptions' },
       },
       additionalProperties: false,
-      required: ['type', 'media']
-    },
-    {
-      // Streaming Subscription
-      type: 'object',
-      properties: {
-        'type': { 'const': 'streaming' },
-        'connection': { $ref: '#/definitions/StreamingOutConnectionOptions' },
-        'media': { $ref: '#/definitions/MediaSubOptions' },
-      },
-      additionalProperties: false,
-      required: ['type', 'connection', 'media']
-    },
-    {
-      // Recording Subscription
-      type: 'object',
-      properties: {
-        'type': { 'const': 'recording' },
-        'connection': { $ref: '#/definitions/RecordingStorageOptions' },
-        'media': { $ref: '#/definitions/MediaSubOptions' },
-      },
-      additionalProperties: false,
-      required: ['type', 'connection', 'media']
+      required: ['media']
     }
   ],
 
   definitions: {
-    'StreamingOutConnectionOptions': {
-      type: 'object',
-      properties: {
-        'url': { type: 'string' }
-      },
-      additionalProperties: false,
-      required: ['url']
-    },
-
-    'RecordingStorageOptions': {
-      type: 'object',
-      properties: {
-        'container': { enum: ['mp4', 'mkv', 'ts', 'auto'] }
-      },
-      additionalProperties: false
-    },
-
     'MediaSubOptions': {
       type: 'object',
       properties: {
@@ -386,39 +311,11 @@ const SubscriptionControlInfo = {
   }
 };
 
-// SetPermission
-const SetPermission = {
-  type: 'object',
-  properties: {
-    'id': { type: 'string' },
-    'authorities': {
-      type: 'array',
-      items: { $ref: '#/definitions/Authority' }
-    }
-  },
-  additionalProperties: false,
-  required: ['id', 'authorities'],
-
-  definitions: {
-    'Authority': {
-      type: 'object',
-      properties: {
-        'operation': { enum: ['publish', 'subscribe', 'text'] },
-        'field': { enum: ['media.audio', 'media.video', 'type.add', 'type.remove'] },
-        'value': { type: ['boolean', 'string'] }
-      },
-      additionalProperties: false,
-      required: ['operation', 'value']
-    }
-  }
-};
-
 var validators = {
   'publication-request': generateValidator(PublicationRequest),
   'stream-control-info': generateValidator(StreamControlInfo),
   'subscription-request': generateValidator(SubscriptionRequest),
-  'subscription-control-info': generateValidator(SubscriptionControlInfo),
-  'set-permission': generateValidator(SetPermission),
+  'subscription-control-info': generateValidator(SubscriptionControlInfo)
 };
 
 // Export JSON validator functions

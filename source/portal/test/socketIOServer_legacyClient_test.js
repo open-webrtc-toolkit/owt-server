@@ -30,18 +30,12 @@ const presenter_join_result = {
     user: 'user-id',
     permission: {
       publish: {
-        type: ['webrtc', 'streaming'],
-        media: {
-          audio: true,
-          video: true
-        }
+        audio: true,
+        video: true
       },
       subscribe: {
-        type: ['webrtc', 'streaming', 'recording'],
-        media: {
-          audio: true,
-          video: true
-        }
+        audio: true,
+        video: true
       }
     },
     room: {
@@ -2140,7 +2134,6 @@ describe('Responding to clients.', function() {
             done();
           });
 
-          console.log('$$$', client);
           server.notify(client.id, 'text', {from: "fromUser", to: "toUser", message: "messageContent"});
         });
     });

@@ -54,18 +54,12 @@ const delete_token_result = {code: 'tokenCode', user: 'user-id', role: 'presente
 const join_room_result = {
   permission: {
     publish: {
-      type: ['webrtc', 'streaming'],
-      media: {
-        audio: true,
-        video: true
-      }
+      audio: true,
+      video: true
     },
     subscribe: {
-      type: ['webrtc', 'streaming', 'recording'],
-      media: {
-        audio: true,
-        video: true
-      }
+      audio: true,
+      video: true
     }
   },
   room: {
