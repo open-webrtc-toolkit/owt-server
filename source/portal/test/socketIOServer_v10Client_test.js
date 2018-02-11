@@ -31,18 +31,12 @@ const presenter_join_result = {
     user: 'user-id',
     permission: {
       publish: {
-        type: ['webrtc', 'streaming'],
-        media: {
-          audio: true,
-          video: true
-        }
+        audio: true,
+        video: true
       },
       subscribe: {
-        type: ['webrtc', 'streaming', 'recording'],
-        media: {
-          audio: true,
-          video: true
-        }
+        audio: true,
+        video: true
       }
     },
     room: {
@@ -560,7 +554,6 @@ describe('Logining and Relogining.', function() {
         client1.emit('login', someValidLoginInfo, function(status, resp) {
           expect(status).to.equal('ok');
           var pub_req = {
-            type: 'webrtc',
             media: {
               audio: {
                 source: 'mic'
@@ -852,7 +845,7 @@ describe('Responding to clients.', function() {
   }
 
   it.skip('Requests before joining should fail', function(done) {
-    client.emit('publish', 'options', undefined, function(status, id) {
+    client.emit('publish', 'options', function(status, id) {
       expect(status).to.equal('error');
       expect(id).to.equal('Illegal request');
       client.emit('unpublish', 'streamId', function(status, id) {
@@ -876,7 +869,6 @@ describe('Responding to clients.', function() {
         .then(function(result) {
           expect(result).to.equal('ok');
           var pub_req = {
-            type: 'webrtc',
             media: {
               audio: {
                 source: 'mic'
@@ -892,13 +884,13 @@ describe('Responding to clients.', function() {
             stream_id = res.id;
             expect(mockPortal.publish.getCall(0).args[0]).to.equal(client.id);
             expect(mockPortal.publish.getCall(0).args[1]).to.equal(stream_id);
-            expect(mockPortal.publish.getCall(0).args[2]).to.deep.equal(pub_req);
+            expect(mockPortal.publish.getCall(0).args[2].media).to.deep.equal(pub_req.media);
 
             client.emit('soac', {id: stream_id, signaling: {type: 'offer', sdp: 'offerSDPString'}}, function() {
               expect(mockPortal.onSessionSignaling.getCall(0).args).to.deep.equal([client.id, stream_id, {type: 'offer', sdp: 'offerSDPString'}]);
               client.emit('soac', {id: stream_id, signaling: {type: 'candidate', candidate: 'candidateString'}}, function() {
                 expect(mockPortal.onSessionSignaling.getCall(1).args).to.deep.equal([client.id, stream_id, {type: 'candidate', candidate: 'candidateString'}]);
-                server.notify(client.id, 'progress', {id: stream_id, status: 'ready'}); 
+                server.notify(client.id, 'progress', {id: stream_id, status: 'ready'});
               });
             });
           });
@@ -911,39 +903,6 @@ describe('Responding to clients.', function() {
         });
     });
 
-    it('Publishing rtsp/rtmp streams after joining should succeed.', function(done) {
-      mockPortal.publish = sinon.stub();
-      mockPortal.publish.resolves('');
-
-      return joinFirstly()
-        .then(function(result) {
-          expect(result).to.equal('ok');
-          var pub_req = {
-            type: 'streaming',
-            connection: {
-              url: 'urlOfRtspOrRtmpSource',
-              transportProtocol: 'tcp',
-              bufferSize: 2048
-            },
-            media: {
-              audio: true,
-              video: true
-            },
-            attributes: {
-              key: 'value'
-            }
-          };
-          client.emit('publish', pub_req, function(status, res) {
-            expect(status).to.equal('ok');
-            expect(res.id).to.be.a('string');
-            expect(mockPortal.publish.getCall(0).args[0]).to.equal(client.id);
-            expect(mockPortal.publish.getCall(0).args[1]).to.equal(res.id);
-            expect(mockPortal.publish.getCall(0).args[2]).to.deep.equal(pub_req);
-            done();
-          });
-        });
-    });
-
     it('Publishing streams should fail if portal fails.', function(done) {
       mockPortal.publish = sinon.stub();
       mockPortal.publish.rejects('whatever reason');
@@ -952,7 +911,6 @@ describe('Responding to clients.', function() {
         .then(function(result) {
           expect(result).to.equal('ok');
           var pub_req = {
-            type: 'webrtc',
             media: {
               audio: {
                 source: 'mic'
@@ -982,7 +940,6 @@ describe('Responding to clients.', function() {
         .then(function(result) {
           expect(result).to.equal('ok');
           var pub_req = {
-            type: 'webrtc',
             media: {
               audio: {
                 source: 'mic'
@@ -1016,19 +973,9 @@ describe('Responding to clients.', function() {
           expect(result).to.equal('ok');
           client.emit('publish', {}, function(status, data) {
             expect(status).to.equal('error');
-            client.emit('publish', {type: 'no', media: {'audio': { source: 'mic'}}}, function(status, data) {
+            client.emit('publish', {media: {}}, function(status, data) {
               expect(status).to.equal('error');
-              client.emit('publish', {type: 'webrtc', media: {}}, function(status, data) {
-                expect(status).to.equal('error');
-                client.emit('publish', {type: 'streaming', media: {'audio': { source: 'mic'}}}, function(status, data) {
-                  expect(status).to.equal('error');
-                  client.emit('publish', {type: 'webrtc', connection: {url: 'rtmp://xxx'}, media: {'audio': 'auto'}}, function(status, data) {
-                    expect(status).to.equal('error');
-                    expect(mockPortal.publish.callCount).to.equal(0);
-                    done();
-                  });
-                });
-              });
+              done();
             });
           });
         });
@@ -1243,7 +1190,7 @@ describe('Responding to clients.', function() {
         });
     });
 
-    it.skip('With invalid operation or data should fail.', function(done) {
+    it('With invalid operation or data should fail.', function(done) {
       mockPortal.streamControl = sinon.stub();
 
       return joinFirstly()
@@ -1251,12 +1198,10 @@ describe('Responding to clients.', function() {
           expect(result).to.equal('ok');
           client.emit('stream-control', {id: 'subStreamId', operation: 'set-region', data: {view: 'common', region: 789}}, function(status, data) {
             expect(status).to.equal('error');
-            expect(data).to.equal('Invalid region id');
             expect(mockPortal.streamControl.callCount).to.equal(0);
 
             client.emit('stream-control', {id: 'subStreamId', operation: 'set-region', data: {view: 'common', region: ''}}, function(status, data) {
               expect(status).to.equal('error');
-              expect(data).to.equal('Invalid region id');
               expect(mockPortal.streamControl.callCount).to.equal(0);
               done();
             });
@@ -1271,7 +1216,6 @@ describe('Responding to clients.', function() {
         .then(function(result) {
           expect(result).to.equal('ok');
           var sub_req = {
-            type: 'webrtc',
             media: {
               audio: false,
               video: false
@@ -1296,7 +1240,6 @@ describe('Responding to clients.', function() {
         .then(function(result) {
           expect(result).to.equal('ok');
           var sub_req = {
-            type: 'webrtc',
             media: {
               audio: {
                 from: 'stream1'
@@ -1318,7 +1261,7 @@ describe('Responding to clients.', function() {
             var subscription_id = res.id;
             expect(mockPortal.subscribe.getCall(0).args[0]).to.equal(client.id);
             expect(mockPortal.subscribe.getCall(0).args[1]).to.equal(subscription_id);
-            expect(mockPortal.subscribe.getCall(0).args[2]).to.deep.equal(sub_req);
+            expect(mockPortal.subscribe.getCall(0).args[2].media).to.deep.equal(sub_req.media);
             client.emit('soac', {id: subscription_id, signaling: {type: 'offer', sdp: 'offerSDPString'}}, function() {
               expect(mockPortal.onSessionSignaling.getCall(0).args).to.deep.equal([client.id, subscription_id, {type: 'offer', sdp: 'offerSDPString'}]);
               client.emit('soac', {id: subscription_id, signaling: {type: 'candidate', candidate: 'candidateString'}}, function() {
@@ -1346,7 +1289,6 @@ describe('Responding to clients.', function() {
         .then(function(result) {
           expect(result).to.equal('ok');
           var sub_req = {
-            type: 'webrtc',
             media: {
               audio: {
                 from: 'stream1'
@@ -1380,7 +1322,6 @@ describe('Responding to clients.', function() {
         .then(function(result) {
           expect(result).to.equal('ok');
           var sub_req = {
-            type: 'webrtc',
             media: {
               audio: {
                 from: 'stream1'
@@ -1411,178 +1352,6 @@ describe('Responding to clients.', function() {
         });
     });
 
-    it('Starting pulling out rtsp/rtmp streams with proper options after joining should succeed.', function(done) {
-      mockPortal.subscribe = sinon.stub();
-      mockPortal.subscribe.resolves('ok');
-
-      return joinFirstly()
-        .then(function(result) {
-          expect(result).to.equal('ok');
-          var sub_req = {
-            type: 'streaming',
-            connection: {
-              url: 'rtmp://some-streaming-server/live'
-            },
-            media: {
-              audio: {
-                from: 'stream1'
-              },
-              video: {
-                from: 'stream2',
-                format: {
-                  codec: 'vp8'
-                },
-                parameters: {
-                  resolution: {width: 640, height: 480},
-                  bitrate: 'x0.8',
-                  keyFrameInterval: 2
-                }
-              }
-            }
-          };
-          client.emit('subscribe', sub_req, function(status, res) {
-            expect(status).to.equal('ok');
-            expect(res.id).to.be.a('string');
-            var subscription_id = res.id;
-            expect(mockPortal.subscribe.getCall(0).args[0]).to.equal(client.id);
-            expect(mockPortal.subscribe.getCall(0).args[1]).to.equal(subscription_id);
-            expect(mockPortal.subscribe.getCall(0).args[2]).to.deep.equal(sub_req);
-            done();
-          });
-        });
-    });
-
-    it('Starting recording after joining with proper options should succeed.', function(done) {
-      mockPortal.subscribe = sinon.stub();
-      mockPortal.subscribe.resolves('ok');
-
-      return joinFirstly()
-        .then(function(result) {
-          expect(result).to.equal('ok');
-          var sub_req = {
-            type: 'recording',
-            connection: {
-              container: 'mp4'
-            },
-            media: {
-              audio: {
-                from: 'stream1'
-              },
-              video: {
-                from: 'stream2',
-                format: {
-                  codec: 'vp8'
-                },
-                parameters: {
-                  resolution: {width: 640, height: 480},
-                  bitrate: 600,
-                  keyFrameInterval: 5
-                }
-              }
-            }
-          };
-          client.emit('subscribe', sub_req, function(status, res) {
-            expect(status).to.equal('ok');
-            expect(res.id).to.be.a('string');
-            expect(mockPortal.subscribe.getCall(0).args[0]).to.equal(client.id);
-            expect(mockPortal.subscribe.getCall(0).args[1]).to.equal(res.id);
-            expect(mockPortal.subscribe.getCall(0).args[2]).to.deep.equal(sub_req);
-            done();
-          });
-        });
-    });
-
-    it.skip('Starting pulling out rtsp/rtmp streams should fail if the url is invalid.', function(done) {
-      mockPortal.subscribe = sinon.stub();
-      mockPortal.subscribe.resolves({agent: 'agentId', node: 'nodeId'});
-
-      return joinFirstly()
-        .then(function(result) {
-          expect(result).to.equal('ok');
-          var options = {url: ''};
-          client.emit('addExternalOutput', options, function(status, data) {
-            expect(status).to.equal('error');
-            expect(data).to.equal('Invalid RTSP/RTMP server url');
-            var options1 = {url: 1234567};
-            client.emit('addExternalOutput', options1, function(status, data) {
-              expect(status).to.equal('error');
-              expect(data).to.equal('Invalid RTSP/RTMP server url');
-              var options2 = {url: 'an invalid url'};
-              client.emit('addExternalOutput', options2, function(status, data) {
-                expect(status).to.equal('error');
-                expect(data).to.equal('Invalid RTSP/RTMP server url');
-
-                var options22 = {url: 'sip://another invalid url'};
-                client.emit('addExternalOutput', options22, function(status, data) {
-                  expect(status).to.equal('error');
-                  expect(data).to.equal('Invalid RTSP/RTMP server url');
-                  done();
-                });
-              });
-            });
-          });
-        });
-    });
-
-    it.skip('Starting recording with invalid recorderId or codec-names specified should fail.', function(done) {
-      mockPortal.subscribe = sinon.stub();
-      mockPortal.subscribe.resolves('ok');
-
-      return joinFirstly()
-        .then(function(result) {
-          expect(result).to.equal('ok');
-          var options = {recorderId: 987654321};
-          client.emit('startRecorder', options, function(status, data) {
-            expect(status).to.equal('error');
-            expect(data).to.equal('Invalid recorder id');
-            expect(mockPortal.subscribe.callCount).to.equal(0);
-
-            var options = {recorderId: 0};
-            client.emit('startRecorder', options, function(status, data) {
-              expect(status).to.equal('error');
-              expect(data).to.equal('Invalid recorder id');
-              expect(mockPortal.subscribe.callCount).to.equal(0);
-
-              var options = {recorderId: -1};
-              client.emit('startRecorder', options, function(status, data) {
-                expect(status).to.equal('error');
-                expect(data).to.equal('Invalid recorder id');
-                expect(mockPortal.subscribe.callCount).to.equal(0);
-
-                var options = {audioStreamId: 'targetStreamId', audioCodec: 24};
-                client.emit('startRecorder', options, function(status, data) {
-                  expect(status).to.equal('error');
-                  expect(data).to.equal('Invalid audio codec');
-                  expect(mockPortal.subscribe.callCount).to.equal(0);
-
-                  var options = {videoStreamId: 'targetStreamId', videoCodec: {a: 1}};
-                  client.emit('startRecorder', options, function(status, data) {
-                    expect(status).to.equal('error');
-                    expect(data).to.equal('Invalid video codec');
-                    expect(mockPortal.subscribe.callCount).to.equal(0);
-
-                    var options = {recorderId: 'aaaa', audioStreamId: 'targetStreamId1', videoStreamId: 'targetStreamId1', audioCodec: '', videoCodec: 'vp8'}; //
-                    client.emit('startRecorder', options, function(status, data) {
-                      expect(status).to.equal('error');
-                      expect(data).to.equal('Invalid audio codec');
-                      expect(mockPortal.subscribe.callCount).to.equal(0);
-
-                      var options = {recorderId: 'aaaa', audioStreamId: 'targetStreamId1', videoStreamId: 'targetStreamId1', audioCodec: 'opus', videoCodec: ''}; //
-                      client.emit('startRecorder', options, function(status, data) {
-                        expect(status).to.equal('error');
-                        expect(data).to.equal('Invalid video codec');
-                        expect(mockPortal.subscribe.callCount).to.equal(0);
-                        done();
-                      });
-                    });
-                  });
-                });
-              });
-            });
-          });
-        });
-    });
-
     it('With invalid subRequest should fail.', function(done) {
       mockPortal.subscribe = sinon.stub();
 
@@ -1591,19 +1360,9 @@ describe('Responding to clients.', function() {
           expect(result).to.equal('ok');
           client.emit('subscribe', {}, function(status, data) {
             expect(status).to.equal('error');
-            client.emit('subscribe', {type: 'no', media: {'audio': { from: 'stream-test'}}}, function(status, data) {
+            client.emit('subscribe', {type: 'webrtc', media: {'audio': {} }}, function(status, data) {
               expect(status).to.equal('error');
-              client.emit('subscribe', {type: 'webrtc', media: {'audio': {} }}, function(status, data) {
-                expect(status).to.equal('error');
-                client.emit('subscribe', {type: 'streaming', media: {'audio': { from: 'stream-test'}} }, function(status, data) {
-                  expect(status).to.equal('error');
-                  client.emit('subscribe', {type: 'recording', media: {'audio': { from: 'stream-test'}} }, function(status, data) {
-                    expect(status).to.equal('error');
-                    expect(mockPortal.subscribe.callCount).to.equal(0);
-                    done();
-                  });
-                });
-              });
+              done();
             });
           });
         });
@@ -1742,7 +1501,7 @@ describe('Responding to clients.', function() {
         });
     });
 
-    it('Updating pulling out rtsp/rtmp streams should fail if portal.subscriptionControl fails.', function(done) {
+    it('Updating audio/video source of a subscription should fail if portal.subscriptionControl fails.', function(done) {
       mockPortal.subscriptionControl = sinon.stub();
       mockPortal.subscriptionControl.rejects('some-error');
 

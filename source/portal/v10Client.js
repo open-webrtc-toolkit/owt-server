@@ -123,6 +123,7 @@ var V10Client = function(clientId, sigConnection, portal) {
       var stream_id = Math.round(Math.random() * 1000000000000000000) + '';
       return validatePubReq(pubReq)
         .then((req) => {
+          req.type = 'webrtc';//FIXME: For backend compatibility with v3.4 clients.
           return portal.publish(clientId, stream_id, req);
         }).then((result) => {
           safeCall(callback, 'ok', {id: stream_id});
@@ -163,6 +164,7 @@ var V10Client = function(clientId, sigConnection, portal) {
       var subscription_id = Math.round(Math.random() * 1000000000000000000) + '';
       return validateSubReq(subReq)
         .then((req) => {
+          req.type = 'webrtc';//FIXME: For backend compatibility with v3.4 clients.
           return portal.subscribe(clientId, subscription_id, req);
         }).then((result) => {
           safeCall(callback, 'ok', {id: subscription_id});
@@ -206,13 +208,6 @@ var V10Client = function(clientId, sigConnection, portal) {
         }).then((result) => {
           safeCall(callback, 'ok');
         }).catch(onError('soac', callback));
-    });
-
-    socket.on('set-permission', function(setPermReq, callback) {
-      if(!that.inRoom){
-        return safeCall(callback, 'error', 'Illegal request');
-      }
-      safeCall(callback, 'error', 'Please use REST interface to set permissions');
     });
   };
 

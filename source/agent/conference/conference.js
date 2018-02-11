@@ -212,24 +212,16 @@ var translateOldRoomConfig = (oldConfig) => {
   for (var r in global.config.conference.roles) {
     var role_def = {
       role: r,
-      publish: !!global.config.conference.roles[r].publish ? {type: ['webrtc', 'streaming'], media: {audio: true, video: true}} : false,
-      subscribe: !!global.config.conference.roles[r].subscribe ? {type: ['webrtc'], media: {audio: true, video: true}} : false
+      publish: !!global.config.conference.roles[r].publish ? {audio: true, video: true} : {audio: false, video: false},
+      subscribe: !!global.config.conference.roles[r].subscribe ? {audio: true, video: true} : {audio: false, video: false}
     };
     if (typeof global.config.conference.roles[r].publish === 'object') {
-      role_def.publish.media.audio = !!global.config.conference.roles[r].publish.audio;
-      role_def.publish.media.video = !!global.config.conference.roles[r].publish.video;
+      role_def.publish.audio = !!global.config.conference.roles[r].publish.audio;
+      role_def.publish.video = !!global.config.conference.roles[r].publish.video;
     }
     if (typeof global.config.conference.roles[r].subscribe === 'object') {
-      role_def.subscribe.media.audio = !!global.config.conference.roles[r].subscribe.audio;
-      role_def.subscribe.media.video = !!global.config.conference.roles[r].subscribe.video;
-    }
-    if (!!global.config.conference.roles[r].record) {
-      role_def.subscribe || (role_def.subscribe = {type: [], media:{audio: true, video: true}});
-      role_def.subscribe.type.push('recording');
-    }
-    if (!!global.config.conference.roles[r].addExternalOutput) {
-      role_def.subscribe || (role_def.subscribe = {type: [], media:{audio: true, video: true}});
-      role_def.subscribe.type.push('streaming');
+      role_def.subscribe.audio = !!global.config.conference.roles[r].subscribe.audio;
+      role_def.subscribe.video = !!global.config.conference.roles[r].subscribe.video;
     }
     config.roles.push(role_def);
   }
@@ -237,10 +229,8 @@ var translateOldRoomConfig = (oldConfig) => {
   if (config.sip) {
     config.roles.push({
       role: 'sip',
-      publish: {type: ['sip'], media: {audio: true, video: true}},
-      subscribe: {type: ['sip'], media: {audio: true, video: true}},
-      text: false,
-      manage: false
+      publish: {audio: true, video: true},
+      subscribe: {audio: true, video: true}
     });
   }
 
@@ -1231,9 +1221,7 @@ var Conference = function (rpcClient, selfRpcId) {
 
         permission = {
           publish: my_role_def[0].publish,
-          subscribe: my_role_def[0].subscribe,
-          text: my_role_def[0].text,
-          manage: my_role_def[0].manage
+          subscribe: my_role_def[0].subscribe
         };
 
         return addParticipant(participantInfo, permission);
@@ -1325,8 +1313,8 @@ var Conference = function (rpcClient, selfRpcId) {
       return callback('callback', 'error', 'Participant has not joined');
     }
 
-    if ((pubInfo.media.audio && !participants[participantId].isPublishPermitted('audio', pubInfo.type))
-        || (pubInfo.media.video && !participants[participantId].isPublishPermitted('video', pubInfo.type))) {
+    if ((pubInfo.media.audio && !participants[participantId].isPublishPermitted('audio'))
+        || (pubInfo.media.video && !participants[participantId].isPublishPermitted('video'))) {
       return callback('callback', 'error', 'unauthorized');
     }
 
@@ -1545,8 +1533,8 @@ var Conference = function (rpcClient, selfRpcId) {
       return callback('callback', 'error', 'Participant has not joined');
     }
 
-    if ((subDesc.media.audio && !participants[participantId].isSubscribePermitted('audio', subDesc.type))
-        || (subDesc.media.video && !participants[participantId].isSubscribePermitted('video', subDesc.type))) {
+    if ((subDesc.media.audio && !participants[participantId].isSubscribePermitted('audio'))
+        || (subDesc.media.video && !participants[participantId].isSubscribePermitted('video'))) {
       return callback('callback', 'error', 'unauthorized');
     }
 
