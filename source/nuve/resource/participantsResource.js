@@ -40,7 +40,7 @@ exports.getList = function (req, res) {
         }
 
         log.debug('Representing participants for room ', currentRoom._id, 'and service', currentService._id);
-        cloudHandler.getParticipantsInRoom (currentRoom._id, function (participants) {
+        cloudHandler.getParticipantsInRoom (currentRoom._id + '', function (participants) {
             if (participants === 'error') {
                 res.status(404).send('Operation failed');
                 return;
@@ -67,7 +67,7 @@ exports.get = function (req, res) {
         }
 
         var participant = req.params.participant;
-        cloudHandler.getParticipantsInRoom(currentRoom._id, function (participants) {
+        cloudHandler.getParticipantsInRoom(currentRoom._id + '', function (participants) {
             if (participants === 'error') {
                 res.status(404).send('Operation failed');
                 return;
@@ -104,7 +104,7 @@ exports.patch = function (req, res) {
 
         var participant = req.params.participant;
         var updates = req.body;
-        cloudHandler.updateParticipant(currentRoom._id, participant, updates, function (result) {
+        cloudHandler.updateParticipant(currentRoom._id + '', participant, updates, function (result) {
             if (result === 'error') {
                 res.status(404).send('Operation failed');
                 return;
@@ -132,7 +132,7 @@ exports.delete = function (req, res) {
         }
 
         var participant = req.params.participant;
-        cloudHandler.deleteParticipant(currentRoom._id, participant, function (result) {
+        cloudHandler.deleteParticipant(currentRoom._id + '', participant, function (result) {
             log.debug('result', result);
             if (result === 'error') {
                 res.status(404).send('Operation failed');

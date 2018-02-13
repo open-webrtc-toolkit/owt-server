@@ -40,7 +40,7 @@ exports.getList = function (req, res) {
         }
 
         log.debug('Representing streaming-outs for room ', currentRoom._id, 'and service', currentService._id);
-        cloudHandler.getSubscriptionsInRoom (currentRoom._id, 'streaming', function (streamingOuts) {
+        cloudHandler.getSubscriptionsInRoom (currentRoom._id + '', 'streaming', function (streamingOuts) {
             if (streamingOuts === 'error') {
                 //res.status(404).send('Operation failed');
                 res.send([]);
@@ -76,7 +76,7 @@ exports.add = function (req, res) {
           },
           media: req.body.media
         };
-        cloudHandler.addServerSideSubscription(currentRoom._id, sub_req, function (result) {
+        cloudHandler.addServerSideSubscription(currentRoom._id + '', sub_req, function (result) {
             if (result === 'error') {
                 res.status(404).send('Operation failed');
                 return;
@@ -105,7 +105,7 @@ exports.patch = function (req, res) {
 
         var sub_id = req.params.id,
             cmds = req.body;
-        cloudHandler.controlSubscription(currentRoom._id, sub_id, cmds, function (result) {
+        cloudHandler.controlSubscription(currentRoom._id + '', sub_id, cmds, function (result) {
             if (result === 'error') {
                 res.status(404).send('Operation failed');
                 return;
@@ -133,7 +133,7 @@ exports.delete = function (req, res) {
         }
 
         var sub_id = req.params.id;
-        cloudHandler.deleteSubscription(currentRoom._id, sub_id, function (result) {
+        cloudHandler.deleteSubscription(currentRoom._id + '', sub_id, function (result) {
             log.debug('result', result);
             if (result === 'error') {
                 res.status(404).send('Operation failed');

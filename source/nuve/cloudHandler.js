@@ -1,5 +1,6 @@
 /*global require, exports, global*/
 'use strict';
+var validateReq = require('./restReqValidator').validate;
 var rpc = require('./rpc/rpc');
 var log = require('./logger').logger.getLogger('CloudHandler');
 var cluster_name = ((global.config || {}).cluster || {}).name || 'woogeen-cluster';
@@ -28,7 +29,7 @@ exports.schedulePortal = function (tokenCode, origin, callback) {
     tryFetchingPortal(60);
 };
 
-var scheduleRoomController = function (roomId) {
+const scheduleRoomController = function (roomId) {
   return new Promise((resolve, reject) => {
       rpc.callRpc(cluster_name, 'schedule', ['conference', roomId, 'preference', 30 * 1000], {callback: function (result) {
           if (result === 'timeout' || result === 'error') {
@@ -46,7 +47,7 @@ var scheduleRoomController = function (roomId) {
   });
 };
 
-var getRoomController = (roomId) => {
+const getRoomController = (roomId) => {
   return new Promise((resolve, reject) => {
     rpc.callRpc(cluster_name, 'getScheduled', ['conference', roomId], {callback: (agent) => {
       if (agent === 'timeout' || agent === 'error') {
@@ -64,9 +65,20 @@ var getRoomController = (roomId) => {
   });
 };
 
+const idPattern = /^[0-9a-zA-Z\-]+$/;
+const validateId = (type, id) => {
+  if ((typeof id === 'string') && idPattern.test(id)) {
+    return Promise.resolve(id);
+  } else {
+    return Promise.reject('Invalid ' + type);
+  }
+};
+
 exports.deleteRoom = function (roomId, callback) {
-  return getRoomController(roomId)
-    .then((controller) => {
+  return validateId('Room ID', roomId)
+    .then((ok) => {
+      return getRoomController(roomId);
+    }).then((controller) => {
       rpc.callRpc(controller, 'destroy', [], {callback: function (result) {
         callback(result);
       }});
@@ -76,8 +88,10 @@ exports.deleteRoom = function (roomId, callback) {
 };
 
 exports.getParticipantsInRoom = function (roomId, callback) {
-  return getRoomController(roomId)
-    .then((controller) => {
+  return validateId('Room ID', roomId)
+    .then((ok) => {
+      return getRoomController(roomId);
+    }).then((controller) => {
       rpc.callRpc(controller, 'getParticipants', [], {callback: function (participants) {
         log.debug('Got participants:', participants);
         if (participants === 'timeout' || participants === 'error') {
@@ -93,8 +107,14 @@ exports.getParticipantsInRoom = function (roomId, callback) {
 };
 
 exports.updateParticipant = function (roomId, participant, updates, callback) {
-  return getRoomController(roomId)
-    .then((controller) => {
+  return validateId('Room ID', roomId)
+    .then((ok) => {
+      return validateId('Participant ID', participant);
+    }).then((ok) => {
+      return validateReq('participant-update', updates);
+    }).then((ok) => {
+      return getRoomController(roomId);
+    }).then((controller) => {
       rpc.callRpc(controller, 'controlParticipant', [participant, updates], {callback: function (result) {
         if (result === 'error' || result === 'timeout') {
           callback('error');
@@ -108,8 +128,12 @@ exports.updateParticipant = function (roomId, participant, updates, callback) {
 };
 
 exports.deleteParticipant = function (roomId, participant, callback) {
-  return getRoomController(roomId)
-    .then((controller) => {
+  return validateId('Room ID', roomId)
+    .then((ok) => {
+      return validateId('Participant ID', participant);
+    }).then((ok) => {
+      return getRoomController(roomId);
+    }).then((controller) => {
       rpc.callRpc(controller, 'dropParticipant', [participant], {callback: function (result) {
         if (result === 'error' || result === 'timeout') {
           callback('error');
@@ -123,8 +147,10 @@ exports.deleteParticipant = function (roomId, participant, callback) {
 };
 
 exports.getStreamsInRoom = function (roomId, callback) {
-  return getRoomController(roomId)
-    .then((controller) => {
+  return validateId('Room ID', roomId)
+    .then((ok) => {
+      return getRoomController(roomId);
+    }).then((controller) => {
       rpc.callRpc(controller, 'getStreams', [], {callback: function (streams) {
         log.debug('Got streams:', streams);
         if (streams === 'timeout' || streams === 'error') {
@@ -140,11 +166,19 @@ exports.getStreamsInRoom = function (roomId, callback) {
 };
 
 exports.addStreamingIn = function (roomId, pubReq, callback) {
-  return getRoomController(roomId)
-    .then((controller) => {
+  return validateId('Room ID', roomId)
+    .then((ok) => {
+      return validateReq('streamingIn-req', pubReq);
+    }).then((ok) => {
+      return getRoomController(roomId);
+    }).then((controller) => {
       return controller;
     }, (e) => {
-      return scheduleRoomController(roomId);
+      if (e === 'Room is inactive') {
+        return scheduleRoomController(roomId);
+      } else {
+        return Promise.reject('Validation failed');
+      }
     }).then((controller) => {
       rpc.callRpc(controller, 'addStreamingIn', [roomId, pubReq], {callback: function (result) {
         if (result === 'error' || result === 'timeout') {
@@ -159,8 +193,14 @@ exports.addStreamingIn = function (roomId, pubReq, callback) {
 };
 
 exports.controlStream = function (roomId, stream, cmds, callback) {
-  return getRoomController(roomId)
-    .then((controller) => {
+  return validateId('Room ID', roomId)
+    .then((ok) => {
+      return validateId('Stream ID', stream);
+    }).then((ok) => {
+      return validateReq('stream-update', cmds);
+    }).then((ok) => {
+      return getRoomController(roomId);
+    }).then((controller) => {
       rpc.callRpc(controller, 'controlStream', [stream, cmds], {callback: function (result) {
         if (result === 'error' || result === 'timeout') {
           callback('error');
@@ -174,8 +214,12 @@ exports.controlStream = function (roomId, stream, cmds, callback) {
 };
 
 exports.deleteStream = function (roomId, stream, callback) {
-  return getRoomController(roomId)
-    .then((controller) => {
+  return validateId('Room ID', roomId)
+    .then((ok) => {
+      return validateId('Stream ID', stream);
+    }).then((ok) => {
+      return getRoomController(roomId);
+    }).then((controller) => {
       rpc.callRpc(controller, 'deleteStream', [stream], {callback: function (result) {
         if (result === 'error' || result === 'timeout') {
           callback('error');
@@ -189,8 +233,16 @@ exports.deleteStream = function (roomId, stream, callback) {
 };
 
 exports.getSubscriptionsInRoom = function (roomId, type, callback) {
-  return getRoomController(roomId)
-    .then((controller) => {
+  return validateId('Room ID', roomId)
+    .then((ok) => {
+      if (type === 'streaming' || type === 'recording' || type === 'webrtc') {
+        return Promise.resolve('ok');
+      } else {
+        return Promise.reject('Invalid type');
+      }
+    }).then((ok) => {
+      return getRoomController(roomId);
+    }).then((controller) => {
       rpc.callRpc(controller, 'getSubscriptions', [type], {callback: function (subscriptions) {
         log.debug('Got subscriptions:', subscriptions);
         if (subscriptions === 'timeout' || subscriptions === 'error') {
@@ -206,11 +258,19 @@ exports.getSubscriptionsInRoom = function (roomId, type, callback) {
 };
 
 exports.addServerSideSubscription = function (roomId, subReq, callback) {
-  return getRoomController(roomId)
-    .then((controller) => {
+  return validateId('Room ID', roomId)
+    .then((ok) => {
+      return validateReq('serverSideSub-req', subReq);
+    }).then((ok) => {
+      return getRoomController(roomId);
+    }).then((controller) => {
       return controller;
     }, (e) => {
-      return scheduleRoomController(roomId);
+      if (e === 'Room is inactive') {
+        return scheduleRoomController(roomId);
+      } else {
+        return Promise.reject('Validation failed');
+      }
     }).then((controller) => {
       rpc.callRpc(controller, 'addServerSideSubscription', [roomId, subReq], {callback: function (result) {
         if (result === 'error' || result === 'timeout') {
@@ -225,8 +285,14 @@ exports.addServerSideSubscription = function (roomId, subReq, callback) {
 };
 
 exports.controlSubscription = function (roomId, subId, cmds, callback) {
-  return getRoomController(roomId)
-    .then((controller) => {
+  return validateId('Room ID', roomId)
+    .then((ok) => {
+      return validateId('Subscription ID', subId);
+    }).then((ok) => {
+      return validateReq('subscription-update', cmds);
+    }).then((ok) => {
+      return getRoomController(roomId);
+    }).then((controller) => {
       rpc.callRpc(controller, 'controlSubscription', [subId, cmds], {callback: function (result) {
         if (result === 'error' || result === 'timeout') {
           callback('error');
@@ -240,8 +306,12 @@ exports.controlSubscription = function (roomId, subId, cmds, callback) {
 };
 
 exports.deleteSubscription = function (roomId, subId, callback) {
-  return getRoomController(roomId)
-    .then((controller) => {
+  return validateId('Room ID', roomId)
+    .then((ok) => {
+      return validateId('Subscription ID', subId);
+    }).then((ok) => {
+      return getRoomController(roomId);
+    }).then((controller) => {
       rpc.callRpc(controller, 'deleteSubscription', [subId], {callback: function (result) {
         if (result === 'error' || result === 'timeout') {
           callback('error');
