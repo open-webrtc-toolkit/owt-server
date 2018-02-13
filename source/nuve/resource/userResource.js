@@ -41,7 +41,7 @@ exports.getUser = function (req, res) {
         }
 
         var user = req.params.user;
-        cloudHandler.getParticipantsInRoom(currentRoom._id, function (users) {
+        cloudHandler.getParticipantsInRoom(currentRoom._id + '', function (users) {
             if (users === 'error') {
                 res.status(404).send('Operation failed');
                 return;
@@ -80,7 +80,7 @@ exports.deleteUser = function (req, res) {
         }
 
         var user = req.params.user;
-        cloudHandler.deleteParticipant(currentRoom._id, user, function (result) {
+        cloudHandler.deleteParticipant(currentRoom._id + '', user, function (result) {
             log.debug('result', result);
             if (result === 'error') {
                 res.status(404).send('Operation failed');

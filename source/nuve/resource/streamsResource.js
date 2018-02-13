@@ -40,7 +40,7 @@ exports.getList = function (req, res) {
         }
 
         log.debug('Representing streams for room ', currentRoom._id, 'and service', currentService._id);
-        cloudHandler.getStreamsInRoom (currentRoom._id, function (streams) {
+        cloudHandler.getStreamsInRoom (currentRoom._id + '', function (streams) {
             if (streams === 'error') {
                 //res.status(404).send('Operation failed');
                 res.send([]);
@@ -68,7 +68,7 @@ exports.get = function (req, res) {
         }
 
         var stream = req.params.stream;
-        cloudHandler.getStreamsInRoom(currentRoom._id, function (streams) {
+        cloudHandler.getStreamsInRoom(currentRoom._id + '', function (streams) {
             if (streams === 'error') {
                 res.status(404).send('Operation failed');
                 return;
@@ -105,7 +105,7 @@ exports.addStreamingIn = function (req, res) {
 
         var pub_req = req.body;
         pub_req.type = 'streaming';
-        cloudHandler.addStreamingIn(currentRoom._id, pub_req, function (result) {
+        cloudHandler.addStreamingIn(currentRoom._id + '', pub_req, function (result) {
             if (result === 'error') {
                 res.status(404).send('Operation failed');
                 return;
@@ -134,7 +134,7 @@ exports.patch = function (req, res) {
 
         var stream = req.params.stream,
             cmds = req.body;
-        cloudHandler.controlStream(currentRoom._id, stream, cmds, function (result) {
+        cloudHandler.controlStream(currentRoom._id + '', stream, cmds, function (result) {
             if (result === 'error') {
                 res.status(404).send('Operation failed');
                 return;
@@ -162,7 +162,7 @@ exports.delete = function (req, res) {
         }
 
         var stream = req.params.stream;
-        cloudHandler.deleteStream(currentRoom._id, stream, function (result) {
+        cloudHandler.deleteStream(currentRoom._id + '', stream, function (result) {
             if (result === 'error') {
                 res.status(404).send('Operation failed');
             } else {

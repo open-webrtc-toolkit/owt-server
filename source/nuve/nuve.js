@@ -118,7 +118,7 @@ app.put('/v1/rooms/:room', roomResource.updateRoom);
 app.patch('/v1/rooms/:room', function(req, res) {res.status(401).send("Not implemented");}); //FIXME: To be implemented.
 
 //Participant management
-app.get('/v1/rooms/:room/participants', participantsResource.getList); //FIXME: The permission definition needs to be refined.
+app.get('/v1/rooms/:room/participants', participantsResource.getList);
 app.get('/v1/rooms/:room/participants/:participant', participantsResource.get);
 app.patch('/v1/rooms/:room/participants/:participant', participantsResource.patch);
 app.delete('/v1/rooms/:room/participants/:participant', participantsResource.delete);
