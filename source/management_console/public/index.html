@@ -12,6 +12,7 @@
     <link rel="stylesheet" href="vendor/css/bootstrap-editable.css">
     <link rel="stylesheet" href="vendor/css/jquery.colorpickersliders.css">
     <link rel="stylesheet" href="vendor/css/bootstrap.colorpickersliders.min.css">
+    <link rel="stylesheet" href='vendor/css/brutusin-json-forms.min.css'/>
     <link href="css/dashboard.css" rel="stylesheet">
   </head>
 
@@ -129,7 +130,7 @@
           </div>
       </div>
 
-      <div id="SIPModal" class="modal fade" tabindex="-1" role="dialog" aria-labelledby="editTableModal" aria-hidden="true" style="display: none;">
+      <div id="AllModal" class="modal fade" tabindex="-1" role="dialog" aria-labelledby="editTableModal" aria-hidden="true" style="display: none;">
         <div class="modal-dialog modal-lg">
           <div class="modal-content">
             <div class="modal-header">
@@ -137,17 +138,12 @@
               <h4 class="modal-title" id="editTableModal"></h4>
             </div>
             <div class="modal-body">
-              <div class="checkbox">
-                <label><input type="checkbox" id="SIPSwitch"> Enable SIP</label>
-              </div>
-              <div class="table-responsive" id="SIPTable">
-                <table class="table table-striped">
-                  <tbody>
-                  </tbody>
-                </table>
+              <div id="jfContainer">
               </div>
             </div>
             <div class="modal-footer">
+              <button type="button" class="btn btn-primary" data-dismiss="modal"><i class="glyphicon glyphicon-ok"></i></button>
+              <button type="button" class="btn btn-default" data-dismiss="modal"><i class="glyphicon glyphicon-remove"></i></button>
             </div>
           </div>
         </div>
@@ -185,12 +181,9 @@
                   <tr>
                     <th>#</th>
                     <th>Name</th>
-                    <th>Mode</th>
                     <th>Publish Limit</th>
-                    <th>User Limit</th>
-                    <th>Enable Mixing</th>
-                    <th>Media Mixing</th>
-                    <th>SIP Connectivity</th>
+                    <th>Participant Limit</th>
+                    <th>Room Detail</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -205,12 +198,9 @@
                   <tr>
                     <th>#</th>
                     <th>Name</th>
-                    <th>Mode</th>
                     <th>Publish Limit</th>
-                    <th>User Limit</th>
-                    <th>Enable Mixing</th>
-                    <th>Media Mixing</th>
-                    <th>SIP Connectivity</th>
+                    <th>Participant Limit</th>
+                    <th>Room Detail</th>
                     <th class="col-md-1"></th>
                   </tr>
                 </thead>
@@ -289,8 +279,10 @@
     <script src="vendor/js/bootstrap.colorpickersliders.nocielch.min.js"></script> <!-- v3.0.2 -->
     <script src="vendor/js/bootstrap.colorpickersliders.min.js"></script> <!-- v3.0.2 -->
     <script src="vendor/js/hmac-sha256.js"></script> <!-- v3.0.2 -->
+    <script src="vendor/js/brutusin-json-forms.min.js"></script>
     <script src="js/libnuve.js"></script>
     <script src="js/util.js"></script>
+    <script src="js/vroom.js"></script>
     <script src="js/index.js"></script>
   </body>
 </html>

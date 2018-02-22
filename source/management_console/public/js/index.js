@@ -38,6 +38,16 @@ var serviceId = "";
 var serviceKey = "";
 var lastColor = "rgb(255, 255, 255)";
 
+var BrutusinForms = brutusin["json-forms"];
+BrutusinForms.onValidationError = function (element, message) {
+    element.focus();
+    if (!element.className.includes(" error")) {
+        element.className += " error";
+    }
+    console.log(message);
+};
+var bf = BrutusinForms.create(RoomSchema);
+
 function checkProfile(callback) {
   var serviceId = getCookie('serviceId') === '' ? top.serviceId : getCookie('serviceId');
   var serviceKey = getCookie('serviceKey') === '' ? top.serviceKey : getCookie('serviceKey');
@@ -126,12 +136,7 @@ $('img#createService').click(function() {
 var tableTemplateService = '{{#rooms}}<tr>\
       <td><code>{{_id}}</code></td>\
       <td>{{name}}</td>\
-      <td>{{mode}}</td>\
-      <td>{{publishLimit}}</td>\
-      <td>{{userLimit}}</td>\
-      <td>{{enableMixing}}</td>\
-      <td>{{mediaSetting}}</td>\
-      <td>{{sipInfo}}</td>\
+      <td>{{DetailSetting}}</td>\
     </tr>{{/rooms}}';
 Mustache.parse(tableTemplateService);
 
@@ -139,7 +144,7 @@ function tableHandlerService(rooms, sname) {
   var template = tableTemplateService;
   var view = Mustache.render(template, {
     rooms: rooms,
-    mediaSetting: function() {
+    DetailSetting: function() {
       if (this.mediaMixing === null) return 'default';
       return 'customized';
     }
@@ -196,12 +201,9 @@ function renderServices() {
 var tableTemplateRoom = '{{#rooms}}<tr>\
       <td><code>{{_id}}</code></td>\
       <td class="roomName" data-spin="name">{{name}}</td>\
-      <td class="roomMode" data-spin="mode" data-value="{{mode}}"></td>\
-      <td class="publishLimit" data-spin="publishLimit">{{publishLimit}}</td>\
-      <td class="userLimit" data-spin="userLimit">{{userLimit}}</td>\
-      <td class="enableMixing" data-spin="enableMixing" data-value="{{enableMixing}}"></td>\
-      <td class="mediaSetting" data-spin="views">object</td>\
-      <td class="SIPConnectivity" data-spin="sipInfo">object</td>\
+      <td class="inputLimit" data-spin="inputLimit">{{inputLimit}}</td>\
+      <td class="participantLimit" data-spin="participantLimit">{{participantLimit}}</td>\
+      <td class="DetailSetting" data-spin="all">object</td>\
       <td class="col-md-1"><button type="button" id="apply-room" class="btn btn-xs btn-primary">Apply</button> <button type="button" id="delete-room" class="btn btn-xs btn-danger">Delete</button></td>\
     </tr>{{/rooms}}';
 Mustache.parse(tableTemplateRoom);
@@ -220,12 +222,9 @@ function tableHandlerRoom(rooms) {
   $('.room #serviceTable tbody').append('<tr>\
       <td></td>\
       <td class="roomName" data-spin="name"></td>\
-      <td class="roomMode" data-spin="mode"></td>\
-      <td class="publishLimit" data-spin="publishLimit"></td>\
-      <td class="userLimit" data-spin="userLimit"></td>\
-      <td class="enableMixing" data-spin="enableMixing" data-value="{{enableMixing}}"></td>\
-      <td class="mediaSetting" data-spin="views"></td>\
-      <td class="SIPConnectivity" data-spin="sipInfo"></td>\
+      <td class="inputLimit" data-spin="inputLimit"></td>\
+      <td class="participantLimit" data-spin="participantLimit"></td>\
+      <td class="DetailSetting" data-spin="all"></td>\
       <td class="col-md-1"><button type="button" id="add-room" class="btn btn-xs btn-success">Add</button> <button type="button" id="reset-room" class="btn btn-xs btn-warning">Reset</button></td>\
     </tr>');
 
@@ -248,8 +247,8 @@ function tableHandlerRoom(rooms) {
           updates[key] = null;
         }
       });
-      if (updates.enableMixing) {
-        updates.enableMixing = updates.enableMixing === "0" ? false : true;
+      if (updates.all && typeof updates.all === 'object') {
+        updates = updates.all;
       }
       nuve.updateRoom(roomId, updates, function(err, resp) {
         if (err) return notify('error', 'Update Room', resp);
@@ -704,6 +703,34 @@ function tableHandlerRoom(rooms) {
     $('#mediaMixingModal tbody td.value-obj-edit').editable(disabledHandle);
   }
 
+  var editRoomFn = function() {
+    if (this.parentNode.children[0].innerText === "") return;
+    $('#AllModal').modal('toggle');
+    var roomId = $(this).parent().find('td:first').text();
+    var room = roomCache[roomId];
+    if (typeof room === 'undefined') {
+      return notify('error', 'Room Editor', 'error in finding roomId');
+    }
+    var p = $(this);
+    $('#AllModal .modal-title').text('Configuration for Room ' + roomId);
+
+    var container = document.getElementById('jfContainer');
+    while (container.firstChild) {
+      container.removeChild(container.firstChild);
+    }
+    bf.render(container, room);
+
+    $('#AllModal .modal-footer button:first').click(function() {
+      if (bf.validate()) {
+        p.addClass('editable-unsaved');
+        p.editable('setValue', bf.getData());
+        p.text('object');
+      } else {
+        return false;
+      }
+    });
+  };
+
   var sipConnectivityFn = function() {
     if (this.parentNode.children[0].innerText === "") return;
     $('#SIPModal').modal('toggle');
@@ -792,13 +819,11 @@ function tableHandlerRoom(rooms) {
 
   $('td.roomName').editable(roomNameHandle);
   $('td.roomMode').editable(roomModeHandle);
-  $('td.publishLimit').editable(numberHandle1);
-  $('td.userLimit').editable(numberHandle1);
+  $('td.inputLimit').editable(numberHandle1);
+  $('td.participantLimit').editable(numberHandle1);
   $('td.enableMixing').editable(roomEnableMixingHandle);
-  $('td.mediaSetting').editable(disabledHandle);
-  $('td.mediaSetting').click(mediaSettingFn);
-  $('td.SIPConnectivity').editable(disabledHandle);
-  $('td.SIPConnectivity').click(sipConnectivityFn);
+  $('td.DetailSetting').editable(disabledHandle);
+  $('td.DetailSetting').click(editRoomFn);
 
   $('#mediaMixingModal').on('hidden.bs.modal', function() {
     $('#mediaMixingModal #inRoomTable tbody').empty();
@@ -811,17 +836,11 @@ function tableHandlerRoom(rooms) {
     }
     var roomName = p.find('td.roomName').text();
     var roomMode = p.find('td.roomMode').text() == "Empty" ? undefined : p.find('td.roomMode').text();
-    var publishLimit = parseInt(p.find('td.publishLimit').text(), 10);
-    var userLimit = parseInt(p.find('td.userLimit').text(), 10);
-    var enableMixing = p.find('td.enableMixing').text() === 'false' ? 0 : 1;
+    var inputLimit = parseInt(p.find('td.inputLimit').text(), 10);
+    var participantLimit = parseInt(p.find('td.participantLimit').text(), 10);
     var room = {
       name: roomName,
       options: {
-        mode: roomMode,
-        publishLimit: publishLimit,
-        userLimit: userLimit,
-        enableMixing: enableMixing,
-        mediaMixing: null
       }
     };
     p.find('.editable-unsaved').editable('setValue', null).removeClass('editable-unsaved'); // reset line
@@ -834,14 +853,9 @@ function tableHandlerRoom(rooms) {
       $(view).insertBefore(p.parent().find('tr:last'));
       var selector = p.parent().find('tr:nth-last-child(2)');
       selector.find('td.roomName').editable(roomNameHandle);
-      selector.find('td.roomMode').editable(roomModeHandle);
-      selector.find('td.publishLimit').editable(numberHandle1);
-      selector.find('td.userLimit').editable(numberHandle1);
-      selector.find('td.enableMixing').editable(roomEnableMixingHandle);
-      selector.find('td.mediaSetting').editable(disabledHandle);
-      selector.find('td.mediaSetting').click(mediaSettingFn);
-      selector.find('td.SIPConnectivity').editable(disabledHandle);
-      selector.find('td.SIPConnectivity').click(sipConnectivityFn);
+      selector.find('td.inputLimit').editable(numberHandle1);
+      selector.find('td.participantLimit').click(numberHandle1);
+      selector.find('td.DetailSetting').click(editRoomFn);
       selector.find('button#apply-room').click(applyRoomFn);
       selector.find('button#delete-room').click(deleteRoomFn);
       roomCache[room1._id] = room1;
