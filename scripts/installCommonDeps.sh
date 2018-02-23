@@ -239,12 +239,6 @@ install_licode(){
   # APPLY PATCH
   git am $PATHNAME/patches/licode/*.patch
 
-  if [ -L ${LINK_PATH}/erizo ]; then
-    unlink ${LINK_PATH}/erizo
-  fi
-  ln -s ${ROOT}/third_party/licode/erizo ${LINK_PATH}/
-  cp ${ROOT}/third_party/licode/erizoAPI/ThreadPool.* ${LINK_PATH}/
-  cp ${ROOT}/third_party/licode/erizoAPI/IOThreadPool.* ${LINK_PATH}/
   popd >/dev/null
   popd >/dev/null
 }
