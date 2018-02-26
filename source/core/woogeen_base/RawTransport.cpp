@@ -43,16 +43,21 @@ template<Protocol prot>
 RawTransport<prot>::~RawTransport()
 {
     // We need to wait for the work thread to finish its job.
+    boost::system::error_code ec;
     switch (prot) {
     case TCP:
         if (m_socket.tcp.acceptor)
             m_socket.tcp.acceptor->close();
-        if (m_socket.tcp.socket)
+        if (m_socket.tcp.socket) {
+            m_socket.tcp.socket->shutdown(tcp::socket::shutdown_both, ec);
             m_socket.tcp.socket->close();
+        }
         break;
     case UDP:
-        if (m_socket.udp.socket)
+        if (m_socket.udp.socket) {
+            m_socket.udp.socket->shutdown(udp::socket::shutdown_both, ec);
             m_socket.udp.socket->close();
+        }
         break;
     default:
         break;
