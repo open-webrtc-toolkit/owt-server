@@ -1887,8 +1887,12 @@ var Conference = function (rpcClient, selfRpcId) {
               }
             } else if ((cmd.path.startsWith('/info/layout/') && streams[cmd.value] && (streams[cmd.value].type !== 'mixed'))) {
               var path = cmd.path.split('/');
-              var region_id = streams[streamId].info.layout[Number(path[3])].region.id;
-              exe = setRegion(cmd.value, region_id, streams[streamId].info.label);
+              var layout = streams[streamId].info.layout;
+              if (layout && layout[Number(path[3])]) {
+                exe = setRegion(cmd.value, layout[Number(path[3])].region.id, streams[streamId].info.label);
+              } else {
+                exec = Promise.reject('Not mixed stream');
+              }
             } else {
               exe = Promise.reject('Invalid path or value');
             }
