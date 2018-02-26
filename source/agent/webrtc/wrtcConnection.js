@@ -82,9 +82,12 @@ module.exports = function (spec, on_status) {
             var fmts = [];
             var fmtcodes = a_lines[0].split(' ').slice(3);
             for (var i in fmtcodes) {
-                var fmtname = a_lines.filter(function (line) {
+                var filter_lines = a_lines.filter(function (line) {
                     return line.startsWith('a=rtpmap:'+fmtcodes[i]);
-                })[0].split(' ')[1].split('/');
+                });
+
+                if (filter_lines.length === 0) continue;
+                var fmtname = filter_lines[0].split(' ')[1].split('/');
 
                 var fmt = {codec: fmtname[0].toLowerCase()};
                 (fmt.codec !== 'pcmu' && fmt.codec !== 'pcma') && fmtname[1] && (fmt.sampleRate = Number(fmtname[1]));
@@ -148,9 +151,12 @@ module.exports = function (spec, on_status) {
             var fmts = [];
             var fmtcodes = v_lines[0].split(' ').slice(3);
             for (var i in fmtcodes) {
-                var fmtname = v_lines.filter(function (line) {
+                var filter_lines = v_lines.filter(function (line) {
                     return line.startsWith('a=rtpmap:'+fmtcodes[i]);
-                })[0].split(' ')[1].split('/');
+                });
+
+                if (filter_lines.length === 0) continue;
+                var fmtname = filter_lines[0].split(' ')[1].split('/');
 
                 var fmt = {codec: fmtname[0].toLowerCase()};
                 if (fmtname[0] === 'rtx') {
