@@ -136,6 +136,8 @@ SctpTransport::~SctpTransport()
 
     // Close the socket after it has no work left
     if (m_udpSocket && m_udpSocket->is_open()) {
+        boost::system::error_code ec;
+        m_udpSocket->shutdown(boost::asio::ip::udp::socket::shutdown_both, ec);
         m_udpSocket->close();
     }
 
