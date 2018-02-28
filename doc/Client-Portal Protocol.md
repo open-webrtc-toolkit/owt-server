@@ -261,17 +261,16 @@ object(LoginResult)::
 
             object(Rectangle)::
               {
-               left: number(LeftRatio),
-               top: number(TopRatio),
-               width: number(WidthRatio),
-               height: number(HeightRatio)
+               left: string(LeftRatio),
+               top: string(TopRatio),
+               width: string(WidthRatio),
+               height: string(HeightRatio)
               }
-
             object(Circle)::
               {
-               centerW: number(CenterWRatio),
-               centerH: number(CenterHRatio),
-               radius: number(RadiusWRatio)
+               centerW: string(CenterWRatio),
+               centerH: string(CenterHRatio),
+               radius: string(RadiusWRatio)
               }
 
     object(ParticipantInfo)::
