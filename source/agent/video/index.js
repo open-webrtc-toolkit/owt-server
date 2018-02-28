@@ -428,9 +428,26 @@ function VMixer(rpcClient, clusterIP) {
             }
 
             var streamRegions = layoutSolution.map((inputRegion) => {
+                var rationalString = (obj) => (obj.numerator + '/' + obj.denominator);
+                var curRegion = inputRegion.region;
                 return {
                     stream: inputManager.getStreamFromInput(inputRegion.input),
-                    region: inputRegion.region
+                    region: {
+                        id: curRegion.id,
+                        shape: curRegion.shape,
+                        area: curRegion.shape === 'rectangle' ?
+                            {
+                                left: rationalString(curRegion.area.left),
+                                top: rationalString(curRegion.area.top),
+                                width: rationalString(curRegion.area.width),
+                                height: rationalString(curRegion.area.height),
+                            } :
+                            {
+                                centerW: rationalString(curRegion.area.centerW),
+                                centerH: rationalString(curRegion.area.centerH),
+                                radius: rationalString(curRegion.area.radius),
+                            }
+                    }
                 };
             });
             var layoutChangeArgs = [belong_to, streamRegions, view];
