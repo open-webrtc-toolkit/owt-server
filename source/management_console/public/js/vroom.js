@@ -83,7 +83,7 @@ var viewItem = {
       type: 'object',
       properties: {
         format: audioFormat,
-        vad: { type: 'boolean', default: false }
+        vad: { type: 'boolean', default: true }
       }
     },
     video: {
@@ -101,6 +101,7 @@ var viewItem = {
             b: { type: 'number' }
           }
         },
+        keepActiveSpeakerInPrimary: { type: 'boolean', default: false },
         layout: {
           type: 'object',
           properties: {
