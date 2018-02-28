@@ -1724,7 +1724,11 @@ var Conference = function (rpcClient, selfRpcId) {
   that.onAudioActiveness = function(roomId, activeParticipantId, view, callback) {
     log.debug('onAudioActiveness, roomId:', roomId, 'activeParticipantId:', activeParticipantId, 'view:', view);
     if ((room_id === roomId) && roomController) {
-      roomController.setPrimary(activeParticipantId, view);
+      room_config.views.forEach((viewSettings) => {
+        if (viewSettings.label === view && viewSettings.video.keepActiveSpeakerInPrimary) {
+          roomController.setPrimary(activeParticipantId, view);
+        }
+      });
       callback('callback', 'ok');
     } else {
       log.info('onAudioActiveness, room does not exist');

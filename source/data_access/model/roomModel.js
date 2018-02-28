@@ -52,7 +52,7 @@ var ViewSchema = new Schema({
       sampleRate: { type: Number, default: 48000 },
       channelNum: { type: Number, default: 2 }
     },
-    vad: { type: Boolean, default: false },
+    vad: { type: Boolean, default: true },
   },
   video: {
     format: {
@@ -67,6 +67,7 @@ var ViewSchema = new Schema({
     maxInput: { type: Number, default: 16 },
     motionFactor: { type: Number, default: 0.8 },
     bgColor: { r: ColorRGB, g: ColorRGB, b: ColorRGB },
+    keepActiveSpeakerInPrimary: { type: Boolean, default: false },
     layout: {
       fitPolicy: { type: String, enum: ['letterbox', 'crop'], default: 'letterbox' },
       setRegionEffect: { type: String },
