@@ -185,25 +185,40 @@ var RoomSchema = {
       }
     },
     transcoding: {
-      audio: { type: 'boolean', default: true },
-      video: {
-        format: { type: 'boolean', default: true },
-        parameters: {
-          resolution: { type: 'boolean', default: true },
-          framerate: { type: 'boolean', default: true },
-          bitrate: { type: 'boolean', default: true },
-          keyFrameInterval: { type: 'boolean', default: true }
+      type: 'object',
+      properties: {
+        audio: { type: 'boolean', default: true },
+        video: {
+          type: 'object',
+          properties: {
+            format: { type: 'boolean', default: true },
+            parameters: {
+              type: 'object',
+              properties: {
+                resolution: { type: 'boolean', default: true },
+                framerate: { type: 'boolean', default: true },
+                bitrate: { type: 'boolean', default: true },
+                keyFrameInterval: { type: 'boolean', default: true }
+              }
+            }
+          }
         }
       }
     },
     sip: {
-      sipServer: { type: 'string' },
-      username: { type: 'string' },
-      password: { type: 'string' }
+      type: 'object',
+      properties: {
+        sipServer: { type: 'string' },
+        username: { type: 'string' },
+        password: { type: 'string' }
+      }
     },
     notifying: {
-      participantActivities: { type: 'boolean', default: true },
-      streamChange: { type: 'boolean', default: true },
+      type: 'object',
+      properties: {
+        participantActivities: { type: 'boolean', default: true },
+        streamChange: { type: 'boolean', default: true },
+      }
     }
   },
   required: ['name']
