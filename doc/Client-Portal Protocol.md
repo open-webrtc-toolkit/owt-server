@@ -242,6 +242,7 @@ object(LoginResult)::
       object(ViewInfo):
         {
          label: string(ViewLable),
+         activeInput: string(StreamId) | "unknown",
          layout: [object(SubStream2RegionMapping)]
         }
 
@@ -385,8 +386,8 @@ object(StreamUpdateMessage)::
 
   object(StreamUpdate)::
     {
-     field: "audio.status" | "video.status"  | "video.layout",
-     value: "active" | "inactive" | [object(SubStream2RegionMapping)]
+     field: "audio.status" | "video.status"  | "video.layout" | "activeInput",
+     value: "active" | "inactive" | [object(SubStream2RegionMapping)] | string(inputStreamId)
     }
 ```
 #### 3.3.10 Participant Controls a Stream

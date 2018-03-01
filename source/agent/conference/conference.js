@@ -567,6 +567,7 @@ var Conference = function (rpcClient, selfRpcId) {
                       },
                       info: {
                         label: viewSettings.label,
+                        activeInput: 'unknown',
                         layout: []
                       }
                     };
@@ -1711,7 +1712,7 @@ var Conference = function (rpcClient, selfRpcId) {
       var streamId = roomController.getMixedStream(view);
       if (streams[streamId]) {
         streams[streamId].info.layout = layout;
-        sendMsg('room', 'all', 'stream', {status: 'update', id: streamId, data: {field: 'video.layout', value: layout}});
+        room_config.notifying.streamChange && sendMsg('room', 'all', 'stream', {status: 'update', id: streamId, data: {field: 'video.layout', value: layout}});
         callback('callback', 'ok');
       } else {
         callback('callback', 'error', 'no mixed stream.');
@@ -1725,10 +1726,27 @@ var Conference = function (rpcClient, selfRpcId) {
     log.debug('onAudioActiveness, roomId:', roomId, 'activeParticipantId:', activeParticipantId, 'view:', view);
     if ((room_id === roomId) && roomController) {
       room_config.views.forEach((viewSettings) => {
-        if (viewSettings.label === view && viewSettings.video.keepActiveSpeakerInPrimary) {
+        if (viewSettings.label === view && viewSettings.video.keepActiveInputPrimary) {
           roomController.setPrimary(activeParticipantId, view);
         }
       });
+
+      var input = undefined;
+      for (var id in streams) {
+        if (streams[id].type === 'forward' && streams[id].info.owner === activeParticipantId) {
+          input = id;
+          break;
+        }
+      }
+      if (input) {
+        for (var id in streams) {
+          if (streams[id].type === 'mixed' && streams[id].info.label === view) {
+            streams[id].info.activeInput = input;
+            room_config.notifying.streamChange && sendMsg('room', 'all', 'stream', {id: id, status: 'update', data: {field: 'activeInput', value: input}});
+            break;
+          }
+        }
+      }
       callback('callback', 'ok');
     } else {
       log.info('onAudioActiveness, room does not exist');

@@ -802,8 +802,10 @@ var LegacyClient = function(clientId, sigConnection, portal) {
       } else if (streamInfo.data.field === 'video.layout') {//Mixed stream update
         st_update.event = 'VideoLayoutChanged';
         st_update.data = streamInfo.data.value.map(convertStreamRegion);
+      } else {
+        st_update = undefined;
       }
-      sendMsg('update_stream', st_update);
+      st_update && sendMsg('update_stream', st_update);
     } else if (streamInfo.status === 'remove') {
       sendMsg('remove_stream', {id: streamInfo.id});
     } else {
