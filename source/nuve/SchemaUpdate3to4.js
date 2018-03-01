@@ -401,13 +401,26 @@ function processServices() {
         continue;
       }
       if (service.rooms && service.rooms.length > 0) {
-         processRoom(service.rooms, 0);
+          if (service.rooms[0]._id) {
+            // Not 3.5.2
+            processRoom(service.rooms, 0);
+          } else {
+            // For 3.5.2
+            db.rooms.find({_id: {$in: service.rooms}}).toArray(function (err, rooms) {
+              if (!err && rooms && rooms.length > 0) {
+                  processRoom(rooms, 0);
+              } else {
+                rCount++;
+              }
+            });
+          }
       } else {
-         rCount++;
+          rCount++;
       }
 
       service.__v = 0;
-      service.rooms = service.rooms.map((room) => room._id);
+      // Check for 3.5.2 update
+      service.rooms = service.rooms.map((room) => (room._id ? room._id : room));
       db.services.save(service, function (e, saved) {
         if (e) {
           console.log('Error in updating service:', service._id, e.message);
