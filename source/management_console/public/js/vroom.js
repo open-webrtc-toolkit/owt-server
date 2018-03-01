@@ -101,7 +101,7 @@ var viewItem = {
             b: { type: 'number' }
           }
         },
-        keepActiveSpeakerInPrimary: { type: 'boolean', default: false },
+        keepActiveInputPrimary: { type: 'boolean', default: false },
         layout: {
           type: 'object',
           properties: {
