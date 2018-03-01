@@ -127,7 +127,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                 rpcClient,
                 terminals[audio_mixer].locality.node,
                 'enableVAD',
-                [view_config.audio.vad.detectInterval]);
+                [1000]);
         }
     };
 
