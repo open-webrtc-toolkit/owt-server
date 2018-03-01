@@ -225,7 +225,7 @@ module.exports = function (rpcClient) {
             if (outputs[connections[connectionId].audioFrom]) {
                 outputs[connections[connectionId].audioFrom].dispatcher.removeDestination('audio', connections[connectionId].connection.receiver());
             }
-            //connections[connectionId].connection.close();
+            internalConnFactory.destroy(connectionId, 'out');
             delete connections[connectionId];
         }
     };

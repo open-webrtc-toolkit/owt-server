@@ -618,7 +618,7 @@ function VMixer(rpcClient, clusterIP) {
             if (outputs[connections[connectionId].videoFrom]) {
                 outputs[connections[connectionId].videoFrom].dispatcher.removeDestination('video', connections[connectionId].connection.receiver());
             }
-            //connections[connectionId].connection.close();
+            internalConnFactory.destroy(connectionId, 'out');
             delete connections[connectionId];
         }
     };
@@ -978,7 +978,7 @@ function VTranscoder(rpcClient, clusterIP) {
             if (outputs[connections[connectionId].videoFrom]) {
                 outputs[connections[connectionId].videoFrom].dispatcher.removeDestination('video', connections[connectionId].connection.receiver());
             }
-            //connections[connectionId].connection.close();
+            internalConnFactory.destroy(connectionId, 'out');
             delete connections[connectionId];
         }
     };
