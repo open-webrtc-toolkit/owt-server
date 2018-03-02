@@ -1878,6 +1878,10 @@ var Conference = function (rpcClient, selfRpcId) {
 
     return Promise.all(
       commands.map((cmd) => {
+        if (streams[streamId] === undefined) {
+          return Promise.reject('Stream does NOT exist');
+        }
+
         var exe;
         switch (cmd.op) {
           case 'add':
