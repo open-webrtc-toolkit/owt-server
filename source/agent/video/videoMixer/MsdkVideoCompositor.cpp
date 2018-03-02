@@ -1077,7 +1077,7 @@ void MsdkVideoCompositor::updateBackgroundColor(YUVColor& bgColor)
 
 void MsdkVideoCompositor::updateLayoutSolution(LayoutSolution& solution)
 {
-    assert(solution.size() < m_maxInput);
+    assert(solution.size() <= m_maxInput);
 
     for (auto& generator : m_generators) {
         generator->updateLayoutSolution(solution);
