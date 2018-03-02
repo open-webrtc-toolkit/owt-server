@@ -18,7 +18,7 @@ var DEFAULT_AUDIO = [
 ];
 var DEFAULT_VIDEO = [
   { codec: 'h264' },
-  { codec: 'h264' },
+  { codec: 'h265' },
   { codec: 'vp8' },
   { codec: 'vp9' },
 ];
