@@ -28,6 +28,7 @@ var RNumber = {
 };
 
 var Region = {
+  _id: false,
   id: { type: String, required: true },
   shape: { type: String, enum: ['rectangle'], default: 'rectangle' },
   area: {
@@ -69,11 +70,14 @@ var ViewSchema = new Schema({
     bgColor: { r: ColorRGB, g: ColorRGB, b: ColorRGB },
     keepActiveInputPrimary: { type: Boolean, default: false },
     layout: {
+      //TODO: stretched?
       fitPolicy: { type: String, enum: ['letterbox', 'crop'], default: 'letterbox' },
       setRegionEffect: { type: String },
       templates: {
-        base: { type: String, enum: ['fluid', 'lecture', 'custom'], default: 'fluid' },
+        base: { type: String, enum: ['fluid', 'lecture', 'void'], default: 'fluid' },
         custom: [{
+          _id: false,
+          primary: { type: String },
           region: [ Region ]
         }]
       }

@@ -1,27 +1,19 @@
+var audioNames = [
+  'pcmu', 'opus_48000_2', 'pcma', 'ilbc', 'isac_16000', 'isac_32000', 'g722_16000_1', 'g722_16000_2', 'aac', 'aac_48000_2', 'ac3', 'nellymoser'
+];
+
 var audioFormat = {
-  type: 'object',
-  properties: {
-    codec: {
-      type: 'string',
-      enum: [
-        'pcmu', 'pcma', 'opus',
-        'g722', 'isac', 'ilbc',
-        'aac', 'ac3', 'nellymoser'
-      ]
-    },
-    sampleRate: { type: 'number' },
-    channelNum: { type: 'number' }
-  },
-  required: ['codec']
+  type: 'string',
+  enum: audioNames
 };
 
+var videoNames = [
+  'h264', 'h265', 'vp8', 'vp9'
+];
+
 var videoFormat = {
-  type: 'object',
-  properties: {
-    codec: { type: 'string', enum: ['h264', 'h265', 'vp8', 'vp9'] },
-    profile: { type: 'string' }
-  },
-  required: ['codec']
+  type: 'string',
+  enum: videoNames
 };
 
 var videoPara = {
@@ -105,8 +97,7 @@ var viewItem = {
         layout: {
           type: 'object',
           properties: {
-            fitPolicy: { type: 'string', enum: ['letterbox', 'crop'], default: 'letterbox' },
-            //setRegionEffect: { en}
+            fitPolicy: { type: 'string', enum: ['letterbox', 'crop' /*stretch*/], default: 'letterbox' },
             templates: {
               type: 'object',
               properties: {

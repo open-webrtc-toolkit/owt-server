@@ -703,6 +703,74 @@ function tableHandlerRoom(rooms) {
     $('#mediaMixingModal tbody td.value-obj-edit').editable(disabledHandle);
   }
 
+  var audioName2Format = function(v) {
+    if (typeof v === 'string') {
+      var fields = v.split('_');
+      return {
+        codec: fields[0],
+        sampleRate: Number(fields[1]) || undefined,
+        channelNum: Number(fields[2]) || undefined,
+      };
+    } else {
+      return v;
+    }
+  };
+  var audioFormat2Name = function(v) {
+    if (typeof v === 'object') {
+      var str = v.codec;
+      if (v.sampleRate) str += '_' + v.sampleRate;
+      if (v.channelNum) str += '_' + v.channelNum;
+      return str;
+    } else {
+      return v;
+    }
+  }
+
+  var videoName2Format = function(v) {
+    if (typeof v === 'string') return { codec: v };
+    return v;
+  };
+  var videoFormat2Name = function (v) {
+    if (typeof v === 'object') return v.codec;
+    return v;
+  }
+
+  var translateRoomFormat = function (room) {
+    if (room.views) {
+      room.views.forEach(function(view) {
+        view.audio.format = audioFormat2Name(view.audio.format);
+        view.video.format = videoFormat2Name(view.video.format);
+      });
+    }
+    if (room.mediaIn) {
+      room.mediaIn.audio = room.mediaIn.audio.map(audioFormat2Name);
+      room.mediaIn.video = room.mediaIn.video.map(videoFormat2Name);
+    }
+    if (room.mediaOut) {
+      room.mediaOut.audio = room.mediaOut.audio.map(audioFormat2Name);
+      room.mediaOut.video.format = room.mediaOut.video.format.map(videoFormat2Name);
+    }
+    return room;
+  };
+
+  var untranslateRoomFormat = function (room) {
+    if (room.views) {
+      room.views.forEach(function(view) {
+        view.audio.format = audioName2Format(view.audio.format);
+        view.video.format = videoName2Format(view.video.format);
+      });
+    }
+    if (room.mediaIn) {
+      room.mediaIn.audio = room.mediaIn.audio.map(audioName2Format);
+      room.mediaIn.video = room.mediaIn.video.map(videoName2Format);
+    }
+    if (room.mediaOut) {
+      room.mediaOut.audio = room.mediaOut.audio.map(audioName2Format);
+      room.mediaOut.video.format = room.mediaOut.video.format.map(videoName2Format);
+    }
+    return room;
+  };
+
   var editRoomFn = function() {
     if (this.parentNode.children[0].innerText === "") return;
     $('#AllModal').modal('toggle');
@@ -714,16 +782,18 @@ function tableHandlerRoom(rooms) {
     var p = $(this);
     $('#AllModal .modal-title').text('Configuration for Room ' + roomId);
 
+    translateRoomFormat(room);
     var container = document.getElementById('jfContainer');
     while (container.firstChild) {
       container.removeChild(container.firstChild);
     }
     bf.render(container, room);
+    untranslateRoomFormat(room);
 
     $('#AllModal .modal-footer button:first').click(function() {
       if (bf.validate()) {
         p.addClass('editable-unsaved');
-        p.editable('setValue', bf.getData());
+        p.editable('setValue', untranslateRoomFormat(bf.getData()));
         p.text('object');
       } else {
         return false;
