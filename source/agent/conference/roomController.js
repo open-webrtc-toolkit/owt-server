@@ -403,6 +403,10 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
 
             // Publish/Subscribe internal connections
             return new Promise(function(resolve, reject) {
+                if (!terminals[stream_owner]) {
+                    reject('Terminal:', stream_owner, 'not exist');
+                    return;
+                }
                 makeRPC(
                     rpcClient,
                     target_node,
@@ -558,9 +562,10 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                 spread_id = stream_id + '@' + target_node,
                 i = streams[stream_id].audio.subscribers.indexOf(audio_mixer);
             delete terminals[audio_mixer].subscribed[spread_id];
-            i > -1 && streams[stream_id].audio.subscribers.splice(i, 1);
-
-            shrinkStream(stream_id, target_node);
+            if (i > -1) {
+                streams[stream_id].audio.subscribers.splice(i, 1);
+                shrinkStream(stream_id, target_node);
+            }
         }
     };
 
@@ -594,9 +599,10 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                 spread_id = stream_id + '@' + target_node,
                 i = streams[stream_id].video.subscribers.indexOf(video_mixer);
             delete terminals[video_mixer].subscribed[spread_id];
-            i > -1 && streams[stream_id].video.subscribers.splice(i, 1);
-
-            shrinkStream(stream_id, target_node);
+            if (i > -1) {
+                streams[stream_id].video.subscribers.splice(i, 1);
+                shrinkStream(stream_id, target_node);
+            }
         }
     };
 
