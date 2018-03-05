@@ -474,6 +474,12 @@ function VMixer(rpcClient, clusterIP) {
             removeOutput(stream_id);
         }
 
+        // Remove pending stream first
+        for (let stream_id of inputManager.getStreamList()) {
+            if (inputManager.isPending(stream_id)) {
+                removeInput(stream_id);
+            }
+        }
         for (let stream_id of inputManager.getStreamList()) {
             removeInput(stream_id);
         }
