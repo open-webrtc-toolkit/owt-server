@@ -189,6 +189,7 @@ var launchErizoJS = function() {
                 if (result !== true) {
                   log.info('Node(', id, ') is no longer responsive!');
                   dropErizoJS(id);
+                  monitoringTarget && monitoringTarget.notify('abnormal', {purpose: myPurpose, id: id, type: 'node'});
                 }
               }});
             }, 3000);

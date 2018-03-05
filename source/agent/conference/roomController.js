@@ -571,13 +571,13 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
             var target_node = terminals[video_mixer].locality.node,
                 spread_id = stream_id + '@' + target_node;
             spreadStream(stream_id, target_node, 'vmixer', function() {
-                if (terminals[video_mixer]) {
+                if (terminals[video_mixer] && streams[stream_id]) {
                     terminals[video_mixer].subscribed[spread_id] = {video: stream_id};
                     (streams[stream_id].video.subscribers.indexOf(video_mixer) < 0) && streams[stream_id].video.subscribers.push(video_mixer);
                     on_ok();
                 } else {
                     shrinkStream(stream_id, target_node);
-                    on_error('Video mixer is early released.');
+                    on_error('Video mixer or input stream is early released.');
                 }
             }, on_error);
         } else {
