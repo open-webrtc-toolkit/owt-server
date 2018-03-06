@@ -539,7 +539,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
             var target_node = terminals[audio_mixer].locality.node,
                 spread_id = stream_id + '@' + target_node;
             spreadStream(stream_id, target_node, 'amixer', function() {
-                if (terminals[audio_mixer]) {
+                if (terminals[audio_mixer] && streams[stream_id]) {
                     terminals[audio_mixer].subscribed[spread_id] = {audio: stream_id};
                     (streams[stream_id].audio.subscribers.indexOf(audio_mixer) < 0) && streams[stream_id].audio.subscribers.push(audio_mixer);
                     on_ok();

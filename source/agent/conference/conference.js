@@ -405,6 +405,10 @@ var Conference = function (rpcClient, selfRpcId) {
 
   var onSessionAborted = (participantId, sessionId, direction, reason) => {
     log.debug('onSessionAborted, participantId:', participantId, 'sessionId:', sessionId, 'direction:', direction, 'reason:', reason);
+    if (reason !== 'Participant terminate') {
+      sendMsgTo(participantId, 'progress', {id: sessionId, status: 'error', data: reason});
+    }
+
     if (direction === 'in') {
       current_input_count -= 1;
       removeStream(participantId, sessionId)
@@ -412,18 +416,12 @@ var Conference = function (rpcClient, selfRpcId) {
           var err_msg = (err.message ? err.message : err);
           log.info(err_msg);
         });
-      if (reason !== 'Participant terminate') {
-        sendMsgTo(participantId, 'progress', {id: sessionId, status: 'error', data: reason});
-      }
     } else if (direction === 'out') {
       removeSubscription(sessionId)
        .catch((err) => {
          var err_msg = (err.message ? err.message : err);
          log.info(err_msg);
        });
-      if (reason !== 'Participant terminate') {
-        sendMsgTo(participantId, 'progress', {id: sessionId, status: 'error', data: reason});
-      }
     } else {
       log.info('Unknown session direction:', direction);
     }
@@ -1176,7 +1174,8 @@ var Conference = function (rpcClient, selfRpcId) {
       return accessController.terminate(streamId, 'in', 'Participant terminate')
         .then((result) => {
           log.debug('accessController.terminate result:', result);
-          return removeStream(participantId, streamId);
+          //return removeStream(participantId, streamId);
+          return 'ok';
         }, (e) => {
           return Promise.reject('Failed in terminating session');
         })
@@ -1423,7 +1422,8 @@ var Conference = function (rpcClient, selfRpcId) {
     } else {
       return accessController.terminate(subscriptionId, 'out', 'Participant terminate')
         .then((result) => {
-          return removeSubscription(subscriptionId);
+          //return removeSubscription(subscriptionId);
+          return 'ok';
         }, (e) => {
           return Promise.reject('Failed in terminating session');
         })
@@ -1958,7 +1958,8 @@ var Conference = function (rpcClient, selfRpcId) {
     return accessController.terminate(streamId, 'in', 'Participant terminate')
       .then((result) => {
         log.debug('accessController.terminate result:', result);
-        return removeStream('admin', streamId);
+        //return removeStream('admin', streamId);
+        return 'ok';
       }, (e) => {
         return Promise.reject('Failed in terminating session');
       })
@@ -2168,7 +2169,8 @@ var Conference = function (rpcClient, selfRpcId) {
     return accessController.terminate(subId, 'out', 'Participant terminate')
       .then((result) => {
         log.debug('accessController.terminate result:', result);
-        return removeSubscription(subId);
+        //return removeSubscription(subId);
+        return 'ok';
       }, (e) => {
         return Promise.reject('Failed in terminating session');
       })
