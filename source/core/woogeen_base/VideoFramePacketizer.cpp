@@ -62,7 +62,6 @@ VideoFramePacketizer::~VideoFramePacketizer()
 void VideoFramePacketizer::bindTransport(erizo::MediaSink* sink)
 {
     boost::unique_lock<boost::shared_mutex> lock(m_transport_mutex);
-    ELOG_INFO("bindTransport. %p", sink);
     video_sink_ = sink;
     video_sink_->setVideoSinkSSRC(m_rtpRtcp->SSRC());
     erizo::FeedbackSource* fbSource = video_sink_->getFeedbackSource();

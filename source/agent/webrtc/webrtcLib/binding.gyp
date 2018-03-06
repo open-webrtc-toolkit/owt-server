@@ -33,7 +33,6 @@
     'cflags_cc': ['-DWEBRTC_POSIX', '-DWEBRTC_LINUX', '-DLINUX', '-DNOLINUXIF', '-DNO_REG_RPC=1', '-DHAVE_VFPRINTF=1', '-DRETSIGTYPE=void', '-DNEW_STDIO', '-DHAVE_STRDUP=1', '-DHAVE_STRLCPY=1', '-DHAVE_LIBM=1', '-DHAVE_SYS_TIME_H=1', '-DTIME_WITH_SYS_TIME_H=1'],
     'include_dirs': [
       "<!(node -e \"require('nan')\")",
-      '../../../core/common',
       'conn_handler',
       'erizo/src/erizo',
       'erizo/src/erizo/lib',
@@ -42,6 +41,7 @@
       'erizo/src/erizo/rtp',
       'erizo/src/erizo/thread',
       'erizo/src/erizo/stats',
+      '../../../core/common',
       '../../../core/woogeen_base',
       '../../../core/rtc_adapter',
       '../../../../third_party/webrtc/src',

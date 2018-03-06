@@ -41,7 +41,6 @@ AudioFrameConstructor::~AudioFrameConstructor()
 
 void AudioFrameConstructor::bindTransport(erizo::MediaSource* source, erizo::FeedbackSink* fbSink)
 {
-    ELOG_INFO("bindTransport ");
     boost::unique_lock<boost::shared_mutex> lock(m_transport_mutex);
     m_transport = source;
     m_transport->setAudioSink(this);
