@@ -170,7 +170,7 @@ exports.config = function (roomId) {
  */
 exports.sips = function () {
   return new Promise((resolve, reject) => {
-    Room.find({'sipInfo.sipServer': {$ne: null}}, function(err, rooms) {
+    Room.find({'sip.sipServer': {$ne: null}}, function(err, rooms) {
       if (err || !rooms) {
         resolve([]);
       } else {
