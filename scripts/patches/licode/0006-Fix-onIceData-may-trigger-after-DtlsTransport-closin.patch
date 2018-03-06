@@ -1,0 +1,27 @@
+From 63c8375c2322eaa8336a8229d8c156301cfa48a0 Mon Sep 17 00:00:00 2001
+From: Chen Li1 <li1.chen@intel.com>
+Date: Tue, 6 Mar 2018 11:03:44 +0800
+Subject: [PATCH] Fix onIceData may trigger after DtlsTransport closing. Note:
+ Upstream already has this fix, remove this patch after next upgrade.
+
+---
+ erizo/src/erizo/DtlsTransport.cpp | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/erizo/src/erizo/DtlsTransport.cpp b/erizo/src/erizo/DtlsTransport.cpp
+index f98cbd2..67d1d86 100644
+--- a/erizo/src/erizo/DtlsTransport.cpp
++++ b/erizo/src/erizo/DtlsTransport.cpp
+@@ -154,6 +154,9 @@ void DtlsTransport::close() {
+ }
+ 
+ void DtlsTransport::onIceData(packetPtr packet) {
++  if (!running_) {
++    return;
++  }
+   int len = packet->length;
+   char *data = packet->data;
+   unsigned int component_id = packet->comp;
+-- 
+1.9.1
+
