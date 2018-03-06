@@ -16,8 +16,8 @@
  * limitations under the License.
  */
 
-#ifndef __ELOG_H__
-#define __ELOG_H__
+#ifndef ERIZO_SRC_ERIZO_LOGGER_H_
+#define ERIZO_SRC_ERIZO_LOGGER_H_
 
 #include <stdlib.h>
 #include <stdio.h>
