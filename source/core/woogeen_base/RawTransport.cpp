@@ -42,7 +42,21 @@ RawTransport<prot>::RawTransport(RawTransportListener* listener, size_t initialB
 template<Protocol prot>
 RawTransport<prot>::~RawTransport()
 {
+    close();
+}
+
+template<Protocol prot>
+void RawTransport<prot>::close()
+{
+    ELOG_DEBUG("Closing...");
+    if (m_isClosing)
+        return;
+
     // We need to wait for the work thread to finish its job.
+    m_isClosing = true;
+    m_ioService.stop();
+    m_workThread.join();
+
     boost::system::error_code ec;
     switch (prot) {
     case TCP:
@@ -62,15 +76,7 @@ RawTransport<prot>::~RawTransport()
     default:
         break;
     }
-
-    m_workThread.join();
-}
-
-template<Protocol prot>
-void RawTransport<prot>::close()
-{
-    ELOG_DEBUG("Closing...");
-    m_isClosing = true;
+    ELOG_DEBUG("Closed");
 }
 
 template<Protocol prot>
