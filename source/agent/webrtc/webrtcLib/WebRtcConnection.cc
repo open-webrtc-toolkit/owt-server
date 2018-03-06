@@ -370,6 +370,7 @@ NAN_METHOD(WebRtcConnection::close) {
   WebRtcConnection* obj = Nan::ObjectWrap::Unwrap<WebRtcConnection>(info.Holder());
   obj->me->setWebRtcConnectionStatsListener(NULL);
   obj->me->setWebRtcConnectionEventListener(NULL);
+  obj->me->close();
   obj->me.reset();
   obj->hasCallback_ = false;
 
