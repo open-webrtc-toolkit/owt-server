@@ -311,7 +311,7 @@ var api = function (worker) {
 
                 erizos.push(erizo_id);
 
-                if (reuse && myPurpose !== 'conference' && myPurpose !== 'sip' && ((erizos.length + idle_erizos.length + 1) >= global.config.agent.maxProcesses)) {
+                if (reuse && myPurpose !== 'conference' && myPurpose !== 'sip' && ((erizos.length + idle_erizos.length) >= global.config.agent.maxProcesses)) {
                     // We re-use Erizos
                     idle_erizos.push(erizos.shift());
                 } else {
