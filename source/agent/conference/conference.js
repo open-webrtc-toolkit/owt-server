@@ -407,21 +407,21 @@ var Conference = function (rpcClient, selfRpcId) {
     log.debug('onSessionAborted, participantId:', participantId, 'sessionId:', sessionId, 'direction:', direction, 'reason:', reason);
     if (direction === 'in') {
       current_input_count -= 1;
+      removeStream(participantId, sessionId)
+        .catch((err) => {
+          var err_msg = (err.message ? err.message : err);
+          log.info(err_msg);
+        });
       if (reason !== 'Participant terminate') {
-        removeStream(participantId, sessionId)
-          .catch((err) => {
-            var err_msg = (err.message ? err.message : err);
-            log.info(err_msg);
-          });
         sendMsgTo(participantId, 'progress', {id: sessionId, status: 'error', data: reason});
       }
     } else if (direction === 'out') {
+      removeSubscription(sessionId)
+       .catch((err) => {
+         var err_msg = (err.message ? err.message : err);
+         log.info(err_msg);
+       });
       if (reason !== 'Participant terminate') {
-        removeSubscription(sessionId)
-         .catch((err) => {
-           var err_msg = (err.message ? err.message : err);
-           log.info(err_msg);
-         });
         sendMsgTo(participantId, 'progress', {id: sessionId, status: 'error', data: reason});
       }
     } else {
@@ -611,29 +611,18 @@ var Conference = function (rpcClient, selfRpcId) {
     }
   };
 
-  var destroyRoom = function(force) {
-    var terminate = function () {
-      if (room_id) {
-        accessController && accessController.destroy();
-        accessController = undefined;
-        roomController && roomController.destroy();
-        roomController = undefined;
-        streams = {};
-        room_id = undefined;
-      }
-      process.exit();
+  var destroyRoom = function() {
+    if (room_id) {
+      accessController && accessController.destroy();
+      accessController = undefined;
+      roomController && roomController.destroy();
+      roomController = undefined;
+      subscriptions = {};
+      streams = {};
+      participants = {};
+      room_id = undefined;
     }
-
-    if (!force) {
-      setTimeout(function() {
-        if (Object.keys(participants).length === 0) {
-          log.info('Empty room ', room_id, '. Deleting it');
-          terminate();
-        }
-      }, 6 * 1000);
-    } else {
-      terminate();
-    }
+    process.exit();
   };
 
   const sendMsgTo = function(to, msg, data) {
@@ -960,9 +949,34 @@ var Conference = function (rpcClient, selfRpcId) {
   };
 
   const selfClean = () => {
-    if ((Object.keys(participants).length === 1) && (Object.keys(streams).length === 0) && (Object.keys(subscriptions).length === 0)) {
-      destroyRoom(false);
-    }
+    setTimeout(function() {
+      var hasNonAdminParticipant = false,
+        hasPublication = false,
+        hasSubscription = false;
+
+      for (let k in participants) {
+        if (k !== 'admin') {
+          hasNonAdminParticipant = true;
+          break;
+        }
+      };
+
+      if (!hasNonAdminParticipant) {
+        for (let st in streams) {
+          if (streams[st].type === 'forward') {
+            hasPublication = true;
+            break;
+          }
+        }
+      }
+
+      hasSubscription = (Object.keys(subscriptions).length > 0);
+
+      if (!hasNonAdminParticipant && !hasPublication && !hasSubscription) {
+        log.info('Empty room ', room_id, '. Deleting it');
+        destroyRoom();
+      }
+    }, 6 * 1000);
   };
 
   that.join = function(roomId, participantInfo, callback) {
@@ -2169,7 +2183,7 @@ var Conference = function (rpcClient, selfRpcId) {
 
   that.destroy = function(callback) {
     log.info('Destroy room:', room_id);
-    destroyRoom(true);
+    destroyRoom();
     callback('callback', 'Success');
   };
 
