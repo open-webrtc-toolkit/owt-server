@@ -738,7 +738,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
             [audio_format, audio_format],
             function (stream_id) {
                 log.debug('spawnTranscodedAudio ok, stream_id:', stream_id);
-                if (streams[stream_id] === undefined) {
+                if ((streams[stream_id] === undefined) && terminals[axcoder]) {
                     log.debug('add transcoded stream to streams:', stream_id);
                     streams[stream_id] = {owner: axcoder,
                                           audio: {format: audio_format,
@@ -746,8 +746,15 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                                           video: undefined,
                                           spread: []};
                     terminals[axcoder].published.push(stream_id);
+                    on_ok(stream_id);
+                } else {
+                    makeRPC(
+                        rpcClient,
+                        axcoder_node,
+                        'degenerate',
+                        [stream_id]);
+                    on_error('Axcoder early released');
                 }
-                on_ok(stream_id);
             }, on_error);
     };
 
@@ -828,7 +835,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
             [format, resolution, framerate, bitrate, keyFrameInterval],
             function (stream) {
                 log.debug('spawnTranscodedVideo ok, stream_id:', stream.id);
-                if (streams[stream.id] === undefined) {
+                if ((streams[stream.id] === undefined) && terminals[vxcoder]) {
                     log.debug('add to streams.');
                     streams[stream.id] = {owner: vxcoder,
                                           audio: undefined,
@@ -840,8 +847,15 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                                                   subscribers: []},
                                           spread: []};
                     terminals[vxcoder].published.push(stream.id);
+                    on_ok(stream.id);
+                } else {
+                    makeRPC(
+                        rpcClient,
+                        vxcoder_node,
+                        'degenerate',
+                        [stream.id]);
+                    on_error('Vxcoder early released');
                 }
-                on_ok(stream.id);
             }, on_error);
     };
 
