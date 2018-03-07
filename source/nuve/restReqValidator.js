@@ -65,7 +65,7 @@ const ParticipantUpdate = {
       type: 'object',
       properties: {
         'op': { enum: ['replace'] },
-        'path': { enum: ['permission.publish', 'permission.publish.audio', 'permission.publish.video', 'permission.subscribe', 'permission.subscribe.audio', 'permission.subscribe.video']},
+        'path': { enum: ['/permission/publish', '/permission/publish/audio', '/permission/publish/video', '/permission/subscribe', '/permission/subscribe/audio', '/permission/subscribe/video']},
         'value': {
           anyOf: [{
             type: 'boolean'
