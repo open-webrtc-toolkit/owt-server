@@ -32,12 +32,6 @@
 #include <VCMFrameDecoder.h>
 #include <VCMFrameEncoder.h>
 
-#ifdef ENABLE_YAMI
-#include "YamiVideoCompositor.h"
-#include <YamiFrameDecoder.h>
-#include <YamiFrameEncoder.h>
-#endif
-
 #ifdef ENABLE_MSDK
 #include "MsdkVideoCompositor.h"
 #include <MsdkFrameDecoder.h>
@@ -116,11 +110,6 @@ private:
 VideoFrameMixerImpl::VideoFrameMixerImpl(uint32_t maxInput, woogeen_base::VideoSize rootSize, woogeen_base::YUVColor bgColor, bool useSimulcast, bool crop)
     : m_useSimulcast(useSimulcast)
 {
-#ifdef ENABLE_YAMI
-    if (!m_compositor)
-        m_compositor.reset(new YamiVideoCompositor(maxInput, rootSize, bgColor));
-#endif
-
 #ifdef ENABLE_MSDK
     if (!m_compositor)
         m_compositor.reset(new MsdkVideoCompositor(maxInput, rootSize, bgColor, crop));
@@ -164,11 +153,6 @@ inline bool VideoFrameMixerImpl::addInput(int input, woogeen_base::FrameFormat f
         return false;
 
     boost::shared_ptr<woogeen_base::VideoFrameDecoder> decoder;
-
-#ifdef ENABLE_YAMI
-    if (!decoder && woogeen_base::YamiFrameDecoder::supportFormat(format))
-        decoder.reset(new woogeen_base::YamiFrameDecoder());
-#endif
 
 #ifdef ENABLE_MSDK
     if (!decoder && woogeen_base::MsdkFrameDecoder::supportFormat(format))
@@ -265,11 +249,6 @@ inline bool VideoFrameMixerImpl::addOutput(int output,
         if (streamId < 0)
             return false;
     } else { // Never found a reusable encoder.
-#ifdef ENABLE_YAMI
-        if (!encoder && woogeen_base::YamiFrameEncoder::supportFormat(format))
-            encoder.reset(new woogeen_base::YamiFrameEncoder(format, m_useSimulcast));
-#endif
-
 #ifdef ENABLE_MSDK
         if (!encoder && woogeen_base::MsdkFrameEncoder::supportFormat(format))
             encoder.reset(new woogeen_base::MsdkFrameEncoder(format, m_useSimulcast));

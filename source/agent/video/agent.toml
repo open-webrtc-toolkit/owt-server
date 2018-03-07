@@ -40,9 +40,6 @@ minport = 0 #default: 0
 #If true and the machine has the capability, the mixer will be accelerated by hardware graphic chips
 hardwareAccelerated = false
 
-#If true and hardwareAccelerate is true, use yami as video backend when hardware platform support it
-yamiEnabled = false
-
 #If true and hardwareAccleration is enabled, setting this to true allows GACC HEVC encoder plugin to be used
 #for better video quality.
 #Warning: enabling this will introduce extra CPU resource consumption.

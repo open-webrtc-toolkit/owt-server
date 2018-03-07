@@ -27,7 +27,6 @@ global.config.webrtc.io_workers = global.config.webrtc.io_workers || 1;
 
 global.config.video = global.config.video || {};
 global.config.video.hardwareAccelerated = !!global.config.video.hardwareAccelerated;
-global.config.video.yamiEnabled = !!global.config.video.yamiEnabled;
 global.config.video.enableBetterHEVCQuality = !!global.config.video.enableBetterHEVCQuality;
 global.config.video.codecs = {
   decode: ['vp8', 'vp9', 'h264'],

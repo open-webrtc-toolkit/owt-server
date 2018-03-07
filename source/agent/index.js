@@ -49,7 +49,6 @@ global.config.recording.path = global.config.recording.path || '/tmp';
 
 global.config.video = global.config.video || {};
 global.config.video.hardwareAccelerated = !!global.config.video.hardwareAccelerated;
-global.config.video.yamiEnabled = !!global.config.video.yamiEnabled;
 global.config.video.enableBetterHEVCQuality = !!global.config.video.enableBetterHEVCQuality;
 
 // Parse command line arguments
@@ -485,20 +484,7 @@ var joinCluster = function (on_ok) {
         case 'video':
             /*FIXME: should be double checked whether hardware acceleration is actually running*/
         load_collection.item = {name: (global.config.video.hardwareAccelerated ? 'gpu' : 'cpu')};
-        if (global.config.video.hardwareAccelerated) {
-            // Query the hardware capability only if we want to try it.
-            if (global.config.video.yamiEnabled) {
-                var path = require('path');
-                process.env.LD_LIBRARY_PATH = [
-                    path.resolve(process.cwd(), './lib/va'),
-                    process.env.LD_LIBRARY_PATH,
-                    path.resolve(process.cwd(), './lib'),
-                    ].join(':');
-                process.env.LIBVA_DRIVERS_PATH = path.resolve(process.cwd(), './lib/dri');
-                process.env.LIBVA_DRIVER_NAME = 'i965';
-            }
-        }
-        break;
+            break;
         default:
             log.error('Ambiguous purpose:', purpose);
             process.exit();

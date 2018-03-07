@@ -126,27 +126,6 @@ case $yn in
   * ) ;;
 esac
 
-read -p "Installing libva? [No/yes]" yn
-case $yn in
-  [Yy]* ) install_libva;;
-  [Nn]* ) ;;
-  * ) ;;
-esac
-
-read -p "Installing libva intel driver? [No/yes]" yn
-case $yn in
-  [Yy]* ) install_libva_driver;;
-  [Nn]* ) ;;
-  * ) ;;
-esac
-
-read -p "Installing libyami? [No/yes]" yn
-case $yn in
-  [Yy]* ) install_libyami;;
-  [Nn]* ) ;;
-  * ) ;;
-esac
-
 read -p "Installing libre? [No/yes]" yn
 case $yn in
   [Yy]* ) install_libre;;

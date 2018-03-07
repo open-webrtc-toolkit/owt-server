@@ -41,8 +41,6 @@ enum FrameFormat {
 
     FRAME_FORMAT_MSDK       = 300,
 
-    FRAME_FORMAT_YAMI       = 400,
-
     FRAME_FORMAT_PCM_48000_2    = 800,
 
     FRAME_FORMAT_PCMU       = 900,
@@ -135,8 +133,6 @@ inline const char *getFormatStr(const FrameFormat &format) {
             return "UNKNOWN";
         case FRAME_FORMAT_I420:
             return "I420";
-        case FRAME_FORMAT_YAMI:
-            return "YAMI";
         case FRAME_FORMAT_MSDK:
             return "MSDK";
         case FRAME_FORMAT_VP8:
@@ -196,7 +192,6 @@ inline bool isAudioFrame(const Frame& frame) {
 
 inline bool isVideoFrame(const Frame& frame) {
     return frame.format == FRAME_FORMAT_I420
-          || frame.format ==FRAME_FORMAT_YAMI
           || frame.format ==FRAME_FORMAT_MSDK
           || frame.format == FRAME_FORMAT_VP8
           || frame.format == FRAME_FORMAT_VP9

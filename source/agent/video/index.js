@@ -14,16 +14,12 @@ var internalConnFactory = new InternalConnectionFactory;
 const { LayoutProcessor } = require('./layout');
 
 var useHardware = global.config.video.hardwareAccelerated,
-    yamiEnabled = global.config.video.yamiEnabled,
     gaccPluginEnabled = global.config.video.enableBetterHEVCQuality || false,
     supported_codecs = global.config.video.codecs;
 
 var VideoMixer, VideoTranscoder;
 try {
-    if (useHardware && yamiEnabled) {
-        VideoMixer = require('./videoMixer_yami/build/Release/videoMixer-yami');
-        VideoTranscoder = require('./videoMixer_yami/build/Release/videoTranscoder-yami');
-    } else if (useHardware && !yamiEnabled) {
+    if (useHardware) {
         VideoMixer = require('./videoMixer_msdk/build/Release/videoMixer-msdk');
         VideoTranscoder = require('./videoTranscoder_msdk/build/Release/videoTranscoder-msdk');
     } else {
