@@ -437,7 +437,7 @@ void VCMFrameEncoder::encodeOneFrame()
     m_encCond.notify_one();
 
     if (m_incomingFrameCount > 100)
-        ELOG_WARN_T("Too many pending frames(%d)", m_incomingFrameCount);
+        ELOG_DEBUG_T("Too many pending frames(%d)", m_incomingFrameCount);
 }
 
 webrtc::EncodedImageCallback::Result VCMFrameEncoder::OnEncodedImage(const EncodedImage& encoded_frame,
