@@ -52,9 +52,7 @@ void AudioFrameConstructor::unbindTransport()
 {
     boost::unique_lock<boost::shared_mutex> lock(m_transport_mutex);
     if (m_transport) {
-        m_transport->setAudioSink(nullptr);
-        m_transport->setEventSink(nullptr);
-        fb_sink_ = nullptr;
+        setFeedbackSink(nullptr);
         m_transport = nullptr;
     }
 }

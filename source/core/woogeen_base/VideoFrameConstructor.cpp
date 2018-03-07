@@ -164,8 +164,6 @@ void VideoFrameConstructor::unbindTransport()
 {
     boost::unique_lock<boost::shared_mutex> lock(m_transport_mutex);
     if (m_transport) {
-        m_transport->setVideoSink(nullptr);
-        m_transport->setEventSink(nullptr);
         m_videoTransport->setFeedbackSink(nullptr);
         m_transport = nullptr;
     }

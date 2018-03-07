@@ -68,9 +68,6 @@ void AudioFramePacketizer::unbindTransport()
 {
     boost::unique_lock<boost::shared_mutex> lock(m_transport_mutex);
     if (audio_sink_) {
-        erizo::FeedbackSource* fbSource = audio_sink_->getFeedbackSource();
-        if (fbSource)
-            fbSource->setFeedbackSink(nullptr);
         audio_sink_ = nullptr;
     }
 }
@@ -160,14 +157,7 @@ bool AudioFramePacketizer::setSendCodec(FrameFormat format)
 
 void AudioFramePacketizer::close()
 {
-    boost::unique_lock<boost::shared_mutex> lock(m_transport_mutex);
-    if (audio_sink_) {
-        erizo::FeedbackSource* fbSource = audio_sink_->getFeedbackSource();
-        if (fbSource)
-            fbSource->setFeedbackSink(nullptr);
-        audio_sink_ = nullptr;
-    }
-    lock.unlock();
+    unbindTransport();
     m_taskRunner->DeRegisterModule(m_rtpRtcp.get());
 }
 

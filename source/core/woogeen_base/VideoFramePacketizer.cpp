@@ -73,9 +73,6 @@ void VideoFramePacketizer::unbindTransport()
 {
     boost::unique_lock<boost::shared_mutex> lock(m_transport_mutex);
     if (video_sink_) {
-        erizo::FeedbackSource* fbSource = video_sink_->getFeedbackSource();
-        if (fbSource)
-            fbSource->setFeedbackSink(nullptr);
         video_sink_ = nullptr;
     }
 }
@@ -406,14 +403,7 @@ bool VideoFramePacketizer::init(bool enableRed, bool enableUlpfec)
 
 void VideoFramePacketizer::close()
 {
-    boost::unique_lock<boost::shared_mutex> lock(m_transport_mutex);
-    if (video_sink_) {
-        erizo::FeedbackSource* fbSource = video_sink_->getFeedbackSource();
-        if (fbSource)
-            fbSource->setFeedbackSink(nullptr);
-        video_sink_ = nullptr;
-    }
-    lock.unlock();
+    unbindTransport();
     // M53 does not support removing observer
     //if (m_bitrateController)
     //   m_bitrateController->RemoveBitrateObserver(this);

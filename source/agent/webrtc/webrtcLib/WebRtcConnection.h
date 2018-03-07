@@ -57,6 +57,12 @@ class WebRtcConnection : public MediaSink, public erizo::WebRtcConnectionEventLi
      */
     static NAN_METHOD(New);
     /*
+     * Stop the webRTC connection.
+     * The object cannot be used after this call.
+     * Source and Sink of the connection can be destroyed after this call.
+     */
+    static NAN_METHOD(stop);
+    /*
      * Closes the webRTC connection.
      * The object cannot be used after this call.
      */
