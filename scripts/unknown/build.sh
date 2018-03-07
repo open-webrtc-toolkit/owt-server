@@ -34,8 +34,7 @@ usage() {
   echo "    --check                             check resulted addon(s)"
   echo "    --gateway                           build oovoo gateway addon"
   echo "    --mcu                               build mcu runtime addons with software media pipeline"
-  echo "    --mcu-hardware                      build mcu runtime addons with msdk and yami media pipeline"
-  echo "    --mcu-hardware-yami                 build mcu runtime addons with libyami based media pipeline"
+  echo "    --mcu-hardware                      build mcu runtime addons with msdk media pipeline"
   echo "    --mcu-hardware-msdk                 build mcu runtime addons with msdk media pipeline"
   echo "    --mcu-all                           build mcu runtime addons both with and without hardware support"
   echo "    --sip                               build sip gateway runtime"
@@ -56,7 +55,6 @@ fi
 BUILD_GATEWAY_RUNTIME=false
 BUILD_SIP_GATEWAY_RUNTIME=false
 BUILD_MCU_RUNTIME_SW=false
-BUILD_MCU_RUNTIME_HW_YAMI=false
 BUILD_MCU_RUNTIME_HW_MSDK=false
 BUILD_MCU_RUNTIME_ALL=false
 BUILD_SDK=false
@@ -90,16 +88,12 @@ while [[ $# -gt 0 ]]; do
     *(-)mcu-hardware )
       BUILD_MCU_RUNTIME_HW_MSDK=true
       ;;
-    *(-)mcu-hardware-yami )
-      BUILD_MCU_RUNTIME_HW_YAMI=true
-      ;;
-    *(-)mcu-hardware-msdk )
+        *(-)mcu-hardware-msdk )
       BUILD_MCU_RUNTIME_HW_MSDK=true
       ;;
     *(-)mcu-all )
       BUILD_MCU_RUNTIME_SW=false
       BUILD_MCU_RUNTIME_HW_MSDK=false
-      BUILD_MCU_RUNTIME_HW_YAMI=false
       BUILD_MCU_RUNTIME_ALL=true
       ;;
     *(-)sip )
@@ -114,7 +108,6 @@ while [[ $# -gt 0 ]]; do
       BUILD_SDK=true
       BUILD_MCU_RUNTIME_SW=false
       BUILD_MCU_RUNTIME_HW_MSDK=false
-      BUILD_MCU_RUNTIME_HW_YAMI=false
       BUILD_MCU_RUNTIME_ALL=true
       ;;
     *(-)help )
@@ -144,12 +137,6 @@ build_mcu_runtime_sw() {
   build_mcu_runtime
   rm -f ${SOURCE}/agent/video/videoMixer/videoMixer_sw/binding.gyp
   rm -f ${SOURCE}/agent/video/videoTranscoder/videoTranscoder_sw/binding.gyp
-}
-
-build_mcu_runtime_hw_yami() {
-  cp -f ${SOURCE}/agent/video/videoMixer/yami/binding.hw.yami.gyp ${SOURCE}/agent/video/videoMixer/yami/binding.gyp
-  build_mcu_runtime
-  rm -f ${SOURCE}/agent/video/videoMixer/yami/binding.gyp
 }
 
 build_mcu_runtime_hw_msdk() {
@@ -274,10 +261,6 @@ build() {
   fi
   if ${BUILD_MCU_RUNTIME_HW_MSDK} ; then
     build_mcu_runtime_hw_msdk
-    ((DONE++))
-  fi
-  if ${BUILD_MCU_RUNTIME_HW_YAMI} ; then
-    build_mcu_runtime_hw_yami
     ((DONE++))
   fi
   if ${BUILD_MCU_RUNTIME_ALL} ; then

@@ -26,7 +26,7 @@ ROOT=`cd "${bin}/.."; pwd`
 
 usage()
 {
-  echo "Usage: [--deps] [--hardware] [--yami] (Default: without deps, yami and hardware)"
+  echo "Usage: [--deps] [--hardware] (Default: without deps and hardware)"
 }
 
 init_software()
@@ -63,26 +63,8 @@ init_hardware()
   fi
 }
 
-init_hardware_yami()
-{
-  if ${INSTALL_DEPS}; then
-    echo "Installing dependency..."
-    ${ROOT}/bin/init-mongodb.sh --deps
-    ${ROOT}/bin/init-rabbitmq.sh --deps
-    ${ROOT}/nuve/init.sh
-    ${ROOT}/video_agent/install_deps.sh --hardware
-    ${ROOT}/video_agent/init.sh --hardware
-  else
-    ${ROOT}/bin/init-mongodb.sh
-    ${ROOT}/bin/init-rabbitmq.sh
-    ${ROOT}/nuve/init.sh
-    ${ROOT}/video_agent/init.sh --hardware --yami
-  fi
-}
-
 INSTALL_DEPS=false
 HARDWARE=false
-YAMI=false
 
 shopt -s extglob
 while [[ $# -gt 0 ]]; do
@@ -93,9 +75,6 @@ while [[ $# -gt 0 ]]; do
     *(-)deps )
       INSTALL_DEPS=true
       ;;
-    *(-)yami )
-      YAMI=true
-      ;;
     *(-)help )
       usage
       exit 0
@@ -105,13 +84,8 @@ while [[ $# -gt 0 ]]; do
 done
 
 if ${HARDWARE}; then
-  if ${YAMI}; then
-    echo "Initializing with hardware yami"
-    init_hardware_yami
-  else
-    echo "Initializing with hardware msdk"
-    init_hardware
-  fi
+  echo "Initializing with hardware msdk"
+  init_hardware
 else
   echo "Initializing..."
   init_software
