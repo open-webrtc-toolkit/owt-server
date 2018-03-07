@@ -344,10 +344,13 @@ module.exports = function (spec, on_status) {
     };
 
     that.close = function () {
-        unbindFramePacketizers();
-        unbindFrameConstructors();
-        wrtc && wrtc.close();
-        wrtc = undefined;
+        if (wrtc) {
+            wrtc.stop();
+            unbindFramePacketizers();
+            unbindFrameConstructors();
+            wrtc.close();
+            wrtc = undefined;
+        }
     };
 
     that.onSignalling = function (msg) {

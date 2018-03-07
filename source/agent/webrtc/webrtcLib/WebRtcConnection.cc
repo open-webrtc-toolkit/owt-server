@@ -61,6 +61,7 @@ NAN_MODULE_INIT(WebRtcConnection::Init) {
   tpl->InstanceTemplate()->SetInternalFieldCount(1);
 
   // Prototype
+  Nan::SetPrototypeMethod(tpl, "stop", stop);
   Nan::SetPrototypeMethod(tpl, "close", close);
   Nan::SetPrototypeMethod(tpl, "init", init);
   Nan::SetPrototypeMethod(tpl, "setRemoteSdp", setRemoteSdp);
@@ -364,6 +365,29 @@ NAN_METHOD(WebRtcConnection::New) {
   } else {
     // TODO(pedro) Check what happens here
   }
+}
+
+std::future<void> stopAsync(std::shared_ptr<erizo::WebRtcConnection> connection) {
+  auto promise = std::make_shared<std::promise<void>>();
+  if (connection) {
+    connection->getWorker()->task([promise, connection] {
+      connection->getFeedbackSource()->setFeedbackSink(nullptr);
+      connection->setVideoSink(nullptr);
+      connection->setAudioSink(nullptr);
+      connection->setEventSink(nullptr);
+      promise->set_value();
+    });
+  } else {
+    promise->set_value();
+  }
+  return promise->get_future();
+}
+
+NAN_METHOD(WebRtcConnection::stop) {
+  WebRtcConnection* obj = Nan::ObjectWrap::Unwrap<WebRtcConnection>(info.Holder());
+
+  std::future<void> future = stopAsync(obj->me);
+  future.wait();
 }
 
 NAN_METHOD(WebRtcConnection::close) {
