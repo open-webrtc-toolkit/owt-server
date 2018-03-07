@@ -16,6 +16,9 @@ try {
   process.exit(1);
 }
 
+global.config = {
+  mongo: { dataBaseURL: dbURL }
+};
 require('./data_access');
 var Service = require('./data_access/model/serviceModel');
 var cipher = require('./cipher');
