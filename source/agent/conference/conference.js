@@ -737,7 +737,7 @@ var Conference = function (rpcClient, selfRpcId) {
       media.video.source && (result.video.source = media.video.source);
       media.video.profile && (result.video.format.profile = media.video.profile);
       media.video.resolution && (result.video.parameters || (result.video.parameters = {})) && (result.video.parameters.resolution = media.video.resolution);
-      media.video.framerate && (result.video.parameters || (result.video.parameters = {})) && (result.video.parameters.framerate = media.video.framerate);
+      media.video.framerate && (result.video.parameters || (result.video.parameters = {})) && (result.video.parameters.framerate = Math.floor(media.video.framerate));
       media.video.bitrate && (result.video.parameters || (result.video.parameters = {})) && (result.video.parameters.bitrate = media.video.bitrate);
       media.video.keyFrameInterval && (result.video.parameters || (result.video.parameters = {})) && (result.video.parameters.keyFrameInterval = media.video.keyFrameInterval);
 
@@ -769,7 +769,7 @@ var Conference = function (rpcClient, selfRpcId) {
           result.video.optional = (result.video.optional || {});
           result.video.optional.parameters = (result.video.optional.parameters || {});
 
-          result.video.optional.parameters.framerate = room_config.mediaOut.video.parameters.framerate;
+          result.video.optional.parameters.framerate = room_config.mediaOut.video.parameters.framerate.filter((fr) => {return fr < result.video.parameters.framerate;});
         }
 
         if (room_config.transcoding.video.parameters.bitrate) {
