@@ -97,7 +97,7 @@ Either Professional Edition or Community Edition is applicable. For download or 
 The external stream output (rtsp/rtmp) feature relies on AAC encoder libfdk_aac support in ffmpeg library, please see [Compile and deploy ffmpeg with libfdk_aac](#Conferencesection2_3_5) section for detailed instructions.
 
  **Table 2-2. Client compatibility**
-Application Name|Google Chrome\* 62|Mozilla Firefox\* 56|Microsoft Edge\* 40.15063|Safari\* 11|Intel CS for WebRTC Client SDK for Android | Intel CS for WebRTC Client SDK for iOS | Intel CS for WebRTC Client SDK for Windows
+Application Name|Google Chrome\* 65|Mozilla Firefox\* 58|Microsoft Edge\* 40.15063|Safari\* 11|Intel CS for WebRTC Client SDK for Android | Intel CS for WebRTC Client SDK for iOS | Intel CS for WebRTC Client SDK for Windows
 --------|--------|--------|--------|--------|--------|--------|--------
 MCU Client|YES|YES|YES|YES|YES|YES|YES
 Management Console|YES|YES|YES|YES|N/A|N/A|N/A
@@ -180,7 +180,7 @@ For Ubuntu version MCU, do as following:
 ~~~~~~
 
 ### 2.3.4 Deploy Cisco OpenH264* Library {#Conferencesection2_3_4}
-The default H.264 library installed is a pseudo one without any media logic. To enable H.264 support in non GPU-accelerated MCU system, you must deploy the Cisco OpenH264 library. Choose yes to download and enable Cisco Open H264 library during video-agent dependency installation at Release-<Version>/video_agent/ install_deps.sh.
+The default H.264 library installed is a pseudo one without any media logic. To enable H.264 support in non GPU-accelerated MCU system, you must deploy the Cisco OpenH264 library. Choose yes to download and enable Cisco Open H264 library during video-agent dependency installation at Release-<Version>/video_agent/install_deps.sh.
 
 Or you can also use install_openh264.sh or uninstall_openh264.sh scripts under Release-<Version>/video_agent folder to enable or disable Cisco OpenH264 library later.
 
@@ -553,13 +553,13 @@ Only super service user can access service management, in the ‘overview' tab t
 ## 3.5 Room Management {#Conferencesection3_5}
 Any service user can do room management inside the service, including creating, deleting or modifying rooms.
 
-To modify rooms, a user can choose room mode, room publish limit, user limit and media mixing configuration (only for hybrid mode) for its own preference. For a single room's media mixing configuration, multiple views can be enabled and configured. The configuration set of a view includes: resolution, background color, layout, etc. For VAD, set avCoordinated to true to enable VAD in the room. Enabling multi-streaming can let a view of MCU generate two or more mixed streams with different resolutions to fulfill different requirements. For layout, a user can choose a base layout template and customize its own preferred ones, which would be combined as a whole for rendering mixed video.
+To modify rooms, a user can edit room configuration for its own preference. For a single room's media mixing configuration, multiple views can be enabled and configured. The configuration set of a view includes: resolution, background color, layout, etc. For VAD, set view's "vad" in "audio" and "keepParticipantPrimary" in "video" to true to enable VAD in the room. Enabling multi-streaming can let a view of MCU generate two or more mixed streams with different resolutions to fulfill different requirements. For layout, a user can choose a base layout template and customize its own preferred ones, which would be combined as a whole for rendering mixed video.
 
 > **Note**: If base layout is set to 'void', user must input customized layout for the room, otherwise the video layout would be treated as invalid. Read 3.5.1 for details of customized layout. maxInput indicates the maximum number of video frame inputs for the video layout definition.
 
 ### 3.5.1 Customized video layout {#Conferencesection3_5_1}
-The MCU server supports the mixed video layout configuration which is compliant with RFC5707 Media Server Markup Language (MSML).
-A valid customized video layout should be a JSON string which represents an array of video layout definition.
+The MCU server supports the mixed video layout configuration which is similar as RFC5707 Media Server Markup Language (MSML).
+A valid customized video layout should be an array of video layout definition.
 The following example shows the details:
 
 **Figure 3-1. Example Layout**
@@ -574,10 +574,10 @@ The following example shows the details:
         "id": "1",
         "shape": "rectangle",
         "area": {
-            "left": 0,  // numbers will be converted to rational object { "numerator": a, "denominator": b }, string value like "1/3" is also supported.
-            "top": 0,
-            "width": 1,
-            "height": 1
+            "left": "0",
+            "top": "0",
+            "width": "1",
+            "height": "1"
         }
       }
     ]
@@ -588,60 +588,60 @@ The following example shows the details:
         "id": "1",
         "shape": "rectangle",
         "area": {
-            "left": 0,
-            "top": 0,
-            "width": 0.667,
-            "height": 0.667
+            "left": "0",
+            "top": "0",
+            "width": "2/3",
+            "height": "2/3"
         }
       },
       {
         "id": "2",
         "shape": "rectangle",
         "area": {
-            "left": 0.667,
-            "top": 0,
-            "width": 0.333,
-            "height": 0.333
+            "left": "2/3",
+            "top": "0",
+            "width": "1/3",
+            "height": "1/3"
         }
       },
       {
         "id": "3",
         "shape": "rectangle",
         "area": {
-            "left": 0.667,
-            "top": 0.333,
-            "width": 0.333,
-            "height": 0.333
+            "left": "2/3",
+            "top": "1/3",
+            "width": "1/3",
+            "height": "1/3"
         }
       },
       {
         "id": "4",
         "shape": "rectangle",
         "area": {
-            "left": 0.667,
-            "top": 0.667,
-            "width": 0.333,
-            "height": 0.333
+            "left": "2/3",
+            "top": "2/3",
+            "width": "1/3",
+            "height": "1/3"
         }
       },
       {
         "id": "5",
         "shape": "rectangle",
         "area": {
-            "left": 0.333,
-            "top": 0.667,
-            "width": 0.333,
-            "height": 0.333
+            "left": "1/3",
+            "top": "2/3",
+            "width": "1/3",
+            "height": "1/3"
         }
       },
       {
         "id": "6",
         "shape": "rectangle",
         "area": {
-            "left": 0,
-            "top": 0.667,
-            "width": 0.333,
-            "height": 0.333
+            "left": "0",
+            "top": "2/3",
+            "width": "1/3",
+            "height": "1/3"
         }
       }
     ]
@@ -652,21 +652,18 @@ Each "region" defines video panes that are used to display participant video str
 
 Regions are rendered on top of the root mixed stream. "id" is the identifier for each video layout region.
 
-The size of a region is specified relative to the size of the root mixed stream using the "relativesize" attribute.
+The size of a region is specified relative to the size of the root mixed stream using the "width" and "height" attribute.
 
 Regions are located on the root window based on the value of the position attributes "top" and "left".  These attributes define the position of the top left corner of the region as an offset from the top left corner of the root mixed stream, which is a percent of the vertical or horizontal dimension of the root mixed stream.
 
 ### 3.5.2 Enable SIP connectivity {#Conferencesection3_5_2}
-The MCU server supports connection from SIP clients. Before setting up SIP connectivity for rooms, make sure SIP server (like Kamailio) and related SIP user accounts are available. The SIP setting can be enabled through SDK or management console. On the console page, find the room that needs interacting with SIP clients and click the related "SIP connectivity" field. Then a SIP setting dialog titled "SIP connectivity for Room <id>" will show up as Figure 3-2:
+The MCU server supports connection from SIP clients. Before setting up SIP connectivity for rooms, make sure SIP server (like Kamailio) and related SIP user accounts are available. The SIP setting can be enabled through SDK or management console. On the console page, find the room that needs interacting with SIP clients and click the related "Room Detail" field. Then find the SIP setting fields in sub-section "sip".
 
-**Figure 3-2. SIP Connectivity Setting on Management Console**
-![SIP Connectivity Setting](./pic/sipSetting.png)
+The meanings of each fields are listed below:
 
-Make the "Enable SIP" option checked and input the "SIP server", "User Name", "Password" fields. The meanings of each fields are listed below:
-
-        SIP server: The SIP server's hostname or IP address.
-        User Name: The user name registered in the above SIP server.
-        Password: The user's password.
+        sipServer: The SIP server's hostname or IP address.
+        username: The user name registered in the above SIP server.
+        password: The user's password.
 
 After the SIP settings have been done, click the "Apply" button at the right side of the Room row to let it take effect. If the "Update Room Success" message shows up and the SIP related information is correct, then SIP clients should be able to join this room via the registered SIP server.
 
