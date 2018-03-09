@@ -119,6 +119,8 @@ var load_collection = {period: global.config.cluster.report_load_interval};
 var capacity = global.config.capacity;
 var worker;
 
+var spawn_failed = false;
+
 function cleanupErizoJS (id) {
     processes[id].check_alive_interval && clearInterval(processes[id].check_alive_interval);
     processes[id].check_alive_interval = undefined;
@@ -155,29 +157,33 @@ var launchErizoJS = function() {
     child.err_log_fd = err;
 
     log.debug('launchErizoJS, id:', id);
-    child.on('close', function (code) {
-        log.debug('Node ', id, 'exited with', code);
-        //if (code !== 0) {
+    child.on('close', function (code, signal) {
+        log.debug('Node', id, 'exited with code:', code, 'signal:', signal);
+        if (code !== 0) {
+            log.info('Node', id, 'is closed on unexpected code:', code);
+        }
+
         if (processes[id]) {
             monitoringTarget && monitoringTarget.notify('abnormal', {purpose: myPurpose, id: id, type: 'node'});
             fs.closeSync(child.out_log_fd);
             fs.closeSync(child.err_log_fd);
             cleanupErizoJS(id);
         }
-        var is_recorverable = !(code === -2);//FIXME: there might be other unrecoverable reasons.
-        if (is_recorverable) {
+
+        if (!spawn_failed) {
             fillErizos();
-        } else {
-            log.error('Node(', id, ') exited with an unrecoverable code(', code, '), and will no longer try to launch new ones.');
         }
     });
     child.on('error', function (error) {
-        log.error('failed to launch worker', id, 'error:', error.code);
+        log.error('failed to launch worker', id, 'error:', JSON.stringify(error));
         child.READY = false;
-        monitoringTarget && monitoringTarget.notify('error', {purpose: myPurpose, id: id, type: 'node'});
-        fs.closeSync(child.out_log_fd);
-        fs.closeSync(child.err_log_fd);
-        cleanupErizoJS(id);
+        //FIXME: the 'error' message may be emitted in one of the following cases:
+        // 1) The process could not be spawned, or
+        // 2) The process could not be killed, or
+        // 3) Sending a message to the child process failed.
+        // And we supposed only the first case, accurately either error.code === 'ENOENT' or error.code === 'EMFILE' will happen in our usage
+        spawn_failed = true;
+        //TODO: The status of this agent should be set to 'invalid' in this case.
     });
     child.on('message', function (message) { // currently only used for sending ready message from worker to agent;
         log.debug('message from node', id, ':', message);
@@ -303,6 +309,11 @@ var api = function (worker) {
                             return;
                         }
                     }
+                }
+
+                if (idle_erizos.length < 1) {
+                  log.error('getNode error:', 'No available worker');
+                  return callback('callback', 'error', 'No available worker');
                 }
 
                 erizo_id = idle_erizos.shift();
