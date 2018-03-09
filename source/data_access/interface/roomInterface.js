@@ -101,10 +101,10 @@ exports.create = function (serviceId, roomOption, callback) {
 exports.list = function (serviceId, options, callback) {
   var popOption = {
     path: 'rooms',
+    options: { sort: '-createdAt' }
   };
   if (options) {
     if (typeof options.per_page === 'number' && options.per_page > 0) {
-      popOption.options = {};
       popOption.options.limit = options.per_page;
       if (typeof options.page === 'number' && options.page > 0) {
         popOption.options.skip = (options.page - 1) * options.per_page;
