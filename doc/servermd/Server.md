@@ -228,6 +228,7 @@ To launch the MCU server on one machine, follow steps below:
 
         bin/init-all.sh [--deps] --hardware
    > **Note**: If you have already installed the required system libraries, then --deps is not required.
+   > **Note**: If you have installed early version of MCU, the stored data will not be compatible with 4.0 version. Pay attention to the warning and run the nuve/SchemaUpdate3to4.js to update your MCU data in mongodb.
 
 2. Run the following commands to start the MCU:
 
@@ -293,6 +294,8 @@ Follow the steps below to set up a MCU cluster:
 
         cd Release-<Version>/
         nuve/init.sh
+
+    **Note**: If you have installed early version of MCU, the stored data will not be compatible with 4.0 version. Pay attention to the warning and run the nuve/SchemaUpdate3to4.js to update your MCU data in mongodb.
 
     2) Run MCU manager nuve and the sample application with following commands:
 
@@ -526,7 +529,7 @@ The following instructions are provided only as recommendations regarding securi
 
     **Resolution**:
 
-    In the MCU server, the following default ports have been assigned for MCU usage: 5672 (configurable), 8080 (configurable), 3000. Make sure they are always available for MCU. Also, in order to configure the two configurable ports above to a value smaller than the 1024 limitation, use the following command to enable it:
+    In the MCU server, the following default ports have been assigned for MCU usage: 5672 (configurable), 8080 (configurable), 3000 (configurable), 3300 (configurable). Make sure they are always available for MCU. Also, in order to configure the two configurable ports above to a value smaller than the 1024 limitation, use the following command to enable it:
 
         sudo setcap cap_net_bind_service=+ep $(which node)
 
