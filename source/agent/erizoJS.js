@@ -94,7 +94,7 @@ var detectSWModeCapability = function () {
     }
 };
 
-(function init_env() {
+function init_env() {
     if (process.argv[3] === 'video') {
         if (global.config.video.hardwareAccelerated) {
             // Query the hardware capability only if we want to try it.
@@ -119,73 +119,76 @@ var detectSWModeCapability = function () {
             detectSWModeCapability();
         }
     }
-})();
-
-log.info('pid:', process.pid);
-log.info('Connecting to rabbitMQ server...');
+};
 
 var controller;
+function init_controller() {
+    log.info('pid:', process.pid);
+    log.info('Connecting to rabbitMQ server...');
+    rpc.connect(global.config.rabbit, function () {
+        rpc.asRpcClient(function(rpcClient) {
+            var purpose = process.argv[3];
+            var rpcID = process.argv[2];
+            var clusterIP = process.argv[5];
 
-rpc.connect(global.config.rabbit, function () {
-    rpc.asRpcClient(function(rpcClient) {
-        var purpose = process.argv[3];
-        var rpcID = process.argv[2];
-        var clusterIP = process.argv[5];
-
-        switch (purpose) {
-        case 'conference':
-            controller = require('./conference')(rpcClient, rpcID);
-            break;
-        case 'audio':
-            controller = require('./audio')(rpcClient);
-            break;
-        case 'video':
-            controller = require('./video')(rpcClient, clusterIP);
-            break;
-        case 'webrtc':
-            controller = require('./webrtc')(rpcClient);
-            break;
-        case 'streaming':
-            controller = require('./avstream')(rpcClient);
-            break;
-        case 'recording':
-            controller = require('./recording')(rpcClient, rpcID);
-            break;
-        case 'sip':
-            controller = require('./sip')(rpcClient, {id:rpcID, addr:clusterIP});
-            break;
-        default:
-            log.error('Ambiguous purpose:', purpose);
-            process.send('ambiguous purpose');
-            return;
-        }
-
-        var argv4=JSON.parse(process.argv[4]);
-        controller.networkInterfaces = Array.isArray(argv4) ? argv4 : [];
-        controller.clusterIP = process.argv[5];
-        controller.agentID = process.argv[6];
-        controller.networkInterfaces.forEach((i) => {
-            if (i.ip_address) {
-              i.private_ip_match_pattern = new RegExp(i.ip_address, 'g');
+            switch (purpose) {
+            case 'conference':
+                controller = require('./conference')(rpcClient, rpcID);
+                break;
+            case 'audio':
+                controller = require('./audio')(rpcClient);
+                break;
+            case 'video':
+                controller = require('./video')(rpcClient, clusterIP);
+                break;
+            case 'webrtc':
+                controller = require('./webrtc')(rpcClient);
+                break;
+            case 'streaming':
+                controller = require('./avstream')(rpcClient);
+                break;
+            case 'recording':
+                controller = require('./recording')(rpcClient, rpcID);
+                break;
+            case 'sip':
+                controller = require('./sip')(rpcClient, {id:rpcID, addr:clusterIP});
+                break;
+            default:
+                log.error('Ambiguous purpose:', purpose);
+                process.send('ambiguous purpose');
+                return;
             }
-        });
 
-        var rpcAPI = (controller.rpcAPI || controller);
-        rpcAPI.keepAlive = function (callback) {
-            callback('callback', true);
-        };
-
-        rpc.asRpcServer(rpcID, rpcAPI, function(rpcServer) {
-            log.info(rpcID + ' as rpc server ready');
-            rpc.asMonitor(function (data) {
-                if (data.reason === 'abnormal' || data.reason === 'error' || data.reason === 'quit') {
-                    if (controller && typeof controller.onFaultDetected === 'function') {
-                        controller.onFaultDetected(data.message);
-                    }
+            var argv4=JSON.parse(process.argv[4]);
+            controller.networkInterfaces = Array.isArray(argv4) ? argv4 : [];
+            controller.clusterIP = process.argv[5];
+            controller.agentID = process.argv[6];
+            controller.networkInterfaces.forEach((i) => {
+                if (i.ip_address) {
+                  i.private_ip_match_pattern = new RegExp(i.ip_address, 'g');
                 }
-            }, function (monitor) {
-                log.info(rpcID + ' as monitor ready');
-                process.send('READY');
+            });
+
+            var rpcAPI = (controller.rpcAPI || controller);
+            rpcAPI.keepAlive = function (callback) {
+                callback('callback', true);
+            };
+
+            rpc.asRpcServer(rpcID, rpcAPI, function(rpcServer) {
+                log.info(rpcID + ' as rpc server ready');
+                rpc.asMonitor(function (data) {
+                    if (data.reason === 'abnormal' || data.reason === 'error' || data.reason === 'quit') {
+                        if (controller && typeof controller.onFaultDetected === 'function') {
+                            controller.onFaultDetected(data.message);
+                        }
+                    }
+                }, function (monitor) {
+                    log.info(rpcID + ' as monitor ready');
+                    process.send('READY');
+                }, function(reason) {
+                    process.send('ERROR');
+                    log.error(reason);
+                });
             }, function(reason) {
                 process.send('ERROR');
                 log.error(reason);
@@ -196,12 +199,9 @@ rpc.connect(global.config.rabbit, function () {
         });
     }, function(reason) {
         process.send('ERROR');
-        log.error(reason);
+        log.error('Node connect to rabbitMQ server failed, reason:', reason);
     });
-}, function(reason) {
-    process.send('ERROR');
-    log.error('Node connect to rabbitMQ server failed, reason:', reason);
-});
+};
 
 ['SIGINT', 'SIGTERM'].map(function (sig) {
     process.on(sig, function () {
@@ -222,3 +222,8 @@ rpc.connect(global.config.rabbit, function () {
 process.on('exit', function () {
     rpc.disconnect();
 });
+
+(function main() {
+    init_env();
+    init_controller();
+})();
