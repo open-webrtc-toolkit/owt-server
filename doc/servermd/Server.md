@@ -227,8 +227,7 @@ To launch the MCU server on one machine, follow steps below:
     If you want to enable GPU-acceleration through Intel Media Server Studio, use following command:
 
         bin/init-all.sh [--deps] --hardware
-   > **Note**: If you have already installed the required system libraries, then --deps is not required.
-   > **Note**: If you have installed early version of MCU, the stored data will not be compatible with 4.0 version. Pay attention to the warning and run the nuve/SchemaUpdate3to4.js to update your MCU data in mongodb.
+   > **Note**: If you have already installed the required system libraries, then --deps is not required. If you have installed early version of MCU, the stored data will not be compatible with 4.0 version. Pay attention to the warning and run the nuve/SchemaUpdate3to4.js to update your MCU data in mongodb.
 
 2. Run the following commands to start the MCU:
 
