@@ -1,8 +1,8 @@
 # MCU Management API
 ---
-# 1 Introduction
+# 1 Introduction {#RESTAPIsection1}
 Intel WebRTC solution provides a set of REST (Representational State Transfer) API for conference management. Manager clients can be implemented by different programming languages through these APIs.
-# 2 Definitions
+# 2 Definitions {#RESTAPIsection2}
 Resource: the kind of data under manipulation
 Verb: HTTP verb. The mapping to operations is as following:
 
@@ -17,7 +17,7 @@ Request Body: the request data that user need supply to call the API. Json forma
 
 Response Body: the response data is returned through HTTP response in JSON/text format.
 
-# 3 Making a Call {#MAKINGACALL}
+# 3 Making a Call {#RESTAPIsection3}
 With all the management API, perform the following steps to implement each call.
 
 1. Create a string for the http request that consist of the format [HTTP verb][url] + [headers] + [request body](optional)
@@ -32,7 +32,7 @@ The following HTTP response may be returned after your make a call:
     - 401 - Not authenticated or permitted.
     - 404 - NOT found or no such resource.
 
-# 4 Authentication and Authorization {#RESTAPIsection3}
+# 4 Authentication and Authorization {#RESTAPIsection4}
 The management API can only be called after authorized. To get authorized, each request should be a HTTP request with "Authorization" filed in the header. So the server can determine whether it is a valid client. The value of "Authorization" is something like:
 
     MAuth realm=http://webrtc.intel.com,
@@ -81,7 +81,7 @@ The management API uses REST model to accessing different resources. The resourc
 - Recordings
 - Token
 
-## 5.1 Rooms
+## 5.1 Rooms {#RESTAPIsection5_1}
 Description:<br>
 　　A room is the conference where users can communicate by real-time video and audio. Rooms are served by services. These resources can only be accessed after authenticated to their owner services. Rooms can have different settings for various scenarios. Making call on room resources provides users the ability to customize rooms for different needs.
 
@@ -326,7 +326,7 @@ response body:
 | type | content |
 |:-------------:|:-------:|
 |      json     | The updated room data model |
-## 5.2 Participants
+## 5.2 Participants {#RESTAPIsection5_2}
 Description:
 
 ParticipantDetail model:
@@ -338,7 +338,6 @@ ParticipantDetail model:
             video: true | false
         } | false,
         subscribe: {
-            type: ["webrtc" | "recording" | "streaming"],
             media: {
                 audio: true | false,
                 video: true | false
@@ -447,7 +446,7 @@ response body:
 | type | content |
 |:-------------:|:-------:|
 |      text     | A message "participant's ID deleted" indicates success |
-## 5.3 Streams
+## 5.3 Streams {#RESTAPIsection5_3}
 Description:
 
 Streams model:
@@ -589,7 +588,7 @@ response body:
 | type | content |
 |:-------------:|:-------:|
 |  text | A message "Stream ID deleted" indicates success |
-## 5.4 Streaming-ins
+## 5.4 Streaming-ins {#RESTAPIsection5_4}
 Description:
 
 Streaming-ins model:
@@ -661,7 +660,7 @@ response body:
 | type | content |
 |:-------------:|:-------:|
 |  text | A message "External streaming-in stopped" indicates success |
-## 5.5 Streaming-outs
+## 5.5 Streaming-outs {#RESTAPIsection5_5}
 Description:
 
 Streaming-outs model:
@@ -805,7 +804,7 @@ response body:
 |:-------------:|:-------:|
 |  text | A message "Streaming-out Id deleted" indicated success |
 
-## 5.6 Recordings
+## 5.6 Recordings {#RESTAPIsection5_6}
 Description:
 
 Recordings data model:
@@ -905,7 +904,7 @@ response body:
 | type | content |
 |:-------------:|:-------:|
 |  text | A message "The specified recording stopped" indicates success|
-## 5.7 Token
+## 5.7 Token {#RESTAPIsection5_7}
 Description:<br>
 　　A token is the ticket for joining the room. The token contains information through which clients can connect to server application. Note that the different rooms may have different network information, so the room must be specified for token resource. The same token cannot be reused if it has been used once. Re-generate token if clients need to connect at the second time.
 
