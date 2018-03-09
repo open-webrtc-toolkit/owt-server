@@ -75,10 +75,13 @@ exports.represent = function (req, res) {
         return;
     }
 
-    dataAccess.room.list(currentService._id, function (err, rooms) {
+    req.query.page = Number(req.query.page) || undefined;
+    req.query.per_page = Number(req.query.per_page) || undefined;
+
+    dataAccess.room.list(currentService._id, req.query, function (err, rooms) {
         if (rooms) {
             log.debug('Representing rooms for service ', currentService._id);
-            res.send(currentService.rooms);
+            res.send(rooms);
         } else {
             log.info('Failed to representing rooms');
             res.status(400).send();

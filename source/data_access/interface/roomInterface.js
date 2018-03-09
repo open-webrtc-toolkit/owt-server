@@ -98,8 +98,21 @@ exports.create = function (serviceId, roomOption, callback) {
 /*
  * List Rooms.
  */
-exports.list = function (serviceId, callback) {
-  Service.findById(serviceId).populate('rooms').lean().exec(function (err, service) {
+exports.list = function (serviceId, options, callback) {
+  var popOption = {
+    path: 'rooms',
+  };
+  if (options) {
+    if (typeof options.per_page === 'number' && options.per_page > 0) {
+      popOption.options = {};
+      popOption.options.limit = options.per_page;
+      if (typeof options.page === 'number' && options.page > 0) {
+        popOption.options.skip = (options.page - 1) * options.per_page;
+      }
+    }
+  }
+
+  Service.findById(serviceId).populate(popOption).lean().exec(function (err, service) {
     if (err) {
       callback(err);
       return;
@@ -143,7 +156,7 @@ exports.delete = function (serviceId, roomId, callback) {
  * Update Room. Update a determined room from the data base.
  */
 exports.update = function (serviceId, roomId, updates, callback) {
-  Room.findOneAndUpdate({ _id: roomId }, updates, { overwrite: true }, function (err, ret) {
+  Room.findOneAndUpdate({ _id: roomId }, updates, { overwrite: true, new: true }, function (err, ret) {
     if (err) return callback(err, null);
     callback(null, ret.toObject());
   });

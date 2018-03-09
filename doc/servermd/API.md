@@ -244,6 +244,15 @@ Here is an example of json data:
 
     [room0, room1, ...]
 **Note**: Elements in list are of room data model.
+
+Pagination
+
+Requests that return multiple rooms will not be paginated by default. To avoid too much data of one call, you can set a custom page size with the ?per_page parameter.You can also specify further pages with the ?page parameter.
+
+GET 'https://sample.api/service?page=2&per_page=10'
+
+Note that page numbering is 1-based and that omitting the ?page parameter will return the first page.
+
 ### /v1/rooms/{roomId}
 #### GET
 Description:<br>
