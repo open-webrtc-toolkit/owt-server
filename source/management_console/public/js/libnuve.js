@@ -130,8 +130,8 @@ Nuve.prototype.createRoom = function (room, callback) {
     this.send('POST', {name: room.name, options: room.options}, 'rooms', callback);
 };
 
-Nuve.prototype.getRooms = function (callback) {
-    this.send('GET', undefined, 'rooms', callback);
+Nuve.prototype.getRooms = function (page, per_page, callback) {
+    this.send('GET', undefined, 'rooms?page=' + page + '&per_page=' + per_page, callback);
 };
 
 Nuve.prototype.getRoom = function (roomId, callback) {

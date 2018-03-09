@@ -38,6 +38,10 @@ var serviceId = "";
 var serviceKey = "";
 var lastColor = "rgb(255, 255, 255)";
 
+var roomPage = 1;
+var roomPerPage = 50;
+var roomTotalPage = 1;
+
 var BrutusinForms = brutusin["json-forms"];
 BrutusinForms.onValidationError = function (element, message) {
     element.focus();
@@ -59,8 +63,34 @@ function checkProfile(callback) {
     return;
   }
   nuve = Nuve.init(serviceId, serviceKey);
-  judgePermissions();
-  callback();
+  nuve.getService(serviceId, function (err, text) {
+    if (err) {
+      notify('error', 'Failed to get service information', err);
+    } else {
+      var myService = JSON.parse(text);
+      var total = myService.rooms.length;
+      roomTotalPage = Math.ceil(total / roomPerPage);
+    }
+    judgePermissions();
+    initPageSelect();
+    callback();
+  });
+}
+
+$('#selPage').on('change', function() {
+  roomPage = this.value;
+  renderRooms();
+});
+
+function initPageSelect() {
+  var i;
+  for (i = 1; i <= roomTotalPage; i++) {
+    $('#selPage')
+         .append($("<option></option>")
+                    .attr("value",i)
+                    .text(i));
+  }
+  $('#selPage').val(roomPage);
 }
 
 $('button#clearCookie').click(function() {
@@ -940,7 +970,7 @@ function tableHandlerRoom(rooms) {
 }
 
 function renderRooms() {
-  nuve.getRooms(function(err, resp) {
+  nuve.getRooms(roomPage, roomPerPage, function(err, resp) {
     if (err) return notify('error', 'Room Management', err);
     var rooms = JSON.parse(resp);
     tableHandlerRoom(rooms);

@@ -39,18 +39,21 @@ exports.represent = function (req, res) {
         return;
     }
 
-    doInit(authData.service, req.params.service, function (serv) {
-        if (serv === 'error') {
-            log.info('Service ', req.params.service, ' not authorized for this action');
-            res.status(401).send('Service not authorized for this action');
-            return;
-        }
-        if (serv === undefined || serv === null) {
+    var curId = authData.service._id.toString();
+    if (curId !== superService && curId !== req.params.service) {
+        log.info('Service ', req.params.service, ' not authorized for this action');
+        res.status(401).send('Service not authorized for this action');
+        return;
+    }
+
+    dataAccess.service.get(req.params.service, function (err, ser) {
+        if (err) {
+            log.warn('Failed to get service:', err.message);
             res.status(404).send('Service not found');
             return;
         }
-        log.info('Representing service ', serv._id);
-        res.send(serv);
+        log.info('Representing service ', ser._id);
+        res.send(ser);
     });
 };
 

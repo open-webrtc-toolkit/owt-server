@@ -16,7 +16,7 @@ exports.create = function (config, callback) {
  * List Service.
  */
 exports.list = function (callback) {
-  Service.find().populate('rooms').lean().exec(function (err, services) {
+  Service.find().lean().exec(function (err, services) {
     callback(err, services);
   });
 };
@@ -25,7 +25,7 @@ exports.list = function (callback) {
  * Get Service.
  */
 exports.get = function (serviceId, callback) {
-  Service.findById(serviceId).populate('rooms').lean().exec(function (err, service) {
+  Service.findById(serviceId).lean().exec(function (err, service) {
     callback(err, service);
   });
 };
