@@ -188,7 +188,7 @@ exports.sips = function () {
         resolve([]);
       } else {
         var result = rooms.map((room) => {
-          return { roomId: room._id.toString(), sipInfo: room.sip };
+          return { roomId: room._id.toString(), sip: room.sip };
         });
         resolve(result);
       }
