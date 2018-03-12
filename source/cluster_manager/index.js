@@ -54,9 +54,9 @@ function startup () {
                     videoStrategy: config.strategy.video
                    };
 
-        amqper.asTopicParticipant('woogeen-cluster.management', function(channel) {
+        amqper.asTopicParticipant(config.manager.name + '.management', function(channel) {
             log.info('Cluster manager up! id:', id);
-            ClusterManager.run(channel, config.manager.name || 'woogeen-cluster', id, spec);
+            ClusterManager.run(channel, config.manager.name, id, spec);
         }, function(reason) {
             log.error('Cluster manager initializing failed, reason:', reason);
             process.exit();
