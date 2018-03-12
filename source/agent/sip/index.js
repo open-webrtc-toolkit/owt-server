@@ -521,11 +521,15 @@ module.exports = function (rpcC, spec) {
 
         gateway.addEventListener('SIPRegisterFailed', function() {
             log.error("Register Failed");
+            gateway.close();
+            gateway = undefined;
             callback('callback', 'error', 'SIP registration fail');
         });
 
         if (!gateway.register(options.sip_server, options.sip_user, options.sip_passwd, options.sip_user)) {
             log.error("Register error!");
+            gateway.close();
+            gateway = undefined;
             callback('callback', 'error', 'SIP registration fail');
         }
 

@@ -45,7 +45,7 @@ var api = {
         // Argument update: {type: (create|update|delete), room_id:room-id, sipInfo:updated-sipInfo}
         log.debug("on handleSipUpdate, update:", update);
         var room_id = update.room_id;
-        var sipInfo = update.sipInfo;
+        var sipInfo = update.sip;
         // Update the room sip info
         roomInfo[room_id] = sipInfo;
         if (update.type == 'delete') {
@@ -109,7 +109,7 @@ function initSipRooms() {
             log.debug('SIP rooms', rooms);
             for (var index in rooms) {
                 var room_id = rooms[index].roomId;
-                var sipInfo = rooms[index].sipInfo;
+                var sipInfo = rooms[index].sip;
                 // Save the room sip info
                 roomInfo[room_id] = sipInfo;
                 createSipConnectivity(room_id, sipInfo.sipServer, sipInfo.username, sipInfo.password);

@@ -54,7 +54,7 @@ exports.deleteRoom = function (req, res) {
             res.send('Room deleted');
 
             // Notify SIP portal if SIP room deleted
-            if (room.sipInfo) {
+            if (room.sip) {
                 log.debug('Notify SIP Portal on delete Room');
                 cloudHandler.notifySipPortal('delete', room, function(){});
             }
@@ -81,15 +81,25 @@ exports.updateRoom = function (req, res) {
             dataAccess.room.update(currentService._id, req.params.room, updates, function(err, result) {
                 if (result) {
                     res.send(result);
+
                     // Notify SIP portal if SIP room updated
-                    if (updates.hasOwnProperty('sipInfo')) {
-                        log.debug('Notify SIP Portal on update Room', updates);
-                        var changeType = 'update';
-                        if (!hasSip && result.sipInfo) {
-                            changeType = 'create';
-                        } else if (hasSip && !result.sipInfo) {
-                            changeType = 'delete';
+                    var sipOld = room.sip;
+                    var sipNew = result.sip;
+                    var changeType;
+                    var sipField;
+                    if (!sipOld && sipNew) {
+                        changeType = 'create';
+                    } else if (sipOld && !sipNew) {
+                        changeType = 'delete';
+                    } else if (sipOld && sipNew) {
+                        for (sipField in sipNew) {
+                            if (sipOld[sipField] !== sipNew[sipField]) {
+                                changeType = 'update';
+                                break;
+                            }
                         }
+                    }
+                    if (changeType) {
                         log.debug('Change type', changeType);
                         cloudHandler.notifySipPortal(changeType, result, function(){});
                     }

@@ -328,7 +328,7 @@ exports.notifySipPortal = function (changeType, room, callback) {
         var arg = {
             type: changeType,
             room_id: room._id,
-            sipInfo: room.sipInfo
+            sip: room.sip
         };
         rpc.callRpc('sip-portal', 'handleSipUpdate', [arg], {callback: function (r) {
         if (r === 'timeout' || r === 'error') {

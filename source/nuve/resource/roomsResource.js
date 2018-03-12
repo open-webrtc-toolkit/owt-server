@@ -46,7 +46,7 @@ exports.createRoom = function (req, res) {
             res.send(result);
 
             // Notify SIP portal if SIP room created
-            if (result && result.sipInfo) {
+            if (result && result.sip) {
                 log.info('Notify SIP Portal on create Room');
                 cloudHandler.notifySipPortal('create', result, function(){});
             }
