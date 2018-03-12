@@ -150,7 +150,7 @@ var LegacyClient = function(clientId, sigConnection, portal) {
         pub_info.type = 'webrtc';
         pub_info.media = {
           audio: (options.audio === false ? false : {source: 'mic'}),
-          video: (options.video === false ? false : {source: (options.video && options.video.device === 'screen') ? 'screen-cast' : 'camera'})
+          video: (options.video === false ? false : {source: (options.video && options.video.device === 'screen') ? 'screen-cast' : 'camera', parameters: {framerate: 30}})
         }
       } else if (options.state === 'url') {
         pub_info.type = 'streaming';
