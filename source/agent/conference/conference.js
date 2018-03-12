@@ -541,13 +541,19 @@ var Conference = function (rpcClient, selfRpcId) {
                         audio: (viewSettings.audio && room_config.mediaOut.audio) ? {
                           format: default_audio_fmt,
                           optional: {
-                            format: room_config.mediaOut.audio.filter((fmt) => {return av_capability.audio.findIndex((f) => {return isAudioFmtCompatible(f, fmt);}) >= 0;})
+                            format: room_config.mediaOut.audio.filter((fmt) => {
+                              return (av_capability.audio.findIndex((f) => isAudioFmtCompatible(f, fmt)) >= 0
+                                && !isAudioFmtCompatible(fmt, default_audio_fmt));
+                            })
                           }
                         } : undefined,
                         video: (viewSettings.video && room_config.mediaOut.video) ? {
                           format: default_video_fmt,
                           optional: {
-                            format: room_config.mediaOut.video.format.filter((fmt) => {return av_capability.video.encode.findIndex((f) => {return isVideoFmtCompatible(f, fmt);}) >= 0;}),
+                            format: room_config.mediaOut.video.format.filter((fmt) => {
+                              return (av_capability.video.encode.findIndex((f) => isVideoFmtCompatible(f, fmt)) >= 0
+                                && !isVideoFmtCompatible(fmt, default_video_fmt));
+                            }),
                             parameters: {
                               resolution: room_config.mediaOut.video.parameters.resolution.map((x) => {return calcResolution(x, viewSettings.video.parameters.resolution)}).filter((reso, pos, self) => {return ((reso.width < viewSettings.video.parameters.resolution.width) && (reso.height < viewSettings.video.parameters.resolution.height)) && (self.findIndex((r) => {return r.width === reso.width && r.height === reso.height;}) === pos);}),
                               framerate: room_config.mediaOut.video.parameters.framerate.filter((x) => {return x < viewSettings.video.parameters.framerate;}),
