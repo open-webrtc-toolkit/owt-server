@@ -79,16 +79,6 @@ prepareService('superService', function (service) {
     console.log('sampleServiceKey:', sampleServiceKey);
 
     Service.base.connection.close();
-    var sampleAppFile = path.resolve(__dirname, '../extras/basic_example/basicServer.js');
-    fs.readFile(sampleAppFile, 'utf8', function (err, data) {
-      if (err) {
-        return console.log(err);
-      }
-      data = data.replace(/N\.API\.init\('[^']*', '[^']*'/, 'N.API.init(\''+sampleServiceId+'\', \''+sampleServiceKey+'\'');
-      fs.writeFile(sampleAppFile, data, 'utf8', function (err) {
-         if (err) return console.log(err);
-      });
-    });
     var sampleServiceFile = path.resolve(__dirname, '../extras/basic_example/sampleRTCService.js');
     fs.readFile(sampleServiceFile, 'utf8', function (err, data) {
       if (err) {

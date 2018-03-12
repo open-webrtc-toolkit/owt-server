@@ -24,8 +24,6 @@ var roomResource = require('./resource/roomResource');
 var tokensResource = require('./resource/tokensResource');
 var servicesResource = require('./resource/servicesResource');
 var serviceResource = require('./resource/serviceResource');
-var usersResource = require('./resource/usersResource');
-var userResource = require('./resource/userResource');
 var participantsResource = require('./resource/participantsResource');
 var streamsResource = require('./resource/streamsResource');
 var streamingOutsResource = require('./resource/streamingOutsResource');
@@ -83,27 +81,6 @@ app.get('/services', servicesResource.represent);
 
 app.get('/services/:service', serviceResource.represent);
 app.delete('/services/:service', serviceResource.deleteService);
-
-////////////////////////////////////////////////////////////////////////////////////////////
-// legacy interface begin -- to be deprecated, used by management-console only
-// /////////////////////////////////////////////////////////////////////////////////////////
-app.post('/rooms', roomsResource.createRoom);
-app.get('/rooms', roomsResource.represent);
-
-app.get('/rooms/:room', roomResource.represent);
-app.delete('/rooms/:room', roomResource.deleteRoom);
-app.put('/rooms/:room', roomResource.updateRoom);
-
-app.post('/rooms/:room/tokens/:type', tokensResource.create);
-
-app.get('/rooms/:room/users', usersResource.getList);
-
-app.get('/rooms/:room/users/:user', userResource.getUser);
-app.delete('/rooms/:room/users/:user', userResource.deleteUser);
-////////////////////////////////////////////////////////////////////////////////////////////
-// legacy interface end -- to be deprecated, used by management-console only
-// /////////////////////////////////////////////////////////////////////////////////////////
-
 
 ////////////////////////////////////////////////////////////////////////////////////////////
 // v1 interface begin
