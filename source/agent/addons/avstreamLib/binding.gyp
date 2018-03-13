@@ -13,7 +13,6 @@
       '../../../core/woogeen_base/LiveStreamIn.cpp',
     ],
     'include_dirs': [ '$(CORE_HOME)/common',
-                      '$(CORE_HOME)/erizo/src/erizo',
                       '$(CORE_HOME)/woogeen_base',
                       '$(CORE_HOME)/../../build/libdeps/build/include' ],
     'libraries': [

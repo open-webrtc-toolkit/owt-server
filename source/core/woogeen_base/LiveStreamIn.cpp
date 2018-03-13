@@ -38,8 +38,6 @@
 
 #define MAX_NALS_PER_FRAME 128
 
-using namespace erizo;
-
 static inline int64_t timeRescale(uint32_t time, AVRational in, AVRational out)
 {
     return av_rescale_q(time, in, out);
