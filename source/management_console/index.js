@@ -36,7 +36,7 @@ proxy.on('error', function(e) {
 });
 
 // Only following paths allowed.
-var allowedPaths = ['/rooms', '/services'];
+var allowedPaths = ['/v1/rooms', '/services'];
 var isAllowed = function (path) {
   var i;
   for (i = 0; i < allowedPaths.length; i++) {
