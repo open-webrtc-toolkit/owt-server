@@ -215,6 +215,26 @@ NAN_METHOD(WebRtcConnection::New) {
       rtp_map.channels = 1;
       rtp_mappings.push_back(rtp_map);
     }
+    // ISAC_16000
+    {
+      erizo::RtpMap rtp_map;
+      rtp_map.payload_type = 103;
+      rtp_map.encoding_name = "ISAC";
+      rtp_map.media_type = erizo::AUDIO_TYPE;
+      rtp_map.clock_rate = 16000;
+      rtp_map.channels = 1;
+      rtp_mappings.push_back(rtp_map);
+    }
+    // ISAC_32000
+    {
+      erizo::RtpMap rtp_map;
+      rtp_map.payload_type = 104;
+      rtp_map.encoding_name = "ISAC";
+      rtp_map.media_type = erizo::AUDIO_TYPE;
+      rtp_map.clock_rate = 32000;
+      rtp_map.channels = 1;
+      rtp_mappings.push_back(rtp_map);
+    }
     // ILBC
     {
       erizo::RtpMap rtp_map;
