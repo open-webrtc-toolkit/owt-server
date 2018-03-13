@@ -127,26 +127,26 @@ Nuve.init = function (serviceId, servicekey) {
 };
 
 Nuve.prototype.createRoom = function (room, callback) {
-    this.send('POST', {name: room.name, options: room.options}, 'rooms', callback);
+    this.send('POST', {name: room.name, options: room.options}, 'v1/rooms', callback);
 };
 
 Nuve.prototype.getRooms = function (page, per_page, callback) {
-    this.send('GET', undefined, 'rooms?page=' + page + '&per_page=' + per_page, callback);
+    this.send('GET', undefined, 'v1/rooms?page=' + page + '&per_page=' + per_page, callback);
 };
 
 Nuve.prototype.getRoom = function (roomId, callback) {
     roomId = roomId || null;
-    this.send('GET', undefined, 'rooms/' + roomId, callback);
+    this.send('GET', undefined, 'v1/rooms/' + roomId, callback);
 };
 
 Nuve.prototype.deleteRoom = function (roomId, callback) {
     roomId = roomId || null;
-    this.send('DELETE', undefined, 'rooms/' + roomId, callback);
+    this.send('DELETE', undefined, 'v1/rooms/' + roomId, callback);
 };
 
 Nuve.prototype.updateRoom = function (roomId, updates, callback) {
     roomId = roomId || null;
-    this.send('PUT', (updates || {}), 'rooms/' + roomId, callback);
+    this.send('PUT', (updates || {}), 'v1/rooms/' + roomId, callback);
 };
 
 Nuve.prototype.createService = function (name, key, callback) {
