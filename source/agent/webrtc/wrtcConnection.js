@@ -92,7 +92,7 @@ module.exports = function (spec, on_status) {
                 var fmt = {codec: fmtname[0].toLowerCase()};
                 (fmt.codec !== 'pcmu' && fmt.codec !== 'pcma') && fmtname[1] && (fmt.sampleRate = Number(fmtname[1]));
                 (fmt.codec !== 'pcmu' && fmt.codec !== 'pcma') && fmtname[2] && (fmt.channelNum = Number(fmtname[2]));
-                (fmt.code === 'g722') && (fmt.sampleRate = 16000);
+                (fmt.codec === 'g722') && (fmt.sampleRate = 16000) && (fmt.channelNum = fmt.channelNum || 1);
 
                 fmts.push({code: fmtcodes[i], fmt: fmt});
 
