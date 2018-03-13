@@ -26,7 +26,6 @@
 #include <boost/scoped_ptr.hpp>
 #include <EventRegistry.h>
 #include <logger.h>
-#include <MediaDefinitions.h>
 #include <string>
 #include "MediaFramePipeline.h"
 
