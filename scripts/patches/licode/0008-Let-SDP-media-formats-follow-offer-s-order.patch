@@ -1,0 +1,45 @@
+From 681759c48b5aae6cb4ee6a7c7117f7027da5317c Mon Sep 17 00:00:00 2001
+From: Chen Li1 <li1.chen@intel.com>
+Date: Wed, 14 Mar 2018 16:49:39 +0800
+Subject: [PATCH] Let SDP media formats follow offer's order
+
+---
+ erizo/src/erizo/SdpInfo.cpp | 8 +++++---
+ 1 file changed, 5 insertions(+), 3 deletions(-)
+
+diff --git a/erizo/src/erizo/SdpInfo.cpp b/erizo/src/erizo/SdpInfo.cpp
+index cd24b78..3443680 100644
+--- a/erizo/src/erizo/SdpInfo.cpp
++++ b/erizo/src/erizo/SdpInfo.cpp
+@@ -575,6 +575,7 @@ namespace erizo {
+       mtype = VIDEO_TYPE;
+     }
+ 
++    std::vector<unsigned int> parsed_pt_vector;
+     while (std::getline(iss, line)) {
+       size_t isVideo = line.find(video);
+       size_t isAudio = line.find(audio);
+@@ -813,6 +814,7 @@ namespace erizo {
+           new_mapping.clock_rate = parsed_clock;
+           new_mapping.media_type = mtype;
+           payload_parsed_map_[PT] = new_mapping;
++          parsed_pt_vector.push_back(PT);
+         }
+       }
+       // a=extmap:1 urn:ietf:params:rtp-hdrext:ssrc-audio-level
+@@ -924,9 +926,9 @@ namespace erizo {
+     //  go through the payload_map_ and match it with internalPayloadVector_
+     //  generate rtpMaps and payloadVector
+     std::vector<RtpMap> rtx_maps;
+-    for (const RtpMap& internal_map : internalPayloadVector_) {
+-      for (const std::pair<const unsigned int, RtpMap>& parsed_pair : payload_parsed_map_) {
+-        const RtpMap& parsed_map = parsed_pair.second;
++    for (const unsigned int parsed_pt : parsed_pt_vector) {
++      for (const RtpMap& internal_map : internalPayloadVector_) {
++        const RtpMap& parsed_map = payload_parsed_map_[parsed_pt];
+         if (internal_map.encoding_name != parsed_map.encoding_name ||
+             internal_map.clock_rate != parsed_map.clock_rate) {
+           continue;
+-- 
+1.9.1
+
