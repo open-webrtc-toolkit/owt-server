@@ -195,6 +195,22 @@ LayoutProcessor.prototype.getRegion = function(inputId) {
 };
 
 /**
+ * @function getInput
+ * @param {string} regionId
+ * @return {number} inputId
+ */
+LayoutProcessor.prototype.getInput = function(regionId) {
+    var i;
+    for (i = 0; i < this.inputList.length; i++) {
+        if (this.currentRegions[i].id === regionId) {
+            break;
+        }
+    }
+
+    return (i < this.inputList.length) ? this.inputList[i] : -1;
+};
+
+/**
  * @function choseTemplate
  * @param {number} regionNum
  * @return {void}
