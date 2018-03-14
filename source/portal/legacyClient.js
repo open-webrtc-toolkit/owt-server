@@ -152,6 +152,7 @@ var LegacyClient = function(clientId, sigConnection, portal) {
           audio: (options.audio === false ? false : {source: 'mic'}),
           video: (options.video === false ? false : {source: (options.video && options.video.device === 'screen') ? 'screen-cast' : 'camera', parameters: {framerate: 30}})
         }
+        pub_info.media.video && pub_info.media.video.parameters && (pub_info.media.video.parameters.resolution = {width: 1080, height: 720});
       } else if (options.state === 'url') {
         pub_info.type = 'streaming';
         pub_info.connection = {
