@@ -1937,7 +1937,7 @@ var Conference = function (rpcClient, selfRpcId) {
               if (layout && layout[Number(path[3])]) {
                 exe = setRegion(cmd.value, layout[Number(path[3])].region.id, streams[streamId].info.label);
               } else {
-                exec = Promise.reject('Not mixed stream');
+                exe = Promise.reject('Not mixed stream or invalid region');
               }
             } else {
               exe = Promise.reject('Invalid path or value');

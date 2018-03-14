@@ -182,21 +182,24 @@ class InputManager {
         return input;
     }
 
-    enable(streamId) {
+    enable(streamId, toPending) {
         if (!this.pendingInputs[streamId])
             return -1;
 
         // Move least setPrimary input to pending
-        var toPending;
         var k;
         var minPrimary = Number.MAX_SAFE_INTEGER;
-        for (let k in this.inputs) {
-            if (this.inputs[k].primaryCount < minPrimary || !toPending) {
-                minPrimary = this.inputs[k].primaryCount;
-                toPending = k;
+
+        if (toPending !== undefined) {
+            for (let k in this.inputs) {
+                if (this.inputs[k].primaryCount < minPrimary || !toPending) {
+                    minPrimary = this.inputs[k].primaryCount;
+                    toPending = k;
+                }
             }
         }
-        if (toPending) {
+
+        if (toPending !== undefined) {
             this.pendingInputs[toPending] = this.inputs[toPending];
             delete this.inputs[toPending];
             this.inputs[streamId] = this.pendingInputs[streamId];
@@ -680,13 +683,29 @@ function VMixer(rpcClient, clusterIP) {
     };
 
     that.setRegion = function (stream_id, region_id, callback) {
-        //TODO: implement the layout processor in node.js layer.
-        if (inputManager.has(stream_id) && !inputManager.isPending(stream_id)) {
-            let inputId = inputManager.get(stream_id).id;
-            if (layoutProcessor.specifyInputRegion(inputId, region_id)) {
-                callback('callback', 'ok');
+        if (inputManager.has(stream_id)) {
+            if (inputManager.isPending(stream_id)) {
+                let originInput = layoutProcessor.getInput(region_id);
+                if (originInput < 0) {
+                    callback('callback', 'error', 'Invalid region');
+                    return;
+                }
+                inputManager.enable(stream_id, originInput);
+                let input = inputManager.get(stream_id);
+                engine.removeInput(input.id);
+                if (!engine.addInput(input.id, input.codec, input.conn, input.avatar)) {
+                    layoutProcessor.removeInput(input.id);
+                    callback('callback', 'error', 'Switch input failed.');
+                } else {
+                    callback('callback', 'ok');
+                }
             } else {
-                callback('callback', 'error', 'Invalid region_id.');
+                let inputId = inputManager.get(stream_id).id;
+                if (layoutProcessor.specifyInputRegion(inputId, region_id)) {
+                    callback('callback', 'ok');
+                } else {
+                    callback('callback', 'error', 'Invalid region_id.');
+                }
             }
         } else {
             callback('callback', 'error', 'Invalid input stream_id.');
