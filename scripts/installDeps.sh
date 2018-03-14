@@ -102,9 +102,6 @@ install_libsrtp
 
 ${NO_INTERNAL} || (pause "Installing webrtc library... [press Enter]" && install_webrtc)
 
-pause "Installing ooVoo SDK library...  [press Enter]"
-install_oovoosdk
-
 read -p "Installing tcmalloc library? [No/yes]" yn
 case $yn in
   [Yy]* ) install_tcmalloc;;
@@ -126,39 +123,39 @@ case $yn in
   * ) ;;
 esac
 
-read -p "Installing libre? [No/yes]" yn
+read -p "Installing libre? [Yes/no]" yn
 case $yn in
   [Yy]* ) install_libre;;
   [Nn]* ) ;;
-  * ) ;;
+  * ) install_libre;;
 esac
 
-read -p "Installing libusrsctp? [No/yes]" yn
+read -p "Installing libusrsctp? [Yes/no]" yn
 case $yn in
   [Yy]* ) install_usrsctp;;
   [Nn]* ) ;;
-  * ) ;;
+  * ) install_usrsctp;;
 esac
 
-read -p "Installing libsrtp2? [No/yes]" yn
+read -p "Installing libsrtp2? [Yes/no]" yn
 case $yn in
   [Yy]* ) install_libsrtp2;;
   [Nn]* ) ;;
-  * ) ;;
+  * ) install_libsrtp2;;
 esac
 
-read -p "Installing nicer? [No/yes]" yn
+read -p "Installing nicer? [Yes/no]" yn
 case $yn in
   [Yy]* ) install_nicer;;
   [Nn]* ) ;;
-  * ) ;;
+  * ) install_nicer;;
 esac
 
-read -p "Installing licode? [No/yes]" yn
+read -p "Installing licode? [Yes/no]" yn
 case $yn in
   [Yy]* ) install_licode;;
   [Nn]* ) ;;
-  * ) ;;
+  * ) install_licode;;
 esac
 
 if [ "$CLEANUP" = "true" ]; then

@@ -61,7 +61,7 @@ enable_intel_gpu_top() {
 installYumDeps(){
   sudo -E yum groupinstall " Development Tools" "Development Libraries " -y
   sudo -E yum install zlib-devel pkgconfig git libcurl-devel.x86_64 curl log4cxx-devel gcc gcc-c++ bzip2 bzip2-devel bzip2-libs python-devel nasm libXext-devel libXfixes-devel libpciaccess-devel libX11-devel yasm cmake -y
-  sudo -E yum install rabbitmq-server mongodb mongodb-server java-1.7.0-openjdk gyp intel-gpu-tools SDL2-devel -y
+  sudo -E yum install rabbitmq-server mongodb mongodb-server java-1.7.0-openjdk gyp intel-gpu-tools SDL2-devel which libtool -y
   enable_intel_gpu_top
 
   if [[ "$OS" =~ .*6.* ]] # CentOS 6.x
