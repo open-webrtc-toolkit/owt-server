@@ -743,7 +743,7 @@ var Conference = function (rpcClient, selfRpcId) {
       media.video.source && (result.video.source = media.video.source);
       media.video.profile && (result.video.format.profile = media.video.profile);
       media.video.resolution && (result.video.parameters || (result.video.parameters = {})) && (result.video.parameters.resolution = media.video.resolution);
-      media.video.framerate && (result.video.parameters || (result.video.parameters = {})) && (result.video.parameters.framerate = Math.floor(media.video.framerate));
+      media.video.framerate && (result.video.parameters || (result.video.parameters = {})) && (result.video.parameters.framerate = (media.video.framerate ? Math.floor(media.video.framerate) : 30));
       media.video.bitrate && (result.video.parameters || (result.video.parameters = {})) && (result.video.parameters.bitrate = media.video.bitrate);
       media.video.keyFrameInterval && (result.video.parameters || (result.video.parameters = {})) && (result.video.parameters.keyFrameInterval = media.video.keyFrameInterval);
 
