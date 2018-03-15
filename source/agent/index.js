@@ -165,9 +165,14 @@ var launchErizoJS = function() {
 
         if (processes[id]) {
             monitoringTarget && monitoringTarget.notify('abnormal', {purpose: myPurpose, id: id, type: 'node'});
+            cleanupErizoJS(id);
+        }
+
+        try {
             fs.closeSync(child.out_log_fd);
             fs.closeSync(child.err_log_fd);
-            cleanupErizoJS(id);
+        } catch (e) {
+            log.warn('Close fd failed');
         }
 
         if (!spawn_failed) {
