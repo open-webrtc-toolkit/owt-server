@@ -791,12 +791,20 @@ function tableHandlerRoom(rooms) {
       });
     }
     if (room.mediaIn) {
-      room.mediaIn.audio = room.mediaIn.audio.map(audioName2Format);
-      room.mediaIn.video = room.mediaIn.video.map(videoName2Format);
+      if (room.mediaIn.audio) {
+        room.mediaIn.audio = room.mediaIn.audio.map(audioName2Format);
+      }
+      if (room.mediaIn.video) {
+        room.mediaIn.video = room.mediaIn.video.map(videoName2Format);
+      }
     }
     if (room.mediaOut) {
-      room.mediaOut.audio = room.mediaOut.audio.map(audioName2Format);
-      room.mediaOut.video.format = room.mediaOut.video.format.map(videoName2Format);
+      if (room.mediaOut.audio) {
+        room.mediaOut.audio = room.mediaOut.audio.map(audioName2Format);
+      }
+      if (room.mediaOut.video && room.mediaOut.video.format) {
+        room.mediaOut.video.format = room.mediaOut.video.format.map(videoName2Format);
+      }
     }
     return room;
   };
