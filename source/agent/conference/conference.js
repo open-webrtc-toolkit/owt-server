@@ -1176,7 +1176,7 @@ var Conference = function (rpcClient, selfRpcId) {
         .catch((e) => {
           callback('callback', 'error', e.message ? e.message : e);
         });
-    } else {
+    } else if (streams[streamId]) {
       return accessController.terminate(streamId, 'in', 'Participant terminate')
         .then((result) => {
           log.debug('accessController.terminate result:', result);
@@ -1191,6 +1191,8 @@ var Conference = function (rpcClient, selfRpcId) {
         .catch((e) => {
           callback('callback', 'error', e.message ? e.message : e);
         });
+    } else {
+      callback('callback', 'ok');
     }
   };
 
@@ -1425,7 +1427,7 @@ var Conference = function (rpcClient, selfRpcId) {
         .catch((e) => {
           callback('callback', 'error', e.message ? e.message : e);
         });
-    } else {
+    } else if (subscriptions[subscriptionId]) {
       return accessController.terminate(subscriptionId, 'out', 'Participant terminate')
         .then((result) => {
           //return removeSubscription(subscriptionId);
@@ -1439,6 +1441,8 @@ var Conference = function (rpcClient, selfRpcId) {
         .catch((e) => {
           callback('callback', 'error', e.message ? e.message : e);
         });
+    } else {
+        callback('callback', 'ok');
     }
   };
 
@@ -1961,6 +1965,10 @@ var Conference = function (rpcClient, selfRpcId) {
       return callback('callback', 'error', 'Controllers are not ready');
     }
 
+    if (!streams[streamId]) {
+      return callback('callback', 'ok');
+    }
+
     return accessController.terminate(streamId, 'in', 'Participant terminate')
       .then((result) => {
         log.debug('accessController.terminate result:', result);
@@ -2170,6 +2178,10 @@ var Conference = function (rpcClient, selfRpcId) {
     log.debug('deleteSubscription, subId:', subId);
     if (!accessController || !roomController) {
       return callback('callback', 'error', 'Controllers are not ready');
+    }
+
+    if (!subscriptions[subId]) {
+      return callback('callback', 'ok');
     }
 
     return accessController.terminate(subId, 'out', 'Participant terminate')
