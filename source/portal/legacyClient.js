@@ -150,9 +150,9 @@ var LegacyClient = function(clientId, sigConnection, portal) {
         pub_info.type = 'webrtc';
         pub_info.media = {
           audio: (options.audio === false ? false : {source: 'mic'}),
-          video: (options.video === false ? false : {source: (options.video && options.video.device === 'screen') ? 'screen-cast' : 'camera', parameters: {framerate: 30}})
+          video: (options.video === false ? false : {source: (options.video && options.video.device === 'screen') ? 'screen-cast' : 'camera', parameters: {framerate: 0}})
         }
-        pub_info.media.video && pub_info.media.video.parameters && (pub_info.media.video.parameters.resolution = {width: 1080, height: 720});
+        pub_info.media.video && pub_info.media.video.parameters && (pub_info.media.video.parameters.resolution = {width: 0, height: 0});
       } else if (options.state === 'url') {
         pub_info.type = 'streaming';
         pub_info.connection = {
