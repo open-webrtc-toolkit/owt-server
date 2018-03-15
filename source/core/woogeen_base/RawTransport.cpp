@@ -127,6 +127,9 @@ void RawTransport<prot>::createConnection(const std::string& ip, uint32_t port)
 template<Protocol prot>
 void RawTransport<prot>::connectHandler(const boost::system::error_code& ec)
 {
+    if (m_isClosing)
+        return;
+
     if (!ec) {
         switch (prot) {
         case TCP:
@@ -145,19 +148,20 @@ void RawTransport<prot>::connectHandler(const boost::system::error_code& ec)
         }
 
         m_listener->onTransportConnected();
-        if (!m_isClosing)
-            receiveData();
+        receiveData();
     } else {
         ELOG_ERROR("Error establishing the %s connection: %s", prot == UDP ? "UDP" : "TCP", ec.message().c_str());
         // Notify the listener about the socket error if the listener is not closing me.
-        if (!m_isClosing)
-            m_listener->onTransportError();
+        m_listener->onTransportError();
     }
 }
 
 template<Protocol prot>
 void RawTransport<prot>::acceptHandler(const boost::system::error_code& ec)
 {
+    if (m_isClosing)
+        return;
+
     if (!ec) {
         switch (prot) {
         case TCP:
@@ -175,13 +179,11 @@ void RawTransport<prot>::acceptHandler(const boost::system::error_code& ec)
         }
 
         m_listener->onTransportConnected();
-        if (!m_isClosing)
-            receiveData();
+        receiveData();
     } else {
         ELOG_ERROR("Error accepting the %s connection: %s", prot == UDP ? "UDP" : "TCP", ec.message().c_str());
         // Notify the listener about the socket error if the listener is not closing me.
-        if (!m_isClosing)
-            m_listener->onTransportError();
+        m_listener->onTransportError();
     }
 }
 
@@ -314,12 +316,13 @@ static const double BUFFER_EXPANSION_MULTIPLIER = 1.3;
 template<Protocol prot>
 void RawTransport<prot>::readHandler(const boost::system::error_code& ec, std::size_t bytes)
 {
+    if (m_isClosing)
+        return;
+
     if (!ec || ec == boost::asio::error::message_size) {
         if (!m_tag) {
             m_listener->onTransportData(m_receiveData.buffer.get(), bytes);
-            if (!m_isClosing)
-                receiveData();
-
+            receiveData();
             return;
         }
 
@@ -365,8 +368,7 @@ void RawTransport<prot>::readHandler(const boost::system::error_code& ec, std::s
                 m_listener->onTransportData(m_receiveData.buffer.get() + 4, payloadlen);
             }
 
-            if (!m_isClosing)
-                receiveData();
+            receiveData();
             break;
         default:
             break;
@@ -374,14 +376,16 @@ void RawTransport<prot>::readHandler(const boost::system::error_code& ec, std::s
     } else {
         ELOG_DEBUG("Error receiving %s data: %s", prot == UDP ? "UDP" : "TCP", ec.message().c_str());
         // Notify the listener about the socket error if the listener is not closing me.
-        if (!m_isClosing)
-            m_listener->onTransportError();
+        m_listener->onTransportError();
     }
 }
 
 template<Protocol prot>
 void RawTransport<prot>::readPacketHandler(const boost::system::error_code& ec, std::size_t bytes)
 {
+    if (m_isClosing)
+        return;
+
     ELOG_DEBUG("Port#%d recieved data(%zu)", m_socket.tcp.acceptor->local_endpoint().port(), bytes);
     uint32_t expectedLen = ntohl(*(reinterpret_cast<uint32_t*>(m_readHeader)));
     if (!ec || ec == boost::asio::error::message_size) {
@@ -398,8 +402,7 @@ void RawTransport<prot>::readPacketHandler(const boost::system::error_code& ec, 
             } else {
                 m_receivedBytes = 0;
                 m_listener->onTransportData(m_receiveData.buffer.get(), expectedLen);
-                if (!m_isClosing)
-                    receiveData();
+                receiveData();
             }
             break;
         case UDP:
@@ -411,14 +414,16 @@ void RawTransport<prot>::readPacketHandler(const boost::system::error_code& ec, 
     } else {
         ELOG_DEBUG("Error receiving %s data: %s", prot == UDP ? "UDP" : "TCP", ec.message().c_str());
         // Notify the listener about the socket error if the listener is not closing me.
-        if (!m_isClosing)
-            m_listener->onTransportError();
+        m_listener->onTransportError();
     }
 }
 
 template<Protocol prot>
 void RawTransport<prot>::doSend()
 {
+    if (m_isClosing)
+        return;
+
     TransportData& data = m_sendQueue.front();
 
     switch (prot) {
@@ -455,6 +460,9 @@ void RawTransport<prot>::doSend()
 template<Protocol prot>
 void RawTransport<prot>::writeHandler(const boost::system::error_code& ec, std::size_t bytes)
 {
+    if (m_isClosing)
+        return;
+
     if (ec) {
         ELOG_ERROR("%s wrote data error: %s", prot == UDP ? "UDP" : "TCP", ec.message().c_str());
     }
