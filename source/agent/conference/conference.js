@@ -225,11 +225,11 @@ var Conference = function (rpcClient, selfRpcId) {
    *      } | false
    *  ],
    *  mediaIn: {
-   *    audio: [object(AudioFormat)] | false,
-   *    video: [object(VideoFormat)] | false
+   *    audio: [object(AudioFormat)],
+   *    video: [object(VideoFormat)]
    *  },
    *  mediaOut: {
-   *    audio: [object(AudioFormat)] | false,
+   *    audio: [object(AudioFormat)],
    *    video: {
    *      format: [object(VideoFormat)],
    *      parameters: {
@@ -238,7 +238,7 @@ var Conference = function (rpcClient, selfRpcId) {
    *        bitrate: ['x0.8' | 'x0.6' | 'x0.4' | 'x0.2'],
    *        keyFrameInterval: [100 | 30 | 5 | 2 | 1]
    *      }
-   *    } | false
+   *    }
    *  },
    *  transcoding: {
    *    audio: true | false,
@@ -538,7 +538,7 @@ var Conference = function (rpcClient, selfRpcId) {
                       id: mixed_stream_id,
                       type: 'mixed',
                       media: {
-                        audio: (viewSettings.audio && room_config.mediaOut.audio) ? {
+                        audio: (viewSettings.audio) ? {
                           format: default_audio_fmt,
                           optional: {
                             format: room_config.mediaOut.audio.filter((fmt) => {
@@ -547,7 +547,7 @@ var Conference = function (rpcClient, selfRpcId) {
                             })
                           }
                         } : undefined,
-                        video: (viewSettings.video && room_config.mediaOut.video) ? {
+                        video: (viewSettings.video) ? {
                           format: default_video_fmt,
                           optional: {
                             format: room_config.mediaOut.video.format.filter((fmt) => {
@@ -1108,11 +1108,11 @@ var Conference = function (rpcClient, selfRpcId) {
       return callback('callback', 'error', 'Stream exists');
     }
 
-    if (pubInfo.media.audio && !room_config.mediaIn.audio) {
+    if (pubInfo.media.audio && !room_config.mediaIn.audio.length) {
       return callback('callback', 'error', 'Audio is forbiden');
     }
 
-    if (pubInfo.media.video && !room_config.mediaIn.video) {
+    if (pubInfo.media.video && !room_config.mediaIn.video.length) {
       return callback('callback', 'error', 'Video is forbiden');
     }
 
@@ -1849,11 +1849,11 @@ var Conference = function (rpcClient, selfRpcId) {
           return Promise.reject('Too many inputs');
         }
 
-        if (pubInfo.media.audio && !room_config.mediaIn.audio) {
+        if (pubInfo.media.audio && !room_config.mediaIn.audio.length) {
           return Promise.reject('Audio is forbiden');
         }
 
-        if (pubInfo.media.video && !room_config.mediaIn.video) {
+        if (pubInfo.media.video && !room_config.mediaIn.video.length) {
           return Promise.reject('Video is forbiden');
         }
 
@@ -2015,11 +2015,11 @@ var Conference = function (rpcClient, selfRpcId) {
       var subscription_id = Math.round(Math.random() * 1000000000000000000) + '';
       return initRoom(roomId)
       .then(() => {
-        if (subDesc.media.audio && !room_config.mediaOut.audio) {
+        if (subDesc.media.audio && !room_config.mediaOut.audio.length) {
           return Promise.reject('Audio is forbiden');
         }
 
-        if (subDesc.media.video && !room_config.mediaOut.video) {
+        if (subDesc.media.video && !room_config.mediaOut.video.format.length) {
           return Promise.reject('Video is forbiden');
         }
 
