@@ -186,11 +186,12 @@ var launchErizoJS = function() {
         // 1) The process could not be spawned, or
         // 2) The process could not be killed, or
         // 3) Sending a message to the child process failed.
-        // And we supposed only the first case, accurately either error.code === 'ENOENT' or error.code === 'EMFILE' will happen in our usage
-        if (error.code === 'ENOENT' || error.code === 'EMFILE') {
+        // And we supposed only the first case, accurately either error.code === 'ENOENT' or error.code === 'EMFILE' or error.code === 'EAGAIN' will happen in our usage
+        //if (error.code === 'ENOENT' || error.code === 'EMFILE' || error.code === 'EAGAIN') {
             spawn_failed = true;
             //TODO: The status of this agent should be set to 'invalid' in this case.
-        }
+            setTimeout(() => {spawn_failed = false;}, 2000);
+        //}
     });
     child.on('message', function (message) { // currently only used for sending ready message from worker to agent;
         log.debug('message from node', id, ':', message);
