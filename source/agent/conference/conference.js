@@ -1374,7 +1374,7 @@ var Conference = function (rpcClient, selfRpcId) {
         }
       }
 
-      if (subDesc.type === 'recording' && (!subDesc.connection.container || subDesc.connection.container === 'auto')) {
+      if (subDesc.type === 'recording') {
         var audio_codec = 'none-aac', video_codec;
         if (subDesc.media.audio) {
           if (subDesc.media.audio.format) {
@@ -1382,17 +1382,36 @@ var Conference = function (rpcClient, selfRpcId) {
           } else {
             audio_codec = streams[subDesc.media.audio.from].media.audio.format.codec;
           }
+
+          //FIXME: To support codecs other than those in the following list.
+          if ((audio_codec !== 'pcmu') && (audio_codec !== 'pcma') && (audio_codec !== 'opus') && (audio_codec !== 'aac')) {
+            return Promise.reject('Audio codec invalid');
+          }
         }
 
         if (subDesc.media.video) {
           video_codec = ((subDesc.media.video.format && subDesc.media.video.format.codec) || streams[subDesc.media.video.from].media.video.format.codec);
         }
 
-        subDesc.connection.container = ((audio_codec === 'aac' && (!video_codec || (video_codec === 'h264') || (video_codec === 'h265'))) ? 'mp4' : 'mkv');
+        if (!subDesc.connection.container || subDesc.connection.container === 'auto') {
+          subDesc.connection.container = ((audio_codec === 'aac' && (!video_codec || (video_codec === 'h264') || (video_codec === 'h265'))) ? 'mp4' : 'mkv');
+        }
       }
 
-      if (subDesc.type === 'streaming' && subDesc.media.audio && !subDesc.media.audio.format) {//FIXME: To support audio formats other than aac_48000_2.
-        subDesc.media.audio.format = {codec: 'aac', sampleRate: 48000, channelNum: 2};
+      if (subDesc.type === 'streaming') {
+        if (subDesc.media.audio && !subDesc.media.audio.format) {
+          subDesc.media.audio.format = {codec: 'aac', sampleRate: 48000, channelNum: 2};
+        }
+
+        //FIXME: To support codecs other than those in the following list.
+        if (subDesc.media.audio && (subDesc.media.audio.format.codec !== 'aac')) {
+          return Promise.reject('Audio codec invalid');
+        }
+
+        //FIXME: To support codecs other than those in the following list.
+        if (subDesc.media.video && (subDesc.media.video.format.codec !== 'h264')) {
+          return Promise.reject('Video codec invalid');
+        }
       }
 
       return accessController.initiate(participantId, subscriptionId, 'out', participants[participantId].getOrigin(), subDesc, format_preference)
@@ -2043,7 +2062,7 @@ var Conference = function (rpcClient, selfRpcId) {
           return Promise.reject('Target video stream does NOT satisfy');
         }
 
-        if (subDesc.type === 'recording' && (!subDesc.connection.container || subDesc.connection.container === 'auto')) {
+        if (subDesc.type === 'recording') {
           var audio_codec = 'none-aac', video_codec;
           if (subDesc.media.audio) {
             if (subDesc.media.audio.format) {
@@ -2051,17 +2070,36 @@ var Conference = function (rpcClient, selfRpcId) {
             } else {
               audio_codec = streams[subDesc.media.audio.from].media.audio.format.codec;
             }
+
+            //FIXME: To support codecs other than those in the following list.
+            if ((audio_codec !== 'pcmu') && (audio_codec !== 'pcma') && (audio_codec !== 'opus') && (audio_codec !== 'aac')) {
+              return Promise.reject('Audio codec invalid');
+            }
           }
 
           if (subDesc.media.video) {
             video_codec = ((subDesc.media.video.format && subDesc.media.video.format.codec) || streams[subDesc.media.video.from].media.video.format.codec);
           }
 
-          subDesc.connection.container = ((audio_codec === 'aac' && (!video_codec || (video_codec === 'h264') || (video_codec === 'h265'))) ? 'mp4' : 'mkv');
+          if (!subDesc.connection.container || subDesc.connection.container === 'auto') {
+            subDesc.connection.container = ((audio_codec === 'aac' && (!video_codec || (video_codec === 'h264') || (video_codec === 'h265'))) ? 'mp4' : 'mkv');
+          }
         }
 
-        if (subDesc.type === 'streaming' && subDesc.media.audio && !subDesc.media.audio.format) {//FIXME: To support audio formats other than aac_48000_2.
-          subDesc.media.audio.format = {codec: 'aac', sampleRate: 48000, channelNum: 2};
+        if (subDesc.type === 'streaming') {
+          if (subDesc.media.audio && !subDesc.media.audio.format) {
+            subDesc.media.audio.format = {codec: 'aac', sampleRate: 48000, channelNum: 2};
+          }
+
+          //FIXME: To support codecs other than those in the following list.
+          if (subDesc.media.audio && (subDesc.media.audio.format.codec !== 'aac')) {
+            return Promise.reject('Audio codec invalid');
+          }
+
+          //FIXME: To support codecs other than those in the following list.
+          if (subDesc.media.video && (subDesc.media.video.format.codec !== 'h264')) {
+            return Promise.reject('Video codec invalid');
+          }
         }
 
         return accessController.initiate('admin', subscription_id, 'out', participants['admin'].getOrigin(), subDesc);
