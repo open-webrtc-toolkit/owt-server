@@ -1408,6 +1408,10 @@ var Conference = function (rpcClient, selfRpcId) {
           return Promise.reject('Audio codec invalid');
         }
 
+        if (subDesc.media.video && !subDesc.media.video.format) {
+          subDesc.media.video.format = {codec: 'h264'};
+        }
+
         //FIXME: To support codecs other than those in the following list.
         if (subDesc.media.video && (subDesc.media.video.format.codec !== 'h264')) {
           return Promise.reject('Video codec invalid');
@@ -2094,6 +2098,10 @@ var Conference = function (rpcClient, selfRpcId) {
           //FIXME: To support codecs other than those in the following list.
           if (subDesc.media.audio && (subDesc.media.audio.format.codec !== 'aac')) {
             return Promise.reject('Audio codec invalid');
+          }
+
+          if (subDesc.media.video && !subDesc.media.video.format) {
+            subDesc.media.video.format = {codec: 'h264'};
           }
 
           //FIXME: To support codecs other than those in the following list.
