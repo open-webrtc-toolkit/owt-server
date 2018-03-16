@@ -113,10 +113,12 @@
 
 		label{
 			display: block;
+            height: 100%;
+            line-height: 1.5em;
 			border-bottom: 1px solid #229A9D;
 		}
 		input[type='text'] {
-			width: 100px;
+			width: 40%;
 			margin: 3px 0;
 		}
 
@@ -128,13 +130,9 @@
 		input[type='button']:hover, button:hover{
 			background-color: #AD3490;
 		}
-                .labelinput {
-                  background-color: #94B8E9;
-                }
-                #extensionid {
-                  width: 120px;
-                }
-
+        .labelinput {
+          background-color: #94B8E9;
+        }
 		#recorder, #other, .rtmp{
 			background-color: #DED8D8;
 			padding: 2px;
@@ -292,7 +290,7 @@
 	<div id='woogeen-container'>
 		<div id='container-video'>
 			<div id='localVideo' class="smallVideo">
-                <video playsinline muted autoplay controls></video>
+                <video playsinline autoplay muted controls></video>
             </div>
 			<div id='screenVideo' class="smallVideo">
                 <video ></video>
@@ -309,10 +307,12 @@
                     <div class="options">
                         <label><input type='radio' name='videosource' value='camera' checked="checked" /> camera</label>
                         <label><input type='radio' name='videosource' value='screen-cast'/> screen-cast</label>
+                        <label><input type='radio' name='videosource' value=''/> false</label>
                     </div>
                     <div class="options">
                         <label><input type='radio' name='audiosource' value='mic' checked="checked" /> mic</label>
                         <label><input type='radio' name='audiosource' value='screen-cast'/> screen-cast</label>
+                        <label><input type='radio' name='audiosource' value=''/> false</label>
                     </div>
                     <div class="options">
                         <select id='resolution' class="fillparent">
@@ -326,15 +326,15 @@
     				<ul>
                         <li><label class='labelinput'>ID: <input type='text' id='extensionid' placeholder='input extension id' /></label></li>
                         <li><a href="javascript:void(0)" onclick="createLocalStream()">create local</a></li>
-                        <li><a href="javascript:void(0)" onclick="stoplocal()">stop local</a></li>
+                        <li><a href="javascript:void(0)" onclick="stopLocal()">stop local</a></li>
     				</ul>
                     <h3>join</h3>
 
                     <ul>
                         <li><label class='labelinput'>role: <input type='text' id='role' value="presenter" /></label></li>
                         <li><a href="javascript:void(0)" onclick="createNewToken()">create token</a></li>
-                        <li><a href="javascript:void(0)" onclick="joinRoom()">join room</a>
-                    </li>
+                        <li><a href="javascript:void(0)" onclick="joinRoom()">join room</a></li>
+                    </ul>
                     <h3>publish</h3>
                      <div class="options">
                         <select id='localstreamid' class="fillparent">
@@ -355,11 +355,19 @@
                             <option value="">audio codec</option>
                             <option value="pcmu">pcmu</option>
                             <option value="opus">opus</option>
+                            <option value="pcma">pcma</option>
                             <option value="aac">aac</option>
-                            <option value="g722">g722</option>
+                            <option value="g722-1">g722-1</option>
+                            <option value="g722-2">g722-2</option>
+                            <option value="ilbc">ilbc</option>
+                            <option value="isac16">isac16</option>
+                            <option value="isac32">isac32</option>
+                            <option value="ac3">ac3</option>
+                            <option value="nellymoser">nellymoser</option>
                         </select>
                     </div>
                     <ul>
+                        <li><label class='labelinput'>maxBitrate: <input type='text' id='videomaxbitrate' /></label></li>
                         <li><a href="javascript:void(0)" onclick="publish()">publish</a></li>
                     </ul>
     			</div>
@@ -376,7 +384,7 @@
                             <option value="">track kind</option>
                             <option value="audio">audio</option>
                             <option value="video">video</option>
-                            <option value="audio-and-video">audio-and-video</option>
+                            <option value="av">audio-and-video</option>
                         </select>
                     </div>
                     <ul>
@@ -396,7 +404,7 @@
                             <option value="">track kind</option>
                             <option value="audio">audio</option>
                             <option value="video">video</option>
-                            <option value="audio-and-video">audio-and-video</option>
+                            <option value="av">audio-and-video</option>
                         </select>
                     </div>
                     <div class="options">
@@ -447,7 +455,7 @@
                                 <option value="">track kind</option>
                                 <option value="audio">audio</option>
                                 <option value="video">video</option>
-                                <option value="audio-and-video">audio-and-video</option>
+                                <option value="av">audio-and-video</option>
                             </select>
                         </div>
                         <ul>
@@ -495,7 +503,7 @@
     			</div>
             </div>
             <div id="restful-test" class="wraptest">
-                <h2>Restfu</h2>
+                <h2>Restful</h2>
                 <div class="testarea">
                     <h3>Room</h3>
                     <select class="fillparent" id="roomlist">
@@ -532,7 +540,7 @@
                             <option value="">track kind</option>
                             <option value="audio">audio</option>
                             <option value="video">video</option>
-                            <option value="audio-and-video">audio-and-video</option>
+                            <option value="av">audio-and-video</option>
                     </select>
                     <ul>
                         <li><a href="javascript:void(0)" onclick="restListStreams()">list streams</a></li>
@@ -555,28 +563,37 @@
                     <select class="fillparent" id="videofromlist">
                             <option value="">video from</option>
                     </select>
+                    <select class="fillparent" id="audioactive">
+                            <option value="">audio active</option>
+                            <option value="active">active</option>
+                            <option value="inactive">inactive</option>
+                    </select><select class="fillparent" id="videoactive">
+                            <option value="">video active</option>
+                            <option value="active">active</option>
+                            <option value="inactive">inactive</option>
+                    </select>
                     <ul>
-                        <li><label class='labelinput'>rtsp: <input type='text' id='rtspurl' value="rtsp://admin:master@10.239.44.67:554/h264/ch1/main/av_stream" /></label></li>
-                        <li><label class='labelinput'>rtmp: <input type='text' id='rtmpurl' value="rtmp://webrtc101.sh.intel.com:1935/liveshow/test" /></label></li>
-                        <li><label class='labelinput'>id: <input type='text' id='streamingoutid'/></label></li>
-                        <li><a href="javascript:void(0)" onclick="restStartStreamingIn()">stream in</a></li>
-                        <li><a href="javascript:void(0)" onclick="restStopStreamingIn()">stop in</a>
-                        <li><a href="javascript:void(0)" onclick="restStartStreamingOut()">start out</a>
-                        <li><a href="javascript:void(0)" onclick="restStopStreamingOut()">stop out</a>
-                        <li><a href="javascript:void(0)" onclick="restListStreamingOuts()">list out</a>
-                        <li><a href="javascript:void(0)" onclick="restUpdateStreamingOut()">update out</a>
-                    </li>
+                        <li><label class='labelinput'>streamIn: <input type='text' id='rtspurl' value="rtsp://admin:master@10.239.44.67:554/h264/ch1/main/av_stream" /></label></li>
+                        <li><label class='labelinput'>streamOut: <input type='text' id='rtmpurl' value="rtmp://webrtc101.sh.intel.com:1935/liveshow/test" /></label></li>
+                        <li><label class='labelinput'>outId: <input type='text' id='streamingoutid'/></label></li>
+                        <li><a href="javascript:void(0)" onclick="restStartStreamingIn()">streamingIn start</a></li>
+                        <li><a href="javascript:void(0)" onclick="restStopStreamingIn()">streamingIn stop</a></li>
+                        <li><a href="javascript:void(0)" onclick="restStartStreamingOut()">streamingOut start</a></li>
+                        <li><a href="javascript:void(0)" onclick="restStopStreamingOut()">streamingOut stop</a></li>
+                        <li><a href="javascript:void(0)" onclick="restListStreamingOuts()">list streamingOut</a></li>
+                        <li><a href="javascript:void(0)" onclick="restUpdateStreamingOut()">update streamingOut</a></li>
+                    </ul>
                 </div>
                 <div class="testarea">
                     <h3>Recording</h3>
                     <ul>
-                        <li><label class='labelinput'>id: <input type='text' id='recorderid'/></label></li>
-                        <li><a href="javascript:void(0)" onclick="restStartRecording()">start recording</a>
-                        <li><a href="javascript:void(0)" onclick="restupdateRecording()">update recording</a>
-                        <li><a href="javascript:void(0)" onclick="restListRecordings()">list recording</a>
-                        <li><a href="javascript:void(0)" onclick="restStopRecording()">stop recording</a>
-                    </li>
-
+                        <li><label class='labelinput'>recorderId: <input type='text' id='recorderid' /></label></li>
+                        <li><label class='labelinput'>container: <input type='text' id='container' value="auto" /></label></li>
+                        <li><a href="javascript:void(0)" onclick="restStartRecording()">start recording</a></li>
+                        <li><a href="javascript:void(0)" onclick="restupdateRecording()">update recording</a></li>
+                        <li><a href="javascript:void(0)" onclick="restListRecordings()">list recording</a></li>
+                        <li><a href="javascript:void(0)" onclick="restStopRecording()">stop recording</a></li>
+                    </ul>
                 </div>
             </div>
 		</div>
