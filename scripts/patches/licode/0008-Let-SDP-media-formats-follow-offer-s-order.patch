@@ -1,21 +1,21 @@
-From c8f41884b6e464894d0c4670b80e2ddbbd0787b3 Mon Sep 17 00:00:00 2001
+From c1a6e0c7c4c3cbf2a56ac326367580297bf45edb Mon Sep 17 00:00:00 2001
 From: Chen Li1 <li1.chen@intel.com>
 Date: Wed, 14 Mar 2018 16:49:39 +0800
 Subject: [PATCH] Let SDP media formats follow offer's order
 
 ---
- erizo/src/erizo/SdpInfo.cpp | 17 ++++++++++++++---
- 1 file changed, 14 insertions(+), 3 deletions(-)
+ erizo/src/erizo/SdpInfo.cpp | 12 ++++++++++++
+ 1 file changed, 12 insertions(+)
 
 diff --git a/erizo/src/erizo/SdpInfo.cpp b/erizo/src/erizo/SdpInfo.cpp
-index cd24b78..7760af7 100644
+index cd24b78..3ba70f0 100644
 --- a/erizo/src/erizo/SdpInfo.cpp
 +++ b/erizo/src/erizo/SdpInfo.cpp
 @@ -575,6 +575,7 @@ namespace erizo {
        mtype = VIDEO_TYPE;
      }
  
-+    std::vector<unsigned int> parsed_pt_vector;
++    std::map<unsigned int, int> parsed_order_map;
      while (std::getline(iss, line)) {
        size_t isVideo = line.find(video);
        size_t isAudio = line.find(audio);
@@ -23,7 +23,7 @@ index cd24b78..7760af7 100644
            new_mapping.clock_rate = parsed_clock;
            new_mapping.media_type = mtype;
            payload_parsed_map_[PT] = new_mapping;
-+          parsed_pt_vector.push_back(PT);
++          parsed_order_map[PT] = parsed_order_map.size();
          }
        }
        // a=extmap:1 urn:ietf:params:rtp-hdrext:ssrc-audio-level
@@ -31,7 +31,7 @@ index cd24b78..7760af7 100644
            new_map.payload_type = PT;
            new_map.feedback_types.push_back(feedback);
            payload_parsed_map_[PT] = new_map;
-+          parsed_pt_vector.push_back(PT);
++          parsed_order_map[PT] = parsed_order_map.size();
          }
        }
  
@@ -39,37 +39,32 @@ index cd24b78..7760af7 100644
              new_map.payload_type = PT;
              new_map.format_parameters[option] = value;
              payload_parsed_map_[PT] = new_map;
-+            parsed_pt_vector.push_back(PT);
++            parsed_order_map[PT] = parsed_order_map.size();
            }
          }
        }
-@@ -924,9 +928,10 @@ namespace erizo {
-     //  go through the payload_map_ and match it with internalPayloadVector_
-     //  generate rtpMaps and payloadVector
-     std::vector<RtpMap> rtx_maps;
--    for (const RtpMap& internal_map : internalPayloadVector_) {
--      for (const std::pair<const unsigned int, RtpMap>& parsed_pair : payload_parsed_map_) {
--        const RtpMap& parsed_map = parsed_pair.second;
-+    std::map<unsigned int, bool> internal_used;
-+    for (const unsigned int parsed_pt : parsed_pt_vector) {
-+      for (const RtpMap& internal_map : internalPayloadVector_) {
-+        const RtpMap& parsed_map = payload_parsed_map_[parsed_pt];
-         if (internal_map.encoding_name != parsed_map.encoding_name ||
-             internal_map.clock_rate != parsed_map.clock_rate) {
-           continue;
-@@ -935,6 +940,12 @@ namespace erizo {
+@@ -935,6 +939,7 @@ namespace erizo {
            rtx_maps.push_back(parsed_map);
            continue;
          }
-+        // avoid using the same rtpmap
-+        if (internal_used.find(internal_map.payload_type) != internal_used.end()) {
-+          continue;
-+        }
-+        internal_used[internal_map.payload_type] = true;
 +
          RtpMap negotiated_map(parsed_map);
          outInPTMap[parsed_map.payload_type] = internal_map.payload_type;
          inOutPTMap[internal_map.payload_type] = parsed_map.payload_type;
+@@ -989,6 +994,13 @@ namespace erizo {
+       }
+     }
+ 
++    // Reorder the payloadVector
++    auto order_cmp = [&parsed_order_map](const RtpMap & a, const RtpMap & b) -> bool
++    {
++      return parsed_order_map[a.payload_type] < parsed_order_map[b.payload_type];
++    };
++    sort(payloadVector.begin(), payloadVector.end(), order_cmp);
++
+     //  Check atp rtx
+     for (RtpMap& rtx_map : rtx_maps) {
+       for (const RtpMap& internal_map : internalPayloadVector_) {
 -- 
 1.9.1
 
