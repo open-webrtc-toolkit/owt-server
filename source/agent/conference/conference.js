@@ -1196,7 +1196,7 @@ var Conference = function (rpcClient, selfRpcId) {
           callback('callback', 'error', e.message ? e.message : e);
         });
     } else {
-      callback('callback', 'ok');
+      callback('callback', 'error', 'Stream does NOT exist');
     }
   };
 
@@ -1469,7 +1469,7 @@ var Conference = function (rpcClient, selfRpcId) {
           callback('callback', 'error', e.message ? e.message : e);
         });
     } else {
-        callback('callback', 'ok');
+        callback('callback', 'error', 'Subscription does NOT exist');
     }
   };
 
@@ -1993,7 +1993,7 @@ var Conference = function (rpcClient, selfRpcId) {
     }
 
     if (!streams[streamId]) {
-      return callback('callback', 'ok');
+      return callback('callback', 'error', 'Stream does NOT exist');
     }
 
     return accessController.terminate(streamId, 'in', 'Participant terminate')
@@ -2231,7 +2231,7 @@ var Conference = function (rpcClient, selfRpcId) {
     }
 
     if (!subscriptions[subId]) {
-      return callback('callback', 'ok');
+      return callback('callback', 'error', 'Subscription does NOT exist');
     }
 
     return accessController.terminate(subId, 'out', 'Participant terminate')
