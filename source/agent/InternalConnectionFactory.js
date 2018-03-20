@@ -106,8 +106,10 @@ module.exports = function() {
 
         if (preparedSet[connId]) {
             log.warn('Internal Connection already prepared:', connId);
-            preparedSet[connId].connection.destroy();
-            delete preparedSet[connId];
+            // FIXME: Correct work flow should not reach here, when a connection
+            // is in use, it should not be created again. we should ensure the
+            // right call sequence in upper layer.
+            return preparedSet[connId].getListeningPort();
         }
         var conn = (direction === 'in')? InConnection(prot, minport, maxport) : OutConnection(prot, minport, maxport);
 
