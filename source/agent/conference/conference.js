@@ -993,7 +993,7 @@ var Conference = function (rpcClient, selfRpcId) {
     return initRoom(roomId)
       .then(function() {
         log.debug('room_config.participantLimit:', room_config.participantLimit, 'current participants count:', Object.keys(participants).length);
-        if (room_config.participantLimit > 0 && (Object.keys(participants).length >= room_config.participantLimit)) {
+        if (room_config.participantLimit > 0 && (Object.keys(participants).length >= room_config.participantLimit + 1)) {
           log.warn('Room is full');
           callback('callback', 'error', 'Room is full');
           return Promise.reject('Room is full');
