@@ -27,7 +27,6 @@ DEFINE_LOGGER(MediaFileOut, "woogeen.media.MediaFileOut");
 MediaFileOut::MediaFileOut(const std::string& url, bool hasAudio, bool hasVideo, EventRegistry* handle, int recordingTimeout)
     : AVStreamOut(url, hasAudio, hasVideo, handle, recordingTimeout)
 {
-    start();
 }
 
 MediaFileOut::~MediaFileOut()
@@ -77,11 +76,16 @@ const char *MediaFileOut::getFormatName(std::string& url)
     return NULL;
 }
 
+bool MediaFileOut::getHeaderOpt(std::string& url, AVDictionary **options)
+{
+    return true;
+}
+
 void MediaFileOut::onVideoSourceChanged()
 {
     ELOG_DEBUG("onVideoSourceChanged");
 
-    m_videoSourceChanged = true;
+    setVideoSourceChanged();
     deliverFeedbackMsg(FeedbackMsg{.type = VIDEO_FEEDBACK, .cmd = REQUEST_KEY_FRAME});
 }
 

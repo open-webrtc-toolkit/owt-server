@@ -86,10 +86,7 @@ AVStreamOut::AVStreamOut(const std::string& url, bool hasAudio, bool hasVideo, E
 
     m_status = Context_INITIALIZING;
     notifyAsyncEvent("init", "");
-}
 
-void AVStreamOut::start(void)
-{
     m_thread = boost::thread(&AVStreamOut::sendLoop, this);
 }
 
@@ -226,17 +223,10 @@ void AVStreamOut::onFrame(const woogeen_base::Frame& frame)
 
 void AVStreamOut::sendLoop()
 {
-    uint32_t connectRetry = getReconnectCount();
+    uint32_t connectRetry;
+
     const uint32_t waitMs = 20;
     uint32_t timeOut = 0;
-
-reconnect:
-    if(!connect()) {
-        notifyAsyncEvent("init", "Cannot open connection");
-        goto exit;
-    }
-
-    timeOut = 0;
     while ((m_hasAudio && m_audioFormat == FRAME_FORMAT_UNKNOWN) || (m_hasVideo && m_videoFormat == FRAME_FORMAT_UNKNOWN)) {
         if (m_status == AVStreamOut::Context_CLOSED)
             goto exit;
@@ -257,6 +247,13 @@ reconnect:
 
         ELOG_DEBUG("Wait for av options available, hasAudio(%d) - ready(%d), hasVideo(%d) - ready(%d), waitMs %d"
                 , m_hasAudio, m_audioFormat != FRAME_FORMAT_UNKNOWN, m_hasVideo, m_videoFormat != FRAME_FORMAT_UNKNOWN, timeOut);
+    }
+
+     connectRetry = getReconnectCount();
+reconnect:
+    if(!connect()) {
+        notifyAsyncEvent("init", "Cannot open connection");
+        goto exit;
     }
 
     if (m_hasAudio && !addAudioStream(m_audioFormat, m_sampleRate, m_channels)) {
@@ -450,8 +447,15 @@ bool AVStreamOut::addVideoStream(FrameFormat format, uint32_t width, uint32_t he
 bool AVStreamOut::writeHeader()
 {
     int ret;
+    AVDictionary *options = NULL;
 
-    ret = avformat_write_header(m_context, NULL);
+    ret = getHeaderOpt(m_url, &options);
+    if (!ret) {
+        ELOG_ERROR("Cannot get header options");
+        return false;
+    }
+
+    ret = avformat_write_header(m_context, options != NULL ? &options : NULL);
     if (ret < 0) {
         ELOG_ERROR("Cannot write header, %s", ff_err2str(ret));
         return false;

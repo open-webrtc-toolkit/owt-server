@@ -40,7 +40,7 @@ protected:
     bool isAudioFormatSupported(FrameFormat format) override;
     bool isVideoFormatSupported(FrameFormat format) override;
     const char *getFormatName(std::string& url) override;
-    bool writeHeader(void) override;
+    bool getHeaderOpt(std::string& url, AVDictionary **options) override;
 
     uint32_t getKeyFrameInterval(void) override {return 2000;}
     uint32_t getReconnectCount(void) override {return 1;}

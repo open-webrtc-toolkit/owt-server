@@ -163,8 +163,6 @@ public:
     virtual void onVideoSourceChanged(void) {deliverFeedbackMsg(FeedbackMsg{.type = VIDEO_FEEDBACK, .cmd = REQUEST_KEY_FRAME });}
 
 protected:
-    void start(void);
-
     virtual bool isAudioFormatSupported(FrameFormat format) = 0;
     virtual bool isVideoFormatSupported(FrameFormat format) = 0;
     virtual const char *getFormatName(std::string& url) = 0;
@@ -172,6 +170,7 @@ protected:
     virtual uint32_t getReconnectCount(void) = 0;
 
     virtual bool writeHeader(void);
+    virtual bool getHeaderOpt(std::string& url, AVDictionary **options) = 0;
 
     // EventRegistry
     virtual bool notifyAsyncEvent(const std::string& event, const std::string& data)
@@ -202,9 +201,11 @@ protected:
 
     void sendLoop(void);
 
+    void setVideoSourceChanged() {m_videoSourceChanged = true;};
+
     char *ff_err2str(int errRet);
 
-protected:
+private:
     Status m_status;
 
     std::string m_url;
