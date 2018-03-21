@@ -129,6 +129,7 @@ public:
     void start(uint32_t delay = 0);
     void stop();
     void drain();
+    uint32_t sizeInMs();
 
     void insert(AVPacket &pkt);
     void setSyncTime(int64_t &syncTimestamp, boost::posix_time::ptime &syncLocalTime);
@@ -230,12 +231,16 @@ private:
     boost::shared_ptr<JitterBuffer> m_videoJitterBuffer;
     boost::shared_ptr<JitterBuffer> m_audioJitterBuffer;
 
+    bool m_readSpeedControl;
+
     char m_errbuff[500];
     char *ff_err2str(int errRet);
 
     std::ostringstream m_AsyncEvent;
 
     bool isRtsp() {return (m_url.compare(0, 7, "rtsp://") == 0);}
+    bool isFileInput() {return (m_url.compare(0, 7, "file://") == 0
+            || m_url.compare(0, 1, "/") == 0 || m_url.compare(0, 1, ".") == 0);}
 
     void requestKeyFrame();
 

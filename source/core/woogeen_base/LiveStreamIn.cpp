@@ -206,6 +206,18 @@ void JitterBuffer::drain()
     }
 }
 
+uint32_t JitterBuffer::sizeInMs()
+{
+    int64_t bufferingMs = 0;
+    boost::shared_ptr<FramePacket> frontPacket = m_buffer.frontPacket();
+    boost::shared_ptr<FramePacket> backPacket = m_buffer.backPacket();
+
+    if (frontPacket && backPacket) {
+        bufferingMs = backPacket->getAVPacket()->dts - frontPacket->getAVPacket()->dts;
+    }
+    return bufferingMs;
+}
+
 void JitterBuffer::onTimeout(const boost::system::error_code& ec)
 {
     if (!ec) {
@@ -398,6 +410,7 @@ LiveStreamIn::LiveStreamIn(const Options& options, EventRegistry* handle)
     , m_audioFormat(FRAME_FORMAT_UNKNOWN)
     , m_audioSampleRate(0)
     , m_audioChannels(0)
+    , m_readSpeedControl(false)
 {
     ELOG_INFO_T("url: %s, audio: %s, video: %s, transport: %s, bufferSize: %d"
             , m_url.c_str(), m_enableAudio.c_str(), m_enableVideo.c_str(), options.transport.c_str(), options.bufferSize);
@@ -430,6 +443,10 @@ LiveStreamIn::LiveStreamIn(const Options& options, EventRegistry* handle)
             av_dict_set(&m_options, "rtsp_transport", "tcp", 0);
             ELOG_INFO_T("rtsp, transport: tcp");
         }
+    }
+
+    if (isFileInput()) {
+        m_readSpeedControl = true;
     }
 
     m_running = true;
@@ -490,7 +507,7 @@ bool LiveStreamIn::connect()
 
     ELOG_DEBUG_T("Opening input");
     m_timeoutHandler->reset(30000);
-    res = avformat_open_input(&m_context, m_url.c_str(), nullptr, &m_options);
+    res = avformat_open_input(&m_context, m_url.c_str(), nullptr, m_options != NULL ? &m_options : NULL);
     if (res != 0) {
         ELOG_ERROR_T("Error opening input %s", ff_err2str(res));
 
@@ -780,6 +797,17 @@ void LiveStreamIn::receiveLoop()
 
     memset(&m_avPacket, 0, sizeof(m_avPacket));
     while (m_running) {
+        if (m_readSpeedControl) {
+            if (m_videoJitterBuffer && m_videoJitterBuffer->sizeInMs() > 500) {
+                usleep(1000);
+                continue;
+            }
+            if (m_audioJitterBuffer && m_audioJitterBuffer->sizeInMs() > 500) {
+                usleep(1000);
+                continue;
+            }
+        }
+
         av_init_packet(&m_avPacket);
         m_timeoutHandler->reset(10000);
         ret = av_read_frame(m_context, &m_avPacket);
