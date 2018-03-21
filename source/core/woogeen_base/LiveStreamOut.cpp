@@ -32,7 +32,6 @@ DEFINE_LOGGER(LiveStreamOut, "woogeen.LiveStreamOut");
 LiveStreamOut::LiveStreamOut(const std::string& url, bool hasAudio, bool hasVideo, EventRegistry* handle, int streamingTimeout)
     : AVStreamOut(url, hasAudio, hasVideo, handle, streamingTimeout)
 {
-    start();
 }
 
 LiveStreamOut::~LiveStreamOut()
@@ -73,49 +72,40 @@ const char *LiveStreamOut::getFormatName(std::string& url)
     return NULL;
 }
 
-bool LiveStreamOut::writeHeader()
+bool LiveStreamOut::getHeaderOpt(std::string& url, AVDictionary **options)
 {
-    int ret;
-    AVDictionary *options = NULL;
-
     // hls
-    if (m_url.compare(0, 7, "http://") == 0) {
-        std::string::size_type pos1 = m_url.rfind('/');
+    if (url.compare(0, 7, "http://") == 0) {
+        std::string::size_type pos1 = url.rfind('/');
         if (pos1 == std::string::npos) {
-            ELOG_ERROR("Cant not find base url %s", m_url.c_str());
+            ELOG_ERROR("Cant not find base url %s", url.c_str());
             return false;
         }
 
-        std::string::size_type pos2 = m_url.rfind('.');
+        std::string::size_type pos2 = url.rfind('.');
         if (pos2 == std::string::npos) {
-            ELOG_ERROR("Cant not find base url %s", m_url.c_str());
+            ELOG_ERROR("Cant not find base url %s", url.c_str());
             return false;
         }
 
         if (pos2 <= pos1) {
-            ELOG_ERROR("Cant not find base url %s", m_url.c_str());
+            ELOG_ERROR("Cant not find base url %s", url.c_str());
             return false;
         }
 
-        std::string segment_uri(m_url.substr(0, pos1));
+        std::string segment_uri(url.substr(0, pos1));
         segment_uri.append("/intel_");
-        segment_uri.append(m_url.substr(pos1 + 1, pos2 - pos1 - 1));
+        segment_uri.append(url.substr(pos1 + 1, pos2 - pos1 - 1));
         segment_uri.append("_%09d.ts");
 
-        ELOG_TRACE("index url %s", m_url.c_str());
+        ELOG_TRACE("index url %s", url.c_str());
         ELOG_TRACE("segment url %s", segment_uri.c_str());
 
-        av_dict_set(&options, "hls_segment_filename", segment_uri.c_str(), 0);
-        av_dict_set(&options, "hls_time", "10", 0);
-        av_dict_set(&options, "hls_list_size", "4", 0);
-        av_dict_set(&options, "hls_flags", "delete_segments", 0);
-        av_dict_set(&options, "method", "PUT", 0);
-    }
-
-    ret = avformat_write_header(m_context, &options);
-    if (ret < 0) {
-        ELOG_ERROR("Cannot write header, %s", ff_err2str(ret));
-        return false;
+        av_dict_set(options, "hls_segment_filename", segment_uri.c_str(), 0);
+        av_dict_set(options, "hls_time", "10", 0);
+        av_dict_set(options, "hls_list_size", "4", 0);
+        av_dict_set(options, "hls_flags", "delete_segments", 0);
+        av_dict_set(options, "method", "PUT", 0);
     }
 
     return true;
