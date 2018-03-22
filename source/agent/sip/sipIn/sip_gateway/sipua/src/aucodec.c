@@ -81,7 +81,6 @@ static struct aucodec pcmu = {
 	NULL, NULL, NULL, NULL, NULL, NULL, NULL
 };
 
-// TODO intel webrtc mixer not support pcma
 static struct aucodec pcma = {
 	LE_INIT, "8", "PCMA", 8000, 1, NULL,
 	NULL, NULL, NULL, NULL, NULL, NULL, NULL
@@ -102,5 +101,6 @@ static struct aucodec opus = {
 void register_audio_codecs(void)
 {
 	aucodec_register(&pcmu);
+	aucodec_register(&pcma);
 	aucodec_register(&opus);
 }
