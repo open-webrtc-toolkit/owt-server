@@ -1474,6 +1474,9 @@ var Conference = function (rpcClient, selfRpcId) {
   };
 
   const mix = function(streamId, toView) {
+    if (streams[streamId].info.inViews.indexOf(toView) !== -1) {
+      return Promise.resolve('ok');
+    }
     return new Promise((resolve, reject) => {
       roomController.mix(streamId, toView, function() {
         streams[streamId].info.inViews.push(toView);
