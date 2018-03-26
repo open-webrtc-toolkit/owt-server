@@ -480,6 +480,17 @@ webrtc::EncodedImageCallback::Result VCMFrameEncoder::OnEncodedImage(const Encod
 void VCMFrameEncoder::dump(uint8_t *buf, int len)
 {
     if (m_bsDumpfp) {
+        if (m_encodeFormat == FRAME_FORMAT_VP8 || m_encodeFormat == FRAME_FORMAT_VP9) {
+            unsigned char mem[4];
+
+            mem[0] = (len >>  0) & 0xff;
+            mem[1] = (len >>  8) & 0xff;
+            mem[2] = (len >> 16) & 0xff;
+            mem[3] = (len >> 24) & 0xff;
+
+            fwrite(&mem, 1, 4, m_bsDumpfp);
+        }
+
         fwrite(buf, 1, len, m_bsDumpfp);
     }
 }
