@@ -183,14 +183,14 @@ class InputManager {
     }
 
     enable(streamId, toPending) {
-        if (!this.pendingInputs[streamId])
+        if (!this.pendingInputs[streamId] || streamId === toPending)
             return -1;
 
         // Move least setPrimary input to pending
         var k;
         var minPrimary = Number.MAX_SAFE_INTEGER;
 
-        if (toPending !== undefined) {
+        if (toPending === undefined) {
             for (let k in this.inputs) {
                 if (this.inputs[k].primaryCount < minPrimary || !toPending) {
                     minPrimary = this.inputs[k].primaryCount;
@@ -690,7 +690,7 @@ function VMixer(rpcClient, clusterIP) {
                     callback('callback', 'error', 'Invalid region');
                     return;
                 }
-                inputManager.enable(stream_id, originInput);
+                inputManager.enable(stream_id, inputManager.getStreamFromInput(originInput));
                 let input = inputManager.get(stream_id);
                 engine.removeInput(input.id);
                 if (!engine.addInput(input.id, input.codec, input.conn, input.avatar)) {
