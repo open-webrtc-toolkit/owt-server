@@ -164,12 +164,6 @@ NAN_METHOD(WebRtcConnection::New) {
       rtp_map.media_type = erizo::VIDEO_TYPE;
       rtp_map.clock_rate = 90000;
       rtp_map.channels = 1;
-      rtp_map.format_parameters.insert(rtp_map.format_parameters.begin(),
-              std::pair<std::string, std::string> ("profile-level-id", "42e01f"));
-      rtp_map.format_parameters.insert(rtp_map.format_parameters.begin(),
-              std::pair<std::string, std::string> ("level-asymmetry-allowed", "1"));
-      rtp_map.format_parameters.insert(rtp_map.format_parameters.begin(),
-              std::pair<std::string, std::string> ("packetization-mode", "1"));
       rtp_map.feedback_types.push_back("ccm fir");
       rtp_map.feedback_types.push_back("nack");
       rtp_map.feedback_types.push_back("goog-remb");
