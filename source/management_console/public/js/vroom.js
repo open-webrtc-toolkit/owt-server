@@ -20,9 +20,9 @@ var videoPara = {
   type: 'object',
   properties: {
     resolution: { type: 'array', items: { type: 'string' } },
-    framerate: { type: 'array', items: { type: 'number' } },
-    bitrate: { type: 'array', items: { type: 'string' } },
-    keyFrameInterval: { type: 'array', items: { type: 'number' } }
+    framerate: { type: 'array', items: { type: 'number', enum: [6, 12, 15, 24, 30, 48, 60] } },
+    bitrate: { type: 'array', items: { type: 'string', enum: ['x0.8', 'x0.6', 'x0.4', 'x0.2'] } },
+    keyFrameInterval: { type: 'array', items: { type: 'number', enum: [100, 30, 5, 2, 1] } }
   }
 };
 
@@ -36,9 +36,9 @@ var videoParaV = {
         height: { type: 'number' },
       }
     },
-    framerate: { type: 'number' },
+    framerate: { type: 'number', enum: [6, 12, 15, 24, 30, 48, 60] },
     bitrate: { type: 'number' },
-    keyFrameInterval: { type: 'number' }
+    keyFrameInterval: { type: 'number', enum: [100, 30, 5, 2, 1] }
   }
 };
 
@@ -83,7 +83,7 @@ var viewItem = {
       properties: {
         format: videoFormat,
         parameters: videoParaV,
-        maxInput: { type: 'number' },
+        maxInput: { type: 'number', minimum: 1 },
         motionFactor: { type: 'number' },
         bgColor: {
           type: 'object',
