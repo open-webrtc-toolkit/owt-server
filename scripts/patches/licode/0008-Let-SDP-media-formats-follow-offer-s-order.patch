@@ -1,14 +1,14 @@
-From c1a6e0c7c4c3cbf2a56ac326367580297bf45edb Mon Sep 17 00:00:00 2001
+From 9a6d63726de41f7d7e313e550841d7a062589174 Mon Sep 17 00:00:00 2001
 From: Chen Li1 <li1.chen@intel.com>
 Date: Wed, 14 Mar 2018 16:49:39 +0800
 Subject: [PATCH] Let SDP media formats follow offer's order
 
 ---
- erizo/src/erizo/SdpInfo.cpp | 12 ++++++++++++
- 1 file changed, 12 insertions(+)
+ erizo/src/erizo/SdpInfo.cpp | 25 +++++++++++++++++++++++++
+ 1 file changed, 25 insertions(+)
 
 diff --git a/erizo/src/erizo/SdpInfo.cpp b/erizo/src/erizo/SdpInfo.cpp
-index cd24b78..3ba70f0 100644
+index cd24b78..c18b04a 100644
 --- a/erizo/src/erizo/SdpInfo.cpp
 +++ b/erizo/src/erizo/SdpInfo.cpp
 @@ -575,6 +575,7 @@ namespace erizo {
@@ -19,39 +19,45 @@ index cd24b78..3ba70f0 100644
      while (std::getline(iss, line)) {
        size_t isVideo = line.find(video);
        size_t isAudio = line.find(audio);
-@@ -813,6 +814,7 @@ namespace erizo {
-           new_mapping.clock_rate = parsed_clock;
-           new_mapping.media_type = mtype;
-           payload_parsed_map_[PT] = new_mapping;
-+          parsed_order_map[PT] = parsed_order_map.size();
-         }
+@@ -687,6 +688,16 @@ namespace erizo {
+         mtype = AUDIO_TYPE;
+         hasAudio = true;
        }
-       // a=extmap:1 urn:ietf:params:rtp-hdrext:ssrc-audio-level
-@@ -839,6 +841,7 @@ namespace erizo {
-           new_map.payload_type = PT;
-           new_map.feedback_types.push_back(feedback);
-           payload_parsed_map_[PT] = new_map;
-+          parsed_order_map[PT] = parsed_order_map.size();
-         }
-       }
- 
-@@ -876,6 +879,7 @@ namespace erizo {
-             new_map.payload_type = PT;
-             new_map.format_parameters[option] = value;
-             payload_parsed_map_[PT] = new_map;
++      if (isVideo != std::string::npos || isAudio != std::string::npos) {
++        // parse payload number in mline
++        std::vector<std::string> pieces = stringutil::splitOneOf(line, " ");
++        for (unsigned int i = 3; i < pieces.size(); i++) {
++          unsigned int PT = strtoul(pieces[i].c_str(), nullptr, 10);
++          if (parsed_order_map.find(PT) == parsed_order_map.end()) {
 +            parsed_order_map[PT] = parsed_order_map.size();
-           }
-         }
-       }
-@@ -935,6 +939,7 @@ namespace erizo {
++          }
++        }
++      }
+       if (isCand != std::string::npos) {
+         std::vector<std::string> pieces = stringutil::splitOneOf(line, " ");
+         pieces[0] = stringutil::splitOneOf(pieces[0], ":")[1];
+@@ -935,6 +946,10 @@ namespace erizo {
            rtx_maps.push_back(parsed_map);
            continue;
          }
++        if (parsed_order_map.find(parsed_map.payload_type) == parsed_order_map.end()) {
++          continue;
++        }
 +
          RtpMap negotiated_map(parsed_map);
          outInPTMap[parsed_map.payload_type] = internal_map.payload_type;
          inOutPTMap[internal_map.payload_type] = parsed_map.payload_type;
-@@ -989,6 +994,13 @@ namespace erizo {
+@@ -976,6 +991,9 @@ namespace erizo {
+           }
+         }
+         negotiated_map.format_parameters = negotiated_parameters;
++        if (negotiated_map.format_parameters.empty()) {
++          negotiated_map.format_parameters = parsed_map.format_parameters;
++        }
+ 
+         if (negotiated_map.media_type == VIDEO_TYPE) {
+           videoCodecs++;
+@@ -989,6 +1007,13 @@ namespace erizo {
        }
      }
  
