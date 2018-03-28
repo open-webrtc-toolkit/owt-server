@@ -169,6 +169,21 @@ void VideoTranscoder::removeOutput(const std::string& outStreamID)
     }
 }
 
+void VideoTranscoder::forceKeyFrame(const std::string& outStreamID)
+{
+    int32_t index = -1;
+    boost::shared_lock<boost::shared_mutex> lock(m_outputsMutex);
+    auto it = m_outputs.find(outStreamID);
+    if (it != m_outputs.end()) {
+        index = it->second;
+    }
+    lock.unlock();
+
+    if (index != -1) {
+        m_frameTranscoder->requestKeyFrame(index);
+    }
+}
+
 void VideoTranscoder::closeAll()
 {
     ELOG_DEBUG("CloseAll");

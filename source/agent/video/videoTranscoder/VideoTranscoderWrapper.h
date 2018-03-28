@@ -48,6 +48,7 @@ class VideoTranscoder : public node::ObjectWrap {
 
   static void addOutput(const v8::FunctionCallbackInfo<v8::Value>& args);
   static void removeOutput(const v8::FunctionCallbackInfo<v8::Value>& args);
+  static void forceKeyFrame(const v8::FunctionCallbackInfo<v8::Value>& args);
 };
 
 #endif
