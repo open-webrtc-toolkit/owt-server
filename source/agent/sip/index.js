@@ -51,7 +51,7 @@ function do_join(conference_ctl, user, room, selfPortal, ok, err) {
         rpcClient,
         conference_ctl,
         'join',
-        [room, {id: user, user: {id: user, name: user}, role: 'sip', portal: selfPortal}], function(joinResult) {
+        [room, {id: user, user: user, role: 'sip', portal: selfPortal}], function(joinResult) {
             log.debug('join ok');
             var mixStream = null;
             for(var index in joinResult.room.streams){
