@@ -325,8 +325,7 @@ function translateOldRoom(oldConfig) {
       },
       video: (!!old_view.video ? {
         format: {
-          codec: 'h264',
-          profile: 'high'
+          codec: 'h264'
         },
         motionFactor: 0.8,
         parameters: {
