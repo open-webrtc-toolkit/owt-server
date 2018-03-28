@@ -1607,6 +1607,21 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
             });
     };
 
+
+    var forceKeyFrame = function (streamId) {
+        if (streams[streamId]) {
+            var t_id = streams[streamId].owner;
+            if (terminals[t_id]) {
+                makeRPC(
+                    rpcClient,
+                    terminals[t_id].locality.node,
+                    'forceKeyFrame',
+                    [streamId]);
+
+            }
+        }
+    };
+
     var rebuildVideoMixer = function (vmixerId) {
         var old_locality = terminals[vmixerId].locality;
         var inputs = [], outputs = [];
@@ -1697,6 +1712,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                             })
                             .then(function () {
                                 log.debug('Resumed video mixer output ok.');
+                                forceKeyframe(stream_id);
                                 resolve('ok');
                             })
                             .catch(function (err) {
@@ -1784,6 +1800,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                             })
                             .then(function () {
                                 log.debug('Resumed video xcoder output ok.');
+                                forceKeyframe(stream_id);
                                 resolve('ok');
                             })
                             .catch(function (err) {

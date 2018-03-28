@@ -42,6 +42,7 @@ void VideoTranscoder::Init(Handle<Object> exports, Handle<Object> module) {
   NODE_SET_PROTOTYPE_METHOD(tpl, "unsetInput", unsetInput);
   NODE_SET_PROTOTYPE_METHOD(tpl, "addOutput", addOutput);
   NODE_SET_PROTOTYPE_METHOD(tpl, "removeOutput", removeOutput);
+  NODE_SET_PROTOTYPE_METHOD(tpl, "forceKeyFrame", forceKeyFrame);
 
   constructor.Reset(isolate, tpl->GetFunction());
   module->Set(String::NewFromUtf8(isolate, "exports"), tpl->GetFunction());
@@ -140,4 +141,17 @@ void VideoTranscoder::removeOutput(const v8::FunctionCallbackInfo<v8::Value>& ar
   std::string outStreamID = std::string(*param0);
 
   me->removeOutput(outStreamID);
+}
+
+void VideoTranscoder::forceKeyFrame(const v8::FunctionCallbackInfo<v8::Value>& args) {
+  Isolate* isolate = Isolate::GetCurrent();
+  HandleScope scope(isolate);
+
+  VideoTranscoder* obj = ObjectWrap::Unwrap<VideoTranscoder>(args.Holder());
+  mcu::VideoTranscoder* me = obj->me;
+
+  String::Utf8Value param0(args[0]->ToString());
+  std::string outStreamID = std::string(*param0);
+
+  me->forceKeyFrame(outStreamID);
 }

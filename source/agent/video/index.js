@@ -724,6 +724,12 @@ function VMixer(rpcClient, clusterIP) {
         }
     };
 
+    that.forceKeyFrame = function (stream_id) {
+        if (outputs[stream_id] && engine) {
+            engine.forceKeyFrame(stream_id);
+        }
+    };
+
     return that;
 };
 
@@ -1027,6 +1033,12 @@ function VTranscoder(rpcClient, clusterIP) {
                 outputs[connections[connectionId].videoFrom].dispatcher.removeDestination('video', connections[connectionId].connection.receiver());
             }
             connections[connectionId].videoFrom = undefined;
+        }
+    };
+
+    that.forceKeyFrame = function (stream_id) {
+        if (outputs[stream_id] && engine) {
+            engine.forceKeyFrame(stream_id);
         }
     };
 

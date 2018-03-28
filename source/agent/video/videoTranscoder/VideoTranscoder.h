@@ -53,6 +53,7 @@ public:
             , const unsigned int keyFrameIntervalSeconds
             , woogeen_base::FrameDestination* dest);
     void removeOutput(const std::string& outStreamID);
+    void forceKeyFrame(const std::string& outStreamID);
 
 protected:
     int useAFreeInputIndex();
