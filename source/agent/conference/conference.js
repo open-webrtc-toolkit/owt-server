@@ -1538,7 +1538,7 @@ var Conference = function (rpcClient, selfRpcId) {
       roomController.getRegion(streamId, inView, function(region) {
         resolve({region: region});
       }, function(reason) {
-        log.info('roomController.setRegion failed, reason:', reason);
+        log.info('roomController.getRegion failed, reason:', reason);
         reject(reason);
       });
     });
@@ -1795,8 +1795,10 @@ var Conference = function (rpcClient, selfRpcId) {
       if (input) {
         for (var id in streams) {
           if (streams[id].type === 'mixed' && streams[id].info.label === view) {
-            streams[id].info.activeInput = input;
-            room_config.notifying.streamChange && sendMsg('room', 'all', 'stream', {id: id, status: 'update', data: {field: 'activeInput', value: input}});
+            if (streams[id].info.activeInput !== input) {
+              streams[id].info.activeInput = input;
+              room_config.notifying.streamChange && sendMsg('room', 'all', 'stream', {id: id, status: 'update', data: {field: 'activeInput', value: input}});
+            }
             break;
           }
         }
