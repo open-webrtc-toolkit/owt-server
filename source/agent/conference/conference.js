@@ -1041,6 +1041,7 @@ var Conference = function (rpcClient, selfRpcId) {
   };
 
   that.leave = function(participantId, callback) {
+    log.debug('leave, participantId:', participantId);
     if (!accessController || !roomController) {
       return callback('callback', 'error', 'Controllers are not ready');
     }
