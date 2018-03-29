@@ -18,6 +18,7 @@ config.portal.ip_address = config.portal.ip_address || '';
 config.portal.hostname = config.portal.hostname|| '';
 config.portal.port = config.portal.port || 8080;
 config.portal.ssl = config.portal.ssl || false;
+config.portal.force_tls_v12 = config.portal.force_tls_v12 || false;
 config.portal.reconnection_ticket_lifetime = config.portal.reconnection_ticket_lifetime || 600;
 config.portal.reconnection_timeout = Number.isInteger(config.portal.reconnection_timeout) ? config.portal.reconnection_timeout : 60;
 
@@ -173,6 +174,7 @@ var startServers = function(id, tokenKey) {
                                 rpcReq);
   socketio_server = require('./socketIOServer')({port: config.portal.port,
                                                  ssl: config.portal.ssl,
+                                                 forceTlsv12: config.portal.force_tls_v12,
                                                  keystorePath: config.portal.keystorePath,
                                                  reconnectionTicketLifetime: config.portal.reconnection_ticket_lifetime,
                                                  reconnectionTimeout: config.portal.reconnection_timeout,
