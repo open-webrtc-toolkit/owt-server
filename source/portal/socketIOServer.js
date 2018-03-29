@@ -344,13 +344,18 @@ var SocketIOServer = function(spec, portal, observer) {
     return Promise.resolve('ok');
   };
 
-  var startSecured = function(port, keystorePath) {
+  var startSecured = function(port, keystorePath, forceTlsv12) {
     return new Promise(function(resolve, reject) {
       var cipher = require('./cipher');
       var keystore = path.resolve(path.dirname(keystorePath), '.woogeen.keystore');
       cipher.unlock(cipher.k, keystore, function(err, passphrase) {
         if (!err) {
-          var server = require('https').createServer({pfx: require('fs').readFileSync(keystorePath), passphrase: passphrase}).listen(port);
+          var option = {pfx: require('fs').readFileSync(keystorePath), passphrase: passphrase};
+          if (forceTlsv12) {
+            var constants = require('constants');
+            option.secureOptions = (constants.SSL_OP_NO_TLSv1 | constants.SSL_OP_NO_TLSv1_1);
+          }
+          var server = require('https').createServer(option).listen(port);
           io = require('socket.io').listen(server, sioOptions);
           run();
           resolve('ok');
@@ -399,7 +404,7 @@ var SocketIOServer = function(spec, portal, observer) {
     if (!spec.ssl) {
       return startInsecure(spec.port);
     } else {
-      return startSecured(spec.port, spec.keystorePath);
+      return startSecured(spec.port, spec.keystorePath, spec.forceTlsv12);
     }
   };
 
