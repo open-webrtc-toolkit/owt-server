@@ -19,7 +19,7 @@ var RpcRequest = function(rpcChannel) {
   };
 
   that.recycleWorkerNode = function(workerAgent, workerNode, forWhom) {
-    return rpcChannel.makeRPC(workerAgent, 'recycleNode', [workerNode, {room: forWhom.session, task: forWhom.task}])
+    return rpcChannel.makeRPC(workerAgent, 'recycleNode', [workerNode, forWhom])
       . catch((result) => {
         return 'ok';
       }, (err) => {
@@ -38,19 +38,13 @@ var RpcRequest = function(rpcChannel) {
   };
 
   that.terminate = function(accessNode, sessionId, direction/*FIXME: direction should be unneccesarry*/) {
-    return new Promise((resolve, reject) => {
-      if (direction === 'in') {
-        return rpcChannel.makeRPC(accessNode, 'unpublish', [sessionId]);
-      } else if (direction === 'out') {
-        return rpcChannel.makeRPC(accessNode, 'unsubscribe', [sessionId]);
-      } else {
-        return Promise.reject('Invalid direction');
-      }
-    }).then((result) => {
-      return 'ok';
-    }, (err) => {
-      return 'ok';
-    });
+    if (direction === 'in') {
+      return rpcChannel.makeRPC(accessNode, 'unpublish', [sessionId]).catch((e) => { return 'ok';});
+    } else if (direction === 'out') {
+      return rpcChannel.makeRPC(accessNode, 'unsubscribe', [sessionId]).catch((e) => { return 'ok';});
+    } else {
+      return Promise.resolve('ok');
+    }
   };
 
   that.onSessionSignaling = function(accessNode, sessionId, signaling) {

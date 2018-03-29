@@ -33,6 +33,7 @@ module.exports.create = function(spec, rpcReq, onSessionEstablished, onSessionAb
     if (session.state === 'connecting' || session.state === 'connected') {
       rpcReq.terminate(session.locality.node, sessionId, session.direction)
         .then(function() {
+          log.debug('to recycleWorkerNode:', session.locality, 'task:', sessionId);
           return rpcReq.recycleWorkerNode(session.locality.agent, session.locality.node, {room: in_room, task: sessionId})
         })
         .catch(function(reason) {
@@ -166,6 +167,7 @@ module.exports.create = function(spec, rpcReq, onSessionEstablished, onSessionAb
   };
 
   that.participantLeave = function(participantId) {
+    log.debug('participantLeave, participantId:', participantId);
     for (var session_id in sessions) {
       if (sessions[session_id].owner === participantId) {
         var direction = sessions[session_id].direction;
