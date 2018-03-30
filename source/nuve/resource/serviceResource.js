@@ -2,6 +2,7 @@
 'use strict';
 var dataAccess = require('../data_access');
 var logger = require('./../logger').logger;
+var e = require('../errors');
 
 // Logger
 var log = logger.getLogger('ServiceResource');
@@ -18,10 +19,7 @@ var doInit = function (currentService, serv, callback) {
         callback('error');
     } else {
         dataAccess.service.get(serv, function (err, ser) {
-            if (err) {
-                log.warn('Failed to get service:', err.message);
-                return callback(null);
-            }
+            if (err) callback('error');
             callback(ser);
         });
     }
@@ -30,27 +28,19 @@ var doInit = function (currentService, serv, callback) {
 /*
  * Get Service. Represents a determined service.
  */
-exports.represent = function (req, res) {
+exports.represent = function (req, res, next) {
     var authData = req.authData || {};
-
-    if (authData.service === undefined) {
-        log.info('Service not found');
-        res.status(404).send('Service not found');
-        return;
-    }
 
     var curId = authData.service._id.toString();
     if (curId !== superService && curId !== req.params.service) {
         log.info('Service ', req.params.service, ' not authorized for this action');
-        res.status(401).send('Service not authorized for this action');
-        return;
+        return next(new e.AccessError('Permission denied'));
     }
 
     dataAccess.service.get(req.params.service, function (err, ser) {
         if (err) {
             log.warn('Failed to get service:', err.message);
-            res.status(404).send('Service not found');
-            return;
+            return next(err);
         }
         log.info('Representing service ', ser._id);
         res.send(ser);
@@ -60,33 +50,28 @@ exports.represent = function (req, res) {
 /*
  * Delete Service. Removes a determined service from the data base.
  */
-exports.deleteService = function (req, res) {
+exports.deleteService = function (req, res, next) {
     var authData = req.authData || {};
-
-    if (authData.service === undefined) {
-        log.info('Service not found');
-        res.status(404).send('Service not found');
-        return;
-    }
 
     doInit(authData.service, req.params.service, function (serv) {
         if (serv === 'error') {
             log.info('Service ', req.params.service, ' not authorized for this action');
-            res.status(401).send('Service not authorized for this action');
-            return;
+            return next(new e.AccessError('Permission denied'));
         }
         if (serv === undefined || serv === null) {
-            res.status(404).send('Service not found');
-            return;
+            return next(new e.NotFoundError('Service not found'));
         }
         var id = '';
         id += serv._id;
         if (id === superService) {
             res.status(401).send('Super service not permitted to be deleted');
-            return;
+            return next(new e.AccessError('Permission denied to delete super service'));
         }
         dataAccess.service.delete(id, function(err, result) {
-            if (err) log.warn('Failed to delete service:', err.message);
+            if (err) {
+                log.warn('Failed to delete service:', err.message);
+                return next(err);
+            }
             log.info('Serveice ', id, ' deleted');
             res.send('Service deleted');
         });

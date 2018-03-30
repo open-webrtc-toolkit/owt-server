@@ -12,6 +12,7 @@ try {
   process.exit(1);
 }
 
+var e = require('./errors');
 var rpc = require('./rpc/rpc');
 
 var express = require('express');
@@ -29,43 +30,20 @@ var streamsResource = require('./resource/streamsResource');
 var streamingOutsResource = require('./resource/streamingOutsResource');
 var recordingsResource = require('./resource/recordingsResource');
 
-app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({
-    extended: true
-}));
+// parse application/x-www-form-urlencoded
+app.use(bodyParser.urlencoded({ extended: true }))
+// parse application/json
+app.use(bodyParser.json())
 
-app.set('view options', {
-    layout: false
-});
-
-app.use(function(req, res, next) {
-    try {
-        decodeURIComponent(req.path)
-    } catch(e) {
-        log.warn('URI fail:', req.url);
-        return res.status(404).send('URI Error');
-    }
-    next();
-});
-
-app.use(function(error, req, res, next) {
-    if (error instanceof SyntaxError) {
-        log.warn('SyntaxError:', error.message);
-        res.status(404).send('JSON body SyntaxError');
-    } else {
-        next();
-    }
-});
-
+// for CORS
 app.use(function (req, res, next) {
-    res.header('Access-Control-Allow-Origin', '*');
-    res.header('Access-Control-Allow-Methods', 'POST, GET, OPTIONS, DELETE');
-    res.header('Access-Control-Allow-Headers', 'origin, authorization, content-type');
-    next();
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'POST, GET, OPTIONS, DELETE, PATCH');
+  res.header('Access-Control-Allow-Headers', 'origin, authorization, content-type');
+  next();
 });
-
 app.options('*', function(req, res) {
-    res.send(200);
+  res.send(200);
 });
 
 // Only following paths need authentication.
@@ -92,7 +70,10 @@ app.get('/v1/rooms', roomsResource.represent); //FIXME: The list result needs to
 app.get('/v1/rooms/:room', roomResource.represent); //FIXME: The detailed format of a complete room configuration data object needs to be refined.
 app.delete('/v1/rooms/:room', roomResource.deleteRoom);
 app.put('/v1/rooms/:room', roomResource.updateRoom);
-app.patch('/v1/rooms/:room', function(req, res) {res.status(401).send("Not implemented");}); //FIXME: To be implemented.
+app.patch('/v1/rooms/:room', (req, res, next) => next(new e.AppError('Not implemented'))); //FIXME: To be implemented.
+
+//Room checker for all the sub-resources
+app.use('/v1/rooms/:room/*', roomResource.validate);
 
 //Participant management
 app.get('/v1/rooms/:room/participants', participantsResource.getList);
@@ -126,6 +107,25 @@ app.post('/v1/rooms/:room/tokens', tokensResource.create);
 ////////////////////////////////////////////////////////////////////////////////////////////
 // v1 interface end
 // /////////////////////////////////////////////////////////////////////////////////////////
+
+// for path not match
+app.use('*', function(req, res, next) {
+  next(new e.NotFoundError());
+});
+
+// error handling
+app.use(function(err, req, res, next) {
+  log.debug(err);
+  if (!(err instanceof e.AppError)) {
+    if (err instanceof SyntaxError) {
+      err = new e.BadRequestError('Failed to parse JSON body');
+    } else {
+      log.warn(err);
+      err = new e.AppError(err.name + ' ' + err.message);
+    }
+  }
+  res.status(err.status).send(err.data());
+});
 
 
 var nuveConfig = global.config.nuve || {};

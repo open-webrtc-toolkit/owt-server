@@ -4,6 +4,7 @@ var dataAccess = require('../data_access');
 var mauthParser = require('./mauthParser');
 var cipher = require('../cipher');
 var log = require('./../logger').logger.getLogger('NuveAuthenticator');
+var e = require('../errors');
 
 var cache = {};
 
@@ -62,15 +63,17 @@ exports.authenticate = function (req, res, next) {
         challengeReq = 'MAuth realm="http://marte3.dit.upm.es"',
         params;
 
+    var authErr = new e.AuthError('WWW-Authenticate: ' + challengeReq);
+
     if (authHeader !== undefined) {
         params = mauthParser.parseHeader(authHeader);
 
         // Get the service from the data base.
         dataAccess.service.get(params.serviceid, function (err, serv) {
-            if (err || serv === undefined || serv === null) {
+            if (err) return next(err);
+            if (!serv) {
                 log.info('[Auth] Unknow service:', params.serviceid);
-                res.status(401).send({'WWW-Authenticate': challengeReq});
-                return;
+                return next(authErr);
             }
 
             var key = serv.key;
@@ -95,25 +98,19 @@ exports.authenticate = function (req, res, next) {
                     authData.user = (new Buffer(params.username, 'base64').toString('utf8'));
                     authData.role = params.role;
                 }
-
                 cache[serv._id+''] =  params;
-
                 authData.service = serv;
-
                 // Put auth data into request for further use
                 req.authData = authData;
-
                 // If everything in the authentication is valid continue with the request.
                 next();
             } else {
                 log.info('[Auth] Wrong credentials');
-                res.status(401).send({'WWW-Authenticate': challengeReq});
-                return;
+                next(authErr);
             }
         });
     } else {
         log.info('[Auth] MAuth header not presented');
-        res.status(401).send({'WWW-Authenticate': challengeReq});
-        return;
+        next(authErr);
     }
 };

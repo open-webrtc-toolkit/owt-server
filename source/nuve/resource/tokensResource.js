@@ -5,22 +5,10 @@ var dataAccess = require('../data_access');
 var crypto = require('crypto');
 var cloudHandler = require('../cloudHandler');
 var logger = require('./../logger').logger;
+var e = require('../errors');
 
 // Logger
 var log = logger.getLogger('TokensResource');
-
-/*
- * Gets the service and the room for the proccess of the request.
- */
-var doInit = function (currentService, roomId, callback) {
-    dataAccess.room.get(currentService._id, roomId, function (err, room) {
-        if (room) {
-            callback(room);
-        } else {
-            callback();
-        }
-    });
-};
 
 var getTokenString = function (id, token) {
     return dataAccess.token.key().then(function(nuveKey) {
@@ -64,7 +52,7 @@ var generateToken = function (currentRoom, authData, origin, callback) {
 
     token = {};
     token.user = user;
-    token.room = currentRoom._id;
+    token.room = currentRoom;
     token.role = role;
     token.service = currentService._id;
     token.creationDate = new Date();
@@ -101,39 +89,23 @@ var generateToken = function (currentRoom, authData, origin, callback) {
 /*
  * Post Token. Creates a new token for a determined room of a service.
  */
-exports.create = function (req, res) {
-    var authData = (req.authData || {});
-      authData.user = (req.authData.user || (req.body && req.body.user));
-      authData.role = (req.authData.role || (req.body && req.body.role));
+exports.create = function (req, res, next) {
+    var authData = req.authData;
+    authData.user = (req.authData.user || (req.body && req.body.user));
+    authData.role = (req.authData.role || (req.body && req.body.role));
     var origin = ((req.body && req.body.preference) || {isp: 'isp', region: 'region'});
 
-    if (authData.service === undefined) {
-        log.info('Service not found');
-        res.status(404).send('Service not found');
-        return;
-    }
-
-    doInit(authData.service, req.params.room, function (currentRoom) {
-         if (currentRoom === undefined) {
-            log.info('Room ', req.params.room, ' does not exist');
-            res.status(404).send('Room does not exist');
-            return;
+    generateToken(req.params.room, authData, origin, function (tokenS) {
+        if (tokenS === undefined) {
+            log.info('Name and role?');
+            return next(new e.BadRequestError('Name or role not valid'));
         }
-
-        generateToken(currentRoom, authData, origin, function (tokenS) {
-            if (tokenS === undefined) {
-                log.info('Name and role?');
-                res.status(401).send('Name and role?');
-                return;
-            }
-            if (tokenS === 'error') {
-                log.info('CloudHandler does not respond');
-                res.status(401).send('CloudHandler does not respond');
-                return;
-            }
-            log.debug('Created token for room ', currentRoom._id, 'and service ', authData.service._id);
-            res.send(tokenS);
-        });
+        if (tokenS === 'error') {
+            log.info('CloudHandler does not respond');
+            return next(new e.CloudError('Failed to get portal'));
+        }
+        log.debug('Created token for room ', req.params.room, 'and service ', authData.service._id);
+        res.send(tokenS);
     });
 };
 
