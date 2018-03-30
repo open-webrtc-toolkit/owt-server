@@ -122,8 +122,9 @@ void VCMFrameDecoder::onFrame(const Frame& frame)
     if (!m_needDecode)
         return;
 
-    ELOG_TRACE_T("onFrame(%s), %dx%d, length(%d)",
+    ELOG_TRACE_T("onFrame(%s), %s, %dx%d, length(%d)",
             getFormatStr(frame.format),
+            frame.additionalInfo.video.isKeyFrame ? "key" : "delta",
             frame.additionalInfo.video.width,
             frame.additionalInfo.video.height,
             frame.length
