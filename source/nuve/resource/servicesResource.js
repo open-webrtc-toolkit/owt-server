@@ -4,6 +4,7 @@
 var dataAccess = require('../data_access');
 var logger = require('./../logger').logger;
 var cipher = require('../cipher');
+var e = require('../errors');
 
 // Logger
 var log = logger.getLogger('ServicesResource');
@@ -20,26 +21,17 @@ var doInit = function (currentService) {
 /*
  * Post Service. Creates a new service.
  */
-exports.create = function (req, res) {
+exports.create = function (req, res, next) {
     var authData = req.authData || {};
-
-    if (authData.service === undefined) {
-        log.info('Service not found');
-        res.status(404).send('Service not found');
-        return;
-    }
-
     if (!doInit(authData.service)) {
         log.info('Service ', authData.service._id, ' not authorized for this action');
-        res.status(401).send('Service not authorized for this action');
-        return;
+        return next(new e.AccessError('Permission denied'));
     }
     var service = req.body;
 
     // Check the request body as service
     if (typeof service.name !== 'string' || typeof service.key !== 'string') {
-        res.status(401).send('Service name and key do not have string type');
-        return;
+        return next(new e.BadRequestError('Service name and key do not have string type'));
     }
 
     service.encrypted = true;
@@ -47,8 +39,7 @@ exports.create = function (req, res) {
     dataAccess.service.create(service, function(err, result) {
         if (err) {
             log.warn('Failed to create service:', err.message);
-            res.status(401).send('Operation failed');
-            return;
+            return next(err);
         }
         log.info('Service created: ', service.name);
         res.send(result);
@@ -58,26 +49,18 @@ exports.create = function (req, res) {
 /*
  * Get Service. Represents a determined service.
  */
-exports.represent = function (req, res) {
+exports.represent = function (req, res, next) {
     var authData = req.authData || {};
-
-    if (authData.service === undefined) {
-        log.info('Service not found');
-        res.status(404).send('Service not found');
-        return;
-    }
 
     if (!doInit(authData.service)) {
         log.info('Service ', authData.service, ' not authorized for this action');
-        res.status(401).send('Service not authorized for this action');
-        return;
+        return next(new e.AccessError('Permission denied'));
     }
 
     dataAccess.service.list(function(err, list) {
         if (err) {
             log.warn('Failed to list services:', err.message);
-            res.status(401).send('Operation failed');
-            return;
+            return next(err);
         }
         log.info('Representing services');
         res.send(list);

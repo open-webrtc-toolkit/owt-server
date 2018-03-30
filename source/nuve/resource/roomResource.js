@@ -3,6 +3,7 @@
 var dataAccess = require('../data_access');
 var cloudHandler = require('../cloudHandler');
 var logger = require('./../logger').logger;
+var e = require('../errors');
 
 // Logger
 var log = logger.getLogger('RoomResource');
@@ -10,19 +11,12 @@ var log = logger.getLogger('RoomResource');
 /*
  * Get Room. Represents a determined room.
  */
-exports.represent = function (req, res) {
-    var authData = req.authData || {};
-
-    if (authData.service === undefined) {
-        log.info('Service not found');
-        res.status(401).send('Client unathorized');
-        return;
-    }
-
+exports.represent = function (req, res, next) {
+    var authData = req.authData;
     dataAccess.room.get(authData.service._id, req.params.room, function (err, room) {
         if (!room) {
             log.info('Room ', req.params.room, ' does not exist');
-            res.status(404).send('Room does not exist');
+            next(new e.NotFoundError('Room not found'));
         } else {
             log.info('Representing room ', room._id, 'of service ', authData.service._id);
             res.send(room);
@@ -33,20 +27,13 @@ exports.represent = function (req, res) {
 /*
  * Delete Room. Removes a determined room from the data base and asks cloudHandler to remove it from erizoController.
  */
-exports.deleteRoom = function (req, res) {
-    var authData = req.authData || {};
-
-    if (authData.service === undefined) {
-        log.info('Service not found');
-        res.status(401).send('Client unathorized');
-        return;
-    }
-    var currentService = authData.service;
-
+exports.deleteRoom = function (req, res, next) {
+    var authData = req.authData;
     dataAccess.room.delete(authData.service._id, req.params.room, function(err, room) {
+        if (err) return next(err);
         if (!room) {
             log.info('Room ', req.params.room, ' does not exist');
-            res.status(404).send('Room does not exist');
+            next(new e.NotFoundError('Room not found'));
         } else {
             var id = req.params.room;
             log.debug('Room ', id, ' deleted for service ', authData.service._id);
@@ -62,23 +49,16 @@ exports.deleteRoom = function (req, res) {
     });
 };
 
-exports.updateRoom = function (req, res) {
-    var authData = req.authData || {};
-
-    if (authData.service === undefined) {
-        log.info('Service not found');
-        res.status(401).send('Client unathorized');
-        return;
-    }
-    var currentService = authData.service;
+exports.updateRoom = function (req, res, next) {
+    var authData = req.authData;
     var updates = req.body;
-    dataAccess.room.get(currentService._id, req.params.room, function (err, room) {
+    dataAccess.room.get(authData.service._id, req.params.room, function (err, room) {
         if (!room) {
             log.info('Room ', req.params.room, ' does not exist');
-            res.status(404).send('Room does not exist');
+            next(new e.NotFoundError('Room not found'));
         } else {
             var updates = req.body;
-            dataAccess.room.update(currentService._id, req.params.room, updates, function(err, result) {
+            dataAccess.room.update(authData.service._id, req.params.room, updates, function(err, result) {
                 if (result) {
                     res.send(result);
 
@@ -104,9 +84,24 @@ exports.updateRoom = function (req, res) {
                         cloudHandler.notifySipPortal(changeType, result, function(){});
                     }
                 } else {
-                    res.status(400).send('Bad room configuration');
+                    next(new e.BadRequestError('Bad room configuration'));
                 }
             });
         }
     });
 };
+
+exports.validate = function (req, res, next) {
+    var authData = req.authData;
+    dataAccess.room.get(authData.service._id, req.params.room, function (err, room) {
+        if (err) {
+            return next(err);
+        }
+        if (!room) {
+            next(new e.NotFoundError('Room not found'));
+        } else {
+            req.authData.room = room;
+            next();
+        }
+    });
+}

@@ -3,6 +3,7 @@
 var dataAccess = require('../data_access');
 var logger = require('./../logger').logger;
 var cloudHandler = require('../cloudHandler');
+var e = require('../errors');
 
 // Logger
 var log = logger.getLogger('RoomsResource');
@@ -10,39 +11,23 @@ var log = logger.getLogger('RoomsResource');
 /*
  * Post Room. Creates a new room for a determined service.
  */
-exports.createRoom = function (req, res) {
-    var authData = req.authData || {};
+exports.createRoom = function (req, res, next) {
+    var authData = req.authData;
 
-    if (authData.service === undefined) {
-        log.info('Service not found');
-        res.status(404).send('Service not found');
-        return;
-    }
-    var currentService = authData.service;
-
-    if (currentService === undefined) {
-        res.status(404).send('Service not found');
-        return;
-    }
     if (typeof req.body !== 'object' || req.body === null || typeof req.body.name !== 'string' || req.body.name === '') {
-        log.info('Invalid room');
-        res.status(400).send('Invalid room');
-        return;
+        return next(new e.BadRequestError('Invalid request body'));
     }
 
     if (req.body.options && typeof req.body.options !== 'object') {
-        log.info('Invalid room option');
-        res.status(400).send('Invalid room option');
-        return;
+        return next(new e.BadRequestError('Invalid room option'));
     }
-
     req.body.options = req.body.options || {};
 
     var options = req.body.options;
     options.name = req.body.name;
-    dataAccess.room.create(currentService._id, options, function(err, result) {
+    dataAccess.room.create(authData.service._id, options, function(err, result) {
         if (!err && result) {
-            log.debug('Room created:', req.body.name, 'for service', currentService.name);
+            log.debug('Room created:', req.body.name, 'for service', authData.service.name);
             res.send(result);
 
             // Notify SIP portal if SIP room created
@@ -52,7 +37,7 @@ exports.createRoom = function (req, res) {
             }
         } else {
             log.info('Room creation failed', err ? err.message : options);
-            res.status(400).send();
+            next(err || new e.AppError('Create room failed'));
         }
     });
 };
@@ -60,31 +45,18 @@ exports.createRoom = function (req, res) {
 /*
  * Get Rooms. Represent a list of rooms for a determined service.
  */
-exports.represent = function (req, res) {
-    var authData = req.authData || {};
-
-    if (authData.service === undefined) {
-        log.info('Service not found');
-        res.status(404).send('Service not found');
-        return;
-    }
-    var currentService = authData.service;
-
-    if (currentService === undefined) {
-        res.status(404).send('Service not found');
-        return;
-    }
+exports.represent = function (req, res, next) {
+    var authData = req.authData;
 
     req.query.page = Number(req.query.page) || undefined;
     req.query.per_page = Number(req.query.per_page) || undefined;
 
-    dataAccess.room.list(currentService._id, req.query, function (err, rooms) {
+    dataAccess.room.list(authData.service._id, req.query, function (err, rooms) {
         if (rooms) {
-            log.debug('Representing rooms for service ', currentService._id);
+            log.debug('Representing rooms for service ', authData.service._id);
             res.send(rooms);
         } else {
-            log.info('Failed to representing rooms');
-            res.status(400).send();
+            next(err || new e.AppError('Get rooms failed'));
         }
     });
 };
