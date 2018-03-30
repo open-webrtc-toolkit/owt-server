@@ -304,6 +304,7 @@ void VideoFramePacketizer::onFrame(const Frame& frame)
     } else if (frame.format == FRAME_FORMAT_VP9) {
         h.codec = webrtc::kRtpVideoVp9;
         h.codecHeader.VP9.InitRTPVideoHeaderVP9();
+        h.codecHeader.VP9.inter_pic_predicted = !frame.additionalInfo.video.isKeyFrame;
         boost::shared_lock<boost::shared_mutex> lock(m_rtpRtcpMutex);
         m_rtpRtcp->SendOutgoingData(webrtc::kVideoFrameKey, VP9_90000_PT, frame.timeStamp, frame.timeStamp / 90, frame.payload, frame.length, nullptr, &h, &transport_frame_id_out);
     } else if (frame.format == FRAME_FORMAT_H264 || frame.format == FRAME_FORMAT_H265) {
