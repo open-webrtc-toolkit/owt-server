@@ -109,7 +109,7 @@ module.exports = function() {
             // FIXME: Correct work flow should not reach here, when a connection
             // is in use, it should not be created again. we should ensure the
             // right call sequence in upper layer.
-            return preparedSet[connId].getListeningPort();
+            return preparedSet[connId].connection.getListeningPort();
         }
         var conn = (direction === 'in')? InConnection(prot, minport, maxport) : OutConnection(prot, minport, maxport);
 
