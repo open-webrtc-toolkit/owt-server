@@ -286,6 +286,8 @@ function tableHandlerRoom(rooms) {
           p.find('.editable-unsaved').removeClass('editable-unsaved');
         }, 20);
         roomCache[roomId] = JSON.parse(resp);
+        p.find('td.inputLimit').editable('setValue', roomCache[roomId].inputLimit);
+        p.find('td.participantLimit').editable('setValue', roomCache[roomId].participantLimit);
         notify('info', 'Update Room Success', roomId);
       });
     } else {
