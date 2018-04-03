@@ -87,7 +87,7 @@ module.exports = function (spec) {
                     'getNode',
                     [for_whom],
                     function(erizo_id) {
-                        erizos[erizo_id] = {agent: result.id, room_id: for_whom};
+                        erizos[erizo_id] = {agent: result.id, room_id: for_whom.room};
                         log.info("Successully schedule sip node ", erizo_id, " for ", for_whom);
                         on_ok({id: erizo_id, addr: result.addr});
                     },
