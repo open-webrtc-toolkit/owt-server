@@ -319,7 +319,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                 || terminals[terminal_id].type === 'axcoder'
                 || terminals[terminal_id].type === 'vmixer'
                 || terminals[terminal_id].type === 'vxcoder') {
-                rpcReq.recycleWorkerNode(terminals[terminal_id].locality.agent, terminals[terminal_id].locality.node, {session: room_id, task: terminal_id})
+                rpcReq.recycleWorkerNode(terminals[terminal_id].locality.agent, terminals[terminal_id].locality.node, {room: room_id, task: terminal_id})
                 .catch(function(reason) {
                     // Catch the error to avoid the UnhandledPromiseRejectionWarning in node v6,
                     // The current code can reach here due to recycle an already recycled node.
@@ -1712,7 +1712,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                             })
                             .then(function () {
                                 log.debug('Resumed video mixer output ok.');
-                                forceKeyframe(stream_id);
+                                forceKeyFrame(stream_id);
                                 resolve('ok');
                             })
                             .catch(function (err) {
@@ -1800,7 +1800,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                             })
                             .then(function () {
                                 log.debug('Resumed video xcoder output ok.');
-                                forceKeyframe(stream_id);
+                                forceKeyFrame(stream_id);
                                 resolve('ok');
                             })
                             .catch(function (err) {
