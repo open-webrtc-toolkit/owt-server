@@ -201,7 +201,6 @@ MsdkInput::MsdkInput(MsdkVideoCompositor *owner, boost::shared_ptr<mfxFrameAlloc
     , m_swFramePoolWidth(0)
     , m_swFramePoolHeight(0)
 {
-    m_converter.reset(new FrameConverter());
 }
 
 MsdkInput::~MsdkInput()
@@ -305,9 +304,14 @@ bool MsdkInput::processCmd(const woogeen_base::Frame& frame)
                 boost::unique_lock<boost::shared_mutex> lock(m_mutex);
                 boost::shared_ptr<MsdkFrame> copyFrame;
                 if(m_active && m_busyFrame) {
-                    copyFrame = getMsdkFrame(m_busyFrame->getVideoWidth(), m_busyFrame->getVideoHeight());
-                    if (copyFrame && !m_converter->convert(m_busyFrame.get(), copyFrame.get())) {
-                        copyFrame.reset();
+                    if (!m_converter)
+                        m_converter.reset(new FrameConverter());
+
+                    if (m_converter) {
+                        copyFrame = getMsdkFrame(m_busyFrame->getVideoWidth(), m_busyFrame->getVideoHeight());
+                        if (copyFrame && !m_converter->convert(m_busyFrame.get(), copyFrame.get())) {
+                            copyFrame.reset();
+                        }
                     }
                 }
                 m_busyFrame = copyFrame;
@@ -336,9 +340,14 @@ boost::shared_ptr<MsdkFrame> MsdkInput::convert(const woogeen_base::Frame& frame
                 boost::unique_lock<boost::shared_mutex> lock(m_mutex);
                 boost::shared_ptr<MsdkFrame> copyFrame;
                 if(m_active && m_busyFrame) {
-                    copyFrame = getMsdkFrame(m_busyFrame->getVideoWidth(), m_busyFrame->getVideoHeight());
-                    if (copyFrame && !m_converter->convert(m_busyFrame.get(), copyFrame.get())) {
-                        copyFrame.reset();
+                    if (!m_converter)
+                        m_converter.reset(new FrameConverter());
+
+                    if (m_converter) {
+                        copyFrame = getMsdkFrame(m_busyFrame->getVideoWidth(), m_busyFrame->getVideoHeight());
+                        if (copyFrame && !m_converter->convert(m_busyFrame.get(), copyFrame.get())) {
+                            copyFrame.reset();
+                        }
                     }
                 }
                 m_busyFrame = copyFrame;
@@ -1006,16 +1015,24 @@ MsdkVideoCompositor::MsdkVideoCompositor(uint32_t maxInput, VideoSize rootSize, 
 
     createAllocator();
 
+    ELOG_TRACE("+++MsdkInput");
     m_inputs.resize(maxInput);
     for (auto& input : m_inputs) {
         input.reset(new MsdkInput(this, m_allocator));
     }
+    ELOG_TRACE("---MsdkInput");
 
+    ELOG_TRACE("+++MsdkAvatarManager");
     m_avatarManager.reset(new MsdkAvatarManager(maxInput, m_allocator));
+    ELOG_TRACE("---MsdkAvatarManager");
 
+    ELOG_TRACE("+++MsdkFrameGenerator");
     m_generators.resize(2);
     m_generators[0].reset(new MsdkFrameGenerator(this, rootSize, bgColor, crop, 60, 15));
     m_generators[1].reset(new MsdkFrameGenerator(this, rootSize, bgColor, crop, 48, 6));
+    ELOG_TRACE("---MsdkFrameGenerator");
+
+    ELOG_DEBUG("Constructed!");
 }
 
 MsdkVideoCompositor::~MsdkVideoCompositor()
