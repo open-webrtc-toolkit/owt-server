@@ -65,7 +65,7 @@ const getRoomController = (roomId) => {
   });
 };
 
-const idPattern = /^[0-9a-zA-Z\-]+$/;
+const idPattern = /^[0-9a-zA-Z\-_]+$/;
 const validateId = (type, id) => {
   if ((typeof id === 'string') && idPattern.test(id)) {
     return Promise.resolve(id);
