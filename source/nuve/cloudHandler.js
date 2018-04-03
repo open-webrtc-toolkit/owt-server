@@ -102,7 +102,11 @@ exports.getParticipantsInRoom = function (roomId, callback) {
       }});
     }).catch((err) => {
       log.info('getParticipantsInRoom failed, reason:', err.message ? err.message : err);
-      callback('error');
+      if (err === 'Room is inactive') {
+        callback([]);
+      } else {
+        callback('error');
+      }
     });
 };
 
@@ -161,7 +165,11 @@ exports.getStreamsInRoom = function (roomId, callback) {
       }});
     }).catch((err) => {
       log.info('getStreamsInRoom failed, reason:', err.message ? err.message : err);
-      callback('error');
+      if (err === 'Room is inactive') {
+        callback([]);
+      } else {
+        callback('error');
+      }
     });
 };
 
@@ -253,7 +261,11 @@ exports.getSubscriptionsInRoom = function (roomId, type, callback) {
       }});
     }).catch((err) => {
       log.info('getSubscriptionsInRoom failed, reason:', err.message ? err.message : err);
-      callback('error');
+      if (err === 'Room is inactive') {
+        callback([]);
+      } else {
+        callback('error');
+      }
     });
 };
 

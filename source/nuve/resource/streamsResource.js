@@ -42,8 +42,7 @@ exports.getList = function (req, res) {
         log.debug('Representing streams for room ', currentRoom._id, 'and service', currentService._id);
         cloudHandler.getStreamsInRoom (currentRoom._id + '', function (streams) {
             if (streams === 'error') {
-                //res.status(404).send('Operation failed');
-                res.send([]);
+                res.status(404).send('Operation failed');
                 return;
             }
             res.send(streams);
