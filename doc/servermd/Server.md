@@ -550,12 +550,47 @@ If you have not launched MCU severs, you should launch the nuve server before ac
 ## 3.3 Source Code {#Conferencesection3_3}
 The source code of the management console is in Release-<Version>/management_console/public/.
 ## 3.4 Service Management {#Conferencesection3_4}
-Only super service user can access service management, in the ‘overview' tab to create or delete services.
-> **Note**: Super service cannot be deleted.
+Only super service user can access service management, in the ‘overview' tab to create or delete services. The service is the instance that owns rooms and has the ability to manage them. 
+> **Note**: Super service cannot be deleted, it can be configured in nuve/nuve.toml.
+
 ## 3.5 Room Management {#Conferencesection3_5}
 Any service user can do room management inside the service, including creating, deleting or modifying rooms.
 
-To modify rooms, a user can edit room configuration for its own preference. For a single room's media mixing configuration, multiple views can be enabled and configured. The configuration set of a view includes: resolution, background color, layout, etc. For VAD, set view's "vad" in "audio" and "keepParticipantPrimary" in "video" to true to enable VAD in the room. Enabling multi-streaming can let a view of MCU generate two or more mixed streams with different resolutions to fulfill different requirements. For layout, a user can choose a base layout template and customize its own preferred ones, which would be combined as a whole for rendering mixed video.
+To modify rooms, a user can edit room configuration for its own preference. The the details of each configuration item for room are listed in the following table:
+
+ **Table 3-1. Room Configuration**
+Item|Description
+--------|------------------
+name | The name of the room (name is not equal to the ID, room's ID cannot be changed once created)
+inputLimit | The input limitation for the room, means how many publication can a room allow
+participantLimit | The max participant number of the room
+roles | The role definition list for the room, for the description of list element see the role.*
+role.role | The name for a certain role
+role.*(operation).*(mediaType) | The capability to publish/subscribe audio/video stream for a certain role
+views | The view list for the room, each view represents a combination of mix stream settings
+view.label | The label for a certain view, two view labels in one room cannot be duplicated
+view.audio.format | The default audio format of the view
+view.audio.vad | The 'activeInput' event will be emitted if this option is true
+view.video.format | The default video format of the view
+view.video.parameters.resolution | The default video resolution of the view
+view.video.parameters.framerate | The default video framerate of the view
+view.video.parameters.bitrate | The default video bitrate of the view, if it's not specified, the mix engine will generate a default one
+view.video.parameters.keyFrameInterval | The default video key frame interval of the view
+view.video.maxInput | This indicates the maximum number of video inputs for the video layout definition, input that exceed the value will not be shown in mix stream
+view.video.motionFactor | The video motion factor is used to calculate the default bitrate of the video stream
+view.video.bgColor | The RGB representation for background color of the mix video stream
+view.keepActiveInputPrimary | The active input will always be shown in the 'primary' region when this option is set to true with 'vad' also enabled
+view.layout | The layout of mix video stream
+view.layout.fitPolicy | The fit policy for input that does not perfectly match the width/height ratio
+view.layout.templates | The layout template for the mix video stream, a user can choose a base layout template and customize its own preferred ones, which would be combined as a whole for rendering mixed video
+view.layout.templates.base | The template base for video layout
+view.layout.templates.custom | The customized video layout uppon the base, see the [Section 3.5.1](#Conferencesection3_5_1)
+mediaIn | The audio/video format that the room can accept
+mediaOut | The audio/video format and parameters that the room can generate
+transcoding | The transcoding switch on audio, video format and parameters
+sip | The SIP setting for the room
+notifying | The notifying policy for the room
+
 
 > **Note**: If base layout is set to 'void', user must input customized layout for the room, otherwise the video layout would be treated as invalid. Read 3.5.1 for details of customized layout. maxInput indicates the maximum number of video frame inputs for the video layout definition.
 
