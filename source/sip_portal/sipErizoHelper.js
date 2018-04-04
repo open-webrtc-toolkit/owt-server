@@ -22,7 +22,7 @@ module.exports = function (spec) {
             if (ok !== true && erizos[erizo_id] !== undefined) {
                 log.info('ErizoJS[', erizo_id, '] check alive timeout!');
                 on_erizo_broken(erizo_id);
-                var room_id = erizos[erizo_id].room_id;
+                var for_whom = erizos[erizo_id].for_whom;
 
                 var afterRecycle = function() {
                     delete erizos[erizo_id];
@@ -32,7 +32,7 @@ module.exports = function (spec) {
                 makeRPC(rpcClient,
                         erizos[erizo_id].agent,
                         'recycleNode',
-                        [erizo_id, room_id],
+                        [erizo_id, for_whom],
                         afterRecycle,
                         afterRecycle);
             }
@@ -87,7 +87,7 @@ module.exports = function (spec) {
                     'getNode',
                     [for_whom],
                     function(erizo_id) {
-                        erizos[erizo_id] = {agent: result.id, room_id: for_whom.room};
+                        erizos[erizo_id] = {agent: result.id, for_whom: for_whom};
                         log.info("Successully schedule sip node ", erizo_id, " for ", for_whom);
                         on_ok({id: erizo_id, addr: result.addr});
                     },
@@ -102,11 +102,11 @@ module.exports = function (spec) {
             log.warn('Try to deallocate a non-existing sip node');
             return;
         }
-        var room_id = erizos[erizo_id].room_id;
+        var for_whom = erizos[erizo_id].for_whom;
         makeRPC(rpcClient,
                 erizos[erizo_id].agent,
                 'recycleNode',
-                [erizo_id, {room: room_id, task: room_id}],
+                [erizo_id, for_whom],
                 function() {
                     delete erizos[erizo_id];
                 }, function() {
