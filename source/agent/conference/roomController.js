@@ -1304,6 +1304,11 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                         }
 
                         on_ok('ok');
+
+                        //FIXME: It is better to notify subscription connection to request key-frame.
+                        if (subInfo.video && (subInfo.video.from !== videoStream)) {
+                            forceKeyFrame(videoStream);
+                        }
                     } else {
                         audioStream && recycleTemporaryAudio(audioStream);
                         videoStream && recycleTemporaryVideo(videoStream);
