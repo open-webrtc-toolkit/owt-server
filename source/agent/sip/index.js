@@ -505,6 +505,29 @@ module.exports = function (rpcC, spec) {
 
     that.init = function(options, callback) {
         log.debug('init SipGateway:', options.sip_server, options.sip_user);
+
+        if (typeof options.room_id !== 'string' || options.room_id === '') {
+            log.error('Invalid room id');
+            return callback('callback', 'error', 'Invalid room id');
+        }
+
+        if (typeof options.sip_server !== 'string' || options.sip_server === '') {
+            log.error('Invalid sip server url');
+            return callback('callback', 'error', 'Invalid sip server url');
+        }
+
+        if (typeof options.sip_user !== 'string' || options.sip_user === '') {
+            log.error('Invalid sip user id');
+            return callback('callback', 'error', 'Invalid sip user id');
+        }
+
+        if (options.sip_passwd && typeof options.sip_passwd !== 'string') {
+            log.error('Invalid sip password');
+            return callback('callback', 'error', 'Invalid sip password');
+        }
+
+        options.sip_passwd = (options.sip_passwd ? options.sip_passwd : '');
+
         if (gateway) {
             log.info('SipGateway already exists, ignore init request.');
             callback('callback', 'ok');
