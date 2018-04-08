@@ -7,9 +7,9 @@ ____
 
 |date | contributor | revision |
 | :-------: | :------------: | :------------: |
-|12-06-2017 |Xiande|draft|
-|28-06-2017 |Xiande|1.0 reviewed|
-|22-08-2017 |Xiande|1.0 final|
+|12-06-2017 ||draft|
+|28-06-2017 ||1.0 reviewed|
+|08-04-2018 ||1.0 final|
 
 ## 1. Overview
 This documentation covers all signaling messages between Client and Portal component, including signaling messages transported through Socket.io connections and RESTful interfaces. All the signaling interaction at the Client side should be encapsulated in the Client SDK, and Client SDK should provide an API suite for client side application integration.
@@ -397,19 +397,12 @@ object(StreamUpdateMessage)::
 object(StreamControlInfo)::
   {
    id: string(StreamId),     //Must refer to a forward stream.
-   operation: "mix" | "unmix" | "set-region" | "get-region" | "pause" | "play",
-   data: string(ViewLabel)/*If operation equals "mix", "unmix" or "get-region*/
-        | object(RegionSetting)/*If operation equals "set-region"*/
-        | ("audio" | "video" | "av")/*If operation equals "pause" or "play"*/
+   operation: "pause" | "play",
+   data: ("audio" | "video" | "av")/*If operation equals "pause" or "play"*/
   }
 
-  object(RegionSetting)::
-    {
-     view: string(ViewLabel),
-     region: string(RegionId)
-    }
 ```
-**ResponseData**: undefined in case operation is not “get-region”, and object RegionInfo defined below in case operation is “get-region” if **ResponseStatus** is “ok”.
+**ResponseData**: **ResponseStatus** is “ok”.
 ```
 object(RegionInfo)::
   {
@@ -547,18 +540,4 @@ object(SessionProgress)::
      file: string(FullPathNameOfRecordedFile)
     }
 ```
-
-## 4. RESTful Signaling
-### 4.1 Connection Maintenance
-#### 4.1.1 Client Connects
-No dedicate signaling message being sent from client is needed. The very first request from a new client must be a client joining request, which is considered as the connecting request as well.
-Portal should be able to listen at both an HTTP and an HTTPS server port to receive RESTful request from clients. If the HTTPS server is enabled, the proper SSL certificate and private key store path must be correctly configured by portal.keystorePath item in portal.toml.
-#### 4.1.2 Client Keeps Alive
-The participant’s querying request (3.3) will be considered as the keep alive heart-beat from client.
-If three querying request loss are consecutively detected by Portal, Portal will judge that the connection has lost.
-#### 4.1.3 Client Disconnects
-#### 4.1.4 Client Reconnects
-### 4.2 Conferencing
-#### 4.2.1 Participant Joins
-#### 4.2.2 Participant leaves
 
