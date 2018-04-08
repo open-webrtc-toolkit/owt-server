@@ -1830,7 +1830,11 @@ var Conference = function (rpcClient, selfRpcId) {
 
     return Promise.all(
       authorities.map((auth) => {
-        return participants[participantId].update(auth.op, auth.path, auth.value);
+        if (participants[participantId]) {
+          return participants[participantId].update(auth.op, auth.path, auth.value);
+        } else {
+          return Promise.reject('Participant left');
+        }
       })
     ).then(() => {
       callback('callback', participants[participantId].getDetail());
@@ -1957,13 +1961,13 @@ var Conference = function (rpcClient, selfRpcId) {
             break;
           case 'replace':
             if ((cmd.path === '/media/audio/status') && (cmd.value === 'inactive' || cmd.value === 'active')) {
-              if (streams[streamId].media.audio.status !== cmd.value) {
+              if (streams[streamId].media.audio && streams[streamId].media.audio.status !== cmd.value) {
                 exe = setStreamMute(streamId, 'audio', (cmd.value === 'inactive'));
               } else {
                 exe = Promise.resolve('ok');
               }
             } else if ((cmd.path === '/media/video/status') && (cmd.value === 'inactive' || cmd.value === 'active')) {
-              if (streams[streamId].media.video.status !== cmd.value) {
+              if (streams[streamId].media.video &&  streams[streamId].media.video.status !== cmd.value) {
                 exe = setStreamMute(streamId, 'video', (cmd.value === 'inactive'));
               } else {
                 exe = Promise.resolve('ok');
