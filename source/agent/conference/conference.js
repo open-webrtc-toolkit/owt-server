@@ -1401,7 +1401,11 @@ var Conference = function (rpcClient, selfRpcId) {
 
       if (subDesc.type === 'streaming') {
         if (subDesc.media.audio && !subDesc.media.audio.format) {
-          subDesc.media.audio.format = {codec: 'aac', sampleRate: 48000, channelNum: 2};
+          var aacFmt = room_config.mediaOut.audio.find((a) => a.codec === 'aac');
+          if (!aacFmt) {
+            return Promise.reject('Audio codec aac not enabled');
+          }
+          subDesc.media.audio.format = aacFmt;
         }
 
         //FIXME: To support codecs other than those in the following list.
@@ -2102,7 +2106,11 @@ var Conference = function (rpcClient, selfRpcId) {
 
         if (subDesc.type === 'streaming') {
           if (subDesc.media.audio && !subDesc.media.audio.format) {
-            subDesc.media.audio.format = {codec: 'aac', sampleRate: 48000, channelNum: 2};
+            var aacFmt = room_config.mediaOut.audio.find((a) => a.codec === 'aac');
+            if (!aacFmt) {
+              return Promise.reject('Audio codec aac not enabled');
+            }
+            subDesc.media.audio.format = aacFmt;
           }
 
           //FIXME: To support codecs other than those in the following list.
