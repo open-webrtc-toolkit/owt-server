@@ -35,10 +35,10 @@ class NotFoundError extends AppError {
     if (!code) {
       code = 1001;
       if (typeof message === 'string') {
-        if (message.toLowerCase().indexOf('service')) code = 1002;
-        if (message.toLowerCase().indexOf('room')) code = 1003;
-        if (message.toLowerCase().indexOf('stream')) code = 1004;
-        if (message.toLowerCase().indexOf('participant')) code = 1005;
+        if (message.toLowerCase().indexOf('service') >= 0) code = 1002;
+        if (message.toLowerCase().indexOf('room') >= 0) code = 1003;
+        if (message.toLowerCase().indexOf('stream') >= 0) code = 1004;
+        if (message.toLowerCase().indexOf('participant') >= 0) code = 1005;
       }
     }
     super(message || 'Resource not found', 404, code);
