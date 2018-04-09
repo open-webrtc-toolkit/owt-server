@@ -93,6 +93,7 @@ module.exports = function (spec, on_status) {
                 (fmt.codec !== 'pcmu' && fmt.codec !== 'pcma') && fmtname[1] && (fmt.sampleRate = Number(fmtname[1]));
                 (fmt.codec !== 'pcmu' && fmt.codec !== 'pcma') && fmtname[2] && (fmt.channelNum = Number(fmtname[2]));
                 (fmt.codec === 'g722') && (fmt.sampleRate = 16000) && (fmt.channelNum = fmt.channelNum || 1);
+                (fmt.codec === 'ilbc') && (delete fmt.sampleRate);
 
                 fmts.push({code: fmtcodes[i], fmt: fmt});
 
