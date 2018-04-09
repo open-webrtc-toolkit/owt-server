@@ -9,12 +9,26 @@ var DEFAULT_AUDIO = [
   { codec: 'isac', sampleRate: 16000 },
   { codec: 'isac', sampleRate: 32000 },
   { codec: 'g722', sampleRate: 16000, channelNum: 1 },
-  { codec: 'g722', sampleRate: 16000, channelNum: 2 },
+  // { codec: 'g722', sampleRate: 16000, channelNum: 2 },
   { codec: 'pcma' },
   { codec: 'pcmu' },
   { codec: 'aac' },
   { codec: 'ac3' },
   { codec: 'nellymoser' },
+  { codec: 'ilbc' },
+];
+var DEFAULT_AUDIO_OUT = [
+  { codec: 'opus', sampleRate: 48000, channelNum: 2 },
+  { codec: 'isac', sampleRate: 16000 },
+  { codec: 'isac', sampleRate: 32000 },
+  { codec: 'g722', sampleRate: 16000, channelNum: 1 },
+  // { codec: 'g722', sampleRate: 16000, channelNum: 2 },
+  { codec: 'pcma' },
+  { codec: 'pcmu' },
+  { codec: 'aac', sampleRate: 48000, channelNum: 2 },
+  { codec: 'ac3' },
+  { codec: 'nellymoser' },
+  { codec: 'ilbc' },
 ];
 var DEFAULT_VIDEO = [
   { codec: 'h264' },
@@ -62,7 +76,7 @@ var DEFAULT_ROLES = [
 exports.create = function (serviceId, roomOption, callback) {
   if (!roomOption.mediaOut) {
     roomOption.mediaOut = {
-      audio: DEFAULT_AUDIO,
+      audio: DEFAULT_AUDIO_OUT,
       video: {
         format: DEFAULT_VIDEO,
         parameters: DEFAULT_VIDEO_PARA
