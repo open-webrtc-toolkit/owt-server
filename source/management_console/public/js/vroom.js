@@ -1,5 +1,5 @@
 var audioNames = [
-  'pcmu', 'opus_48000_2', 'pcma', 'ilbc', 'isac_16000', 'isac_32000', 'g722_16000_1', 'g722_16000_2', 'aac', 'aac_48000_2', 'ac3', 'nellymoser'
+  'pcmu', 'opus_48000_2', 'pcma', 'ilbc', 'isac_16000', 'isac_32000', 'g722_16000_1', 'aac', 'aac_48000_2', 'ac3', 'nellymoser'
 ];
 
 var audioFormat = {
