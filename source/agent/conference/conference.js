@@ -1053,7 +1053,10 @@ var Conference = function (rpcClient, selfRpcId) {
     // Remove SIP streams
     if (sipPublications[participantId]) {
       for (let i = 0; i < sipPublications[participantId].length; i++) {
-        removeStream(participantId, sipPublications[participantId][i]);
+        removeStream(participantId, sipPublications[participantId][i])
+          .then(() => {
+            current_input_count -= 1;
+          });
       }
       delete sipPublications[participantId];
     }
