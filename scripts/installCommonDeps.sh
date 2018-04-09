@@ -205,6 +205,9 @@ install_licode(){
   git reset --hard $COMMIT
   # APPLY PATCH
   git am $PATHNAME/patches/licode/*.patch
+  # Cherry-pick upstream fix - Use OpenSSL API for DTLS retransmissions (#1145)
+  # from https://github.com/lynckia/licode/commit/71b38f9bf1d582d5afb1dca8f390c281dbe8ae43
+  git cherry-pick "71b38f9bf1d582d5afb1dca8f390c281dbe8ae43"
 
   popd >/dev/null
   popd >/dev/null
