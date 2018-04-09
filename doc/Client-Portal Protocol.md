@@ -78,7 +78,7 @@ ____
 
 	RequestName: "refreshReconnectionTicket"
 	RequestData: absent
-	ResponseData: A refreshed ReconnectionTicket object if ResponseStatus is "ok".
+	ResponseData: A refreshed base64-encoded ReconnectionTicket object if ResponseStatus is "ok".
 #### 3.2.3 Client Disconnects
 　　The connected socket.io object at server side will be notified with a ‘disconnect’ event. The waiting for reconnecting timer **(Timer100)** will be started at receiving the ‘disconnect’ event if the following conditions are fulfilled:
 
@@ -92,7 +92,7 @@ This a format for client reconnects.
 	RequestName:  "relogin"
 	RequestData: The ReconnectionTicket object with following definition:
 
-		ResponseData: A refreshed ReconnectionTicket object if ResponseStatus is "ok".
+		ResponseData: A refreshed base64-encoded ReconnectionTicket object if ResponseStatus is "ok".
 ### 3.3 Conferencing
 #### 3.3.1 Participant Joins a Room
 　　**RequestName**:  “login”<br>
@@ -139,7 +139,7 @@ This a format for client reconnects.
 	   permission: object(Permission),
 	   room: object(RoomInfo),
 	   reconnectionTicket: undefined/*when reconnection is not promised*/
-	                  | object(ReconnectionTicket)/*when reconnection is promised*/
+	                  | string(Base64Encoded(object(ReconnectionTicket)))/*when reconnection is promised*/
 	  }
 
 	  object(Permission)::
@@ -298,9 +298,11 @@ This a format for client reconnects.
 
 	  object(ReconnectionTicket)::
 	    {
-	     credential: string(Credential),
-	     notBefore: number(ValidTimeBegin),
-	     notAfter: number(ValidTimeEnd)
+       participantId: string(Participantid),
+       ticketId: string(RamdonNumber),
+       notBefore: number(ValidTimeBegin),
+       notAfter: number(ValidTimeEnd),
+       signature: string(Signature)
 	    }
 #### 3.3.2 Participant Leaves a Room
 **RequestName**:  “logout”<br>

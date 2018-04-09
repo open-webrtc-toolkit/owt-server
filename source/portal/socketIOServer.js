@@ -179,7 +179,7 @@ var Connection = function(spec, socket, reconnectionKey, portal, dock) {
         });
     });
 
-    socket.on('relogin', function(reconnection_ticket, callback) {
+    socket.on('relogin', function(reconnectionTicket, callback) {
       state = 'initialized';
       if (state !== 'initialized') {
         return safeCall(callback, 'error', 'Connection is in service');
@@ -189,7 +189,7 @@ var Connection = function(spec, socket, reconnectionKey, portal, dock) {
       var client;
       var reconnection_ticket;
       new Promise((resolve) => {
-        resolve(JSON.parse((new Buffer(reconnection_ticket, 'base64')).toString()));
+        resolve(JSON.parse((new Buffer(reconnectionTicket, 'base64')).toString()));
       }).then((ticket) => {
         var now = Date.now();
         if (ticket.notBefore > now || ticket.notAfter < now) {
