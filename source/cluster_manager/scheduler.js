@@ -216,7 +216,7 @@ exports.Scheduler = function(spec) {
     that.serve = function () {
         for (var task in tasks) {
             var worker = tasks[task].worker;
-            if (workers[worker].tasks.indexOf(task) === -1) {
+            if (workers[worker] && (workers[worker].tasks.indexOf(task) === -1)) {
                 reserveWorkerForTask(task, worker, tasks[task].reserve_time);
             }
         }
