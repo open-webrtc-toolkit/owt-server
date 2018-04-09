@@ -1,11 +1,21 @@
-var audioNames = [
-  'pcmu', 'opus_48000_2', 'pcma', 'ilbc', 'isac_16000', 'isac_32000', 'g722_16000_1', 'aac', 'aac_48000_2', 'ac3', 'nellymoser'
+var audioNamesIn = [
+  'pcmu', 'opus_48000_2', 'pcma', 'ilbc', 'isac_16000', 'isac_32000', 'g722_16000_1', 'aac', 'ac3', 'nellymoser', //'g722_16000_2'
 ];
 
-var audioFormat = {
+var audioNamesOut = [
+  'pcmu', 'opus_48000_2', 'pcma', 'ilbc', 'isac_16000', 'isac_32000', 'g722_16000_1', 'aac_48000_2', 'ac3', 'nellymoser', //'g722_16000_2'
+];
+
+var audioFormatIn = {
   type: 'string',
-  enum: audioNames
+  enum: audioNamesIn
 };
+
+var audioFormatOut = {
+  type: 'string',
+  enum: audioNamesOut
+};
+
 
 var videoNames = [
   'h264', 'h265', 'vp8', 'vp9'
@@ -74,7 +84,7 @@ var viewItem = {
     audio: {
       type: 'object',
       properties: {
-        format: audioFormat,
+        format: audioFormatOut,
         vad: { type: 'boolean', default: true }
       }
     },
@@ -151,7 +161,7 @@ var RoomSchema = {
       properties: {
         audio: {
           type: 'array',
-          items: audioFormat
+          items: audioFormatIn
         },
         video: {
           type: 'array',
@@ -164,7 +174,7 @@ var RoomSchema = {
       properties: {
         audio: {
           type: 'array',
-          items: audioFormat
+          items: audioFormatOut
         },
         video: {
           type: 'object',

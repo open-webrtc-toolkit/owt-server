@@ -169,11 +169,11 @@ function translateOldRoom(oldConfig) {
           codec: 'g722',
           sampleRate: 16000,
           channelNum: 1
-        }, {
+        }, /*{
           codec: 'g722',
           sampleRate: 16000,
           channelNum: 2
-        }, {
+        },*/ {
           codec: 'aac'
         }, {
           codec: 'ac3'
@@ -213,11 +213,11 @@ function translateOldRoom(oldConfig) {
           codec: 'g722',
           sampleRate: 16000,
           channelNum: 1
-        }, {
+        }, /*{
           codec: 'g722',
           sampleRate: 16000,
           channelNum: 2
-        }, {
+        },*/ {
           codec: 'aac',
           sampleRate: 48000,
           channelNum: 2

@@ -748,6 +748,7 @@ function tableHandlerRoom(rooms) {
     }
   };
   var audioFormat2Name = function(v) {
+    if (v === null) return 'opus';
     if (typeof v === 'object') {
       var str = v.codec;
       if (v.sampleRate) str += '_' + v.sampleRate;
@@ -763,6 +764,7 @@ function tableHandlerRoom(rooms) {
     return v;
   };
   var videoFormat2Name = function (v) {
+    if (v === null) return 'h264';
     if (typeof v === 'object') return v.codec;
     return v;
   }
@@ -775,12 +777,12 @@ function tableHandlerRoom(rooms) {
       });
     }
     if (room.mediaIn) {
-      room.mediaIn.audio = room.mediaIn.audio.map(audioFormat2Name);
-      room.mediaIn.video = room.mediaIn.video.map(videoFormat2Name);
+      room.mediaIn.audio = room.mediaIn.audio.filter((v) => v).map(audioFormat2Name);
+      room.mediaIn.video = room.mediaIn.video.filter((v) => v).map(videoFormat2Name);
     }
     if (room.mediaOut) {
-      room.mediaOut.audio = room.mediaOut.audio.map(audioFormat2Name);
-      room.mediaOut.video.format = room.mediaOut.video.format.map(videoFormat2Name);
+      room.mediaOut.audio = room.mediaOut.audio.filter((v) => v).map(audioFormat2Name);
+      room.mediaOut.video.format = room.mediaOut.video.format.filter((v) => v).map(videoFormat2Name);
     }
     return room;
   };
@@ -794,18 +796,18 @@ function tableHandlerRoom(rooms) {
     }
     if (room.mediaIn) {
       if (room.mediaIn.audio) {
-        room.mediaIn.audio = room.mediaIn.audio.map(audioName2Format);
+        room.mediaIn.audio = room.mediaIn.audio.filter((v) => v).map(audioName2Format);
       }
       if (room.mediaIn.video) {
-        room.mediaIn.video = room.mediaIn.video.map(videoName2Format);
+        room.mediaIn.video = room.mediaIn.video.filter((v) => v).map(videoName2Format);
       }
     }
     if (room.mediaOut) {
       if (room.mediaOut.audio) {
-        room.mediaOut.audio = room.mediaOut.audio.map(audioName2Format);
+        room.mediaOut.audio = room.mediaOut.audio.filter((v) => v).map(audioName2Format);
       }
       if (room.mediaOut.video && room.mediaOut.video.format) {
-        room.mediaOut.video.format = room.mediaOut.video.format.map(videoName2Format);
+        room.mediaOut.video.format = room.mediaOut.video.format.filter((v) => v).map(videoName2Format);
       }
     }
     return room;
@@ -830,7 +832,7 @@ function tableHandlerRoom(rooms) {
     bf.render(container, room);
     untranslateRoomFormat(room);
 
-    $('#AllModal .modal-footer button:first').click(function() {
+    $('#AllModal .modal-footer button:first').unbind('click').click(function() {
       if (bf.validate()) {
         p.addClass('editable-unsaved');
         p.editable('setValue', untranslateRoomFormat(bf.getData()));
