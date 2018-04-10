@@ -870,16 +870,12 @@ var Conference = function (rpcClient, selfRpcId) {
 
       if (streams[media.video.from].type === 'mixed') {
         if (media.video.parameters) {
-          if (!media.video.parameters.resolution && !media.video.parameters.framerate) {
-            if (media.video.parameters.bitrate) {
+          if (media.video.parameters.bitrate) {
+            if (source.parameters.bitrate && typeof media.video.parameters.bitrate === 'string') {
               media.video.parameters.bitrate = source.parameters.bitrate * Number(media.video.parameters.bitrate.substring(1));
-            } else {
-              media.video.parameters.bitrate = source.parameters.bitrate;
             }
-          } else {
-            media.video.parameters.bitrate = (media.video.parameters.bitrate || 'unspecified');//Should use 'unspecified' rather than source.parameters.bitrate
           }
-
+          media.video.parameters.bitrate = (media.video.parameters.bitrate || 'unspecified');
           media.video.parameters.resolution = (media.video.parameters.resolution || source.parameters.resolution);
           media.video.parameters.framerate = (media.video.parameters.framerate || source.parameters.framerate);
           media.video.parameters.keyFrameInterval = (media.video.parameters.keyFrameInterval || source.parameters.keyFrameInterval);
