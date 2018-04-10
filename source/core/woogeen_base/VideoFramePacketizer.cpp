@@ -170,11 +170,11 @@ void VideoFramePacketizer::OnNetworkChanged(const uint32_t target_bitrate, const
 }
 
 
-static int getNextNaluPosition(uint8_t *buffer, int buffer_size, bool &is_aud) {
+static int getNextNaluPosition(uint8_t *buffer, int buffer_size, bool &is_aud_or_sei) {
     if (buffer_size < 4) {
         return -1;
     }
-    is_aud = false;
+    is_aud_or_sei = false;
     uint8_t *head = buffer;
     uint8_t *end = buffer + buffer_size - 4;
     while (head < end) {
@@ -194,30 +194,31 @@ static int getNextNaluPosition(uint8_t *buffer, int buffer_size, bool &is_aud) {
             head++;
             continue;
         }
-        if ((head[4] & 0x1F) == 9) {
-            is_aud = true;
+        if (((head[4] & 0x1F) == 9) || ((head[4] & 0x1F) == 6)) {
+            is_aud_or_sei = true;
         }
+
         return static_cast<int>(head - buffer);
     }
     return -1;
 }
 
 #define MAX_NALS_PER_FRAME 128
-static int dropAUD(uint8_t* framePayload, int frameLength) {
+static int dropAUDandSEI(uint8_t* framePayload, int frameLength) {
     uint8_t *origin_pkt_data = framePayload;
     int origin_pkt_length = frameLength;
     uint8_t *head = origin_pkt_data;
 
     std::vector<int> nal_offset;
-    std::vector<bool> nal_type_is_aud;
+    std::vector<bool> nal_type_is_aud_or_sei;
     std::vector<int> nal_size;
-    bool is_aud = false, has_aud = false;
+    bool is_aud_or_sei = false, has_aud_or_sei = false;
 
     int sc_positions_length = 0;
     int sc_position = 0;
     while (sc_positions_length < MAX_NALS_PER_FRAME) {
          int nalu_position = getNextNaluPosition(origin_pkt_data + sc_position,
-              origin_pkt_length - sc_position, is_aud);
+              origin_pkt_length - sc_position, is_aud_or_sei);
          if (nalu_position < 0) {
              break;
          }
@@ -225,14 +226,14 @@ static int dropAUD(uint8_t* framePayload, int frameLength) {
          nal_offset.push_back(sc_position); //include start code.
          sc_position += 4;
          sc_positions_length++;
-         if (is_aud) {
-             has_aud = true;
-             nal_type_is_aud.push_back(true);
+         if (is_aud_or_sei) {
+             has_aud_or_sei = true;
+             nal_type_is_aud_or_sei.push_back(true);
          } else {
-             nal_type_is_aud.push_back(false);
+             nal_type_is_aud_or_sei.push_back(false);
          }
     }
-    if (sc_positions_length == 0 || !has_aud)
+    if (sc_positions_length == 0 || !has_aud_or_sei)
         return frameLength;
     // Calculate size of each NALs
     for (unsigned int count = 0; count < nal_offset.size(); count++) {
@@ -245,7 +246,7 @@ static int dropAUD(uint8_t* framePayload, int frameLength) {
     // remove in place the AUD NALs
     int new_size = 0;
     for (unsigned int i = 0; i < nal_offset.size(); i++) {
-       if (!nal_type_is_aud[i]) {
+       if (!nal_type_is_aud_or_sei[i]) {
            memmove(head + new_size, head + nal_offset[i], nal_size[i]);
            new_size += nal_size[i];
        }
@@ -312,11 +313,12 @@ void VideoFramePacketizer::onFrame(const Frame& frame)
         if (m_enableDump) {
             dump(this, frame.format, frame.payload, frame_length);
         }
+
         //FIXME: temporarily filter out AUD because chrome M59 could NOT handle it correctly.
+        //FIXME: temporarily filter out SEI because safari could NOT handle it correctly.
         if (frame.format == FRAME_FORMAT_H264) {
-            frame_length = dropAUD(frame.payload, frame_length);
+            frame_length = dropAUDandSEI(frame.payload, frame_length);
         }
-        //dump(this+4, frame.format, frame.payload, frame_length);
 
         int nalu_found_length = 0;
         uint8_t* buffer_start = frame.payload;
