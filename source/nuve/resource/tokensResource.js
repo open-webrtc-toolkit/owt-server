@@ -50,6 +50,11 @@ var generateToken = function (currentRoom, authData, origin, callback) {
         return;
     }
 
+    if (!authData.room.roles.find((r) => (r.role === role))) {
+        callback(undefined);
+        return;
+    }
+
     token = {};
     token.user = user;
     token.room = currentRoom;
