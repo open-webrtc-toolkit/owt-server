@@ -790,8 +790,8 @@ function tableHandlerRoom(rooms) {
   var untranslateRoomFormat = function (room) {
     if (room.views) {
       room.views.forEach(function(view) {
-        view.audio.format = audioName2Format(view.audio.format);
-        view.video.format = videoName2Format(view.video.format);
+        if (view.audio) view.audio.format = audioName2Format(view.audio.format);
+        if (view.video) view.video.format = videoName2Format(view.video.format);
       });
     }
     if (room.mediaIn) {
@@ -953,6 +953,8 @@ function tableHandlerRoom(rooms) {
     var room = {
       name: roomName,
       options: {
+        inputLimit: inputLimit,
+        participantLimit: participantLimit
       }
     };
     p.find('.editable-unsaved').editable('setValue', null).removeClass('editable-unsaved'); // reset line

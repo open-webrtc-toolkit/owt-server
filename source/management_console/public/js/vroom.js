@@ -111,7 +111,7 @@ var viewItem = {
             templates: {
               type: 'object',
               properties: {
-                base: { type: 'string', enum: ['fluid', 'lecture', 'custom'], default: 'fluid' },
+                base: { type: 'string', enum: ['fluid', 'lecture', 'void'], default: 'fluid' },
                 custom: {
                   type: 'array',
                   items: customItem
