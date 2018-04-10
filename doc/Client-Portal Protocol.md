@@ -1,10 +1,4 @@
-# <div align = "center">Client-Portal Communication Protocol Specification</div>
-
-**<div align = "center">Version: 1.0</div>**
-
-**<div align = "center">April 16 2018</div>**
-____
-
+# Client-Portal Communication Protocol Specification
 <!--
 |date | contributor | revision |
 | :-------: | :------------: | :------------: |
@@ -12,26 +6,26 @@ ____
 |28-06-2017 |Xiande|1.0 reviewed|
 |08-04-2018 |Tianfang|1.0 final|
 -->
-## 1. Overview
-　　This documentation covers all signaling messages between Client and Portal component, including signaling messages transported through Socket.io connections and RESTful interfaces. All the signaling interaction at the Client side should be encapsulated in the Client SDK, and Client SDK should provide an API suite for client side application integration.
-## 2. Definitions
-　　Here is a table describing the detailed item and definition.
+# 1. Overview {#CPCPSsection1}
+　　This documentation covers all signaling messages between Client and MCU component through Socket.io connections.
+# 2. Terminology {#CPCPSsection2}
+　　Here is a table describing the detailed name and definition.
 
-| item | definition |
+| Name | Definition |
 |:----:|:-----------|
-| Portal | The MCU component listening at the HTTP server or Socket.io server port, accepting Signaling connections initiated by Clients, receive/send signaling messages from/to Clients. |
-| Client | The program running on end-user’s device being built on Client SDK which interacts with MCU Server by messages defined in this documentation. Client can be browsers including Chrome, Firefox and Edge, Android, iOS and Windows Apps. |
+| Portal | The MCU component listening at the Socket.io server port, accepting signaling connections initiated by Clients, receive/send signaling messages from/to Clients. |
+| Client | The program running on end-user’s device which interacts with MCU Server by messages defined in this documentation.|
 | Signaling Connection | The signaling channel between Client and Portal established by Client to send, receive and fetch signaling messages. |
-| Room | The logical entity of a conference in which all conference members (participants) exchange their video/audio streams, and mixed streams are generated. Every room must be assigned with a unique identification **(RoomID)** in the MCU scope. |
+| Room | The logical entity of a conference in which all conference members (participants) exchange their video/audio streams, and where mixed streams are generated. Every room must be assigned with a unique identification **(RoomID)** in the MCU scope. |
 | User | The service account defined in the third-party integration application. The user ID and user role must be specified when asking for a token. |
 | Participant | The logical entity of a user when participating in a conference with a valid token. Every participant must be assigned with a unique identification **(ParticipantID)** in the room scope, and must be assigned a set of operation permissions according to its role. |
-| Token | The only credential when a particular participant requests to join a particular room. It must contain a unique identification, the hostname of the target portal which can be used to connect, and the checksum to verify its validity. |
-| Stream | The object represents an audio and/or video media source which can be consumed (say, be subscribed, recorded, pushed to a live stream server) within a room. A stream can be either a participant published one which is called a **Forward Stream**, or a room generated one which is called a **Mixed Stream**. A stream object must be assigned with a unique identification **(StreamID)** in the room scope, Participants can select a particular stream to subscribe according to StreamID. A stream must also contain the audio information of the codec/sample rate/channel number, and video information of codec (for Forward Stream) and codec/resolution/frame rate/key frame interval/quality level (for Mixed Stream). Participants can determine whether the stream fulfill their expectation based on such information. |
-| Subscription | The activity a participant consuming a stream, such as subscribing a stream via a WebRTC PeerConnection, recording a stream to a MCU storage, pushing a stream to a live stream server. A unique identification **(SubscriptionID)** in the room scope must be assigned to the subscription once its request is accepted by MCU. Participants will use the identification to update/cancel/stop a specific subscription. |
+| Token | The credential when a particular participant requests to join a particular room. It must contain a unique identification, the hostname of the target portal which can be used to connect, and the checksum to verify its validity. |
+| Stream | The object represents an audio and/or video media source which can be consumed (say, be subscribed, recorded, pushed to a live stream server) within a room. A stream can be either a participant published one which is called a **Forward Stream**, or a room generated one which is called a **Mixed Stream**. A stream object must be assigned with a unique identification **(StreamID)** in the room scope, Participants can select a particular stream to subscribe according to StreamID. A stream must also contain the audio information of the codec, sample rate, channel number, and video information about codec for Forward Stream or about codec, resolution, frame rate, key frame interval, quality level for Mixed Stream. Participants can determine whether the stream fulfill their expectation based on such information. |
+| Subscription | The activity a participant consuming a stream, such as receiving a stream via a WebRTC PeerConnection, recording a stream to a MCU storage, pushing a stream to a live stream server. A unique identification **(SubscriptionID)** in the room scope must be assigned to the subscription once its request is accepted by MCU. Participants will use the identification to update/cancel/stop a specific subscription. |
 | Session | The entity in which a real-time audio/video communication takes place. Typically, participants establish WebRTC sessions between a WebRTC client and MCU (accurately, the webrtc-agent) to publish or subscribe streams. Since a stream ID will be assigned when publishing a stream into a room and a subscription ID will be assigned when subscribing a stream (or a pair of stream if audio and video come from different source), the stream ID and subscription ID in these two cases are re-used to identify the corresponding session, and MCU must guarantee that the stream IDs and subscription IDs will not conflict within a room. |
-## 3. Socket.io Signaling
-### 3.1 Format
-#### 3.1.1 Client -> Portal
+# 3. Socket.io Signaling {#CPCPSsection3}
+## 3.1 Format {#CPCPSsection3_1}
+### 3.1.1 Client -> Portal {#CPCPSsection3_1_1}
 　　Given that Client has connected Portal successfully and the socket object is ready to send/receive data to/from Portal, Client must send all signaling message to Portal by calling the client socket object’s ***emit*** method in the following format (javascript code for example, same for rest of this documentation):
 
 	clientSocket.emit(
@@ -45,16 +39,16 @@ ____
 **Note**:
 
 - **RequestName** must be with type of string, and with value defined in this specification;
-- **RequestData** must be with type of javascript object(or equivalent in other programming language), and with format defined in this specification. And will be absent if no request data is required;
+- **RequestData** must be with type of javascript object (or equivalent in other programming language), and with format defined in this specification. And will be absent if no request data is required;
 - **ResponseStatus** must be with value either “ok” or “error”;
-- **ResponseData** must be with type of javascript object or undefined if **ResponseStatus** equals to “ok”, and with type of ErrorDescription object defined as following if **ResponseStatus** equals to “error”.
+- **ResponseData** must be with type of javascript object or undefined if **ResponseStatus** equals to “ok”, and with type of **ErrorDescription** object defined as following if **ResponseStatus** equals to “error”.
 
 		object(ErrorDescription)::
 		{
 		  code: number(ErrorCode),
 		  description: string(Reason)
 		}
-#### 3.1.2 Portal -> Client
+### 3.1.2 Portal -> Client {#CPCPSsection3_1_2}
 　　Given that Portal has accepted Clients connecting and the socket object is ready to send/receive data to/from Client, Portal must send all signaling messages to Client by calling the server socket object’s ***emit*** method in the following format:
 
 	serverSocket.emit(
@@ -66,11 +60,11 @@ ____
 - **NotificationName** must be with type of string, and with value defined in this specification;
 - **NotificationData** must be with type of object, and with format defined in this specification, and will be absent if no notification data is present.
 
-### 3.2 Connection Maintenance
-#### 3.2.1 Client Connects
-　　Portal should be able to listen at both a secure and an insecure socket.io server port to accept Clients’ connecting requests.  If the secure socket.io server is enabled, the SSL certificate and private key store path must be correctly specified by configuration item portal.keystorePath in portal.toml.<br>
-　　Socket.io server will pop a 'connection' event indicating a new client’s successfully connecting.
-#### 3.2.2 Client Keeps Alive
+## 3.2 Connection Maintenance {#CPCPSsection3_2}
+### 3.2.1 Client Connects {#CPCPSsection3_2_1}
+　　Portal should be able to listen at either a secure or an insecure socket.io server port to accept Clients’ connecting requests.  If the secure socket.io server is enabled, the SSL certificate and private key store path must be correctly specified by configuration item portal.keystorePath in portal.toml.<br>
+　　Socket.io server needs pop a 'connection' event indicating a new client’s successfully connected.
+### 3.2.2 Client Keeps Alive {#CPCPSsection3_2_2}
 　　Socket.io server has its own underlying connection keep-alive mechanism, so no application level heart-beat is needed. But Client needs to refresh the reconnection ticket periodically before the current one expires if it wants to reconnect to Portal in case the network break or switch happens.
 
 **Note**:<br>
@@ -79,24 +73,23 @@ ____
 	RequestName: "refreshReconnectionTicket"
 	RequestData: absent
 	ResponseData: A refreshed base64-encoded ReconnectionTicket object if ResponseStatus is "ok".
-#### 3.2.3 Client Disconnects
-　　The connected socket.io object at server side will be notified with a ‘disconnect’ event. The waiting for reconnecting timer **(Timer100)** will be started at receiving the ‘disconnect’ event if the following conditions are fulfilled:
+### 3.2.3 Client Disconnects {#CPCPSsection3_2_3}
+　　The connected socket.io object at server side will be notified with a ‘disconnect’ event. The waiting for reconnecting timer **(Timer100)** will be started right after receiving the ‘disconnect’ event if the following conditions are fulfilled:
 
 	- The connection is initiated from a mobile client;
 	- No participant leaving signaling has been received.
 **Note**:<br>
-　　If Client has not reconnected successfully before **Timer100** expires, Portal will not wait for and accept the Client’s reconnecting any longer. Otherwise, if Client reconnects successfully before **Timer100** expires, Portal will resume all the signaling activities with Client and kill **Timer100**.
-#### 3.2.4 Client Reconnects
+　　If Client has not reconnected successfully before **Timer100** expires, Portal will not wait for and accept the Client’s reconnection any longer. Otherwise, if Client reconnects successfully before **Timer100** expires, Portal will resume all the signaling activities with Client and kill **Timer100**.
+### 3.2.4 Client Reconnects {#CPCPSsection3_2_4}
 This a format for client reconnects.
 
-	RequestName:  "relogin"
-	RequestData: The ReconnectionTicket object with following definition:
-
-		ResponseData: A refreshed base64-encoded ReconnectionTicket object if ResponseStatus is "ok".
-### 3.3 Conferencing
-#### 3.3.1 Participant Joins a Room
-　　**RequestName**:  “login”<br>
-　　**RequestData**: The LoginInfo object with following definition:
+**RequestName**:  "relogin"<br>
+**RequestData**: The ReconnectionTicket object defined in 3.3.1 section.<br>
+**ResponseData**: A refreshed base64-encoded ReconnectionTicket object if ResponseStatus is "ok".
+## 3.3 Conferencing {#CPCPSsection3_3}
+### 3.3.1 Participant Joins a Room {#CPCPSsection3_3_1}
+**RequestName**:  “login”<br>
+**RequestData**: The LoginInfo object with following definition:
 
 	object(LoginInfo)::
 	  {
@@ -129,189 +122,189 @@ This a format for client reconnects.
 	    {
 	     keepTime: number(Seconds)/*-1: Use server side configured 'reconnection_timeout' value; Others: specified keepTime in seconds*/
 	    }
-  **ResponseData**: The LoginResult object with following definition if **ResponseStatus** is "ok":
+**ResponseData**: The LoginResult object with following definition if **ResponseStatus** is "ok":
 
-	object(LoginResult)::
-	  {
-	   id: string(ParticipantId),
-	   user: string (UserId),
-	   role: string(ParticipantRole),
-	   permission: object(Permission),
-	   room: object(RoomInfo),
-	   reconnectionTicket: undefined/*when reconnection is not promised*/
-	                  | string(Base64Encoded(object(ReconnectionTicket)))/*when reconnection is promised*/
-	  }
+		object(LoginResult)::
+		  {
+		   id: string(ParticipantId),
+		   user: string (UserId),
+		   role: string(ParticipantRole),
+		   permission: object(Permission),
+		   room: object(RoomInfo),
+		   reconnectionTicket: undefined/*when reconnection is not promised*/
+		                  | string(Base64Encoded(object(ReconnectionTicket)))/*when reconnection is promised*/
+		  }
 
-	  object(Permission)::
-	    {
-	     publish: {
-	         audio: true | false,
-	         video: true | false
-	     },
-	     subscribe: {
-	         audio: true | false,
-	         video: true | false
-	     }
-	    }
+		  object(Permission)::
+		    {
+		     publish: {
+		         audio: true | false,
+		         video: true | false
+		     },
+		     subscribe: {
+		         audio: true | false,
+		         video: true | false
+		     }
+		    }
 
-	  object(RoomInfo)::
-	    {
-	     id: string(RoomId),
-	     views: [string(ViewLabel)],
-	     streams: [object(StreamInfo)],
-	     participants: [object(ParticipantInfo)]
-	    }
+		  object(RoomInfo)::
+		    {
+		     id: string(RoomId),
+		     views: [string(ViewLabel)],
+		     streams: [object(StreamInfo)],
+		     participants: [object(ParticipantInfo)]
+		    }
 
-	    object(StreamInfo)::
-	      {
-	       id: string(StreamID),
-	       type: "forward" | "augmented" |"mixed",
-	       media: object(MediaInfo),
-	       info: object(PublicationInfo)/*If type equals "forward"*/
-	            | object(AugmentInfo)/*If type equals "augmented"*/
-	            | object(ViewInfo)/*If type equals "mixed"*/
-	      }
+		    object(StreamInfo)::
+		      {
+		       id: string(StreamID),
+		       type: "forward" | "augmented" |"mixed",
+		       media: object(MediaInfo),
+		       info: object(PublicationInfo)/*If type equals "forward"*/
+		            | object(AugmentInfo)/*If type equals "augmented"*/
+		            | object(ViewInfo)/*If type equals "mixed"*/
+		      }
 
-	      object(MediaInfo)::
-	        {
-	         audio: object(AudioInfo) | undefined,
-	         video: object(VideoInfo) | undefined
-	        }
+		      object(MediaInfo)::
+		        {
+		         audio: object(AudioInfo) | undefined,
+		         video: object(VideoInfo) | undefined
+		        }
 
-	        object(AudioInfo)::
-	          {
-	           status: "active" | "inactive" | undefined,
-	           source: "mic" | "screen-cast" | "raw-file" | "encoded-file" | undefined,
-	           format: object(AudioFormat),
-	           optional:
-	            {
-	             format: [object(AudioFormat)] | undefined
-	            }
-	            | undefined
-	          }
+		        object(AudioInfo)::
+		          {
+		           status: "active" | "inactive" | undefined,
+		           source: "mic" | "screen-cast" | "raw-file" | "encoded-file" | undefined,
+		           format: object(AudioFormat),
+		           optional:
+		            {
+		             format: [object(AudioFormat)] | undefined
+		            }
+		            | undefined
+		          }
 
-	          object(AudioFormat)::
-	            {
-	             codec: "pcmu" | "pcma" | "opus" | "g722" | "iSAC" | "iLBC" | "aac" | "ac3" | "nellymoser",
-	             sampleRate: number(SampleRate) | undefined,
-	             channelNum: number(ChannelNumber) | undefined
-	            }
+		          object(AudioFormat)::
+		            {
+		             codec: "pcmu" | "pcma" | "opus" | "g722" | "iSAC" | "iLBC" | "aac" | "ac3" | "nellymoser",
+		             sampleRate: number(SampleRate) | undefined,
+		             channelNum: number(ChannelNumber) | undefined
+		            }
 
-	        object(VideoInfo)::
-	          {
-	           status: "active" | "inactive" | undefined,
-	           source: "camera" | "screen-cast" | "raw-file" | "encoded-file" | undefined,
-	           format: object(VideoFormat),
-	           parameters: object(VideoParameters) | undefined,
-	           optional:
-	             {
-	              format: [object(VideoFormat)] | undefined,
-	              parameters:
-	                {
-	                 resolution: [object(Resolution)] | undefined,
-	                 framerate: [number(FramerateFPS)] | undefined,
-	                 bitrate: [number(BitrateKbps)] | [string(BitrateMultiple)] | undefined,
-	                 keyFrameInterval: [number(KeyFrameIntervalSecond)] | undefined
-	                }
-	                | undefined
-	             }
-	             | undefined
-	          }
+		        object(VideoInfo)::
+		          {
+		           status: "active" | "inactive" | undefined,
+		           source: "camera" | "screen-cast" | "raw-file" | "encoded-file" | undefined,
+		           format: object(VideoFormat),
+		           parameters: object(VideoParameters) | undefined,
+		           optional:
+		             {
+		              format: [object(VideoFormat)] | undefined,
+		              parameters:
+		                {
+		                 resolution: [object(Resolution)] | undefined,
+		                 framerate: [number(FramerateFPS)] | undefined,
+		                 bitrate: [number(BitrateKbps)] | [string(BitrateMultiple)] | undefined,
+		                 keyFrameInterval: [number(KeyFrameIntervalSecond)] | undefined
+		                }
+		                | undefined
+		             }
+		             | undefined
+		          }
 
-	          object(VideoFormat)::
-	            {
-	             codec: "h264" | "h265" | "vp8" | "vp9",
-	             profile: "baseline" | "constrained-baseline" | "main" | "high" //If codec equals "h264".
-	                   | undefined //If codec does NOT equal "h264"
-	            }
+		          object(VideoFormat)::
+		            {
+		             codec: "h264" | "h265" | "vp8" | "vp9",
+		             profile: "baseline" | "constrained-baseline" | "main" | "high" //If codec equals "h264".
+		                   | undefined //If codec does NOT equal "h264"
+		            }
 
-	          object(VideoParameters)::
-	            {
-	             resolution: object(Resolution) | undefined,
-	             framerate: number(FramerateFPS) | undefined,
-	             bitrate: number(BitrateKbps) | undefined,
-	             keyFrameInterval: number(KeyFrameIntervalSecond) | undefined
-	            }
+		          object(VideoParameters)::
+		            {
+		             resolution: object(Resolution) | undefined,
+		             framerate: number(FramerateFPS) | undefined,
+		             bitrate: number(BitrateKbps) | undefined,
+		             keyFrameInterval: number(KeyFrameIntervalSecond) | undefined
+		            }
 
-	            object(Resolution)::
-	              {
-	               width: number(WidthPX),
-	               height: number(HeightPX)
-	              }
+		            object(Resolution)::
+		              {
+		               width: number(WidthPX),
+		               height: number(HeightPX)
+		              }
 
-	      object(PublicationInfo):
-	        {
-	         owner: string(ParticipantId),
-	         type: "webrtc" | "streaming" | "sip",
-	         inViews: [String(ViewLabel)],
-	         attributes: object(ClientDefinedAttributes)
-	        }
+		      object(PublicationInfo):
+		        {
+		         owner: string(ParticipantId),
+		         type: "webrtc" | "streaming" | "sip",
+		         inViews: [String(ViewLabel)],
+		         attributes: object(ClientDefinedAttributes)
+		        }
 
-	      object(AugmentInfo):
-	      {
-	      	origin: String(OriginStreamId),
-	      	description: String(EffectDescription)
-	      }
+		      object(AugmentInfo):
+		      {
+		      	origin: String(OriginStreamId),
+		      	description: String(EffectDescription)
+		      }
 
-	      object(ViewInfo):
-	        {
-	         label: string(ViewLable),
-	         activeInput: string(StreamId) | "unknown",
-	         layout: [object(SubStream2RegionMapping)]
-	        }
+		      object(ViewInfo):
+		        {
+		         label: string(ViewLable),
+		         activeInput: string(StreamId) | "unknown",
+		         layout: [object(SubStream2RegionMapping)]
+		        }
 
-	        object(SubStream2RegionMapping)::
-	          {
-	           stream: string(StreamId),
-	           region: object(Region)
-	          }
+		        object(SubStream2RegionMapping)::
+		          {
+		           stream: string(StreamId),
+		           region: object(Region)
+		          }
 
-	          object(Region)::
-	            {
-	             id: string(RegionId),
-	             shape: "rectangle" | "circle",
-	             area: object(Rectangle)/*If shape equals "rectangle"*/
-	                   | object(Circle)/*If shape equals "circle"*/
-	            }
+		          object(Region)::
+		            {
+		             id: string(RegionId),
+		             shape: "rectangle" | "circle",
+		             area: object(Rectangle)/*If shape equals "rectangle"*/
+		                   | object(Circle)/*If shape equals "circle"*/
+		            }
 
-	            object(Rectangle)::
-	              {
-	               left: string(LeftRatio),
-	               top: string(TopRatio),
-	               width: string(WidthRatio),
-	               height: string(HeightRatio)
-	              }
+		            object(Rectangle)::
+		              {
+		               left: string(LeftRatio),
+		               top: string(TopRatio),
+		               width: string(WidthRatio),
+		               height: string(HeightRatio)
+		              }
 
-	            object(Circle)::
-	              {
-	               centerW: string(CenterWRatio),
-	               centerH: string(CenterHRatio),
-	               radius: string(RadiusWRatio)
-	              }
+		            object(Circle)::
+		              {
+		               centerW: string(CenterWRatio),
+		               centerH: string(CenterHRatio),
+		               radius: string(RadiusWRatio)
+		              }
 
-	    object(ParticipantInfo)::
-	      {
-	       id: string(ParticilantId),
-	       role: string(ParticipantRole),
-	       user: string (UserId)
-	      }
+		    object(ParticipantInfo)::
+		      {
+		       id: string(ParticilantId),
+		       role: string(ParticipantRole),
+		       user: string (UserId)
+		      }
 
-	  object(ReconnectionTicket)::
-	    {
-       participantId: string(Participantid),
-       ticketId: string(RamdonNumber),
-       notBefore: number(ValidTimeBegin),
-       notAfter: number(ValidTimeEnd),
-       signature: string(Signature)
-	    }
-#### 3.3.2 Participant Leaves a Room
+		  object(ReconnectionTicket)::
+		    {
+		     ParticipantId: string(Participantid),
+		     ticketId: string(RandomNumber),
+		     notBefore: number(ValidTimeBegin),
+		     notAfter: number(ValidTimeEnd),
+		     signature: string(Signature)
+		    }
+### 3.3.2 Participant Leaves a Room {#CPCPSsection3_3_2}
 **RequestName**:  “logout”<br>
 **RequestData**: absent<br>
 **ResponseData**: undefined if **ResponseStatus** is “ok”.
-#### 3.3.3 Participant Is Dropped by MCU
+### 3.3.3 Participant Is Dropped by MCU {#CPCPSsection3_3_3}
 **NotificationName**: “drop”<br>
 **NotificationData**: absent<br>
-#### 3.3.4 Participant Is Notified on Other Participant’s Action
+### 3.3.4 Participant Is Notified on Other Participant’s Action {#CPCPSsection3_3_4}
 **NotificationName**: “participant”<br>
 **NotificationData**: The ParticipantAction object with following definition:
 
@@ -322,7 +315,7 @@ This a format for client reconnects.
 	        | string(ParticipantId)/*If status equals "leave"*/
 	  }
 
-#### 3.3.5 Participant Sends a Text Message
+### 3.3.5 Participant Sends a Text Message {#CPCPSsection3_3_5}
 **RequestName**:  “text”<br>
 **RequestData**: The TextSendMessage object with following definition:
 
@@ -332,7 +325,7 @@ This a format for client reconnects.
 	   message: string(Message) /*The message length must not greater than 2048*/
 	  }
 **ResponseData**: undefined if **ResponseStatus** is “ok”.
-#### 3.3.6 Participant Receives Text Message from another Participant
+### 3.3.6 Participant Receives Text Message from another Participant {#CPCPSsection3_3_6}
 **NotificationName**: “text”<br>
 **NotificationData**: The TextReceiveMessage object with following definition:
 
@@ -342,7 +335,7 @@ This a format for client reconnects.
 	   message: string(Message)
 	  }
 
-#### 3.3.7 Participant Starts Publishing a WebRTC Stream to Room
+### 3.3.7 Participant Starts Publishing a WebRTC Stream to Room {#CPCPSsection3_3_7}
 **RequestName**:  “publish”<br>
 **RequestData**: The PublicationRequest object with following definition:
 
@@ -374,7 +367,7 @@ This a format for client reconnects.
 	  {
 	   id: string(SessionId) //will be used as the stream id when it gets ready.
 	  }
-#### 3.3.8 Participant Stops Publishing a Stream to Room
+### 3.3.8 Participant Stops Publishing a Stream to Room {#CPCPSsection3_3_8}
 **RequestName**:  “unpublish”<br>
 **RequestData**: The UnpublicationRequest object with following definition:
 
@@ -383,7 +376,7 @@ This a format for client reconnects.
 	   id: string(SessionId) //same as the stream id.
 	  }
 **ResponseData**: undefined if **ResponseStatus** is “ok”.
-#### 3.3.9 Participant Is Notified on Streams Update in Room
+### 3.3.9 Participant Is Notified on Streams Update in Room {#CPCPSsection3_3_9}
 **NotificationName**: “stream”<br>
 **NotificationData**: The StreamUpdateMessage object with following definition.
 
@@ -401,7 +394,7 @@ This a format for client reconnects.
 	     field: "audio.status" | "video.status"  | "video.layout" | "activeInput",
 	     value: "active" | "inactive" | [object(SubStream2RegionMapping)] | string(inputStreamId)
 	    }
-#### 3.3.10 Participant Controls a Stream
+### 3.3.10 Participant Controls a Stream {#CPCPSsection3_3_10}
 **RequestName**:  “stream-control”<br>
 **RequestData**: The StreamControlInfo object with following definition:
 
@@ -412,7 +405,7 @@ This a format for client reconnects.
 	    data: ("audio" | "video" | "av")  /*If operation equals "pause" or "play"*/
 	}
 **ResponseData**: **ResponseStatus** is “ok”.
-#### 3.3.11 Participant Subscribes a Stream to WebRTC Endpoint
+### 3.3.11 Participant Subscribes a Stream to WebRTC Endpoint {#CPCPSsection3_3_11}
 **RequestName**:  “subscribe”<br>
 **RequestData**: The SubscriptionRequest object with following definition:
 
@@ -456,7 +449,7 @@ This a format for client reconnects.
 	  {
 	   id: string(SubscriptionId)
 	  }
-#### 3.3.12 Participant Stops a Self-Initiated Subscription
+### 3.3.12 Participant Stops a Self-Initiated Subscription {#CPCPSsection3_3_12}
 **RequestName**:  “unsubscribe”<br>
 **RequestData**: The UnsubscriptionRequest object with following definition:
 
@@ -465,7 +458,7 @@ This a format for client reconnects.
 	   id: string(SubscriptionId)
 	  }
 **ResponseData**: undefined if **ResponseStatus** is “ok”.
-#### 3.3.13 Participant Controls a Self-Initiated Subscription
+### 3.3.13 Participant Controls a Self-Initiated Subscription {#CPCPSsection3_3_13}
 **RequestName**:  “subscription-control”<br>
 **RequestData**: The SubscriptionControlInfo object with following definition:
 
@@ -495,7 +488,7 @@ This a format for client reconnects.
 	                   | undefined/*If the video parameters of the ongoing subscription are wanted to be kept*/
 	      }
 **ResponseData**: undefined if **ResponseStatus** is “ok”.
-#### 3.3.14 Participant Sends Session Signaling
+### 3.3.14 Participant Sends Session Signaling {#CPCPSsection3_3_14}
 **RequestName**:  “soac”<br>
 **RequestData**: The SOACMessage object with following definition:
 
@@ -517,7 +510,7 @@ This a format for client reconnects.
 	     candidate: string(Candidate)
 	    }
 **ResponseData**: undefined if **ResponseStatus** is “ok”.
-#### 3.3.15 Participant Receives Session Progress
+### 3.3.15 Participant Receives Session Progress {#CPCPSsection3_3_15}
 **NotificationName**: “progress”<br>
 **NotificationData**: The SessionProgress object with following definition.
 
