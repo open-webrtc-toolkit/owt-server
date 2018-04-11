@@ -223,6 +223,10 @@ process.on('exit', function () {
     rpc.disconnect();
 });
 
+process.on('unhandledRejection', (reason) => {
+    log.info('Reason: ' + reason);
+});
+
 (function main() {
     init_env();
     init_controller();

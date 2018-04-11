@@ -553,3 +553,7 @@ process.on('exit', function () {
     worker && worker.quit();
     amqper.disconnect();
 });
+
+process.on('unhandledRejection', (reason) => {
+    log.info('Reason: ' + reason);
+});
