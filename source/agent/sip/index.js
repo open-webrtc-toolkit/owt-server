@@ -232,6 +232,8 @@ module.exports = function (rpcC, spec) {
                tmp = {codec: 'opus', sampleRate: 48000, channelNum: 2};
             } else if (info.audio_codec === 'PCMU') {
                tmp = {codec: 'pcmu'};
+            } else if (info.audio_codec === 'PCMA') {
+               tmp = {codec: 'pcma'};
             }
             audio_info = tmp;
         }
