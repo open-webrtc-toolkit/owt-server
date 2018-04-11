@@ -1964,16 +1964,24 @@ var Conference = function (rpcClient, selfRpcId) {
             break;
           case 'replace':
             if ((cmd.path === '/media/audio/status') && (cmd.value === 'inactive' || cmd.value === 'active')) {
-              if (streams[streamId].media.audio && streams[streamId].media.audio.status !== cmd.value) {
-                exe = setStreamMute(streamId, 'audio', (cmd.value === 'inactive'));
+              if (streams[streamId].media.audio) {
+                if (streams[streamId].media.audio.status !== cmd.value) {
+                  exe = setStreamMute(streamId, 'audio', (cmd.value === 'inactive'));
+                } else {
+                  exe = Promise.resolve('ok');
+                }
               } else {
-                exe = Promise.resolve('ok');
+                exe = Promise.reject('Track does NOT exist');
               }
             } else if ((cmd.path === '/media/video/status') && (cmd.value === 'inactive' || cmd.value === 'active')) {
-              if (streams[streamId].media.video &&  streams[streamId].media.video.status !== cmd.value) {
-                exe = setStreamMute(streamId, 'video', (cmd.value === 'inactive'));
+              if (streams[streamId].media.video) {
+                if (streams[streamId].media.video.status !== cmd.value) {
+                  exe = setStreamMute(streamId, 'video', (cmd.value === 'inactive'));
+                } else {
+                  exe = Promise.resolve('ok');
+                }
               } else {
-                exe = Promise.resolve('ok');
+                exe = Promise.reject('Track does NOT exist');
               }
             } else if ((cmd.path.startsWith('/info/layout/') && streams[cmd.value] && (streams[cmd.value].type !== 'mixed'))) {
               var path = cmd.path.split('/');
@@ -2169,13 +2177,13 @@ var Conference = function (rpcClient, selfRpcId) {
         var exe;
         switch (cmd.op) {
           case'replace':
-            if ((cmd.path === '/media/audio/status') && (cmd.value === 'inactive' || cmd.value === 'active')) {
+            if ((cmd.path === '/media/audio/status') && subscriptions[subId].media.audio && (cmd.value === 'inactive' || cmd.value === 'active')) {
               if (subscriptions[subId].media.audio.status !== cmd.value) {
                 exe = setSubscriptionMute(subId, 'audio', (cmd.value === 'inactive'));
               } else {
                 exe = Promise.resolve('ok');
               }
-            } else if ((cmd.path === '/media/video/status') && (cmd.value === 'inactive' || cmd.value === 'active')) {
+            } else if ((cmd.path === '/media/video/status') && subscriptions[subId].media.video && (cmd.value === 'inactive' || cmd.value === 'active')) {
               if (subscriptions[subId].media.video.status !== cmd.value) {
                 exe = setSubscriptionMute(subId, 'video', (cmd.value === 'inactive'));
               } else {
