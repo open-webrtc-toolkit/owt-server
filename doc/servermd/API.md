@@ -26,11 +26,39 @@ With all the management API, perform the following steps to implement each call.
 4. Read the response in your programming language, and parse the response JSON data.
 5. Use the data in your application.
 
-The following HTTP response may be returned after your make a call:
+The following common HTTP status code may be returned after you make a call:
 
     - 200 - OK. Some calls return with a JSON format response while some calls return a plain text response indicates success.
     - 401 - Not authenticated or permitted.
+    - 403 - Forbidden.
     - 404 - NOT found or no such resource.
+
+Besides the common HTTP response code, there are also some internal status code for specific error conditions. Following is an example for response body used to represent  internal error in JSON format.
+
+  {
+      "error":{
+        "code": 1001,
+        "message": "Resource not found"
+      }
+  }
+**Note**:<br>
+　　*"code": 1001* is a status code for internal error.And all the error following the same format.
+
+Here is a table describing the internal error code.
+
+| code | description |
+| :-------:|:-------:|
+| 1001 | general not found |
+| 1002 | service not found |
+| 1003 | room not found |
+| 1004 | stream not found |
+| 1005 | participant not found |
+| 1101 | authentication not found |
+| 1102 | permission denied |
+| 1201 | failed to call cluster |
+| 1301 | request data error |
+| 1401 | database error |
+| 2001 | unexpected server error |
 
 # 4 Authentication and Authorization {#RESTAPIsection4}
 The management API can only be called after authorized. To get authorized, each request should be a HTTP request with "Authorization" filed in the header. So the server can determine whether it is a valid client. The value of "Authorization" is something like:
@@ -94,7 +122,7 @@ Data Model:<br>
       "participantLimit": number,                // -1 means no limit
       "inputLimit": number,
       "roles": object(Role),
-      "views": object(Views),
+      "views": arrayOf(object(View)),
       "mediaIn": object(MeidaIn),
       "mediaOut": object(MediaOut),
       "transcoding": object(Transcoding),
@@ -112,11 +140,10 @@ Data Model:<br>
         'audio': boolean
       }
     }
-    object(Views): {
+    object(View): {
       "label": string,
-      "maxInput": number,
-      "audio": object,
-      "video": object,
+      "audio": object(Audio),
+      "video": object(Video)
     }
     object(Audio): {
       "format": {
@@ -131,11 +158,12 @@ Data Model:<br>
         "codec": string,                    // 'h264', 'vp8', 'h265', 'vp9'
       },
       "parameters": {
-        "resolution": string,
+        "resolution": object(Resolution),
         "framerate": number,
         "bitrate": string,
         "keyFrameInterval": number
       },
+      "maxInput": number,
       "bgColor": {
         "r": 0 ~ 255,
         "g": 0 ~ 255,
@@ -153,6 +181,10 @@ Data Model:<br>
           ]
          }
       }
+    }
+    object(Resolution): {
+      width: number,
+      height: number
     }
     object(Region): {
       "id": string,
@@ -279,11 +311,8 @@ parameters:
 |:----------:|:----:|:----------:|
 |    {roomId}    | URL |    Room ID to be deleted   |
 | undefined | request body| Request body is null |
-response body:
+response body: response body is **empty**.
 
-| type | content |
-|:-------------:|:-------:|
-|      text     | A text message "Room deleted" indicates success |
 #### PUT
 Description:<br>
 　　Update a room's configuration entirely.
@@ -441,11 +470,8 @@ parameters:
 | {participantId} | URL | Participant ID|
 |  undefined | request body | Request body is null |
 
-response body:
+response body: response body is **empty**.
 
-| type | content |
-|:-------------:|:-------:|
-|      text     | A message "participant's ID deleted" indicates success |
 ## 5.3 Streams {#RESTAPIsection5_3}
 Description:
 
@@ -486,15 +512,10 @@ Streams model:
     }
     object(VideoParameters):
     {
-        resolution: object(Resolution) | undefined,
+        resolution: object(Resolution) | undefined,    // Refers to section 5.1, object(Resolution).
         framerate: number,
         bitrate: number | string,
         keyFrameInterval: number
-    }
-    object(Resolution):
-    {
-        width: number,
-        height: number
     }
 Resources:
 
@@ -583,11 +604,8 @@ parameters:
 |    {roomId}    | URL |    Room ID    |
 |    {streamId}  | URL |   Stream ID   |
 | undefined | request body | Request body is null |
-response body:
+response body: response body is **empty**.
 
-| type | content |
-|:-------------:|:-------:|
-|  text | A message "Stream ID deleted" indicates success |
 ## 5.4 Streaming-ins {#RESTAPIsection5_4}
 Description:
 
@@ -636,7 +654,8 @@ parameters:
     object(Connection):
     {
         url: string,
-        object(Transport)       // Refers to object(Transport) in 5.4 streaming-ins model.
+        transportProtocal: transport.protocal,
+        bufferSize: transport.buffersize       // Refers to object(Transport) in 5.4 streaming-ins model.
     }
 response body:
 
@@ -655,11 +674,8 @@ parameters:
 |    {roomId}    | URL |    Room ID    |
 |    {streamId}  | URL |   Stream ID   |
 |   undefined | request body | Request body is null |
-response body:
+response body: response body is **empty**.
 
-| type | content |
-|:-------------:|:-------:|
-|  text | A message "External streaming-in stopped" indicates success |
 ## 5.5 Streaming-outs {#RESTAPIsection5_5}
 Description:
 
@@ -798,11 +814,7 @@ parameters:
 |    {roomId}    | URL |    Room ID    |
 | {streaming-outId} | URL | Streaming-out ID|
 | undefined | request body | Request body is null |
-response body:
-
-| type | content |
-|:-------------:|:-------:|
-|  text | A message "Streaming-out Id deleted" indicated success |
+response body: response body is **empty**.
 
 ## 5.6 Recordings {#RESTAPIsection5_6}
 Description:
@@ -853,9 +865,9 @@ parameters:
 
     options={
         container: string,
-        media: object       // Refers to object(MediaSubOptions) in 5.5.
+        media: object(MediaSubOptions)       // Refers to object(MediaSubOptions) in 5.5.
     }
-	container={'mp4' | 'mkv' | 'auto' | 'ts'}  // The container type of the recording file, 'auto' by default.
+  container={'mp4' | 'mkv' | 'auto' | 'ts'}  // The container type of the recording file, 'auto' by default.
 response body:
 
 | type | content |
@@ -877,7 +889,7 @@ parameters:
 
     items=[
         {
-          op: 'test' | 'remove' | 'add' | 'replace' | 'move' | 'copy' ,
+          op: 'replace',
           path: string,
           value: json
         }
@@ -899,11 +911,8 @@ parameters:
 |    {roomId}    | URL |    Room ID    |
 | {recordingId} | URL | Recording ID|
 |  undefined | request body | Request body is null |
-response body:
+response body: response body is **empty**.
 
-| type | content |
-|:-------------:|:-------:|
-|  text | A message "The specified recording stopped" indicates success|
 ## 5.7 Token {#RESTAPIsection5_7}
 Description:<br>
 　　A token is the ticket for joining the room. The token contains information through which clients can connect to server application. Note that the different rooms may have different network information, so the room must be specified for token resource. The same token cannot be reused if it has been used once. Re-generate token if clients need to connect at the second time.
@@ -926,6 +935,7 @@ Token data in Json example:
 Resources:
 
 - /v1/rooms/{roomId}/tokens
+
 ### /v1/rooms/{roomId}/tokens
 #### POST
 Description:<br>
@@ -940,7 +950,7 @@ parameters:
 **Note**:
 
     preference_body={
-        preference: object,     // Preference of this token would be used to connect through
+        preference: object(Preference),     // Preference of this token would be used to connect through, refers to Data Model.
         user: string,           // Participant's user ID
         role: string            // Participant's role
     }
