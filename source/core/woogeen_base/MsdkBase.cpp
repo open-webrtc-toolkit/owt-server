@@ -52,7 +52,7 @@ static bool isValidPluginUID(const mfxPluginUID *uid)
 }
 
 MsdkBase::MsdkBase()
-    : m_fd(0)
+    : m_fd(-1)
     , m_vaDisp(NULL)
     , m_mainSession(NULL)
     , m_configHevcEncoderGaccPlugin(false)
@@ -61,23 +61,33 @@ MsdkBase::MsdkBase()
 
 bool MsdkBase::init()
 {
-    int ret;
-    const char device_name[] = "/dev/dri/card0";
+    static const char *drm_device_paths[] = {
+        "/dev/dri/renderD128",
+        "/dev/dri/card0",
+        NULL
+    };
     int major_version, minor_version;
+    int ret;
 
-    m_fd = open(device_name, O_RDWR);
-    if (m_fd < 0) {
-        ELOG_ERROR("Open device failed, %s\n", device_name);
+    for (int i = 0; drm_device_paths[i]; i++) {
+        m_fd = open(drm_device_paths[i], O_RDWR);
+        if (m_fd < 0)
+            continue;
 
-        return false;
+        m_vaDisp = vaGetDisplayDRM(m_fd);
+        if(!m_vaDisp) {
+            close(m_fd);
+            m_fd = -1;
+
+            continue;
+        }
+
+        ELOG_DEBUG("Open drm device: %s", drm_device_paths[i]);
+        break;
     }
 
-    m_vaDisp = vaGetDisplayDRM(m_fd);
     if(!m_vaDisp) {
         ELOG_ERROR("Get VA display failed.");
-
-        close(m_fd);
-        m_fd = 0;
         return false;
     }
 
@@ -87,7 +97,7 @@ bool MsdkBase::init()
 
         m_vaDisp = NULL;
         close(m_fd);
-        m_fd = 0;
+        m_fd = -1;
         return false;
     }
 
@@ -99,7 +109,7 @@ bool MsdkBase::init()
 
         m_vaDisp = NULL;
         close(m_fd);
-        m_fd = 0;
+        m_fd = -1;
         return false;
     }
 
