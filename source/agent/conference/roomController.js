@@ -647,15 +647,21 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                 [participant_id, audio_format],
                 function (stream_id) {
                     log.debug('spawnMixedAudio ok, amixer_node:', amixer_node, 'stream_id:', stream_id);
-                    if (streams[stream_id] === undefined) {
-                        streams[stream_id] = {owner: audio_mixer,
-                                              audio: {format: audio_format,
-                                                      subscribers: []},
-                                              video: undefined,
-                                              spread: []};
-                        terminals[audio_mixer].published.push(stream_id);
+                    if (terminals[audio_mixer]) {
+                        if (streams[stream_id] === undefined) {
+                            streams[stream_id] = {
+                                owner: audio_mixer,
+                                audio: {
+                                    format: audio_format,
+                                    subscribers: []},
+                                video: undefined,
+                                spread: []};
+                            terminals[audio_mixer].published.push(stream_id);
+                        }
+                        on_ok(stream_id);
+                    } else {
+                        on_error('Amixer early released');
                     }
-                    on_ok(stream_id);
                 }, on_error);
         } else {
             on_error('Audio mixer is not ready.');
@@ -674,19 +680,25 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                 [format, resolution, framerate, bitrate, keyFrameInterval],
                 function (stream) {
                     log.debug('spawnMixedVideo ok, vmixer_node:', vmixer_node, 'stream:', stream);
-                    if (streams[stream.id] === undefined) {
-                        streams[stream.id] = {owner: video_mixer,
-                                              audio: undefined,
-                                              video: {format: format,
-                                                      resolution: stream.resolution,
-                                                      framerate: stream.framerate,
-                                                      bitrate: stream.bitrate,
-                                                      kfi: stream.keyFrameInterval,
-                                                      subscribers: []},
-                                              spread: []};
-                        terminals[video_mixer].published.push(stream.id);
+                    if (terminals[video_mixer]) {
+                        if (streams[stream.id] === undefined) {
+                            streams[stream.id] = {
+                                owner: video_mixer,
+                                audio: undefined,
+                                video: {
+                                    format: format,
+                                    resolution: stream.resolution,
+                                    framerate: stream.framerate,
+                                    bitrate: stream.bitrate,
+                                    kfi: stream.keyFrameInterval,
+                                    subscribers: []},
+                                spread: []};
+                            terminals[video_mixer].published.push(stream.id);
+                        }
+                        on_ok(stream.id);
+                    } else {
+                        on_error('Vmixer early released');
                     }
-                    on_ok(stream.id);
                 },
                 on_error);
         } else {
@@ -738,14 +750,20 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
             [audio_format, audio_format],
             function (stream_id) {
                 log.debug('spawnTranscodedAudio ok, stream_id:', stream_id);
-                if ((streams[stream_id] === undefined) && terminals[axcoder]) {
-                    log.debug('add transcoded stream to streams:', stream_id);
-                    streams[stream_id] = {owner: axcoder,
-                                          audio: {format: audio_format,
-                                                  subscribers: []},
-                                          video: undefined,
-                                          spread: []};
-                    terminals[axcoder].published.push(stream_id);
+                if (terminals[axcoder]) {
+                    if (streams[stream_id] === undefined) {
+                        log.debug('add transcoded stream to streams:', stream_id);
+                        streams[stream_id] = {
+                            owner: axcoder,
+                            audio: {
+                                format: audio_format,
+                                subscribers: []
+                            },
+                            video: undefined,
+                            spread: []
+                        };
+                        terminals[axcoder].published.push(stream_id);
+                    }
                     on_ok(stream_id);
                 } else {
                     makeRPC(
@@ -835,18 +853,24 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
             [format, resolution, framerate, bitrate, keyFrameInterval],
             function (stream) {
                 log.debug('spawnTranscodedVideo ok, stream_id:', stream.id);
-                if ((streams[stream.id] === undefined) && terminals[vxcoder]) {
-                    log.debug('add to streams.');
-                    streams[stream.id] = {owner: vxcoder,
-                                          audio: undefined,
-                                          video: {format: stream.format,
-                                                  resolution: stream.resolution,
-                                                  framerate: stream.framerate,
-                                                  bitrate: stream.bitrate,
-                                                  kfi: stream.keyFrameInterval,
-                                                  subscribers: []},
-                                          spread: []};
-                    terminals[vxcoder].published.push(stream.id);
+                if (terminals[vxcoder]) {
+                    if (streams[stream.id] === undefined) {
+                        log.debug('add to streams.');
+                        streams[stream.id] = {
+                            owner: vxcoder,
+                            audio: undefined,
+                            video: {
+                                format: stream.format,
+                                resolution: stream.resolution,
+                                framerate: stream.framerate,
+                                bitrate: stream.bitrate,
+                                kfi: stream.keyFrameInterval,
+                                subscribers: []
+                            },
+                            spread: []
+                        };
+                        terminals[vxcoder].published.push(stream.id);
+                    }
                     on_ok(stream.id);
                 } else {
                     makeRPC(
