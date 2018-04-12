@@ -98,6 +98,14 @@ int32_t AcmmFrameMixer::addParticipant(const std::string& participant)
     return id;
 }
 
+bool AcmmFrameMixer::isValidInput(int32_t id)
+{
+    if (m_participants.find(id) != m_participants.end())
+        return m_participants[id]->hasInput();
+
+    return false;
+}
+
 void AcmmFrameMixer::removeParticipant(const std::string& participant)
 {
     m_participants.erase(m_ids[participant]);
@@ -388,18 +396,25 @@ void AcmmFrameMixer::VadParticipants(const ParticipantVadStatistics *statistics,
     const ParticipantVadStatistics* p = statistics;
     for(uint32_t i = 0; i < size; i++, p++) {
         ELOG_TRACE("%d, vad participant(%d), energy(%u)", i, p->id, p->energy);
+
+        if (!isValidInput(p->id)) {
+            ELOG_TRACE("Not valid vad participant(%d)", p->id);
+            continue;
+        }
+
         if (!active || p->energy > active->energy) {
             active = p;
         }
     }
 
-    if (m_mostActiveChannel != active->id) {
+    if (active && m_mostActiveChannel != active->id) {
         ELOG_TRACE("active vad participant, %d -> %d", m_mostActiveChannel, active->id);
 
-        m_mostActiveChannel = active->id;
         for (auto it = m_ids.begin(); it != m_ids.end(); ++it) {
-            if (it->second == m_mostActiveChannel) {
-                ELOG_DEBUG("vad mostActiveParticipant now is :%s", it->first.c_str());
+            if (it->second == active->id) {
+                m_mostActiveChannel = active->id;
+
+                ELOG_DEBUG("vad mostActiveParticipant now is: %s(%d)", it->first.c_str(), m_mostActiveChannel);
                 m_asyncHandle->notifyAsyncEvent("vad", it->first.c_str());
                 break;
             }

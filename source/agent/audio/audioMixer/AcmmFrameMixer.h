@@ -80,6 +80,7 @@ public:
 protected:
     void performMix();
 
+    bool isValidInput(int32_t id);
     int32_t getFreeId();
 
     int32_t addParticipant(const std::string& participant);
