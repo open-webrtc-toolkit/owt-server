@@ -72,13 +72,13 @@ Table 2-1 describes the system requirements for installing the MCU server. Table
 **Table 2-1. Server requirements**
 Application name|OS version
 -------------|--------------
-MCU server|CentOS* 7.2
+MCU server|CentOS* 7.3
 
 The evaluation version of MCU server is also provided for Ubuntu 14.04 LTS* 64-bit.
 
 If you want to set up video conference service with H.264 codec support powered by non GPU-accelerated MCU server, OpenH264 library is required. See [Deploy Cisco OpenH264* Library](#Conferencesection2_3_4) section for more details.
 
-If you want to set up video conference service powered by GPU-accelerated MCU server through Intel® Media Server Studio, please follow the below instructions to install server side SDK on CentOS* 7.2 where the video-agents run.
+If you want to set up video conference service powered by GPU-accelerated MCU server through Intel® Media Server Studio, please follow the below instructions to install server side SDK on CentOS* 7.3 where the video-agents run.
 
 If you are working on the following platforms with the integrated graphics, please install Intel® Media Server Studio for Linux* 2017 R3.
 
@@ -97,7 +97,7 @@ Either Professional Edition or Community Edition is applicable. For download or 
 The external stream output (rtsp/rtmp) feature relies on AAC encoder libfdk_aac support in ffmpeg library, please see [Compile and deploy ffmpeg with libfdk_aac](#Conferencesection2_3_5) section for detailed instructions.
 
  **Table 2-2. Client compatibility**
-Application Name|Google Chrome\* 65|Mozilla Firefox\* 58|Microsoft Edge\* 40.15063|Safari\* 11|Intel CS for WebRTC Client SDK for Android | Intel CS for WebRTC Client SDK for iOS | Intel CS for WebRTC Client SDK for Windows
+Application Name|Google Chrome\* 65|Mozilla Firefox\* 59|Microsoft Edge\* 41.16299.371.0|Safari\* 11.1|Intel CS for WebRTC Client SDK for Android | Intel CS for WebRTC Client SDK for iOS | Intel CS for WebRTC Client SDK for Windows
 --------|--------|--------|--------|--------|--------|--------|--------
 MCU Client|YES|YES|YES|YES|YES|YES|YES
 Management Console|YES|YES|YES|YES|N/A|N/A|N/A
@@ -190,7 +190,7 @@ The default ffmpeg library used by MCU server has no libfdk_aac support. If you 
 
    > **Note**: The libfdk_aac is designated as "non-free", please make sure you have got proper authority before using it.
 
-1. Go to Release-<Version>/audio_agent folder, compile ffmpeg with libfdk_acc with below command:
+1. Go to Release-<Version>/audio_agent folder, compile ffmpeg with libfdk_aac with below command:
 
         compile_ffmpeg_with_libfdkaac.sh
 > **Note**: This compiling script will install all dependencies for ffmpeg with libfdk_aac. If those dependencies are not expected on deployment machines, please run the script on other proper machine.
@@ -201,7 +201,7 @@ The default ffmpeg library used by MCU server has no libfdk_aac support. If you 
 
 The default certificate (certificate.pfx) for the MCU is located in the Release-<Version>/<Component>/cert folder. When using HTTPS and/or secure socket.io connection, you should use your own certificate for each server. First, you should edit nuve/nuve.toml, webrtc_agent/agent.toml, portal/portal.toml, management_console/management_console.toml to provide the path of each certificate for each server, under the key keystorePath. See Table 2-4 for details.
 
-We use PFX formatted certificates in MCU. See https://nodejs.org/api/tls.html for how to generate a self-signed certificate by openssl utility. We recommend using 2048-bit private key for the certificates. But if you meet DTLS SSL connection error in your environment, please use 1024-bit instead of 2048-bit private key because of a known network MTU issue.
+We use PFX formatted certificates in MCU. See https://nodejs.org/api/tls.html for how to generate a self-signed certificate by openssl utility. We recommend using 2048-bit private key for the certificates. But if you meet DTLS SSL connection error in webrtc-agent, please use 1024-bit instead of 2048-bit private key because of a known network MTU issue.
 
 After editing the configuration file, you should run `./initcert.js` inside each component to input your passphrases for the certificates, which would then store them in an encrypted file. Be aware that you should have node binary in your shell's $PATH to run the JS script.
 
@@ -322,6 +322,7 @@ Follow the steps below to set up a MCU cluster:
     - Make sure the [mongo.dataBaseURL] points to the MongoDB instance
     - Make sure the [rabbit.port] and [rabbit.host] point to the RabbitMQ server
     - Make sure the [portal.ip_address] or [portal.networkInterface] points to the correct network interface which the clients’ signaling and control messages are expected to connect through.
+    - Make sure the [portal.force_tls_v12] is true if you want to force TLS version not less than 1.2
 
 12. Run the portal on each machine with following commands:
 
@@ -338,7 +339,7 @@ Follow the steps below to set up a MCU cluster:
 
     Special for conference-agent, edit conference_agent/agent.toml
     - Make sure the [mongo.dataBaseURL] points to the MongoDB instance.
-    - The [conference.roles.<role>] section defines the authorized action list for specific role and the [conference.roles.<role>.<action>] section defines the action attributes for this role.
+
 
 15. Initialize and run agent worker.
 
@@ -451,7 +452,7 @@ Intel CS for WebRTC MCU server provides built-in fault tolerance / resilience su
  **Table 2-6. MCU cluster components’ fault tolerance / resilience**
 Component Name|Server Reaction|Client Awareness
 --------|--------|--------
-nuve|Multiple nuve instances provide stateless services at the same time. If application implements node failure detection and rescheduling strategy, when one node fails, other nodes can take over when the further requests are assigned to any of them.|Nuve RESTful request fail
+nuve|Multiple nuve instances provide stateless services at the same time. If application implements node failure detection and rescheduling strategy, when one node fails, other nodes should take over when the further requests are assigned to any of them.|Nuve RESTful request fail
 cluster-manager|Auto elect another cluster-manager node as master and provide service.|Transparent
 portal|All signaling connections on this portal will be disconnected, all actions through this portal will be dropped. Client needs to re-login the session.|server-disconnected event
 conference-agent/node|All sessions impacted will be destroyed and all their participants will be forced disconnected and all actions will be dropped. Client needs to re-login the session.|server-disconnected event
@@ -567,12 +568,12 @@ participantLimit | The max participant number of the room
 roles | The role definition list for the room, for the description of list element see the role.*
 role.role | The name for a certain role
 role.*(operation).*(mediaType) | The capability to publish/subscribe audio/video stream for a certain role
-views | The view list for the room, each view represents a combination of mix stream settings
+views | The view list for the room, each view represents a combination of mix stream settings. To disable mixing, set this to empty list
 view.label | The label for a certain view, two view labels in one room cannot be duplicated
 view.audio.format | The default audio format of the view
-view.audio.vad | The 'activeInput' event will be emitted if this option is true
+view.audio.vad | The 'activeInput' event will be emitted if this option is true, note that if a client publish more than one audio stream, this may not work well
 view.video.format | The default video format of the view
-view.video.parameters.resolution | The default video resolution of the view
+view.video.parameters.resolution | The default video resolution of the view, see the Table 3-3 for supported resolutions
 view.video.parameters.framerate | The default video framerate of the view
 view.video.parameters.bitrate | The default video bitrate of the view, if it's not specified, the mix engine will generate a default one
 view.video.parameters.keyFrameInterval | The default video key frame interval of the view
@@ -585,12 +586,111 @@ view.layout.fitPolicy | The fit policy for input that does not perfectly match t
 view.layout.templates | The layout template for the mix video stream, a user can choose a base layout template and customize its own preferred ones, which would be combined as a whole for rendering mixed video
 view.layout.templates.base | The template base for video layout
 view.layout.templates.custom | The customized video layout uppon the base, see the [Section 3.5.1](#Conferencesection3_5_1)
-mediaIn | The audio/video format that the room can accept
-mediaOut | The audio/video format and parameters that the room can generate
+mediaIn | The audio/video format that the room can accept, see the Table 3-2 for supported format
+mediaOut | The audio/video format and parameters that the room can generate, see the Table 3-2 for supported formats
 transcoding | The transcoding switch on audio, video format and parameters
 sip | The SIP setting for the room
 notifying | The notifying policy for the room
 
+ **Table 3-2 Supported Media Formats**
+Name|Type
+-----|-----
+opus | audio
+isac_16000 | audio
+isac_32000 | audio
+g722_16000_1 | audio
+pcma | audio
+pcmu | audio
+aac | audio
+ac3 | audio
+nellymoser | audio
+ilbc | audio
+h264 | video
+h265 | video
+vp8 | video
+vp9 | video
+
+ **Table 3-3 Supported View Resolutions**
+|Resolution (width)x(height)|
+|------|
+|352x288 (cif)|
+|176x144 (qcif)|
+|320x240 (sif)|
+|640x480 (vga)|
+|800x600 (svga)|
+|1024x768 (xga)|
+|480x320 (hvga)|
+|1280x720 (hd720p)|
+|1920x1080 (hd1080p)|
+|3840x2160 (uhd_4k)|
+|192x144|
+|360x360|
+|480x480|
+|480x360|
+|640x360|
+|720x720|
+
+The default bitrate (if not specified) for a view is calucated by the following algorithm (javascript):
+
+~~~~~~~~~~~~~{.js}
+const partial_linear_bitrate = [
+  {size: 0, bitrate: 0},
+  {size: 76800, bitrate: 400},  //320*240, 30fps
+  {size: 307200, bitrate: 800}, //640*480, 30fps
+  {size: 921600, bitrate: 2000},  //1280*720, 30fps
+  {size: 2073600, bitrate: 4000}, //1920*1080, 30fps
+  {size: 8294400, bitrate: 16000} //3840*2160, 30fps
+];
+
+function standardBitrate(width, height, framerate) {
+  let bitrate = -1;
+  let prev = 0;
+  let next = 0;
+  let portion = 0.0;
+  let def = width * height * framerate / 30;
+
+  // find the partial linear section and calculate bitrate
+  for (var i = 0; i < partial_linear_bitrate.length - 1; i++) {
+    prev = partial_linear_bitrate[i].size;
+    next = partial_linear_bitrate[i+1].size;
+    if (def > prev && def <= next) {
+      portion = (def - prev) / (next - prev);
+      bitrate = partial_linear_bitrate[i].bitrate + (partial_linear_bitrate[i+1].bitrate - partial_linear_bitrate[i].bitrate) * portion;
+      break;
+    }
+  }
+
+  // set default bitrate for over large resolution
+  if (-1 == bitrate) {
+    bitrate = 16000;
+  }
+
+  return bitrate;
+}
+
+function calcDefaultBitrate(codec, resolution, framerate, motionFactor) {
+  let codec_factor = 1.0;
+  switch (codec) {
+    case 'h264':
+      codec_factor = 1.0;
+      break;
+    case 'vp8':
+      codec_factor = 1.0;
+      break;
+    case 'vp9':
+      codec_factor = 0.8;
+      break;
+    case 'h265':
+      codec_factor = 0.9;
+      break;
+    default:
+      break;
+  }
+  return standardBitrate(resolution.width, resolution.height, framerate) * codec_factor * motionFactor;
+};
+~~~~~~~~~~~~~
+
+If framerate or resolution is specified in the subscription without bitrate, the view bitrate setting won't work.
 
 > **Note**: If base layout is set to 'void', user must input customized layout for the room, otherwise the video layout would be treated as invalid. Read 3.5.1 for details of customized layout. maxInput indicates the maximum number of video frame inputs for the video layout definition.
 
@@ -740,41 +840,14 @@ For example, connect to the MCU sample application server XXXXX with the followi
 
         https://XXXXX:3004/?room=some_particular_room_id
 This will direct the conference connection to the MCU room with the ID some_particular_room_id.
-### 4.2.2 Connect to an MCU conference to subscribe mix or forward streams {#Conferencesection4_2_2}
-Since MCU room can now produce both forward streams and mix stream at the same time, including the screen sharing stream, the client is able to subscribe specified stream(s) by a query string in your URL: mix. The default value for the key word is true.
+### 4.2.2 Connect to an MCU conference to subscribe forward streams {#Conferencesection4_2_2}
+Since MCU room can now produce both forward streams and mix stream at the same time, including the screen sharing stream, the client is able to subscribe specified stream(s) by a query string in your URL: forward. The default value for the key word is false.
 
-For example, to subscribe mix stream and screen sharing stream from MCU, connect to the MCU sample application server XXXXX with the following URL:
+For example, to subscribe mix stream and forward stream from MCU, connect to the MCU sample application server XXXXX with the following URL:
 
-        https://XXXXX:3004/?mix=true
-
-### 4.2.3 Connect to an MCU conference with screen sharing {#Conferencesection4_2_3}
-The client can connect to the MCU conference with screen sharing stream.
-To share your screen, use a query string in your URL, via the key word: screen. The default value for the key word is false.
-To do this, connect to the MCU sample application server XXXXX with the following URL:
-
-        https://XXXXX:3004/?screen=true
-
-
-> **Note**:    The screen sharing example in this section requires the Chrome
-> extension. Source code of such extension sample is provided in
-> Javascript SDK package for reference. Also there are steps in the user guide
-> for you to follow from the main page of Intel CS for WebRTC Client SDK for
-> JavaScript.
-### 4.2.4 Connect to an MCU conference with a specific video resolution {#Conferencesection4_2_4}
-
-In most cases, you can customize the video capture device on the client machine to produce video streams with different resolutions. To specify your local video resolution and send that resolution value to the MCU, use a query string in your URL with the key word "resolution".
-
-The supported video resolution list includes:
-
-        'sif': (320 x 240), 'vga': (640 x 480), 'hd720p': (1280 x 720), 'hd1080p': (1920 x 1080).
-
-For example, if you want to generate a 720P local video stream and publish that to MCU server, you can connect to the MCU sample application server XXXXX with the following URL:
-
-        https://XXXXX:3004/?resolution=hd720p
-
-> **Note**    The specified resolution acts only as a target value. This means that the actual generated video resolution might be different
-> depending on the hardware of your local media capture device.
-### 4.2.5 Connect to an MCU conference with an RTSP input {#Conferencesection4_2_5}
+        https://XXXXX:3004/?forward=true
+If you do not want mix stream, change room's view configuration refer to [Section 3.5](#Conferencesection3_5)
+### 4.2.3 Connect to an MCU conference with an RTSP input {#Conferencesection4_2_3}
 The MCU conference supports external stream input from devices that support RTSP protocol, like IP Camera.
 For example, connect to the MCU sample application server XXXXX with the following URL:
 
@@ -793,7 +866,7 @@ The installation requirements for the peer server are listed in Table 5-1 and 5-
 **Table 5-1. Installation requirements**
 Component name | OS version
 ----|-----
-Peer server | Ubuntu 14.04 LTS, 64-bit
+Peer server | Ubuntu 14.04/16.04 LTS, CentOS* 7.2/7.3
 
 > **Note**: The peer server has been fully tested on Ubuntu14.04 LTS,64-bit.
 **Table 5-2. Peer Server Dependencies**
