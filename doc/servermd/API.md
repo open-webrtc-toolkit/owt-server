@@ -35,12 +35,12 @@ The following common HTTP status code may be returned after you make a call:
 
 Besides the common HTTP response code, there are also some internal status code for specific error conditions. Following is an example for response body used to represent  internal error in JSON format.
 
-  {
-      "error":{
-        "code": 1001,
-        "message": "Resource not found"
-      }
-  }
+    {
+        "error":{
+          "code": 1001,
+          "message": "Resource not found"
+        }
+    }
 **Note**:<br>
 　　*"code": 1001* is a status code for internal error.And all the error following the same format.
 
@@ -176,8 +176,8 @@ Data Model:<br>
         "templates": {
           "base": string,                     // valid values ["fluid", "lecture", "void"].
           "custom": [
-            { "primary": string, "region": object},
-            { "primary": string, "region": object}
+            { "primary": string, "region": arrayOf(object(Region))},
+            { "primary": string, "region": arrayOf(object(Region))}
           ]
          }
       }
@@ -197,12 +197,12 @@ Data Model:<br>
       }
     }
     object(MeidaIn): {
-      "audio": object，
-      "video": object
+      "audio": object(Audio)，               // Refers to the format list above.
+      "video": object(Video)                 // Refers to the format list above.
     }
     object(MediaOut): {
-      "audio": object,
-      "video": object,
+      "audio": object(Audio),                // Refers to the format list above.
+      "video": object(Video),                // Refers to the format list above.
       "parameters": {
         "resolution": array,                 // Array of resolution.E.g. ['x3/4', 'x2/3', ... 'cif']
         "framerate": array,                  // Array of framerate.E.g. [5, 15, 24, 30, 48, 60]
@@ -443,12 +443,12 @@ parameters:
         // There are two kind of path and value. Choose one of them.
 
         path: '/permission/[publish|subscribe]',
-        value: object(value)
+        value: object(Value)
           OR
         path: '/permission/[publish|subscribe]/[video|audio]',
         value: boolean
     }
-    object(value):
+    object(Value):
     {
         audio: boolean,
         video: boolean
@@ -648,7 +648,7 @@ parameters:
 **Note**:
 
     pub_req={
-        object(Connection),
+        connection: object(Connection),
         media: object(Media)        // Refers to object(Media) in 5.4 streaming-ins model.
     }
     object(Connection):
