@@ -659,6 +659,7 @@ function VMixer(rpcClient, clusterIP) {
     };
 
     that.setPrimary = function (stream_id, callback) {
+        log.debug('setPrimary, stream_id:', stream_id);
         if (inputManager.has(stream_id)) {
             let input;
             if (inputManager.isPending(stream_id)) {

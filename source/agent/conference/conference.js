@@ -1907,7 +1907,7 @@ var Conference = function (rpcClient, selfRpcId) {
         return 'ok';
       }).then(() => {
         return new Promise((resolve, reject) => {
-          var count = 0, wait = 200;
+          var count = 0, wait = 1420;
           var interval = setInterval(() => {
             if (count > wait) {
               clearInterval(interval);
@@ -2138,7 +2138,7 @@ var Conference = function (rpcClient, selfRpcId) {
         return accessController.initiate('admin', subscription_id, 'out', participants['admin'].getOrigin(), subDesc);
       }).then(() => {
         return new Promise((resolve, reject) => {
-          var count = 0, wait = 200;
+          var count = 0, wait = 300;
           var interval = setInterval(() => {
             if (count > wait) {
               clearInterval(interval);
