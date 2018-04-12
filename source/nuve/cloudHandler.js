@@ -194,7 +194,7 @@ exports.addStreamingIn = function (roomId, pubReq, callback) {
         } else {
           callback(result);
         }
-      }});
+      }}, 90 * 1000);
     }).catch((err) => {
       callback('error');
     });

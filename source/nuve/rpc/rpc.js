@@ -51,7 +51,7 @@ var callbackError = function (corrID) {
 /*
  * Calls remotely the 'method' function defined in rpcPublic of 'to'.
  */
-exports.callRpc = function (to, method, args, callbacks) {
+exports.callRpc = function (to, method, args, callbacks, timeout) {
     if (!clientQueue) {
         for (var i in callbacks) {
             callbacks[i]('rpc client not ready');
@@ -61,7 +61,7 @@ exports.callRpc = function (to, method, args, callbacks) {
     corrID += 1;
     map[corrID] = {};
     map[corrID].fn = callbacks;
-    map[corrID].to = setTimeout(callbackError, TIMEOUT, corrID);
+    map[corrID].to = setTimeout(callbackError, ((typeof timeout === 'number' && timeout) ? timeout : TIMEOUT), corrID);
     var send = {method: method, args: args, corrID: corrID, replyTo: clientQueue.name};
     exc.publish(to, send);
 };
