@@ -122,6 +122,11 @@ function translateOldRoom(oldConfig) {
     participantLimit: oldConfig.userLimit,
     roles: [
       {
+        role: 'admin', // TO work with 3.4
+        publish: { audio: true, video: true },
+        subscribe: { audio: true, video: true }
+      },
+      {
         role: 'presenter',
         publish: { audio: true, video: true },
         subscribe: { audio: true, video: true }
