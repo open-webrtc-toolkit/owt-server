@@ -46,6 +46,11 @@ if (options.help || Object.keys(options).length === 0) {
   process.exit(0);
 }
 
+var npmInstallOption = '';
+if (options.archive) {
+  npmInstallOption = ' --production';
+}
+
 if (options.encrypt) {
   const encryptDeps = [
     'uglify-js',
@@ -333,7 +338,7 @@ function packCommon(target) {
         execSync(`mv ${packageJson} ${packageJson}.${target.rules.name}`);
       } else {
         chdir(installDist);
-        npmInstall = exec('npm install')
+        npmInstall = exec('npm install' + npmInstallOption)
           .then((stdout, stderr) => {
             console.log(stdout);
             console.log(stderr);
@@ -606,7 +611,7 @@ function packSamples() {
 
   if (options['install-module']) {
     chdir(`${distDir}/extras/basic_example`);
-    execSync('npm install');
+    execSync('npm install' + npmInstallOption);
   }
 }
 
