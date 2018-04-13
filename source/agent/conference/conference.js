@@ -1575,7 +1575,9 @@ var Conference = function (rpcClient, selfRpcId) {
       return callback('callback', 'error', 'Stream does NOT exist');
     }
 
-    if (streams[streamId].info.owner !== participantId) {
+    if ((streams[streamId].info.owner !== participantId)
+        && (participants[participantId].getInfo().role !== 'admin') //FIXME: back-door for 3.4 client with 'admin' role
+       ) {
       return callback('callback', 'error', 'unauthorized');
     }
 
@@ -1720,9 +1722,12 @@ var Conference = function (rpcClient, selfRpcId) {
       return callback('callback', 'error', 'Subscription does NOT exist');
     }
 
-    if (subscriptions[subscriptionId].info.owner !== participantId) {
+    if ((subscriptions[subscriptionId].info.owner !== participantId)
+        && (participants[participantId].getInfo().role !== 'admin') //FIXME: back-door for 3.4 client with 'admin' role
+       ) {
       return callback('callback', 'error', 'unauthorized');
     }
+
 
     var op;
     switch (command.operation) {
