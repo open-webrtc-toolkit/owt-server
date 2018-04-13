@@ -3,14 +3,11 @@
   "version":"4.0.0",
   "dependencies": {
     "amqp": "*",
-    "express": "*",
-    "body-parser": "*",
     "socket.io": "^1.6.0",
     "log4js": "^1.1.1",
     "toml": "*",
     "sprintf-js": "^1.0.3",
     "ajv": "^5.2.2",
-    "mongojs": "",
     "mongoose": "^4.13.6",
     "fraction.js": "*"
   },

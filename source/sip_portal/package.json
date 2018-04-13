@@ -4,7 +4,6 @@
   "dependencies": {
     "amqp": "*",
     "log4js": "^1.1.1",
-    "mongojs": "",
     "toml": "*",
     "mongoose": "^4.13.6",
     "fraction.js": "*"
