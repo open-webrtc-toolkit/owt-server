@@ -953,8 +953,8 @@ function tableHandlerRoom(rooms) {
     var room = {
       name: roomName,
       options: {
-        inputLimit: inputLimit,
-        participantLimit: participantLimit
+        inputLimit: inputLimit || -1,
+        participantLimit: participantLimit || -1
       }
     };
     p.find('.editable-unsaved').editable('setValue', null).removeClass('editable-unsaved'); // reset line

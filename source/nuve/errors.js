@@ -12,7 +12,7 @@ class AppError extends Error {
     this.code = code || 2001;
   }
 
-  data() {
+  get data() {
     return {
       error: {
         code: this.code,
