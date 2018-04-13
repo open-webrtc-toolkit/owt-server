@@ -140,6 +140,11 @@ var Connection = function(spec, socket, reconnectionKey, portal, dock) {
         protocol_version = 'legacy';
         client = new LegacyClient(client_id, that, portal);
       } else if (login_info.protocol === '1.0') {
+        //FIXME: Reject connection from 3.5 client
+        if (login_info.userAgent && login_info.userAgent.sdk && login_info.userAgent.sdk.version === '3.5') {
+          safeCall(callback, 'error', 'Deprecated client version');
+          return socket.disconnect();
+        }
         protocol_version = '1.0';
         client = new V10Client(client_id, that, portal);
       } else {
