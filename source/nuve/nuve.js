@@ -124,7 +124,7 @@ app.use(function(err, req, res, next) {
       err = new e.AppError(err.name + ' ' + err.message);
     }
   }
-  res.status(err.status).send(err.data());
+  res.status(err.status).send(err.data);
 });
 
 
