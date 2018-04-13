@@ -570,9 +570,9 @@ role.role | The name for a certain role
 role.*(operation).*(mediaType) | The capability to publish/subscribe audio/video stream for a certain role
 views | The view list for the room, each view represents a combination of mix stream settings. To disable mixing, set this to empty list
 view.label | The label for a certain view, two view labels in one room cannot be duplicated
-view.audio.format | The default audio format of the view
+view.audio.format | The default audio format of the view selected from 'mediaOut.audio' configuration
 view.audio.vad | The 'activeInput' event will be emitted if this option is true, note that if a client publish more than one audio stream, this may not work well
-view.video.format | The default video format of the view
+view.video.format | The default video format of the view selected from 'mediaOut.video' configuration
 view.video.parameters.resolution | The default video resolution of the view, see the Table 3-3 for supported resolutions
 view.video.parameters.framerate | The default video framerate of the view
 view.video.parameters.bitrate | The default video bitrate of the view, if it's not specified, the mix engine will generate a default one
@@ -587,7 +587,7 @@ view.layout.templates | The layout template for the mix video stream, a user can
 view.layout.templates.base | The template base for video layout
 view.layout.templates.custom | The customized video layout uppon the base, see the [Section 3.5.1](#Conferencesection3_5_1)
 mediaIn | The audio/video format that the room can accept, see the Table 3-2 for supported format
-mediaOut | The audio/video format and parameters that the room can generate, see the Table 3-2 for supported formats
+mediaOut | The audio/video format and parameters that the room can generate through media processing, see the Table 3-2 for supported formats
 transcoding | The transcoding switch on audio, video format and parameters
 sip | The SIP setting for the room
 notifying | The notifying policy for the room
