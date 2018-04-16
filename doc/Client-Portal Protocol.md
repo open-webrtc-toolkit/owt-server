@@ -7,12 +7,12 @@
 |08-04-2018 |Tianfang|1.0 final|
 -->
 # 1. Overview {#CPCPSsection1}
-　　This documentation covers all signaling messages between Client and MCU component through Socket.io connections.
+This documentation covers all signaling messages between Client and MCU component through Socket.io connections.
 # 2. Terminology {#CPCPSsection2}
-　　Here is a table describing the detailed name and definition.
+Here is a table describing the detailed name and definition.
 
 | Name | Definition |
-|:----:|:-----------|
+|:----|:-----------|
 | Portal | The MCU component listening at the Socket.io server port, accepting signaling connections initiated by Clients, receive/send signaling messages from/to Clients. |
 | Client | The program running on end-user’s device which interacts with MCU Server by messages defined in this documentation.|
 | Signaling Connection | The signaling channel between Client and Portal established by Client to send, receive and fetch signaling messages. |
@@ -26,7 +26,7 @@
 # 3. Socket.io Signaling {#CPCPSsection3}
 ## 3.1 Format {#CPCPSsection3_1}
 ### 3.1.1 Client -> Portal {#CPCPSsection3_1_1}
-　　Given that Client has connected Portal successfully and the socket object is ready to send/receive data to/from Portal, Client must send all signaling message to Portal by calling the client socket object’s ***emit*** method in the following format (javascript code for example, same for rest of this documentation):
+Given that Client has connected Portal successfully and the socket object is ready to send/receive data to/from Portal, Client must send all signaling message to Portal by calling the client socket object’s ***emit*** method in the following format (javascript code for example, same for rest of this documentation):
 
 	clientSocket.emit(
 	              RequestName,
@@ -49,7 +49,7 @@
 		  description: string(Reason)
 		}
 ### 3.1.2 Portal -> Client {#CPCPSsection3_1_2}
-　　Given that Portal has accepted Clients connecting and the socket object is ready to send/receive data to/from Client, Portal must send all signaling messages to Client by calling the server socket object’s ***emit*** method in the following format:
+Given that Portal has accepted Clients connecting and the socket object is ready to send/receive data to/from Client, Portal must send all signaling messages to Client by calling the server socket object’s ***emit*** method in the following format:
 
 	serverSocket.emit(
 	              NotificationName,
@@ -62,10 +62,11 @@
 
 ## 3.2 Connection Maintenance {#CPCPSsection3_2}
 ### 3.2.1 Client Connects {#CPCPSsection3_2_1}
-　　Portal should be able to listen at either a secure or an insecure socket.io server port to accept Clients’ connecting requests.  If the secure socket.io server is enabled, the SSL certificate and private key store path must be correctly specified by configuration item portal.keystorePath in portal.toml.<br>
-　　Socket.io server needs pop a 'connection' event indicating a new client’s successfully connected.
+Portal should be able to listen at either a secure or an insecure socket.io server port to accept Clients’ connecting requests.  If the secure socket.io server is enabled, the SSL certificate and private key store path must be correctly specified by configuration item portal.keystorePath in portal.toml.<br>
+
+Socket.io server needs pop a 'connection' event indicating a new client’s successfully connected.
 ### 3.2.2 Client Keeps Alive {#CPCPSsection3_2_2}
-　　Socket.io server has its own underlying connection keep-alive mechanism, so no application level heart-beat is needed. But Client needs to refresh the reconnection ticket periodically before the current one expires if it wants to reconnect to Portal in case the network break or switch happens.
+Socket.io server has its own underlying connection keep-alive mechanism, so no application level heart-beat is needed. But Client needs to refresh the reconnection ticket periodically before the current one expires if it wants to reconnect to Portal in case the network break or switch happens.
 
 **Note**:<br>
 　　The refreshing request must keep to the following format:
@@ -74,21 +75,24 @@
 	RequestData: absent
 	ResponseData: A refreshed base64-encoded ReconnectionTicket object if ResponseStatus is "ok".
 ### 3.2.3 Client Disconnects {#CPCPSsection3_2_3}
-　　The connected socket.io object at server side will be notified with a ‘disconnect’ event. The waiting for reconnecting timer **(Timer100)** will be started right after receiving the ‘disconnect’ event if the following conditions are fulfilled:
+The connected socket.io object at server side will be notified with a ‘disconnect’ event. The waiting for reconnecting timer **(Timer100)** will be started right after receiving the ‘disconnect’ event if the following conditions are fulfilled:
 
 	- The connection is initiated from a mobile client;
 	- No participant leaving signaling has been received.
 **Note**:<br>
-　　If Client has not reconnected successfully before **Timer100** expires, Portal will not wait for and accept the Client’s reconnection any longer. Otherwise, if Client reconnects successfully before **Timer100** expires, Portal will resume all the signaling activities with Client and kill **Timer100**.
+If Client has not reconnected successfully before **Timer100** expires, Portal will not wait for and accept the Client’s reconnection any longer. Otherwise, if Client reconnects successfully before **Timer100** expires, Portal will resume all the signaling activities with Client and kill **Timer100**.
 ### 3.2.4 Client Reconnects {#CPCPSsection3_2_4}
 This a format for client reconnects.
 
-**RequestName**:  "relogin"<br>
+**RequestName**: "relogin"<br>
+
 **RequestData**: The ReconnectionTicket object defined in 3.3.1 section.<br>
+
 **ResponseData**: A refreshed base64-encoded ReconnectionTicket object if ResponseStatus is "ok".
 ## 3.3 Conferencing {#CPCPSsection3_3}
 ### 3.3.1 Participant Joins a Room {#CPCPSsection3_3_1}
-**RequestName**:  “login”<br>
+**RequestName**: “login”<br>
+
 **RequestData**: The LoginInfo object with following definition:
 
 	object(LoginInfo)::
@@ -298,14 +302,18 @@ This a format for client reconnects.
 		     signature: string(Signature)
 		    }
 ### 3.3.2 Participant Leaves a Room {#CPCPSsection3_3_2}
-**RequestName**:  “logout”<br>
+**RequestName**: “logout”<br>
+
 **RequestData**: absent<br>
+
 **ResponseData**: undefined if **ResponseStatus** is “ok”.
 ### 3.3.3 Participant Is Dropped by MCU {#CPCPSsection3_3_3}
 **NotificationName**: “drop”<br>
+
 **NotificationData**: absent<br>
 ### 3.3.4 Participant Is Notified on Other Participant’s Action {#CPCPSsection3_3_4}
 **NotificationName**: “participant”<br>
+
 **NotificationData**: The ParticipantAction object with following definition:
 
 	object(ParticipantAction)::
@@ -316,7 +324,8 @@ This a format for client reconnects.
 	  }
 
 ### 3.3.5 Participant Sends a Text Message {#CPCPSsection3_3_5}
-**RequestName**:  “text”<br>
+**RequestName**: “text”<br>
+
 **RequestData**: The TextSendMessage object with following definition:
 
 	object(TextSendMessage)::
@@ -327,6 +336,7 @@ This a format for client reconnects.
 **ResponseData**: undefined if **ResponseStatus** is “ok”.
 ### 3.3.6 Participant Receives Text Message from another Participant {#CPCPSsection3_3_6}
 **NotificationName**: “text”<br>
+
 **NotificationData**: The TextReceiveMessage object with following definition:
 
 	object(TextReceiveMessage)::
@@ -336,7 +346,8 @@ This a format for client reconnects.
 	  }
 
 ### 3.3.7 Participant Starts Publishing a WebRTC Stream to Room {#CPCPSsection3_3_7}
-**RequestName**:  “publish”<br>
+**RequestName**: “publish”<br>
+
 **RequestData**: The PublicationRequest object with following definition:
 
 	object(PublicationRequest)::
@@ -368,7 +379,8 @@ This a format for client reconnects.
 	   id: string(SessionId) //will be used as the stream id when it gets ready.
 	  }
 ### 3.3.8 Participant Stops Publishing a Stream to Room {#CPCPSsection3_3_8}
-**RequestName**:  “unpublish”<br>
+**RequestName**: “unpublish”<br>
+
 **RequestData**: The UnpublicationRequest object with following definition:
 
 	object(UnpublicationRequest)::
@@ -378,6 +390,7 @@ This a format for client reconnects.
 **ResponseData**: undefined if **ResponseStatus** is “ok”.
 ### 3.3.9 Participant Is Notified on Streams Update in Room {#CPCPSsection3_3_9}
 **NotificationName**: “stream”<br>
+
 **NotificationData**: The StreamUpdateMessage object with following definition.
 
 	object(StreamUpdateMessage)::
@@ -395,7 +408,8 @@ This a format for client reconnects.
 	     value: "active" | "inactive" | [object(SubStream2RegionMapping)] | string(inputStreamId)
 	    }
 ### 3.3.10 Participant Controls a Stream {#CPCPSsection3_3_10}
-**RequestName**:  “stream-control”<br>
+**RequestName**: “stream-control”<br>
+
 **RequestData**: The StreamControlInfo object with following definition:
 
 	object(StreamControlInfo)::
@@ -406,7 +420,8 @@ This a format for client reconnects.
 	}
 **ResponseData**: **ResponseStatus** is “ok”.
 ### 3.3.11 Participant Subscribes a Stream to WebRTC Endpoint {#CPCPSsection3_3_11}
-**RequestName**:  “subscribe”<br>
+**RequestName**: “subscribe”<br>
+
 **RequestData**: The SubscriptionRequest object with following definition:
 
 	object(SubscriptionRequest)::
@@ -450,7 +465,8 @@ This a format for client reconnects.
 	   id: string(SubscriptionId)
 	  }
 ### 3.3.12 Participant Stops a Self-Initiated Subscription {#CPCPSsection3_3_12}
-**RequestName**:  “unsubscribe”<br>
+**RequestName**: “unsubscribe”<br>
+
 **RequestData**: The UnsubscriptionRequest object with following definition:
 
 	object(UnsubscriptionRequest)::
@@ -459,7 +475,8 @@ This a format for client reconnects.
 	  }
 **ResponseData**: undefined if **ResponseStatus** is “ok”.
 ### 3.3.13 Participant Controls a Self-Initiated Subscription {#CPCPSsection3_3_13}
-**RequestName**:  “subscription-control”<br>
+**RequestName**: “subscription-control”<br>
+
 **RequestData**: The SubscriptionControlInfo object with following definition:
 
 	object(SubscriptionControlInfo)::
@@ -489,7 +506,8 @@ This a format for client reconnects.
 	      }
 **ResponseData**: undefined if **ResponseStatus** is “ok”.
 ### 3.3.14 Participant Sends Session Signaling {#CPCPSsection3_3_14}
-**RequestName**:  “soac”<br>
+**RequestName**: “soac”<br>
+
 **RequestData**: The SOACMessage object with following definition:
 
 	object(SOACMessage)::
@@ -512,6 +530,7 @@ This a format for client reconnects.
 **ResponseData**: undefined if **ResponseStatus** is “ok”.
 ### 3.3.15 Participant Receives Session Progress {#CPCPSsection3_3_15}
 **NotificationName**: “progress”<br>
+
 **NotificationData**: The SessionProgress object with following definition.
 
 	object(SessionProgress)::
