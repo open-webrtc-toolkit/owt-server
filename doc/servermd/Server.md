@@ -843,10 +843,10 @@ This will direct the conference connection to the MCU room with the ID some_part
 ### 4.2.2 Connect to an MCU conference to subscribe forward streams {#Conferencesection4_2_2}
 Since MCU room can now produce both forward streams and mix stream at the same time, including the screen sharing stream, the client is able to subscribe specified stream(s) by a query string in your URL: forward. The default value for the key word is false.
 
-For example, to subscribe mix stream and forward stream from MCU, connect to the MCU sample application server XXXXX with the following URL:
+For example, to subscribe forward stream instead of mix stream from MCU, connect to the MCU sample application server XXXXX with the following URL:
 
         https://XXXXX:3004/?forward=true
-If you do not want mix stream, change room's view configuration refer to [Section 3.5](#Conferencesection3_5)
+
 ### 4.2.3 Connect to an MCU conference with an RTSP input {#Conferencesection4_2_3}
 The MCU conference supports external stream input from devices that support RTSP protocol, like IP Camera.
 For example, connect to the MCU sample application server XXXXX with the following URL:

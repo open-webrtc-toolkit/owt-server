@@ -5,6 +5,7 @@
     "amqp": "*",
     "log4js": "^1.1.1",
     "express": "*",
+    "mongojs": "",
     "toml": "*",
     "ajv": "^5.2.2",
     "body-parser": "*",
