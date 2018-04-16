@@ -3,7 +3,8 @@
 # 1 Introduction {#RESTAPIsection1}
 Intel WebRTC solution provides a set of REST (Representational State Transfer) API for conference management. Manager clients can be implemented by different programming languages through these APIs.
 # 2 Definitions {#RESTAPIsection2}
-Resource: the kind of data under manipulation
+Resource: the kind of data under manipulation<br>
+
 Verb: HTTP verb. The mapping to operations is as following:
 
     - Create operations: POST
@@ -11,14 +12,14 @@ Verb: HTTP verb. The mapping to operations is as following:
     - Update operations(entirely): PUT
     - Update operations(partially): PATCH
     - Delete operations: DELETE
-URI: the Universal Resource Identifier, or name through which the resource can be manipulated.
+URI: the Universal Resource Identifier, or name through which the resource can be manipulated.<br>
 
-Request Body: the request data that user need supply to call the API. Json format data is requried.
+Request Body: the request data that user need supply to call the API. Json format data is requried.<br>
 
 Response Body: the response data is returned through HTTP response in JSON/text format.
 
 # 3 Making a Call {#RESTAPIsection3}
-With all the management API, perform the following steps to implement each call.
+With all the management API, perform the following steps to implement each call.<br>
 
 1. Create a string for the http request that consist of the format [HTTP verb][url] + [headers] + [request body](optional)
 2. Use your preferred language's network library (or http library) to send the request to REST server.
@@ -41,13 +42,13 @@ Besides the common HTTP response code, there are also some internal status code 
           "message": "Resource not found"
         }
     }
-**Note**:<br>
-　　*"code": 1001* is a status code for internal error.And all the error following the same format.
+
+**Note**: "code": 1001 is a status code for internal error.And all the error following the same format.<br>
 
 Here is a table describing the internal error code.
 
 | code | description |
-| :-------:|:-------:|
+| :-------|:-------|
 | 1001 | general not found |
 | 1002 | service not found |
 | 1003 | room not found |
@@ -71,6 +72,7 @@ The management API can only be called after authorized. To get authorized, each 
     mauth_cnonce=87428,
     mauth_timestamp=1406079112038,
     mauth_signature=ZjA5NTJlMjE0ZTY4NzhmZWRjZDkxYjNmZjkyOTIxYzMyZjg3NDBjZA==
+
 - Mauth realm=http://webrtc.intel.com, mauth_signature_method=HMAC_SHA256
 - mauth_username and mauth_role are optional.
 - mauth_serviceid is the ID of the service.
@@ -94,7 +96,7 @@ Example of encryption algorithm (python):
         hash = hmac.new(key, toSign, HMAC_SHA256)
         signed = binascii.b2a_base64(hash.hexdigest())[:-1]
         return signed
-**toSign** is the signature.
+**toSign** is the signature.<br>
 
 **Note:**<br>
 If authentication failed, a response with code 401 would be returned.
@@ -111,7 +113,7 @@ The management API uses REST model to accessing different resources. The resourc
 
 ## 5.1 Rooms {#RESTAPIsection5_1}
 Description:<br>
-　　A room is the conference where users can communicate by real-time video and audio. Rooms are served by services. These resources can only be accessed after authenticated to their owner services. Rooms can have different settings for various scenarios. Making call on room resources provides users the ability to customize rooms for different needs.
+A room is the conference where users can communicate by real-time video and audio. Rooms are served by services. These resources can only be accessed after authenticated to their owner services. Rooms can have different settings for various scenarios. Making call on room resources provides users the ability to customize rooms for different needs.<br>
 
 Data Model:<br>
 
@@ -236,12 +238,12 @@ Resources:<br>
 ### /v1/rooms
 #### POST
 Description:<br>
-　　This function can create a room.
+This function can create a room.<br>
 
 parameters:
 
 | parameters |   type   | annotation |
-| :----------:|:------:|:------------------:|
+| :----------|:------|:------------------|
 | roomConfig | request body | Configuration used to create room |
 
 This is for *roomConfig*:
@@ -254,94 +256,96 @@ This is for *roomConfig*:
 response body:
 
 | type | content |
-|:-------------:|:-------:|
+|:-------------|:-------|
 |      json     |  A room data model represents the room created |
 #### GET
 Description:<br>
-　　List the rooms in your service.
+List the rooms in your service.<br>
 
 parameters:
 
 | parameters | type | annotation |
-|:----------:|:----:|:----------:|
+|:----------|:----|:----------|
 |    null    | null |    null    |
 
 response body:
 
 | type | content |
-|:-------------:|:-------:|
+|:-------------|:-------|
 |      json     | List of room data |
 
 Here is an example of json data:
 
     [room0, room1, ...]
-**Note**: Elements in list are of room data model.
+**Note**: Elements in list are of room data model.<br>
 
-Pagination
+Pagination<br>
 
-Requests that return multiple rooms will not be paginated by default. To avoid too much data of one call, you can set a custom page size with the ?per_page parameter.You can also specify further pages with the ?page parameter.
+Requests that return multiple rooms will not be paginated by default. To avoid too much data of one call, you can set a custom page size with the ?per_page parameter.You can also specify further pages with the ?page parameter.<br>
 
-GET 'https://sample.api/service?page=2&per_page=10'
+GET 'https://sample.api/service?page=2&per_page=10'<br>
 
 Note that page numbering is 1-based and that omitting the ?page parameter will return the first page.
 
 ### /v1/rooms/{roomId}
 #### GET
 Description:<br>
-　　Get information on the specified room.
+Get information on the specified room.<br>
 
 parameters:
 
 | parameters | type | annotation |
-|:----------:|:----:|:----------:|
+|:----------|:----|:----------|
 |    {roomId}    | URL |    Room ID    |
 | undefined | request body | Request body is null |
 response body:
 
 | type | content |
-|:-------------:|:-------:|
+|:-------------|:-------|
 |      json     | The required room data model |
 #### DELETE
 Description:<br>
-　　Delete the specified room.
+Delete the specified room.<br>
 
 parameters:
 
 | parameters | type | annotation |
-|:----------:|:----:|:----------:|
+|:----------|:----|:----------|
 |    {roomId}    | URL |    Room ID to be deleted   |
 | undefined | request body| Request body is null |
-response body: response body is **empty**.
 
+response body: response body is **empty**.
 #### PUT
 Description:<br>
-　　Update a room's configuration entirely.
+Update a room's configuration entirely.<br>
 
 parameters:
 
 | parameters | type | annotation |
-|:----------:|:----:|:----------:|
+|:----------|:----|:----------|
 |    {roomId}    | URL |    Room ID    |
 |  options or {}  | request body | Room configuration|
-**Note**: *options* is same as *object(Options)* in 5.1, /v1/rooms/POST.
+
+**Note**: *options* is same as *object(Options)* in 5.1, /v1/rooms/POST.<br>
 
 response body:
 
 | type | content |
-|:-------------:|:-------:|
+|:-------------|:-------|
 |      json     | The updated room data model |
 #### PATCH
 Description:<br>
-　　update a room's configuration partially.
+update a room's configuration partially.<br>
 
 parameters:
 
 | parameters | type | annotation |
-|:----------:|:----:|:----------:|
+|:----------|:----|:----------|
 |    {roomId}    | URL |    Room ID    |
 |   items  | request body | Configuration item list to be updated|
+
 **Note**:<br>
-　　The detail format for items can be found in ``https://tools.ietf.org/html/rfc6902``. Here is a model for one item.
+The detail format for items can be found in ``https://tools.ietf.org/html/rfc6902``. Here is a model for one item.<br>
 
     items=[
         {
@@ -353,7 +357,7 @@ parameters:
 response body:
 
 | type | content |
-|:-------------:|:-------:|
+|:-------------|:-------|
 |      json     | The updated room data model |
 ## 5.2 Participants {#RESTAPIsection5_2}
 Description:
@@ -390,47 +394,48 @@ Resources:
 ### /v1/rooms/{roomId}/participants
 #### GET
 Description:<br>
-　　List participants currently in the specified room.
+List participants currently in the specified room.<br>
 
 parameters:
 
 | parameters | type | annotation |
-|:----------:|:----:|:----------:|
+|:----------|:----|:----------|
 |    {roomId}    | URL |    Room ID    |
 | undefined  | request body | Request body is null |
 response body:
 
 | type | content |
-|:-------------:|:-------:|
+|:-------------|:-------|
 |      json     | All participants in the specified room |
 ### /v1/rooms/{roomId}/participants/{participantId}
 #### GET
 Description:<br>
-　　Get a participant's information from the specified room.
+Get a participant's information from the specified room.<br>
 
 parameters:
 
 | parameters | type | annotation |
-|:----------:|:----:|:----------:|
+|:----------|:----|:----------|
 |    {roomId}    | URL |    Room ID    |
 | {participantId} | URL | Participant ID|
 |  undefined | request body | Request body is null |
 response body:
 
 | type | content |
-|:-------------:|:-------:|
+|:-------------|:-------|
 |      json     | The detail information of the specified participant |
 #### PATCH
 Description:<br>
-　　Update the permission of a participant in the specified room.
+Update the permission of a participant in the specified room.<br>
 
 parameters:
 
 | parameters | type | annotation |
-|:----------:|:----:|:----------:|
+|:----------|:----|:----------|
 |    {roomId}    | URL |    Room ID    |
 | {participantId}| URL | Participant ID|
 | items| request body | Permission item list to be updated|
+
 **Note**: This is the definition of *items*.<br>
 
     items=[
@@ -456,22 +461,21 @@ parameters:
 response body:
 
 | type | content |
-|:-------------:|:-------:|
+|:-------------|:-------|
 |      json     | The updated permission information of the specified participant |
 #### DELETE
 Description:<br>
-　　Drop a participant from a room.
+Drop a participant from a room.<br>
 
 parameters:
 
 | parameters | type | annotation |
-|:----------:|:----:|:----------:|
+|:----------|:----|:----------|
 |    {roomId}    | URL |    Room ID    |
 | {participantId} | URL | Participant ID|
 |  undefined | request body | Request body is null |
 
-response body: response body is **empty**.
-
+response body: response body is **empty**.<br>
 ## 5.3 Streams {#RESTAPIsection5_3}
 Description:
 
@@ -525,48 +529,49 @@ Resources:
 ### /v1/rooms/{roomId}/streams
 #### GET
 Description:<br>
-　　List streams in the specified room.
+List streams in the specified room.<br>
 
 parameters:
 
 | parameters | type | annotation |
-|:----------:|:----:|:----------:|
+|:----------|:----|:----------|
 |    {roomId}    | URL |    Room ID    |
 | undefined | request body | Request body is null |
 
 response body:
 
 | type | content |
-|:-------------:|:-------:|
+|:-------------|:-------|
 |      json     | All streams in the specified room |
 ### /v1/rooms/{roomId}/streams/{streamId}
 #### GET
 Description:<br>
-　　Get a stream's information from the specified room.
+Get a stream's information from the specified room.<br>
 
 parameters:
 
 | parameters | type | annotation |
-|:----------:|:----:|:----------:|
+|:----------|:----|:----------|
 |    {roomId}    | URL |    Room ID    |
 |    {streamId}  | URL |   Stream ID   |
 | undefined | request body | Request body is null |
 response body:
 
 | type | content |
-|:-------------:|:-------:|
+|:-------------|:-------|
 |      json     | A stream's information in the specified room |
 #### PATCH
 Description:<br>
-　　Update a stream's given attributes in the specified room.
+Update a stream's given attributes in the specified room.<br>
 
 parameters:
 
 | parameters | type | annotation |
-|:----------:|:----:|:----------:|
+|:----------|:----|:----------|
 |    {roomId}    | URL |    Room ID    |
 |    {streamId}  | URL |   Stream ID   |
 |    items   | request body | An array with attributes to be updated|
+
 **Note**: Here is a definition of *items*.<br>
 
     items=[
@@ -591,21 +596,21 @@ parameters:
 response body:
 
 | type | content |
-|:-------------:|:-------:|
+|:-------------|:-------|
 |      json     | A stream's updated information in the specified room |
 #### DELETE
 Description:<br>
-　　Delete the specified stream from the specified room.
+Delete the specified stream from the specified room.<br>
 
 parameters:
 
 | parameters | type | annotation |
-|:----------:|:----:|:----------:|
+|:----------|:----|:----------|
 |    {roomId}    | URL |    Room ID    |
 |    {streamId}  | URL |   Stream ID   |
 | undefined | request body | Request body is null |
-response body: response body is **empty**.
 
+response body: response body is **empty**.<br>
 ## 5.4 Streaming-ins {#RESTAPIsection5_4}
 Description:
 
@@ -636,12 +641,12 @@ Resources:
 ### /v1/rooms/{roomId}/streaming-ins
 #### POST
 Description:<br>
-　　Add an external RTSP/RTMP stream to the specified room.
+Add an external RTSP/RTMP stream to the specified room.<br>
 
 parameters:
 
 | parameters | type | annotation |
-|:----------:|:----:|:----------:|
+|:----------|:----|:----------|
 |    {roomId}    | URL |    Room ID    |
 | pub_req | request body | Json format data with connection and media |
 
@@ -660,22 +665,22 @@ parameters:
 response body:
 
 | type | content |
-|:-------------:|:-------:|
+|:-------------|:-------|
 |  json | The detail information of the external RTSP/RTMP stream |
 ### /v1/rooms/{roomId}/streaming-ins/{streamId}
 #### DELETE
 Description:<br>
-　　Stop the specified external streaming-in in the specified room.
+Stop the specified external streaming-in in the specified room.<br>
 
 parameters:
 
 | parameters | type | annotation |
-|:----------:|:----:|:----------:|
+|:----------|:----|:----------|
 |    {roomId}    | URL |    Room ID    |
 |    {streamId}  | URL |   Stream ID   |
 |   undefined | request body | Request body is null |
-response body: response body is **empty**.
 
+response body: response body is **empty**.<br>
 ## 5.5 Streaming-outs {#RESTAPIsection5_5}
 Description:
 
@@ -717,27 +722,27 @@ Resources:
 ### /v1/rooms/{roomId}/streaming-outs
 #### GET
 Description:<br>
-　　Get all the ongoing streaming-outs in the specified room.
+Get all the ongoing streaming-outs in the specified room.<br>
 
 parameters:
 
 | parameters | type | annotation |
-|:----------:|:----:|:----------:|
+|:----------|:----|:----------|
 |    {roomId}    | URL |    Room ID    |
 |  undefined | request body | Request body is null |
 response body:
 
 | type | content |
-|:-------------:|:-------:|
+|:-------------|:-------|
 |  json | All the ongoing streaming-outs in the specified room |
 #### POST
 Description:<br>
-　　Start a streaming-out to the specified room.
+Start a streaming-out to the specified room.<br>
 
 parameters:
 
 | parameters | type | annotation |
-|:----------:|:----:|:----------:|
+|:----------|:----|:----------|
 |    {roomId}    | URL |    Room ID    |
 | options | request body | Json format with url and media |
 
@@ -751,20 +756,21 @@ parameters:
 response body:
 
 | type | content |
-|:-------------:|:-------:|
+|:-------------|:-------|
 |  json | The started streaming-out |
 ### /v1/rooms/{roomId}/streaming-outs/{streaming-outId}
 #### PATCH
 Description:<br>
-　　Update a streaming-out's given attributes in the specified room.
+Update a streaming-out's given attributes in the specified room.<br>
 
 parameters:
 
 | parameters | type | annotation |
-|:----------:|:----:|:----------:|
+|:----------|:----|:----------|
 |    {roomId}    | URL |    Room ID    |
 | {streaming-outId} | URL | Streaming-out ID|
 | items | request body | An array with attributes to be updated|
+
 **Note**: Here is the definition of *items*.<br>
 
     items=[
@@ -801,21 +807,21 @@ parameters:
 response body:
 
 | type | content |
-|:-------------:|:-------:|
+|:-------------|:-------|
 |  json | A updated streaming-out's attributes |
 #### DELETE
 Description:<br>
-　　Stop the specified streaming-out in the specified room.
+Stop the specified streaming-out in the specified room.<br>
 
 parameters:
 
 | parameters | type | annotation |
-|:----------:|:----:|:----------:|
+|:----------|:----|:----------|
 |    {roomId}    | URL |    Room ID    |
 | {streaming-outId} | URL | Streaming-out ID|
 | undefined | request body | Request body is null |
-response body: response body is **empty**.
 
+response body: response body is **empty**.<br>
 ## 5.6 Recordings {#RESTAPIsection5_6}
 Description:
 
@@ -828,7 +834,7 @@ Recordings data model:
     }
 
 **Note**:<br>
-　　*object(MediaSubOptions)* is same as streaming-outs data model in 5.5.
+*object(MediaSubOptions)* is same as streaming-outs data model in 5.5.<br>
 
 Resources:
 
@@ -838,54 +844,56 @@ Resources:
 ### /v1/rooms/{roomId}/recordings
 #### GET
 Description:<br>
-　　Get all the ongoing recordings in the specified room.
+Get all the ongoing recordings in the specified room.<br>
 
 parameters:
 
 | parameters | type | annotation |
-|:----------:|:----:|:----------:|
+|:----------|:----|:----------|
 |    {roomId}    | URL |    Room ID    |
 |  undefined | request body | Request body is null |
 response body:
 
 | type | content |
-|:-------------:|:-------:|
+|:-------------|:-------|
 |  json | All the ongoing recordings in the specified room |
 #### POST
 Description:<br>
-　　Start a recording in the specified room.
+Start a recording in the specified room.<br>
 
 parameters:
 
 | parameters | type | annotation |
-|:----------:|:----:|:----------:|
+|:----------|:----|:----------|
 |    {roomId}    | URL |    Room ID    |
 | options | request body | Json format with container and media |
-**Note**:
+**Note**:<br>
 
     options={
         container: string,
         media: object(MediaSubOptions)       // Refers to object(MediaSubOptions) in 5.5.
     }
-  container={'mp4' | 'mkv' | 'auto' | 'ts'}  // The container type of the recording file, 'auto' by default.
+    container={'mp4' | 'mkv' | 'auto' | 'ts'}  // The container type of the recording file, 'auto' by default.
+
 response body:
 
 | type | content |
-|:-------------:|:-------:|
+|:-------------|:-------|
 |  json | A recording in the specified room |
 ### /v1/rooms/{roomId}/recordings/{recordingId}
 #### PATCH
 Description:<br>
-　　Update a recording's given attributes in the specified room.
+Update a recording's given attributes in the specified room.<br>
 
 parameters:
 
 | parameters | type | annotation |
-|:----------:|:----:|:----------:|
+|:----------|:----|:----------|
 |    {roomId}    | URL |    Room ID    |
 |   {recordingId} | URL | Recording ID|
 | items | request body  | An array with attributes to be updated|
-**Note**:
+
+**Note**:<br>
 
     items=[
         {
@@ -898,24 +906,24 @@ parameters:
 response body:
 
 | type | content |
-|:-------------:|:-------:|
+|:-------------|:-------|
 |  json | A updated recording's attributes in the specified room |
 #### DELETE
 Description:<br>
-　　Stop the specified recording in the specified room.
+Stop the specified recording in the specified room.<br>
 
 parameters:
 
 | parameters | type | annotation |
-|:----------:|:----:|:----------:|
+|:----------|:----|:----------|
 |    {roomId}    | URL |    Room ID    |
 | {recordingId} | URL | Recording ID|
 |  undefined | request body | Request body is null |
-response body: response body is **empty**.
 
+response body: response body is **empty**.<br>
 ## 5.7 Token {#RESTAPIsection5_7}
 Description:<br>
-　　A token is the ticket for joining the room. The token contains information through which clients can connect to server application. Note that the different rooms may have different network information, so the room must be specified for token resource. The same token cannot be reused if it has been used once. Re-generate token if clients need to connect at the second time.
+A token is the ticket for joining the room. The token contains information through which clients can connect to server application. Note that the different rooms may have different network information, so the room must be specified for token resource. The same token cannot be reused if it has been used once. Re-generate token if clients need to connect at the second time.<br>
 
 Data Model:<br>
 Token data in Json example:
@@ -939,12 +947,12 @@ Resources:
 ### /v1/rooms/{roomId}/tokens
 #### POST
 Description:<br>
-　　Create a new token when a new participant access a room needs to be added.
+Create a new token when a new participant access a room needs to be added.<br>
 
 parameters:
 
 | parameters | type | annotation |
-|:----------:|:----:|:----------:|
+|:----------|:----|:----------|
 |    {roomId}    | URL |    Room ID    |
 | {preference_body} | request body | Json format with preference, user and role |
 **Note**:
@@ -957,5 +965,5 @@ parameters:
 response body:
 
 | type | content |
-|:-------------:|:-------:|
+|:-------------|:-------|
 |  json | A token created for a new participant |
