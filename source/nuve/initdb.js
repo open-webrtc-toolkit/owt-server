@@ -79,7 +79,7 @@ prepareService('superService', function (service) {
     console.log('sampleServiceKey:', sampleServiceKey);
 
     Service.base.connection.close();
-    var sampleServiceFile = path.resolve(__dirname, '../extras/basic_example/sampleRTCService.js');
+    var sampleServiceFile = path.resolve(__dirname, '../extras/basic_example/samplertcservice.js');
     fs.readFile(sampleServiceFile, 'utf8', function (err, data) {
       if (err) {
         return console.log(err);
