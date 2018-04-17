@@ -316,6 +316,10 @@ function translateOldRoom(oldConfig) {
     return standard_bitrate * mul_factor;
   }
 
+  if (oldConfig.mediaMixing && !oldConfig.views) {
+    oldConfig.views = { common: { mediaMixing: oldConfig.mediaMixing }};
+  }
+
   for (var v in oldConfig.views) {
     var old_view = oldConfig.views[v].mediaMixing;
     config.views.push({
