@@ -123,7 +123,7 @@ Data Model:<br>
       "name": string,
       "participantLimit": number,                // -1 means no limit
       "inputLimit": number,
-      "roles": object(Role),
+      "roles": arrayOf(Role),
       "views": arrayOf(object(View)),
       "mediaIn": object(MeidaIn),
       "mediaOut": object(MediaOut),
@@ -161,11 +161,11 @@ Data Model:<br>
       },
       "parameters": {
         "resolution": object(Resolution),
-        "framerate": number,
-        "bitrate": string,
-        "keyFrameInterval": number
+        "framerate": number, valid values in [6, 12, 15, 24, 30, 48, 60]
+        "bitrate": string,  valid values in ['0.2x', '0.4x', '0.6x', '0.8x']
+        "keyFrameInterval": number, valid values in [100, 30, 5, 2, 1]
       },
-      "maxInput": number,
+      "maxInput": number, positive integer
       "bgColor": {
         "r": 0 ~ 255,
         "g": 0 ~ 255,
@@ -199,17 +199,19 @@ Data Model:<br>
       }
     }
     object(MeidaIn): {
-      "audio": object(Audio)，               // Refers to the format list above.
-      "video": object(Video)                 // Refers to the format list above.
+      "audio": arrayOf(Audio)，               // Refers to the format list above.
+      "video": arrayOf(Video)                 // Refers to the format list above.
     }
     object(MediaOut): {
-      "audio": object(Audio),                // Refers to the format list above.
-      "video": object(Video),                // Refers to the format list above.
-      "parameters": {
-        "resolution": array,                 // Array of resolution.E.g. ['x3/4', 'x2/3', ... 'cif']
-        "framerate": array,                  // Array of framerate.E.g. [5, 15, 24, 30, 48, 60]
-        "bitrate": array,                    // Array of bitrate.E.g. ['x1.6', ... , '0.4']
-        "keyFrameInterval": array            // Array of keyFrameInterval.E.g. [100, 30, 5, 2, 1]
+      "audio": arrayOf(Audio),                // Refers to the format list above.
+      "video": {
+        "format": arrayOf(Video),                // Refers to the format list above.
+        "parameters": {
+          "resolution": array,                 // Array of resolution.E.g. ['x3/4', 'x2/3', ... 'cif']
+          "framerate": array,                  // Array of framerate.E.g. [5, 15, 24, 30, 48, 60]
+          "bitrate": array,                    // Array of bitrate.E.g. ['x1.6', ... , '0.4']
+          "keyFrameInterval": array            // Array of keyFrameInterval.E.g. [100, 30, 5, 2, 1]
+        }
       }
     }
     object(Transcoding): {
@@ -250,8 +252,8 @@ This is for *roomConfig*:
 
     object(RoomConfig):
     {
-        name:name,
-        options: object(Room)                  // Refers to room data model listed above.
+        name:name, // Required
+        options: object(Room)  // Refers to room data model listed above. Optional
     }
 response body:
 
@@ -333,32 +335,7 @@ response body:
 | type | content |
 |:-------------|:-------|
 |      json     | The updated room data model |
-#### PATCH
-Description:<br>
-update a room's configuration partially.<br>
 
-parameters:
-
-| parameters | type | annotation |
-|:----------|:----|:----------|
-|    {roomId}    | URL |    Room ID    |
-|   items  | request body | Configuration item list to be updated|
-
-**Note**:<br>
-The detail format for items can be found in ``https://tools.ietf.org/html/rfc6902``. Here is a model for one item.<br>
-
-    items=[
-        {
-            op: string,
-            path: string,
-            value: json
-        }
-    ]
-response body:
-
-| type | content |
-|:-------------|:-------|
-|      json     | The updated room data model |
 ## 5.2 Participants {#RESTAPIsection5_2}
 Description:
 
@@ -371,10 +348,8 @@ ParticipantDetail model:
             video: true | false
         } | false,
         subscribe: {
-            media: {
-                audio: true | false,
-                video: true | false
-            }
+            audio: true | false,
+            video: true | false
         } | false
     }
     object(ParticipantDeatil):
@@ -382,9 +357,7 @@ ParticipantDetail model:
         id: string(ParticipantId),
         role: string(participantRole),
         user: string(userId),
-        permission: object(Permission),
-        published: Array.<{id: string, type: string}>
-        subscribed: Array.<{id: string, type: string}>
+        permission: object(Permission)
     }
 Resources:
 
@@ -484,8 +457,9 @@ Streams model:
     object(StreamInfo):
     {
         id: string(StreamID),
-        type: "streaming",
-        media: object(MediaInfo)
+        type: "forward" | "mixed",
+        media: object(MediaInfo),
+        info: object(MixedInfo) | Object(ForwardInfo)
     }
     object(MediaInfo):
     {
@@ -494,32 +468,66 @@ Streams model:
     }
     object(AudioInfo):
     {
-        from: string,
-        format: object(AudioFormat)
+        status: "active" | "inactive",
+        source: "mic" | "screen-cast" | "raw-file" | "encoded-file" | "streaming",
+        format: object(AudioFormat),
+        optional: {
+            format: [object(AudioFormat)]
+        }
     }
     object(AudioFormat):
     {
         codec: "pcmu" | "pcma" | "opus" | "g722" | "iSAC" | "iLBC" | "aac" | "ac3" | "nellymoser",
-        sampleRate: number,                     // Optional
-        channelNum: number                      // Optional
+        sampleRate: number,              // Optional
+        channelNum: number               // Optional
     }
     object(VideoInfo):
     {
-        from: string,
+        status: "active" | "inactive",
+        source: "camera" | screen-cast" | "raw-file" | "encoded-file" | "streaming",
         format: object(VideoFormat),
-        parameters: object(VideoParameters)
+        parameters: {
+            resolution: object(Resolution),
+            framerate: number(FramerateFPS),
+            bitrate: number(Kbps),
+            keyFrameInterval: number(Seconds),
+        },
+        optional: {
+          format: [object(VideoFormat)]
+          parameters: {
+            resolution: [object(Resolution)],
+            framerate: [number(FramerateFPS)],
+            bitrate: [number(Kbps] | string("x" + Multiple),
+            keyFrameRate: [number(Seconds)]
+          }
+        }
+      }
     }
     object(VideoFormat):
     {
-         codec: "h264" | "h265" | "vp8" | "vp9",
-         profile: "baseline" | "constrained-baseline" | "main" | "high" //If codec equals "h264".
+        codec: "h264" | "h265" | "vp8" | "vp9",
     }
     object(VideoParameters):
     {
-        resolution: object(Resolution) | undefined,    // Refers to section 5.1, object(Resolution).
+        resolution: object(Resolution),    // Refers to section 5.1, object(Resolution).
         framerate: number,
-        bitrate: number | string,
+        bitrate: number,
         keyFrameInterval: number
+    }
+    object(MixedInfo):
+    {
+        owner: string(ParticipantId),
+        type: "webrtc" | "streaming" | "sip",
+        inViews: [string(ViewLabel)],
+        attributes: object(ExternalDefinedObj)
+    }
+    object(ForwardInfo):
+    {
+      label: string(ViewLabel),
+      layout: [{
+        stream: string(StreamId),
+        region: object(Region)
+      }]
     }
 Resources:
 
@@ -614,25 +622,8 @@ response body: response body is **empty**.<br>
 ## 5.4 Streaming-ins {#RESTAPIsection5_4}
 Description:
 
-Streaming-ins model:
+Streaming-ins model is same as Stream model.
 
-    object(Streaming-Ins):
-    {
-        room: roomID,
-        url: URL,                   // String type.
-        transport: object(Transport),
-        media: object(Media)
-    }
-    object(Transport):
-    {
-        protocol: 'udp' | 'tcp',    // 'tcp' by default.
-        buffersize: number          // The buffer size in bytes in case 'udp' is specified, 8192 by default.
-    }
-    object(Media):
-    {
-        audio: 'auto' | boolean,    // If audio is required, 'auto' or true or false, 'auto' by default.
-        video: 'auto' | boolean     // If video is required, 'auto' or true or false, 'auto' by default.
-    }
 Resources:
 
 - /v1/rooms/{roomId}/streaming-ins
@@ -652,16 +643,20 @@ parameters:
 
 **Note**:
 
-    pub_req={
+    Object(StreamingInRequest) {
         connection: object(Connection),
-        media: object(Media)        // Refers to object(Media) in 5.4 streaming-ins model.
+        media: {
+          audio: 'auto' | true | false,
+          video: 'auto' | true | false
+        }
     }
     object(Connection):
     {
         url: string,
-        transportProtocal: transport.protocal,
-        bufferSize: transport.buffersize       // Refers to object(Transport) in 5.4 streaming-ins model.
+        transportProtocal: 'udp' | 'tcp',    // 'tcp' by default.
+        bufferSize: number          // The buffer size in bytes in case 'udp' is specified, 8192 by default.
     }
+
 response body:
 
 | type | content |
@@ -686,26 +681,29 @@ Description:
 
 Streaming-outs model:
 
-    object(Streaming-Outs):
+    object(StreamingOut):
     {
-        streamingOut: Array.<{id: string, url: string, media: Object}>,
-        streamingOutList: object(MediaSubOptions)
+        id: string(id),
+        media: object(OutMedia),
+        url: string(url)
     }
-    object(MediaSubOptions):
+    object(OutMedia):
     {
-        audio: object(AudioSubOptions) | false,
-        video: object(VideoSubOptions) | false
+        audio: object(StreamingOutAudio) | false,
+        video: object(StreamingOutVideo) | false
     }
-    object(AudioSubOptions):
+    object(StreamingOutAudio):
     {
         from: string(StreamId),
-        format: object(AudioFormat)      // Refers to object(AudioFormat) in 5.3, streams data model.
+        format: object(AudioFormat),      // Refers to object(AudioFormat) in 5.3, streams data model.
+        status: 'active' | 'inactive'
     }
-    object(VideoSubOptions):
+    object(StreamingOutVideo):
     {
         from: string(StreamId),
         format: object(VideoFormat),     // Refers to object(VideoFormat) in 5.3, streams data model.
-        parameters: object(VideoParametersSpecification)
+        parameters: object(VideoParametersSpecification),
+        status: 'active' | 'inactive'
     }
     object(VideoParametersSpecification):
     {
@@ -829,12 +827,16 @@ Recordings data model:
 
     object(Recordings):
     {
-        type: 'recording',
-        media: object(MediaSubOptions)
+        id: string(id),
+        media: object(OutMedia),       // Refers to object(OutMedia) in 5.5.
+        storage: {
+          host: string(host),
+          file: string(filename)
+        }
     }
 
 **Note**:<br>
-*object(MediaSubOptions)* is same as streaming-outs data model in 5.5.<br>
+*object(OutMedia)* is same as streaming-outs data model in 5.5.<br>
 
 Resources:
 
