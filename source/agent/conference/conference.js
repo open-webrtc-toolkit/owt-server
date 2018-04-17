@@ -1643,7 +1643,7 @@ var Conference = function (rpcClient, selfRpcId) {
         effective = true;
       }
 
-      if (update.video.parameters) {
+      if (update.video.parameters && (Object.keys(update.video.parameters).length > 0)) {
         new_su.media.video.parameters = (new_su.media.video.parameters || {});
         old_su.media.video.parameters = (old_su.media.video.parameters || {});
         old_su.media.video.parameters.resolution = (old_su.media.video.parameters.resolution || {});
