@@ -611,9 +611,8 @@ vp8 | video
 vp9 | video
 
  **Table 3-3 Default bitrate for typical resolutions (30fps)**
-|Resolution (width)x(height)|
-|------|------|
 |Resolution|Default bitrate(kbps)|
+|------|------|
 |352x288 (cif)|442|
 |176x144 (qcif)|132|
 |320x240 (sif)|400|
