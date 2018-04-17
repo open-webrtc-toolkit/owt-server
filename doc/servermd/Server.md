@@ -319,10 +319,10 @@ Follow the steps below to set up a MCU cluster:
 
 10. Choose worker machines to run portals. These machines must be visible to clients.
 11. Edit the configuration items of portal in Release-<Version>/portal/portal.toml.
-    - Make sure the [mongo.dataBaseURL] points to the MongoDB instance
-    - Make sure the [rabbit.port] and [rabbit.host] point to the RabbitMQ server
+    - Make sure the [mongo.dataBaseURL] points to the MongoDB instance.
+    - Make sure the [rabbit.port] and [rabbit.host] point to the RabbitMQ server.
     - Make sure the [portal.ip_address] or [portal.networkInterface] points to the correct network interface which the clients’ signaling and control messages are expected to connect through.
-    - Make sure the [portal.force_tls_v12] is true if you want to force TLS version not less than 1.2
+    - Make sure the [portal.force_tls_v12] is true if you want to force TLS version not less than 1.2.
 
 12. Run the portal on each machine with following commands:
 
@@ -334,7 +334,7 @@ Follow the steps below to set up a MCU cluster:
     - If you want to use Intel<sup>®</sup> Visual Compute Accelerator (VCA) to run video agents, please follow section [Configure VCA nodes](#Conferencesection2_3_10) to enable nodes of Intel VCA as a visible separated machine.
 
 14. Edit the configuration items in Release-<Version>/{audio, video, conference, webrtc, streaming, recording, sip}_agent/agent.toml.
-    - Make sure the [rabbit.port] and [rabbit.host] point to the RabbitMQ server
+    - Make sure the [rabbit.port] and [rabbit.host] point to the RabbitMQ server.
     - Make sure the [cluster.ip_address] or [cluster.network_interface] points to the correct network interface through which the media streams will flow to other cluster nodes.
 
     Special for conference-agent, edit conference_agent/agent.toml
@@ -540,7 +540,7 @@ The MCU Management Console is the frontend console to manage the MCU server. It 
 ## 3.2 Access {#Conferencesection3_2}
 Once you have launched MCU servers, you can then access the console via a browser at http://XXXX:3300/console/ by default. You will be asked for your the service-id and service-key in order to access the service.
 
-After inputting your service-id and service-key in the dialog prompt, choose ‘remember me' and click ‘save changes' to save your session. If you want to switch to another service, click the ‘profile' button on the upper-right corner to get in this dialog prompt and do the similar procedure again. If you want to log out the management console, click the red ‘clear cookie' button in the dialog prompt.
+After inputting your service-id and service-key in the dialog prompt, choose 'remember me' and click 'save changes' to save your session. If you want to switch to another service, click the ‘profile' button on the upper-right corner to get in this dialog prompt and do the similar procedure again. If you want to log out the management console, click the red ‘clear cookie' button in the dialog prompt.
 
 If you have not launched MCU severs, you should launch the nuve server before accessing the management console:
 
@@ -551,7 +551,7 @@ If you have not launched MCU severs, you should launch the nuve server before ac
 ## 3.3 Source Code {#Conferencesection3_3}
 The source code of the management console is in Release-<Version>/management_console/public/.
 ## 3.4 Service Management {#Conferencesection3_4}
-Only super service user can access service management, in the ‘overview' tab to create or delete services. The service is the instance that owns rooms and has the ability to manage them. 
+Only super service user can access service management, in the 'overview' tab to create or delete services. The service is the instance that owns rooms and has the ability to manage them. 
 > **Note**: Super service cannot be deleted, it can be configured in nuve/nuve.toml.
 
 ## 3.5 Room Management {#Conferencesection3_5}
@@ -573,12 +573,12 @@ view.label | The label for a certain view, two view labels in one room cannot be
 view.audio.format | The default audio format of the view selected from 'mediaOut.audio' configuration
 view.audio.vad | The 'activeInput' event will be emitted if this option is true, note that if a client publish more than one audio stream, this may not work well
 view.video.format | The default video format of the view selected from 'mediaOut.video' configuration
-view.video.parameters.resolution | The default video resolution of the view, see the Table 3-3 for supported resolutions
+view.video.parameters.resolution | The default video resolution of the view
 view.video.parameters.framerate | The default video framerate of the view
-view.video.parameters.bitrate | The default video bitrate of the view, if it's not specified, the mix engine will generate a default one
+view.video.parameters.bitrate | The default video bitrate of the view, if it's not specified, the mix engine will generate a default one, see Table 3-3 for more details
 view.video.parameters.keyFrameInterval | The default video key frame interval of the view
 view.video.maxInput | This indicates the maximum number of video inputs for the video layout definition, input that exceed the value will not be shown in mix stream
-view.video.motionFactor | The video motion factor is used to calculate the default bitrate of the video stream
+view.video.motionFactor | The video motion factor is used to affact the default bitrate of the video stream
 view.video.bgColor | The RGB representation for background color of the mix video stream
 view.keepActiveInputPrimary | The active input will always be shown in the 'primary' region when this option is set to true with 'vad' also enabled
 view.layout | The layout of mix video stream
@@ -610,87 +610,23 @@ h265 | video
 vp8 | video
 vp9 | video
 
- **Table 3-3 Supported View Resolutions**
+ **Table 3-3 Default bitrate for typical resolutions (30fps)**
 |Resolution (width)x(height)|
-|------|
-|352x288 (cif)|
-|176x144 (qcif)|
-|320x240 (sif)|
-|640x480 (vga)|
-|800x600 (svga)|
-|1024x768 (xga)|
-|480x320 (hvga)|
-|1280x720 (hd720p)|
-|1920x1080 (hd1080p)|
-|3840x2160 (uhd_4k)|
-|192x144|
-|360x360|
-|480x480|
-|480x360|
-|640x360|
-|720x720|
+|------|------|
+|Resolution|Default bitrate(kbps)|
+|352x288 (cif)|442|
+|176x144 (qcif)|132|
+|320x240 (sif)|400|
+|640x480 (vga)|800|
+|800x600 (svga)|1137|
+|1024x768 (xga)|1736|
+|480x320 (hvga)|533|
+|1280x720 (hd720p)|2000|
+|1920x1080 (hd1080p)|4000|
+|3840x2160 (uhd_4k)|16000|
 
-The default bitrate (if not specified) for a view is calucated by the following algorithm (javascript):
-
-~~~~~~~~~~~~~{.js}
-const partial_linear_bitrate = [
-  {size: 0, bitrate: 0},
-  {size: 76800, bitrate: 400},  //320*240, 30fps
-  {size: 307200, bitrate: 800}, //640*480, 30fps
-  {size: 921600, bitrate: 2000},  //1280*720, 30fps
-  {size: 2073600, bitrate: 4000}, //1920*1080, 30fps
-  {size: 8294400, bitrate: 16000} //3840*2160, 30fps
-];
-
-function standardBitrate(width, height, framerate) {
-  let bitrate = -1;
-  let prev = 0;
-  let next = 0;
-  let portion = 0.0;
-  let def = width * height * framerate / 30;
-
-  // find the partial linear section and calculate bitrate
-  for (var i = 0; i < partial_linear_bitrate.length - 1; i++) {
-    prev = partial_linear_bitrate[i].size;
-    next = partial_linear_bitrate[i+1].size;
-    if (def > prev && def <= next) {
-      portion = (def - prev) / (next - prev);
-      bitrate = partial_linear_bitrate[i].bitrate + (partial_linear_bitrate[i+1].bitrate - partial_linear_bitrate[i].bitrate) * portion;
-      break;
-    }
-  }
-
-  // set default bitrate for over large resolution
-  if (-1 == bitrate) {
-    bitrate = 16000;
-  }
-
-  return bitrate;
-}
-
-function calcDefaultBitrate(codec, resolution, framerate, motionFactor) {
-  let codec_factor = 1.0;
-  switch (codec) {
-    case 'h264':
-      codec_factor = 1.0;
-      break;
-    case 'vp8':
-      codec_factor = 1.0;
-      break;
-    case 'vp9':
-      codec_factor = 0.8;
-      break;
-    case 'h265':
-      codec_factor = 0.9;
-      break;
-    default:
-      break;
-  }
-  return standardBitrate(resolution.width, resolution.height, framerate) * codec_factor * motionFactor;
-};
-~~~~~~~~~~~~~
-
-If framerate or resolution is specified in the subscription without bitrate, the view bitrate setting won't work.
+The actual default bitrate will be affacted by resolution, framerate, motion factor, see the Table 3-3 to get overall data.
+If framerate or resolution is specified in the subscription without bitrate, default bitrate is used and the view bitrate setting won't work.
 
 > **Note**: If base layout is set to 'void', user must input customized layout for the room, otherwise the video layout would be treated as invalid. Read 3.5.1 for details of customized layout. maxInput indicates the maximum number of video frame inputs for the video layout definition.
 
