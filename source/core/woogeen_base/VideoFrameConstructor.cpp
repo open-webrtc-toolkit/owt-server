@@ -88,6 +88,7 @@ bool VideoFrameConstructor::init()
     m_rtpRtcp->SetRTCPStatus(webrtc::RtcpMode::kCompound);
     // Since currently our MCU only claims FIR support in SDP, we choose FirRtcp for now.
     m_rtpRtcp->SetKeyFrameRequestMethod(kKeyFrameReqFirRtcp);
+    m_rtpRtcp->RegisterSendRtpHeaderExtension(RTPExtensionType::kRtpExtensionTransportSequenceNumber, 5);
     m_rtpRtcp->SetREMBStatus(true);
     m_videoReceiver->SetRtpRtcpModule(m_rtpRtcp.get());
     m_remoteBitrateObserver->AddRembSender(m_rtpRtcp.get());

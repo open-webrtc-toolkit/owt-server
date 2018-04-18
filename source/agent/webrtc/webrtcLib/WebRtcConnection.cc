@@ -120,6 +120,7 @@ NAN_METHOD(WebRtcConnection::New) {
       rtp_map.clock_rate = 90000;
       rtp_map.channels = 1;
       rtp_map.feedback_types.push_back("ccm fir");
+      rtp_map.feedback_types.push_back("transport-cc");
       rtp_map.feedback_types.push_back("nack");
       rtp_map.feedback_types.push_back("goog-remb");
       rtp_mappings.push_back(rtp_map);
@@ -133,6 +134,7 @@ NAN_METHOD(WebRtcConnection::New) {
       rtp_map.clock_rate = 90000;
       rtp_map.channels = 1;
       rtp_map.feedback_types.push_back("ccm fir");
+      rtp_map.feedback_types.push_back("transport-cc");
       rtp_map.feedback_types.push_back("nack");
       rtp_map.feedback_types.push_back("goog-remb");
       rtp_mappings.push_back(rtp_map);
@@ -146,6 +148,7 @@ NAN_METHOD(WebRtcConnection::New) {
       rtp_map.clock_rate = 90000;
       rtp_map.channels = 1;
       rtp_map.feedback_types.push_back("ccm fir");
+      rtp_map.feedback_types.push_back("transport-cc");
       rtp_map.feedback_types.push_back("nack");
       rtp_map.feedback_types.push_back("goog-remb");
       rtp_mappings.push_back(rtp_map);
@@ -159,6 +162,7 @@ NAN_METHOD(WebRtcConnection::New) {
       rtp_map.clock_rate = 90000;
       rtp_map.channels = 1;
       rtp_map.feedback_types.push_back("ccm fir");
+      rtp_map.feedback_types.push_back("transport-cc");
       rtp_map.feedback_types.push_back("nack");
       rtp_map.feedback_types.push_back("goog-remb");
       rtp_mappings.push_back(rtp_map);
@@ -260,6 +264,10 @@ NAN_METHOD(WebRtcConnection::New) {
     ext_mappings.push_back({value++, "urn:ietf:params:rtp-hdrext:ssrc-audio-level"});
     ext_mappings.push_back({value++, "urn:ietf:params:rtp-hdrext:toffset"});
     ext_mappings.push_back({value++, "http://www.webrtc.org/experiments/rtp-hdrext/abs-send-time"});
+    // TODO: add this line back when CVO is supported by video engine
+    //ext_mappings.push_back({value++, "urn:3gpp:video-orientation"});
+    value++;
+    ext_mappings.push_back({value++, "http://www.ietf.org/id/draft-holmer-rmcat-transport-wide-cc-extensions-01"});
 
     // if (media_config.find("rtpMappings") != media_config.end()) {
     //   json rtp_map_json = media_config["rtpMappings"];
