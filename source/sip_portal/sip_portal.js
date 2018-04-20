@@ -6,7 +6,8 @@ var toml = require('toml');
 var amqper = require('./amqp_client')();
 var rpcClient;
 var makeRPC = require('./makeRPC').makeRPC;
-var log = require('./logger').logger.getLogger('SipPortal');
+var logger = require('./logger').logger;
+var log = logger.getLogger('SipPortal');
 var sipErizoHelper = require('./sipErizoHelper');
 var helper;
 var config;
@@ -208,3 +209,7 @@ function startup () {
 }
 
 startup();
+
+process.on('SIGUSR2', function() {
+    logger.reconfigure();
+});

@@ -2,7 +2,8 @@
 'use strict';
 
 var amqper = require('./amqp_client')();
-var log = require('./logger').logger.getLogger('Main');
+var logger = require('./logger').logger;
+var log = logger.getLogger('Main');
 var ClusterManager = require('./clusterManager');
 var toml = require('toml');
 var fs = require('fs');
@@ -82,4 +83,8 @@ startup();
 
 process.on('exit', function () {
     amqper.disconnect();
+});
+
+process.on('SIGUSR2', function() {
+    logger.reconfigure();
 });

@@ -2,7 +2,8 @@
 'use strict';
 var fs = require('fs');
 var toml = require('toml');
-var log = require('./logger').logger.getLogger('Main');
+var logger = require('./logger').logger;
+var log = logger.getLogger('Main');
 
 var config;
 try {
@@ -285,4 +286,8 @@ process.on('exit', function () {
 
 process.on('unhandledRejection', (reason) => {
     log.info('Reason: ' + reason);
+});
+
+process.on('SIGUSR2', function () {
+  logger.reconfigure();
 });
