@@ -33,13 +33,18 @@
 /*
  * Wrapper class of woogeen_base::VideoFrameConstructor
  */
-class VideoFrameConstructor : public MediaSink {
+class VideoFrameConstructor : public MediaSink, public woogeen_base::VideoInfoListener {
  public:
   static NAN_MODULE_INIT(Init);
   woogeen_base::VideoFrameConstructor* me;
   woogeen_base::FrameSource* src;
 
+  std::queue<std::string> videoInfoMsgs;
+  boost::mutex mutex;
  private:
+  Nan::Callback *Callback_;
+  uv_async_t async_;
+
   VideoFrameConstructor();
   ~VideoFrameConstructor();
 
@@ -59,6 +64,9 @@ class VideoFrameConstructor : public MediaSink {
   static NAN_METHOD(requestKeyFrame);
 
   static Nan::Persistent<v8::Function> constructor;
+
+  static NAUV_WORK_CB(Callback);
+  virtual void onVideoInfo(const std::string& message);
 };
 
 #endif

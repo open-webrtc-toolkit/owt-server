@@ -9,7 +9,7 @@ var VideoFramePacketizer = woogeenSipGateway.VideoFramePacketizer;
 var path = require('path');
 var logger = require('./logger').logger;
 var log = logger.getLogger('SipCallConnection');
-exports.SipCallConnection = function (spec) {
+exports.SipCallConnection = function (spec, onMediaUpdate) {
     var that = {},
         input = true,
         output = true,
@@ -24,23 +24,27 @@ exports.SipCallConnection = function (spec) {
         videoFrameConstructor,
         videoFramePacketizer,
         sip_callConnection;
-        sip_callConnection = new woogeenSipGateway.SipCallConnection(gateway, clientID);
-        if (audio) {
-            // sip->mcu
-            audioFrameConstructor = new AudioFrameConstructor();
-            audioFrameConstructor.bindTransport(sip_callConnection);
 
-            // mcu->sip
-            audioFramePacketizer = new AudioFramePacketizer();
-            audioFramePacketizer.bindTransport(sip_callConnection);
-        }
-        if (video) {
-            videoFrameConstructor = new VideoFrameConstructor();
-            videoFrameConstructor.bindTransport(sip_callConnection);
+    sip_callConnection = new woogeenSipGateway.SipCallConnection(gateway, clientID);
+    if (audio) {
+        // sip->mcu
+        audioFrameConstructor = new AudioFrameConstructor();
+        audioFrameConstructor.bindTransport(sip_callConnection);
 
-            videoFramePacketizer = new VideoFramePacketizer(support_red, support_ulpfec);
-            videoFramePacketizer.bindTransport(sip_callConnection);
-        }
+        // mcu->sip
+        audioFramePacketizer = new AudioFramePacketizer();
+        audioFramePacketizer.bindTransport(sip_callConnection);
+    }
+    if (video) {
+        videoFrameConstructor = new VideoFrameConstructor();
+        videoFrameConstructor.bindTransport(sip_callConnection);
+        videoFrameConstructor.addEventListener('mediaInfo', function (mediaUpdate) {
+            onMediaUpdate(clientID, 'in', mediaUpdate);
+        });
+
+        videoFramePacketizer = new VideoFramePacketizer(support_red, support_ulpfec);
+        videoFramePacketizer.bindTransport(sip_callConnection);
+    }
 
     that.close = function (direction) {
         log.debug('SipCallConnection close');

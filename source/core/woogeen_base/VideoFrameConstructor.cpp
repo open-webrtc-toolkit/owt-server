@@ -32,7 +32,7 @@ namespace woogeen_base {
 
 DEFINE_LOGGER(VideoFrameConstructor, "woogeen.VideoFrameConstructor");
 
-VideoFrameConstructor::VideoFrameConstructor()
+VideoFrameConstructor::VideoFrameConstructor(VideoInfoListener* vil)
     : m_enabled(true)
     , m_enableDump(false)
     , m_format(FRAME_FORMAT_UNKNOWN)
@@ -42,6 +42,7 @@ VideoFrameConstructor::VideoFrameConstructor()
     , m_video_receiver(nullptr)
     , m_transport(nullptr)
     , m_pendingKeyFrameRequests(0)
+    , m_videoInfoListener(vil)
 {
     m_videoTransport.reset(new WebRTCTransport<erizoExtra::VIDEO>(nullptr, nullptr));
     sink_fb_source_ = m_videoTransport.get();
@@ -292,7 +293,15 @@ int32_t VideoFrameConstructor::Decode(const webrtc::EncodedImage& encodedImage,
 
         if (resolutionChanged) {
             ELOG_DEBUG("received video resolution has changed to %ux%u", m_width, m_height);
-            //TODO: Notify the controlling layer about the resolution change.
+            if (m_videoInfoListener) {
+                std::ostringstream json_str;
+                json_str.str("");
+                json_str << "{\"video\": {\"parameters\": {\"resolution\": {"
+                         << "\"width\":" << m_width
+                         << "\"height\":" << m_height
+                         << "}}}}";
+                m_videoInfoListener->onVideoInfo(json_str.str().c_str());
+            }
         }
 
         if (encodedImage._frameType == webrtc::kVideoFrameKey) {

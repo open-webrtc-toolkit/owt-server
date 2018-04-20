@@ -54,10 +54,12 @@ NAN_MODULE_INIT(VideoFrameConstructor::Init) {
 NAN_METHOD(VideoFrameConstructor::New) {
   if (info.IsConstructCall()) {
     VideoFrameConstructor* obj = new VideoFrameConstructor();
-    obj->me = new woogeen_base::VideoFrameConstructor();
+    obj->me = new woogeen_base::VideoFrameConstructor(obj);
     obj->src = obj->me;
     obj->msink = obj->me;
 
+    obj->Callback_ = new Nan::Callback(info[0].As<Function>());
+    uv_async_init(uv_default_loop(), &obj->async_, &VideoFrameConstructor::Callback);
     obj->Wrap(info.This());
     info.GetReturnValue().Set(info.This());
   } else {
@@ -71,6 +73,11 @@ NAN_METHOD(VideoFrameConstructor::New) {
 NAN_METHOD(VideoFrameConstructor::close) {
   VideoFrameConstructor* obj = Nan::ObjectWrap::Unwrap<VideoFrameConstructor>(info.Holder());
   woogeen_base::VideoFrameConstructor* me = obj->me;
+
+  if (!uv_is_closing(reinterpret_cast<uv_handle_t*>(&obj->async_))) {
+    uv_close(reinterpret_cast<uv_handle_t*>(&obj->async_), NULL);
+  }
+
   delete me;
 }
 
@@ -136,5 +143,25 @@ NAN_METHOD(VideoFrameConstructor::enable) {
 
   bool b = (info[0]->ToBoolean())->BooleanValue();
   me->enable(b);
+}
+
+void VideoFrameConstructor::onVideoInfo(const std::string& message) {
+  boost::mutex::scoped_lock lock(mutex);
+  this->videoInfoMsgs.push(message);
+  async_.data = this;
+  uv_async_send(&async_);
+}
+
+NAUV_WORK_CB(VideoFrameConstructor::Callback) {
+  Nan::HandleScope scope;
+  VideoFrameConstructor* obj = reinterpret_cast<VideoFrameConstructor*>(async->data);
+  if (!obj || obj->me == NULL)
+    return;
+  boost::mutex::scoped_lock lock(obj->mutex);
+  while (!obj->videoInfoMsgs.empty()) {
+    Local<Value> args[] = {Nan::New(obj->videoInfoMsgs.front().c_str()).ToLocalChecked()};
+    Nan::MakeCallback(Nan::GetCurrentContext()->Global(), obj->Callback_->GetFunction(), 1, args);
+    obj->videoInfoMsgs.pop();
+  }
 }
 

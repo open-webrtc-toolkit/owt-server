@@ -22,6 +22,7 @@
 #define VIDEOFRAMECONSTRUCTORWRAPPER_H
 
 #include "MediaDefinitions.h"
+#include "../../addons/common/NodeEventRegistry.h"
 #include "../../addons/common/MediaFramePipelineWrapper.h"
 #include <VideoFrameConstructor.h>
 #include <node.h>
@@ -30,12 +31,13 @@
 /*
  * Wrapper class of woogeen_base::VideoFrameConstructor
  */
-class VideoFrameConstructor : public MediaSink {
+class VideoFrameConstructor : public MediaSink, public NodeEventRegistry {
  public:
   static void Init(v8::Local<v8::Object> exports);
   woogeen_base::VideoFrameConstructor* me;
   woogeen_base::FrameSource* src;
 
+  erizo::MediaSink* msink;
  private:
   VideoFrameConstructor();
   ~VideoFrameConstructor();
@@ -54,6 +56,8 @@ class VideoFrameConstructor : public MediaSink {
 
   //FIXME: Temporarily add this interface to workround the hardware mode's absence of feedback mechanism.
   static void requestKeyFrame(const v8::FunctionCallbackInfo<v8::Value>& args);
+
+  static void addEventListener(const v8::FunctionCallbackInfo<v8::Value>& args);
 };
 
 #endif

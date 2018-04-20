@@ -39,8 +39,10 @@
 #include <webrtc/modules/video_coding/include/video_coding_defines.h>
 #include <webrtc/modules/video_coding/video_coding_impl.h>
 
+#include "EventRegistry.h"
 
 namespace woogeen_base {
+
 /**
  * A class to process the incoming streams by leveraging video coding module from
  * webrtc engine, which will framize and decode the frames.
@@ -108,6 +110,8 @@ public:
 
     bool setBitrate(uint32_t kbps);
 
+    void setEventRegistry(EventRegistry*);
+
 private:
     bool init();
 
@@ -131,6 +135,9 @@ private:
     boost::shared_mutex m_transport_mutex;
     boost::scoped_ptr<JobTimer> m_feedbackTimer;
     uint32_t m_pendingKeyFrameRequests;
+
+    void notifyAsyncEvent(const std::string& event, const std::string& data);
+    EventRegistry* m_asyncHandle;
 };
 
 class DummyRemoteBitrateObserver : public webrtc::RemoteBitrateObserver {

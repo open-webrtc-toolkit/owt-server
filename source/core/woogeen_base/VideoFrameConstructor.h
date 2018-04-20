@@ -43,6 +43,14 @@
 
 
 namespace woogeen_base {
+
+class VideoInfoListener {
+public:
+    virtual ~VideoInfoListener(){};
+    virtual void onVideoInfo(const std::string& videoInfoJSON) = 0;
+};
+
+
 /**
  * A class to process the incoming streams by leveraging video coding module from
  * webrtc engine, which will framize and decode the frames.
@@ -58,7 +66,7 @@ class VideoFrameConstructor : public erizo::MediaSink,
     DECLARE_LOGGER();
 
 public:
-    VideoFrameConstructor();
+    VideoFrameConstructor(VideoInfoListener*);
     virtual ~VideoFrameConstructor();
 
     void bindTransport(erizo::MediaSource* source, erizo::FeedbackSink* fbSink);
@@ -141,6 +149,8 @@ private:
     void close();
 
     char buf[1500];
+
+    VideoInfoListener* m_videoInfoListener;
 };
 
 class DummyRemoteBitrateObserver : public webrtc::RemoteBitrateObserver {

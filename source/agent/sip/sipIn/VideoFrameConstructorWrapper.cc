@@ -25,6 +25,7 @@
 #include "VideoFrameConstructorWrapper.h"
 #include "../../addons/common/MediaFramePipelineWrapper.h"
 #include "SipCallConnection.h"
+#include "../../addons/common/NodeEventRegistry.h"
 
 using namespace v8;
 
@@ -47,6 +48,7 @@ void VideoFrameConstructor::Init(v8::Local<v8::Object> exports) {
   NODE_SET_PROTOTYPE_METHOD(tpl, "removeDestination", removeDestination);
   NODE_SET_PROTOTYPE_METHOD(tpl, "setBitrate", setBitrate);
   NODE_SET_PROTOTYPE_METHOD(tpl, "requestKeyFrame", requestKeyFrame);
+  NODE_SET_PROTOTYPE_METHOD(tpl, "addEventListener", addEventListener);
 
   constructor.Reset(isolate, tpl->GetFunction());
   exports->Set(String::NewFromUtf8(isolate, "VideoFrameConstructor"), tpl->GetFunction());
@@ -61,6 +63,7 @@ void VideoFrameConstructor::New(const FunctionCallbackInfo<Value>& args) {
   obj->src = obj->me;
   obj->msink = obj->me;
 
+  obj->me->setEventRegistry(obj);
   obj->Wrap(args.This());
   args.GetReturnValue().Set(args.This());
 }
@@ -142,5 +145,19 @@ void VideoFrameConstructor::requestKeyFrame(const FunctionCallbackInfo<Value>& a
   woogeen_base::VideoFrameConstructor* me = obj->me;
 
   me->RequestKeyFrame();
+}
+
+void VideoFrameConstructor::addEventListener(const FunctionCallbackInfo<Value>& args)
+{
+    Isolate* isolate = Isolate::GetCurrent();
+    HandleScope scope(isolate);
+    if (args.Length() < 2 || !args[0]->IsString() || !args[1]->IsFunction()) {
+        isolate->ThrowException(Exception::TypeError(String::NewFromUtf8(isolate, "Wrong arguments")));
+        return;
+    }
+    VideoFrameConstructor* obj = ObjectWrap::Unwrap<VideoFrameConstructor>(args.Holder());
+    if (!obj->me)
+        return;
+    Local<Object>::New(isolate, obj->m_store)->Set(args[0], args[1]);
 }
 

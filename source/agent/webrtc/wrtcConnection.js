@@ -36,7 +36,7 @@ function createWrtc(id, threadPool, ioThreadPool, mediaConfiguration, ipAddresse
     return wrtc;
 }
 
-module.exports = function (spec, on_status) {
+module.exports = function (spec, on_status, on_mediaUpdate) {
     var that = {},
         direction = spec.direction,
         wrtcId = spec.connectionId,
@@ -277,7 +277,7 @@ module.exports = function (spec, on_status) {
         }
 
         if (video) {
-            videoFrameConstructor = new VideoFrameConstructor();
+            videoFrameConstructor = new VideoFrameConstructor(on_mediaUpdate);
             //wrtc.setVideoReceiver(videoFrameConstructor);
             videoFrameConstructor.bindTransport(wrtc);
         }
