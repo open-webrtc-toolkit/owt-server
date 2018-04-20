@@ -1,7 +1,8 @@
 /*global require, __dirname, process, global*/
 'use strict';
 
-var log = require('./logger').logger.getLogger('Nuve');
+var logger = require('./logger').logger;
+var log = logger.getLogger('Nuve');
 var fs = require('fs');
 var toml = require('toml');
 
@@ -160,6 +161,10 @@ if (cluster.isMaster) {
         });
     });
 
+    process.on('SIGUSR2', function() {
+        logger.reconfigure();
+    });
+
 } else {
     // Worker Process
     rpc.connect(global.config.rabbit);
@@ -200,5 +205,9 @@ if (cluster.isMaster) {
 
     process.on('exit', function () {
         rpc.disconnect();
+    });
+
+    process.on('SIGUSR2', function() {
+        logger.reconfigure();
     });
 }

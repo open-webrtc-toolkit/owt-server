@@ -4,7 +4,9 @@ require = require('module')._load('./AgentLoader');
 var fs = require('fs');
 var Getopt = require('node-getopt');
 var toml = require('toml');
-var log = require('./logger').logger.getLogger('ErizoJS');
+
+var logger = require('./logger').logger;
+var log = logger.getLogger('ErizoJS');
 
 var config;
 try {
@@ -225,6 +227,10 @@ process.on('exit', function () {
 
 process.on('unhandledRejection', (reason) => {
     log.info('Reason: ' + reason);
+});
+
+process.on('SIGUSR2', function() {
+    logger.reconfigure();
 });
 
 (function main() {
