@@ -2117,6 +2117,14 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
         }
     };
 
+    that.updateStreamInfo = function (streamId, update) {
+        if (streams[streamId]) {
+            if (update &&  update.video && update.video.parameters && update.video.parameters.resolution) {
+                streams[streamId].video.resolution = update.video.parameters.resolution;
+            }
+        }
+    };
+
     assert.equal(typeof on_init_ok, 'function');
     assert.equal(typeof on_init_failed, 'function');
     return initialize(on_init_ok, on_init_failed);

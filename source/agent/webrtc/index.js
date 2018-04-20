@@ -33,6 +33,10 @@ module.exports = function (rpcClient) {
         rpcClient.remoteCast(controller, 'onSessionProgress', [sessionId, direction, status]);
     };
 
+    var notifyMediaUpdate = (controller, sessionId, direction, mediaUpdate) => {
+        rpcClient.remoteCast(controller, 'onMediaUpdate', [sessionId, direction, mediaUpdate]);
+    };
+
     var createWebRTCConnection = function (connectionId, direction, options, callback) {
         var connection = new WrtcConnection({
             connectionId: connectionId,
@@ -44,6 +48,8 @@ module.exports = function (rpcClient) {
             network_interfaces: that.networkInterfaces
         }, function (status) {
             notifyStatus(options.controller, connectionId, direction, status);
+        }, function (mediaUpdate) {
+            notifyMediaUpdate(options.controller, connectionId, direction, mediaUpdate);
         });
 
         return connection;

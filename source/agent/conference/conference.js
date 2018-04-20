@@ -125,6 +125,7 @@ var calcBitrate = (x, baseBitrate) => {
  * Definitions:
  *
  *
+ *
    *    object(Role):: {
    *      role: string(RoleName),
    *      publish: {
@@ -825,6 +826,32 @@ var Conference = function (rpcClient, selfRpcId) {
         reject('roomController.publish failed, reason: ' + (reason.message ? reason.message : reason));
       });
     });
+  };
+
+  const updateStreamInfo = (streamId, info) => {
+    if (streams[streamId] && streams[streamId].type === 'forward') {
+      if (info) {
+        if (info.video && streams[streamId].media.video) {
+          if (info.video.parameters) {
+            if (info.video.parameters.resolution) {
+              streams[streamId].media.video.parameters = (streams[streamId].media.video.parameters || {});
+              if (!streams[streamId].media.video.parameters.resolution ||
+                  (streams[streamId].media.video.parameters.resolution.width !== info.video.parameters.resolution.width) ||
+                  (streams[streamId].media.video.parameters.resolution.height !== info.video.parameters.resolution.height)) {
+                streams[streamId].media.video.parameters.resolution = info.video.parameters.resolution;
+                if (room_config.transcoding.video && room_config.transcoding.video.parameters && room_config.transcoding.video.parameters.resolution) {
+                  streams[streamId].media.video.optional = (streams[streamId].media.video.optional || {});
+                  streams[streamId].media.video.optional.parameters = (streams[streamId].media.video.optional.parameters || {});
+
+                  streams[streamId].media.video.optional.parameters.resolution = room_config.mediaOut.video.parameters.resolution.map((x) => {return calcResolution(x, streams[streamId].media.video.parameters.resolution)}).filter((reso, pos, self) => {return ((reso.width < streams[streamId].media.video.parameters.resolution.width) && (reso.height < streams[streamId].media.video.parameters.resolution.height)) && (self.findIndex((r) => {return r.width === reso.width && r.height === reso.height;}) === pos);});
+                }
+              }
+            }
+          }
+        //FIXME: Notify client side about the update about video track of the stream
+        }
+      }
+    }
   };
 
   const removeStream = (participantId, streamId) => {
@@ -1771,6 +1798,14 @@ var Conference = function (rpcClient, selfRpcId) {
     accessController && accessController.onSessionStatus(sessionId, sessionStatus);
   };
 
+  that.onMediaUpdate = (sessionId, direction, mediaUpdate) => {
+    log.debug('onMediaUpdate, sessionId:', sessionId, 'direction:', direction, 'mediaUpdate:', mediaUpdate);
+    if (direction === 'in' && streams[sessionId] && (streams[sessionId].type === 'forward')) {
+      updateStreamInfo(sessionId, mediaUpdate);
+      roomController && roomController.updateStreamInfo(sessionId, mediaUpdate);
+    }
+  };
+
   that.onVideoLayoutChange = function(roomId, layout, view, callback) {
     log.debug('onVideoLayoutChange, roomId:', roomId, 'layout:', layout, 'view:', view);
     if (room_id === roomId && roomController) {
@@ -2327,6 +2362,7 @@ module.exports = function (rpcClient, selfRpcId) {
 
     //rpc from access nodes.
     onSessionProgress: conference.onSessionProgress,
+    onMediaUpdate: conference.onMediaUpdate,
     onSessionAudit: conference.onSessionAudit,
 
     // rpc from audio nodes.

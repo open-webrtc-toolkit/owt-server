@@ -387,6 +387,14 @@ module.exports = function (rpcC, spec) {
         }
     };
 
+    var notifyMediaUpdate = (clientId, direction, mediaUpdate) => {
+        if (calls[clientId]) {
+            if (direction === 'in' && calls[clientId].stream_id) {
+                rpcClient.remoteCast(calls[clientId].conference_controller, 'onMediaUpdate', [calls[clientId].stream_id, direction, mediaUpdate]);
+            }
+        }
+    };
+
     var handleCallEstablished = function (info) {
         log.debug('CallEstablished:', info.peerURI, 'audio='+info.audio, 'video='+info.video,
                  (info.audio ? (' audio codec:' + info.audio_codec + ' audio dir: ' + info.audio_dir) : ''),
@@ -397,7 +405,7 @@ module.exports = function (rpcC, spec) {
 
         if (calls[client_id]) {
             calls[client_id].conn = new SipCallConnection({gateway: gateway, clientID: client_id, audio : info.audio, video : info.video,
-                red : support_red, ulpfec : support_ulpfec});
+                red : support_red, ulpfec : support_ulpfec}, notifyMediaUpdate);
             setupCall(client_id, info)
             .catch(function(err) {
                 log.error('Error during call establish:', err);

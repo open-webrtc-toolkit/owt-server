@@ -288,7 +288,13 @@ int32_t VideoFrameConstructor::Decode(const webrtc::EncodedImage& encodedImage,
 
         if (resolutionChanged) {
             ELOG_DEBUG("received video resolution has changed to %ux%u", m_width, m_height);
-            //TODO: Notify the controlling layer about the resolution change.
+            std::ostringstream json_str;
+            json_str.str("");
+            json_str << "{\"video\": {\"parameters\": {\"resolution\": {"
+                     << "\"width\":" << m_width
+                     << "\"height\":" << m_height
+                     << "}}}}";
+            notifyAsyncEvent("mediaInfo", json_str.str().c_str());
         }
 
         if (encodedImage._frameType == webrtc::kVideoFrameKey) {
@@ -362,6 +368,22 @@ void VideoFrameConstructor::onFeedback(const FeedbackMsg& msg)
         } else if (msg.cmd == SET_BITRATE) {
             this->setBitrate(msg.data.kbps);
         }
+    }
+}
+
+void VideoFrameConstructor::setEventRegistry(EventRegistry* handle)
+{
+    m_asyncHandle = handle;
+    ELOG_DEBUG("setEventRegistry - add listener %p", handle);
+}
+
+void VideoFrameConstructor::notifyAsyncEvent(const std::string& event, const std::string& data)
+{
+   if (m_asyncHandle) {
+       m_asyncHandle->notifyAsyncEvent(event, data);
+       ELOG_DEBUG("notifyAsyncEvent - event: %s", event.c_str());
+    } else {
+       ELOG_DEBUG("notifyAsyncEvent - handler not set");
     }
 }
 
