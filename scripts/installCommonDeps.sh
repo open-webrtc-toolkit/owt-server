@@ -269,7 +269,7 @@ install_tcmalloc(){
 }
 
 install_node() {
-  local NODE_VERSION="v6.9.5"
+  local NODE_VERSION="v8.11.1"
   echo -e "\x1b[32mInstalling nvm...\x1b[0m"
   NVM_DIR="${HOME}/.nvm"
 
