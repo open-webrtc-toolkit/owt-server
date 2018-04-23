@@ -13,6 +13,6 @@
     "fraction.js": "*"
   },
   "engine": {
-    "node": "6.9.5"
+    "node": "8.11.1"
   }
 }
