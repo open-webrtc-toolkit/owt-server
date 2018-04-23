@@ -4,6 +4,7 @@
             "video-mixer-sw",
             "video-transcoder-sw",
             "internal-io",
+            "logger",
             "media-frame-multicaster",
             "audio",
             "webrtc",
@@ -16,6 +17,7 @@
             "video-mixer-msdk",
             "video-transcoder-msdk",
             "internal-io",
+            "logger",
             "media-frame-multicaster",
             "audio",
             "webrtc",
@@ -64,5 +66,8 @@
     "sip" : {
         "path" : "source/agent/sip/sipIn",
         "gyp" : "binding.sip.gyp"
+    },
+    "logger" : {
+        "path" : "source/agent/addons/logger"
     }
 }
