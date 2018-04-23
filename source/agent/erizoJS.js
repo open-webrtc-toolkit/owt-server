@@ -8,6 +8,13 @@ var toml = require('toml');
 var logger = require('./logger').logger;
 var log = logger.getLogger('ErizoJS');
 
+var cxxLogger;
+try {
+    cxxLogger = require('./logger/build/Release/logger');
+} catch (e) {
+    log.debug('No native logger for reconfiguration');
+}
+
 var config;
 try {
   config = toml.parse(fs.readFileSync('./agent.toml'));
@@ -231,6 +238,9 @@ process.on('unhandledRejection', (reason) => {
 
 process.on('SIGUSR2', function() {
     logger.reconfigure();
+    if (cxxLogger) {
+        cxxLogger.configure();
+    }
 });
 
 (function main() {

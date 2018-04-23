@@ -44,6 +44,10 @@
             {
                 "folder": "../addons/internalIO",
                 "name": "internalIO"
+            },
+            {
+                "folder": "../addons/logger",
+                "name": "logger"
             }
         ]
     },
