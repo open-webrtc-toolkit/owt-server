@@ -34,7 +34,7 @@ module.exports = function (rpcClient) {
     };
 
     var notifyMediaUpdate = (controller, sessionId, direction, mediaUpdate) => {
-        rpcClient.remoteCast(controller, 'onMediaUpdate', [sessionId, direction, mediaUpdate]);
+        rpcClient.remoteCast(controller, 'onMediaUpdate', [sessionId, direction, JSON.parse(mediaUpdate)]);
     };
 
     var createWebRTCConnection = function (connectionId, direction, options, callback) {

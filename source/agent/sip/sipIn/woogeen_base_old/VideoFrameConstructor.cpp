@@ -291,7 +291,7 @@ int32_t VideoFrameConstructor::Decode(const webrtc::EncodedImage& encodedImage,
             std::ostringstream json_str;
             json_str.str("");
             json_str << "{\"video\": {\"parameters\": {\"resolution\": {"
-                     << "\"width\":" << m_width
+                     << "\"width\":" << m_width << ", "
                      << "\"height\":" << m_height
                      << "}}}}";
             notifyAsyncEvent("mediaInfo", json_str.str().c_str());

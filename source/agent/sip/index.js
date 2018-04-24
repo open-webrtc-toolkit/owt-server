@@ -390,7 +390,7 @@ module.exports = function (rpcC, spec) {
     var notifyMediaUpdate = (clientId, direction, mediaUpdate) => {
         if (calls[clientId]) {
             if (direction === 'in' && calls[clientId].stream_id) {
-                rpcClient.remoteCast(calls[clientId].conference_controller, 'onMediaUpdate', [calls[clientId].stream_id, direction, mediaUpdate]);
+                rpcClient.remoteCast(calls[clientId].conference_controller, 'onMediaUpdate', [calls[clientId].stream_id, direction, JSON.parse(mediaUpdate)]);
             }
         }
     };
