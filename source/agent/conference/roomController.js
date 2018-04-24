@@ -621,6 +621,8 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
             }, on_error);
         } else if (streams[stream_id].video) {
             mixVideo(stream_id, view, on_ok, on_error);
+        } else {
+            on_error('No audio or video to mix');
         }
     };
 
