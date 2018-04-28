@@ -10,8 +10,8 @@ var portal = require('../portal');
 const testRoom = '573eab78111478bb3526421a';
 const testStream = '573eab78111478bb3526421a-common';
 
-const jsClientInfo = {sdk:{version: '3.5', type: 'JavaScript'}, runtime: {name: 'Chrome', version: '60.0.0.0'}, os:{name:'Linux (Ubuntu)', version:'14.04'}};
-const iosClientInfo = {sdk:{version: '3.5', type: 'Objective-C'}, runtime: {name: 'WebRTC', version: '54'}, os:{name:'iPhone OS', version:'10.2'}};
+const jsClientInfo = {sdk:{version: '4.0', type: 'JavaScript'}, runtime: {name: 'Chrome', version: '60.0.0.0'}, os:{name:'Linux (Ubuntu)', version:'14.04'}};
+const iosClientInfo = {sdk:{version: '4.0', type: 'Objective-C'}, runtime: {name: 'WebRTC', version: '54'}, os:{name:'iPhone OS', version:'10.2'}};
 const jsLoginInfo = {token: (new Buffer(JSON.stringify('someValidToken'))).toString('base64'), userAgent: jsClientInfo, protocol: '1.0'};
 var testServerPort = 3100;
 

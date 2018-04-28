@@ -11,7 +11,7 @@ const testRoom = '573eab78111478bb3526421a';
 const testStream = '573eab78111478bb3526421a-common';
 
 const clientInfo = {sdk:{version: '3.3', type: 'JavaScript'}, runtime: {name: 'Chrome', version: '53.0.0.0'}, os:{name:'Linux (Ubuntu)', version:'14.04'}};
-// JavaScript SDK 3.3 does not support reconnection. So use iOS UA info for reconnection tests.
+// JavaScript SDK <3.3 does not support reconnection. So use iOS UA info for reconnection tests.
 const reconnectionClientInfo = {sdk:{version: '3.3', type: 'Objective-C'}, runtime: {name: 'WebRTC', version: '54'}, os:{name:'iPhone OS', version:'10.2'}};
 const jsLoginInfo = {token: (new Buffer(JSON.stringify('someValidToken'))).toString('base64'), userAgent: clientInfo};
 var testServerPort = 3100;
@@ -999,7 +999,11 @@ describe('Responding to clients.', function() {
                   source: 'mic'
                 },
                 video: {
-                  source: 'camera'
+                  source: 'camera',
+                  parameters: {
+                    resolution: {width: 0, height: 0},
+                    framerate: 0
+                  }
                 }
               }
             });
@@ -1120,7 +1124,11 @@ describe('Responding to clients.', function() {
                   source: 'mic'
                 },
                 video: {
-                  source: 'camera'
+                  source: 'camera',
+                  parameters: {
+                    resolution: {width: 0, height: 0},
+                    framerate: 0
+                  }
                 }
               }
             });
@@ -1132,7 +1140,11 @@ describe('Responding to clients.', function() {
                 media: {
                   audio: false,
                   video: {
-                    source: 'camera'
+                    source: 'camera',
+                    parameters: {
+                      resolution: {width: 0, height: 0},
+                      framerate: 0
+                    }
                   }
                 }
               });
@@ -1156,7 +1168,11 @@ describe('Responding to clients.', function() {
                     media: {
                       audio: false,
                       video: {
-                        source: 'screen-cast'
+                        source: 'screen-cast',
+                        parameters: {
+                          resolution: {width: 0, height: 0},
+                          framerate: 0
+                        }
                       }
                     }
                   });
