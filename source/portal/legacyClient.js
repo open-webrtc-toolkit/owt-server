@@ -278,7 +278,8 @@ var LegacyClient = function(clientId, sigConnection, portal) {
       (options.video || options.video === undefined) && (sub_desc.media.video = {from: options.streamId});
       (options.video && options.video.resolution && (typeof options.video.resolution.width === 'number') && (typeof options.video.resolution.height === 'number')) &&
       (sub_desc.media.video.parameters || (sub_desc.media.video.parameters = {})) && (sub_desc.media.video.parameters.resolution = options.video.resolution);
-      options.video && (typeof options.video.resolution === 'string') && (sub_desc.media.video.resolution = resolution2WidthHeight(options.video.resolution));
+      options.video && (typeof options.video.resolution === 'string') &&
+      (sub_desc.media.video.parameters || (sub_desc.media.video.parameters = {})) && (sub_desc.media.video.parameters.resolution = resolution2WidthHeight(options.video.resolution));
       options.video && options.video.quality_level && (sub_desc.media.video.parameters || (sub_desc.media.video.parameters = {})) && (sub_desc.media.video.parameters.bitrate = qualityLevel2BitrateLevel(options.video.quality_level));
 
       if (!sub_desc.media.audio && !sub_desc.media.video) {

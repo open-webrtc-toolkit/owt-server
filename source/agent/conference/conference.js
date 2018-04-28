@@ -896,7 +896,7 @@ var Conference = function (rpcClient, selfRpcId) {
       mediaSpec.video.status = (media.video.status || 'active');
 
       if (streams[media.video.from].type === 'mixed') {
-        if (media.video.parameters) {
+        if (media.video.parameters && (Object.keys(media.video.parameters).length > 0)) {
           if (media.video.parameters.bitrate) {
             if (source.parameters.bitrate && typeof media.video.parameters.bitrate === 'string') {
               media.video.parameters.bitrate = source.parameters.bitrate * Number(media.video.parameters.bitrate.substring(1));
@@ -910,7 +910,7 @@ var Conference = function (rpcClient, selfRpcId) {
           media.video.parameters = source.parameters;
         }
       } else {
-        if (media.video.parameters) {
+        if (media.video.parameters && (Object.keys(media.video.parameters).length > 0)) {
           if (!media.video.parameters.resolution && !media.video.parameters.framerate) {
             if (media.video.parameters.bitrate) {
               (source.parameters && source.parameters.bitrate) && (media.video.parameters.bitrate = source.parameters.bitrate * Number(media.video.parameters.bitrate.substring(1)));
