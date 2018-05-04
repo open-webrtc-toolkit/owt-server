@@ -171,10 +171,10 @@ Data Model:<br>
         "g": 0 ~ 255,
         "b": 0 ~ 255
       },
-      "motionfactor": number,
-      "keepActiveInputPrimay": boolean,
+      "motionFactor": number,
+      "keepActiveInputPrimary": boolean,
       "layout": {
-        "fitPilicy": string,                  // 'letterbox' or 'crop'.
+        "fitPolicy": string,                  // 'letterbox' or 'crop'.
         "templates": {
           "base": string,                     // valid values ["fluid", "lecture", "void"].
           "custom": [
