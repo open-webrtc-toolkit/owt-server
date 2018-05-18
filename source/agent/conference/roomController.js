@@ -352,19 +352,36 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
             return on_error('Cannot spread stream without audio/video.');
         }
 
-        if (original_node === target_node || hasStreamBeenSpread(stream_id, target_node)) {
-            log.debug('spread already exists:', spread_id);
-            return setTimeout(on_ok, 100);//FIXME: Temporary workround to avoid spread not being ready.
+        if (original_node === target_node) {
+            log.debug('no need to spread');
+            return on_ok();
+        } else {
+            var i = streams[stream_id].spread.findIndex((s) => {return s.target === target_node;});
+            if (i >= 0) {
+              if (streams[stream_id].spread[i].status === 'connected') {
+                log.debug('spread already exists:', spread_id);
+                return on_ok();
+              } else if (streams[stream_id].spread[i].status === 'connecting') {
+                log.debug('spread is connecting:', spread_id);
+                streams[stream_id].spread[i].waiting.push({onOK: on_ok, onError: on_error});
+                return;
+              } else {
+                log.error('spread status is ambiguous:', spread_id);
+                on_error('spread status is ambiguous');
+              }
+            }
         }
-        streams[stream_id].spread.push(target_node);
+        streams[stream_id].spread.push({target: target_node, status: 'connecting', waiting: []});
 
         var on_spread_failed = function(reason, cancel_sub, cancel_pub, cancel_out, cancel_in) {
             log.error('spreadStream failed, stream_id:', stream_id, 'reason:', reason);
-            var i = (streams[stream_id] ? streams[stream_id].spread.indexOf(target_node) : -1);
+            var i = (streams[stream_id] ? streams[stream_id].spread.findIndex((s) => {return s.target === target_node;}) : -1);
             if (i > -1) {
-                streams[stream_id] && streams[stream_id].spread.splice(i, 1);
+                streams[stream_id].spread[i].waiting.forEach((e) => {
+                  e.onError(reason);
+                });
+                streams[stream_id].spread.splice(i, 1);
             }
-
             if (cancel_sub) {
                 makeRPC(rpcClient, original_node, 'unsubscribe', [spread_id]);
             }
@@ -460,17 +477,25 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
         }).then(function () {
             if (streams[stream_id]) {
                 log.debug('internally linkup ok');
-                on_ok();
-                return Promise.resolve('ok');
+                var i = streams[stream_id].spread.findIndex((s) => {return s.target === target_node;});
+                if (i >= 0) {
+                  streams[stream_id].spread[i].status = 'connected';
+                  process.nextTick(() => {
+                    streams[stream_id].spread[i].waiting.forEach((e) => {
+                      e.onOK();
+                    });
+                    streams[stream_id].spread[i].waiting = [];
+                  });
+                  on_ok();
+                  return Promise.resolve('ok');
+                } else {
+                  return Promise.reject('spread record missing');
+                }
             } else {
                 log.error('Stream early released');
                 return Promise.reject('Stream early released');
             }
         }).catch(function(err) {
-            var i = (streams[stream_id] ? streams[stream_id].spread.indexOf(target_node) : -1);
-            if (i > -1) {
-                streams[stream_id] && streams[stream_id].spread.splice(i, 1);
-            }
             on_spread_failed(err.message ? err.message : err, has_subscribed, has_published, !!from, !!to);
         });
     };
@@ -483,7 +508,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                 spread_id = stream_id + '@' + target_node;
 
             if (original_node !== target_node && !isSpreadInUse(stream_id, target_node)) {
-                var i = streams[stream_id].spread.indexOf(target_node);
+                var i = streams[stream_id].spread.findIndex((s) => {return s.target === target_node;});
                 if (i !== -1) {
                     streams[stream_id].spread.splice(i, 1);
                 }
@@ -501,15 +526,6 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                     [stream_id]);
             }
         }
-    };
-
-    var hasStreamBeenSpread = function (stream_id, node) {
-        if (streams[stream_id] &&
-            (streams[stream_id].spread.indexOf(node) !== -1)) {
-            return true;
-        }
-
-        return false;
     };
 
     var isSpreadInUse = function (stream_id, node) {
