@@ -1262,7 +1262,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
         deleteTerminal(terminal_id);
     };
 
-    that.subscribe = function(participantId, subscriptionId, accessNode, subInfo, subType, on_ok, on_error) {
+    that.subscribe = function(participantId, subscriptionId, accessNode, subInfo, subType, isAudioPubPermitted, on_ok, on_error) {
         log.debug('subscribe, participantId:', participantId, 'subscriptionId:', subscriptionId, 'accessNode:', accessNode.node, 'subInfo:', JSON.stringify(subInfo), 'subType:', subType);
         if ((!subInfo.audio || (streams[subInfo.audio.from] && streams[subInfo.audio.from].audio) || getViewOfMixStream(subInfo.audio.from))
             && (!subInfo.video || (streams[subInfo.video.from] && streams[subInfo.video.from].video) || getViewOfMixStream(subInfo.video.from))) {
@@ -1471,7 +1471,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                 }
             };
 
-            var terminal_owner = (subType === 'webrtc' || subType === 'sip') ? participantId : room_id + '-' + 'common'/*randomId()*/;
+            var terminal_owner = (((subType === 'webrtc' || subType === 'sip') && isAudioPubPermitted) ? participantId : room_id + '-' + 'common'/*randomId()*/);
             newTerminal(terminal_id, 'participant', terminal_owner, accessNode, function () {
                 doSubscribe();
             }, on_error);
