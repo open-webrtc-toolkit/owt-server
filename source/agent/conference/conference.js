@@ -883,6 +883,10 @@ var Conference = function (rpcClient, selfRpcId) {
   };
 
   const addSubscription = (id, locality, mediaSpec, info) => {
+    if (!participants[info.owner]) {
+      return Promise.reject('Participant early left');
+    }
+
     var media = JSON.parse(JSON.stringify(mediaSpec));
     if (media.video) {
       if (streams[media.video.from] === undefined) {
@@ -947,8 +951,9 @@ var Conference = function (rpcClient, selfRpcId) {
       mediaSpec.audio.status = (media.audio.status || 'active');
     }
 
+    const isAudioPubPermitted = !!participants[info.owner].isPublishPermitted('audio'); 
     return new Promise((resolve, reject) => {
-      roomController && roomController.subscribe(info.owner, id, locality, media, info.type, function() {
+      roomController && roomController.subscribe(info.owner, id, locality, media, info.type, isAudioPubPermitted, function() {
         if (participants[info.owner]) {
           var subscription = {
             id: id,
