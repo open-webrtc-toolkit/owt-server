@@ -905,6 +905,18 @@ var Conference = function (rpcClient, selfRpcId) {
             if (source.parameters.bitrate && typeof media.video.parameters.bitrate === 'string') {
               media.video.parameters.bitrate = source.parameters.bitrate * Number(media.video.parameters.bitrate.substring(1));
             }
+          } else {
+            if (!media.video.parameters.resolution && !media.video.parameters.framerate) {
+              media.video.parameters.bitrate = ((source.parameters && source.parameters.bitrate) || 'unspecified');
+            } else {
+              if (source.parameters && source.parameters.bitrate) {
+                var reso_f = (media.video.parameters.resolution ? (media.video.parameters.resolution.width * media.video.parameters.resolution.height) / (source.parameters.resolution.width * source.parameters.resolution.height) : 1.0);
+                var fr_f = (media.video.parameters.framerate ? media.video.parameters.framerate / source.parameters.framerate : 1.0);
+                media.video.parameters.bitrate = source.parameters.bitrate * reso_f * fr_f;
+              } else {
+                media.video.parameters.bitrate = 'unspecified';
+              }
+            }
           }
           media.video.parameters.bitrate = (media.video.parameters.bitrate || 'unspecified');
           media.video.parameters.resolution = (media.video.parameters.resolution || source.parameters.resolution);
