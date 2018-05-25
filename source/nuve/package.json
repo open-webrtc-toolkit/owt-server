@@ -9,7 +9,7 @@
     "toml": "*",
     "ajv": "^5.2.2",
     "body-parser": "*",
-    "mongoose": "^4.13.6",
+    "mongoose": "^5.1.2",
     "fraction.js": "*"
   },
   "engine": {

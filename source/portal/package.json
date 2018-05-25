@@ -8,7 +8,7 @@
     "toml": "*",
     "sprintf-js": "^1.0.3",
     "ajv": "^5.2.2",
-    "mongoose": "^4.13.6",
+    "mongoose": "^5.1.2",
     "fraction.js": "*"
   },
   "devDependencies": {
