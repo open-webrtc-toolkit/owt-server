@@ -65,7 +65,7 @@ var ViewSchema = new Schema({
       bitrate: { type: Number },
       keyFrameInterval: { type: Number, default: 100 },
     },
-    maxInput: { type: Number, default: 16, min: 1 },
+    maxInput: { type: Number, default: 16, min: 1, max: 256 },
     motionFactor: { type: Number, default: 0.8 },
     bgColor: { r: ColorRGB, g: ColorRGB, b: ColorRGB },
     keepActiveInputPrimary: { type: Boolean, default: false },
