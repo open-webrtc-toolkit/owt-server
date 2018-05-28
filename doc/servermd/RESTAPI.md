@@ -162,7 +162,7 @@ Data Model:<br>
       "parameters": {
         "resolution": object(Resolution),
         "framerate": number, valid values in [6, 12, 15, 24, 30, 48, 60]
-        "bitrate": string,  valid values in ['0.2x', '0.4x', '0.6x', '0.8x']
+        "bitrate": number
         "keyFrameInterval": number, valid values in [100, 30, 5, 2, 1]
       },
       "maxInput": number, positive integer
