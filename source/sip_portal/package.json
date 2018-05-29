@@ -5,7 +5,7 @@
     "amqp": "*",
     "log4js": "^1.1.1",
     "toml": "*",
-    "mongoose": "^5.1.2",
+    "mongoose": "^4.13.6",
     "fraction.js": "*"
   }
 }

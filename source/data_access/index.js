@@ -12,6 +12,7 @@ var connectOption = {
   reconnectInterval: 1000
 };
 var mongoose = require('mongoose');
+mongoose.plugin(schema => { schema.options.usePushEach = true });
 mongoose.Promise = Promise;
 mongoose.connect('mongodb://' + databaseUrl, connectOption)
   .catch(function (err) {
