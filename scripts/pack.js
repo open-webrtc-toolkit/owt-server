@@ -620,6 +620,7 @@ function archive() {
   const myVersion = options['archive'];
 
   chdir(rootDir);
+  execSync(`rm -f Release-${myVersion}.tgz`);
   execSync(`mv ${distDir} Release-${myVersion}`);
   execSync(`tar --numeric-owner -czf "Release-${myVersion}.tgz" Release-${myVersion}/`);
   execSync(`mv Release-${myVersion} ${distDir}`);
