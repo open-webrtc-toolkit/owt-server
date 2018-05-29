@@ -25,5 +25,11 @@
   "scripts": {
     "test": "mocha ./test -R spec --timeout 5000",
     "test:cover": "istanbul cover _mocha -- ./test -R spec --timeout 5000"
+  },
+  "bin": "index.js",
+  "pkg": {
+    "targets": [
+      "node8"
+    ]
   }
 }
