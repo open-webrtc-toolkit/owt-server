@@ -339,13 +339,8 @@ void VideoFramePacketizer::onFrame(const Frame& frame)
                 /* SPS, PPS, I, P*/
                 uint16_t last = frag_info.fragmentationVectorSize;
                 frag_info.VerifyAndAllocateFragmentationHeader(last + 1);
-                if (frame.format == FRAME_FORMAT_H265) {
-                    frag_info.fragmentationOffset[last] = nalu_start_offset + (buffer_start - frame.payload) - sc_len;
-                    frag_info.fragmentationLength[last] = nalu_found_length + sc_len;
-                } else {
-                    frag_info.fragmentationOffset[last] = nalu_start_offset + (buffer_start - frame.payload);
-                    frag_info.fragmentationLength[last] = nalu_found_length;
-                }
+                frag_info.fragmentationOffset[last] = nalu_start_offset + (buffer_start - frame.payload);
+                frag_info.fragmentationLength[last] = nalu_found_length;
                 buffer_start += (nalu_start_offset + nalu_found_length);
                 buffer_length -= (nalu_start_offset + nalu_found_length);
             }
