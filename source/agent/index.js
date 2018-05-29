@@ -19,7 +19,7 @@ var loadConfig = {};
 try {
   loadConfig = require('./loader.json');
 } catch (e) {
-  log.info('No loader.json found.');
+  log.debug('No loader.json found.');
 }
 
 // Configuration default values
@@ -149,7 +149,11 @@ var launchErizoJS = function() {
     if (!process.env.NODE_DEBUG_ERIZO && loadConfig.bin) {
         execName = './' + loadConfig.bin;
     }
-    var child = spawn(execName, ['./erizoJS.js', id, myPurpose, JSON.stringify(webrtcInterfaces), clusterIP, myId], {
+    var spawnArgs = ['./erizoJS.js', id, myPurpose, JSON.stringify(webrtcInterfaces), clusterIP, myId];
+    if (loadConfig.bin === 'erizoJS') {
+        spawnArgs.shift();
+    }
+    var child = spawn(execName, spawnArgs, {
         detached: true,
         stdio: [ 'ignore', out, err, 'ipc' ]
     });

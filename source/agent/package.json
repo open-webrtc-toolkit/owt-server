@@ -12,5 +12,14 @@
   },
   "engine": {
     "node": "8.11.1"
+  },
+  "bin": "index.js",
+  "pkg": {
+    "assets": [
+      "node_modules*"
+    ],
+    "targets": [
+      "node8"
+    ]
   }
 }

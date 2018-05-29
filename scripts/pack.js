@@ -20,6 +20,7 @@ optParser.addOption('s', 'sample-path', 'string', 'Specify sample path (Eg. pack
 optParser.addOption('a', 'archive', 'string', 'Specify archive name (Eg. pack.js -t all -a ${archiveName})');
 optParser.addOption('n', 'node-module-path', 'string', 'Specify shared-node-module directory');
 optParser.addOption('c', 'copy-module-path', 'string', 'Specify copy node modules directory');
+optParser.addOption('b', 'binary', 'boolean', 'Pack binary');
 optParser.addOption('h', 'help', 'boolean', 'Show help');
 
 const options = optParser.parseArgs(process.argv);
@@ -71,6 +72,14 @@ if (options.encrypt) {
     for (const dep of encryptDeps) {
       execSync(`npm install -g --save-dev ${dep}`, { stdio: 'inherit' });
     }
+  }
+}
+
+if (options.binary) {
+  try {
+    execSync('npm list -g pkg');
+  } catch (e) {
+    execSync('npm install -g pkg');
   }
 }
 
@@ -161,6 +170,26 @@ function packTarget(target) {
     })
     .then((addonPacked) => {
       //generateStart(target);
+      if (options.binary) {
+        let pkg = require(path.join(packDist, 'package.json')).pkg;
+        if (pkg) {
+          chdir(packDist);
+          if (fs.existsSync('erizoJS.js')) {
+            execSync('sed -i "/AgentLoader/d" erizoJS.js');
+            execSync('rm -f AgentLoader.js');
+            execSync(`pkg erizoJS.js -t ${pkg.targets}`);
+            var loaderData = { bin: 'erizoJS' };
+            fs.writeFileSync(path.join(packDist, 'loader.json'), JSON.stringify(loaderData));
+          }
+          execSync('pkg .');
+          execSync('find . -maxdepth 1 -name "*.js" -not -name "AgentLoader*" ! -perm -g+x  -delete');
+          execSync('rm -rf auth');
+          execSync('rm -rf data_access');
+          execSync('rm -rf resource');
+          execSync('rm -rf rpc');
+          execSync('rm -rf package.json');
+        }
+      }
       if (options.encrypt)
         return encrypt(target);
     });
@@ -189,6 +218,7 @@ function packNode(target) {
   // Copy entry file
   execSync(`cp ${path.join(packSrc, entryFile)} lib/_third_party_main.js`);
   execSync(`sed -i "/'library_files': \\[/a 'lib/_third_party_main.js'," node.gyp`);
+
   // Copy lib files
   var libpath;
   if (node.libpath && node.libfiles) {
@@ -200,6 +230,22 @@ function packNode(target) {
       execSync(`cp ${filePath} ${libpath}`);
       // Insert into node.gyp
       execSync(`sed -i "/'library_files': \\[/a '${path.join(libpath, path.basename(file))}'," node.gyp`)
+    }
+
+    if (options.binary && target.rules.common) {
+      const common = target.rules.common;
+      if (common.files) {
+        for (let file of common.files) {
+          if (file.indexOf('AgentLoader') >= 0 || file.indexOf('index') >= 0)
+            continue;
+          let filePath = path.join(packSrc, file);
+          let dstFile = path.join(libpath, path.basename(file));
+          execSync(`cp -a ${filePath} ${libpath}`);
+          execSync(`sed -i "1s/^/require=require('module')._load('.\\/AgentLoader');\\n/" ${dstFile}`)
+          // Insert into node.gyp
+          execSync(`sed -i "/'library_files': \\[/a '${dstFile}'," node.gyp`)
+        }
+      }
     }
   }
   // Construct env
@@ -340,8 +386,8 @@ function packCommon(target) {
         chdir(installDist);
         npmInstall = exec('npm install' + npmInstallOption)
           .then((stdout, stderr) => {
-            console.log(stdout);
-            console.log(stderr);
+            stdout && console.log(stdout);
+            stderr && console.log(stderr);
           });
       }
     }
@@ -449,7 +495,7 @@ function getAddonLibs(addonPath) {
 function filterLib(libSrc) {
   if (!libSrc) return false;
 
-  console.log('require:', libSrc);
+  //console.log('require:', libSrc);
   const libName = path.basename(libSrc);
   // Remove libmsdk
   if (libName.indexOf('libmfxhw') === 0) return false;
@@ -460,7 +506,7 @@ function filterLib(libSrc) {
   // Remove libav/ffmpeg if aac
   if (libName.indexOf('libav') === 0 || libName.indexOf('libsw') === 0) {
     let output = execSync(`ldd ${libSrc}`).toString();
-    console.log('libav output:', output);
+    //console.log('libav output:', output);
     if (options['archive'] && output.indexOf('libfdk-aac') >= 0) {
       return false;
     }
@@ -552,10 +598,14 @@ function packScripts() {
   execSync(`cp -a ${rootDir}/scripts/release/init-all.sh ${binDir}`);
   execSync(`cp -a ${rootDir}/scripts/release/init-rabbitmq.sh ${binDir}`);
   execSync(`cp -a ${rootDir}/scripts/release/init-mongodb.sh ${binDir}`);
-  execSync(`cp -a ${rootDir}/scripts/release/daemon-mcu.sh ${binDir}/daemon.sh`);
   execSync(`cp -a ${rootDir}/scripts/release/package.mcu.json ${distDir}/package.json`);
   execSync(`cp -a ${rootDir}/third_party/NOTICE ${distDir}`);
   execSync(`cp -a ${rootDir}/third_party/ThirdpartyLicenses.txt ${distDir}`);
+  if (options.binary) {
+    execSync(`cp -a ${rootDir}/scripts/release/daemon-bin.sh ${binDir}/daemon.sh`);
+  } else {
+    execSync(`cp -a ${rootDir}/scripts/release/daemon-mcu.sh ${binDir}/daemon.sh`);
+  }
 
   if (options.debug) {
     // Add debug variable
