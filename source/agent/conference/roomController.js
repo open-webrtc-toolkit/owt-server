@@ -878,7 +878,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                             owner: vxcoder,
                             audio: undefined,
                             video: {
-                                format: stream.format,
+                                format: format,
                                 resolution: stream.resolution,
                                 framerate: stream.framerate,
                                 bitrate: stream.bitrate,

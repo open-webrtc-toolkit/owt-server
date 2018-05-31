@@ -268,6 +268,7 @@ static void dump(void* index, FrameFormat format, uint8_t* buf, int len)
 
 void VideoFramePacketizer::onFrame(const Frame& frame)
 {
+    ELOG_DEBUG("onFrame, format:%d, length:%d", frame.format, frame.length);
     using namespace webrtc;
     if (!m_enabled) {
         return;
