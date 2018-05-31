@@ -1089,7 +1089,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
         } else if (streams[stream_id]) {
             if (streams[stream_id].video) {
                 if ((streams[stream_id].video.format === format) &&
-                    (resolution === 'unspecified' || (resolution.width === streams[stream_id].video.resolution.width && resolution.height === streams[stream_id].video.resolution.height)) &&
+                    (resolution === 'unspecified' || (streams[stream_id].video.resolution && (resolution.width === streams[stream_id].video.resolution.width) && (resolution.height === streams[stream_id].video.resolution.height))) &&
                     (framerate === 'unspecified' || (streams[stream_id].video.framerate && (streams[stream_id].video.framerate === framerate))) &&
                     (bitrate === 'unspecified' || (streams[stream_id].video.bitrate && (streams[stream_id].video.bitrate === bitrate))) &&
                     (keyFrameInterval === 'unspecified' || (streams[stream_id].video.kfi && (streams[stream_id].video.kfi === keyFrameInterval)))) {
