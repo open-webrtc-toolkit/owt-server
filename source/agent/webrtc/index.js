@@ -167,10 +167,12 @@ module.exports = function (rpcClient) {
     };
 
     that.linkup = function (connectionId, audioFrom, videoFrom, callback) {
+        log.debug('linkup, connectionId:', connectionId, 'audioFrom:', audioFrom, 'videoFrom:', videoFrom);
         connections.linkupConnection(connectionId, audioFrom, videoFrom).then(onSuccess(callback), onError(callback));
     };
 
     that.cutoff = function (connectionId, callback) {
+        log.debug('cutoff, connectionId:', connectionId);
         connections.cutoffConnection(connectionId).then(onSuccess(callback), onError(callback));
     };
 
