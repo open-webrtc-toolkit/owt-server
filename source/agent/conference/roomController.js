@@ -1727,7 +1727,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                             log.debug('Got new stream:', stream_id);
                             return Promise.all(old_st.spread.map(function(target_node) {
                                 return new Promise(function (res, rej) {
-                                    spreadStream(stream_id, target_node, 'participant', function() {
+                                    spreadStream(stream_id, target_node.target, 'participant', function() {
                                         res('ok');
                                     }, function (reason) {
                                         log.warn('Failed in spreading video stream. reason:', reason);
@@ -1815,7 +1815,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                             log.debug('Got new stream:', stream_id);
                             return Promise.all(old_st.spread.map(function(target_node) {
                                 return new Promise(function (res, rej) {
-                                    spreadStream(stream_id, target_node, 'participant', function() {
+                                    spreadStream(stream_id, target_node.target, 'participant', function() {
                                         res('ok');
                                     }, function (reason) {
                                         log.warn('Failed in spreading video stream. reason:', reason);
@@ -1944,7 +1944,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                             log.debug('Got new stream:', stream_id);
                             return Promise.all(old_st.spread.map(function(target_node) {
                                     return new Promise(function (res, rej) {
-                                        spreadStream(stream_id, target_node, 'participant', function() {
+                                        spreadStream(stream_id, target_node.target, 'participant', function() {
                                             res('ok');
                                         }, function (reason) {
                                             log.warn('Failed in spreading audio stream. reason:', reason);
@@ -2030,7 +2030,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                             log.debug('Got new stream:', stream_id);
                             return Promise.all(old_st.spread.map(function(target_node) {
                                 return new Promise(function (res, rej) {
-                                    spreadStream(stream_id, target_node, 'participant', function() {
+                                    spreadStream(stream_id, target_node.target, 'participant', function() {
                                         res('ok');
                                     }, function (reason) {
                                         log.warn('Failed in spreading audio stream. reason:', reason);
