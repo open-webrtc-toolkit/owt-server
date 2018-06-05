@@ -10,10 +10,7 @@ class AppError extends Error {
     // Default status
     this.status = status || 500;
     this.code = code || 2001;
-  }
-
-  get data() {
-    return {
+    this.data = {
       error: {
         code: this.code,
         message: this.message
