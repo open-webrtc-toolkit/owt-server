@@ -40,10 +40,10 @@ public:
     void disableVAD();
     void resetVAD();
 
-    bool addInput(const std::string& participant, const std::string& codec, woogeen_base::FrameSource* source);
-    void removeInput(const std::string& participant);
-    bool addOutput(const std::string& participant, const std::string& codec, woogeen_base::FrameDestination* dest);
-    void removeOutput(const std::string& participant);
+    bool addInput(const std::string& endpoint, const std::string& inStreamId, const std::string& codec, woogeen_base::FrameSource* source);
+    void removeInput(const std::string& endpoint, const std::string& inStreamId);
+    bool addOutput(const std::string& endpoint, const std::string& outStreamId, const std::string& codec, woogeen_base::FrameDestination* dest);
+    void removeOutput(const std::string& endpoint, const std::string& outStreamId);
 
     void setEventRegistry(EventRegistry* handle);
 
