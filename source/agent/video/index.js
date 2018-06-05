@@ -65,7 +65,8 @@ const partial_linear_bitrate = [
   {size: 307200, bitrate: 800}, //640*480, 30fps
   {size: 921600, bitrate: 2000},  //1280*720, 30fps
   {size: 2073600, bitrate: 4000}, //1920*1080, 30fps
-  {size: 8294400, bitrate: 16000} //3840*2160, 30fps
+  {size: 8294400, bitrate: 16000}, //3840*2160, 30fps
+  {size: 33177600, bitrate: 64000} //7680*4320, 30fps
 ];
 
 const standardBitrate = (width, height, framerate) => {
