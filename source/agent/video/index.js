@@ -102,7 +102,7 @@ const calcDefaultBitrate = (codec, resolution, framerate, motionFactor) => {
       codec_factor = 1.0;
       break;
     case 'vp8':
-      codec_factor = 1.0;
+      codec_factor = 1.2;
       break;
     case 'vp9':
       codec_factor = 0.8;//FIXME: Theoretically it should be 0.5, not appliable before encoder is improved.
