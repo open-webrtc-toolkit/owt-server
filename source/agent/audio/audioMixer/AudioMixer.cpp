@@ -80,7 +80,7 @@ void AudioMixer::resetVAD()
     m_mixer->resetVAD();
 }
 
-bool AudioMixer::addInput(const std::string& participant, const std::string& codec, woogeen_base::FrameSource* source)
+bool AudioMixer::addInput(const std::string& endpoint, const std::string& inStreamId, const std::string& codec, woogeen_base::FrameSource* source)
 {
     assert(source);
 
@@ -90,16 +90,16 @@ bool AudioMixer::addInput(const std::string& participant, const std::string& cod
         return false;
     }
 
-    return m_mixer->addInput(participant, format, source);
+    return m_mixer->addInput(endpoint, format, source);
 }
 
-void AudioMixer::removeInput(const std::string& participant)
+void AudioMixer::removeInput(const std::string& endpoint, const std::string& inStreamId)
 {
-    m_mixer->removeInput(participant);
+    m_mixer->removeInput(endpoint);
     return;
 }
 
-bool AudioMixer::addOutput(const std::string& participant, const std::string& codec, woogeen_base::FrameDestination* dest)
+bool AudioMixer::addOutput(const std::string& endpoint, const std::string& outStreamId, const std::string& codec, woogeen_base::FrameDestination* dest)
 {
     assert(dest);
 
@@ -109,12 +109,12 @@ bool AudioMixer::addOutput(const std::string& participant, const std::string& co
         return false;
     }
 
-    return m_mixer->addOutput(participant, format, dest);
+    return m_mixer->addOutput(endpoint, format, dest);
 }
 
-void AudioMixer::removeOutput(const std::string& participant)
+void AudioMixer::removeOutput(const std::string& endpoint, const std::string& outStreamId)
 {
-    m_mixer->removeOutput(participant);
+    m_mixer->removeOutput(endpoint);
     return;
 }
 

@@ -90,7 +90,7 @@ const standardBitrate = (width, height, framerate) => {
 
   // set default bitrate for over large resolution
   if (-1 == bitrate) {
-    bitrate = 16000;
+    bitrate = 64000;
   }
 
   return bitrate;

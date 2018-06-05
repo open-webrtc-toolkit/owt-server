@@ -112,13 +112,15 @@ void AudioMixer::addInput(const v8::FunctionCallbackInfo<v8::Value>& args) {
   mcu::AudioMixer* me = obj->me;
 
   String::Utf8Value param0(args[0]->ToString());
-  std::string participantID = std::string(*param0);
+  std::string endpointID = std::string(*param0);
   String::Utf8Value param1(args[1]->ToString());
-  std::string codec = std::string(*param1);
-  FrameSource* param2 = ObjectWrap::Unwrap<FrameSource>(args[2]->ToObject());
-  woogeen_base::FrameSource* src = param2->src;
+  std::string streamID = std::string(*param1);
+  String::Utf8Value param2(args[2]->ToString());
+  std::string codec = std::string(*param2);
+  FrameSource* param3 = ObjectWrap::Unwrap<FrameSource>(args[3]->ToObject());
+  woogeen_base::FrameSource* src = param3->src;
 
-  bool r = me->addInput(participantID, codec, src);
+  bool r = me->addInput(endpointID, streamID, codec, src);
 
   args.GetReturnValue().Set(Boolean::New(isolate, r));
 }
@@ -131,9 +133,11 @@ void AudioMixer::removeInput(const v8::FunctionCallbackInfo<v8::Value>& args) {
   mcu::AudioMixer* me = obj->me;
 
   String::Utf8Value param0(args[0]->ToString());
-  std::string participantID = std::string(*param0);
+  std::string endpointID = std::string(*param0);
+  String::Utf8Value param1(args[1]->ToString());
+  std::string streamID = std::string(*param1);
 
-  me->removeInput(participantID);
+  me->removeInput(endpointID, streamID);
 }
 
 void AudioMixer::addOutput(const v8::FunctionCallbackInfo<v8::Value>& args) {
@@ -144,13 +148,15 @@ void AudioMixer::addOutput(const v8::FunctionCallbackInfo<v8::Value>& args) {
   mcu::AudioMixer* me = obj->me;
 
   String::Utf8Value param0(args[0]->ToString());
-  std::string participantID = std::string(*param0);
+  std::string endpointID = std::string(*param0);
   String::Utf8Value param1(args[1]->ToString());
-  std::string codec = std::string(*param1);
-  FrameDestination* param2 = ObjectWrap::Unwrap<FrameDestination>(args[2]->ToObject());
-  woogeen_base::FrameDestination* dest = param2->dest;
+  std::string streamID = std::string(*param1);
+  String::Utf8Value param2(args[2]->ToString());
+  std::string codec = std::string(*param2);
+  FrameDestination* param3 = ObjectWrap::Unwrap<FrameDestination>(args[3]->ToObject());
+  woogeen_base::FrameDestination* dest = param3->dest;
 
-  bool r = me->addOutput(participantID, codec, dest);
+  bool r = me->addOutput(endpointID, streamID, codec, dest);
 
   args.GetReturnValue().Set(Boolean::New(isolate, r));
 }
@@ -163,7 +169,9 @@ void AudioMixer::removeOutput(const v8::FunctionCallbackInfo<v8::Value>& args) {
   mcu::AudioMixer* me = obj->me;
 
   String::Utf8Value param0(args[0]->ToString());
-  std::string participantID = std::string(*param0);
+  std::string endpointID = std::string(*param0);
+  String::Utf8Value param1(args[1]->ToString());
+  std::string streamID = std::string(*param1);
 
-  me->removeOutput(participantID);
+  me->removeOutput(endpointID, streamID);
 }

@@ -23,13 +23,13 @@ module.exports = function (rpcClient) {
 
         supported_codecs = [],
 
-        /*{StreamID : {owner: ParticipantID,
+        /*{StreamID : {for_whom: EndpointID,
                        codec: 'pcmu' | 'pcma' | 'isac_16000' | 'isac_32000' | 'opus_48000_2' |...,
                        dispatcher: MediaFrameMulticaster,
                        }}*/
         outputs = {},
 
-        /*{StreamID : {owner: TerminalID,
+        /*{StreamID : {owner: EndpointID,
                        connection: InternalIn}
           }*/
         inputs = {},
@@ -44,7 +44,7 @@ module.exports = function (rpcClient) {
         // For internal SCTP connection creation
         internalConnFactory = new InternalConnectionFactory;
 
-    var addInput = function (stream_id, for_whom, codec, options, on_ok, on_error) {
+    var addInput = function (stream_id, owner, codec, options, on_ok, on_error) {
         if (engine) {
             var conn = internalConnFactory.fetch(stream_id, 'in');
             if (!conn) {
@@ -53,10 +53,10 @@ module.exports = function (rpcClient) {
             }
             conn.connect(options);
 
-            if (engine.addInput(for_whom, codec, conn)) {
-                inputs[stream_id] = {owner: for_whom,
+            if (engine.addInput(owner, stream_id, codec, conn)) {
+                inputs[stream_id] = {owner: owner,
                                      connection: conn};
-                log.debug('addInput ok, for:', for_whom, 'codec:', codec, 'options:', options);
+                log.debug('addInput ok, for:', owner, 'codec:', codec, 'options:', options);
                 on_ok(stream_id);
             } else {
                 on_error('Failed in adding input to audio-engine.');
@@ -68,7 +68,7 @@ module.exports = function (rpcClient) {
 
     var removeInput = function (stream_id) {
         if (inputs[stream_id]) {
-            engine.removeInput(inputs[stream_id].owner);
+            engine.removeInput(inputs[stream_id].owner, stream_id);
             internalConnFactory.destroy(stream_id, 'in');
             delete inputs[stream_id];
         }
@@ -78,8 +78,8 @@ module.exports = function (rpcClient) {
         var stream_id = Math.random() * 1000000000000000000 + '';
         if (engine) {
             var dispatcher = new MediaFrameMulticaster();
-            if (engine.addOutput(for_whom, codec, dispatcher)) {
-                outputs[stream_id] = {owner: for_whom,
+            if (engine.addOutput(for_whom, stream_id, codec, dispatcher)) {
+                outputs[stream_id] = {for_whom: for_whom,
                                       codec: codec,
                                       dispatcher: dispatcher,
                                       connections: {}};
@@ -100,7 +100,7 @@ module.exports = function (rpcClient) {
                  output.connections[connectionId].close();
                  delete output.connections[connectionId];
             }
-            engine.removeOutput(output.owner);
+            engine.removeOutput(output.for_whom, stream_id);
             output.dispatcher.close();
             delete outputs[stream_id];
         }
@@ -138,7 +138,7 @@ module.exports = function (rpcClient) {
         codec = codec.toLowerCase();
         log.debug('generate, for_whom:', for_whom, 'codec:', codec);
         for (var stream_id in outputs) {
-            if (outputs[stream_id].owner === for_whom && outputs[stream_id].codec === codec) {
+            if (outputs[stream_id].for_whom === for_whom && outputs[stream_id].codec === codec) {
                 log.debug('generate, got stream:', stream_id);
                 callback('callback', stream_id);
                 return;
@@ -181,7 +181,7 @@ module.exports = function (rpcClient) {
         }
 
         if (inputs[stream_id] === undefined) {
-            addInput(stream_id, options.owner, options.audio.codec, options, function () {
+            addInput(stream_id, options.publisher, options.audio.codec, options, function () {
                 callback('callback', 'ok');
             }, function (error_reason) {
                 log.error(error_reason);
