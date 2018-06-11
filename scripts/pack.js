@@ -77,9 +77,9 @@ if (options.encrypt) {
 
 if (options.binary) {
   try {
-    execSync('npm list -g pkg');
+    execSync('npm list -g pkg@4.2.5');
   } catch (e) {
-    execSync('npm install -g pkg');
+    execSync('npm install -g pkg@4.2.5');
   }
 }
 
