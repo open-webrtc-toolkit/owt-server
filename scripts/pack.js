@@ -182,12 +182,13 @@ function packTarget(target) {
             fs.writeFileSync(path.join(packDist, 'loader.json'), JSON.stringify(loaderData));
           }
           execSync('pkg .');
-          execSync('find . -maxdepth 1 -name "*.js" -not -name "AgentLoader*" ! -perm -g+x  -delete');
+          execSync('find . -maxdepth 1 -name "*.js" -not -name "AgentLoader*" -not -name "init*" -not -name "cipher.js" ! -perm -g+x  -delete');
           execSync('rm -rf auth');
           execSync('rm -rf data_access');
           execSync('rm -rf resource');
           execSync('rm -rf rpc');
           execSync('rm -rf package.json');
+          execSync('rm -rf packrule.json');
         }
       }
       if (options.encrypt)
