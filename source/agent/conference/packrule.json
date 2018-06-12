@@ -15,7 +15,6 @@
             "accessController.js",
             "../index.js",
             "../../common/amqp_client.js",
-            "../../common/cipher.js",
             "../../common/clusterWorker.js",
             "../../common/loadCollector.js",
             "../../common/logger.js",
