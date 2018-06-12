@@ -20,6 +20,8 @@
 
 #ifdef ENABLE_MSDK
 
+#define _ENABLE_MFE_
+
 #include <stdint.h>
 #include <stdio.h>
 #include <assert.h>
@@ -116,6 +118,12 @@ public:
         m_encExtCodingOpt.reset();
         m_encExtCodingOpt2.reset();
         m_encExtHevcParam.reset();
+#ifdef _ENABLE_MFE_
+#if (MFX_VERSION >= 1025)
+        m_encExtMultiFrameParam.reset();
+        m_encExtMultiFrameControl.reset();
+#endif
+#endif
         m_encExtParams.clear();
 
         deinitBitstreamBuffers();
@@ -479,8 +487,25 @@ protected:
         m_encExtHevcParam.reset(new mfxExtHEVCParam);
         memset(m_encExtHevcParam.get(), 0, sizeof(mfxExtHEVCParam));
 
+#ifdef _ENABLE_MFE_
+#if (MFX_VERSION >= 1025)
+        m_encExtMultiFrameParam.reset(new mfxExtMultiFrameParam);
+        memset(m_encExtMultiFrameParam.get(), 0, sizeof(mfxExtMultiFrameParam));
+
+        m_encExtMultiFrameControl.reset(new mfxExtMultiFrameControl);
+        memset(m_encExtMultiFrameControl.get(), 0, sizeof(mfxExtMultiFrameControl));
+#endif
+#endif
+
         m_encExtParams.push_back(reinterpret_cast<mfxExtBuffer *>(m_encExtCodingOpt.get()));
         m_encExtParams.push_back(reinterpret_cast<mfxExtBuffer *>(m_encExtCodingOpt2.get()));
+
+#ifdef _ENABLE_MFE_
+#if (MFX_VERSION >= 1025)
+        m_encExtParams.push_back(reinterpret_cast<mfxExtBuffer *>(m_encExtMultiFrameParam.get()));
+        m_encExtParams.push_back(reinterpret_cast<mfxExtBuffer *>(m_encExtMultiFrameControl.get()));
+#endif
+#endif
 
         // FrameInfo
         m_encParam->mfx.FrameInfo.FourCC          = MFX_FOURCC_NV12;
@@ -552,6 +577,21 @@ protected:
         //m_encExtCodingOpt2->MBBRC                      = 0;//Disable
         //m_encExtCodingOpt2->LookAheadDepth             = 0;//For MFX_RATECONTROL_LA
         //m_encExtCodingOpt2->MaxSliceSize               = 0;
+
+#ifdef _ENABLE_MFE_
+#if (MFX_VERSION >= 1025)
+        // MFX_EXTBUFF_MULTI_FRAME_PARAM
+        m_encExtMultiFrameParam->Header.BufferId    = MFX_EXTBUFF_MULTI_FRAME_PARAM;
+        m_encExtMultiFrameParam->Header.BufferSz    = sizeof(*m_encExtMultiFrameParam);
+        m_encExtMultiFrameParam->MFMode             = MFX_MF_AUTO;
+        m_encExtMultiFrameParam->MaxNumFrames       = 0;
+
+        // MFX_EXTBUFF_MULTI_FRAME_CONTROL
+        m_encExtMultiFrameControl->Header.BufferId  = MFX_EXTBUFF_MULTI_FRAME_CONTROL;
+        m_encExtMultiFrameControl->Header.BufferSz  = sizeof(*m_encExtMultiFrameControl);
+        m_encExtMultiFrameControl->Timeout          = 5;
+#endif
+#endif
     }
 
     void updateParam()
@@ -828,6 +868,13 @@ private:
     boost::scoped_ptr<mfxExtCodingOption> m_encExtCodingOpt;
     boost::scoped_ptr<mfxExtCodingOption2> m_encExtCodingOpt2;
     boost::scoped_ptr<mfxExtHEVCParam> m_encExtHevcParam;
+
+#ifdef _ENABLE_MFE_
+#if (MFX_VERSION >= 1025)
+    boost::scoped_ptr<mfxExtMultiFrameParam> m_encExtMultiFrameParam;
+    boost::scoped_ptr<mfxExtMultiFrameControl> m_encExtMultiFrameControl;
+#endif
+#endif
 
     std::vector<boost::shared_ptr<mfxBitstream>> m_bitstreamBuffers;
     mfxPluginUID m_pluginID;
