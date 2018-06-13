@@ -166,12 +166,13 @@ public:
 
         switch (m_format) {
             case FRAME_FORMAT_H264:
-                m_encParam->mfx.CodecId                = MFX_CODEC_AVC;
-                m_encParam->mfx.CodecProfile           = MFX_PROFILE_AVC_BASELINE;
+                m_encParam->mfx.CodecId         = MFX_CODEC_AVC;
+                m_encParam->mfx.CodecProfile    = MFX_PROFILE_AVC_MAIN;
+                m_encParam->mfx.CodecLevel      = MFX_LEVEL_AVC_51;
                 break;
             case FRAME_FORMAT_H265:
                 // Let encoder decide the profile to be used.
-                m_encParam->mfx.CodecId                = MFX_CODEC_HEVC;
+                m_encParam->mfx.CodecId         = MFX_CODEC_HEVC;
                 break;
             case FRAME_FORMAT_VP8:
             default:
@@ -520,7 +521,7 @@ protected:
         // mfx Enc
         m_encParam->mfx.TargetUsage               = 0;
         m_encParam->mfx.GopPicSize                = 3000;
-        m_encParam->mfx.GopRefDist                = 0;
+        m_encParam->mfx.GopRefDist                = 1; // Workaround for Windows Chrome 4K H264 Decoding
         m_encParam->mfx.GopOptFlag                = 0;
         m_encParam->mfx.IdrInterval               = 0;
 
