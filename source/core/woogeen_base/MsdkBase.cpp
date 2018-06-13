@@ -357,32 +357,6 @@ void MsdkBase::printfVideoParam(mfxVideoParam *pVideoParam, DumpType type)
     printf("\t Protected %d\n",                (int)pVideoParam->Protected);
     printf("\t IOPattern %d\n",                (int)pVideoParam->IOPattern);
 
-    printf("\t NumExtParam %d\n",              (int)pVideoParam->NumExtParam);
-    for(int i = 0; i < pVideoParam->NumExtParam; i++) {
-        printf("\t \t %d - mfxExtBuffer: 0x%x(%c%c%c%c)\n", i, pVideoParam->ExtParam[i]->BufferId,
-                pVideoParam->ExtParam[i]->BufferId & 0xff,
-                (pVideoParam->ExtParam[i]->BufferId >> 8) & 0xff,
-                (pVideoParam->ExtParam[i]->BufferId >> 16) & 0xff,
-                (pVideoParam->ExtParam[i]->BufferId >> 24) & 0xff
-              );
-
-        if (pVideoParam->ExtParam[i]->BufferId == MFX_EXTBUFF_VPP_COMPOSITE) {
-            mfxExtVPPComposite *pComposite = (mfxExtVPPComposite *)pVideoParam->ExtParam[i];
-
-            printf("\t\t\t bg Y 0x%x\n",              (int)pComposite->Y);
-            printf("\t\t\t bg U 0x%x\n",              (int)pComposite->U);
-            printf("\t\t\t bg V 0x%x\n",              (int)pComposite->V);
-
-            printf("\t\t\t NumInputStream %d\n",      (int)pComposite->NumInputStream);
-            for (int i = 0; i < pComposite->NumInputStream; i++) {
-                printf("\t\t\t\t %d - DstX %d\n",      i, (int)pComposite->InputStream[i].DstX);
-                printf("\t\t\t\t %d - DstY %d\n",      i, (int)pComposite->InputStream[i].DstY);
-                printf("\t\t\t\t %d - DstW %d\n",      i, (int)pComposite->InputStream[i].DstW);
-                printf("\t\t\t\t %d - DstH %d\n",      i, (int)pComposite->InputStream[i].DstH);
-            }
-        }
-    }
-
     if (type == MFX_DEC || type == MFX_ENC) {
 
         printf("\t mfx LowPower %d\n",             (int)pVideoParam->mfx.LowPower);
@@ -449,6 +423,113 @@ void MsdkBase::printfVideoParam(mfxVideoParam *pVideoParam, DumpType type)
     else
     {
         printf("Invalid dump type, %d\n", type);
+    }
+
+    printf("NumExtParam %d\n",              (int)pVideoParam->NumExtParam);
+    for(int i = 0; i < pVideoParam->NumExtParam; i++) {
+        printf("\t %d - mfxExtBuffer: 0x%x(%c%c%c%c)\n", i, pVideoParam->ExtParam[i]->BufferId,
+                pVideoParam->ExtParam[i]->BufferId & 0xff,
+                (pVideoParam->ExtParam[i]->BufferId >> 8) & 0xff,
+                (pVideoParam->ExtParam[i]->BufferId >> 16) & 0xff,
+                (pVideoParam->ExtParam[i]->BufferId >> 24) & 0xff
+              );
+
+        switch (pVideoParam->ExtParam[i]->BufferId) {
+            case MFX_EXTBUFF_VPP_COMPOSITE:
+                {
+                    mfxExtVPPComposite *pComposite = (mfxExtVPPComposite *)pVideoParam->ExtParam[i];
+
+                    printf("\t\t bg Y 0x%x\n",              (int)pComposite->Y);
+                    printf("\t\t bg U 0x%x\n",              (int)pComposite->U);
+                    printf("\t\t bg V 0x%x\n",              (int)pComposite->V);
+
+                    printf("\t\t NumInputStream %d\n",      (int)pComposite->NumInputStream);
+                    for (int i = 0; i < pComposite->NumInputStream; i++) {
+                        printf("\t\t\t %d - DstX %d\n",      i, (int)pComposite->InputStream[i].DstX);
+                        printf("\t\t\t %d - DstY %d\n",      i, (int)pComposite->InputStream[i].DstY);
+                        printf("\t\t\t %d - DstW %d\n",      i, (int)pComposite->InputStream[i].DstW);
+                        printf("\t\t\t %d - DstH %d\n",      i, (int)pComposite->InputStream[i].DstH);
+                    }
+
+                }
+                break;
+
+            case MFX_EXTBUFF_CODING_OPTION:
+                {
+                    mfxExtCodingOption *pCodingOption = (mfxExtCodingOption *)pVideoParam->ExtParam[i];
+
+                    printf("\t\t RateDistortionOpt %d\n", (int)pCodingOption->RateDistortionOpt);
+                    printf("\t\t MECostType %d\n", (int)pCodingOption->MECostType);
+                    printf("\t\t MESearchType %d\n", (int)pCodingOption->MESearchType);
+                    printf("\t\t MVSearchWindow x(%d), y(%d)\n", (int)pCodingOption->MVSearchWindow.x, (int)pCodingOption->MVSearchWindow.y);
+                    printf("\t\t EndOfSequence %d\n", (int)pCodingOption->EndOfSequence);
+                    printf("\t\t FramePicture %d\n", (int)pCodingOption->FramePicture);
+
+                    printf("\t\t CAVLC %d\n", (int)pCodingOption->CAVLC);
+                    printf("\t\t RecoveryPointSEI %d\n", (int)pCodingOption->RecoveryPointSEI);
+                    printf("\t\t ViewOutput %d\n", (int)pCodingOption->ViewOutput);
+                    printf("\t\t NalHrdConformance %d\n", (int)pCodingOption->NalHrdConformance);
+                    printf("\t\t SingleSeiNalUnit %d\n", (int)pCodingOption->SingleSeiNalUnit);
+                    printf("\t\t VuiVclHrdParameters %d\n", (int)pCodingOption->VuiVclHrdParameters);
+
+                    printf("\t\t RefPicListReordering %d\n", (int)pCodingOption->RefPicListReordering);
+                    printf("\t\t ResetRefList %d\n", (int)pCodingOption->ResetRefList);
+                    printf("\t\t RefPicMarkRep %d\n", (int)pCodingOption->RefPicMarkRep);
+                    printf("\t\t FieldOutput %d\n", (int)pCodingOption->FieldOutput);
+
+                    printf("\t\t IntraPredBlockSize %d\n", (int)pCodingOption->IntraPredBlockSize);
+                    printf("\t\t InterPredBlockSize %d\n", (int)pCodingOption->InterPredBlockSize);
+                    printf("\t\t MVPrecision %d\n", (int)pCodingOption->MVPrecision);
+                    printf("\t\t MaxDecFrameBuffering %d\n", (int)pCodingOption->MaxDecFrameBuffering);
+
+                    printf("\t\t AUDelimiter %d\n", (int)pCodingOption->AUDelimiter);
+                    printf("\t\t EndOfStream %d\n", (int)pCodingOption->EndOfStream);
+                    printf("\t\t PicTimingSEI %d\n", (int)pCodingOption->PicTimingSEI);
+                    printf("\t\t VuiNalHrdParameters %d\n", (int)pCodingOption->VuiNalHrdParameters);
+                }
+                break;
+
+            case MFX_EXTBUFF_CODING_OPTION2:
+                {
+                    mfxExtCodingOption2 *pCodingOption2 = (mfxExtCodingOption2 *)pVideoParam->ExtParam[i];
+
+                    printf("\t\t IntRefType %d\n", (int)pCodingOption2->IntRefType);
+                    printf("\t\t IntRefCycleSize %d\n", (int)pCodingOption2->IntRefCycleSize);
+                    printf("\t\t IntRefQPDelta %d\n", (int)pCodingOption2->IntRefQPDelta);
+
+                    printf("\t\t MaxFrameSize %d\n", (int)pCodingOption2->MaxFrameSize);
+                    printf("\t\t MaxSliceSize %d\n", (int)pCodingOption2->MaxSliceSize);
+
+                    printf("\t\t BitrateLimit %d\n", (int)pCodingOption2->BitrateLimit);
+                    printf("\t\t MBBRC %d\n", (int)pCodingOption2->MBBRC);
+                    printf("\t\t ExtBRC %d\n", (int)pCodingOption2->ExtBRC);
+                    printf("\t\t LookAheadDepth %d\n", (int)pCodingOption2->LookAheadDepth);
+                    printf("\t\t Trellis %d\n", (int)pCodingOption2->Trellis);
+                    printf("\t\t RepeatPPS %d\n", (int)pCodingOption2->RepeatPPS);
+                    printf("\t\t BRefType %d\n", (int)pCodingOption2->BRefType);
+                    printf("\t\t AdaptiveI %d\n", (int)pCodingOption2->AdaptiveI);
+                    printf("\t\t AdaptiveB %d\n", (int)pCodingOption2->AdaptiveB);
+                    printf("\t\t LookAheadDS %d\n", (int)pCodingOption2->LookAheadDS);
+                    printf("\t\t NumMbPerSlice %d\n", (int)pCodingOption2->NumMbPerSlice);
+                    printf("\t\t SkipFrame %d\n", (int)pCodingOption2->SkipFrame);
+                    printf("\t\t MinQPI %d\n", (int)pCodingOption2->MinQPI);
+                    printf("\t\t MaxQPI %d\n", (int)pCodingOption2->MaxQPI);
+                    printf("\t\t MinQPP %d\n", (int)pCodingOption2->MinQPP);
+                    printf("\t\t MaxQPP %d\n", (int)pCodingOption2->MaxQPP);
+                    printf("\t\t MinQPB %d\n", (int)pCodingOption2->MinQPB);
+                    printf("\t\t MaxQPB %d\n", (int)pCodingOption2->MaxQPB);
+                    printf("\t\t FixedFrameRate %d\n", (int)pCodingOption2->FixedFrameRate);
+                    printf("\t\t DisableDeblockingIdc %d\n", (int)pCodingOption2->DisableDeblockingIdc);
+                    printf("\t\t DisableVUI %d\n", (int)pCodingOption2->DisableVUI);
+                    printf("\t\t BufferingPeriodSEI %d\n", (int)pCodingOption2->BufferingPeriodSEI);
+                    printf("\t\t EnableMAD %d\n", (int)pCodingOption2->EnableMAD);
+                    printf("\t\t UseRawRef %d\n", (int)pCodingOption2->UseRawRef);
+                }
+                break;
+
+            default:
+                break;
+        }
     }
 
     printf("%s - %s----------\n", __FUNCTION__, type == MFX_DEC ? "DECODE" : (type == MFX_VPP) ? "VPP" : "ENCODE");
