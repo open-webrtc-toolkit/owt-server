@@ -33,6 +33,7 @@ namespace mcu {
 
 struct VideoTranscoderConfig {
     bool useGacc;
+    uint32_t MFE_timeout;
 };
 
 class VideoTranscoder {

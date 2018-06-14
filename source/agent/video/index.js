@@ -15,6 +15,7 @@ const { LayoutProcessor } = require('./layout');
 
 var useHardware = global.config.video.hardwareAccelerated,
     gaccPluginEnabled = global.config.video.enableBetterHEVCQuality || false,
+    MFE_timeout = global.config.video.MFE_timeout || 0,
     supported_codecs = global.config.video.codecs;
 
 var VideoMixer, VideoTranscoder;
@@ -411,6 +412,7 @@ function VMixer(rpcClient, clusterIP) {
             'layout': videoConfig.layout.templates,
             'crop': (videoConfig.layout.fitPolicy === 'crop' ? true : false),
             'gaccplugin': gaccPluginEnabled,
+            'MFE_timeout': MFE_timeout
         };
 
         inputManager = new InputManager(videoConfig.maxInput);
@@ -859,7 +861,8 @@ function VTranscoder(rpcClient, clusterIP) {
             'hardware': useHardware,
             'simulcast': false,
             'crop': false,
-            'gaccplugin': gaccPluginEnabled
+            'gaccplugin': gaccPluginEnabled,
+            'MFE_timeout': MFE_timeout
         };
 
         controller = ctrlr;

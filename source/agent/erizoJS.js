@@ -37,6 +37,7 @@ global.config.webrtc.io_workers = global.config.webrtc.io_workers || 1;
 global.config.video = global.config.video || {};
 global.config.video.hardwareAccelerated = !!global.config.video.hardwareAccelerated;
 global.config.video.enableBetterHEVCQuality = !!global.config.video.enableBetterHEVCQuality;
+global.config.video.MFE_timeout = global.config.video.MFE_timeout || 0;
 global.config.video.codecs = {
   decode: ['vp8', 'vp9', 'h264'],
   encode: ['vp8', 'vp9']

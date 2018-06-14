@@ -74,6 +74,7 @@ void VideoMixer::New(const v8::FunctionCallbackInfo<v8::Value>& args) {
     config.bgColor.b = colorObj->Get(String::NewFromUtf8(isolate, "b"))->Int32Value();
   }
   config.useGacc = options->Get(String::NewFromUtf8(isolate, "gaccplugin"))->ToBoolean()->BooleanValue();
+  config.MFE_timeout = options->Get(String::NewFromUtf8(isolate, "MFE_timeout"))->Int32Value();
 
   VideoMixer* obj = new VideoMixer();
   obj->me = new mcu::VideoMixer(config);

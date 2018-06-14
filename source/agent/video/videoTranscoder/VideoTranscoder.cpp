@@ -65,6 +65,7 @@ VideoTranscoder::VideoTranscoder(const VideoTranscoderConfig& config)
     MsdkBase *msdkBase = MsdkBase::get();
     if(msdkBase != NULL) {
         msdkBase->setConfigHevcEncoderGaccPlugin(config.useGacc);
+        msdkBase->setConfigMFETimeout(config.MFE_timeout);
     }
 #endif
 

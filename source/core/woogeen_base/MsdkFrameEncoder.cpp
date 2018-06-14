@@ -116,6 +116,10 @@ public:
         m_encExtCodingOpt.reset();
         m_encExtCodingOpt2.reset();
         m_encExtHevcParam.reset();
+#if (MFX_VERSION >= 1025)
+        m_encExtMultiFrameParam.reset();
+        m_encExtMultiFrameControl.reset();
+#endif
         m_encExtParams.clear();
 
         deinitBitstreamBuffers();
@@ -509,9 +513,6 @@ protected:
         m_encParam->AsyncDepth                    = 1;
         m_encParam->IOPattern                     = MFX_IOPATTERN_IN_VIDEO_MEMORY;
 
-        m_encParam->ExtParam                    = &m_encExtParams.front(); // vector is stored linearly in memory
-        m_encParam->NumExtParam                 = m_encExtParams.size();
-
         // mfx
         m_encParam->mfx.LowPower                  = 0;
         m_encParam->mfx.BRCParamMultiplier        = 0;
@@ -553,6 +554,35 @@ protected:
         //m_encExtCodingOpt2->MBBRC                      = 0;//Disable
         //m_encExtCodingOpt2->LookAheadDepth             = 0;//For MFX_RATECONTROL_LA
         //m_encExtCodingOpt2->MaxSliceSize               = 0;
+
+#if (MFX_VERSION >= 1025)
+        uint32_t MFE_timeout = MsdkBase::get()->getConfigMFETimeout();
+        if (MFE_timeout) {
+            // MFX_EXTBUFF_MULTI_FRAME_PARAM
+            m_encExtMultiFrameParam.reset(new mfxExtMultiFrameParam);
+            memset(m_encExtMultiFrameParam.get(), 0, sizeof(mfxExtMultiFrameParam));
+
+            m_encExtMultiFrameParam->Header.BufferId    = MFX_EXTBUFF_MULTI_FRAME_PARAM;
+            m_encExtMultiFrameParam->Header.BufferSz    = sizeof(*m_encExtMultiFrameParam);
+            m_encExtMultiFrameParam->MFMode             = MFX_MF_AUTO;
+            m_encExtMultiFrameParam->MaxNumFrames       = 0;
+
+            m_encExtParams.push_back(reinterpret_cast<mfxExtBuffer *>(m_encExtMultiFrameParam.get()));
+
+            // MFX_EXTBUFF_MULTI_FRAME_CONTROL
+            m_encExtMultiFrameControl.reset(new mfxExtMultiFrameControl);
+            memset(m_encExtMultiFrameControl.get(), 0, sizeof(mfxExtMultiFrameControl));
+
+            m_encExtMultiFrameControl->Header.BufferId  = MFX_EXTBUFF_MULTI_FRAME_CONTROL;
+            m_encExtMultiFrameControl->Header.BufferSz  = sizeof(*m_encExtMultiFrameControl);
+            m_encExtMultiFrameControl->Timeout          = MFE_timeout;
+
+            m_encExtParams.push_back(reinterpret_cast<mfxExtBuffer *>(m_encExtMultiFrameControl.get()));
+        }
+#endif
+
+        m_encParam->ExtParam                    = &m_encExtParams.front(); // vector is stored linearly in memory
+        m_encParam->NumExtParam                 = m_encExtParams.size();
     }
 
     void updateParam()
@@ -576,9 +606,6 @@ protected:
                 m_encExtHevcParam->PicHeightInLumaSamples   = m_encParam->mfx.FrameInfo.CropH;
 
                 m_encExtParams.push_back(reinterpret_cast<mfxExtBuffer *>(m_encExtHevcParam.get()));
-
-                m_encParam->ExtParam                    = &m_encExtParams.front(); // vector is stored linearly in memory
-                m_encParam->NumExtParam                 = m_encExtParams.size();
             }
         } else {
             m_encParam->mfx.FrameInfo.Width   = ALIGN16(m_width);
@@ -588,6 +615,9 @@ protected:
         m_encParam->mfx.TargetKbps        = m_bitRateKbps ? m_bitRateKbps : calcBitrate(m_width, m_height);
         m_encParam->mfx.MaxKbps           = m_encParam->mfx.TargetKbps;
         m_encParam->mfx.GopPicSize        = m_frameRate * m_keyFrameIntervalSeconds;
+
+        m_encParam->ExtParam                    = &m_encExtParams.front(); // vector is stored linearly in memory
+        m_encParam->NumExtParam                 = m_encExtParams.size();
     }
 
     bool isValidParam()
@@ -829,6 +859,11 @@ private:
     boost::scoped_ptr<mfxExtCodingOption> m_encExtCodingOpt;
     boost::scoped_ptr<mfxExtCodingOption2> m_encExtCodingOpt2;
     boost::scoped_ptr<mfxExtHEVCParam> m_encExtHevcParam;
+
+#if (MFX_VERSION >= 1025)
+    boost::scoped_ptr<mfxExtMultiFrameParam> m_encExtMultiFrameParam;
+    boost::scoped_ptr<mfxExtMultiFrameControl> m_encExtMultiFrameControl;
+#endif
 
     std::vector<boost::shared_ptr<mfxBitstream>> m_bitstreamBuffers;
     mfxPluginUID m_pluginID;

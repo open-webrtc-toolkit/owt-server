@@ -55,8 +55,8 @@ public:
     void setConfigHevcEncoderGaccPlugin(bool hevcEncoderGaccPlugin);
     bool getConfigHevcEncoderGaccPlugin();
 
-    void setConfigEnableBackgroundColorSurface(bool enableBackgroundColorSurface);
-    bool getConfigEnableBackgroundColorSurface();
+    void setConfigMFETimeout(uint32_t MFETimeout);
+    uint32_t getConfigMFETimeout();
 
     MFXVideoSession *createSession();
     void destroySession(MFXVideoSession *pSession);
@@ -90,7 +90,7 @@ private:
     MFXVideoSession *m_mainSession;
 
     bool m_configHevcEncoderGaccPlugin;
-    bool m_configEnableBackgroundColorSurface;
+    uint32_t m_configMFETimeout;
 };
 
 } /* namespace woogeen_base */
