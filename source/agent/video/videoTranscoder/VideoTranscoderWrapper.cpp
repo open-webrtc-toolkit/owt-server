@@ -55,6 +55,7 @@ void VideoTranscoder::New(const v8::FunctionCallbackInfo<v8::Value>& args) {
   Local<Object> options = args[0]->ToObject();
   mcu::VideoTranscoderConfig config;
   config.useGacc = options->Get(String::NewFromUtf8(isolate, "gaccplugin"))->ToBoolean()->BooleanValue();
+  config.MFE_timeout = options->Get(String::NewFromUtf8(isolate, "MFE_timeout"))->Int32Value();
 
   VideoTranscoder* obj = new VideoTranscoder();
   obj->me = new mcu::VideoTranscoder(config);

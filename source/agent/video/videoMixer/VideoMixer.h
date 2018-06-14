@@ -44,6 +44,7 @@ struct VideoMixerConfig {
         int b;
     } bgColor;
     bool useGacc;
+    uint32_t MFE_timeout;
 };
 
 class VideoMixer {
