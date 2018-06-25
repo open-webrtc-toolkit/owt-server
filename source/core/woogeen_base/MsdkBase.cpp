@@ -266,8 +266,18 @@ bool MsdkBase::loadEncoderPlugin(uint32_t codecId, MFXVideoSession *pSession, mf
 
             sts = MFXVideoUSER_Load(*pSession, &id, 1);
             if (sts != MFX_ERR_NONE) {
-                ELOG_ERROR("Failed to load codec plugin.");
-                return false;
+            // If fail to load requested GACC plugin, we fallback to HW
+                if (AreGuidsEqual(pluginID, &MFX_PLUGINID_HEVCE_GACC)) {
+                    memcpy(&id, &MFX_PLUGINID_HEVCE_HW, sizeof(mfxPluginUID));
+                    sts = MFXVideoUSER_Load(*pSession, &id, 1);
+                    if (sts != MFX_ERR_NONE) {
+                       ELOG_ERROR("Failed to load alternative codec plugin.");
+                       return false;
+                    }
+                } else {
+                    ELOG_ERROR("Failed to load codec plugin.");
+                    return false;
+                }
             }
 
             memcpy(pluginID, &id, sizeof(mfxPluginUID));
