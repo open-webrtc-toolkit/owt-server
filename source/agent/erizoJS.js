@@ -108,7 +108,7 @@ function init_env() {
     if (process.argv[3] === 'video') {
         if (global.config.video.hardwareAccelerated) {
             // Query the hardware capability only if we want to try it.
-            require('child_process').exec('vainfo', function (error, stdout, stderr) {
+            require('child_process').exec('vainfo', {env: process.env}, function (error, stdout, stderr) {
                 if (error && error.code !== 0) {
                     log.warn('vainfo check with exit code:', error.code);
                     global.config.video.hardwareAccelerated = false;
