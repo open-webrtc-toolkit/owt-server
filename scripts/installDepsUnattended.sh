@@ -97,6 +97,13 @@ if [ "$NIGHTLY" != "true" ]; then
   install_nicer
 
   install_licode
+
+  if [[ "$OS" =~ .*centos.* ]]
+  then
+      install_msdk_dispatcher
+      install_libvautils
+  fi
+
 fi
 
 ${NO_INTERNAL} || install_webrtc
