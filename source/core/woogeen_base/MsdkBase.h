@@ -30,6 +30,10 @@
 #include <mfxvideo++.h>
 #include <mfxplugin++.h>
 
+#ifndef MFX_VERSION
+#define MFX_VERSION (MFX_VERSION_MAJOR * 1000 + MFX_VERSION_MINOR)
+#endif
+
 namespace woogeen_base {
 
 //#define printfLine      ELOG_TRACE(":%d-(%p)%s - Mark", __LINE__, this, __FUNCTION__)
