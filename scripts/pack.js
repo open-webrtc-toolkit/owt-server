@@ -442,6 +442,16 @@ function packAddon(target) {
         let dummyOpenh264 = path.join(rootDir, 'third_party/openh264/pseudo-openh264.so');
         execSync(`cp -av ${dummyOpenh264} ${libOpenh264}`);
       }
+      if (target.rules.name.indexOf('video') === 0) {
+        let vasrc = path.join(depsDir, 'bin/vainfo');
+        let vadist = path.join(packDist, 'bin');
+        if (fs.existsSync(vasrc)) {
+          if (!fs.existsSync(vadist)) {
+            execSync(`mkdir -p ${vadist}`);
+          }
+          execSync(`cp -av ${vasrc} ${vadist}`);
+        }
+      }
       console.log(target.rules.name, '- Pack addon finished.');
     });
 }
