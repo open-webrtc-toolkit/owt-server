@@ -116,13 +116,6 @@ case $yn in
   * ) install_openh264;;
 esac
 
-read -p "Installing msdk dispatcher library? [No/yes]" yn
-case $yn in
-  [Yy]* ) install_msdk_dispatcher;;
-  [Nn]* ) ;;
-  * ) ;;
-esac
-
 read -p "Installing libre? [Yes/no]" yn
 case $yn in
   [Yy]* ) install_libre;;
@@ -157,6 +150,23 @@ case $yn in
   [Nn]* ) ;;
   * ) install_licode;;
 esac
+
+if [[ "$OS" =~ .*centos.* ]]
+then
+    read -p "Installing msdk dispatcher library? [No/yes]" yn
+    case $yn in
+      [Yy]* ) install_msdk_dispatcher;;
+      [Nn]* ) ;;
+      * ) ;;
+    esac
+
+    read -p "Installing vainfo util? [No/yes]" yn
+    case $yn in
+      [Yy]* ) install_libvautils;;
+      [Nn]* ) ;;
+      * ) ;;
+    esac
+fi
 
 if [ "$CLEANUP" = "true" ]; then
   echo "Cleaning up..."
