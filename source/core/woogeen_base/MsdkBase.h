@@ -44,8 +44,6 @@ namespace woogeen_base {
 #define ALIGN16(x) ((((x) + 15) >> 4) << 4)
 #define ALIGN32(x) ((((x) + 31) >> 5) << 5)
 
-const char *mfxStatusToStr(const mfxStatus sts);
-
 enum DumpType{ MFX_DEC, MFX_VPP, MFX_ENC };
 
 class MsdkBase {
