@@ -848,7 +848,7 @@ var Conference = function (rpcClient, selfRpcId) {
               }
             }
           }
-        //FIXME: Notify client side about the update about video track of the stream
+          room_config.notifying.streamChange && sendMsg('room', 'all', 'stream', {id: streamId, status: 'update', data: {field: '.', value: streams[streamId]}});
         }
       }
     }

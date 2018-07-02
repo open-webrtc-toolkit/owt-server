@@ -404,8 +404,8 @@ This a format for client reconnects.
 
 	  object(StreamUpdate)::
 	    {
-	     field: "audio.status" | "video.status"  | "video.layout" | "activeInput",
-	     value: "active" | "inactive" | [object(SubStream2RegionMapping)] | string(inputStreamId)
+	     field: "audio.status" | "video.status"  | "video.layout" | "activeInput" | ".",
+	     value: "active" | "inactive" | [object(SubStream2RegionMapping)] | string(inputStreamId) | object(StreamInfo)
 	    }
 ### 3.3.10 Participant Controls a Stream {#CPCPSsection3_3_10}
 **RequestName**: “stream-control”<br>
