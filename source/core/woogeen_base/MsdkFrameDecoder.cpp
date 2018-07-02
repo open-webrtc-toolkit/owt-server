@@ -323,9 +323,9 @@ retry:
             return;
         } else if (sts != MFX_ERR_NONE) {
             if (sts == MFX_ERR_INCOMPATIBLE_VIDEO_PARAM) {
-                ELOG_DEBUG_T("Stream changed, %d(%s)", sts, mfxStatusToStr(sts));
+                ELOG_DEBUG_T("Stream changed!");
             } else {
-                ELOG_ERROR_T("mfx decode error, ret %d(%s)", sts, mfxStatusToStr(sts));
+                ELOG_ERROR_T("mfx decode error, ret %d", sts);
             }
 
             workFrame.reset();
