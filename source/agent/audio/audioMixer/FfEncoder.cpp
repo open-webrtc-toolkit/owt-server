@@ -21,7 +21,7 @@
 #include <rtputils.h>
 
 #include "AudioUtilities.h"
-#include "FfOutput.h"
+#include "FfEncoder.h"
 
 namespace mcu {
 
@@ -40,9 +40,9 @@ static enum AVSampleFormat getCodecPreferedSampleFmt(AVCodec *codec, enum AVSamp
     return codec->sample_fmts[0];
 }
 
-DEFINE_LOGGER(FfOutput, "mcu.media.FfOutput");
+DEFINE_LOGGER(FfEncoder, "mcu.media.FfEncoder");
 
-FfOutput::FfOutput(const FrameFormat format)
+FfEncoder::FfEncoder(const FrameFormat format)
     : m_format(format)
     , m_timestampOffset(0)
     , m_valid(false)
@@ -65,7 +65,7 @@ FfOutput::FfOutput(const FrameFormat format)
     m_channels = getAudioChannels(format);
 }
 
-FfOutput::~FfOutput()
+FfEncoder::~FfEncoder()
 {
     if (!m_valid)
         return;
@@ -88,7 +88,7 @@ FfOutput::~FfOutput()
     m_format = FRAME_FORMAT_UNKNOWN;
 }
 
-bool FfOutput::init()
+bool FfEncoder::init()
 {
     if(!initEncoder(m_format)) {
         return false;
@@ -100,7 +100,7 @@ bool FfOutput::init()
     return true;
 }
 
-bool FfOutput::initEncoder(const FrameFormat format)
+bool FfEncoder::initEncoder(const FrameFormat format)
 {
     int ret;
     AVCodec* codec = NULL;
@@ -202,7 +202,7 @@ fail:
     return false;
 }
 
-bool FfOutput::addToFifo(const AudioFrame* audioFrame)
+bool FfEncoder::addToFifo(const AudioFrame* audioFrame)
 {
     uint32_t n;
 
@@ -230,7 +230,7 @@ bool FfOutput::addToFifo(const AudioFrame* audioFrame)
     return true;
 }
 
-void FfOutput::encode()
+void FfEncoder::encode()
 {
     AVPacket pkt;
     memset(&pkt, 0, sizeof(pkt));
@@ -262,7 +262,7 @@ void FfOutput::encode()
     }
 }
 
-void FfOutput::sendOut(AVPacket &pkt)
+void FfEncoder::sendOut(AVPacket &pkt)
 {
     woogeen_base::Frame frame;
     memset(&frame, 0, sizeof(frame));
@@ -286,7 +286,7 @@ void FfOutput::sendOut(AVPacket &pkt)
     deliverFrame(frame);
 }
 
-bool FfOutput::addAudioFrame(const AudioFrame* audioFrame)
+bool FfEncoder::addAudioFrame(const AudioFrame* audioFrame)
 {
     if (!m_valid)
         return false;
@@ -303,7 +303,7 @@ bool FfOutput::addAudioFrame(const AudioFrame* audioFrame)
 }
 
 
-char *FfOutput::ff_err2str(int errRet)
+char *FfEncoder::ff_err2str(int errRet)
 {
     av_strerror(errRet, (char*)(&m_errbuff), 500);
     return m_errbuff;

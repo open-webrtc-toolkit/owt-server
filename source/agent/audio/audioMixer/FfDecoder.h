@@ -18,8 +18,8 @@
  * and approved by Intel in writing.
  */
 
-#ifndef FfInput_h
-#define FfInput_h
+#ifndef FfDecoder_h
+#define FfDecoder_h
 
 #include <boost/scoped_ptr.hpp>
 #include <boost/shared_ptr.hpp>
@@ -29,11 +29,11 @@
 #include <logger.h>
 
 #include "MediaFramePipeline.h"
-#include "AudioInput.h"
+#include "AudioDecoder.h"
 
-#include "AcmInput.h"
-#include "AcmOutput.h"
-#include "FfOutput.h"
+#include "AcmDecoder.h"
+#include "AcmEncoder.h"
+#include "FfEncoder.h"
 
 extern "C" {
 #include <libavcodec/avcodec.h>
@@ -48,12 +48,12 @@ namespace mcu {
 using namespace woogeen_base;
 using namespace webrtc;
 
-class FfInput : public AudioInput, public woogeen_base::FrameSource {
+class FfDecoder : public AudioDecoder, public woogeen_base::FrameSource {
     DECLARE_LOGGER();
 
 public:
-    FfInput(const FrameFormat format);
-    ~FfInput();
+    FfDecoder(const FrameFormat format);
+    ~FfDecoder();
 
     bool init() override;
     bool getAudioFrame(AudioFrame *audioFrame) override;
@@ -101,8 +101,8 @@ private:
     int64_t m_timestamp;
     FrameFormat m_outFormat;
 
-    boost::shared_ptr<AudioOutput> m_output;
-    boost::shared_ptr<AudioInput> m_input;
+    boost::shared_ptr<AudioEncoder> m_output;
+    boost::shared_ptr<AudioDecoder> m_input;
 
     char m_errbuff[500];
     char *ff_err2str(int errRet);
@@ -110,4 +110,4 @@ private:
 
 } /* namespace mcu */
 
-#endif /* FfInput_h */
+#endif /* FfDecoder_h */

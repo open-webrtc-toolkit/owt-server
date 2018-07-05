@@ -18,66 +18,22 @@
  * and approved by Intel in writing.
  */
 
-#ifndef FfOutput_h
-#define FfOutput_h
+#ifndef AudioEncoder_h
+#define AudioEncoder_h
 
-#include <boost/scoped_ptr.hpp>
-#include <boost/shared_ptr.hpp>
-
-#include <webrtc/common_types.h>
-
-#include <logger.h>
-
+#include <webrtc/modules/include/module_common_types.h>
 #include "MediaFramePipeline.h"
-#include "AudioOutput.h"
-
-extern "C" {
-#include <libavformat/avformat.h>
-#include <libavcodec/avcodec.h>
-#include <libavutil/avstring.h>
-#include <libavutil/channel_layout.h>
-#include <libavutil/opt.h>
-#include <libavutil/time.h>
-#include <libavutil/audio_fifo.h>
-}
 
 namespace mcu {
-using namespace woogeen_base;
-using namespace webrtc;
 
-class FfOutput : public AudioOutput {
-    DECLARE_LOGGER();
-
+class AudioEncoder : public woogeen_base::FrameSource {
 public:
-    FfOutput(const FrameFormat format);
-    ~FfOutput();
+    virtual ~AudioEncoder() { }
 
-    bool init() override;
-    bool addAudioFrame(const AudioFrame *audioFrame) override;
-
-protected:
-    bool initEncoder(const FrameFormat format);
-    bool addToFifo(const AudioFrame* audioFrame);
-    void encode();
-    void sendOut(AVPacket &pkt);
-    char *ff_err2str(int errRet);
-
-private:
-    FrameFormat m_format;
-
-    uint32_t m_timestampOffset;
-    bool m_valid;
-
-    int32_t m_channels;
-    int32_t m_sampleRate;
-
-    AVCodecContext* m_audioEnc;
-    AVAudioFifo* m_audioFifo;
-    AVFrame* m_audioFrame;
-
-    char m_errbuff[500];
+    virtual bool init() = 0;
+    virtual bool addAudioFrame(const webrtc::AudioFrame *audioFrame) = 0;
 };
 
 } /* namespace mcu */
 
-#endif /* FfOutput_h */
+#endif /* AudioEncoder_h */

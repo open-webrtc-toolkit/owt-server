@@ -83,7 +83,7 @@ protected:
     bool isValidInput(int32_t id);
     int32_t getFreeId();
 
-    int32_t addParticipant(const std::string& participant);
+    boost::shared_ptr<AcmmParticipant> addParticipant(const std::string& participant);
     void removeParticipant(const std::string& participant);
     boost::shared_ptr<AcmmParticipant> getParticipant(const std::string& participant);
 

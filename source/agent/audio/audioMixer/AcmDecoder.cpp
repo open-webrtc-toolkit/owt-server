@@ -21,16 +21,16 @@
 #include <rtputils.h>
 
 #include "AudioUtilities.h"
-#include "AcmInput.h"
+#include "AcmDecoder.h"
 
 namespace mcu {
 
 using namespace webrtc;
 using namespace woogeen_base;
 
-DEFINE_LOGGER(AcmInput, "mcu.media.AcmInput");
+DEFINE_LOGGER(AcmDecoder, "mcu.media.AcmDecoder");
 
-AcmInput::AcmInput(const FrameFormat format)
+AcmDecoder::AcmDecoder(const FrameFormat format)
     : m_format(format)
     , m_ssrc(0)
     , m_seqNumber(0)
@@ -40,7 +40,7 @@ AcmInput::AcmInput(const FrameFormat format)
     m_audioCodingModule.reset(AudioCodingModule::Create(config));
 }
 
-AcmInput::~AcmInput()
+AcmDecoder::~AcmDecoder()
 {
     boost::unique_lock<boost::shared_mutex> lock(m_mutex);
     int ret;
@@ -57,7 +57,7 @@ AcmInput::~AcmInput()
     m_format = FRAME_FORMAT_UNKNOWN;
 }
 
-bool AcmInput::init()
+bool AcmDecoder::init()
 {
     boost::unique_lock<boost::shared_mutex> lock(m_mutex);
     int ret;
@@ -88,7 +88,7 @@ bool AcmInput::init()
     return true;
 }
 
-bool AcmInput::getAudioFrame(AudioFrame* audioFrame)
+bool AcmDecoder::getAudioFrame(AudioFrame* audioFrame)
 {
     boost::unique_lock<boost::shared_mutex> lock(m_mutex);
     int ret;
@@ -110,7 +110,7 @@ bool AcmInput::getAudioFrame(AudioFrame* audioFrame)
     return true;
 }
 
-void AcmInput::onFrame(const Frame& frame)
+void AcmDecoder::onFrame(const Frame& frame)
 {
     boost::unique_lock<boost::shared_mutex> lock(m_mutex);
     WebRtcRTPHeader rtp_header;

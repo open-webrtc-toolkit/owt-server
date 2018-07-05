@@ -18,40 +18,46 @@
  * and approved by Intel in writing.
  */
 
-#ifndef PcmOutput_h
-#define PcmOutput_h
+#ifndef AcmDecoder_h
+#define AcmDecoder_h
 
 #include <boost/scoped_ptr.hpp>
 #include <boost/shared_ptr.hpp>
 
-#include <webrtc/common_types.h>
+#include <webrtc/modules/audio_coding/include/audio_coding_module.h>
 
 #include <logger.h>
 
 #include "MediaFramePipeline.h"
-#include "AudioOutput.h"
+#include "AudioDecoder.h"
 
 namespace mcu {
 using namespace woogeen_base;
 using namespace webrtc;
 
-class PcmOutput : public AudioOutput {
+class AcmDecoder : public AudioDecoder {
     DECLARE_LOGGER();
 
 public:
-    PcmOutput(const FrameFormat format);
-    ~PcmOutput();
+    AcmDecoder(const FrameFormat format);
+    ~AcmDecoder();
 
     bool init() override;
-    bool addAudioFrame(const AudioFrame *audioFrame) override;
+    bool getAudioFrame(AudioFrame *audioFrame) override;
+
+    // Implements woogeen_base::FrameDestination
+    void onFrame(const Frame& frame) override;
 
 private:
+    boost::shared_ptr<AudioCodingModule> m_audioCodingModule;
     FrameFormat m_format;
 
-    uint32_t m_timestampOffset;
+    unsigned int m_ssrc;
+    uint32_t m_seqNumber;
     bool m_valid;
+    boost::shared_mutex m_mutex;
 };
 
 } /* namespace mcu */
 
-#endif /* PcmOutput_h */
+#endif /* AcmDecoder_h */

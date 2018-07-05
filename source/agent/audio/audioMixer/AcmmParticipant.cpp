@@ -24,11 +24,11 @@
 
 #include "AudioUtilities.h"
 #include "AcmmParticipant.h"
-#include "AcmInput.h"
-#include "FfInput.h"
-#include "AcmOutput.h"
-#include "PcmOutput.h"
-#include "FfOutput.h"
+#include "AcmDecoder.h"
+#include "FfDecoder.h"
+#include "AcmEncoder.h"
+#include "PcmEncoder.h"
+#include "FfEncoder.h"
 
 namespace mcu {
 
@@ -61,7 +61,7 @@ bool AcmmParticipant::setInput(FrameFormat format, FrameSource* source)
         case FRAME_FORMAT_AAC_48000_2:
         case FRAME_FORMAT_AC3:
         case FRAME_FORMAT_NELLYMOSER:
-            m_input.reset(new FfInput(format));
+            m_decoder.reset(new FfDecoder(format));
             break;
         case FRAME_FORMAT_PCM_48000_2:
         case FRAME_FORMAT_PCMU:
@@ -72,19 +72,19 @@ bool AcmmParticipant::setInput(FrameFormat format, FrameSource* source)
         case FRAME_FORMAT_ILBC:
         case FRAME_FORMAT_G722_16000_1:
         case FRAME_FORMAT_G722_16000_2:
-            m_input.reset(new AcmInput(format));
+            m_decoder.reset(new AcmDecoder(format));
             break;
         default:
             ELOG_ERROR_T("Unsupported format(%s), %d", getFormatStr(format), format);
             return false;
     }
 
-    if (!m_input->init()) {
-        m_input.reset();
+    if (!m_decoder->init()) {
+        m_decoder.reset();
         return false;
     }
 
-    source->addAudioDestination(m_input.get());
+    source->addAudioDestination(m_decoder.get());
     m_srcFormat = format;
     m_source = source;
     return true;
@@ -94,10 +94,10 @@ void AcmmParticipant::unsetInput()
 {
     ELOG_DEBUG_T("unsetInput");
 
-    m_source->removeAudioDestination(m_input.get());
+    m_source->removeAudioDestination(m_decoder.get());
     m_source = NULL;
     m_srcFormat = FRAME_FORMAT_UNKNOWN;
-    m_input.reset();
+    m_decoder.reset();
 }
 
 bool AcmmParticipant::setOutput(FrameFormat format, FrameDestination* destination)
@@ -106,13 +106,13 @@ bool AcmmParticipant::setOutput(FrameFormat format, FrameDestination* destinatio
 
     switch(format) {
         case FRAME_FORMAT_PCM_48000_2:
-            m_output.reset(new PcmOutput(format));
+            m_encoder.reset(new PcmEncoder(format));
             break;
         case FRAME_FORMAT_AAC:
             ELOG_WARN("FRAME_FORMAT_AAC is deprecated for audio output, using FRAME_FORMAT_AAC_48000_2!");
             format = FRAME_FORMAT_AAC_48000_2;
         case FRAME_FORMAT_AAC_48000_2:
-            m_output.reset(new FfOutput(FRAME_FORMAT_AAC_48000_2));
+            m_encoder.reset(new FfEncoder(FRAME_FORMAT_AAC_48000_2));
             break;
         case FRAME_FORMAT_PCMU:
         case FRAME_FORMAT_PCMA:
@@ -122,19 +122,19 @@ bool AcmmParticipant::setOutput(FrameFormat format, FrameDestination* destinatio
         case FRAME_FORMAT_ILBC:
         case FRAME_FORMAT_G722_16000_1:
         case FRAME_FORMAT_G722_16000_2:
-            m_output.reset(new AcmOutput(format));
+            m_encoder.reset(new AcmEncoder(format));
             break;
         default:
             ELOG_ERROR_T("Unsupported format(%s), %d", getFormatStr(format), format);
             return false;
     }
 
-    if (!m_output->init()) {
-        m_output.reset();
+    if (!m_encoder->init()) {
+        m_encoder.reset();
         return false;
     }
 
-    m_output->addAudioDestination(destination);
+    m_encoder->addAudioDestination(destination);
     m_dstFormat = format;
     m_destination = destination;
     return true;
@@ -144,15 +144,15 @@ void AcmmParticipant::unsetOutput()
 {
     ELOG_DEBUG_T("unsetOutput");
 
-    m_output->removeAudioDestination(m_destination);
+    m_encoder->removeAudioDestination(m_destination);
     m_destination = NULL;
     m_dstFormat = FRAME_FORMAT_UNKNOWN;
-    m_output.reset();
+    m_encoder.reset();
 }
 
 int32_t AcmmParticipant::GetAudioFrame(int32_t id, AudioFrame* audio_frame)
 {
-    if (!m_input || !m_input->getAudioFrame(audio_frame)) {
+    if (!m_decoder || !m_decoder->getAudioFrame(audio_frame)) {
         ELOG_DEBUG_T("Error GetAudioFrame");
         return -1;
     }
@@ -180,8 +180,8 @@ void AcmmParticipant::NewMixedAudio(const AudioFrame* audioFrame)
             audioFrame->timestamp_
             );
 
-    if (m_output) {
-        m_output->addAudioFrame(audioFrame);
+    if (m_encoder) {
+        m_encoder->addAudioFrame(audioFrame);
     }
 }
 
