@@ -87,23 +87,20 @@ boost::shared_ptr<AcmmParticipant> AcmmFrameMixer::getParticipant(const std::str
     return m_participants[m_ids[participant]];
 }
 
-int32_t AcmmFrameMixer::addParticipant(const std::string& participant)
+boost::shared_ptr<AcmmParticipant> AcmmFrameMixer::addParticipant(const std::string& participant)
 {
+    boost::shared_ptr<AcmmParticipant> acmmParticipant;
     int32_t id = getFreeId();
 
     if (id >= 0) {
         m_ids[participant] = id;
         m_participants[m_ids[participant]] = NULL;
+
+        acmmParticipant.reset(new AcmmParticipant(id));
+        m_participants[id] = acmmParticipant;
     }
-    return id;
-}
 
-bool AcmmFrameMixer::isValidInput(int32_t id)
-{
-    if (m_participants.find(id) != m_participants.end())
-        return m_participants[id]->hasInput();
-
-    return false;
+    return acmmParticipant;
 }
 
 void AcmmFrameMixer::removeParticipant(const std::string& participant)
@@ -124,6 +121,14 @@ int32_t AcmmFrameMixer::getFreeId()
 
     ELOG_WARN("No free Id, max participants reached(%d)!", MAX_PARTICIPANTS);
     return -1;
+}
+
+bool AcmmFrameMixer::isValidInput(int32_t id)
+{
+    if (m_participants.find(id) != m_participants.end())
+        return m_participants[id]->hasInput();
+
+    return false;
 }
 
 void AcmmFrameMixer::setEventRegistry(EventRegistry* handle)
@@ -170,14 +175,11 @@ bool AcmmFrameMixer::addInput(const std::string& participant, const FrameFormat 
     ELOG_DEBUG("setInput %s+++", participant.c_str());
 
     if (!acmmParticipant) {
-        int32_t id = addParticipant(participant);
-        if (id < 0) {
+        acmmParticipant = addParticipant(participant);
+        if (!acmmParticipant) {
             ELOG_WARN("Can not add input participant");
             return false;
         }
-
-        acmmParticipant.reset(new AcmmParticipant(id));
-        m_participants[id] = acmmParticipant;
     }
 
     if (acmmParticipant->hasInput()) {
@@ -253,14 +255,11 @@ bool AcmmFrameMixer::addOutput(const std::string& participant, const FrameFormat
     ELOG_DEBUG("setOutput %s, %d+++", participant.c_str(), format);
 
     if (!acmmParticipant) {
-        int32_t id = addParticipant(participant);
-        if (id < 0) {
-            ELOG_WARN("Can not add output participant");
+        acmmParticipant = addParticipant(participant);
+        if (!acmmParticipant) {
+            ELOG_WARN("Can not add input participant");
             return false;
         }
-
-        acmmParticipant.reset(new AcmmParticipant(id));
-        m_participants[id] = acmmParticipant;
     }
 
     if (acmmParticipant->hasOutput()) {

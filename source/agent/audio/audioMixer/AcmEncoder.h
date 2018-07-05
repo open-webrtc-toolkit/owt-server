@@ -18,25 +18,50 @@
  * and approved by Intel in writing.
  */
 
-#ifndef AudioInput_h
-#define AudioInput_h
+#ifndef AcmEncoder_h
+#define AcmEncoder_h
 
-#include <webrtc/modules/include/module_common_types.h>
+#include <boost/scoped_ptr.hpp>
+#include <boost/shared_ptr.hpp>
+
+#include <webrtc/modules/audio_coding/include/audio_coding_module.h>
+
+#include <logger.h>
+
 #include "MediaFramePipeline.h"
+#include "AudioEncoder.h"
 
 namespace mcu {
+using namespace woogeen_base;
+using namespace webrtc;
 
-class AudioInput : public woogeen_base::FrameDestination {
+class AcmEncoder : public AudioEncoder,
+                       public AudioPacketizationCallback {
+    DECLARE_LOGGER();
+
 public:
-    virtual ~AudioInput() { }
+    AcmEncoder(const FrameFormat format);
+    ~AcmEncoder();
 
-    virtual bool init() = 0;
-    virtual bool getAudioFrame(webrtc::AudioFrame *audioFrame) = 0;
+    bool init() override;
+    bool addAudioFrame(const AudioFrame *audioFrame) override;
 
-    // Implements woogeen_base::FrameDestination
-    virtual void onFrame(const woogeen_base::Frame& frame) = 0;
+    // Implements AudioPacketizationCallback
+    int32_t SendData(FrameType frame_type,
+            uint8_t payload_type,
+            uint32_t timestamp,
+            const uint8_t* payload_data,
+            size_t payload_len_bytes,
+            const RTPFragmentationHeader* fragmentation) override;
+
+private:
+    boost::shared_ptr<AudioCodingModule> m_audioCodingModule;
+    FrameFormat m_format;
+
+    uint32_t m_timestampOffset;
+    bool m_valid;
 };
 
 } /* namespace mcu */
 
-#endif /* AudioInput_h */
+#endif /* AcmEncoder_h */

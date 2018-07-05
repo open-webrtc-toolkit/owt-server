@@ -21,16 +21,16 @@
 #include <rtputils.h>
 
 #include "AudioUtilities.h"
-#include "FfInput.h"
+#include "FfDecoder.h"
 
 namespace mcu {
 
 using namespace webrtc;
 using namespace woogeen_base;
 
-DEFINE_LOGGER(FfInput, "mcu.media.FfInput");
+DEFINE_LOGGER(FfDecoder, "mcu.media.FfDecoder");
 
-FfInput::FfInput(const FrameFormat format)
+FfDecoder::FfDecoder(const FrameFormat format)
     : m_format(format)
     , m_valid(false)
     , m_decCtx(NULL)
@@ -69,7 +69,7 @@ FfInput::FfInput(const FrameFormat format)
     m_outChannels = getAudioChannels(m_outFormat);
 }
 
-FfInput::~FfInput()
+FfDecoder::~FfDecoder()
 {
     boost::unique_lock<boost::shared_mutex> lock(m_mutex);
 
@@ -111,19 +111,19 @@ FfInput::~FfInput()
     }
 }
 
-bool FfInput::init()
+bool FfDecoder::init()
 {
     boost::unique_lock<boost::shared_mutex> lock(m_mutex);
 
     if (m_outFormat != FRAME_FORMAT_PCM_48000_2) {
-        m_input.reset(new AcmInput(m_outFormat));
+        m_input.reset(new AcmDecoder(m_outFormat));
         if (!m_input->init()) {
             m_input.reset();
             return false;
         }
 
-        //m_output.reset(new AcmOutput(m_outFormat));
-        m_output.reset(new FfOutput(m_outFormat));
+        //m_output.reset(new AcmEncoder(m_outFormat));
+        m_output.reset(new FfEncoder(m_outFormat));
         if (!m_output->init()) {
             m_output.reset();
             return false;
@@ -131,7 +131,7 @@ bool FfInput::init()
 
         m_output->addAudioDestination(m_input.get());
     } else {
-        m_input.reset(new AcmInput(m_outFormat));
+        m_input.reset(new AcmDecoder(m_outFormat));
         if (!m_input->init()) {
             m_input.reset();
             return false;
@@ -144,7 +144,7 @@ bool FfInput::init()
     return true;
 }
 
-bool FfInput::initDecoder(FrameFormat format, uint32_t sampleRate, uint32_t channels)
+bool FfDecoder::initDecoder(FrameFormat format, uint32_t sampleRate, uint32_t channels)
 {
     int ret;
     AVCodecID decId;
@@ -204,7 +204,7 @@ bool FfInput::initDecoder(FrameFormat format, uint32_t sampleRate, uint32_t chan
     return true;
 }
 
-bool FfInput::initResampler(enum AVSampleFormat inSampleFormat, int inSampleRate, int inChannels,
+bool FfDecoder::initResampler(enum AVSampleFormat inSampleFormat, int inSampleRate, int inChannels,
         enum AVSampleFormat outSampleFormat, int outSampleRate, int outChannels)
 {
     int ret;
@@ -262,7 +262,7 @@ bool FfInput::initResampler(enum AVSampleFormat inSampleFormat, int inSampleRate
     return true;
 }
 
-bool FfInput::initFifo(enum AVSampleFormat sampleFmt, uint32_t sampleRate, uint32_t channels)
+bool FfDecoder::initFifo(enum AVSampleFormat sampleFmt, uint32_t sampleRate, uint32_t channels)
 {
     int ret;
 
@@ -292,7 +292,7 @@ bool FfInput::initFifo(enum AVSampleFormat sampleFmt, uint32_t sampleRate, uint3
     return true;
 }
 
-bool FfInput::resampleFrame(AVFrame *frame, uint8_t **pOutData, int *pOutNbSamples)
+bool FfDecoder::resampleFrame(AVFrame *frame, uint8_t **pOutData, int *pOutNbSamples)
 {
     int ret;
     int dst_nb_samples;
@@ -334,7 +334,7 @@ bool FfInput::resampleFrame(AVFrame *frame, uint8_t **pOutData, int *pOutNbSampl
     return true;
 }
 
-bool FfInput::addFrameToFifo(AVFrame *frame)
+bool FfDecoder::addFrameToFifo(AVFrame *frame)
 {
     uint8_t *data;
     int samples_per_channel;
@@ -357,7 +357,7 @@ bool FfInput::addFrameToFifo(AVFrame *frame)
     return true;
 }
 
-void FfInput::onFrame(const Frame& frame)
+void FfDecoder::onFrame(const Frame& frame)
 {
     boost::unique_lock<boost::shared_mutex> lock(m_mutex);
 
@@ -459,7 +459,7 @@ void FfInput::onFrame(const Frame& frame)
     }
 }
 
-bool FfInput::getAudioFrame(AudioFrame* audioFrame)
+bool FfDecoder::getAudioFrame(AudioFrame* audioFrame)
 {
     boost::unique_lock<boost::shared_mutex> lock(m_mutex);
 
@@ -469,7 +469,7 @@ bool FfInput::getAudioFrame(AudioFrame* audioFrame)
     return m_input->getAudioFrame(audioFrame);
 }
 
-char *FfInput::ff_err2str(int errRet)
+char *FfDecoder::ff_err2str(int errRet)
 {
     av_strerror(errRet, (char*)(&m_errbuff), 500);
     return m_errbuff;

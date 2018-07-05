@@ -30,8 +30,8 @@
 
 #include "MediaFramePipeline.h"
 
-#include "AudioInput.h"
-#include "AudioOutput.h"
+#include "AudioDecoder.h"
+#include "AudioEncoder.h"
 
 namespace mcu {
 
@@ -47,8 +47,8 @@ public:
 
     int32_t id() {return m_id;}
 
-    bool hasInput() {return m_input != NULL;}
-    bool hasOutput() {return m_output != NULL;}
+    bool hasInput() {return m_decoder != NULL;}
+    bool hasOutput() {return m_encoder != NULL;}
 
     bool setInput(FrameFormat format, FrameSource* source);
     void unsetInput();
@@ -70,8 +70,8 @@ private:
     FrameFormat m_dstFormat;
     FrameDestination *m_destination;
 
-    boost::shared_ptr<AudioInput> m_input;
-    boost::shared_ptr<AudioOutput> m_output;
+    boost::shared_ptr<AudioDecoder> m_decoder;
+    boost::shared_ptr<AudioEncoder> m_encoder;
 };
 
 } /* namespace mcu */

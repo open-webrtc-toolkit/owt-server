@@ -21,16 +21,16 @@
 #include <rtputils.h>
 
 #include "AudioUtilities.h"
-#include "AcmOutput.h"
+#include "AcmEncoder.h"
 
 namespace mcu {
 
 using namespace webrtc;
 using namespace woogeen_base;
 
-DEFINE_LOGGER(AcmOutput, "mcu.media.AcmOutput");
+DEFINE_LOGGER(AcmEncoder, "mcu.media.AcmEncoder");
 
-AcmOutput::AcmOutput(const FrameFormat format)
+AcmEncoder::AcmEncoder(const FrameFormat format)
     : m_format(format)
     , m_timestampOffset(0)
     , m_valid(false)
@@ -39,7 +39,7 @@ AcmOutput::AcmOutput(const FrameFormat format)
     m_audioCodingModule.reset(AudioCodingModule::Create(config));
 }
 
-AcmOutput::~AcmOutput()
+AcmEncoder::~AcmEncoder()
 {
     int ret;
 
@@ -55,7 +55,7 @@ AcmOutput::~AcmOutput()
     }
 }
 
-bool AcmOutput::init()
+bool AcmEncoder::init()
 {
     int ret;
     struct CodecInst codec = CodecInst();
@@ -83,7 +83,7 @@ bool AcmOutput::init()
     return true;
 }
 
-bool AcmOutput::addAudioFrame(const AudioFrame* audioFrame)
+bool AcmEncoder::addAudioFrame(const AudioFrame* audioFrame)
 {
     int ret;
 
@@ -107,7 +107,7 @@ bool AcmOutput::addAudioFrame(const AudioFrame* audioFrame)
     return true;
 }
 
-int32_t AcmOutput::SendData(FrameType frame_type,
+int32_t AcmEncoder::SendData(FrameType frame_type,
         uint8_t payload_type,
         uint32_t timestamp,
         const uint8_t* payload_data,

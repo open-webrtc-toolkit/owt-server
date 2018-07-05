@@ -21,23 +21,23 @@
 #include <rtputils.h>
 
 #include "AudioUtilities.h"
-#include "PcmOutput.h"
+#include "PcmEncoder.h"
 
 namespace mcu {
 
 using namespace webrtc;
 using namespace woogeen_base;
 
-DEFINE_LOGGER(PcmOutput, "mcu.media.PcmOutput");
+DEFINE_LOGGER(PcmEncoder, "mcu.media.PcmEncoder");
 
-PcmOutput::PcmOutput(const FrameFormat format)
+PcmEncoder::PcmEncoder(const FrameFormat format)
     : m_format(format)
     , m_timestampOffset(0)
     , m_valid(false)
 {
 }
 
-PcmOutput::~PcmOutput()
+PcmEncoder::~PcmEncoder()
 {
     if (!m_valid)
         return;
@@ -45,7 +45,7 @@ PcmOutput::~PcmOutput()
     m_format = FRAME_FORMAT_UNKNOWN;
 }
 
-bool PcmOutput::init()
+bool PcmEncoder::init()
 {
     if (m_format != FRAME_FORMAT_PCM_48000_2) {
         ELOG_ERROR_T("Error invalid format, %s(%d)", getFormatStr(m_format), m_format);
@@ -58,7 +58,7 @@ bool PcmOutput::init()
     return true;
 }
 
-bool PcmOutput::addAudioFrame(const AudioFrame* audioFrame)
+bool PcmEncoder::addAudioFrame(const AudioFrame* audioFrame)
 {
     if (!m_valid)
         return false;
