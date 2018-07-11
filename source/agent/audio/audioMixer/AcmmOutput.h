@@ -18,31 +18,49 @@
  * and approved by Intel in writing.
  */
 
-#ifndef AudioFrameMixer_h
-#define AudioFrameMixer_h
+#ifndef AcmmOutput_h
+#define AcmmOutput_h
 
-#include <EventRegistry.h>
+#include <boost/scoped_ptr.hpp>
+#include <boost/shared_ptr.hpp>
+
+#include <webrtc/modules/audio_conference_mixer/include/audio_conference_mixer_defines.h>
+
+#include <logger.h>
 
 #include "MediaFramePipeline.h"
 
+#include "AudioEncoder.h"
+
 namespace mcu {
 
-class AudioFrameMixer {
+using namespace woogeen_base;
+using namespace webrtc;
+
+class AcmmOutput {
+    DECLARE_LOGGER();
+
 public:
-    virtual ~AudioFrameMixer() {}
+    AcmmOutput(int32_t id);
+    ~AcmmOutput();
 
-    virtual void enableVAD(uint32_t period) = 0;
-    virtual void disableVAD() = 0;
-    virtual void resetVAD() = 0;
+    int32_t id() {return m_id;}
 
-    virtual bool addInput(const std::string& group, const std::string& inStream, const woogeen_base::FrameFormat format, woogeen_base::FrameSource* source) = 0;
-    virtual void removeInput(const std::string& group, const std::string& inStream) = 0;
-    virtual bool addOutput(const std::string& group, const std::string& outStream, const woogeen_base::FrameFormat format, woogeen_base::FrameDestination* destination) = 0;
-    virtual void removeOutput(const std::string& group, const std::string& outStream) = 0;
+    bool setDest(FrameFormat format, FrameDestination* destination);
+    void unsetDest();
 
-    virtual void setEventRegistry(EventRegistry* handle) = 0;
+    int32_t NeededFrequency();
+    bool newAudioFrame(const webrtc::AudioFrame *audioFrame);
+
+private:
+    int32_t m_id;
+
+    FrameFormat m_dstFormat;
+    FrameDestination *m_destination;
+
+    boost::shared_ptr<AudioEncoder> m_encoder;
 };
 
 } /* namespace mcu */
 
-#endif /* AudioFrameMixer_h */
+#endif /* AcmmOutput_h */

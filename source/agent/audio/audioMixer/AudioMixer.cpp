@@ -23,6 +23,7 @@
 
 #include "AudioMixer.h"
 #include "AcmmFrameMixer.h"
+#include "AcmmFrameMixer2.h"
 
 using namespace webrtc;
 
@@ -53,7 +54,7 @@ AudioMixer::AudioMixer(const std::string& configStr)
         webrtc::Trace::set_level_filter(kTraceFilter);
     }
 
-    m_mixer.reset(new AcmmFrameMixer());
+    m_mixer.reset(new AcmmFrameMixer2());
 }
 
 AudioMixer::~AudioMixer()
@@ -90,12 +91,12 @@ bool AudioMixer::addInput(const std::string& endpoint, const std::string& inStre
         return false;
     }
 
-    return m_mixer->addInput(endpoint, format, source);
+    return m_mixer->addInput(endpoint, inStreamId, format, source);
 }
 
 void AudioMixer::removeInput(const std::string& endpoint, const std::string& inStreamId)
 {
-    m_mixer->removeInput(endpoint);
+    m_mixer->removeInput(endpoint, inStreamId);
     return;
 }
 
@@ -109,12 +110,12 @@ bool AudioMixer::addOutput(const std::string& endpoint, const std::string& outSt
         return false;
     }
 
-    return m_mixer->addOutput(endpoint, format, dest);
+    return m_mixer->addOutput(endpoint, outStreamId, format, dest);
 }
 
 void AudioMixer::removeOutput(const std::string& endpoint, const std::string& outStreamId)
 {
-    m_mixer->removeOutput(endpoint);
+    m_mixer->removeOutput(endpoint, outStreamId);
     return;
 }
 
