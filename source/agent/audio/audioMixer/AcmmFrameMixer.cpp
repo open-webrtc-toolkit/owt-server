@@ -166,7 +166,7 @@ void AcmmFrameMixer::resetVAD()
     m_mostActiveChannel = -1;
 }
 
-bool AcmmFrameMixer::addInput(const std::string& participant, const FrameFormat format, woogeen_base::FrameSource* source)
+bool AcmmFrameMixer::addInput(const std::string& participant, const std::string& inStream, const FrameFormat format, woogeen_base::FrameSource* source)
 {
     boost::unique_lock<boost::shared_mutex> lock(m_mutex);
     boost::shared_ptr<AcmmParticipant> acmmParticipant = getParticipant(participant);
@@ -216,7 +216,7 @@ bool AcmmFrameMixer::addInput(const std::string& participant, const FrameFormat 
     return true;
 }
 
-void AcmmFrameMixer::removeInput(const std::string& participant)
+void AcmmFrameMixer::removeInput(const std::string& participant, const std::string& inStream)
 {
     boost::unique_lock<boost::shared_mutex> lock(m_mutex);
     boost::shared_ptr<AcmmParticipant> acmmParticipant = getParticipant(participant);
@@ -246,7 +246,7 @@ void AcmmFrameMixer::removeInput(const std::string& participant)
     return;
 }
 
-bool AcmmFrameMixer::addOutput(const std::string& participant, const FrameFormat format, woogeen_base::FrameDestination* destination)
+bool AcmmFrameMixer::addOutput(const std::string& participant, const std::string& outStream, const FrameFormat format, woogeen_base::FrameDestination* destination)
 {
     boost::unique_lock<boost::shared_mutex> lock(m_mutex);
     boost::shared_ptr<AcmmParticipant> acmmParticipant = getParticipant(participant);
@@ -290,7 +290,7 @@ bool AcmmFrameMixer::addOutput(const std::string& participant, const FrameFormat
     return true;
 }
 
-void AcmmFrameMixer::removeOutput(const std::string& participant)
+void AcmmFrameMixer::removeOutput(const std::string& participant, const std::string& outStream)
 {
     boost::unique_lock<boost::shared_mutex> lock(m_mutex);
     boost::shared_ptr<AcmmParticipant> acmmParticipant = getParticipant(participant);
@@ -301,7 +301,7 @@ void AcmmFrameMixer::removeOutput(const std::string& participant)
         if (acmmParticipant->hasInput()) {
             int ret;
 
-            ret = m_mixerModule->SetAnonymousMixabilityStatus(acmmParticipant.get(), false);
+            ret = m_mixerModule->SetAnonymousMixabilityStatus(acmmParticipant.get(), true);
             if (ret != 0) {
                 ELOG_ERROR("Fail to unSetAnonymousMixabilityStatus");
                 return;
