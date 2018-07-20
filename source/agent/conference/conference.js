@@ -13,62 +13,6 @@ var Participant = require('./participant');
 // Logger
 var log = logger.getLogger('Conference');
 
-const partial_linear_bitrate = [
-  {size: 0, bitrate: 0},
-  {size: 76800, bitrate: 400},  //320*240, 30fps
-  {size: 307200, bitrate: 800}, //640*480, 30fps
-  {size: 921600, bitrate: 2000},  //1280*720, 30fps
-  {size: 2073600, bitrate: 4000}, //1920*1080, 30fps
-  {size: 8294400, bitrate: 16000} //3840*2160, 30fps
-];
-
-const standardBitrate = (width, height, framerate) => {
-  let bitrate = -1;
-  let prev = 0;
-  let next = 0;
-  let portion = 0.0;
-  let def = width * height * framerate / 30;
-
-  // find the partial linear section and calculate bitrate
-  for (var i = 0; i < partial_linear_bitrate.length - 1; i++) {
-    prev = partial_linear_bitrate[i].size;
-    next = partial_linear_bitrate[i+1].size;
-    if (def > prev && def <= next) {
-      portion = (def - prev) / (next - prev);
-      bitrate = partial_linear_bitrate[i].bitrate + (partial_linear_bitrate[i+1].bitrate - partial_linear_bitrate[i].bitrate) * portion;
-      break;
-    }
-  }
-
-  // set default bitrate for over large resolution
-  if (-1 == bitrate) {
-    bitrate = 16000;
-  }
-
-  return bitrate;
-}
-
-const calcDefaultBitrate = (codec, resolution, framerate, motionFactor) => {
-  let codec_factor = 1.0;
-  switch (codec) {
-    case 'h264':
-      codec_factor = 1.0;
-      break;
-    case 'vp8':
-      codec_factor = 1.0;
-      break;
-    case 'vp9':
-      codec_factor = 0.8;//FIXME: Theoretically it should be 0.5, not appliable before encoder is improved.
-      break;
-    case 'h265':
-      codec_factor = 0.9;//FIXME: Theoretically it should be 0.5, not appliable before encoder is improved.
-      break;
-    default:
-      break;
-  }
-  return standardBitrate(resolution.width, resolution.height, framerate) * codec_factor * motionFactor;
-};
-
 const isAudioFmtCompatible = (fmt1, fmt2) => {
   return (fmt1.codec === fmt2.codec) && (fmt1.sampleRate === fmt2.sampleRate) && (fmt1.channelNum === fmt2.channelNum);
 };
@@ -1605,6 +1549,22 @@ var Conference = function (rpcClient, selfRpcId) {
     });
   };
 
+  const setLayout = function(streamId, layout) {
+    return new Promise((resolve, reject) => {
+      roomController.setLayout(streams[streamId].info.label, layout, function(updated) {
+        if (streams[streamId]) {
+          streams[streamId].info.layout = updated;
+          resolve('ok');
+        } else {
+          reject('stream early terminated');
+        }
+      }, function(reason) {
+        log.info('roomController.setLayout failed, reason:', reason);
+        reject(reason);
+      });
+    });
+  };
+
   that.streamControl = (participantId, streamId, command, callback) => {
     log.debug('streamControl, participantId:', participantId, 'streamId:', streamId, 'command:', JSON.stringify(command));
 
@@ -1993,6 +1953,44 @@ var Conference = function (rpcClient, selfRpcId) {
     }
   };
 
+  const getRational = (str) => {
+    if (str === '0') {
+      return {numerator: 0, denominator: 1};
+    } else if (str === '1') {
+      return {numerator: 1, denominator: 1};
+    } else {
+      var s = str.split('/');
+      if ((s.length === 2) && !isNaN(s[0]) && !isNaN(s[1]) && Number(s[0]) <= Number(s[1])) {
+        return {numerator: Number(s[0]), denominator: Number(s[1])};
+      } else {
+        return null;
+      }
+    }
+  };
+
+  const getRegionObj = (region) => {
+    if ((typeof region.id !== 'string' || region.id === '')
+        || (region.shape !== 'rectangle')
+        || (typeof region.area !== 'object')) {
+          return null;
+    }
+
+    var left = getRational(region.area.left),
+      top = getRational(region.area.top),
+      width = getRational(region.area.width),
+      height = getRational(region.area.height);
+
+    if (left && top && width && height) {
+      return {
+        id: region.id,
+        shape: region.shape,
+        area: {left: left, top: top, width: width, height: height}
+      };
+    } else {
+      return null;
+    }
+  };
+
   that.controlStream = function(streamId, commands, callback) {
     log.debug('controlStream', streamId, 'commands:', commands);
     if (streams[streamId] === undefined) {
@@ -2041,6 +2039,50 @@ var Conference = function (rpcClient, selfRpcId) {
                 }
               } else {
                 exe = Promise.reject('Track does NOT exist');
+              }
+            } else if (cmd.path === '/info/layout') {
+              if (streams[streamId].type === 'mixed') {
+                if (cmd.value instanceof Array) {
+                  var stream_ok = true;
+                  var region_ok = true;
+                  for (var i in cmd.value) {
+                    if (cmd.value[i].stream && (!streams[cmd.value[i].stream] || (streams[cmd.value[i].stream].type !== 'forward'))) {
+                      stream_ok = false;
+                      break;
+                    }
+
+                    var region_obj = getRegionObj(cmd.value[i].region);
+                    if (!region_obj) {
+                      region_ok = false;
+                      break;
+                    } else {
+                      for (var j = 0; j < i; j++) {
+                        if (cmd.value[j].region.id === region_obj.id) {
+                          region_ok = false;
+                          break;
+                        }
+                      }
+
+                      if (region_ok) {
+                        cmd.value[i].region = region_obj;
+                      } else {
+                        break;
+                      }
+                    }
+                  }
+
+                  if (!stream_ok) {
+                    exe = Promise.reject('Invalid input stream id');
+                  } else if (!region_ok) {
+                    exe = Promise.reject('Invalid region');
+                  } else {
+                    exe = setLayout(streamId, cmd.value);
+                  }
+                } else {
+                  exe = Promise.reject('Invalid value');
+                }
+              } else {
+                exe = Promise.reject('Not mixed stream');
               }
             } else if ((cmd.path.startsWith('/info/layout/') && streams[cmd.value] && (streams[cmd.value].type !== 'mixed'))) {
               var path = cmd.path.split('/');

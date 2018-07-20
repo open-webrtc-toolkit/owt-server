@@ -66,6 +66,7 @@ function LayoutProcessor(layouts) {
     this.maxCover = 0;
     this.inputList = [];
     this.currentRegions = [];
+    this.layoutSolution = [];
 
     var self = this;
     var numOfRegions;
@@ -232,17 +233,17 @@ LayoutProcessor.prototype.choseTemplate = function(regionNum) {
  */
 LayoutProcessor.prototype.updateInputPositions = function() {
     var i;
-    var layoutSolution = [];
+    this.layoutSolution = [];
     for (i = 0; i < this.currentRegions.length; i++) {
         if (typeof this.inputList[i] === 'number') {
-            layoutSolution.push({
+            this.layoutSolution.push({
                 input: this.inputList[i],
                 region: this.currentRegions[i]
             });
         }
     }
     // Trigger "layoutChange" event
-    this.emit('layoutChange', layoutSolution);
+    this.emit('layoutChange', this.layoutSolution);
 };
 
 /**
@@ -252,6 +253,21 @@ LayoutProcessor.prototype.updateInputPositions = function() {
  */
 LayoutProcessor.prototype.getRegions = function() {
     return this.currentRegions;
+};
+
+LayoutProcessor.prototype.setLayout = function(layout, on_ok, on_error) {
+  log.debug('setLayout, layout:', JSON.stringify(layout));
+  this.templates = {};
+  this.maxCover = layout.length;
+  this.templates[layout.length] = layout.map((obj) => {return obj.region;});
+  this.inputList = [];
+  layout.forEach((obj) => {
+    this.inputList.push(obj.input);
+  });
+  this.choseTemplate(this.inputList.length);
+  this.updateInputPositions();
+
+  on_ok(this.layoutSolution);
 };
 
 exports.LayoutProcessor = LayoutProcessor;

@@ -402,6 +402,32 @@ function VMixer(rpcClient, clusterIP) {
         }
     };
 
+    var formatLayoutSolution = function (layoutSolution) {
+        return layoutSolution.map((inputRegion) => {
+            var rationalString = (obj) => (obj.numerator + '/' + obj.denominator);
+            var curRegion = inputRegion.region;
+            return {
+                stream: inputManager.getStreamFromInput(inputRegion.input),
+                region: {
+                    id: curRegion.id,
+                    shape: curRegion.shape,
+                    area: curRegion.shape === 'rectangle' ?
+                        {
+                            left: rationalString(curRegion.area.left),
+                            top: rationalString(curRegion.area.top),
+                            width: rationalString(curRegion.area.width),
+                            height: rationalString(curRegion.area.height),
+                        } :
+                        {
+                            centerW: rationalString(curRegion.area.centerW),
+                            centerH: rationalString(curRegion.area.centerH),
+                            radius: rationalString(curRegion.area.radius),
+                        }
+                }
+            };
+        });
+    };
+
     that.initialize = function (videoConfig, belongTo, layoutcontroller, mixView, callback) {
         log.debug('initEngine, videoConfig:', JSON.stringify(videoConfig));
         var config = {
@@ -429,29 +455,7 @@ function VMixer(rpcClient, clusterIP) {
                 log.warn('No native method: updateLayoutSolution');
             }
 
-            var streamRegions = layoutSolution.map((inputRegion) => {
-                var rationalString = (obj) => (obj.numerator + '/' + obj.denominator);
-                var curRegion = inputRegion.region;
-                return {
-                    stream: inputManager.getStreamFromInput(inputRegion.input),
-                    region: {
-                        id: curRegion.id,
-                        shape: curRegion.shape,
-                        area: curRegion.shape === 'rectangle' ?
-                            {
-                                left: rationalString(curRegion.area.left),
-                                top: rationalString(curRegion.area.top),
-                                width: rationalString(curRegion.area.width),
-                                height: rationalString(curRegion.area.height),
-                            } :
-                            {
-                                centerW: rationalString(curRegion.area.centerW),
-                                centerH: rationalString(curRegion.area.centerH),
-                                radius: rationalString(curRegion.area.radius),
-                            }
-                    }
-                };
-            });
+            var streamRegions = formatLayoutSolution(layoutSolution);
             var layoutChangeArgs = [belong_to, streamRegions, view];
             rpcClient.remoteCall(controller, 'onVideoLayoutChange', layoutChangeArgs);
         });
@@ -657,10 +661,6 @@ function VMixer(rpcClient, clusterIP) {
         }
     };
 
-    that.setLayoutTemplates = function (templates, callback) {
-        //TODO: implement the layout processor in node.js layer.
-    };
-
     that.setPrimary = function (stream_id, callback) {
         log.debug('setPrimary, stream_id:', stream_id);
         if (inputManager.has(stream_id)) {
@@ -687,6 +687,7 @@ function VMixer(rpcClient, clusterIP) {
     };
 
     that.setRegion = function (stream_id, region_id, callback) {
+        log.debug('setRegion, stream_id:', stream_id, 'region_id:', region_id);
         if (inputManager.has(stream_id)) {
             if (inputManager.isPending(stream_id)) {
                 let originInput = layoutProcessor.getInput(region_id);
@@ -717,7 +718,7 @@ function VMixer(rpcClient, clusterIP) {
     };
 
     that.getRegion = function (stream_id, callback) {
-        //TODO: implement the layout processor in node.js layer.
+        log.debug('getRegion, stream_id:', stream_id);
         if (inputManager.has(stream_id) && !inputManager.isPending(stream_id)) {
             let inputId = inputManager.get(stream_id).id;
             let region = layoutProcessor.getRegion(inputId);
@@ -728,7 +729,19 @@ function VMixer(rpcClient, clusterIP) {
         }
     };
 
+    that.setLayout = function (layout, callback) {
+        log.debug('setLayout, layout:', JSON.stringify(layout));
+        var inputLayout = layout.map((obj) => {return {input: inputManager.get(obj.stream).id, region: obj.region};});
+        layoutProcessor.setLayout(inputLayout, function(layoutSolution) {
+          //TODO: try to schedule the pending inputs into the new layout template.
+          callback('callback', formatLayoutSolution(layoutSolution));
+        }, function(err) {
+          callback('callback', 'error', 'layoutProcessor failed');
+        });
+    };
+
     that.forceKeyFrame = function (stream_id) {
+        log.debug('forceKeyFrame, stream_id:', stream_id);
         if (outputs[stream_id] && engine) {
             engine.forceKeyFrame(stream_id);
         }

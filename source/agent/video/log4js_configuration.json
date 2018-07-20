@@ -14,6 +14,7 @@
     "LoadCollector": "INFO",
     "AmqpClient": "INFO",
     "ErizoJS": "INFO",
+    "LayoutProcessor": "INFO",
     "VideoNode": "INFO",
     "ErizoAgent": "INFO",
     "Connections": "INFO",
