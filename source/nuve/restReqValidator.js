@@ -147,12 +147,53 @@ const StreamUpdate = {
       }, {
         properties: {
           'op': { 'const': 'replace'},
+          'path': { 'const': '/info/layout'},
+          'value': {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                'stream': { type: 'string'},
+                'region': {
+                  type: 'object',
+                  properties: {
+                    'id': { type: 'string'},
+                    'shape': { 'const': 'rectangle'},
+                    'area': {
+                      type: 'object',
+                      properties: {
+                        left: {$ref: '#/definitions/RationalNumberStr'},
+                        top: {$ref: '#/definitions/RationalNumberStr'},
+                        width: {$ref: '#/definitions/RationalNumberStr'},
+                        height: {$ref: '#/definitions/RationalNumberStr'}
+                      },
+                      additionalProperties: false,
+                      required: ['left', 'top', 'width', 'height']
+                    }
+                  },
+                  additionalProperties: false,
+                  required: ['id', 'shape', 'area']
+                }
+              },
+              additionalProperties: false,
+              required: ['region']
+            }
+          }
+        },
+        additionalProperties: false
+      }, {
+        properties: {
+          'op': { 'const': 'replace'},
           'path': { 'pattern': '/info/layout/[0-9]+/stream'},
           'value': { type: 'string'}
         },
         additionalProperties: false
       }],
       required: ['op', 'path', 'value']
+    },
+    'RationalNumberStr': {
+      type: 'string',
+      value: {'pattern': '/^0|1|(?:[1-9][0-9]*\/[1-9][0-9]*)/'}
     }
   }
 };
