@@ -553,6 +553,11 @@ bool LiveStreamIn::connect()
                     m_AsyncEvent << ",\"video\":{\"codec\":" << "\"vp8\"";
                     break;
 
+                case AV_CODEC_ID_VP9:
+                    m_videoFormat = FRAME_FORMAT_VP9;
+                    m_AsyncEvent << ",\"video\":{\"codec\":" << "\"vp9\"";
+                    break;
+
                 case AV_CODEC_ID_H264:
                     m_videoFormat = FRAME_FORMAT_H264;
                     m_AsyncEvent << ",\"video\":{\"codec\":" << "\"h264\"";
