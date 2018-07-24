@@ -16,7 +16,7 @@ var InternalConnectionFactory = require('./InternalConnectionFactory');
 module.exports = function (rpcClient) {
     var that = {},
         engine,
-        belong_to,
+        belong_to_room,
         controller,
         observer,
         view,
@@ -106,9 +106,9 @@ module.exports = function (rpcClient) {
         }
     };
 
-    var initEngine = function (config, belongTo, ctrlr, callback) {
+    var initEngine = function (config, belongToRoom, ctrlr, callback) {
         engine = new AudioMixer(JSON.stringify(config));
-        belong_to = belongTo;
+        belong_to_room = belongToRoom;
         controller = ctrlr;
 
         // FIXME: The supported codec list should be a sub-list of those querried from the engine
@@ -130,7 +130,7 @@ module.exports = function (rpcClient) {
 
         engine.close();
         engine = undefined;
-        belong_to = undefined;
+        belong_to_room = undefined;
         controller = undefined;
     };
 
@@ -258,9 +258,9 @@ module.exports = function (rpcClient) {
 
     that.enableVAD = function (periodMS) {
         log.debug('enableVAD, periodMS:', periodMS);
-        engine.enableVAD(periodMS, function (activeParticipant) {
-            log.debug('enableVAD, activeParticipant:', activeParticipant);
-            controller && rpcClient.remoteCall(controller, 'onAudioActiveParticipant', [belong_to, activeParticipant, view], {callback: function(){}});
+        engine.enableVAD(periodMS, function (activeInput) {
+            log.debug('enableVAD, activeInput:', activeInput);
+            controller && rpcClient.remoteCall(controller, 'onAudioActiveness', [belong_to_room, activeInput, view], {callback: function(){}});
         });
     };
 
@@ -268,7 +268,7 @@ module.exports = function (rpcClient) {
         engine.resetVAD();
     };
 
-    that.init = function (service, config, belongTo, controller, mixView, callback) {
+    that.init = function (service, config, belongToRoom, controller, mixView, callback) {
         var audioConfig = global.config.audio;
         log.debug('init, audioConfig:', audioConfig);
 
@@ -278,9 +278,9 @@ module.exports = function (rpcClient) {
                 audioConfig = Object.assign(audioConfig, config);
             }
             view = mixView;
-            initEngine(audioConfig, belongTo, controller, callback);
+            initEngine(audioConfig, belongToRoom, controller, callback);
         } else if (service === 'transcoding') {
-            initEngine(audioConfig, belongTo, controller, callback);
+            initEngine(audioConfig, belongToRoom, controller, callback);
         } else {
             log.error('Unknown service type to init an audio node:', service);
             callback('callback', 'error', 'Unknown service type to init an audio node.');

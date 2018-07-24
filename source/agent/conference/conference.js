@@ -1799,18 +1799,18 @@ var Conference = function (rpcClient, selfRpcId) {
     }
   };
 
-  that.onAudioActiveness = function(roomId, activeParticipantId, view, callback) {
-    log.debug('onAudioActiveness, roomId:', roomId, 'activeParticipantId:', activeParticipantId, 'view:', view);
+  that.onAudioActiveness = function(roomId, activeInputStream, view, callback) {
+    log.debug('onAudioActiveness, roomId:', roomId, 'activeInputStream:', activeInputStream, 'view:', view);
     if ((room_id === roomId) && roomController) {
       room_config.views.forEach((viewSettings) => {
         if (viewSettings.label === view && viewSettings.video.keepActiveInputPrimary) {
-          roomController.setPrimary(activeParticipantId, view);
+          roomController.setPrimary(activeInputStream, view);
         }
       });
 
       var input = undefined;
       for (var id in streams) {
-        if (streams[id].type === 'forward' && streams[id].info.owner === activeParticipantId) {
+        if (streams[id].type === 'forward' && id === activeInputStream) {
           input = id;
           break;
         }
@@ -2425,7 +2425,7 @@ module.exports = function (rpcClient, selfRpcId) {
     onSessionAudit: conference.onSessionAudit,
 
     // rpc from audio nodes.
-    onAudioActiveParticipant: conference.onAudioActiveness,
+    onAudioActiveness: conference.onAudioActiveness,
 
     // rpc from video nodes.
     onVideoLayoutChange: conference.onVideoLayoutChange,

@@ -1594,24 +1594,17 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
         }
     };
 
-    that.setPrimary = function (participantId, view) {
-        log.debug('setPrimary:', participantId, view);
+    that.setPrimary = function (inputStreamId, view) {
+        log.debug('setPrimary:', inputStreamId, view);
         var video_mixer = getSubMediaMixer(view, 'video');
 
-        for (var terminal_id in terminals) {
-            if (terminals[terminal_id].owner === participantId) {
-                for (var i in terminals[terminal_id].published) {
-                    var stream_id = terminals[terminal_id].published[i];
-                    if (streams[stream_id] && streams[stream_id].video && (streams[stream_id].video.subscribers.indexOf(video_mixer) !== -1)) {
-                        makeRPC(
-                            rpcClient,
-                            terminals[video_mixer].locality.node,
-                            'setPrimary',
-                            [stream_id]);
-                        return;
-                    }
-                }
-            }
+        if (streams[inputStreamId] && streams[inputStreamId].video && (streams[inputStreamId].video.subscribers.indexOf(video_mixer) !== -1)) {
+            makeRPC(
+                rpcClient,
+                terminals[video_mixer].locality.node,
+                'setPrimary',
+                [inputStreamId]);
+            return;
         }
     };
 
