@@ -122,7 +122,7 @@ void AcmmGroup::getInputs(std::vector<boost::shared_ptr<AcmmInput>> &inputs)
     }
 }
 
-boost::shared_ptr<AcmmInput> AcmmGroup::addInput(const std::string& inStream, const woogeen_base::FrameFormat format, woogeen_base::FrameSource* source)
+boost::shared_ptr<AcmmInput> AcmmGroup::addInput(const std::string& inStream)
 {
     boost::shared_ptr<AcmmInput> acmmInput;
 
@@ -139,10 +139,6 @@ boost::shared_ptr<AcmmInput> AcmmGroup::addInput(const std::string& inStream, co
 
     int32_t id = (((int32_t)m_groupId << 16) & 0xffff0000) | inputId;
     acmmInput.reset(new AcmmInput(id, inStream));
-    if (!acmmInput->setSource(format, source)) {
-        ELOG_ERROR_T("Can not set source!");
-        return NULL;
-    }
 
     m_inputIdMap[inStream] = inputId;
     m_inputs[inputId] = acmmInput;
@@ -157,7 +153,7 @@ void AcmmGroup::removeInput(const std::string& inStream)
     m_inputIdMap.erase(inStream);
 }
 
-boost::shared_ptr<AcmmOutput> AcmmGroup::addOutput(const std::string& outStream, const woogeen_base::FrameFormat format, woogeen_base::FrameDestination* destination)
+boost::shared_ptr<AcmmOutput> AcmmGroup::addOutput(const std::string& outStream)
 {
     boost::shared_ptr<AcmmOutput> acmmOutput;
 
@@ -174,10 +170,6 @@ boost::shared_ptr<AcmmOutput> AcmmGroup::addOutput(const std::string& outStream,
 
     int32_t id = (((int32_t)m_groupId << 16) & 0xffff0000) | outputId;
     acmmOutput.reset(new AcmmOutput(id));
-    if (!acmmOutput->setDest(format, destination)) {
-        ELOG_ERROR_T("Can not set dest!");
-        return NULL;
-    }
 
     m_outputIdMap[outStream] = outputId;
     m_outputs[outputId] = acmmOutput;

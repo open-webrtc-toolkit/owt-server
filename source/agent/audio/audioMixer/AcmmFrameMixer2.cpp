@@ -185,9 +185,14 @@ bool AcmmFrameMixer2::addInput(const std::string& group, const std::string& inSt
             return false;
         }
     } else {
-        acmmInput = acmmGroup->addInput(inStream, format, source);
+        acmmInput = acmmGroup->addInput(inStream);
         if(!acmmInput) {
             ELOG_ERROR("Fail to add input");
+            return false;
+        }
+
+        if (!acmmInput->setSource(format, source)) {
+            ELOG_ERROR("Fail to set input");
             return false;
         }
 
@@ -269,15 +274,24 @@ bool AcmmFrameMixer2::addOutput(const std::string& group, const std::string& out
     if (acmmOutput) {
         ELOG_DEBUG("Update previous output");
 
-        acmmOutput->unsetDest();
-        if(!acmmOutput->setDest(format, destination)) {
+        acmmOutput->removeDest(m_dstMap[acmmOutput.get()]);
+        m_dstMap.erase(acmmOutput.get());
+
+        if(!acmmOutput->addDest(format, destination)) {
             ELOG_ERROR("Fail to update output");
             return false;
         }
+
+        m_dstMap[acmmOutput.get()] = destination;
     } else {
-        acmmOutput = acmmGroup->addOutput(outStream, format, destination);
+        acmmOutput = acmmGroup->addOutput(outStream);
         if(!acmmOutput) {
             ELOG_ERROR("Fail to add output");
+            return false;
+        }
+
+        if (!acmmOutput->addDest(format, destination)) {
+            ELOG_ERROR("Fail to set output");
             return false;
         }
 
@@ -291,6 +305,8 @@ bool AcmmFrameMixer2::addOutput(const std::string& group, const std::string& out
                 }
             }
         }
+
+        m_dstMap[acmmOutput.get()] = destination;
     }
 
     updateFrequency();
@@ -329,6 +345,7 @@ void AcmmFrameMixer2::removeOutput(const std::string& group, const std::string& 
         }
     }
 
+    m_dstMap.erase(acmmOutput.get());
     acmmGroup->removeOutput(outStream);
     if (!acmmGroup->numOfInputs() && !acmmGroup->numOfOutputs()) {
         removeGroup(group);

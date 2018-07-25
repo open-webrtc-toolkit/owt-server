@@ -97,6 +97,8 @@ private:
     boost::scoped_ptr<JobTimer> m_jobTimer;
     boost::shared_ptr<AudioConferenceMixer> m_mixerModule;
 
+    std::map<AcmmOutput *, woogeen_base::FrameDestination *> m_dstMap;
+
     std::vector<bool> m_groupIds;
     std::map<std::string, uint16_t> m_groupIdMap;
     std::map<uint16_t, boost::shared_ptr<AcmmGroup>> m_groups;

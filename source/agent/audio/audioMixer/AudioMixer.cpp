@@ -100,6 +100,11 @@ void AudioMixer::removeInput(const std::string& endpoint, const std::string& inS
     return;
 }
 
+void AudioMixer::setInputActive(const std::string& endpoint, const std::string& inStreamId, bool active)
+{
+    return;
+}
+
 bool AudioMixer::addOutput(const std::string& endpoint, const std::string& outStreamId, const std::string& codec, woogeen_base::FrameDestination* dest)
 {
     assert(dest);

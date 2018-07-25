@@ -60,10 +60,10 @@ public:
     uint32_t numOfInputs() {return m_inputs.size();}
     uint32_t numOfOutputs() {return m_outputs.size();}
 
-    boost::shared_ptr<AcmmInput> addInput(const std::string& inStream, const woogeen_base::FrameFormat format, woogeen_base::FrameSource* source);
+    boost::shared_ptr<AcmmInput> addInput(const std::string& inStream);
     void removeInput(const std::string& inStream);
 
-    boost::shared_ptr<AcmmOutput> addOutput(const std::string& outStream, const woogeen_base::FrameFormat format, woogeen_base::FrameDestination* destination);
+    boost::shared_ptr<AcmmOutput> addOutput(const std::string& outStream);
     void removeOutput(const std::string& outStream);
 
     int32_t NeededFrequency();
