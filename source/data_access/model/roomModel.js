@@ -57,7 +57,8 @@ var ViewSchema = new Schema({
   },
   video: {
     format: {
-      codec: { type: String, default: 'h264' }
+      codec: { type: String, default: 'h264' },
+      profile: { type: String }
     },
     parameters: {
       resolution: Resolution,

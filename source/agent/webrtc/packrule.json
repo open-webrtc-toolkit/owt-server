@@ -13,7 +13,7 @@
         ]
     },
     "common": {
-        "package": "../package.json",
+        "package": "package.json",
         "files": [
             "../AgentLoader.js",
             "agent.toml",

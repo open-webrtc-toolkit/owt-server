@@ -2,7 +2,6 @@
 'use strict';
 require = require('module')._load('./AgentLoader');
 var woogeenWebrtc = require('./webrtcLib/build/Release/webrtc');
-// var WebRtcConnection = woogeenWebrtc.WebRtcConnection;
 var AudioFrameConstructor = woogeenWebrtc.AudioFrameConstructor;
 var VideoFrameConstructor = woogeenWebrtc.VideoFrameConstructor;
 var AudioFramePacketizer = woogeenWebrtc.AudioFramePacketizer;
@@ -13,7 +12,11 @@ var cipher = require('./cipher');
 // Logger
 var log = logger.getLogger('WrtcConnection');
 
+var transform = require('sdp-transform');
+
 var addon = require('./webrtcLib/build/Release/webrtc');//require('./erizo/build/Release/addon');
+
+var h264ProfileOrder = ['CB', 'B', 'M', 'E', 'H']; //'H10', 'H42', 'H44', 'H10I', 'H42I', 'H44I', 'C44I'
 
 function createWrtc(id, threadPool, ioThreadPool, mediaConfiguration, ipAddresses) {
     var wrtc = new addon.WebRtcConnection(
@@ -36,6 +39,63 @@ function createWrtc(id, threadPool, ioThreadPool, mediaConfiguration, ipAddresse
     return wrtc;
 }
 
+function translateProfile (profLevId) {
+    var profile_idc = profLevId.substr(0, 2);
+    var profile_iop = parseInt(profLevId.substr(2, 2), 16);
+    var profile;
+    switch (profile_idc) {
+        case '42':
+            if (profile_iop & (1 << 6)) {
+                // x1xx0000
+                profile = 'CB';
+            } else {
+                // x0xx0000
+                profile = 'B';
+            }
+            break;
+        case '4D':
+            if (profile_iop && (1 << 7)) {
+                // 1xxx0000
+                profile = 'CB';
+            } else if (!(profile_iop && (1 << 5))) {
+                profile = 'M';
+            }
+            break;
+        case '58':
+            if (profile_iop && (1 << 7)) {
+                if (profile_iop && (1 << 6)) {
+                    profile = 'CB';
+                } else {
+                    profile = 'B';
+                }
+            } else if (!(profile_iop && (1 << 6))) {
+                profile = 'E';
+            }
+            break;
+        case '64':
+            (profile_iop === 0) && (profile = 'H');
+            break;
+        case '6E':
+            (profile_iop === 0) && (profile = 'H10');
+            (profile_iop === 16) && (profile = 'H10I');
+            break;
+        case '7A':
+            (profile_iop === 0) && (profile = 'H42');
+            (profile_iop === 16) && (profile = 'H42I');
+            break;
+        case 'F4':
+            (profile_iop === 0) && (profile = 'H44');
+            (profile_iop === 16) && (profile = 'H44I');
+            break;
+        case '2C':
+            (profile_iop === 16) && (profile = 'C44I');
+            break;
+        default:
+            break;
+    }
+    return profile;
+}
+
 module.exports = function (spec, on_status, on_mediaUpdate) {
     var that = {},
         direction = spec.direction,
@@ -54,6 +114,7 @@ module.exports = function (spec, on_status, on_mediaUpdate) {
         audioFramePacketizer,
         videoFrameConstructor,
         videoFramePacketizer,
+        offerProfiles,
         wrtc;
 
     var isReserve = function (line, reserved) {
@@ -207,6 +268,92 @@ module.exports = function (spec, on_status, on_mediaUpdate) {
         return sdp;
     };
 
+    var getProfileMap = function (sdp) {
+        var res = transform.parse(sdp);
+        var result = {};
+        var count = 0;
+        res.media.forEach((mediaInfo) => {
+            if (mediaInfo.type === 'video') {
+                mediaInfo.fmtp.forEach((fmtp) => {
+                    if (fmtp.config.indexOf('profile-level-id') >= 0) {
+                        var params = transform.parseParams(fmtp.config);
+                        var profLevId = params['profile-level-id'].toString();
+                        var p = translateProfile(profLevId);
+                        result[p] = profLevId;
+                        count++;
+                    }
+                });
+            }
+        });
+
+        if (count === 0) {
+            // no h264 profile in sdp
+            return null;
+        }
+        return result;
+    };
+
+    var selectBestMatchProfile = function (offerProfMap, supportProfiles) {
+        var i, p;
+        var finalProfile;
+        // Matching from 'high' to 'cb'
+        for (i = h264ProfileOrder.length - 1; i >= 0; i--) {
+            p = h264ProfileOrder[i];
+            if (offerProfMap[p] && supportProfiles[p]) {
+                finalProfile = p;
+                break;
+            }
+        }
+        return finalProfile;
+    };
+
+    var replaceProfLevId = function (sdp, profLevId) {
+        var sdpInfo = transform.parse(sdp);
+        sdpInfo.media.forEach((mediaInfo) => {
+            if (mediaInfo.type === 'video') {
+                mediaInfo.fmtp.forEach((fmtp) => {
+                    if (fmtp.config.indexOf('profile-level-id') >= 0) {
+                        fmtp.config = fmtp.config.replace(/profile-level-id=.{6}/, 'profile-level-id=' + profLevId);
+                    }
+                });
+            }
+        });
+        return transform.write(sdpInfo);
+    };
+
+    var determineProfile = function (sdp) {
+        if (video_fmt && video_fmt.codec === 'h264' && offerProfiles) {
+            var finalProfile;
+            if (direction === 'out') {
+                var videoOption = formatPreference.video;
+                if (videoOption.preferred && videoOption.preferred.codec === 'h264') {
+                    finalProfile = videoOption.preferred.profile;
+                }
+                var acceptableProfiles = {};
+                if (!finalProfile && videoOption.optional) {
+                    videoOption.optional.forEach((fmt) => {
+                        if (fmt.codec === 'h264') {
+                            acceptableProfiles[fmt.profile] = true;
+                        }
+                    });
+                    finalProfile = selectBestMatchProfile(offerProfiles, acceptableProfiles);
+                }
+            } else {
+                // direction 'in'
+                finalProfile = selectBestMatchProfile(offerProfiles, offerProfiles);
+            }
+
+            if (finalProfile) {
+                sdp = replaceProfLevId(sdp, offerProfiles[finalProfile]);
+                video_fmt.profile = finalProfile;
+            } else {
+                // No matching profile
+                video_fmt = false;
+            }
+        }
+        return sdp;
+    };
+
     var CONN_INITIAL = 101, CONN_STARTED = 102, CONN_GATHERED = 103, CONN_READY = 104, CONN_FINISHED = 105, CONN_CANDIDATE = 201, CONN_SDP = 202, CONN_FAILED = 500;
     /*
      * Given a WebRtcConnection waits for the state CANDIDATES_GATHERED for set remote SDP.
@@ -233,6 +380,7 @@ module.exports = function (spec, on_status, on_mediaUpdate) {
                     });
                     audio && (message = determineAudioFmt(message));
                     video && (message = determineVideoFmt(message));
+                    message = determineProfile(message);
                     log.debug('Answer SDP', message);
                     on_status({type: 'answer', sdp: message});
                     break;
@@ -327,6 +475,7 @@ module.exports = function (spec, on_status, on_mediaUpdate) {
     };
 
     var checkOffer = function (sdp, on_ok, on_error) {
+        offerProfiles = getProfileMap(sdp);
         var contains_audio = /(m=audio).*/g.test(sdp);
         var contains_video = /(m=video).*/g.test(sdp);
 
