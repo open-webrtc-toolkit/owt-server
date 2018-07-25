@@ -77,6 +77,29 @@ const removeNull = (obj) => {
   });
 };
 
+//FIXME: Detect profile capability in conference and remove this logic
+const applyDetailH264Profile = (room) => {
+  var hasH264 = false;
+  room.mediaOut.video.format.forEach((fmt) => {
+    if (fmt.codec === 'h264' && !fmt.profile) {
+      fmt.profile = 'M';
+      hasH264 = true;
+    }
+  });
+  room.views.forEach((viewSettings) => {
+    var fmt = viewSettings.video.format;
+    if (fmt.codec === 'h264' && !fmt.profile) {
+      fmt.profile = 'M';
+      hasH264 = true;
+    }
+  });
+  if (hasH264) {
+    room.mediaOut.video.format.push({ codec: 'h264', profile: 'CB' });
+    room.mediaOut.video.format.push({ codec: 'h264', profile: 'B' });
+    room.mediaOut.video.format.push({ codec: 'h264', profile: 'H' });
+  }
+};
+
 /*
  * Create Room.
  */
@@ -195,6 +218,7 @@ exports.config = function (roomId) {
         reject(err);
       } else {
         var config = Room.processLayout(room.toObject());
+        applyDetailH264Profile(config);
         resolve(config);
       }
     });

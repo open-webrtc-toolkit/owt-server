@@ -16,14 +16,22 @@ var audioFormatOut = {
   enum: audioNamesOut
 };
 
-
-var videoNames = [
+var videoNamesIn = [
   'h264', 'h265', 'vp8', 'vp9'
 ];
 
-var videoFormat = {
+var videoNamesOut = [
+  'h265', 'vp8', 'vp9', 'h264_CB', 'h264_B', 'h264_M', 'h264_E', 'h264_H'
+];
+
+var videoFormatIn = {
   type: 'string',
-  enum: videoNames
+  enum: videoNamesIn
+};
+
+var videoFormatOut = {
+  type: 'string',
+  enum: videoNamesOut
 };
 
 var videoPara = {
@@ -91,7 +99,7 @@ var viewItem = {
     video: {
       type: 'object',
       properties: {
-        format: videoFormat,
+        format: videoFormatOut,
         parameters: videoParaV,
         maxInput: { type: 'number', minimum: 1 },
         motionFactor: { type: 'number' },
@@ -165,7 +173,7 @@ var RoomSchema = {
         },
         video: {
           type: 'array',
-          items: videoFormat
+          items: videoFormatIn
         }
       }
     },
@@ -179,7 +187,7 @@ var RoomSchema = {
         video: {
           type: 'object',
           properties: {
-            format: { type: 'array', items: videoFormat },
+            format: { type: 'array', items: videoFormatOut },
             parameters: videoPara
           }
         }

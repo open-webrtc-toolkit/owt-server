@@ -18,7 +18,7 @@ const isAudioFmtCompatible = (fmt1, fmt2) => {
 };
 
 const isVideoFmtCompatible = (fmt1, fmt2) => {
-  return (fmt1.codec === fmt2.codec); //FIXME: fmt.profile should be considered.
+  return (fmt1.codec === fmt2.codec && (!fmt1.profile || !fmt2.profile || fmt1.profile === fmt2.profile));
 };
 
 var calcResolution = (x, baseResolution) => {
@@ -404,7 +404,6 @@ var Conference = function (rpcClient, selfRpcId) {
       return dataAccess.room.config(roomId)
         .then(function(config) {
             //log.debug('initializing room:', roomId, 'got config:', JSON.stringify(config));
-            //FIXME: To refine the configuration data structure and remove the following translating logic later.
             room_config = config;
             room_config.internalConnProtocol = global.config.internal.protocol;
 

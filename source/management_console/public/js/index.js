@@ -760,14 +760,22 @@ function tableHandlerRoom(rooms) {
   }
 
   var videoName2Format = function(v) {
-    if (typeof v === 'string') return { codec: v };
+    if (typeof v === 'string') {
+      var parts = v.split('_');
+      if (parts.length === 2) {
+        return { codec: parts[0], profile: parts[1] };
+      }
+      return { codec: v };
+    }
     return v;
   };
+
   var videoFormat2Name = function (v) {
     if (v === null) return 'h264';
-    if (typeof v === 'object') return v.codec;
-    return v;
-  }
+    if (typeof v === 'object') {
+      return v.profile ? v.codec + '_' + v.profile : v.codec;
+    }
+  };
 
   var translateRoomFormat = function (room) {
     if (room.views) {
