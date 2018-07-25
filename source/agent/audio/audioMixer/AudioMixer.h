@@ -42,6 +42,8 @@ public:
 
     bool addInput(const std::string& endpoint, const std::string& inStreamId, const std::string& codec, woogeen_base::FrameSource* source);
     void removeInput(const std::string& endpoint, const std::string& inStreamId);
+    void setInputActive(const std::string& endpoint, const std::string& inStreamId, bool active);
+
     bool addOutput(const std::string& endpoint, const std::string& outStreamId, const std::string& codec, woogeen_base::FrameDestination* dest);
     void removeOutput(const std::string& endpoint, const std::string& outStreamId);
 

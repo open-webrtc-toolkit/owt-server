@@ -46,8 +46,8 @@ public:
 
     int32_t id() {return m_id;}
 
-    bool setDest(FrameFormat format, FrameDestination* destination);
-    void unsetDest();
+    bool addDest(FrameFormat format, FrameDestination* destination);
+    void removeDest(FrameDestination* destination);
 
     int32_t NeededFrequency();
     bool newAudioFrame(const webrtc::AudioFrame *audioFrame);
@@ -56,7 +56,7 @@ private:
     int32_t m_id;
 
     FrameFormat m_dstFormat;
-    FrameDestination *m_destination;
+    std::list<FrameDestination *> m_destinations;
 
     boost::shared_ptr<AudioEncoder> m_encoder;
 };
