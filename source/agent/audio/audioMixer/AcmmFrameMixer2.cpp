@@ -452,6 +452,9 @@ void AcmmFrameMixer2::VadParticipants(const ParticipantVadStatistics *statistics
     for(uint32_t i = 0; i < size; i++, p++) {
         ELOG_TRACE("%d, vad streamId(0x%x), energy(%u)", i, p->id, p->energy);
 
+        if (p->energy == 0)
+            continue;
+
         if (!active || p->energy > active->energy) {
             acmmInput = getInputById(p->id);
             if (!acmmInput) {
