@@ -43,6 +43,7 @@ void AudioMixer::Init(Handle<Object> exports, Handle<Object> module) {
   NODE_SET_PROTOTYPE_METHOD(tpl, "resetVAD", resetVAD);
   NODE_SET_PROTOTYPE_METHOD(tpl, "addInput", addInput);
   NODE_SET_PROTOTYPE_METHOD(tpl, "removeInput", removeInput);
+  NODE_SET_PROTOTYPE_METHOD(tpl, "setInputActive", setInputActive);
   NODE_SET_PROTOTYPE_METHOD(tpl, "addOutput", addOutput);
   NODE_SET_PROTOTYPE_METHOD(tpl, "removeOutput", removeOutput);
 
@@ -138,6 +139,22 @@ void AudioMixer::removeInput(const v8::FunctionCallbackInfo<v8::Value>& args) {
   std::string streamID = std::string(*param1);
 
   me->removeInput(endpointID, streamID);
+}
+
+void AudioMixer::setInputActive(const v8::FunctionCallbackInfo<v8::Value>& args) {
+  Isolate* isolate = Isolate::GetCurrent();
+  HandleScope scope(isolate);
+
+  AudioMixer* obj = ObjectWrap::Unwrap<AudioMixer>(args.Holder());
+  mcu::AudioMixer* me = obj->me;
+
+  String::Utf8Value param0(args[0]->ToString());
+  std::string endpointID = std::string(*param0);
+  String::Utf8Value param1(args[1]->ToString());
+  std::string streamID = std::string(*param1);
+  bool active = args[2]->ToBoolean()->Value();
+
+  me->setInputActive(endpointID, streamID, active);
 }
 
 void AudioMixer::addOutput(const v8::FunctionCallbackInfo<v8::Value>& args) {
