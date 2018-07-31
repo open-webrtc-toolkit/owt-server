@@ -197,6 +197,16 @@ module.exports = function (rpcClient) {
         removeInput(stream_id);
     };
 
+    that.setInputActive = function (stream_id, active, callback) {
+        log.debug('setInputActive, stream_id:', stream_id, 'active:', active);
+        if (inputs[stream_id]) {
+            engine.setInputActive(inputs[stream_id].owner, stream_id, !!active);
+            callback('callback', 'ok');
+        } else {
+            callback('callback', 'error', 'Connection does NOT exist.');
+        }
+    };
+
     that.subscribe = function (connectionId, connectionType, options, callback) {
         log.debug('subscribe, connectionId:', connectionId, 'connectionType:', connectionType, 'options:', options);
         if (connectionType !== 'internal') {

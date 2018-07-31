@@ -1499,20 +1499,31 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
 
     that.updateStream = function (stream_id, track, status) {
         log.debug('updateStream, stream_id:', stream_id, 'track', track, 'status:', status);
-        if ((track === 'video' || track === 'av') && (status === 'active' || status === 'inactive')) {
-            if (streams[stream_id] && streams[stream_id].video && config.views.length > 0) {
+        if ((config.views.length > 0) && (status === 'active' || status === 'inactive')) {
+            if ((track === 'video' || track === 'av') && streams[stream_id] && streams[stream_id].video) {
                 for (var view in mix_views) {
                     var video_mixer = mix_views[view].video.mixer;
-                    if (streams[stream_id].video && video_mixer && terminals[video_mixer]) {
-                        if (streams[stream_id].video.subscribers.indexOf(video_mixer) >= 0) {
-                            var target_node = terminals[video_mixer].locality.node;
-                            var active = (status === 'active');
-                            makeRPC(
-                                rpcClient,
-                                target_node,
-                                'setInputActive',
-                                [stream_id, active]);
-                        }
+                    if (video_mixer && terminals[video_mixer] && (streams[stream_id].video.subscribers.indexOf(video_mixer) >= 0)) {
+                        var target_node = terminals[video_mixer].locality.node;
+                        var active = (status === 'active');
+                        makeRPC(
+                            rpcClient,
+                            target_node,
+                            'setInputActive',
+                            [stream_id, active]);
+                    }
+                }
+            } else if ((track === 'audio' || track === 'av') && streams[stream_id] && streams[stream_id].audio) {
+                for (var view in mix_views) {
+                    var audio_mixer = mix_views[view].audio.mixer;
+                    if (audio_mixer && terminals[audio_mixer] && (streams[stream_id].audio.subscribers.indexOf(audio_mixer) >= 0)) {
+                        var target_node = terminals[audio_mixer].locality.node;
+                        var active = (status === 'active');
+                        makeRPC(
+                            rpcClient,
+                            target_node,
+                            'setInputActive',
+                            [stream_id, active]);
                     }
                 }
             }
