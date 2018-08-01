@@ -18,34 +18,25 @@
  * and approved by Intel in writing.
  */
 
-#ifndef AudioFrameMixer_h
-#define AudioFrameMixer_h
+#ifndef AudioTime_h
+#define AudioTime_h
 
-#include <EventRegistry.h>
-
-#include "MediaFramePipeline.h"
+#include <boost/scoped_ptr.hpp>
+#include <boost/shared_ptr.hpp>
 
 namespace mcu {
 
-class AudioFrameMixer {
+class AudioTime {
+
 public:
-    virtual ~AudioFrameMixer() {}
+    static int64_t currentTime(void); //Millisecond
+    static void setTimestampOffset(uint32_t offset);
 
-    virtual void enableVAD(uint32_t period) = 0;
-    virtual void disableVAD() = 0;
-    virtual void resetVAD() = 0;
+private:
+    static uint32_t sTimestampOffset;
 
-    virtual bool addInput(const std::string& group, const std::string& inStream, const woogeen_base::FrameFormat format, woogeen_base::FrameSource* source) = 0;
-    virtual void removeInput(const std::string& group, const std::string& inStream) = 0;
-
-    virtual void setInputActive(const std::string& group, const std::string& inStream, bool active) = 0;
-
-    virtual bool addOutput(const std::string& group, const std::string& outStream, const woogeen_base::FrameFormat format, woogeen_base::FrameDestination* destination) = 0;
-    virtual void removeOutput(const std::string& group, const std::string& outStream) = 0;
-
-    virtual void setEventRegistry(EventRegistry* handle) = 0;
 };
 
 } /* namespace mcu */
 
-#endif /* AudioFrameMixer_h */
+#endif /* AudioTime_h */

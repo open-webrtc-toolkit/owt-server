@@ -25,6 +25,9 @@
 #include "AcmmFrameMixer.h"
 #include "AcmmFrameMixer2.h"
 
+#include "AudioUtilities.h"
+#include "AudioTime.h"
+
 using namespace webrtc;
 
 namespace mcu {
@@ -53,6 +56,8 @@ AudioMixer::AudioMixer(const std::string& configStr)
         webrtc::Trace::SetTraceFile(NULL, false);
         webrtc::Trace::set_level_filter(kTraceFilter);
     }
+
+    AudioTime::setTimestampOffset(currentTimeMs());
 
     m_mixer.reset(new AcmmFrameMixer2());
 }
@@ -102,6 +107,7 @@ void AudioMixer::removeInput(const std::string& endpoint, const std::string& inS
 
 void AudioMixer::setInputActive(const std::string& endpoint, const std::string& inStreamId, bool active)
 {
+    m_mixer->setInputActive(endpoint, inStreamId, active);
     return;
 }
 

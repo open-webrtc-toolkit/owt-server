@@ -47,8 +47,12 @@ public:
     int32_t id() {return m_id;}
     const std::string &name() {return m_name;}
 
+    bool isActive() {return m_active;}
+
     bool setSource(FrameFormat format, FrameSource* source);
     void unsetSource();
+
+    void setActive(bool active);
 
     // Implements MixerParticipant
     int32_t GetAudioFrame(int32_t id, AudioFrame* audioFrame) override;
@@ -57,6 +61,8 @@ public:
 private:
     int32_t m_id;
     const std::string m_name;
+
+    bool m_active;
 
     FrameFormat m_srcFormat;
     FrameSource *m_source;

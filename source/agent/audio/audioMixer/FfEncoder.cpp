@@ -18,10 +18,10 @@
  * and approved by Intel in writing.
  */
 
-#include <rtputils.h>
-
 #include "AudioUtilities.h"
 #include "FfEncoder.h"
+
+#include "AudioTime.h"
 
 namespace mcu {
 
@@ -94,7 +94,7 @@ bool FfEncoder::init()
         return false;
     }
 
-    m_timestampOffset = currentTimeMs();
+    //m_timestampOffset = currentTimeMs();
     m_valid = true;
 
     return true;
@@ -272,7 +272,7 @@ void FfEncoder::sendOut(AVPacket &pkt)
     frame.additionalInfo.audio.nbSamples = m_audioEnc->frame_size;
     frame.additionalInfo.audio.sampleRate = m_audioEnc->sample_rate;
     frame.additionalInfo.audio.channels = m_audioEnc->channels;
-    frame.timeStamp = (currentTimeMs() - m_timestampOffset) * frame.additionalInfo.audio.sampleRate / 1000;
+    frame.timeStamp = (AudioTime::currentTime()) * frame.additionalInfo.audio.sampleRate / 1000;
 
     ELOG_TRACE_T("deliverFrame(%s), sampleRate(%d), channels(%d), timeStamp(%d), length(%d), %s",
             getFormatStr(frame.format),

@@ -18,34 +18,49 @@
  * and approved by Intel in writing.
  */
 
-#ifndef AudioFrameMixer_h
-#define AudioFrameMixer_h
+#ifndef AcmmBroadcastGroup_h
+#define AcmmBroadcastGroup_h
 
-#include <EventRegistry.h>
+#include <boost/scoped_ptr.hpp>
+#include <boost/shared_ptr.hpp>
+
+#include <logger.h>
 
 #include "MediaFramePipeline.h"
 
+#include "AcmmOutput.h"
+
 namespace mcu {
 
-class AudioFrameMixer {
+using namespace woogeen_base;
+using namespace webrtc;
+
+class AcmmBroadcastGroup {
+    DECLARE_LOGGER();
+
+    static const int32_t _MAX_OUTPUT_STREAMS_ = 32;
+
 public:
-    virtual ~AudioFrameMixer() {}
+    AcmmBroadcastGroup();
+    ~AcmmBroadcastGroup();
 
-    virtual void enableVAD(uint32_t period) = 0;
-    virtual void disableVAD() = 0;
-    virtual void resetVAD() = 0;
+    bool addDest(const woogeen_base::FrameFormat format, woogeen_base::FrameDestination* destination);
+    void removeDest(woogeen_base::FrameDestination* destination);
 
-    virtual bool addInput(const std::string& group, const std::string& inStream, const woogeen_base::FrameFormat format, woogeen_base::FrameSource* source) = 0;
-    virtual void removeInput(const std::string& group, const std::string& inStream) = 0;
+    int32_t NeededFrequency();
+    void NewMixedAudio(const AudioFrame* audioFrame);
 
-    virtual void setInputActive(const std::string& group, const std::string& inStream, bool active) = 0;
+protected:
+    bool getFreeOutputId(uint16_t *id);
 
-    virtual bool addOutput(const std::string& group, const std::string& outStream, const woogeen_base::FrameFormat format, woogeen_base::FrameDestination* destination) = 0;
-    virtual void removeOutput(const std::string& group, const std::string& outStream) = 0;
+private:
+    const uint16_t m_groupId;
 
-    virtual void setEventRegistry(EventRegistry* handle) = 0;
+    std::vector<bool> m_outputIds;
+    std::map<woogeen_base::FrameFormat, boost::shared_ptr<AcmmOutput>> m_outputMap;
+    std::map<woogeen_base::FrameDestination*, woogeen_base::FrameFormat> m_formatMap;
 };
 
 } /* namespace mcu */
 
-#endif /* AudioFrameMixer_h */
+#endif /* AcmmBroadcastGroup_h */

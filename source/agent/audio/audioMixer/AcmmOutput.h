@@ -49,6 +49,8 @@ public:
     bool addDest(FrameFormat format, FrameDestination* destination);
     void removeDest(FrameDestination* destination);
 
+    bool hasDest() {return m_destinations.size() > 0;}
+
     int32_t NeededFrequency();
     bool newAudioFrame(const webrtc::AudioFrame *audioFrame);
 

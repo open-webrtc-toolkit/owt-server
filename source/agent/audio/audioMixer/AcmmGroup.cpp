@@ -18,11 +18,6 @@
  * and approved by Intel in writing.
  */
 
-#include <rtputils.h>
-
-#include <webrtc/common_types.h>
-
-#include "AudioUtilities.h"
 #include "AcmmGroup.h"
 
 namespace mcu {
@@ -62,7 +57,7 @@ bool AcmmGroup::getFreeInputId(uint16_t *id)
         }
     }
 
-    ELOG_WARN_T("No free Id, max input streams reached(%d)!", _MAX_INPUT_STREAMS_);
+    ELOG_WARN_T("No free Id, max input reached(%d)!", _MAX_INPUT_STREAMS_);
     return false;
 }
 
@@ -77,7 +72,7 @@ bool AcmmGroup::getFreeOutputId(uint16_t *id)
         }
     }
 
-    ELOG_WARN_T("No free Id, max output streams reached(%d)!", _MAX_OUTPUT_STREAMS_);
+    ELOG_WARN_T("No free Id, max output reached(%d)!", _MAX_OUTPUT_STREAMS_);
     return false;
 }
 
@@ -122,6 +117,17 @@ void AcmmGroup::getInputs(std::vector<boost::shared_ptr<AcmmInput>> &inputs)
     }
 }
 
+void AcmmGroup::getOutputs(std::vector<boost::shared_ptr<AcmmOutput>> &outputs)
+{
+    uint32_t size = m_outputs.size();
+    int i = 0;
+
+    outputs.resize(size);
+    for (auto& it : m_outputs) {
+         outputs[i++] = it.second;
+    }
+}
+
 boost::shared_ptr<AcmmInput> AcmmGroup::addInput(const std::string& inStream)
 {
     boost::shared_ptr<AcmmInput> acmmInput;
@@ -133,7 +139,6 @@ boost::shared_ptr<AcmmInput> AcmmGroup::addInput(const std::string& inStream)
 
     uint16_t inputId;
     if(!getFreeInputId(&inputId)) {
-        ELOG_ERROR_T("No free input id");
         return NULL;
     }
 
@@ -164,7 +169,6 @@ boost::shared_ptr<AcmmOutput> AcmmGroup::addOutput(const std::string& outStream)
 
     uint16_t outputId;
     if(!getFreeOutputId(&outputId)) {
-        ELOG_ERROR_T("No free output id");
         return NULL;
     }
 
@@ -182,6 +186,26 @@ void AcmmGroup::removeOutput(const std::string& outStream)
     m_outputs.erase(m_outputIdMap[outStream]);
     m_outputIds[m_outputIdMap[outStream]] = true;
     m_outputIdMap.erase(outStream);
+}
+
+bool AcmmGroup::allInputsMuted()
+{
+    for (auto& it : m_inputs) {
+        if (it.second->isActive())
+            return false;
+    }
+
+    return true;
+}
+
+bool AcmmGroup::anyOutputsConnected()
+{
+    for (auto& it : m_outputs) {
+        if (it.second->hasDest())
+            return true;
+    }
+
+    return false;
 }
 
 int32_t AcmmGroup::NeededFrequency()

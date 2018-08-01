@@ -18,11 +18,8 @@
  * and approved by Intel in writing.
  */
 
-#include <rtputils.h>
-
-#include <webrtc/common_types.h>
-
 #include "AudioUtilities.h"
+
 #include "AcmmOutput.h"
 
 #include "AcmEncoder.h"
@@ -56,12 +53,12 @@ AcmmOutput::~AcmmOutput()
 
 bool AcmmOutput::addDest(FrameFormat format, FrameDestination* destination)
 {
-    ELOG_DEBUG_T("addDest, format(%s), dst(%p)", getFormatStr(format), destination);
+    ELOG_DEBUG_T("addDest, format(%s), dest(%p)", getFormatStr(format), destination);
 
     if (m_dstFormat != FRAME_FORMAT_UNKNOWN
             && m_dstFormat != format) {
 
-        ELOG_ERROR_T("Can't change format(%s -> %s)", getFormatStr(m_dstFormat), getFormatStr(format));
+        ELOG_ERROR_T("Don't support to update format(%s -> %s)", getFormatStr(m_dstFormat), getFormatStr(format));
         return false;
     }
 
