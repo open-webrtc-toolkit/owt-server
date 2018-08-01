@@ -246,6 +246,11 @@ void AcmmFrameMixer::removeInput(const std::string& participant, const std::stri
     return;
 }
 
+void AcmmFrameMixer::setInputActive(const std::string& group, const std::string& inStream, bool active)
+{
+    ELOG_DEBUG("setInputActive: group(%s), inStream(%s), active(%d)", group.c_str(), inStream.c_str(), active);
+}
+
 bool AcmmFrameMixer::addOutput(const std::string& participant, const std::string& outStream, const FrameFormat format, woogeen_base::FrameDestination* destination)
 {
     boost::unique_lock<boost::shared_mutex> lock(m_mutex);

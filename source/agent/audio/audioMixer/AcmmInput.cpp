@@ -18,12 +18,8 @@
  * and approved by Intel in writing.
  */
 
-#include <rtputils.h>
-
-#include <webrtc/common_types.h>
-
-#include "AudioUtilities.h"
 #include "AcmmInput.h"
+
 #include "AcmDecoder.h"
 #include "FfDecoder.h"
 
@@ -37,6 +33,7 @@ DEFINE_LOGGER(AcmmInput, "mcu.media.AcmmInput");
 AcmmInput::AcmmInput(int32_t id, const std::string &name)
     : m_id(id)
     , m_name(name)
+    , m_active(true)
     , m_srcFormat(FRAME_FORMAT_UNKNOWN)
     , m_source(NULL)
 {
@@ -53,7 +50,7 @@ AcmmInput::~AcmmInput()
 
 bool AcmmInput::setSource(FrameFormat format, FrameSource* source)
 {
-    ELOG_DEBUG_T("setSource, format(%s)", getFormatStr(format));
+    ELOG_DEBUG_T("setSource, format(%s), source(%p)", getFormatStr(format), source);
 
     switch(format) {
         case FRAME_FORMAT_AAC:
@@ -99,8 +96,16 @@ void AcmmInput::unsetSource()
     m_decoder.reset();
 }
 
+void AcmmInput::setActive(bool active)
+{
+    m_active = active;
+}
+
 int32_t AcmmInput::GetAudioFrame(int32_t id, AudioFrame* audio_frame)
 {
+    if (!m_active)
+        return -1;
+
     if (!m_decoder || !m_decoder->getAudioFrame(audio_frame)) {
         ELOG_DEBUG_T("Error GetAudioFrame");
         return -1;

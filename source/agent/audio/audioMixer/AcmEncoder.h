@@ -23,6 +23,7 @@
 
 #include <boost/scoped_ptr.hpp>
 #include <boost/shared_ptr.hpp>
+#include <boost/thread.hpp>
 
 #include <webrtc/modules/audio_coding/include/audio_coding_module.h>
 
@@ -54,12 +55,23 @@ public:
             size_t payload_len_bytes,
             const RTPFragmentationHeader* fragmentation) override;
 
+protected:
+    void encodeLoop();
+
 private:
     boost::shared_ptr<AudioCodingModule> m_audioCodingModule;
     FrameFormat m_format;
 
     uint32_t m_timestampOffset;
     bool m_valid;
+
+    bool m_running;
+    boost::thread m_thread;
+    boost::mutex m_mutex;
+    boost::condition_variable m_cond;
+
+    uint32_t m_incomingFrameCount;
+    boost::shared_ptr<AudioFrame> m_frame;
 };
 
 } /* namespace mcu */

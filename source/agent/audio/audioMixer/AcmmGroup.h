@@ -24,8 +24,6 @@
 #include <boost/scoped_ptr.hpp>
 #include <boost/shared_ptr.hpp>
 
-#include <webrtc/modules/audio_conference_mixer/include/audio_conference_mixer_defines.h>
-
 #include <logger.h>
 
 #include "MediaFramePipeline.h"
@@ -41,8 +39,8 @@ using namespace webrtc;
 class AcmmGroup {
     DECLARE_LOGGER();
 
-    static const int32_t _MAX_INPUT_STREAMS_    = 128;
-    static const int32_t _MAX_OUTPUT_STREAMS_   = 16;
+    static const int32_t _MAX_INPUT_STREAMS_            = 128;
+    static const int32_t _MAX_OUTPUT_STREAMS_           = 32;
 
 public:
     AcmmGroup(uint16_t id);
@@ -56,6 +54,7 @@ public:
     boost::shared_ptr<AcmmInput> getInput(uint16_t streamId);
 
     void getInputs(std::vector<boost::shared_ptr<AcmmInput>> &inputs);
+    void getOutputs(std::vector<boost::shared_ptr<AcmmOutput>> &outputs);
 
     uint32_t numOfInputs() {return m_inputs.size();}
     uint32_t numOfOutputs() {return m_outputs.size();}
@@ -65,6 +64,9 @@ public:
 
     boost::shared_ptr<AcmmOutput> addOutput(const std::string& outStream);
     void removeOutput(const std::string& outStream);
+
+    bool allInputsMuted();
+    bool anyOutputsConnected();
 
     int32_t NeededFrequency();
     void NewMixedAudio(const AudioFrame* audioFrame);

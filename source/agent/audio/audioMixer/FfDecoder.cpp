@@ -400,8 +400,11 @@ void FfDecoder::onFrame(const Frame& frame)
     }
 
     ret = avcodec_receive_frame(m_decCtx, m_decFrame);
-    if (ret < 0) {
-        ELOG_ERROR_T("Error while receive frame, %s", ff_err2str(ret));
+    if (ret == AVERROR(EAGAIN)) {
+        ELOG_DEBUG_T("Error while receive frame(%d), %s", ret, ff_err2str(ret));
+        return;
+    }else if (ret < 0) {
+        ELOG_ERROR_T("Error while receive frame(%d), %s", ret, ff_err2str(ret));
         return;
     }
 

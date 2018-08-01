@@ -33,6 +33,7 @@
 #include "MediaFramePipeline.h"
 #include "AudioFrameMixer.h"
 
+#include "AcmmBroadcastGroup.h"
 #include "AcmmGroup.h"
 #include "AcmmInput.h"
 
@@ -45,8 +46,13 @@ class AcmmFrameMixer2 : public AudioFrameMixer,
                        public AudioMixerVadReceiver {
     DECLARE_LOGGER();
 
-    static const int32_t MAX_GROUPS = 128;
+    static const int32_t MAX_GROUPS = 1280;
     static const int32_t MIXER_FREQUENCY = 100;
+
+    struct OutputInfo {
+        woogeen_base::FrameFormat format;
+        woogeen_base::FrameDestination *dest;
+    };
 
 public:
     AcmmFrameMixer2();
@@ -59,6 +65,9 @@ public:
 
     bool addInput(const std::string& group, const std::string& inStream, const woogeen_base::FrameFormat format, woogeen_base::FrameSource* source) override;
     void removeInput(const std::string& group, const std::string& inStream) override;
+
+    void setInputActive(const std::string& group, const std::string& inStream, bool active) override;
+
     bool addOutput(const std::string& group, const std::string& outStream, const woogeen_base::FrameFormat format, woogeen_base::FrameDestination* destination) override;
     void removeOutput(const std::string& group, const std::string& outStream) override;
 
@@ -97,7 +106,8 @@ private:
     boost::scoped_ptr<JobTimer> m_jobTimer;
     boost::shared_ptr<AudioConferenceMixer> m_mixerModule;
 
-    std::map<AcmmOutput *, woogeen_base::FrameDestination *> m_dstMap;
+    std::map<AcmmOutput*, OutputInfo> m_outputInfoMap;
+    boost::shared_ptr<AcmmBroadcastGroup> m_broadcastGroup;
 
     std::vector<bool> m_groupIds;
     std::map<std::string, uint16_t> m_groupIdMap;

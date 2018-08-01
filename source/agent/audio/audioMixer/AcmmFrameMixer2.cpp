@@ -53,9 +53,13 @@ AcmmFrameMixer2::AcmmFrameMixer2()
     m_mixerModule->RegisterMixedStreamCallback(this);
     m_mixerModule->SetMultipleInputs(true);
 
-    m_groupIds.resize(MAX_GROUPS);
-    for (size_t i = 0; i < MAX_GROUPS; ++i)
+    m_groupIds.resize(MAX_GROUPS + 1);
+    for (size_t i = 1; i < MAX_GROUPS + 1; ++i)
         m_groupIds[i] = true;
+
+    //reserved for broadcast group
+    m_groupIds[0] = false;
+    m_broadcastGroup.reset(new AcmmBroadcastGroup());
 
     m_jobTimer.reset(new JobTimer(MIXER_FREQUENCY, this));
 }
@@ -164,13 +168,13 @@ bool AcmmFrameMixer2::addInput(const std::string& group, const std::string& inSt
     boost::shared_ptr<AcmmInput> acmmInput;
     int ret;
 
-    ELOG_DEBUG("addInput: group(%s), inStream(%s), format(%s)", group.c_str(), inStream.c_str(), getFormatStr(format));
+    ELOG_DEBUG("addInput: group(%s), inStream(%s), format(%s), source(%p)", group.c_str(), inStream.c_str(), getFormatStr(format), source);
 
     acmmGroup = getGroup(group);
     if (!acmmGroup) {
         acmmGroup = addGroup(group);
         if (!acmmGroup) {
-            ELOG_WARN("Can not add input group");
+            ELOG_ERROR("Can not add input group");
             return false;
         }
     }
@@ -181,7 +185,7 @@ bool AcmmFrameMixer2::addInput(const std::string& group, const std::string& inSt
 
         acmmInput->unsetSource();
         if(!acmmInput->setSource(format, source)) {
-            ELOG_ERROR("Fail to update input");
+            ELOG_ERROR("Fail to update source");
             return false;
         }
     } else {
@@ -192,7 +196,7 @@ bool AcmmFrameMixer2::addInput(const std::string& group, const std::string& inSt
         }
 
         if (!acmmInput->setSource(format, source)) {
-            ELOG_ERROR("Fail to set input");
+            ELOG_ERROR("Fail to set source");
             return false;
         }
 
@@ -207,6 +211,18 @@ bool AcmmFrameMixer2::addInput(const std::string& group, const std::string& inSt
             if (ret != 0) {
                 ELOG_ERROR("Fail to SetAnonymousMixabilityStatus");
                 return false;
+            }
+        }
+
+        if (!acmmGroup->anyOutputsConnected()) {
+            std::vector<boost::shared_ptr<AcmmOutput>> outputs;
+            acmmGroup->getOutputs(outputs);
+            for(auto& o : outputs) {
+                m_broadcastGroup->removeDest(m_outputInfoMap[o.get()].dest);
+                if (!o->addDest(m_outputInfoMap[o.get()].format, m_outputInfoMap[o.get()].dest)) {
+                    ELOG_ERROR("Fail to reconnect dest");
+                    return false;
+                }
             }
         }
     }
@@ -225,13 +241,13 @@ void AcmmFrameMixer2::removeInput(const std::string& group, const std::string& i
 
     acmmGroup = getGroup(group);
     if (!acmmGroup) {
-        ELOG_ERROR("removeInput: Invalid gropu(%s)", group.c_str());
+        ELOG_ERROR("Invalid gropu(%s)", group.c_str());
         return;
     }
 
     acmmInput = acmmGroup->getInput(inStream);
     if (!acmmInput) {
-        ELOG_ERROR("removeInput: Invalid input(%s)", inStream.c_str());
+        ELOG_ERROR("Invalid input(%s)", inStream.c_str());
         return;
     }
 
@@ -242,6 +258,19 @@ void AcmmFrameMixer2::removeInput(const std::string& group, const std::string& i
     }
 
     acmmGroup->removeInput(inStream);
+
+    if (acmmGroup->allInputsMuted() && acmmGroup->anyOutputsConnected()) {
+        std::vector<boost::shared_ptr<AcmmOutput>> outputs;
+        acmmGroup->getOutputs(outputs);
+        for(auto& o : outputs) {
+            o->removeDest(m_outputInfoMap[o.get()].dest);
+            if (!m_broadcastGroup->addDest(m_outputInfoMap[o.get()].format, m_outputInfoMap[o.get()].dest)) {
+                ELOG_ERROR("Fail to reconnect broadcast dest");
+                return;
+            }
+        }
+    }
+
     if (!acmmGroup->numOfInputs() && !acmmGroup->numOfOutputs()) {
         removeGroup(group);
     }
@@ -252,20 +281,74 @@ void AcmmFrameMixer2::removeInput(const std::string& group, const std::string& i
     return;
 }
 
+void AcmmFrameMixer2::setInputActive(const std::string& group, const std::string& inStream, bool active)
+{
+    boost::unique_lock<boost::shared_mutex> lock(m_mutex);
+    boost::shared_ptr<AcmmGroup> acmmGroup;
+    boost::shared_ptr<AcmmInput> acmmInput;
+
+    ELOG_DEBUG("+++setInputActive: group(%s), inStream(%s), active(%d)", group.c_str(), inStream.c_str(), active);
+
+    acmmGroup = getGroup(group);
+    if (!acmmGroup) {
+        ELOG_ERROR("Invalid gropu(%s)", group.c_str());
+        return;
+    }
+
+    acmmInput = acmmGroup->getInput(inStream);
+    if (!acmmInput) {
+        ELOG_ERROR("Invalid input(%s)", inStream.c_str());
+        return;
+    }
+
+    if (acmmInput->isActive() == active)
+        return;
+
+    acmmInput->setActive(active);
+
+    if (!acmmGroup->numOfOutputs())
+        return;
+
+    if (acmmGroup->allInputsMuted() && acmmGroup->anyOutputsConnected()) {
+        std::vector<boost::shared_ptr<AcmmOutput>> outputs;
+        acmmGroup->getOutputs(outputs);
+        for(auto& o : outputs) {
+            o->removeDest(m_outputInfoMap[o.get()].dest);
+            if (!m_broadcastGroup->addDest(m_outputInfoMap[o.get()].format, m_outputInfoMap[o.get()].dest)) {
+                ELOG_ERROR("Fail to reconnect broadcast dest");
+                return;
+            }
+        }
+    } else if (!acmmGroup->allInputsMuted() && !acmmGroup->anyOutputsConnected()) {
+        std::vector<boost::shared_ptr<AcmmOutput>> outputs;
+        acmmGroup->getOutputs(outputs);
+        for(auto& o : outputs) {
+            m_broadcastGroup->removeDest(m_outputInfoMap[o.get()].dest);
+            if (!o->addDest(m_outputInfoMap[o.get()].format, m_outputInfoMap[o.get()].dest)) {
+                ELOG_ERROR("Fail to reconnect dest");
+                return;
+            }
+        }
+    }
+
+    ELOG_DEBUG("---setInputActive: group(%s), inStream(%s), active(%d)", group.c_str(), inStream.c_str(), active);
+}
+
 bool AcmmFrameMixer2::addOutput(const std::string& group, const std::string& outStream, const woogeen_base::FrameFormat format, woogeen_base::FrameDestination* destination)
 {
     boost::unique_lock<boost::shared_mutex> lock(m_mutex);
     boost::shared_ptr<AcmmGroup> acmmGroup;
     boost::shared_ptr<AcmmOutput> acmmOutput;
+    boost::shared_ptr<AcmmOutput> acmmBroadcastOutput;
     int ret;
 
-    ELOG_DEBUG("addOutput: group(%s), outStream(%s), format(%s)", group.c_str(), outStream.c_str(), getFormatStr(format));
+    ELOG_DEBUG("addOutput: group(%s), outStream(%s), format(%s), dest(%p)", group.c_str(), outStream.c_str(), getFormatStr(format), destination);
 
     acmmGroup = getGroup(group);
     if (!acmmGroup) {
         acmmGroup = addGroup(group);
         if (!acmmGroup) {
-            ELOG_WARN("Can not add input group");
+            ELOG_ERROR("Can not add output group");
             return false;
         }
     }
@@ -274,15 +357,28 @@ bool AcmmFrameMixer2::addOutput(const std::string& group, const std::string& out
     if (acmmOutput) {
         ELOG_DEBUG("Update previous output");
 
-        acmmOutput->removeDest(m_dstMap[acmmOutput.get()]);
-        m_dstMap.erase(acmmOutput.get());
+        if (acmmGroup->allInputsMuted()) {
+            m_broadcastGroup->removeDest(m_outputInfoMap[acmmOutput.get()].dest);
+            m_outputInfoMap.erase(acmmOutput.get());
 
-        if(!acmmOutput->addDest(format, destination)) {
-            ELOG_ERROR("Fail to update output");
-            return false;
+            if (!m_broadcastGroup->addDest(format, destination)) {
+                ELOG_ERROR("Fail to update broadcast dest");
+                return false;
+            }
+        } else {
+            acmmOutput->removeDest(m_outputInfoMap[acmmOutput.get()].dest);
+            m_outputInfoMap.erase(acmmOutput.get());
+
+            if (!acmmOutput->addDest(format, destination)) {
+                ELOG_ERROR("Fail to update dest");
+                return false;
+            }
         }
 
-        m_dstMap[acmmOutput.get()] = destination;
+        OutputInfo outputInfo;
+        outputInfo.format = format;
+        outputInfo.dest = destination;
+        m_outputInfoMap[acmmOutput.get()] = outputInfo;
     } else {
         acmmOutput = acmmGroup->addOutput(outStream);
         if(!acmmOutput) {
@@ -290,12 +386,7 @@ bool AcmmFrameMixer2::addOutput(const std::string& group, const std::string& out
             return false;
         }
 
-        if (!acmmOutput->addDest(format, destination)) {
-            ELOG_ERROR("Fail to set output");
-            return false;
-        }
-
-        if ((acmmGroup->numOfOutputs() == 1) && acmmGroup->numOfInputs() ) {
+        if ((acmmGroup->numOfOutputs() == 1) && acmmGroup->numOfInputs()) {
             std::vector<boost::shared_ptr<AcmmInput>> inputs;
             acmmGroup->getInputs(inputs);
             for(auto& i : inputs) {
@@ -306,7 +397,22 @@ bool AcmmFrameMixer2::addOutput(const std::string& group, const std::string& out
             }
         }
 
-        m_dstMap[acmmOutput.get()] = destination;
+        if (acmmGroup->allInputsMuted()) {
+            if (!m_broadcastGroup->addDest(format, destination)) {
+                ELOG_ERROR("Fail to add broadcast dest");
+                return false;
+            }
+        } else {
+            if (!acmmOutput->addDest(format, destination)) {
+                ELOG_ERROR("Fail to add dest");
+                return false;
+            }
+        }
+
+        OutputInfo outputInfo;
+        outputInfo.format = format;
+        outputInfo.dest = destination;
+        m_outputInfoMap[acmmOutput.get()] = outputInfo;
     }
 
     updateFrequency();
@@ -324,17 +430,17 @@ void AcmmFrameMixer2::removeOutput(const std::string& group, const std::string& 
 
     acmmGroup = getGroup(group);
     if (!acmmGroup) {
-        ELOG_ERROR("removeOutput: Invalid gropu(%s)", group.c_str());
+        ELOG_ERROR("Invalid gropu(%s)", group.c_str());
         return;
     }
 
     acmmOutput = acmmGroup->getOutput(outStream);
     if (!acmmOutput) {
-        ELOG_ERROR("removeOutput: Invalid output(%s)", outStream.c_str());
+        ELOG_ERROR("Invalid output(%s)", outStream.c_str());
         return;
     }
 
-    if ((acmmGroup->numOfOutputs() == 1) && acmmGroup->numOfInputs() ) {
+    if ((acmmGroup->numOfOutputs() == 1) && acmmGroup->numOfInputs()) {
         std::vector<boost::shared_ptr<AcmmInput>> inputs;
         acmmGroup->getInputs(inputs);
         for(auto& i : inputs) {
@@ -345,7 +451,13 @@ void AcmmFrameMixer2::removeOutput(const std::string& group, const std::string& 
         }
     }
 
-    m_dstMap.erase(acmmOutput.get());
+    if (acmmGroup->allInputsMuted()) {
+        m_broadcastGroup->removeDest(m_outputInfoMap[acmmOutput.get()].dest);
+    } else {
+        acmmOutput->removeDest(m_outputInfoMap[acmmOutput.get()].dest);
+    }
+    m_outputInfoMap.erase(acmmOutput.get());
+
     acmmGroup->removeOutput(outStream);
     if (!acmmGroup->numOfInputs() && !acmmGroup->numOfOutputs()) {
         removeGroup(group);
@@ -357,7 +469,7 @@ void AcmmFrameMixer2::removeOutput(const std::string& group, const std::string& 
 
 void AcmmFrameMixer2::updateFrequency()
 {
-    int32_t maxFreq = m_frequency;
+    int32_t maxFreq = m_broadcastGroup->NeededFrequency();
     int32_t freq;
     int ret;
 
@@ -374,6 +486,7 @@ void AcmmFrameMixer2::updateFrequency()
             return;
         }
 
+        ELOG_DEBUG("Max mixing frequency %d -> %d", m_frequency, maxFreq);
         m_frequency = maxFreq;
     }
 
@@ -400,7 +513,7 @@ void AcmmFrameMixer2::NewMixedAudio(int32_t id,
     for(uint32_t i = 0; i< size; i++) {
         uint16_t groupId = (uniqueAudioFrames[i]->id_ >> 16) & 0xffff;
 
-        ELOG_TRACE_T("NewMixedAudio, frame id(0x%x), groupId(%u)"
+        ELOG_TRACE("NewMixedAudio, frame id(0x%x), groupId(%u)"
                 , uniqueAudioFrames[i]->id_
                 , groupId);
 
@@ -424,6 +537,8 @@ void AcmmFrameMixer2::NewMixedAudio(int32_t id,
             }
         }
     }
+
+    m_broadcastGroup->NewMixedAudio(&generalAudioFrame);
 }
 
 boost::shared_ptr<AcmmInput> AcmmFrameMixer2::getInputById(int32_t id)
@@ -468,7 +583,7 @@ void AcmmFrameMixer2::VadParticipants(const ParticipantVadStatistics *statistics
     }
 
     if (activeAcmmInput && m_mostActiveInput != activeAcmmInput) {
-        ELOG_TRACE("active vad %s -> %s"
+        ELOG_TRACE("Active vad %s -> %s"
                 , m_mostActiveInput ? m_mostActiveInput->name().c_str() : "NULL"
                 , activeAcmmInput->name().c_str());
 

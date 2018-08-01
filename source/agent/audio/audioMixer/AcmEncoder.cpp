@@ -18,10 +18,10 @@
  * and approved by Intel in writing.
  */
 
-#include <rtputils.h>
-
 #include "AudioUtilities.h"
 #include "AcmEncoder.h"
+
+#include "AudioTime.h"
 
 namespace mcu {
 
@@ -34,14 +34,24 @@ AcmEncoder::AcmEncoder(const FrameFormat format)
     : m_format(format)
     , m_timestampOffset(0)
     , m_valid(false)
+    , m_running(false)
+    , m_incomingFrameCount(0)
 {
     AudioCodingModule::Config config;
     m_audioCodingModule.reset(AudioCodingModule::Create(config));
+
+    m_frame.reset(new AudioFrame());
+    m_running = true;
+    m_thread = boost::thread(&AcmEncoder::encodeLoop, this);
 }
 
 AcmEncoder::~AcmEncoder()
 {
     int ret;
+
+    m_running = false;
+    m_cond.notify_one();
+    m_thread.join();
 
     if (!m_valid)
         return;
@@ -77,7 +87,7 @@ bool AcmEncoder::init()
         return false;
     }
 
-    m_timestampOffset = currentTimeMs();
+    //m_timestampOffset = currentTimeMs();
     m_valid = true;
 
     return true;
@@ -85,8 +95,6 @@ bool AcmEncoder::init()
 
 bool AcmEncoder::addAudioFrame(const AudioFrame* audioFrame)
 {
-    int ret;
-
     if (!m_valid)
         return false;
 
@@ -98,13 +106,47 @@ bool AcmEncoder::addAudioFrame(const AudioFrame* audioFrame)
             audioFrame->timestamp_
             );
 
-    ret = m_audioCodingModule->Add10MsData(*audioFrame);
-    if (ret < 0) {
-        ELOG_ERROR_T("Fail to insert raw into acm");
-        return false;
+    {
+        boost::mutex::scoped_lock lock(m_mutex);
+
+        m_frame->CopyFrom(*audioFrame);
+
+        if (m_incomingFrameCount > 1)
+            ELOG_WARN_T("Too many pending frames(%d)", m_incomingFrameCount);
+
+        m_incomingFrameCount++;
+        m_cond.notify_one();
     }
 
     return true;
+}
+
+void AcmEncoder::encodeLoop()
+{
+    while (true) {
+        boost::shared_ptr<AudioFrame> frame;
+
+        {
+            boost::mutex::scoped_lock lock(m_mutex);
+
+            while (m_running && m_incomingFrameCount == 0) {
+                m_cond.wait(lock);
+            }
+
+            if (!m_running)
+                break;
+
+            m_incomingFrameCount = 0;
+            frame = m_frame;
+        }
+
+        int ret = m_audioCodingModule->Add10MsData(*frame.get());
+        if (ret < 0) {
+            ELOG_ERROR_T("Fail to insert raw into acm");
+        }
+    }
+
+    ELOG_DEBUG_T("Thread exited!");
 }
 
 int32_t AcmEncoder::SendData(FrameType frame_type,
@@ -134,7 +176,7 @@ int32_t AcmEncoder::SendData(FrameType frame_type,
     frame.additionalInfo.audio.channels = getAudioChannels(frame.format);
     frame.payload = const_cast<uint8_t*>(payload_data);
     frame.length = payload_len_bytes;
-    frame.timeStamp = (currentTimeMs() - m_timestampOffset) * frame.additionalInfo.audio.sampleRate / 1000;
+    frame.timeStamp = (AudioTime::currentTime()) * frame.additionalInfo.audio.sampleRate / 1000;
 
     ELOG_TRACE_T("deliverFrame(%s), sampleRate(%d), channels(%d), timeStamp(%d), length(%d), %s",
             getFormatStr(frame.format),

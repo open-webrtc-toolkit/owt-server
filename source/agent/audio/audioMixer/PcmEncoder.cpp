@@ -18,10 +18,10 @@
  * and approved by Intel in writing.
  */
 
-#include <rtputils.h>
-
 #include "AudioUtilities.h"
 #include "PcmEncoder.h"
+
+#include "AudioTime.h"
 
 namespace mcu {
 
@@ -52,7 +52,7 @@ bool PcmEncoder::init()
         return false;
     }
 
-    m_timestampOffset = currentTimeMs();
+    //m_timestampOffset = currentTimeMs();
     m_valid = true;
 
     return true;
@@ -95,7 +95,7 @@ bool PcmEncoder::addAudioFrame(const AudioFrame* audioFrame)
     frame.additionalInfo.audio.nbSamples = audioFrame->samples_per_channel_;
     frame.additionalInfo.audio.sampleRate = audioFrame->sample_rate_hz_;
     frame.additionalInfo.audio.channels = audioFrame->num_channels_;
-    frame.timeStamp = (currentTimeMs() - m_timestampOffset) * frame.additionalInfo.audio.sampleRate / 1000;
+    frame.timeStamp = (AudioTime::currentTime()) * frame.additionalInfo.audio.sampleRate / 1000;
 
     ELOG_TRACE_T("deliverFrame(%s), sampleRate(%d), channels(%d), timeStamp(%d), length(%d), %s",
             getFormatStr(frame.format),
