@@ -137,6 +137,7 @@ void VideoTranscoder::unsetInput(const std::string& inStreamID)
 bool VideoTranscoder::addOutput(
     const std::string& outStreamID
     , const std::string& codec
+    , const woogeen_base::VideoCodecProfile profile
     , const std::string& resolution
     , const unsigned int framerateFPS
     , const unsigned int bitrateKbps

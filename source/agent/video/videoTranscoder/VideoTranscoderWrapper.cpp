@@ -126,7 +126,7 @@ void VideoTranscoder::addOutput(const v8::FunctionCallbackInfo<v8::Value>& args)
   FrameDestination* param6 = ObjectWrap::Unwrap<FrameDestination>(args[6]->ToObject());
   woogeen_base::FrameDestination* dest = param6->dest;
 
-  bool r = me->addOutput(outStreamID, codec, resolution, framerateFPS, bitrateKbps, keyFrameIntervalSeconds, dest);
+  bool r = me->addOutput(outStreamID, codec, woogeen_base::PROFILE_UNKNOWN, resolution, framerateFPS, bitrateKbps, keyFrameIntervalSeconds, dest);
 
   args.GetReturnValue().Set(Boolean::New(isolate, r));
 }

@@ -59,6 +59,7 @@ public:
     void setInputActive(const int inputIndex, bool active);
     bool addOutput(const std::string& outStreamID
             , const std::string& codec
+            , const woogeen_base::VideoCodecProfile profile
             , const std::string& resolution
             , const unsigned int framerateFPS
             , const unsigned int bitrateKbps
