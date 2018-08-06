@@ -59,6 +59,20 @@ enum FrameFormat {
     FRAME_FORMAT_NELLYMOSER,
 };
 
+enum VideoCodecProfile {
+    PROFILE_UNKNOWN                     = 0,
+
+    /* AVC Profiles */
+    PROFILE_AVC_CONSTRAINT_SET1         = (0x100 << 1),
+
+    PROFILE_AVC_BASELINE                = 66,
+    PROFILE_AVC_MAIN                    = 77,
+    PROFILE_AVC_EXTENDED                = 88,
+    PROFILE_AVC_HIGH                    = 100,
+
+    PROFILE_AVC_CONSTRAINED_BASELINE    = PROFILE_AVC_BASELINE + PROFILE_AVC_CONSTRAINT_SET1,
+};
+
 struct VideoFrameSpecificInfo {
     uint16_t width;
     uint16_t height;
