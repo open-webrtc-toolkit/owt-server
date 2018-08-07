@@ -508,7 +508,10 @@ var joinCluster = function (on_ok) {
             break;
         case 'video':
             /*FIXME: should be double checked whether hardware acceleration is actually running*/
-        load_collection.item = {name: (global.config.video.hardwareAccelerated ? 'gpu' : 'cpu')};
+            var videoCapability = require('./videoCapability');
+            capacity.video = videoCapability;
+            global.config.video.codecs = videoCapability;
+            load_collection.item = {name: (global.config.video.hardwareAccelerated ? 'gpu' : 'cpu')};
             break;
         default:
             log.error('Ambiguous purpose:', purpose);

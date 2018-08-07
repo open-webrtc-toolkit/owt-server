@@ -30,9 +30,14 @@ var DEFAULT_AUDIO_OUT = [
   { codec: 'nellymoser' },
   { codec: 'ilbc' },
 ];
-var DEFAULT_VIDEO = [
+var DEFAULT_VIDEO_IN = [
   { codec: 'h264' },
-  { codec: 'h265' },
+  { codec: 'vp8' },
+  { codec: 'vp9' },
+];
+var DEFAULT_VIDEO_OUT = [
+  { codec: 'h264', profile: 'CB' },
+  { codec: 'h264', profile: 'B' },
   { codec: 'vp8' },
   { codec: 'vp9' },
 ];
@@ -77,29 +82,6 @@ const removeNull = (obj) => {
   });
 };
 
-//FIXME: Detect profile capability in conference and remove this logic
-const applyDetailH264Profile = (room) => {
-  var hasH264 = false;
-  room.mediaOut.video.format.forEach((fmt) => {
-    if (fmt.codec === 'h264' && !fmt.profile) {
-      fmt.profile = 'M';
-      hasH264 = true;
-    }
-  });
-  room.views.forEach((viewSettings) => {
-    var fmt = viewSettings.video.format;
-    if (fmt.codec === 'h264' && !fmt.profile) {
-      fmt.profile = 'M';
-      hasH264 = true;
-    }
-  });
-  if (hasH264) {
-    room.mediaOut.video.format.push({ codec: 'h264', profile: 'CB' });
-    room.mediaOut.video.format.push({ codec: 'h264', profile: 'B' });
-    room.mediaOut.video.format.push({ codec: 'h264', profile: 'H' });
-  }
-};
-
 /*
  * Create Room.
  */
@@ -108,7 +90,7 @@ exports.create = function (serviceId, roomOption, callback) {
     roomOption.mediaOut = {
       audio: DEFAULT_AUDIO_OUT,
       video: {
-        format: DEFAULT_VIDEO,
+        format: DEFAULT_VIDEO_OUT,
         parameters: DEFAULT_VIDEO_PARA
       }
     };
@@ -116,7 +98,7 @@ exports.create = function (serviceId, roomOption, callback) {
   if (!roomOption.mediaIn) {
     roomOption.mediaIn = {
       audio: DEFAULT_AUDIO,
-      video: DEFAULT_VIDEO
+      video: DEFAULT_VIDEO_IN
     };
   }
   if (!roomOption.views) {
@@ -218,7 +200,6 @@ exports.config = function (roomId) {
         reject(err);
       } else {
         var config = Room.processLayout(room.toObject());
-        applyDetailH264Profile(config);
         resolve(config);
       }
     });

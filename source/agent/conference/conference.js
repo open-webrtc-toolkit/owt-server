@@ -379,6 +379,26 @@ var Conference = function (rpcClient, selfRpcId) {
     }
   };
 
+  var translateLegacyH264Formats = function (config) {
+    var hasLegacyH264 = false;
+    config.mediaOut.video.format.forEach((fmt) => {
+      if (fmt.codec === 'h264' && !fmt.profile) {
+        fmt.profile = 'CB';
+        hasLegacyH264 = true;
+      }
+    });
+    config.views.forEach((viewSettings) => {
+      var fmt = viewSettings.video.format;
+      if (fmt.codec === 'h264' && !fmt.profile) {
+        fmt.profile = 'CB';
+        hasLegacyH264 = true;
+      }
+    });
+    if (hasLegacyH264) {
+      config.mediaOut.video.format.push({ codec: 'h264', profile: 'B' });
+    }
+  };
+
   var initRoom = function(roomId) {
     if (is_initializing) {
       return new Promise(function(resolve, reject) {
@@ -413,6 +433,9 @@ var Conference = function (rpcClient, selfRpcId) {
               return Promise.reject('Room' + roomID + 'disabled');
             }
 
+            // FIXME: this logic is for legacy h264 codec without profile
+            translateLegacyH264Formats(config);
+
             return new Promise(function(resolve, reject) {
               RoomController.create(
                 {
@@ -438,10 +461,25 @@ var Conference = function (rpcClient, selfRpcId) {
                       return;
                     }
 
+                    //FIXME: h265 capability will not be considered during scheduling
+                    var default_audio_fmt = viewSettings.audio.format;
+                    var default_video_fmt = viewSettings.audio.format;
+                    var h265capability = false;
+                    if (av_capability.video.encode.findIndex((fmt) => (fmt.codec === 'h265')) < 0) {
+                      if (default_video_fmt.codec === 'h265' ||
+                        room_config.mediaOut.video.format.findIndex((fmt) => (fmt.codec === 'h265')) > -1) {
+                        log.warn('No capable h265 encoding for room');
+                      }
+                    }
+                    if (av_capability.video.decode.findIndex((fmt) => (fmt.codec === 'h265')) < 0) {
+                      if (room_config.mediaIn.video.findIndex((fmt) => (fmt.codec === 'h265')) > -1) {
+                        log.warn('No capable h265 decoding for room');
+                      }
+                    }
+
                     //FIXME: Validation defaultFormat/mediaOut against av_capability here is not complete.
-                    var default_audio_fmt = false, default_video_fmt = false;
                     if (viewSettings.audio) {
-                      if (viewSettings.audio.format && (av_capability.audio.findIndex((f) => {return isAudioFmtCompatible(viewSettings.audio.format, f);}) >= 0)) {
+                      if (viewSettings.audio.format && (av_capability.audio.findIndex((f) => isAudioFmtCompatible(viewSettings.audio.format, f)) >= 0)) {
                         default_audio_fmt = viewSettings.audio.format;
                       } else {
                         for (var i in room_config.mediaOut.audio) {

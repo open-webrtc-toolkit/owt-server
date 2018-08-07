@@ -289,6 +289,8 @@ function VMixer(rpcClient, clusterIP) {
 
     var addInput = function (stream_id, codec, options, avatar, on_ok, on_error) {
         log.debug('add input', stream_id);
+        // FIXME: filter profile setting for native layer
+        codec = codec.indexOf('h264') > -1 ? 'h264' : codec;
         if (engine) {
             var conn = internalConnFactory.fetch(stream_id, 'in');
             if (!conn) {
@@ -545,7 +547,7 @@ function VMixer(rpcClient, clusterIP) {
             }
         }
 
-        if (supported_codecs.encode.indexOf(codec) === -1) {
+        if (supported_codecs.encode.findIndex((c) => (c.toLowerCase() === codec)) < 0) {
             log.error('Not supported codec: '+codec);
             callback('callback', 'error', 'Not supported codec.');
             return;
@@ -780,6 +782,8 @@ function VTranscoder(rpcClient, clusterIP) {
         connections = {};
 
     var setInput = function (stream_id, codec, options, on_ok, on_error) {
+        // FIXME: filter profile setting for native layer
+        codec = codec.indexOf('h264') > -1 ? 'h264' : codec;
         if (engine) {
             var conn = internalConnFactory.fetch(stream_id, 'in');
             if (!conn) {
@@ -948,7 +952,7 @@ function VTranscoder(rpcClient, clusterIP) {
             }
         }
 
-        if (supported_codecs.encode.indexOf(codec) === -1) {
+        if (supported_codecs.encode.findIndex((c) => (c.toLowerCase() === codec)) < 0) {
             log.error('Not supported codec: '+codec);
             callback('callback', 'error', 'Not supported codec.');
             return;

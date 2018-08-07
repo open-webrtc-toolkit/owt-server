@@ -126,7 +126,22 @@ void VideoTranscoder::addOutput(const v8::FunctionCallbackInfo<v8::Value>& args)
   FrameDestination* param6 = ObjectWrap::Unwrap<FrameDestination>(args[6]->ToObject());
   woogeen_base::FrameDestination* dest = param6->dest;
 
-  bool r = me->addOutput(outStreamID, codec, woogeen_base::PROFILE_UNKNOWN, resolution, framerateFPS, bitrateKbps, keyFrameIntervalSeconds, dest);
+  woogeen_base::VideoCodecProfile profile = woogeen_base::PROFILE_UNKNOWN;
+  if (codec.find("h264") != std::string::npos) {
+    if (codec == "h264_cb") {
+      profile = woogeen_base::PROFILE_AVC_CONSTRAINED_BASELINE;
+    } else if (codec == "h264_b") {
+      profile = woogeen_base::PROFILE_AVC_BASELINE;
+    } else if (codec == "h264_m") {
+      profile = woogeen_base::PROFILE_AVC_MAIN;
+    } else if (codec == "h264_e") {
+      profile = woogeen_base::PROFILE_AVC_MAIN;
+    } else if (codec == "h264_h") {
+      profile = woogeen_base::PROFILE_AVC_HIGH;
+    }
+    codec = "h264";
+  }
+  bool r = me->addOutput(outStreamID, codec, profile, resolution, framerateFPS, bitrateKbps, keyFrameIntervalSeconds, dest);
 
   args.GetReturnValue().Set(Boolean::New(isolate, r));
 }

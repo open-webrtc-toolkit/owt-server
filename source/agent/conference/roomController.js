@@ -73,6 +73,28 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
     */
     var streams = {};
 
+    // Schedule preference
+    var getMediaPreference = function() {
+        var capability = {};
+        capability.video = {
+            encode: config.mediaOut.video.format.map(formatStr),
+            decode: config.mediaIn.video.map(formatStr)
+        };
+        config.mediaOut.video.format
+        config.views.forEach((view) => {
+            if (view.video.format) {
+                capability.video.encode.push(formatStr(view.video.format));
+            }
+        });
+        // FIXME: remove 'h265' for schedule preference
+        capability.video.encode = capability.video.encode.filter((fmt) => (fmt !== 'h265'));
+        capability.video.decode = capability.video.decode.filter((fmt) => (fmt !== 'h265'));
+
+        return capability;
+    };
+
+    var mediaPreference = getMediaPreference();
+
     // Length 20 number ID generator
     var randomId = function() {
         var length = 20;
@@ -220,6 +242,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
         if (config.views.length > 0) {
                 // Mutiple views configuration
                 var viewProcessed = [];
+                var errorReason;
 
                 config.views.forEach(function(viewSettings) {
                     var viewLabel = viewSettings.label;
@@ -235,6 +258,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                             },
                             function onError(reason) {
                                 log.error('init fail. view:', viewLabel, 'reason:', reason);
+                                errorReason = reason;
                                 delete mix_views[viewLabel];
                                 resolve(null);
                             });
@@ -246,7 +270,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                     var viewCount = results.filter(function(re) { return re !== null; }).length;
                     if (viewCount < results.length) {
                         log.debug("Views incomplete initialization", viewCount);
-                        on_error(that);
+                        on_error(errorReason);
                     } else {
                         on_ok(that);
                     }
@@ -293,7 +317,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                               : ((terminal_type === 'amixer' || terminal_type === 'axcoder') ? 'audio' : 'unknown');
 
                 var nodeLocality = (preAssignedNode ? Promise.resolve(preAssignedNode)
-                                               : rpcReq.getWorkerNode(cluster, purpose, {room: room_id, task: terminal_id}, 'preference'));
+                                               : rpcReq.getWorkerNode(cluster, purpose, {room: room_id, task: terminal_id}, mediaPreference));
 
                 return nodeLocality
                     .then(function(locality) {
@@ -1026,10 +1050,13 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
         }
     };
 
-    var formatStr = function (fmt) {
+    // This function would be called by getMediaPreference,
+    // which is defined before it, so do not declare with the 'var = '
+    function formatStr (fmt) {
         var format_str = (fmt.codec || '');
         fmt.sampleRate && (format_str = format_str + '_' + fmt.sampleRate);
         fmt.channelNum && (format_str = format_str + '_' + fmt.channelNum);
+        fmt.profile && (format_str = format_str + '_' + fmt.profile);
         return format_str;
     };
 
@@ -1642,7 +1669,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
     };
 
     var allocateMediaProcessingNode  = function (forWhom, usage) {
-        return  rpcReq.getWorkerNode(cluster, purpose, {room: room_id, task: terminal_id}, 'preference'/*FIXME: should take formats and usage specification into preference*/);
+        return  rpcReq.getWorkerNode(cluster, purpose, {room: room_id, task: terminal_id}, mediaPreference /*FIXME: should take formats and usage specification into preference*/);
     };
 
     var initMediaProcessor = function (terminal_id, parameters) {
@@ -1733,7 +1760,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
         });
         terminals[vmixerId].published = [];
 
-        return rpcReq.getWorkerNode(cluster, 'video', {room: room_id, task: vmixerId}, 'preference')
+        return rpcReq.getWorkerNode(cluster, 'video', {room: room_id, task: vmixerId}, mediaPreference)
             .then(function (locality) {
                 log.debug('Got new video mixer node:', locality);
                 terminals[vmixerId].locality = locality;
@@ -1950,7 +1977,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
         });
         terminals[amixerId].published = [];
 
-        return rpcReq.getWorkerNode(cluster, 'audio', {room: room_id, task: amixerId}, 'preference')
+        return rpcReq.getWorkerNode(cluster, 'audio', {room: room_id, task: amixerId}, mediaPreference)
             .then(function (locality) {
                 log.debug('Got new audio mixer node:', locality);
                 terminals[amixerId].locality = locality;
@@ -2148,14 +2175,21 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
             fmt_l[1] && (fmt.sampleRate = Number(fmt_l[1]));
             fmt_l[2] && (fmt.channelNum = Number(fmt_l[2]));
             return fmt;
-        }
+        };
+
+        var video_format_obj = function (fmtStr) {
+            var fmt_l = fmtStr.split('_');
+            var fmt = { codec: fmt_l[0] };
+            fmt_l[1] && (fmt.profile = fmt_l[1]);
+            return fmt;
+        };
 
         if (mix_views[view]) {
             return {
-                audio: mix_views[view].audio.supported_formats.map(function(af) {return audio_format_obj(af);}),
+                audio: mix_views[view].audio.supported_formats.map(audio_format_obj),
                 video: {
-                    encode: mix_views[view].video.supported_formats.encode.map(function(vf) {return {codec: vf};}),
-                    decode: mix_views[view].video.supported_formats.decode.map(function(vf) {return {codec: vf};})
+                    encode: mix_views[view].video.supported_formats.encode.map(video_format_obj),
+                    decode: mix_views[view].video.supported_formats.decode.map(video_format_obj)
                 }
             };
         } else {

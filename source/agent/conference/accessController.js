@@ -52,7 +52,6 @@ module.exports.create = function(spec, rpcReq, onSessionEstablished, onSessionAb
   const onReady = (sessionId, status) => {
     var audio = status.audio, video = status.video;
     var session = sessions[sessionId];
-    var video_codec;
 
     if (session.options.type === 'webrtc') {
       if (!!session.options.media.audio && !audio) {
@@ -69,8 +68,6 @@ module.exports.create = function(spec, rpcReq, onSessionEstablished, onSessionAb
         on_session_aborted(owner, sessionId, direction, 'No proper video codec');
         log.error('No proper video codec');
         return;
-      } else {
-        video_codec = video.codec;
       }
     }
 
@@ -96,7 +93,7 @@ module.exports.create = function(spec, rpcReq, onSessionEstablished, onSessionAb
       if (session.options.media.video) {
         media.video = {from: session.options.media.video.from};
         session.options.media.video.format && (media.video.format = session.options.media.video.format);
-        (session.options.type === 'webrtc') && (media.video.format = {codec: video_codec});
+        (session.options.type === 'webrtc') && (media.video.format = video);
         session.options.media.video.parameters && (media.video.parameters = session.options.media.video.parameters);
       }
 

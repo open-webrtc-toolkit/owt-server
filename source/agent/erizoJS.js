@@ -98,36 +98,9 @@ for (var prop in opt.options) {
 
 var rpc = require('./amqp_client')();
 
-var detectSWModeCapability = function () {
-    if (fs.existsSync('./lib/libopenh264.so.4') && (fs.statSync('./lib/libopenh264.so.4').size > 100000)) {//FIXME: The detection of installation of openh264 is not accurate here.
-        global.config.video.codecs.encode.push('h264');
-    }
-};
-
 function init_env() {
     if (process.argv[3] === 'video') {
-        if (global.config.video.hardwareAccelerated) {
-            // Query the hardware capability only if we want to try it.
-            require('child_process').exec('vainfo', {env: process.env}, function (error, stdout, stderr) {
-                if (error && error.code !== 0) {
-                    log.warn('vainfo check with exit code:', error.code);
-                    global.config.video.hardwareAccelerated = false;
-                    return;
-                }
-                var info = stdout.toString() || stderr.toString();
-                // Check hardware codec version
-                global.config.video.hardwareAccelerated = (info.indexOf('VA-API version') != -1);
-                if (global.config.video.hardwareAccelerated) {
-                    global.config.video.codecs.decode.push('h265');
-                    global.config.video.codecs.encode.push('h264');
-                    global.config.video.codecs.encode.push('h265');
-                } else {
-                    detectSWModeCapability();
-                }
-            });
-        } else {
-            detectSWModeCapability();
-        }
+        global.config.video.codecs = require('./videoCapability');
     }
 };
 
