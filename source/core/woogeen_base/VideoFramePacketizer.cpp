@@ -395,6 +395,7 @@ bool VideoFramePacketizer::init(bool enableRed, bool enableUlpfec)
     // Enable NACK.
     // TODO: the parameters should be dynamically adjustable.
     m_rtpRtcp->SetStorePacketsStatus(true, 600);
+    m_rtpRtcp->SetMaxRtpPacketSize(1200);
 
     m_taskRunner->RegisterModule(m_rtpRtcp.get());
 
