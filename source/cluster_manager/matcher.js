@@ -65,6 +65,33 @@ var webrtcMatcher = function () {
     };
 };
 
+var videoMatcher = function () {
+    this.match = function (preference, workers, candidates) {
+        if (!preference || !preference.video)
+            return candidates;
+
+        var formatContain = function (listA, listB) {
+            var count = 0;
+            listB.forEach((fmtB) => {
+                if (listA.indexOf(fmtB) > -1)
+                    count++;
+            });
+            return (count === listB.length);
+        };
+        var result = candidates.filter(function(cid) {
+            var capacity = workers[cid].info.capacity;
+            var encodeOk = false;
+            var decodeOk = false;
+            if (capacity.video) {
+                encodeOk = formatContain(capacity.video.encode, preference.video.encode);
+                decodeOk = formatContain(capacity.video.decode, preference.video.decode);
+            }
+            return (encodeOk && decodeOk);
+        });
+        return result;
+    };
+};
+
 var generalMatcher = function () {
     this.match = function (preference, workers, candidates) {
         return candidates;
@@ -72,7 +99,6 @@ var generalMatcher = function () {
 };
 
 var audioMatcher = generalMatcher;
-var videoMatcher = generalMatcher;
 
 exports.create = function (purpose) {
     switch (purpose) {
