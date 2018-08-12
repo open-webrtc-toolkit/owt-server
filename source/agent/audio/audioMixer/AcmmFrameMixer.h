@@ -32,7 +32,10 @@
 
 #include "MediaFramePipeline.h"
 #include "AudioFrameMixer.h"
-#include "AcmmParticipant.h"
+
+#include "AcmmBroadcastGroup.h"
+#include "AcmmGroup.h"
+#include "AcmmInput.h"
 
 namespace mcu {
 
@@ -43,8 +46,13 @@ class AcmmFrameMixer : public AudioFrameMixer,
                        public AudioMixerVadReceiver {
     DECLARE_LOGGER();
 
-    static const int32_t MAX_PARTICIPANTS = 128;
+    static const int32_t MAX_GROUPS = 1280;
     static const int32_t MIXER_FREQUENCY = 100;
+
+    struct OutputInfo {
+        woogeen_base::FrameFormat format;
+        woogeen_base::FrameDestination *dest;
+    };
 
 public:
     AcmmFrameMixer();
@@ -83,29 +91,31 @@ public:
 protected:
     void performMix();
 
-    bool isValidInput(int32_t id);
-    int32_t getFreeId();
+    bool getFreeGroupId(uint16_t *id);
 
-    boost::shared_ptr<AcmmParticipant> addParticipant(const std::string& participant);
-    void removeParticipant(const std::string& participant);
-    boost::shared_ptr<AcmmParticipant> getParticipant(const std::string& participant);
+    boost::shared_ptr<AcmmGroup> addGroup(const std::string& group);
+    void removeGroup(const std::string& group);
+    boost::shared_ptr<AcmmGroup> getGroup(const std::string& group);
 
     void updateFrequency();
+
+    boost::shared_ptr<AcmmInput> getInputById(int32_t id);
 
 private:
     EventRegistry *m_asyncHandle;
     boost::scoped_ptr<JobTimer> m_jobTimer;
     boost::shared_ptr<AudioConferenceMixer> m_mixerModule;
 
-    std::vector<bool> m_freeIds;
-    std::map<std::string, int32_t> m_ids;
-    std::map<int32_t, boost::shared_ptr<AcmmParticipant>> m_participants;
-    uint32_t m_inputs;
-    uint32_t m_outputs;
+    std::map<AcmmOutput*, OutputInfo> m_outputInfoMap;
+    boost::shared_ptr<AcmmBroadcastGroup> m_broadcastGroup;
+
+    std::vector<bool> m_groupIds;
+    std::map<std::string, uint16_t> m_groupIdMap;
+    std::map<uint16_t, boost::shared_ptr<AcmmGroup>> m_groups;
     boost::shared_mutex m_mutex;
 
     bool m_vadEnabled;
-    int32_t m_mostActiveChannel;
+    boost::shared_ptr<AcmmInput> m_mostActiveInput;
     int32_t m_frequency;
 };
 

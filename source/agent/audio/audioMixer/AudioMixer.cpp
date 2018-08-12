@@ -23,7 +23,6 @@
 
 #include "AudioMixer.h"
 #include "AcmmFrameMixer.h"
-#include "AcmmFrameMixer2.h"
 
 #include "AudioUtilities.h"
 #include "AudioTime.h"
@@ -59,7 +58,7 @@ AudioMixer::AudioMixer(const std::string& configStr)
 
     AudioTime::setTimestampOffset(currentTimeMs());
 
-    m_mixer.reset(new AcmmFrameMixer2());
+    m_mixer.reset(new AcmmFrameMixer());
 }
 
 AudioMixer::~AudioMixer()
