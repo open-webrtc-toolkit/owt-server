@@ -81,7 +81,7 @@ class VCMFrameEncoder : public VideoFrameEncoder, public webrtc::EncodedImageCal
     DECLARE_LOGGER();
 
 public:
-    VCMFrameEncoder(FrameFormat format, bool useSimulcast = false);
+    VCMFrameEncoder(FrameFormat format, VideoCodecProfile profile, bool useSimulcast = false);
     ~VCMFrameEncoder();
 
     FrameFormat getInputFormat() {return FRAME_FORMAT_I420;}
@@ -117,6 +117,7 @@ private:
     int32_t m_streamId;
 
     FrameFormat m_encodeFormat;
+    VideoCodecProfile m_profile;
     boost::scoped_ptr<webrtc::VideoEncoder> m_encoder;
     webrtc::TemporalLayersFactory tl_factory_;
 

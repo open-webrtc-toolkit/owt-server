@@ -33,6 +33,7 @@ public:
 
     virtual bool addOutput(int output,
             woogeen_base::FrameFormat,
+            const woogeen_base::VideoCodecProfile profile,
             const woogeen_base::VideoSize&,
             const unsigned int framerateFPS,
             const unsigned int bitrateKbps,
