@@ -51,6 +51,7 @@ public:
 
     bool addOutput(int output,
             woogeen_base::FrameFormat,
+            const woogeen_base::VideoCodecProfile profile,
             const woogeen_base::VideoSize&,
             const unsigned int framerateFPS,
             const unsigned int bitrateKbps,
@@ -152,6 +153,7 @@ inline void VideoFrameTranscoderImpl::unsetInput(int input)
 
 inline bool VideoFrameTranscoderImpl::addOutput(int output,
                                            woogeen_base::FrameFormat format,
+                                           const woogeen_base::VideoCodecProfile profile,
                                            const woogeen_base::VideoSize& rootSize,
                                            const unsigned int framerateFPS,
                                            const unsigned int bitrateKbps,
@@ -165,11 +167,11 @@ inline bool VideoFrameTranscoderImpl::addOutput(int output,
 
 #ifdef ENABLE_MSDK
     if (!encoder && woogeen_base::MsdkFrameEncoder::supportFormat(format)) {
-        encoder.reset(new woogeen_base::MsdkFrameEncoder(format, false));
+        encoder.reset(new woogeen_base::MsdkFrameEncoder(format, profile, false));
     }
 #endif
     if (!encoder) {
-        encoder.reset(new woogeen_base::VCMFrameEncoder(format));
+        encoder.reset(new woogeen_base::VCMFrameEncoder(format, profile));
     }
 
     streamId = encoder->generateStream(rootSize.width, rootSize.height, framerateFPS, bitrateKbps, keyFrameIntervalSeconds, dest);

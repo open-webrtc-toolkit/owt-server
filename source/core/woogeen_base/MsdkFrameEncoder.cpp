@@ -60,6 +60,7 @@ public:
         , m_ready(false)
         , m_frameCount(0)
         , m_format(FRAME_FORMAT_UNKNOWN)
+        , m_profile(PROFILE_UNKNOWN)
         , m_width(0)
         , m_height(0)
         , m_bitRateKbps(0)
@@ -87,8 +88,6 @@ public:
 
     ~StreamEncoder()
     {
-        printfFuncEnter;
-
         m_syncThreadRunning = false;
         m_syncCond.notify_one();
         m_syncThread.join();
@@ -128,8 +127,6 @@ public:
         if (m_bsDumpfp) {
             fclose(m_bsDumpfp);
         }
-
-        printfFuncExit;
     }
 
     void onFeedback(const woogeen_base::FeedbackMsg& msg) {
@@ -149,7 +146,7 @@ public:
         }
     }
 
-    bool init(FrameFormat format, uint32_t width, uint32_t height, uint32_t frameRate, uint32_t bitrateKbps, uint32_t keyFrameIntervalSeconds, FrameDestination* dest)
+    bool init(FrameFormat format, VideoCodecProfile profile, uint32_t width, uint32_t height, uint32_t frameRate, uint32_t bitrateKbps, uint32_t keyFrameIntervalSeconds, FrameDestination* dest)
     {
         if (!dest) {
             ELOG_ERROR("(%p)Null FrameDestination.", this);
@@ -158,6 +155,7 @@ public:
 
         m_mode = (width > 0 && height > 0) ? ENCODER_MODE_NORMAL : ENCODER_MODE_AUTO;
         m_format        = format;
+        m_profile       = profile;
         m_width         = width;
         m_height        = height;
         m_frameRate     = frameRate > 0 ? frameRate : 30;
@@ -168,23 +166,39 @@ public:
 
         updateParam();
 
+        ELOG_DEBUG_T("Created encoder %s, profile(%d), resolution(%dx%d), frame rate(%d), kbps(%d), keyFrameIntervalSeconds(%d)"
+                , getFormatStr(m_format), m_profile, m_width, m_height, m_frameRate, m_bitRateKbps, m_keyFrameIntervalSeconds);
+
         switch (m_format) {
             case FRAME_FORMAT_H264:
+
+                switch (m_profile) {
+                    case PROFILE_UNKNOWN:
+                    case PROFILE_AVC_BASELINE:
+                    case PROFILE_AVC_MAIN:
+                    case PROFILE_AVC_HIGH:
+                        break;
+                    default:
+                        ELOG_WARN_T("Unspported video profile(%d), force to Baseline", m_profile);
+
+                        m_profile = PROFILE_AVC_BASELINE;
+                        break;
+                }
+
                 m_encParam->mfx.CodecId         = MFX_CODEC_AVC;
-                m_encParam->mfx.CodecProfile    = MFX_PROFILE_AVC_MAIN;
-                m_encParam->mfx.CodecLevel      = MFX_LEVEL_AVC_51;
+                m_encParam->mfx.CodecProfile    = m_profile;
                 break;
             case FRAME_FORMAT_H265:
-                // Let encoder decide the profile to be used.
+                if (m_profile != PROFILE_UNKNOWN) {
+                    ELOG_WARN_T("Don't support profile setting(%d)", m_profile);
+                }
+
                 m_encParam->mfx.CodecId         = MFX_CODEC_HEVC;
                 break;
-            case FRAME_FORMAT_VP8:
             default:
                 ELOG_ERROR("(%p)Unspported video frame format %s(%d)", this, getFormatStr(m_format), m_format);
                 return false;
         }
-        ELOG_DEBUG_T("Created encoder %s(%d), resolution(%dx%d), frame rate(%d), kbps(%d), keyFrameIntervalSeconds(%d)"
-                , getFormatStr(m_format), m_format, m_width, m_height, m_frameRate, m_bitRateKbps, m_keyFrameIntervalSeconds);
 
         mfxStatus sts = MFX_ERR_NONE;
 
@@ -837,6 +851,7 @@ private:
     uint32_t m_frameCount;
 
     FrameFormat m_format;
+    VideoCodecProfile m_profile;
     uint32_t m_width;
     uint32_t m_height;
     uint32_t m_frameRate;
@@ -893,8 +908,9 @@ private:
 
 DEFINE_LOGGER(StreamEncoder, "woogeen.StreamEncoder");
 
-MsdkFrameEncoder::MsdkFrameEncoder(woogeen_base::FrameFormat format, bool useSimulcast)
+MsdkFrameEncoder::MsdkFrameEncoder(woogeen_base::FrameFormat format, woogeen_base::VideoCodecProfile profile, bool useSimulcast)
     : m_encodeFormat(format)
+    , m_profile(profile)
     , m_useSimulcast(useSimulcast)
     , m_id(0)
 {
@@ -902,13 +918,9 @@ MsdkFrameEncoder::MsdkFrameEncoder(woogeen_base::FrameFormat format, bool useSim
 
 MsdkFrameEncoder::~MsdkFrameEncoder()
 {
-    printfFuncEnter;
-
     boost::unique_lock<boost::shared_mutex> ulock(m_mutex);
 
     m_streams.clear();
-
-    printfFuncExit;
 }
 
 bool MsdkFrameEncoder::canSimulcast(FrameFormat format, uint32_t width, uint32_t height)
@@ -930,9 +942,7 @@ int32_t MsdkFrameEncoder::generateStream(uint32_t width, uint32_t height, uint32
     boost::upgrade_lock<boost::shared_mutex> lock(m_mutex);
 
     boost::shared_ptr<StreamEncoder> stream(new StreamEncoder());
-    if (!stream->init(m_encodeFormat, width, height, frameRate, bitrateKbps, keyFrameIntervalSeconds, dest)) {
-        ELOG_ERROR("generateStream failed: {.width=%d, .height=%d, .frameRate=%d, .bitrateKbps=%d, .keyFrameIntervalSeconds=%d}"
-                , width, height, frameRate, bitrateKbps, keyFrameIntervalSeconds);
+    if (!stream->init(m_encodeFormat, m_profile,  width, height, frameRate, bitrateKbps, keyFrameIntervalSeconds, dest)) {
         return -1;
     }
 
@@ -940,8 +950,7 @@ int32_t MsdkFrameEncoder::generateStream(uint32_t width, uint32_t height, uint32
 
     m_streams[m_id] = stream;
 
-    ELOG_DEBUG("generateStream[%d]: {.width=%d, .height=%d, .frameRate=%d, .bitrateKbps=%d, .keyFrameIntervalSeconds=%d}"
-            , m_id, width, height, frameRate, bitrateKbps, keyFrameIntervalSeconds);
+    ELOG_DEBUG("generateStream[%d]" , m_id);
 
     return m_id++;
 }

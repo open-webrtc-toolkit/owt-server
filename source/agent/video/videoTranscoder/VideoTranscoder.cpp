@@ -147,7 +147,7 @@ bool VideoTranscoder::addOutput(
     woogeen_base::FrameFormat format = getFormat(codec);
     VideoSize vSize{0, 0};
     VideoResolutionHelper::getVideoSize(resolution, vSize);
-    if (m_frameTranscoder->addOutput(m_nextOutputIndex, format, vSize, framerateFPS, bitrateKbps, keyFrameIntervalSeconds, dest)) {
+    if (m_frameTranscoder->addOutput(m_nextOutputIndex, format, profile, vSize, framerateFPS, bitrateKbps, keyFrameIntervalSeconds, dest)) {
         boost::unique_lock<boost::shared_mutex> lock(m_outputsMutex);
         m_outputs[outStreamID] = m_nextOutputIndex++;
         return true;

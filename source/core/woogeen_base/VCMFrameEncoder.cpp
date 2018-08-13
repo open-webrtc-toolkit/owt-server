@@ -37,9 +37,10 @@ namespace woogeen_base {
 
 DEFINE_LOGGER(VCMFrameEncoder, "woogeen.VCMFrameEncoder");
 
-VCMFrameEncoder::VCMFrameEncoder(FrameFormat format, bool useSimulcast)
+VCMFrameEncoder::VCMFrameEncoder(FrameFormat format, VideoCodecProfile profile, bool useSimulcast)
     : m_streamId(0)
     , m_encodeFormat(format)
+    , m_profile(profile)
     , m_running(false)
     , m_incomingFrameCount(0)
     , m_requestKeyFrame(false)
@@ -136,6 +137,10 @@ int32_t VCMFrameEncoder::generateStream(uint32_t width, uint32_t height, uint32_
         ELOG_DEBUG_T("Create encoder(%s)", getFormatStr(m_encodeFormat));
         switch (m_encodeFormat) {
         case FRAME_FORMAT_VP8:
+            if (m_profile != PROFILE_UNKNOWN) {
+                ELOG_WARN_T("Don't support profile setting(%d)", m_profile);
+            }
+
             m_encoder.reset(VP8Encoder::Create());
 
             VCMCodecDataBase::Codec(kVideoCodecVP8, &codecSettings);
@@ -148,6 +153,10 @@ int32_t VCMFrameEncoder::generateStream(uint32_t width, uint32_t height, uint32_
             codecSettings.VP8()->keyFrameInterval = frameRate * keyFrameIntervalSeconds;
             break;
         case FRAME_FORMAT_VP9:
+            if (m_profile != PROFILE_UNKNOWN) {
+                ELOG_WARN_T("Don't support profile setting(%d)", m_profile);
+            }
+
             m_encoder.reset(VP9Encoder::Create());
 
             VCMCodecDataBase::Codec(kVideoCodecVP9, &codecSettings);
@@ -157,6 +166,10 @@ int32_t VCMFrameEncoder::generateStream(uint32_t width, uint32_t height, uint32_
             codecSettings.VP9()->keyFrameInterval = frameRate * keyFrameIntervalSeconds;
             break;
         case FRAME_FORMAT_H264:
+            if (m_profile != PROFILE_AVC_CONSTRAINED_BASELINE) {
+                ELOG_WARN_T("Only support profile (Constrained Baseline), required (%d)", m_profile);
+            }
+
             //m_encoder.reset(WGOpenH264Encoder::Create());
             m_encoder.reset(H264Encoder::Create(cricket::VideoCodec(cricket::kH264CodecName)));
 

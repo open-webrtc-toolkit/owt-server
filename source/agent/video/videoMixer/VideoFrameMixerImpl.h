@@ -73,6 +73,7 @@ public:
 
     bool addOutput(int output,
             woogeen_base::FrameFormat,
+            const woogeen_base::VideoCodecProfile profile,
             const woogeen_base::VideoSize&,
             const unsigned int framerateFPS,
             const unsigned int bitrateKbps,
@@ -226,6 +227,7 @@ inline void VideoFrameMixerImpl::requestKeyFrame(int output)
 
 inline bool VideoFrameMixerImpl::addOutput(int output,
                                            woogeen_base::FrameFormat format,
+                                           const woogeen_base::VideoCodecProfile profile,
                                            const woogeen_base::VideoSize& outputSize,
                                            const unsigned int framerateFPS,
                                            const unsigned int bitrateKbps,
@@ -251,11 +253,11 @@ inline bool VideoFrameMixerImpl::addOutput(int output,
     } else { // Never found a reusable encoder.
 #ifdef ENABLE_MSDK
         if (!encoder && woogeen_base::MsdkFrameEncoder::supportFormat(format))
-            encoder.reset(new woogeen_base::MsdkFrameEncoder(format, m_useSimulcast));
+            encoder.reset(new woogeen_base::MsdkFrameEncoder(format, profile, m_useSimulcast));
 #endif
 
         if (!encoder)
-            encoder.reset(new woogeen_base::VCMFrameEncoder(format, m_useSimulcast));
+            encoder.reset(new woogeen_base::VCMFrameEncoder(format, profile, m_useSimulcast));
 
         streamId = encoder->generateStream(outputSize.width, outputSize.height, framerateFPS, bitrateKbps, keyFrameIntervalSeconds, dest);
         if (streamId < 0)
