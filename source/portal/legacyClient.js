@@ -792,6 +792,58 @@ var LegacyClient = function(clientId, sigConnection, portal) {
     }
   };
 
+  //FIXME: Client side need to handle the incompetibility, since the definition of region has been extended.
+  const convertStreamRegion = (stream2region) => {
+    var calRational = (r) => (r.numerator / r.denominator);
+    return {
+      streamID: stream2region.stream,
+      id: stream2region.region.id,
+      left: calRational(stream2region.region.area.left),
+      top: calRational(stream2region.region.area.top),
+      relativeSize: calRational(stream2region.region.area.width)
+    };
+  };
+
+  const convertStreamInfo = (st) => {
+    var stream = {
+      id: st.id,
+      audio: !!st.media.audio,
+      video: st.media.video ? {} : false,
+      socket: ''
+    };
+
+    if (st.info.attributes) {
+      stream.attributes = st.info.attributes;
+    }
+
+    if (st.type === 'mixed') {
+      stream.view = st.info.label;
+      stream.video.layout = st.info.layout.map(convertStreamRegion);
+      if (st.info.label === 'common') {
+        that.commonViewStream = st.id;
+      }
+      stream.from = '';
+    } else {
+      stream.from = st.info.owner;
+    }
+
+    if (st.media.video) {
+      if (st.type === 'mixed') {
+        stream.video.device = 'mcu';
+        stream.video.resolutions = [st.media.video.parameters.resolution];
+
+        st.media.video.optional && st.media.video.optional.parameters && st.media.video.optional.parameters.resolution && st.media.video.optional.parameters.resolution.forEach(function(reso) {
+          stream.video.resolutions.push(reso);
+        });
+      } else if (st.media.video.source === 'screen-cast'){
+        stream.video.device = 'screen';
+      } else if (st.media.video.source === 'camera') {
+        stream.video.device = 'camera';
+      }
+    }
+    return stream;
+  };
+
   const notifyStreamInfo = (streamInfo) => {
     log.debug('notifyStreamInfo, streamInfo:', streamInfo);
     if (streamInfo.status === 'add') {
@@ -866,58 +918,6 @@ var LegacyClient = function(clientId, sigConnection, portal) {
     } else {
       log.info('Unknown session progress message:', sessionProgress);
     }
-  };
-
-  //FIXME: Client side need to handle the incompetibility, since the definition of region has been extended.
-  const convertStreamRegion = (stream2region) => {
-    var calRational = (r) => (r.numerator / r.denominator);
-    return {
-      streamID: stream2region.stream,
-      id: stream2region.region.id,
-      left: calRational(stream2region.region.area.left),
-      top: calRational(stream2region.region.area.top),
-      relativeSize: calRational(stream2region.region.area.width)
-    };
-  };
-
-  const convertStreamInfo = (st) => {
-    var stream = {
-      id: st.id,
-      audio: !!st.media.audio,
-      video: st.media.video ? {} : false,
-      socket: ''
-    };
-
-    if (st.info.attributes) {
-      stream.attributes = st.info.attributes;
-    }
-
-    if (st.type === 'mixed') {
-      stream.view = st.info.label;
-      stream.video.layout = st.info.layout.map(convertStreamRegion);
-      if (st.info.label === 'common') {
-        that.commonViewStream = st.id;
-      }
-      stream.from = '';
-    } else {
-      stream.from = st.info.owner;
-    }
-
-    if (st.media.video) {
-      if (st.type === 'mixed') {
-        stream.video.device = 'mcu';
-        stream.video.resolutions = [st.media.video.parameters.resolution];
-
-        st.media.video.optional && st.media.video.optional.parameters && st.media.video.optional.parameters.resolution && st.media.video.optional.parameters.resolution.forEach(function(reso) {
-          stream.video.resolutions.push(reso);
-        });
-      } else if (st.media.video.source === 'screen-cast'){
-        stream.video.device = 'screen';
-      } else if (st.media.video.source === 'camera') {
-        stream.video.device = 'camera';
-      }
-    }
-    return stream;
   };
 
   const convertJoinResponse = (response) => {
