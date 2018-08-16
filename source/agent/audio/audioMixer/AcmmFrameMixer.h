@@ -101,6 +101,8 @@ protected:
 
     boost::shared_ptr<AcmmInput> getInputById(int32_t id);
 
+    void statistics();
+
 private:
     EventRegistry *m_asyncHandle;
     boost::scoped_ptr<JobTimer> m_jobTimer;

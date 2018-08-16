@@ -227,6 +227,7 @@ bool AcmmFrameMixer::addInput(const std::string& group, const std::string& inStr
         }
     }
 
+    statistics();
     return true;
 }
 
@@ -278,6 +279,7 @@ void AcmmFrameMixer::removeInput(const std::string& group, const std::string& in
     if (m_mostActiveInput == acmmInput)
         m_mostActiveInput.reset();
 
+    statistics();
     return;
 }
 
@@ -331,6 +333,7 @@ void AcmmFrameMixer::setInputActive(const std::string& group, const std::string&
         }
     }
 
+    statistics();
     ELOG_DEBUG("---setInputActive: group(%s), inStream(%s), active(%d)", group.c_str(), inStream.c_str(), active);
 }
 
@@ -416,6 +419,8 @@ bool AcmmFrameMixer::addOutput(const std::string& group, const std::string& outS
     }
 
     updateFrequency();
+
+    statistics();
     return true;
 }
 
@@ -464,6 +469,8 @@ void AcmmFrameMixer::removeOutput(const std::string& group, const std::string& o
     }
 
     updateFrequency();
+
+    statistics();
     return;
 }
 
@@ -590,6 +597,39 @@ void AcmmFrameMixer::VadParticipants(const ParticipantVadStatistics *statistics,
         m_mostActiveInput = activeAcmmInput;
         m_asyncHandle->notifyAsyncEvent("vad", m_mostActiveInput->name().c_str());
     }
+}
+
+void AcmmFrameMixer::statistics()
+{
+    uint32_t activeCount = 0;
+    uint32_t mutedCount = 0;
+    uint32_t receivedOnlyCount = 0;
+    uint32_t streamInCount = 0;
+    uint32_t unknownCount = 0;
+
+    for (auto& p : m_groups) {
+        boost::shared_ptr<AcmmGroup> acmmGroup = p.second;
+
+        if(!acmmGroup->allInputsMuted() && acmmGroup->anyOutputsConnected())
+            activeCount++;
+        else if(acmmGroup->numOfInputs() && acmmGroup->allInputsMuted() && acmmGroup->numOfOutputs())
+            mutedCount++;
+        else if(acmmGroup->numOfInputs() && acmmGroup->numOfOutputs() == 0)
+            streamInCount++;
+        else if(acmmGroup->numOfInputs() == 0 && acmmGroup->numOfOutputs() != 0)
+            receivedOnlyCount++;
+        else
+            unknownCount++;
+    }
+
+    ELOG_DEBUG("All(%ld), Active(%d), Muted(%d), ReceivedOnly(%d), StreamIn(%d), Unknown(%d)"
+            , m_groups.size()
+            , activeCount
+            , mutedCount
+            , receivedOnlyCount
+            , streamInCount
+            , unknownCount
+            );
 }
 
 } /* namespace mcu */
