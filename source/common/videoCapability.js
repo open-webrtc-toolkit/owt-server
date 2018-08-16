@@ -22,7 +22,6 @@ if (global.config.video.hardwareAccelerated) {
         global.config.video.hardwareAccelerated = (info.indexOf('VA-API version') != -1);
     } catch (error) {
         if (error && error.code !== 0) {
-            log.warn('vainfo check with exit code:', error.code);
             global.config.video.hardwareAccelerated = false;
         } else {
             info = error.stderr.toString();
