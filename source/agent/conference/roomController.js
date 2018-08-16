@@ -59,14 +59,15 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
     /*
     streams = {StreamID: {owner: terminalID,
                 audio: {format: 'pcmu' | 'pcma' | 'isac_16000' | 'isac_32000' | 'opus_48000_2' |...
-                        subscribers: [terminalID]} | undefined,
+                        subscribers: [terminalID],
+                        status: 'active' | 'inactive' | undefined} | undefined,
                 video: {format: 'h264' | 'vp8' |...,
                         resolution: {width: Number(PX), height: Number(PX)} | 'unspecified',
                         framerate: Number(FPS) | 'unspecified',
                         bitrate: Number(Kbps) | 'unspecified',
                         kfi: Number(KeyFrameInterval) | 'unspecified',
-                        subscribers: [terminalID]
-                       } | undefined,
+                        subscribers: [terminalID],
+                        status: 'active' | 'inactive' | undefined} | undefined,
                 spread: [NodeRpcID]
                }
      }
@@ -588,6 +589,13 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                     terminals[audio_mixer].subscribed[spread_id] = {audio: stream_id};
                     (streams[stream_id].audio.subscribers.indexOf(audio_mixer) < 0) && streams[stream_id].audio.subscribers.push(audio_mixer);
                     on_ok();
+                    if (streams[stream_id].audio.status === 'inactive') {
+                        makeRPC(
+                            rpcClient,
+                            target_node,
+                            'setInputActive',
+                            [stream_id, false]);
+                    }
                 } else {
                     shrinkStream(stream_id, target_node);
                     on_error('Audio mixer is early released.');
@@ -625,6 +633,13 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                     terminals[video_mixer].subscribed[spread_id] = {video: stream_id};
                     (streams[stream_id].video.subscribers.indexOf(video_mixer) < 0) && streams[stream_id].video.subscribers.push(video_mixer);
                     on_ok();
+                    if (streams[stream_id].video.status === 'inactive') {
+                        makeRPC(
+                            rpcClient,
+                            target_node,
+                            'setInputActive',
+                            [stream_id, false]);
+                    }
                 } else {
                     shrinkStream(stream_id, target_node);
                     on_error('Video mixer or input stream is early released.');
@@ -1260,11 +1275,13 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
             newTerminal(terminal_id, streamType, terminal_owner, accessNode, function () {
                 streams[streamId] = {owner: terminal_id,
                                      audio: streamInfo.audio ? {format: formatStr(streamInfo.audio),
-                                                                subscribers: []} : undefined,
+                                                                subscribers: [],
+                                                                status: 'active'} : undefined,
                                      video: streamInfo.video ? {format: formatStr(streamInfo.video),
                                                                 resolution: streamInfo.video.resolution,
                                                                 framerate: streamInfo.video.framerate,
-                                                                subscribers: []} : undefined,
+                                                                subscribers: [],
+                                                                status: 'active'} : undefined,
                                      spread: []
                                      };
                 terminals[terminal_id].published.push(streamId);
@@ -1528,6 +1545,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
         log.debug('updateStream, stream_id:', stream_id, 'track', track, 'status:', status);
         if ((config.views.length > 0) && (status === 'active' || status === 'inactive')) {
             if ((track === 'video' || track === 'av') && streams[stream_id] && streams[stream_id].video) {
+                streams[stream_id].video.status = status;
                 for (var view in mix_views) {
                     var video_mixer = mix_views[view].video.mixer;
                     if (video_mixer && terminals[video_mixer] && (streams[stream_id].video.subscribers.indexOf(video_mixer) >= 0)) {
@@ -1541,6 +1559,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                     }
                 }
             } else if ((track === 'audio' || track === 'av') && streams[stream_id] && streams[stream_id].audio) {
+                streams[stream_id].audio.status = status;
                 for (var view in mix_views) {
                     var audio_mixer = mix_views[view].audio.mixer;
                     if (audio_mixer && terminals[audio_mixer] && (streams[stream_id].audio.subscribers.indexOf(audio_mixer) >= 0)) {
