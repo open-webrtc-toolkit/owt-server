@@ -513,10 +513,10 @@ This a format for client reconnects.
 	object(SOACMessage)::
 	  {
 	   id: string(SessionId), /* StreamId returned in publishing or SubscriptionId returned in subscribing*/
-	   signaling: object(OfferAnswer) | object(Candidate)
+	   signaling: object(OfferAnswer) | object(Candidate) | object(RemovedCandidates)
 	  }
 
-	  object(OfferAnser)::
+	  object(OfferAnswer)::
 	    {
 	     type: "offer" | "answer",
 	     sdp: string(SDP)
@@ -526,6 +526,12 @@ This a format for client reconnects.
 	    {
 	     type: "candidate",
 	     candidate: string(Candidate)
+	    }
+
+	  object(RemovedCandidates)::
+	    {
+	     type: "removed-candidates",
+	     candidates: [ (string(Candidate) ]
 	    }
 **ResponseData**: undefined if **ResponseStatus** is “ok”.
 ### 3.3.15 Participant Receives Session Progress {#CPCPSsection3_3_15}
