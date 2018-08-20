@@ -46,7 +46,7 @@ class AcmmFrameMixer : public AudioFrameMixer,
                        public AudioMixerVadReceiver {
     DECLARE_LOGGER();
 
-    static const int32_t MAX_GROUPS = 1280;
+    static const int32_t MAX_GROUPS = 10240;
     static const int32_t MIXER_FREQUENCY = 100;
 
     struct OutputInfo {
