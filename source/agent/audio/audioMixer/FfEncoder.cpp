@@ -61,8 +61,6 @@ FfEncoder::FfEncoder(const FrameFormat format)
     else
         av_log_set_level(AV_LOG_QUIET);
 
-    avcodec_register_all();
-
     m_sampleRate = getAudioSampleRate(format);
     m_channels = getAudioChannels(format);
 }
@@ -138,7 +136,7 @@ bool FfEncoder::initEncoder(const FrameFormat format)
     m_audioEnc->channel_layout  = av_get_default_channel_layout(m_audioEnc->channels);
     m_audioEnc->sample_rate     = m_sampleRate;
     m_audioEnc->sample_fmt      = getCodecPreferedSampleFmt(codec, AV_SAMPLE_FMT_S16);
-    m_audioEnc->flags           |= CODEC_FLAG_GLOBAL_HEADER;
+    m_audioEnc->flags           |= AV_CODEC_FLAG_GLOBAL_HEADER;
 
     ret = avcodec_open2(m_audioEnc, codec, nullptr);
     if (ret < 0) {

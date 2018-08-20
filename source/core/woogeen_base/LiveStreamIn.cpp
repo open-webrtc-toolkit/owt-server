@@ -996,8 +996,6 @@ bool LiveStreamIn::filterVBS(AVStream *st, AVPacket *pkt) {
         return false;
     }
 
-    av_packet_split_side_data(pkt);
-
     AVPacket filter_pkt;
     AVPacket filtered_pkt;
 

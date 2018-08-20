@@ -81,19 +81,6 @@ install_build_deps() {
   fi
 }
 
-install_opus(){
-  echo "Downloading opus-1.1..."
-  wget -c http://downloads.xiph.org/releases/opus/opus-1.1.tar.gz
-  tar -zxvf opus-1.1.tar.gz
-
-  echo "Building opus-1.1..."
-  pushd opus-1.1
-  ./configure --prefix=${DOWNLOAD_DIR}
-  make -s V=0
-  make install
-  popd
-}
-
 install_fdkaac(){
   local VERSION="0.1.4"
   local SRC="fdk-aac-${VERSION}.tar.gz"
@@ -117,11 +104,11 @@ install_fdkaac(){
 }
 
 install_ffmpeg(){
-  local VERSION="3.2.4"
+  local VERSION="4.0.2"
   local DIR="ffmpeg-${VERSION}"
   local SRC="${DIR}.tar.bz2"
   local SRC_URL="http://ffmpeg.org/releases/${SRC}"
-  local SRC_MD5SUM="d3ebaacfa36c6e8145373785824265b4"
+  local SRC_MD5SUM="5576e8a22f80b6a336db39808f427cfb"
 
   echo "Downloading ffmpeg-${VERSION}"
   [[ ! -s ${SRC} ]] && wget -c ${SRC_URL}
@@ -134,7 +121,7 @@ install_ffmpeg(){
 
   echo "Building ffmpeg-${VERSION}"
   pushd ${DIR}
-  PKG_CONFIG_PATH=${DOWNLOAD_DIR}/lib/pkgconfig CFLAGS=-fPIC ./configure --prefix=${DOWNLOAD_DIR} --enable-shared --disable-static --disable-libvpx --disable-vaapi --enable-libopus --enable-libfdk-aac --enable-nonfree && \
+  PKG_CONFIG_PATH=${DOWNLOAD_DIR}/lib/pkgconfig CFLAGS=-fPIC ./configure --prefix=${DOWNLOAD_DIR} --enable-shared --disable-static --disable-libvpx --disable-vaapi --enable-libfdk-aac --enable-nonfree && \
   make -j4 -s V=0 && make install
   popd
 }
@@ -153,7 +140,6 @@ install_build_deps
 [[ ! -d ${DOWNLOAD_DIR} ]] && mkdir ${DOWNLOAD_DIR};
 
 pushd ${DOWNLOAD_DIR}
-install_opus
 install_fdkaac
 install_ffmpeg
 popd

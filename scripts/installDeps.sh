@@ -74,9 +74,6 @@ case $yn in
   * ) ;;
 esac
 
-pause "Installing opus library...  [press Enter]"
-install_opus
-
 if [ "$DISABLE_NONFREE" = "true" ]; then
   pause "Nonfree libraries disabled: aac transcoding unavailable."
   install_mediadeps
