@@ -63,7 +63,6 @@ fi
 check_proxy
 
 if [ "$NIGHTLY" != "true" ]; then
-  install_opus
 
   if [ "$DISABLE_NONFREE" = "true" ]; then
     install_mediadeps

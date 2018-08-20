@@ -65,8 +65,6 @@ FfDecoder::FfDecoder(const FrameFormat format)
     else
         av_log_set_level(AV_LOG_QUIET);
 
-    avcodec_register_all();
-
     m_outSampleRate = getAudioSampleRate(m_outFormat);
     m_outChannels = getAudioChannels(m_outFormat);
 }

@@ -270,7 +270,7 @@ reconnect:
         notifyAsyncEvent("fatal", "Cannot write header");
         goto exit;
     }
-    av_dump_format(m_context, 0, m_context->filename, 1);
+    av_dump_format(m_context, 0, m_context->url, 1);
 
     m_status = AVStreamOut::Context_READY;
 
@@ -315,7 +315,7 @@ bool AVStreamOut::connect()
     }
 
     if (!(m_context->oformat->flags & AVFMT_NOFILE)) {
-        int ret = avio_open(&m_context->pb, m_context->filename, AVIO_FLAG_WRITE);
+        int ret = avio_open(&m_context->pb, m_context->url, AVIO_FLAG_WRITE);
         if (ret < 0) {
             ELOG_ERROR("Cannot open avio, %s", ff_err2str(ret));
 
