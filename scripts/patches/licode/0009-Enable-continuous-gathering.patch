@@ -1,0 +1,108 @@
+From 202bdbae0c2e606443b788eca4a5288f58b8f239 Mon Sep 17 00:00:00 2001
+From: Chen Li1 <li1.chen@intel.com>
+Date: Tue, 21 Aug 2018 09:59:49 +0800
+Subject: [PATCH] Enable continuous gathering
+
+---
+ erizo/src/erizo/IceConnection.cpp     | 5 +++++
+ erizo/src/erizo/IceConnection.h       | 2 ++
+ erizo/src/erizo/LibNiceConnection.cpp | 7 +++++++
+ erizo/src/erizo/LibNiceConnection.h   | 2 ++
+ erizo/src/erizo/Transport.h           | 3 +++
+ erizo/src/erizo/WebRtcConnection.cpp  | 8 ++++++++
+ 6 files changed, 27 insertions(+)
+
+diff --git a/erizo/src/erizo/IceConnection.cpp b/erizo/src/erizo/IceConnection.cpp
+index a6949cd..9c5e341 100644
+--- a/erizo/src/erizo/IceConnection.cpp
++++ b/erizo/src/erizo/IceConnection.cpp
+@@ -87,4 +87,9 @@ void IceConnection::updateIceState(IceState state) {
+     this->listener_->updateIceState(state, this);
+ }
+ 
++bool IceConnection::removeRemoteCandidates() {
++  ELOG_WARN("removeRemoteCandidates NOT implemented");
++  return true;
++}
++
+ }  // namespace erizo
+diff --git a/erizo/src/erizo/IceConnection.h b/erizo/src/erizo/IceConnection.h
+index 15e5ffa..1638019 100644
+--- a/erizo/src/erizo/IceConnection.h
++++ b/erizo/src/erizo/IceConnection.h
+@@ -114,6 +114,8 @@ class IceConnection : public LogContext {
+   virtual std::string getLocalUsername();
+   virtual std::string getLocalPassword();
+ 
++  virtual bool removeRemoteCandidates();
++
+  private:
+   virtual std::string iceStateToString(IceState state) const;
+ 
+diff --git a/erizo/src/erizo/LibNiceConnection.cpp b/erizo/src/erizo/LibNiceConnection.cpp
+index ea29ee7..b6cce85 100644
+--- a/erizo/src/erizo/LibNiceConnection.cpp
++++ b/erizo/src/erizo/LibNiceConnection.cpp
+@@ -475,4 +475,11 @@ void LibNiceConnection::setReceivedLastCandidate(bool hasReceived) {
+ LibNiceConnection* LibNiceConnection::create(IceConnectionListener *listener, const IceConfig& ice_config) {
+   return new LibNiceConnection(boost::shared_ptr<LibNiceInterface>(new LibNiceInterfaceImpl()), listener, ice_config);
+ }
++
++bool LibNiceConnection::removeRemoteCandidates() {
++  ELOG_DEBUG("remove remote candidates");
++  nice_agent_remove_remote_candidates(agent_, (guint) 1, 1, NULL);
++  return true;
++}
++
+ } /* namespace erizo */
+diff --git a/erizo/src/erizo/LibNiceConnection.h b/erizo/src/erizo/LibNiceConnection.h
+index 930c5a2..7bb7cd4 100644
+--- a/erizo/src/erizo/LibNiceConnection.h
++++ b/erizo/src/erizo/LibNiceConnection.h
+@@ -61,6 +61,8 @@ class LibNiceConnection : public IceConnection {
+   void setReceivedLastCandidate(bool hasReceived) override;
+   void close() override;
+ 
++  bool removeRemoteCandidates() override;
++
+   static LibNiceConnection* create(IceConnectionListener *listener, const IceConfig& ice_config);
+ 
+  private:
+diff --git a/erizo/src/erizo/Transport.h b/erizo/src/erizo/Transport.h
+index 0eda874..cb8116a 100644
+--- a/erizo/src/erizo/Transport.h
++++ b/erizo/src/erizo/Transport.h
+@@ -73,6 +73,9 @@ class Transport : public std::enable_shared_from_this<Transport>, public IceConn
+   bool setRemoteCandidates(const std::vector<CandidateInfo> &candidates, bool isBundle) {
+     return ice_->setRemoteCandidates(candidates, isBundle);
+   }
++  bool removeRemoteCandidates() {
++    return ice_->removeRemoteCandidates();
++  }
+ 
+   void onPacketReceived(packetPtr packet) {
+     std::weak_ptr<Transport> weak_transport = Transport::shared_from_this();
+diff --git a/erizo/src/erizo/WebRtcConnection.cpp b/erizo/src/erizo/WebRtcConnection.cpp
+index 2520317..7b7bf6f 100644
+--- a/erizo/src/erizo/WebRtcConnection.cpp
++++ b/erizo/src/erizo/WebRtcConnection.cpp
+@@ -344,8 +344,16 @@ bool WebRtcConnection::addRemoteCandidate(const std::string &mid, int mLineIndex
+   bool res = false;
+   if (tempSdp.initWithSdp(sdp, theMid)) {
+     if (theType == VIDEO_TYPE || bundle_) {
++      if (this->getCurrentState() >= CONN_READY) {
++        ELOG_DEBUG("%s message: Remove remote candidate", toLog());
++        videoTransport_->removeRemoteCandidates();
++      }
+       res = videoTransport_->setRemoteCandidates(tempSdp.getCandidateInfos(), bundle_);
+     } else if (theType == AUDIO_TYPE) {
++      if (this->getCurrentState() >= CONN_READY) {
++        ELOG_DEBUG("%s message: Remove remote candidate", toLog());
++        audioTransport_->removeRemoteCandidates();
++      }
+       res = audioTransport_->setRemoteCandidates(tempSdp.getCandidateInfos(), bundle_);
+     } else {
+       ELOG_ERROR("%s message: add remote candidate with no Media (video or audio), candidate: %s",
+-- 
+2.7.4
+
