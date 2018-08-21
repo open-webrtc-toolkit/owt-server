@@ -18,7 +18,7 @@ if (global.config.video.hardwareAccelerated) {
     // Query the hardware capability only if we want to try it.
     var info = '';
     try {
-        info = require('child_process').execSync('vainfo', {env: process.env, stdio: ['ignore', 'pipe', err]}).toString();
+        info = require('child_process').execSync('vainfo', {env: process.env, stdio: ['ignore', 'pipe', 'pipe']}).toString();
         global.config.video.hardwareAccelerated = (info.indexOf('VA-API version') != -1);
     } catch (error) {
         if (error && error.code !== 0) {
