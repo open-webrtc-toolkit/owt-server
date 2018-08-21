@@ -1,0 +1,135 @@
+From 22aac8a10c057022f4ca1a776b4ec6435a1be587 Mon Sep 17 00:00:00 2001
+From: Chen Li1 <li1.chen@intel.com>
+Date: Tue, 21 Aug 2018 14:29:40 +0800
+Subject: [PATCH] Add remove_remote_candidates interface
+
+---
+ agent/agent.c    | 68 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ agent/agent.h    | 19 ++++++++++++++++
+ nice/libnice.sym |  1 +
+ 3 files changed, 88 insertions(+)
+
+diff --git a/agent/agent.c b/agent/agent.c
+index 1ce6b6a..2c347fc 100644
+--- a/agent/agent.c
++++ b/agent/agent.c
+@@ -2312,6 +2312,74 @@ nice_agent_set_remote_candidates (NiceAgent *agent, guint stream_id, guint compo
+   return added;
+ }
+ 
++NICEAPI_EXPORT int
++nice_agent_remove_remote_candidates (NiceAgent *agent, guint stream_id, guint component_id, const GSList *candidates)
++{
++  int removed = 0;
++  Stream *stream;
++  Component *component;
++  GList *i, *j;
++  GList *remotes = NULL;
++  bool select = false;
++  bool match;
++
++  nice_debug ("Agent %p: remove_remote_candidates %d %d", agent, stream_id, component_id);
++
++  agent_lock(agent);
++
++  if (!agent_find_component (agent, stream_id, component_id,
++          &stream, &component)) {
++    g_warning ("Could not find component %u in stream %u", component_id,
++        stream_id);
++    removed = -1;
++    goto done;
++  }
++
++  component->selected_pair.priority = 0;
++  /* use the following code later if 'removed-candidates' events implemented */
++  // for (i = candidates; i; i = i->next) {
++  //   NiceCandidate *d = (NiceCandidate*) i->data;
++  //   if (nice_address_equal(&d->addr, &component->selected_pair.remote->addr)) {
++  //     component->selected_pair.priority = 0;
++  //     select = true;
++  //     break;
++  //   }
++  // }
++
++  // /* get updated remote candidates list */
++  // for (i = component->remote_candidates; i; i = i->next) {
++  //   NiceCandidate *r = (NiceCandidate*) i->data;
++  //   match = false;
++  //   for (j = candidates; j; j = j->next) {
++  //     NiceCandidate *d = (NiceCandidate*) j->data;
++  //     if (nice_address_equal(&d->addr, &r->addr)) {
++  //       match = true;
++  //       removed++;
++  //       break;
++  //     }
++  //   }
++  //   if (!match) {
++  //     remotes = g_slist_append(remotes, nice_candidate_copy(r));
++  //   }
++  // }
++
++  // g_slist_free_full(component->remote_candidates, (GDestroyNotify)&nice_candidate_free);
++  // component->remote_candidates = NULL;
++  // if (g_slist_length(remotes) > 0) {
++  //   if (select) {
++  //     /* retrigger conncheck for remained candidates */
++  //     _set_remote_candidates_locked (agent, stream, component, remotes);
++  //     g_slist_free_full(remotes, (GDestroyNotify)&nice_candidate_free);
++  //   } else {
++  //     component->remote_candidates = remotes;
++  //   }
++  // }
++
++ done:
++  agent_unlock(agent);
++
++  return removed;
++}
+ 
+ static gint
+ _nice_agent_recv (
+diff --git a/agent/agent.h b/agent/agent.h
+index b0fa7d1..eca5a26 100644
+--- a/agent/agent.h
++++ b/agent/agent.h
+@@ -533,6 +533,25 @@ nice_agent_set_remote_candidates (
+   guint component_id,
+   const GSList *candidates);
+ 
++/**
++ * nice_agent_remove_remote_candidates:
++ * @agent: The #NiceAgent Object
++ * @stream_id: The ID of the stream the candidates are for
++ * @component_id: The ID of the component the candidates are for
++ * @candidates: a #GSList of #NiceCandidate items describing each candidate to remove
++ *
++ * Remove the remote candidates for a component of a stream.
++ *
++ * Returns: The number of candidates removed, negative on errors (memory
++ * allocation error or invalid component)
++ **/
++int
++nice_agent_remove_remote_candidates (
++  NiceAgent *agent,
++  guint stream_id,
++  guint component_id,
++  const GSList *candidates);
++
+ 
+ /**
+  * nice_agent_send:
+diff --git a/nice/libnice.sym b/nice/libnice.sym
+index f06fa39..eb84951 100644
+--- a/nice/libnice.sym
++++ b/nice/libnice.sym
+@@ -39,6 +39,7 @@ nice_agent_send
+ nice_agent_set_port_range
+ nice_agent_set_relay_info
+ nice_agent_set_remote_candidates
++nice_agent_remove_remote_candidates
+ nice_agent_set_remote_credentials
+ nice_agent_set_local_credentials
+ nice_agent_set_selected_pair
+-- 
+2.7.4
+

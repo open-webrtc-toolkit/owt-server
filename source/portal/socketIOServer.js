@@ -37,7 +37,7 @@ var Connection = function(spec, socket, reconnectionKey, portal, dock) {
   var state;
   var client_id;
   var protocol_version;
-  var waiting_for_reconnecting_timer;
+  var waiting_for_reconnecting_timer = null;
   var pending_messages = [];
 
   let reconnection = {
@@ -114,9 +114,11 @@ var Connection = function(spec, socket, reconnectionKey, portal, dock) {
     if (client_id) {
       dock.getClient(client_id)
       .then((client) => {
-        client.leave();
+        if (client.connection === that) {
+          client.leave();
+          dock.onClientLeft(client_id);
+        }
       });
-      dock.onClientLeft(client_id);
       state = 'initialized';
       client_id = undefined;
     }
@@ -185,7 +187,6 @@ var Connection = function(spec, socket, reconnectionKey, portal, dock) {
     });
 
     socket.on('relogin', function(reconnectionTicket, callback) {
-      state = 'initialized';
       if (state !== 'initialized') {
         return safeCall(callback, 'error', 'Connection is in service');
       }
@@ -281,9 +282,10 @@ var Connection = function(spec, socket, reconnectionKey, portal, dock) {
   };
 
   that.reconnect = () => {
-    if (state === 'waiting_for_reconnecting') {
+    log.debug('client reconnect', client_id);
+    if (waiting_for_reconnecting_timer) {
       clearTimeout(waiting_for_reconnecting_timer);
-      waiting_for_reconnecting_timer = undefined;
+      waiting_for_reconnecting_timer = null;
     }
 
     return {
@@ -312,7 +314,7 @@ var Connection = function(spec, socket, reconnectionKey, portal, dock) {
     ifLeave && forceClientLeave();
 
     waiting_for_reconnecting_timer && clearTimeout(waiting_for_reconnecting_timer);
-    waiting_for_reconnecting_timer = undefined;
+    waiting_for_reconnecting_timer = null;
 
     try {
       socket.disconnect();
