@@ -218,7 +218,7 @@ This a format for client reconnects.
 		          object(VideoFormat)::
 		            {
 		             codec: "h264" | "h265" | "vp8" | "vp9",
-		             profile: "baseline" | "constrained-baseline" | "main" | "high" //If codec equals "h264".
+		             profile: "B" | "CB" | "M" | | "E" | "H" //If codec equals "h264".
 		                   | undefined //If codec does NOT equal "h264"
 		            }
 

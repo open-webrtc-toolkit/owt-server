@@ -298,7 +298,7 @@ const ServerSideSubscriptionRequest = {
       type: 'object',
       properties: {
         'codec': { enum: ['h264', 'h265', 'vp8', 'vp9'] },
-        'profile': { enum: ['baseline', 'constrained-baseline', 'main', 'high'] }
+        'profile': { enum: ['B', 'CB', 'M', 'H', 'E'] }
       },
       additionalProperties: false,
       required: ['codec']
