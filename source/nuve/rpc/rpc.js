@@ -24,7 +24,7 @@ exports.connect = function (addr) {
                 clientQueue.bind('woogeenRpc', clientQueue.name);
                 clientQueue.subscribe(function (message) {
                     if (map[message.corrID] !== undefined) {
-                        map[message.corrID].fn[message.type](message.data);
+                        map[message.corrID].fn[message.type](message.data, message.err);
                         clearTimeout(map[message.corrID].to);
                         delete map[message.corrID];
                     }
