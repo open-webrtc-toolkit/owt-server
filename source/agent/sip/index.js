@@ -242,7 +242,7 @@ module.exports = function (rpcC, spec) {
             var codec = info.video_codec.toLowerCase();
             var tmp;
             if (codec === 'h264') {
-              tmp = {codec: codec/*, profile: 'baseline'*/, resolution: {width: 0, height: 0}, framerate: 0};
+              tmp = {codec: codec, profile: 'CB', resolution: {width: 0, height: 0}, framerate: 0};
             } else {
               tmp = {codec: codec, resolution: {width: 0, height: 0}, framerate: 0};
             }
