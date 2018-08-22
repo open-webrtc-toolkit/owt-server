@@ -29,9 +29,9 @@ exports.add = function (req, res, next) {
       },
       media: req.body.media
     };
-    cloudHandler.addServerSideSubscription(req.params.room, sub_req, function (result) {
+    cloudHandler.addServerSideSubscription(req.params.room, sub_req, function (result, err) {
         if (result === 'error') {
-            return next(new e.CloudError('Operation failed'));
+            return next(err);
         }
         res.send(result);
     });

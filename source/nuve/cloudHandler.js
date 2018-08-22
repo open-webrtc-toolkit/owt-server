@@ -4,6 +4,7 @@ var validateReq = require('./restReqValidator').validate;
 var rpc = require('./rpc/rpc');
 var log = require('./logger').logger.getLogger('CloudHandler');
 var cluster_name = ((global.config || {}).cluster || {}).name || 'woogeen-cluster';
+var e = require('./errors');
 
 exports.schedulePortal = function (tokenCode, origin, callback) {
     var keepTrying = true;
@@ -274,25 +275,30 @@ exports.addServerSideSubscription = function (roomId, subReq, callback) {
     .then((ok) => {
       return validateReq('serverSideSub-req', subReq);
     }).then((ok) => {
-      return getRoomController(roomId);
-    }).then((controller) => {
-      return controller;
-    }, (e) => {
-      if (e === 'Room is inactive') {
-        return scheduleRoomController(roomId);
-      } else {
-        return Promise.reject('Validation failed');
-      }
-    }).then((controller) => {
-      rpc.callRpc(controller, 'addServerSideSubscription', [roomId, subReq], {callback: function (result) {
-        if (result === 'error' || result === 'timeout') {
-          callback('error');
-        } else {
-          callback(result);
-        }
-      }});
+      getRoomController(roomId)
+        .catch((e) => {
+          if (e === 'Room is inactive') {
+            return scheduleRoomController(roomId);
+          } else {
+            return Promise.reject('Failed to get room controller');
+          }
+        })
+        .then((controller) => {
+          rpc.callRpc(controller, 'addServerSideSubscription', [roomId, subReq], {callback: function (result, edata) {
+            if (result === 'error' || result === 'timeout') {
+              log.debug('RPC fail', result, edata);
+              callback('error', new e.CloudError('RPC:addServerSideSubscription failed'));
+            } else {
+              callback(result);
+            }
+          }});
+        })
+        .catch((err) => {
+          callback('error', new e.CloudError(err && err.message ? err.message : ''));
+        });
     }).catch((err) => {
-      callback('error');
+      var msg = err && err.message ? err.message : '';
+      callback('error', new e.BadRequestError(msg));
     });
 };
 
