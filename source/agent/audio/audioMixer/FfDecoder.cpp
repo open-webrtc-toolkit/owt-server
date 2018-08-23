@@ -60,8 +60,10 @@ FfDecoder::FfDecoder(const FrameFormat format)
         av_log_set_level(AV_LOG_DEBUG);
     else if (ELOG_IS_DEBUG_ENABLED())
         av_log_set_level(AV_LOG_INFO);
-    else
+    else if (ELOG_IS_INFO_ENABLED())
         av_log_set_level(AV_LOG_WARNING);
+    else
+        av_log_set_level(AV_LOG_QUIET);
 
     avcodec_register_all();
 
