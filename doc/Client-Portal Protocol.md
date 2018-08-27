@@ -342,6 +342,7 @@ This a format for client reconnects.
 	object(TextReceiveMessage)::
 	  {
 	   from: string(ParticipantId),
+	   type: 'unicast' | 'broadcast',
 	   message: string(Message)
 	  }
 

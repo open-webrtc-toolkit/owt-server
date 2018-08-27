@@ -1803,7 +1803,7 @@ var Conference = function (rpcClient, selfRpcId) {
       return callback('callback', 'error', 'Target participant does NOT exist: ' + toParticipantId);
     }
 
-    sendMsg(fromParticipantId, toParticipantId, 'text', {from: fromParticipantId, to: toParticipantId, message: msg});
+    sendMsg(fromParticipantId, toParticipantId, 'text', {from: fromParticipantId, type: (toParticipantId === 'all' ? 'broadcast' : 'unicast'), message: msg});
     callback('callback', 'ok');
   };
 
