@@ -944,7 +944,7 @@ var LegacyClient = function(clientId, sigConnection, portal) {
     } else if (event === 'progress') {
       notifySessionProgress(data);
     } else if (event === 'text') {
-      sendMsg('custom_message', {from: data.from, to: data.to, data: data.message });
+      sendMsg('custom_message', {from: data.from, to: (data.type === 'broadcast' ? 'all' : 'me'), data: data.message });
     } else {
       sendMsg(event, data);
     }
