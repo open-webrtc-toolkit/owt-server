@@ -16,7 +16,7 @@ var transform = require('sdp-transform');
 
 var addon = require('./webrtcLib/build/Release/webrtc');//require('./erizo/build/Release/addon');
 
-var h264ProfileOrder = ['CB', 'B', 'M', 'E', 'H']; //'H10', 'H42', 'H44', 'H10I', 'H42I', 'H44I', 'C44I'
+var h264ProfileOrder = ['E', 'H', 'M', 'B', 'CB']; //'H10', 'H42', 'H44', 'H10I', 'H42I', 'H44I', 'C44I'
 
 function createWrtc(id, threadPool, ioThreadPool, mediaConfiguration, ipAddresses) {
     var wrtc = new addon.WebRtcConnection(
@@ -327,7 +327,9 @@ module.exports = function (spec, on_status, on_mediaUpdate) {
             if (direction === 'out') {
                 var videoOption = formatPreference.video;
                 if (videoOption.preferred && videoOption.preferred.codec === 'h264') {
-                    finalProfile = videoOption.preferred.profile;
+                    if (offerProfiles[videoOption.preferred.profile]) {
+                        finalProfile = videoOption.preferred.profile;
+                    }
                 }
                 var acceptableProfiles = {};
                 if (!finalProfile && videoOption.optional) {
