@@ -37,7 +37,6 @@ var DEFAULT_VIDEO_IN = [
 ];
 var DEFAULT_VIDEO_OUT = [
   { codec: 'h264', profile: 'CB' },
-  { codec: 'h264', profile: 'B' },
   { codec: 'vp8' },
   { codec: 'vp9' },
 ];

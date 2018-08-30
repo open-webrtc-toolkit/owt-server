@@ -143,12 +143,8 @@ var RoomSchema = new Schema({
 });
 
 ViewSchema.pre('save', function(next) {
-  if (!this.video || !this.video.format) {
-    this.video.format = {
-      codec: 'h264',
-      profile: 'CB'
-    };
-  } else if (this.video.format.codec === 'h264' && !this.video.format.profile) {
+  if (this.video && this.video.format &&
+      this.video.format.codec === 'h264' && !this.video.format.profile) {
     this.video.format.profile = 'CB';
   }
   next();

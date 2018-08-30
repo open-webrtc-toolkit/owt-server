@@ -394,9 +394,6 @@ var Conference = function (rpcClient, selfRpcId) {
         hasLegacyH264 = true;
       }
     });
-    if (hasLegacyH264) {
-      config.mediaOut.video.format.push({ codec: 'h264', profile: 'B' });
-    }
   };
 
   var initRoom = function(roomId) {
