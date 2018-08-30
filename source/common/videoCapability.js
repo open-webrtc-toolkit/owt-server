@@ -10,7 +10,6 @@ const detectSWModeCapability = function () {
     if (fs.existsSync('./lib/libopenh264.so.4') && (fs.statSync('./lib/libopenh264.so.4').size > 100000)) {
         //FIXME: The detection of installation of openh264 is not accurate here.
         videoCapability.encode.push('h264_CB');
-        videoCapability.encode.push('h264_B');
     }
 };
 
@@ -35,7 +34,6 @@ if (global.config.video.hardwareAccelerated) {
     videoCapability.encode.push('h264_CB');
     videoCapability.encode.push('h264_B');
     videoCapability.encode.push('h264_M');
-    videoCapability.encode.push('h264_E');
     videoCapability.encode.push('h264_H');
 } else {
     detectSWModeCapability();
