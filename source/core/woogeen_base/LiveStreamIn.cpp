@@ -563,6 +563,29 @@ bool LiveStreamIn::connect()
                 case AV_CODEC_ID_H264:
                     m_videoFormat = FRAME_FORMAT_H264;
                     m_AsyncEvent << ",\"video\":{\"codec\":" << "\"h264\"";
+
+                    switch (video_st->codecpar->profile) {
+                        case FF_PROFILE_H264_CONSTRAINED_BASELINE:
+                            m_AsyncEvent << ",\"profile\":"  << "\"CB\"";
+                            break;
+                        case FF_PROFILE_H264_BASELINE:
+                            m_AsyncEvent << ",\"profile\":"  << "\"B\"";
+                            break;
+                        case FF_PROFILE_H264_MAIN:
+                            m_AsyncEvent << ",\"profile\":"  << "\"M\"";
+                            break;
+                        case FF_PROFILE_H264_EXTENDED:
+                            m_AsyncEvent << ",\"profile\":"  << "\"E\"";
+                            break;
+                        case FF_PROFILE_H264_HIGH:
+                            m_AsyncEvent << ",\"profile\":"  << "\"H\"";
+                            break;
+                        default:
+                            ELOG_WARN_T("Unsupported H264 profile: %s", avcodec_profile_name(video_st->codecpar->codec_id, video_st->codecpar->profile));
+                            m_AsyncEvent << ",\"profile\":"  << "\"M\"";
+                            break;
+                    }
+
                     break;
 
                 case AV_CODEC_ID_H265:
