@@ -173,16 +173,17 @@ public:
             case FRAME_FORMAT_H264:
 
                 switch (m_profile) {
-                    case PROFILE_UNKNOWN:
                     case PROFILE_AVC_CONSTRAINED_BASELINE:
                     case PROFILE_AVC_BASELINE:
                     case PROFILE_AVC_MAIN:
                     case PROFILE_AVC_HIGH:
                         break;
-                    default:
-                        ELOG_WARN_T("Unspported video profile(%d), force to Baseline", m_profile);
 
-                        m_profile = PROFILE_AVC_BASELINE;
+                    case PROFILE_UNKNOWN:
+                    default:
+                        ELOG_WARN_T("Unspported video profile(%d), force to Main", m_profile);
+
+                        m_profile = PROFILE_AVC_MAIN;
                         break;
                 }
 
