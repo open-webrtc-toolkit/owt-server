@@ -174,6 +174,7 @@ public:
 
                 switch (m_profile) {
                     case PROFILE_UNKNOWN:
+                    case PROFILE_AVC_CONSTRAINED_BASELINE:
                     case PROFILE_AVC_BASELINE:
                     case PROFILE_AVC_MAIN:
                     case PROFILE_AVC_HIGH:
