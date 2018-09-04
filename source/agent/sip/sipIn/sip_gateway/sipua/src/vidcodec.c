@@ -343,6 +343,32 @@ static struct vidcodec h264_baseline_mode1 = {
 	.fmtp_cmph = h264_fmtp_cmp,
 };
 
+static struct vidcodec h264_main_mode1 = {
+    .name      = "H264",
+    .variant   = "packetization-mode=1",
+    .encupdh   = NULL,
+    .ench      = NULL,
+    .decupdh   = NULL,
+    .dech      = NULL,
+    /*.fmtp_ench = h264_fmtp_enc_mode1,*/
+    .fmtp_ench = NULL,
+    .fmtp = "packetization-mode=1;profile-level-id=4D0032;in-band-parameter-sets=1",
+    .fmtp_cmph = h264_fmtp_cmp,
+};
+
+static struct vidcodec h264_high_mode1 = {
+    .name      = "H264",
+    .variant   = "packetization-mode=1",
+    .encupdh   = NULL,
+    .ench      = NULL,
+    .decupdh   = NULL,
+    .dech      = NULL,
+    /*.fmtp_ench = h264_fmtp_enc_mode1,*/
+    .fmtp_ench = NULL,
+    .fmtp = "packetization-mode=1;profile-level-id=64001F;in-band-parameter-sets=1",
+    .fmtp_cmph = h264_fmtp_cmp,
+};
+
 static int32_t get_parameter(const char *fmtp, const char *paraname)
 {
 	struct pl pl, paraval;
@@ -385,6 +411,8 @@ void register_video_codecs(void)
 	vidcodec_register(&h265_profile_id_1);
 	vidcodec_register(&h264_constrained_baseline_mode1);
 	vidcodec_register(&h264_baseline_mode1);
+    vidcodec_register(&h264_main_mode1);
+    vidcodec_register(&h264_high_mode1);
 	/*vidcodec_register(&h264_constrained_baseline_mode0);
 	vidcodec_register(&h264_baseline_mode0);*/
 	vidcodec_register((struct vidcodec *)&vpx);

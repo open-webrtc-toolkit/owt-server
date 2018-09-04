@@ -180,6 +180,63 @@ var getConferenceControllerForRoom = function (roomId, on_ok, on_error) {
     tryFetchingConferenceController(25);
 };
 
+function translateProfile (profLevId) {
+    var profile_idc = profLevId.substr(0, 2);
+    var profile_iop = parseInt(profLevId.substr(2, 2), 16);
+    var profile;
+    switch (profile_idc) {
+        case '42':
+            if (profile_iop & (1 << 6)) {
+                // x1xx0000
+                profile = 'CB';
+            } else {
+                // x0xx0000
+                profile = 'B';
+            }
+            break;
+        case '4D':
+            if (profile_iop && (1 << 7)) {
+                // 1xxx0000
+                profile = 'CB';
+            } else if (!(profile_iop && (1 << 5))) {
+                profile = 'M';
+            }
+            break;
+        case '58':
+            if (profile_iop && (1 << 7)) {
+                if (profile_iop && (1 << 6)) {
+                    profile = 'CB';
+                } else {
+                    profile = 'B';
+                }
+            } else if (!(profile_iop && (1 << 6))) {
+                profile = 'E';
+            }
+            break;
+        case '64':
+            (profile_iop === 0) && (profile = 'H');
+            break;
+        case '6E':
+            (profile_iop === 0) && (profile = 'H10');
+            (profile_iop === 16) && (profile = 'H10I');
+            break;
+        case '7A':
+            (profile_iop === 0) && (profile = 'H42');
+            (profile_iop === 16) && (profile = 'H42I');
+            break;
+        case 'F4':
+            (profile_iop === 0) && (profile = 'H44');
+            (profile_iop === 16) && (profile = 'H44I');
+            break;
+        case '2C':
+            (profile_iop === 16) && (profile = 'C44I');
+            break;
+        default:
+            break;
+    }
+    return profile;
+}
+
 module.exports = function (rpcC, spec) {
     rpcClient = rpcC;
 
@@ -242,7 +299,10 @@ module.exports = function (rpcC, spec) {
             var codec = info.video_codec.toLowerCase();
             var tmp;
             if (codec === 'h264') {
-              tmp = {codec: codec, profile: 'CB', resolution: {width: 0, height: 0}, framerate: 0};
+              var pos = info.videoResolution.indexOf('profile-level-id=');
+              var plid = info.videoResolution.substr(pos + 'profile-level-id='.length, 6);
+              var prf = translateProfile(plid) || 'CB';
+              tmp = {codec: 'h264', profile: prf, resolution: {width: 0, height: 0}, framerate: 0};
             } else {
               tmp = {codec: codec, resolution: {width: 0, height: 0}, framerate: 0};
             }
