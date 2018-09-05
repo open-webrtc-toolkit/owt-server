@@ -254,11 +254,11 @@ module.exports = function (rpcC, spec) {
         internalConnFactory = new InternalConnectionFactory;
 
     var handleIncomingCall = function (peerURI, on_ok, on_error) {
-        var client_id = peerURI;
+        var client_id = peerURI.replace(/[^a-z0-9]/gmi, '_');
 
         getConferenceControllerForRoom(room_id, function(result) {
             var conference_controller = result;
-            calls[client_id] = {conference_controller : conference_controller};
+            calls[client_id] = {conference_controller : conference_controller, peerURI: peerURI};
             do_join(conference_controller, client_id, room_id, erizo.id, function(mixedStream) {
                 if(mixedStream){
                     mixed_stream_id = mixedStream.id;
@@ -459,12 +459,12 @@ module.exports = function (rpcC, spec) {
         log.debug('CallEstablished:', info.peerURI, 'audio='+info.audio, 'video='+info.video,
                  (info.audio ? (' audio codec:' + info.audio_codec + ' audio dir: ' + info.audio_dir) : ''),
                  (info.video ? (' video codec: ' + info.video_codec + ' video dir: ' + info.video_dir) : ''));
-        var client_id = info.peerURI;
+        var client_id = info.peerURI.replace(/[^a-z0-9]/gmi, '_');
         var support_red = info.video? info.support_red : false;
         var support_ulpfec = info.video? info.support_ulpfec : false;
 
         if (calls[client_id]) {
-            calls[client_id].conn = new SipCallConnection({gateway: gateway, clientID: client_id, audio : info.audio, video : info.video,
+            calls[client_id].conn = new SipCallConnection({gateway: gateway, clientID: info.peerURI, audio : info.audio, video : info.video,
                 red : support_red, ulpfec : support_ulpfec}, notifyMediaUpdate);
             setupCall(client_id, info)
             .catch(function(err) {
@@ -478,7 +478,7 @@ module.exports = function (rpcC, spec) {
     var handleCallUpdated = function (info) {
         log.debug('CallUpdated:', info, calls);
 
-        var client_id = info.peerURI;
+        var client_id = info.peerURI.replace(/[^a-z0-9]/gmi, '_');
         var support_red = info.video? info.support_red : false;
         var support_ulpfec = info.video? info.support_ulpfec : false;
 
@@ -562,7 +562,7 @@ module.exports = function (rpcC, spec) {
     };
 
     var handleCallClosed = function (peerURI) {
-        var client_id = peerURI;
+        var client_id = peerURI.replace(/[^a-z0-9]/gmi, '_');
 
         log.debug('CallClosed:', client_id);
         if (calls[client_id]) {
@@ -628,7 +628,8 @@ module.exports = function (rpcC, spec) {
 
         gateway.addEventListener('IncomingCall', function(peerURI) {
             log.debug('IncommingCall: ', peerURI);
-            if (calls[peerURI] === undefined) {
+            var client_id = peerURI.replace(/[^a-z0-9]/gmi, '_');
+            if (calls[client_id] === undefined) {
                 if (!recycling_mode) {
                     handleIncomingCall(peerURI, function () {
                         log.debug('Accept call');
@@ -861,8 +862,14 @@ module.exports = function (rpcC, spec) {
         }
     };
 
-    that.drop = function(participantId, fromRoom, callback) {
-        that.clean();
+    that.drop = function(clientId, fromRoom, callback) {
+        log.debug('drop, clientId:', clientId, 'fromRoom:', fromRoom);
+        if (calls[clientId]) {
+            gateway.hangup(calls[clientId].peerURI);
+            teardownCall(clientId);
+            calls[clientId].conn && calls[clientId].conn.close({input: true, output: true});
+            delete calls[clientId];
+        }
         callback('callback', 'ok');
     };
 

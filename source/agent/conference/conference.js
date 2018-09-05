@@ -128,7 +128,6 @@ var Conference = function (rpcClient, selfRpcId) {
   var that = {},
       is_initializing = false,
       room_id,
-      current_input_count = 0,
       roomController,
       accessController;
 
@@ -302,16 +301,6 @@ var Conference = function (rpcClient, selfRpcId) {
    */
   var subscriptions = {};
 
-  /*
-   * ParticipantID => [ StreamID ]
-   */
-  var sipPublications = {};
-  /*
-   * ParticipantID => [ SubscriptionID ]
-   */
-  var sipSubscriptions = {};
-
-
   var rpcChannel = require('./rpcChannel')(rpcClient),
       rpcReq = require('./rpcRequest')(rpcChannel);
 
@@ -355,8 +344,7 @@ var Conference = function (rpcClient, selfRpcId) {
     }
 
     if (direction === 'in') {
-      current_input_count -= 1;
-      removeStream(participantId, sessionId)
+      removeStream(sessionId)
         .catch((err) => {
           var err_msg = (err.message ? err.message : err);
           log.info(err_msg);
@@ -653,8 +641,19 @@ var Conference = function (rpcClient, selfRpcId) {
 
   const removeParticipant = function(participantId) {
     if (participants[participantId]) {
-      var participant = participants[participantId];
+      for (var sub_id in subscriptions) {
+        if (subscriptions[sub_id].info.owner === participantId) {
+          removeSubscription(sub_id);
+        }
+      }
 
+      for (var stream_id in streams) {
+        if (streams[stream_id].info.owner === participantId) {
+          removeStream(stream_id);
+        }
+      }
+
+      var participant = participants[participantId];
       var left_user = participant.getInfo();
       delete participants[participantId];
       room_config.notifying.participantActivities && sendMsg('room', 'all', 'participant', {action: 'leave', data: left_user.id});
@@ -664,17 +663,9 @@ var Conference = function (rpcClient, selfRpcId) {
   const dropParticipants = function(portal) {
     for (var participant_id in participants) {
       if (participants[participant_id].getPortal() === portal) {
-        removeParticipant(participant_id);
+        doDropParticipant(participant_id);
       }
     }
-  };
-
-  const addSIPStream = (id, owner, pubInfo) => {
-    if (!sipPublications[owner]) {
-      sipPublications[owner] = [];
-    }
-    sipPublications[owner].push(id);
-    return addStream(id, pubInfo.locality, pubInfo.media, {owner: owner, type: 'sip'});
   };
 
   const extractAudioFormat = (audioInfo) => {
@@ -780,6 +771,21 @@ var Conference = function (rpcClient, selfRpcId) {
     return result;
   };
 
+  const initiateStream = (id, info) => {
+    if (streams[id]) {
+      return Promise.reject('Stream already exists');
+    }
+
+    streams[id] = {
+      id: id,
+      type: 'forward',
+      info: info,
+      isInConnecting: true
+    };
+
+    return Promise.resolve('ok');
+  };
+
   const addStream = (id, locality, media, info) => {
     return new Promise((resolve, reject) => {
       roomController && roomController.publish(info.owner, id, locality, media, info.type, function() {
@@ -832,7 +838,7 @@ var Conference = function (rpcClient, selfRpcId) {
     }
   };
 
-  const removeStream = (participantId, streamId) => {
+  const removeStream = (streamId) => {
     return new Promise((resolve, reject) => {
       if (streams[streamId]) {
         for (var sub_id in subscriptions) {
@@ -842,7 +848,7 @@ var Conference = function (rpcClient, selfRpcId) {
           }
         }
 
-        roomController && roomController.unpublish(participantId, streamId);
+        roomController && roomController.unpublish(streams[streamId].info.owner, streamId);
         delete streams[streamId];
         setTimeout(() => {
           room_config.notifying.streamChange && sendMsg('room', 'all', 'stream', {id: streamId, status: 'remove'});
@@ -852,12 +858,19 @@ var Conference = function (rpcClient, selfRpcId) {
     });
   };
 
-  const addSIPSubscription = (id, owner, subDesc) => {
-    if (!sipSubscriptions[owner]) {
-      sipSubscriptions[owner] = [];
+  const initiateSubscription = (id, subSpec, info) => {
+    if (subscriptions[id]) {
+      return Promise.reject('Subscription already exists');
     }
-    sipSubscriptions[owner].push(id);
-    return addSubscription(id, subDesc.locality, subDesc.media, {owner: owner, type: 'sip'});
+
+    subscriptions[id] = {
+      id: id,
+      media: subSpec.media,
+      info: info,
+      isInConnecting: true
+    };
+
+    return Promise.resolve('ok');
   };
 
   const addSubscription = (id, locality, mediaSpec, info) => {
@@ -974,6 +987,30 @@ var Conference = function (rpcClient, selfRpcId) {
     });
   };
 
+  const doUnpublish = (streamId) => {
+    if (streams[streamId]) {
+      if (streams[streamId].info.type === 'sip') {
+        return removeStream(streamId);
+      } else {
+        return accessController.terminate(streamId, 'in', 'Participant terminate');
+      }
+    } else {
+      return Promise.reject('Stream does NOT exist');
+    }
+  };
+
+  const doUnsubscribe = (subId) => {
+    if (subscriptions[subId]) {
+      if (subscriptions[subId].info.type === 'sip') {
+        return removeSubscription(subId);
+      } else {
+        return accessController.terminate(subId, 'out', 'Participant terminate');
+      }
+    } else {
+      return Promise.reject('Subscription does NOT exist');
+    }
+  };
+
   const selfClean = () => {
     setTimeout(function() {
       var hasNonAdminParticipant = false,
@@ -1003,6 +1040,10 @@ var Conference = function (rpcClient, selfRpcId) {
         destroyRoom();
       }
     }, 6 * 1000);
+  };
+
+  const currentInputCount = () => {
+    return Object.keys(streams).filter((stream_id) => {return streams[stream_id].type === 'forward';}).length;
   };
 
   that.join = function(roomId, participantInfo, callback) {
@@ -1040,7 +1081,9 @@ var Conference = function (rpcClient, selfRpcId) {
         }
 
         for (var stream_id in streams) {
-          current_streams.push(streams[stream_id]);
+          if (!streams[stream_id].isInConnecting) {
+            current_streams.push(streams[stream_id]);
+          }
         }
 
         callback('callback', {
@@ -1066,24 +1109,6 @@ var Conference = function (rpcClient, selfRpcId) {
 
     if (participants[participantId] === undefined) {
       return callback('callback', 'error', 'Participant has not joined');
-    }
-
-    // Remove SIP streams
-    if (sipPublications[participantId]) {
-      for (let i = 0; i < sipPublications[participantId].length; i++) {
-        removeStream(participantId, sipPublications[participantId][i])
-          .then(() => {
-            current_input_count -= 1;
-          });
-      }
-      delete sipPublications[participantId];
-    }
-    // Remove SIP subscriptions
-    if (sipSubscriptions[participantId]) {
-      for (let i = 0; i < sipSubscriptions[participantId].length; i++) {
-        removeSubscription(sipSubscriptions[participantId][i]);
-      }
-      delete sipSubscriptions[participantId];
     }
 
     return accessController.participantLeave(participantId)
@@ -1126,7 +1151,7 @@ var Conference = function (rpcClient, selfRpcId) {
       return callback('callback', 'error', 'unauthorized');
     }
 
-    if (room_config.inputLimit >= 0 && (room_config.inputLimit <= current_input_count)) {
+    if (room_config.inputLimit >= 0 && (room_config.inputLimit <= currentInputCount())) {
       return callback('callback', 'error', 'Too many inputs');
     }
 
@@ -1143,9 +1168,8 @@ var Conference = function (rpcClient, selfRpcId) {
     }
 
     if (pubInfo.type === 'sip') {
-      return addSIPStream(streamId, participantId, pubInfo)
+      return addStream(streamId, pubInfo.locality, pubInfo.media, {owner: participantId, type: 'sip'})
       .then((result) => {
-        current_input_count += 1;
         callback('callback', result);
       })
       .catch((e) => {
@@ -1166,7 +1190,7 @@ var Conference = function (rpcClient, selfRpcId) {
 
       return accessController.initiate(participantId, streamId, 'in', participants[participantId].getOrigin(), pubInfo, format_preference)
       .then((result) => {
-        current_input_count += 1;
+        initiateStream(streamId, {owner: participantId, type: pubInfo.type});
         callback('callback', result);
       })
       .catch((e) => {
@@ -1185,41 +1209,17 @@ var Conference = function (rpcClient, selfRpcId) {
       return callback('callback', 'error', 'Participant has not joined');
     }
 
-    //if (!streams[streamId]) {
-    //  return callback('callback', 'error', 'Stream does NOT exist');
-    //}
-
     //if (streams[streamId].info.owner !== participantId) {
     //  return callback('callback', 'error', 'unauthorized');
     //}
 
-    if (streams[streamId] && (streams[streamId].info.type === 'sip')) {
-      return removeStream(participantId, streamId)
-        .then((result) => {
-          current_input_count -= 1;
-          callback('callback', result);
-        })
-        .catch((e) => {
-          callback('callback', 'error', e.message ? e.message : e);
-        });
-    } else if (streams[streamId]) {
-      return accessController.terminate(streamId, 'in', 'Participant terminate')
-        .then((result) => {
-          log.debug('accessController.terminate result:', result);
-          //return removeStream(participantId, streamId);
-          return 'ok';
-        }, (e) => {
-          return Promise.reject('Failed in terminating session');
-        })
-        .then((result) => {
-          callback('callback', result);
-        })
-        .catch((e) => {
-          callback('callback', 'error', e.message ? e.message : e);
-        });
-    } else {
-      callback('callback', 'error', 'Stream does NOT exist');
-    }
+    return doUnpublish(streamId)
+      .then((result) => {
+        callback('callback', result);
+      })
+      .catch((e) => {
+        callback('callback', 'error', e.message ? e.message : e);
+      });
   };
 
   const isAudioFmtAcceptable = (streamAudio, fmt) => {
@@ -1362,7 +1362,7 @@ var Conference = function (rpcClient, selfRpcId) {
     }
 
     if (subDesc.type === 'sip') {
-      return addSIPSubscription(participantId, subscriptionId, subDesc)
+      return addSubscription(subscriptionId, subDesc.locality, subDesc.media, {owner: participantId, type: 'sip'})
       .then((result) => {
         callback('callback', result);
       })
@@ -1446,6 +1446,7 @@ var Conference = function (rpcClient, selfRpcId) {
 
       return accessController.initiate(participantId, subscriptionId, 'out', participants[participantId].getOrigin(), subDesc, format_preference)
       .then((result) => {
+        initiateSubscription(subscriptionId, subDesc, {owner: participantId, type: subDesc.type});
         callback('callback', result);
       })
       .catch((e) => {
@@ -1464,39 +1465,17 @@ var Conference = function (rpcClient, selfRpcId) {
       return callback('callback', 'error', 'Participant has not joined');
     }
 
-    //if (!subscriptions[subscriptionId]) {
-    //  return callback('callback', 'error', 'Subscription does NOT exist');
-    //}
-
     //if (subscriptions[subscriptionId].info.owner !== participantId) {
     //  return callback('callback', 'error', 'unauthorized');
     //}
 
-    if (subscriptions[subscriptionId] && (subscriptions[subscriptionId].info.type === 'sip')) {
-      return removeSubscription(subscriptionId)
-        .then((result) => {
-          callback('callback', result);
-        })
-        .catch((e) => {
-          callback('callback', 'error', e.message ? e.message : e);
-        });
-    } else if (subscriptions[subscriptionId]) {
-      return accessController.terminate(subscriptionId, 'out', 'Participant terminate')
-        .then((result) => {
-          //return removeSubscription(subscriptionId);
-          return 'ok';
-        }, (e) => {
-          return Promise.reject('Failed in terminating session');
-        })
-        .then((result) => {
-          callback('callback', result);
-        })
-        .catch((e) => {
-          callback('callback', 'error', e.message ? e.message : e);
-        });
-    } else {
-        callback('callback', 'error', 'Subscription does NOT exist');
-    }
+    return doUnsubscribe(subscriptionId)
+      .then((result) => {
+        callback('callback', result);
+      })
+      .catch((e) => {
+        callback('callback', 'error', e.message ? e.message : e);
+      });
   };
 
   const mix = function(streamId, toView) {
@@ -1899,22 +1878,31 @@ var Conference = function (rpcClient, selfRpcId) {
     });
   };
 
-  that.dropParticipant = function(participantId, callback) {
-    log.debug('dropParticipant', participantId);
-    var deleted = null;
+  const doDropParticipant = (participantId) => {
+    log.debug('doDropParticipant', participantId);
     if (participants[participantId] && participantId !== 'admin') {
-      deleted = participants[participantId];
-      participants[participantId].drop()
+      var deleted = participants[participantId].getInfo();
+      return participants[participantId].drop()
         .then(function(result) {
           removeParticipant(participantId);
-          callback('callback', deleted);
+          return deleted;
         }).catch(function(reason) {
-          log.debug('dropParticipant fail:', reason);
-          callback('callback', 'error', 'Drop participant failed');
+          log.warn('doDropParticipant fail:', reason);
+          return Promise.reject('Drop participant failed');
         });
     } else {
-      callback('callback', 'error', 'Participant does NOT exist');
+      return Promise.reject('Participant does NOT exist');
     }
+  };
+
+  that.dropParticipant = function(participantId, callback) {
+    log.debug('dropParticipant', participantId);
+    return doDropParticipant(participantId)
+      .then((dropped) => {
+        callback('callback', dropped);
+      }).catch((reason) => {
+        callback('callback', 'error', reason.message ? reason.message : reason);
+      });
   };
 
   that.getStreams = function(callback) {
@@ -1942,7 +1930,7 @@ var Conference = function (rpcClient, selfRpcId) {
       var stream_id = Math.round(Math.random() * 1000000000000000000) + '';
       return initRoom(roomId)
       .then(() => {
-        if (room_config.inputLimit >= 0 && (room_config.inputLimit <= current_input_count)) {
+        if (room_config.inputLimit >= 0 && (room_config.inputLimit <= currentInputCount())) {
           return Promise.reject('Too many inputs');
         }
 
@@ -1956,7 +1944,7 @@ var Conference = function (rpcClient, selfRpcId) {
 
         return accessController.initiate('admin', stream_id, 'in', participants['admin'].getOrigin(), pubInfo);
       }).then((result) => {
-        current_input_count += 1;
+        initiateStream(stream_id, {owner: 'admin', type: pubInfo.type});
         return 'ok';
       }).then(() => {
         return new Promise((resolve, reject) => {
@@ -2152,14 +2140,7 @@ var Conference = function (rpcClient, selfRpcId) {
       return callback('callback', 'error', 'Stream does NOT exist');
     }
 
-    return accessController.terminate(streamId, 'in', 'Participant terminate')
-      .then((result) => {
-        log.debug('accessController.terminate result:', result);
-        //return removeStream('admin', streamId);
-        return 'ok';
-      }, (e) => {
-        return Promise.reject('Failed in terminating session');
-      })
+    return doUnpublish(streamId)
       .then((result) => {
         callback('callback', result);
         selfClean();
@@ -2272,6 +2253,7 @@ var Conference = function (rpcClient, selfRpcId) {
 
         return accessController.initiate('admin', subscription_id, 'out', participants['admin'].getOrigin(), subDesc);
       }).then(() => {
+        initiateSubscription(subscription_id, subDesc, {owner: 'admin', type: subDesc.type});
         return new Promise((resolve, reject) => {
           var count = 0, wait = 300;
           var interval = setInterval(() => {
@@ -2390,18 +2372,7 @@ var Conference = function (rpcClient, selfRpcId) {
       return callback('callback', 'error', 'Controllers are not ready');
     }
 
-    if (!subscriptions[subId]) {
-      return callback('callback', 'error', 'Subscription does NOT exist');
-    }
-
-    return accessController.terminate(subId, 'out', 'Participant terminate')
-      .then((result) => {
-        log.debug('accessController.terminate result:', result);
-        //return removeSubscription(subId);
-        return 'ok';
-      }, (e) => {
-        return Promise.reject('Failed in terminating session');
-      })
+    return doUnsubscribe(subId)
       .then((result) => {
         callback('callback', result);
         selfClean();
