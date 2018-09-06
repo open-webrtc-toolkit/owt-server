@@ -848,7 +848,9 @@ var Conference = function (rpcClient, selfRpcId) {
           }
         }
 
-        roomController && roomController.unpublish(streams[streamId].info.owner, streamId);
+        if (!streams[streamId].isInConnecting) {
+          roomController && roomController.unpublish(streams[streamId].info.owner, streamId);
+        }
         delete streams[streamId];
         setTimeout(() => {
           room_config.notifying.streamChange && sendMsg('room', 'all', 'stream', {id: streamId, status: 'remove'});
@@ -980,7 +982,9 @@ var Conference = function (rpcClient, selfRpcId) {
   const removeSubscription = (subscriptionId) => {
     return new Promise((resolve, reject) => {
       if (subscriptions[subscriptionId]) {
-        roomController && roomController.unsubscribe(subscriptions[subscriptionId].info.owner, subscriptionId);
+        if (!subscriptions[subscriptionId].isInConnecting) {
+          roomController && roomController.unsubscribe(subscriptions[subscriptionId].info.owner, subscriptionId);
+        }
         delete subscriptions[subscriptionId];
       }
       resolve('ok');
@@ -1953,9 +1957,10 @@ var Conference = function (rpcClient, selfRpcId) {
             if (count > wait) {
               clearInterval(interval);
               accessController.terminate('admin', stream_id, 'Participant terminate');
+              removeStream(stream_id);
               reject('Access timeout');
             } else {
-              if (streams[stream_id]) {
+              if (streams[stream_id] && !streams[stream_id].isInConnecting) {
                 clearInterval(interval);
                 resolve('ok');
               } else {
