@@ -86,6 +86,12 @@ var videoMatcher = function () {
                 encodeOk = formatContain(capacity.video.encode, preference.video.encode);
                 decodeOk = formatContain(capacity.video.decode, preference.video.decode);
             }
+            if (!encodeOk) {
+                log.warn('No available workers for encoding:', JSON.stringify(preference.video.encode));
+            }
+            if (!decodeOk) {
+                log.warn('No available workers for decoding:', JSON.stringify(preference.video.decode));
+            }
             return (encodeOk && decodeOk);
         });
         return result;

@@ -1237,13 +1237,15 @@ var Conference = function (rpcClient, selfRpcId) {
     return false;
   };
 
-  const validateAudioRequest = (type, req) => {
+  const validateAudioRequest = (type, req, err) => {
     if (!streams[req.from] || !streams[req.from].media.audio) {
+      err && (err.message = 'Requested audio stream');
       return false;
     }
 
     if (req.format) {
       if (!isAudioFmtAcceptable(streams[req.from].media.audio, req.format)) {
+        err && (err.message = 'Format is not acceptable');
         return false;
       }
     }
@@ -1303,21 +1305,25 @@ var Conference = function (rpcClient, selfRpcId) {
     return false;
   };
 
-  const validateVideoRequest = (type, req) => {
+  const validateVideoRequest = (type, req, err) => {
     if (!streams[req.from] || !streams[req.from].media.video) {
+      err && (err.message = 'Requested video stream');
       return false;
     }
 
     if (req.format && !isVideoFmtAcceptable(streams[req.from].media.video, req.format)) {
+      err && (err.message = 'Format is not acceptable');
       return false;
     }
 
     if (req.parameters) {
       if (req.parameters.resolution && !isResolutionAcceptable(streams[req.from].media.video, req.parameters.resolution)) {
+        err && (err.message = 'Resolution is not acceptable');
         return false;
       }
 
       if (req.parameters.framerate && !isFramerateAcceptable(streams[req.from].media.video, req.parameters.framerate)) {
+        err && (err.message = 'Framerate is not acceptable');
         return false;
       }
 
@@ -1326,10 +1332,12 @@ var Conference = function (rpcClient, selfRpcId) {
         req.parameters.bitrate = undefined;
       }
       if (req.parameters.bitrate && !isBitrateAcceptable(streams[req.from].media.video, req.parameters.bitrate)) {
+        err && (err.message = 'Bitrate is not acceptable');
         return false;
       }
 
       if (req.parameters.keyFrameInterval && !isKeyFrameIntervalAcceptable(streams[req.from].media.video, req.parameters.keyFrameInterval)) {
+        err && (err.message = 'KeyFrameInterval is not acceptable');
         return false;
       }
     }
@@ -1357,12 +1365,13 @@ var Conference = function (rpcClient, selfRpcId) {
       return callback('callback', 'error', 'Subscription exists');
     }
 
-    if (subDesc.media.audio && !validateAudioRequest(subDesc.type, subDesc.media.audio)) {
-      return callback('callback', 'error', 'Target audio stream does NOT satisfy');
+    var requestError = { message: '' };
+    if (subDesc.media.audio && !validateAudioRequest(subDesc.type, subDesc.media.audio, requestError)) {
+      return callback('callback', 'error', 'Target audio stream does NOT satisfy:' + requestError.message);
     }
 
-    if (subDesc.media.video && !validateVideoRequest(subDesc.type, subDesc.media.video)) {
-      return callback('callback', 'error', 'Target video stream does NOT satisfy');
+    if (subDesc.media.video && !validateVideoRequest(subDesc.type, subDesc.media.video, requestError)) {
+      return callback('callback', 'error', 'Target video stream does NOT satisfy:' + requestError.message);
     }
 
     if (subDesc.type === 'sip') {
@@ -2200,12 +2209,13 @@ var Conference = function (rpcClient, selfRpcId) {
           return Promise.reject('Video is forbiden');
         }
 
-        if (subDesc.media.audio && !validateAudioRequest(subDesc.type, subDesc.media.audio)) {
-          return Promise.reject('Target audio stream does NOT satisfy');
+        var requestError = { message: '' };
+        if (subDesc.media.audio && !validateAudioRequest(subDesc.type, subDesc.media.audio, requestError)) {
+          return Promise.reject('Target audio stream does NOT satisfy:' + requestError.message);
         }
 
-        if (subDesc.media.video && !validateVideoRequest(subDesc.type, subDesc.media.video)) {
-          return Promise.reject('Target video stream does NOT satisfy');
+        if (subDesc.media.video && !validateVideoRequest(subDesc.type, subDesc.media.video, requestError)) {
+          return Promise.reject('Target video stream does NOT satisfy:' + requestError.message);
         }
 
         if (subDesc.type === 'recording') {
