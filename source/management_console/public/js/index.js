@@ -770,10 +770,17 @@ function tableHandlerRoom(rooms) {
     return v;
   };
 
-  var videoFormat2Name = function (v) {
+  var videoFormat2NameIn = function (v) {
     if (v === null) return 'h264';
     if (typeof v === 'object') {
-      return v.profile ? v.codec + '_' + v.profile : v.codec;
+      return v.codec;
+    }
+  };
+
+  var videoFormat2NameOut = function (v) {
+    if (v === null) return 'h264_CB';
+    if (typeof v === 'object') {
+      return v.codec === 'h264' ? v.codec + '_' + (v.profile || 'CB') : v.codec;
     }
   };
 
@@ -781,16 +788,16 @@ function tableHandlerRoom(rooms) {
     if (room.views) {
       room.views.forEach(function(view) {
         view.audio.format = audioFormat2Name(view.audio.format);
-        view.video.format = videoFormat2Name(view.video.format);
+        view.video.format = videoFormat2NameOut(view.video.format);
       });
     }
     if (room.mediaIn) {
       room.mediaIn.audio = room.mediaIn.audio.filter((v) => v).map(audioFormat2Name);
-      room.mediaIn.video = room.mediaIn.video.filter((v) => v).map(videoFormat2Name);
+      room.mediaIn.video = room.mediaIn.video.filter((v) => v).map(videoFormat2NameIn);
     }
     if (room.mediaOut) {
       room.mediaOut.audio = room.mediaOut.audio.filter((v) => v).map(audioFormat2Name);
-      room.mediaOut.video.format = room.mediaOut.video.format.filter((v) => v).map(videoFormat2Name);
+      room.mediaOut.video.format = room.mediaOut.video.format.filter((v) => v).map(videoFormat2NameOut);
     }
     return room;
   };

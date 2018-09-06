@@ -21,7 +21,7 @@ var videoNamesIn = [
 ];
 
 var videoNamesOut = [
-  'h265', 'vp8', 'vp9', 'h264_CB', 'h264_B', 'h264_M', 'h264_E', 'h264_H'
+  'h265', 'vp8', 'vp9', 'h264_CB', 'h264_B', 'h264_M', 'h264_H'
 ];
 
 var videoFormatIn = {
