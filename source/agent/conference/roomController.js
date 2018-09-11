@@ -87,9 +87,6 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                 capability.video.encode.push(formatStr(view.video.format));
             }
         });
-        // FIXME: remove 'h265' for schedule preference
-        capability.video.encode = capability.video.encode.filter((fmt) => (fmt !== 'h265'));
-        capability.video.decode = capability.video.decode.filter((fmt) => (fmt !== 'h265'));
 
         return capability;
     };
