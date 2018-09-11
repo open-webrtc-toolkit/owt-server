@@ -364,10 +364,15 @@ var todo = 10;
 var rCount = 0;
 var sCount = 0;
 
+var finishCallback = null;
+
 function checkClose() {
   if (rCount === todo && sCount === todo) {
     console.log('Finish');
     db.close();
+    if (typeof finishCallback === 'function') {
+      finishCallback();
+    }
   }
 }
 
@@ -442,17 +447,34 @@ function processServices() {
   });
 }
 
-var rl = require('readline').createInterface({
-  input: process.stdin,
-  output: process.stdout
-});
+function main(next) {
+  var rl = require('readline').createInterface({
+    input: process.stdin,
+    output: process.stdout
+  });
 
-rl.question('This script will overwrite the old schema data, you may want backup your database before continuing. Continue?[y/n]' ,(answer) => {
-  rl.close();
+  rl.question('This operation will overwrite the old database, which ' +
+      'is irreversible and may cause incompatibility between old version ' +
+      'MCU\'s and the converted database. It is strongly suggested to ' +
+      'backup the database files before continuing. Are you sure you want ' +
+      'to proceed this operation anyway?[y/n]', (answer) => {
+    rl.close();
 
-  answer = answer.toLowerCase();
-  if (answer === 'y' || answer === 'yes') {
-    processServices();
-  }
-});
+    answer = answer.toLowerCase();
+    if (answer === 'y' || answer === 'yes') {
+      processServices();
+    } else {
+      process.exit(0);
+    }
+  });
+}
 
+
+if (require.main === module) {
+    main();
+} else {
+    exports.update = function (cb) {
+      finishCallback = cb;
+      main();
+    };
+}
