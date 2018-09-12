@@ -36,6 +36,7 @@ LiveStreamOut::LiveStreamOut(const std::string& url, bool hasAudio, bool hasVide
 
 LiveStreamOut::~LiveStreamOut()
 {
+    close();
 }
 
 bool LiveStreamOut::isAudioFormatSupported(FrameFormat format)

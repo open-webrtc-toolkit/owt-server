@@ -31,6 +31,7 @@ MediaFileOut::MediaFileOut(const std::string& url, bool hasAudio, bool hasVideo,
 
 MediaFileOut::~MediaFileOut()
 {
+    close();
 }
 
 bool MediaFileOut::isAudioFormatSupported(FrameFormat format)
