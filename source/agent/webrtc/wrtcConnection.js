@@ -114,7 +114,7 @@ module.exports = function (spec, on_status, on_mediaUpdate) {
         audioFramePacketizer,
         videoFrameConstructor,
         videoFramePacketizer,
-        offerProfiles,
+        final_prf,
         wrtc;
 
     var isReserve = function (line, reserved) {
@@ -245,6 +245,10 @@ module.exports = function (spec, on_status, on_mediaUpdate) {
                 }
             }
 
+            if (video_fmt.codec === 'h264' && final_prf) {
+                video_fmt.profile = final_prf;
+            }
+
             if (fmtcode) {
                 var reserved_codes = [fmtcode];
                 fmts.forEach(function (f) {
@@ -268,92 +272,80 @@ module.exports = function (spec, on_status, on_mediaUpdate) {
         return sdp;
     };
 
-    var getProfileMap = function (sdp) {
+    var filterH264Payload = function (sdp) {
         var res = transform.parse(sdp);
-        var result = {};
-        var count = 0;
+        var removePayloads = [];
+        var selectedPayload = -1;
+        var tmpProfile = null;
+        var preferred = null;
+        var optionals = [];
+        if (formatPreference && formatPreference.video) {
+            preferred = formatPreference.video.preferred;
+            optionals = formatPreference.video.optional || [];
+        }
         res.media.forEach((mediaInfo) => {
+            var i, rtp, fmtp;
             if (mediaInfo.type === 'video') {
-                mediaInfo.fmtp.forEach((fmtp) => {
-                    if (fmtp.config.indexOf('profile-level-id') >= 0) {
-                        var params = transform.parseParams(fmtp.config);
-                        var profLevId = params['profile-level-id'].toString();
-                        var p = translateProfile(profLevId);
-                        result[p] = profLevId;
-                        count++;
-                    }
-                });
-            }
-        });
-
-        if (count === 0) {
-            // no h264 profile in sdp
-            return null;
-        }
-        return result;
-    };
-
-    var selectBestMatchProfile = function (offerProfMap, supportProfiles) {
-        var i, p;
-        var finalProfile;
-        // Matching from 'high' to 'cb'
-        for (i = h264ProfileOrder.length - 1; i >= 0; i--) {
-            p = h264ProfileOrder[i];
-            if (offerProfMap[p] && supportProfiles[p]) {
-                finalProfile = p;
-                break;
-            }
-        }
-        return finalProfile;
-    };
-
-    var replaceProfLevId = function (sdp, profLevId) {
-        var sdpInfo = transform.parse(sdp);
-        sdpInfo.media.forEach((mediaInfo) => {
-            if (mediaInfo.type === 'video') {
-                mediaInfo.fmtp.forEach((fmtp) => {
-                    if (fmtp.config.indexOf('profile-level-id') >= 0) {
-                        fmtp.config = fmtp.config.replace(/profile-level-id=.{6}/, 'profile-level-id=' + profLevId);
-                    }
-                });
-            }
-        });
-        return transform.write(sdpInfo);
-    };
-
-    var determineProfile = function (sdp) {
-        if (video_fmt && video_fmt.codec === 'h264' && offerProfiles) {
-            var finalProfile;
-            if (direction === 'out') {
-                var videoOption = formatPreference.video;
-                if (videoOption.preferred && videoOption.preferred.codec === 'h264') {
-                    if (offerProfiles[videoOption.preferred.profile]) {
-                        finalProfile = videoOption.preferred.profile;
+                for (i = 0; i < mediaInfo.rtp.length; i++) {
+                    rtp = mediaInfo.rtp[i];
+                    if (rtp.codec.toLowerCase() === 'h264') {
+                        removePayloads.push(rtp.payload);
                     }
                 }
-                var acceptableProfiles = {};
-                if (!finalProfile && videoOption.optional) {
-                    videoOption.optional.forEach((fmt) => {
-                        if (fmt.codec === 'h264') {
-                            acceptableProfiles[fmt.profile] = true;
+
+                for (i = 0; i < mediaInfo.fmtp.length; i++) {
+                    fmtp = mediaInfo.fmtp[i];
+                    if (removePayloads.indexOf(fmtp.payload) > -1) {
+                        if (fmtp.config.indexOf('packetization-mode=0') > -1)
+                            continue;
+
+                        if (fmtp.config.indexOf('profile-level-id') >= 0) {
+                            var params = transform.parseParams(fmtp.config);
+                            var prf = translateProfile(params['profile-level-id'].toString());
+                            if (preferred && preferred.codec === 'h264') {
+                                if (preferred.profile && preferred.profile === prf) {
+                                    // Use preferred profile
+                                    selectedPayload = fmtp.payload;
+                                    final_prf = prf;
+                                    break;
+                                }
+                            }
+                            if (direction === 'out') {
+                                if (optionals) {
+                                    if (optionals.findIndex((fmt) => (fmt.codec === 'h264' && fmt.profile === prf)) > -1) {
+                                        if (h264ProfileOrder.indexOf(tmpProfile) < h264ProfileOrder.indexOf(prf)) {
+                                            tmpProfile = prf;
+                                            selectedPayload = fmtp.payload;
+                                        }
+                                    }
+                                }
+                            } else {
+                                if (h264ProfileOrder.indexOf(tmpProfile) < h264ProfileOrder.indexOf(prf)) {
+                                    tmpProfile = prf;
+                                    selectedPayload = fmtp.payload;
+                                }
+                            }
                         }
-                    });
-                    finalProfile = selectBestMatchProfile(offerProfiles, acceptableProfiles);
+                    }
                 }
-            } else {
-                // direction 'in'
-                finalProfile = selectBestMatchProfile(offerProfiles, offerProfiles);
-            }
 
-            if (finalProfile) {
-                sdp = replaceProfLevId(sdp, offerProfiles[finalProfile]);
-                video_fmt.profile = finalProfile;
-            } else {
-                // No matching profile
-                video_fmt = false;
+                if (selectedPayload > -1) {
+                    i = removePayloads.indexOf(selectedPayload);
+                    removePayloads.splice(i, 1);
+                }
+
+                // Remove non-selected h264 payload
+                mediaInfo.rtp = mediaInfo.rtp.filter((rtp) => {
+                    return removePayloads.findIndex((pl) => (pl === rtp.payload)) === -1;
+                });
+                mediaInfo.fmtp = mediaInfo.fmtp.filter((fmtp) => {
+                    return removePayloads.findIndex((pl) => (pl === fmtp.payload)) === -1;
+                });
             }
-        }
-        return sdp;
+        });
+
+        final_prf = (final_prf || tmpProfile);
+        return transform.write(res);
     };
 
     var CONN_INITIAL = 101, CONN_STARTED = 102, CONN_GATHERED = 103, CONN_READY = 104, CONN_FINISHED = 105, CONN_CANDIDATE = 201, CONN_SDP = 202, CONN_FAILED = 500;
@@ -382,7 +374,6 @@ module.exports = function (spec, on_status, on_mediaUpdate) {
                     });
                     audio && (message = determineAudioFmt(message));
                     video && (message = determineVideoFmt(message));
-                    message = determineProfile(message);
                     log.debug('Answer SDP', message);
                     on_status({type: 'answer', sdp: message});
                     break;
@@ -477,7 +468,6 @@ module.exports = function (spec, on_status, on_mediaUpdate) {
     };
 
     var checkOffer = function (sdp, on_ok, on_error) {
-        offerProfiles = getProfileMap(sdp);
         var contains_audio = /(m=audio).*/g.test(sdp);
         var contains_video = /(m=video).*/g.test(sdp);
 
@@ -491,7 +481,7 @@ module.exports = function (spec, on_status, on_mediaUpdate) {
         } else if (!video && contains_video) {
             return on_error('video is not required but contained by offer sdp');
         } else {
-           on_ok();
+            on_ok();
         }
     };
 
@@ -510,6 +500,8 @@ module.exports = function (spec, on_status, on_mediaUpdate) {
             if (msg.type === 'offer') {
                 log.debug('on offer:', msg.sdp);
                 checkOffer(msg.sdp, function() {
+                    msg.sdp = filterH264Payload(msg.sdp);
+                    log.debug('offer after h264 filter:', msg.sdp);
                     wrtc.setRemoteSdp(msg.sdp);
                 }, function (reason) {
                     log.error('offer error:', reason);
