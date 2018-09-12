@@ -94,7 +94,6 @@ AVStreamOut::AVStreamOut(const std::string& url, bool hasAudio, bool hasVideo, E
 
 AVStreamOut::~AVStreamOut()
 {
-    close();
 }
 
 void AVStreamOut::onFrame(const woogeen_base::Frame& frame)
