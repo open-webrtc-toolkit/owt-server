@@ -69,7 +69,7 @@ AVStreamOut::AVStreamOut(const std::string& url, bool hasAudio, bool hasVideo, E
     , m_lastAudioDts(AV_NOPTS_VALUE)
     , m_lastVideoDts(AV_NOPTS_VALUE)
 {
-    ELOG_DEBUG("url %s, audio %d, video %d, timeOut %d", m_url.c_str(), m_hasAudio, m_hasVideo, m_timeOutMs);
+    ELOG_INFO("url %s, audio %d, video %d, timeOut %d", m_url.c_str(), m_hasAudio, m_hasVideo, m_timeOutMs);
 
     if (!m_hasAudio && !m_hasVideo) {
         ELOG_ERROR("Audio/Video not enabled");
@@ -340,15 +340,13 @@ void AVStreamOut::disconnect()
 
 void AVStreamOut::close()
 {
-    ELOG_INFO("Closing %s", m_url.c_str());
+    ELOG_INFO("Close %s", m_url.c_str());
 
     m_status = AVStreamOut::Context_CLOSED;
     m_frameQueue.cancel();
     m_thread.join();
 
     disconnect();
-
-    ELOG_INFO("Closed");
 }
 
 bool AVStreamOut::addAudioStream(FrameFormat format, uint32_t sampleRate, uint32_t channels)

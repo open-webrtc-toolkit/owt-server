@@ -41,6 +41,8 @@ MsdkFrameDecoder::MsdkFrameDecoder()
     , m_statDetectHeaderFrameCount(0)
     , m_ready(false)
     , m_pluginID()
+    , m_enableBsDump(false)
+    , m_bsDumpfp(NULL)
 {
     initDefaultParam();
 }
@@ -78,6 +80,10 @@ MsdkFrameDecoder::~MsdkFrameDecoder()
     m_framePool.reset();
 
     m_timeStamps.clear();
+
+    if (m_bsDumpfp) {
+        fclose(m_bsDumpfp);
+    }
 
     printfFuncExit;
 }
@@ -224,6 +230,18 @@ bool MsdkFrameDecoder::init(FrameFormat format)
         ELOG_ERROR_T("Create decode failed");
 
         return false;
+    }
+
+    if (m_enableBsDump) {
+        char dumpFileName[128];
+
+        snprintf(dumpFileName, 128, "/tmp/msdkFrameDecoder-%p.%s", this, getFormatStr(format));
+        m_bsDumpfp = fopen(dumpFileName, "wb");
+        if (m_bsDumpfp) {
+            ELOG_DEBUG("Enable bitstream dump, %s", dumpFileName);
+        } else {
+            ELOG_DEBUG("Can not open dump file, %s", dumpFileName);
+        }
     }
 
     return true;
@@ -451,6 +469,7 @@ void MsdkFrameDecoder::onFrame(const Frame& frame)
         return;
     }
 
+    dump(frame.payload, frame.length);
     updateBitstream(frame);
 
 retry:
@@ -466,6 +485,13 @@ retry:
     }
 
     printfFuncExit;
+}
+
+void MsdkFrameDecoder::dump(uint8_t *buf, int len)
+{
+    if (m_bsDumpfp) {
+        fwrite(buf, 1, len, m_bsDumpfp);
+    }
 }
 
 }//namespace woogeen_base

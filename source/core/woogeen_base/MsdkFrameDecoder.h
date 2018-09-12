@@ -60,6 +60,8 @@ protected:
     void flushOutput(void);
     bool resetDecoder(void);
 
+    void dump(uint8_t *buf, int len);
+
 private:
     MFXVideoSession *m_session;
     MFXVideoDECODE *m_dec;
@@ -80,6 +82,9 @@ private:
     bool m_ready;
 
     mfxPluginUID m_pluginID;
+
+    bool m_enableBsDump;
+    FILE *m_bsDumpfp;
 };
 
 } /* namespace woogeen_base */

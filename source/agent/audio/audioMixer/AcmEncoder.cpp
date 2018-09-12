@@ -112,6 +112,9 @@ bool AcmEncoder::addAudioFrame(const AudioFrame* audioFrame)
         m_frame->CopyFrom(*audioFrame);
 
         if (m_incomingFrameCount > 1)
+            ELOG_DEBUG_T("Too many pending frames(%d)", m_incomingFrameCount);
+
+        if (m_incomingFrameCount == 3)
             ELOG_WARN_T("Too many pending frames(%d)", m_incomingFrameCount);
 
         m_incomingFrameCount++;

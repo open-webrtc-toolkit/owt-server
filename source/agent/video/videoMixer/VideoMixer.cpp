@@ -79,7 +79,7 @@ VideoMixer::VideoMixer(const VideoMixerConfig& config)
     }
 #endif
 
-    ELOG_DEBUG("Init maxInput(%u), rootSize(%u, %u), bgColor(%u, %u, %u)", m_maxInputCount, rootSize.width, rootSize.height, bgColor.y, bgColor.cb, bgColor.cr);
+    ELOG_INFO("Init maxInput(%u), rootSize(%u, %u), bgColor(%u, %u, %u)", m_maxInputCount, rootSize.width, rootSize.height, bgColor.y, bgColor.cb, bgColor.cr);
 
     m_frameMixer.reset(new VideoFrameMixerImpl(m_maxInputCount, rootSize, bgColor, true, config.crop));
 }
