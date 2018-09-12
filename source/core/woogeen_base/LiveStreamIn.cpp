@@ -164,7 +164,7 @@ JitterBuffer::~JitterBuffer()
 void JitterBuffer::start(uint32_t delay)
 {
     if (!m_isRunning) {
-        ELOG_INFO_T("(%s)start", m_name.c_str());
+        ELOG_DEBUG_T("(%s)start", m_name.c_str());
 
         m_timer.reset(new boost::asio::deadline_timer(m_ioService));
         m_timer->expires_from_now(boost::posix_time::milliseconds(delay));
@@ -177,7 +177,7 @@ void JitterBuffer::start(uint32_t delay)
 void JitterBuffer::stop()
 {
     if (m_isRunning) {
-        ELOG_INFO_T("(%s)stop", m_name.c_str());
+        ELOG_DEBUG_T("(%s)stop", m_name.c_str());
 
         m_timer->cancel();
 

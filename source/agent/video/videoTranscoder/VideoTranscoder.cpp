@@ -69,7 +69,7 @@ VideoTranscoder::VideoTranscoder(const VideoTranscoderConfig& config)
     }
 #endif
 
-    ELOG_DEBUG("Init");
+    ELOG_INFO("Init");
 
     m_frameTranscoder.reset(new VideoFrameTranscoderImpl());
 }

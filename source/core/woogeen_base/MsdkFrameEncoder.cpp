@@ -770,7 +770,7 @@ protected:
 
     void syncLoop()
     {
-        ELOG_INFO_T("Sync thread running!");
+        ELOG_DEBUG_T("Sync thread running!");
 
         while (true) {
             boost::shared_ptr<bsBufferSync_t> bsBufferSync;
