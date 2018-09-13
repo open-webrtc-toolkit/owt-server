@@ -158,6 +158,7 @@ Data Model:<br>
     object(Video):{
       "format": {
         "codec": string,                    // 'h264', 'vp8', 'h265', 'vp9'
+        "profile": string                   // 'CB', 'B', 'M', 'H' for 'h264'
       },
       "parameters": {
         "resolution": object(Resolution),
@@ -468,8 +469,8 @@ Streams model:
     }
     object(AudioInfo):
     {
-        status: "active" | "inactive",
-        source: "mic" | "screen-cast" | "raw-file" | "encoded-file" | "streaming",
+        status: "active" | "inactive", // For forward stream
+        source: "mic" | "screen-cast" | "raw-file" | "encoded-file" | "streaming", // For forward stream
         format: object(AudioFormat),
         optional: {
             format: [object(AudioFormat)]
@@ -483,14 +484,14 @@ Streams model:
     }
     object(VideoInfo):
     {
-        status: "active" | "inactive",
-        source: "camera" | screen-cast" | "raw-file" | "encoded-file" | "streaming",
+        status: "active" | "inactive", // For forward stream
+        source: "camera" | screen-cast" | "raw-file" | "encoded-file" | "streaming", // For forward stream
         format: object(VideoFormat),
         parameters: {
-            resolution: object(Resolution),
-            framerate: number(FramerateFPS),
-            bitrate: number(Kbps),
-            keyFrameInterval: number(Seconds),
+            resolution: object(Resolution),     // Optional
+            framerate: number(FramerateFPS),    // Optional
+            bitrate: number(Kbps), // Optional
+            keyFrameInterval: number(Seconds),  // Optional
         },
         optional: {
           format: [object(VideoFormat)]
@@ -514,14 +515,14 @@ Streams model:
         bitrate: number,
         keyFrameInterval: number
     }
-    object(MixedInfo):
+    object(ForwardInfo):
     {
         owner: string(ParticipantId),
         type: "webrtc" | "streaming" | "sip",
         inViews: [string(ViewLabel)],
         attributes: object(ExternalDefinedObj)
     }
-    object(ForwardInfo):
+    object(MixedInfo):
     {
       label: string(ViewLabel),
       layout: [{
@@ -644,17 +645,15 @@ parameters:
 **Note**:
 
     Object(StreamingInRequest) {
-        connection: object(Connection),
+        url: string,
         media: {
           audio: 'auto' | true | false,
           video: 'auto' | true | false
+        },
+        transport: {
+          protocol: 'udp' | 'tcp',    // 'tcp' by default.
+          bufferSize: number          // The buffer size in bytes in case 'udp' is specified, 8192 by default.
         }
-    }
-    object(Connection):
-    {
-        url: string,
-        transportProtocal: 'udp' | 'tcp',    // 'tcp' by default.
-        bufferSize: number          // The buffer size in bytes in case 'udp' is specified, 8192 by default.
     }
 
 response body:
@@ -746,9 +745,34 @@ parameters:
 
 **Note**:
 
+    object(MediaSubOptions):
+    {
+        audio: {
+            from: string,          // target StreamID
+            format: {
+              codec: string,       // 'opus', 'pcmu' ... available codec in target stream
+              sampleRate: number,  // optional, depends on codec
+              channelNum: number   // optional, depends on codec
+            }
+        } || false,
+        video: {
+            from: string,          // target StreamID
+            format: {
+              codec: string,       // 'vp8', 'h264' ... available codec in target stream
+              profile: string      // optional, depends on codec
+            },
+            parameters: {          // following values should be in stream's default/optional list
+              resolution: { width: number, height: number },       // optional
+              framerate: number,                                   // optional
+              bitrate: string || number,                           // optional
+              keyFrameInterval: number                             // optional
+            }
+        } || false
+    }
+
     options={
-        url: url,
-        media: object(MediaSubOptions)     // Refers to object(MediaSubOptions) in 5.5, streaming-outs model.
+      url: url,
+      media: object(MediaSubOptions)
     }
 
 response body:
