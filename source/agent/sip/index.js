@@ -367,7 +367,7 @@ module.exports = function (rpcC, spec) {
                     }
                     subInfo.media.video = {
                         from: mixed_stream_id,
-                        format: video_info,
+                        format: {codec: video_info.codec, profile: video_info.profile},
                         parameters: {resolution: preferred_subscription_resolution}
                     };
                 }

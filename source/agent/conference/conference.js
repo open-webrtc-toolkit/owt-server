@@ -1160,12 +1160,13 @@ var Conference = function (rpcClient, selfRpcId) {
         }
       }
 
+      initiateStream(streamId, {owner: participantId, type: pubInfo.type});
       return accessController.initiate(participantId, streamId, 'in', participants[participantId].getOrigin(), pubInfo, format_preference)
       .then((result) => {
-        initiateStream(streamId, {owner: participantId, type: pubInfo.type});
         callback('callback', result);
       })
       .catch((e) => {
+        removeStream(streamId);
         callback('callback', 'error', e.message ? e.message : e);
       });
     }
@@ -1425,12 +1426,18 @@ var Conference = function (rpcClient, selfRpcId) {
         }
       }
 
+      initiateSubscription(subscriptionId, subDesc, {owner: participantId, type: subDesc.type});
       return accessController.initiate(participantId, subscriptionId, 'out', participants[participantId].getOrigin(), subDesc, format_preference)
       .then((result) => {
-        initiateSubscription(subscriptionId, subDesc, {owner: participantId, type: subDesc.type});
+        if ((subDesc.media.audio && !streams[subDesc.media.audio.from])
+           ||(subDesc.media.video && !streams[subDesc.media.video.from])) {
+          accessController.terminate(participantId, subscriptionId, 'Participant terminate');
+          return Promise.reject('Target audio/video stream early released');
+        }
         callback('callback', result);
       })
       .catch((e) => {
+        removeSubscription(subscriptionId);
         callback('callback', 'error', e.message ? e.message : e);
       });
     }
@@ -1890,14 +1897,16 @@ var Conference = function (rpcClient, selfRpcId) {
     log.debug('getStreams, room_id:', room_id);
     var result = [];
     for (var stream_id in streams) {
-      result.push(streams[stream_id]);
+      if (!streams[stream_id].isInConnecting) {
+        result.push(streams[stream_id]);
+      }
     }
     callback('callback', result);
   };
 
   that.getStreamInfo = function(streamId, callback) {
     log.debug('getStreamInfo, room_id:', room_id, 'streamId:', streamId);
-    if (streams[streamId]) {
+    if (streams[streamId] && !streams[stream_id].isInConnecting) {
       callback('callback', streams[streamId]);
     } else {
       callback('callback', 'error', 'Stream does NOT exist');
@@ -1923,9 +1932,9 @@ var Conference = function (rpcClient, selfRpcId) {
           return Promise.reject('Video is forbiden');
         }
 
+        initiateStream(stream_id, {owner: 'admin', type: pubInfo.type});
         return accessController.initiate('admin', stream_id, 'in', participants['admin'].getOrigin(), pubInfo);
       }).then((result) => {
-        initiateStream(stream_id, {owner: 'admin', type: pubInfo.type});
         return 'ok';
       }).then(() => {
         return new Promise((resolve, reject) => {
@@ -1950,6 +1959,7 @@ var Conference = function (rpcClient, selfRpcId) {
         callback('callback', streams[stream_id]);
       }).catch((e) => {
         callback('callback', 'error', e.message ? e.message : e);
+        removeStream(stream_id);
         selfClean();
       });
     } else {
@@ -2146,7 +2156,7 @@ var Conference = function (rpcClient, selfRpcId) {
     log.debug('getSubscriptions, room_id:', room_id, 'type:', type);
     var result = [];
     for (var sub_id in subscriptions) {
-      if (subscriptions[sub_id].info.type === type) {
+      if (subscriptions[sub_id].info.type === type && !subscriptions[sub_id].isInConnecting) {
         result.push(subscriptionAbstract(sub_id));
       }
     }
@@ -2155,7 +2165,7 @@ var Conference = function (rpcClient, selfRpcId) {
 
   that.getSubscriptionInfo = function(subId, callback) {
     log.debug('getSubscriptionInfo, room_id:', room_id, 'subId:', subId);
-    if (subscriptions[subId]) {
+    if (subscriptions[subId] && !subscriptions[sub_id].isInConnecting) {
       callback('callback', subscriptionAbstract(subId));
     } else {
       callback('callback', 'error', 'Stream does NOT exist');
@@ -2234,18 +2244,24 @@ var Conference = function (rpcClient, selfRpcId) {
           }
         }
 
+        initiateSubscription(subscription_id, subDesc, {owner: 'admin', type: subDesc.type});
         return accessController.initiate('admin', subscription_id, 'out', participants['admin'].getOrigin(), subDesc);
       }).then(() => {
-        initiateSubscription(subscription_id, subDesc, {owner: 'admin', type: subDesc.type});
+        if ((subDesc.media.audio && !streams[subDesc.media.audio.from])
+           ||(subDesc.media.video && !streams[subDesc.media.video.from])) {
+          accessController.terminate(participantId, subscriptionId, 'Participant terminate');
+          return Promise.reject('Target audio/video stream early released');
+        }
         return new Promise((resolve, reject) => {
           var count = 0, wait = 300;
           var interval = setInterval(() => {
             if (count > wait) {
               clearInterval(interval);
               accessController.terminate('admin', subscription_id, 'Participant terminate');
+              removeSubscription(subscription_id);
               reject('Access timeout');
             } else {
-              if (subscriptions[subscription_id]) {
+              if (subscriptions[subscription_id] && !subscriptions[subscription_id].isInConnecting) {
                 clearInterval(interval);
                 resolve('ok');
               } else {
@@ -2258,6 +2274,7 @@ var Conference = function (rpcClient, selfRpcId) {
         callback('callback', subscriptionAbstract(subscription_id));
       }).catch((e) => {
         callback('callback', 'error', e.message ? e.message : e);
+        removeSubscription(subscription_id);
         selfClean();
       });
     } else {
