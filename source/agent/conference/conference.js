@@ -2289,23 +2289,22 @@ var Conference = function (rpcClient, selfRpcId) {
     }
 
     var subUpdate;
+    var muteReqs = [];
     return Promise.all(
       commands.map((cmd) => {
         var exe;
         switch (cmd.op) {
-          case'replace':
+          case 'replace':
             if ((cmd.path === '/media/audio/status') && subscriptions[subId].media.audio && (cmd.value === 'inactive' || cmd.value === 'active')) {
               if (subscriptions[subId].media.audio.status !== cmd.value) {
-                exe = setSubscriptionMute(subId, 'audio', (cmd.value === 'inactive'));
-              } else {
-                exe = Promise.resolve('ok');
+                muteReqs.push({track: 'audio', mute: (cmd.value === 'inactive')});
               }
+              exe = Promise.resolve('ok');
             } else if ((cmd.path === '/media/video/status') && subscriptions[subId].media.video && (cmd.value === 'inactive' || cmd.value === 'active')) {
               if (subscriptions[subId].media.video.status !== cmd.value) {
-                exe = setSubscriptionMute(subId, 'video', (cmd.value === 'inactive'));
-              } else {
-                exe = Promise.resolve('ok');
+                muteReqs.push({track: 'video', mute: (cmd.value === 'inactive')});
               }
+              exe = Promise.resolve('ok');
             } else if ((cmd.path === '/media/audio/from') && streams[cmd.value]) {
               subUpdate = (subUpdate || {});
               subUpdate.audio = (subUpdate.audio || {});
@@ -2350,6 +2349,10 @@ var Conference = function (rpcClient, selfRpcId) {
         return exe;
       })
     ).then(() => {
+      return Promise.all(muteReqs.map((r) => {
+        return setSubscriptionMute(subId, r.track, r.mute);
+      }));
+    }).then(() => {
       if (subUpdate) {
         return updateSubscription(subId, subUpdate);
       } else {
