@@ -206,26 +206,30 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                     supported_formats: supportedAudio.codecs
                 };
 
-                // Initialize video
-                var video_mixer = randomId();
-                initMixer(video_mixer, 'vmixer', viewSettings.video).then(
-                    function onVideoReady(supportedVideo) {
-                        // Save supported info
-                        mix_views[view].video = {
-                            mixer: video_mixer,
-                            supported_formats: supportedVideo.codecs
-                        };
+                if (viewSettings.video) {
+                    // Initialize video
+                    var video_mixer = randomId();
+                    initMixer(video_mixer, 'vmixer', viewSettings.video).then(
+                        function onVideoReady(supportedVideo) {
+                            // Save supported info
+                            mix_views[view].video = {
+                                mixer: video_mixer,
+                                supported_formats: supportedVideo.codecs
+                            };
 
-                        // Enable AV coordination if specified
-                        enableAVCoordination(view);
-                        onInitOk();
-                    },
-                    function onVideoFail(reason) {
-                        // Delete the audio mixer that init successfully
-                        deleteTerminal(audio_mixer);
-                        onInitError(reason);
-                    }
-                );
+                            // Enable AV coordination if specified
+                            enableAVCoordination(view);
+                            onInitOk();
+                        },
+                        function onVideoFail(reason) {
+                            // Delete the audio mixer that init successfully
+                            deleteTerminal(audio_mixer);
+                            onInitError(reason);
+                        }
+                    );
+                } else {
+                    mix_views[view].video = { mixer: null, supported_formats: [] };
+                }
             },
             function onAudioFail(reason) {
                 onInitError(reason);
@@ -667,7 +671,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
         log.debug('to mix stream:', stream_id, 'view:', view);
         if (streams[stream_id].audio) {
             mixAudio(stream_id, view, function () {
-                if (streams[stream_id].video) {
+                if (streams[stream_id].video && getSubMediaMixer(view, 'video')) {
                     mixVideo(stream_id, view, on_ok, function (error_reason) {
                         unmixAudio(stream_id, view);
                         on_error(error_reason);
