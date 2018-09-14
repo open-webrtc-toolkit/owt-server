@@ -74,13 +74,6 @@ var DEFAULT_ROLES = [
   }
 ];
 
-const removeNull = (obj) => {
-  Object.keys(obj).forEach(key => {
-    if (obj[key] && typeof obj[key] === 'object') removeNull(obj[key]);
-    else if (obj[key] == null) delete obj[key];
-  });
-};
-
 /*
  * Create Room.
  */
@@ -107,7 +100,6 @@ exports.create = function (serviceId, roomOption, callback) {
     roomOption.roles = DEFAULT_ROLES;
   }
 
-  removeNull(roomOption);
   var room = new Room(roomOption);
   room.save().then((saved) => {
     Service.findById(serviceId).then((service) => {
