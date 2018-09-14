@@ -447,7 +447,8 @@ module.exports = function (rpcC, spec) {
         }
     };
 
-    var notifyMediaUpdate = (clientId, direction, mediaUpdate) => {
+    var notifyMediaUpdate = (peerURI, direction, mediaUpdate) => {
+        var clientId = peerURI.replace(/[^a-z0-9]/gmi, '_');
         if (calls[clientId]) {
             if (direction === 'in' && calls[clientId].stream_id) {
                 rpcClient.remoteCast(calls[clientId].conference_controller, 'onMediaUpdate', [calls[clientId].stream_id, direction, JSON.parse(mediaUpdate)]);
