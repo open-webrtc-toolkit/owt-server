@@ -1,6 +1,6 @@
 {
   "name": "WooGeen-MCU-Nuve",
-  "version":"4.0.0",
+  "version":"4.1.0",
   "dependencies": {
     "amqp": "*",
     "log4js": "^1.1.1",
