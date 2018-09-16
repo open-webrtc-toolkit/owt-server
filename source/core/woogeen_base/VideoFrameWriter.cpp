@@ -18,7 +18,7 @@
  * and approved by Intel in writing.
  */
 
-#include "FrameWriter.h"
+#include "VideoFrameWriter.h"
 
 #ifdef ENABLE_MSDK
 #include "MsdkFrame.h"
@@ -28,19 +28,18 @@ using namespace webrtc;
 
 namespace woogeen_base {
 
-DEFINE_LOGGER(FrameWriter, "woogeen.FrameWriter");
+DEFINE_LOGGER(VideoFrameWriter, "woogeen.VideoFrameWriter");
 
-FrameWriter::FrameWriter(const std::string& name)
+VideoFrameWriter::VideoFrameWriter(const std::string& name)
     : m_name(name)
     , m_fp(NULL)
     , m_index(0)
     , m_width(0)
     , m_height(0)
 {
-    m_bufferManager.reset(new I420BufferManager(1));
 }
 
-FrameWriter::~FrameWriter()
+VideoFrameWriter::~VideoFrameWriter()
 {
     if (m_fp) {
         fclose(m_fp);
@@ -48,7 +47,7 @@ FrameWriter::~FrameWriter()
     }
 }
 
-FILE *FrameWriter::getFp(webrtc::VideoFrameBuffer *i420Buffer)
+FILE *VideoFrameWriter::getVideoFp(webrtc::VideoFrameBuffer *i420Buffer)
 {
     if (m_width != i420Buffer->width() || m_height != i420Buffer->height()) {
         if (m_fp) {
@@ -75,7 +74,7 @@ FILE *FrameWriter::getFp(webrtc::VideoFrameBuffer *i420Buffer)
     return m_fp;
 }
 
-void FrameWriter::write(webrtc::VideoFrameBuffer *videoFrameBuffer)
+void VideoFrameWriter::write(webrtc::VideoFrameBuffer *videoFrameBuffer)
 {
     if (!videoFrameBuffer) {
         ELOG_ERROR_T("NULL pointer");
@@ -87,7 +86,7 @@ void FrameWriter::write(webrtc::VideoFrameBuffer *videoFrameBuffer)
         return;
     }
 
-    FILE *fp = getFp(videoFrameBuffer);
+    FILE *fp = getVideoFp(videoFrameBuffer);
     if (!fp) {
         ELOG_ERROR_T("NULL fp");
         return;
@@ -111,7 +110,7 @@ void FrameWriter::write(webrtc::VideoFrameBuffer *videoFrameBuffer)
     fwrite(videoFrameBuffer->DataV(), 1, videoFrameBuffer->height() * videoFrameBuffer->StrideV() / 2, fp);
 }
 
-void FrameWriter::write(const Frame& frame)
+void VideoFrameWriter::write(const Frame& frame)
 {
     switch (frame.format) {
         case FRAME_FORMAT_I420:
@@ -128,8 +127,12 @@ void FrameWriter::write(const Frame& frame)
             {
                 MsdkFrameHolder *holder = (MsdkFrameHolder *)frame.payload;
                 boost::shared_ptr<MsdkFrame> msdkFrame = holder->frame;
-                rtc::scoped_refptr<webrtc::I420Buffer> inputBuffer
-                    = m_bufferManager->getFreeBuffer(msdkFrame->getVideoWidth(), msdkFrame->getVideoHeight());
+                rtc::scoped_refptr<webrtc::I420Buffer> inputBuffer;
+
+                if (!m_bufferManager)
+                    m_bufferManager.reset(new I420BufferManager(1));
+
+                inputBuffer = m_bufferManager->getFreeBuffer(msdkFrame->getVideoWidth(), msdkFrame->getVideoHeight());
 
                 msdkFrame->convertTo(inputBuffer);
 
