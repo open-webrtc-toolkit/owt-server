@@ -733,7 +733,13 @@ function VMixer(rpcClient, clusterIP) {
 
     that.setLayout = function (layout, callback) {
         log.debug('setLayout, layout:', JSON.stringify(layout));
-        var inputLayout = layout.map((obj) => {return {input: inputManager.get(obj.stream).id, region: obj.region};});
+        var inputLayout = layout.map((obj) => {
+          if (obj.stream) {
+            return {input: inputManager.get(obj.stream).id, region: obj.region};
+          } else {
+            return {region: obj.region};
+          }
+        });
         layoutProcessor.setLayout(inputLayout, function(layoutSolution) {
           //TODO: try to schedule the pending inputs into the new layout template.
           callback('callback', formatLayoutSolution(layoutSolution));

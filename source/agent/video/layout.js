@@ -260,14 +260,19 @@ LayoutProcessor.prototype.setLayout = function(layout, on_ok, on_error) {
   this.templates = {};
   this.maxCover = layout.length;
   this.templates[layout.length] = layout.map((obj) => {return obj.region;});
+  this.currentRegions = this.templates[layout.length];
+
   this.inputList = [];
+  this.layoutSolution = [];
   layout.forEach((obj) => {
-    this.inputList.push(obj.input);
+    if (obj.input !== undefined) {
+      this.inputList.push(obj.input);
+      this.layoutSolution.push(obj);
+    }
   });
-  this.choseTemplate(this.inputList.length);
-  this.updateInputPositions();
 
   on_ok(this.layoutSolution);
+  this.emit('layoutChange', this.layoutSolution);
 };
 
 exports.LayoutProcessor = LayoutProcessor;

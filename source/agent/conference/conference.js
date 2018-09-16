@@ -542,9 +542,12 @@ var Conference = function (rpcClient, selfRpcId) {
                   reject('roomController init failed. reason: ' + reason);
                 });
             });
-        }, function(err) {
+        }).catch(function(err) {
           log.error('Init room failed, reason:', err);
           is_initializing = false;
+          setTimeout(() => {
+            process.exit();
+          }, 0);
           return Promise.reject(err);
         });
     }
@@ -2011,6 +2014,7 @@ var Conference = function (rpcClient, selfRpcId) {
       callback('callback', 'error', 'Stream does NOT exist');
     }
 
+    var muteReq = [];
     return Promise.all(
       commands.map((cmd) => {
         if (streams[streamId] === undefined) {
@@ -2037,20 +2041,18 @@ var Conference = function (rpcClient, selfRpcId) {
             if ((cmd.path === '/media/audio/status') && (cmd.value === 'inactive' || cmd.value === 'active')) {
               if (streams[streamId].media.audio) {
                 if (streams[streamId].media.audio.status !== cmd.value) {
-                  exe = setStreamMute(streamId, 'audio', (cmd.value === 'inactive'));
-                } else {
-                  exe = Promise.resolve('ok');
+                  muteReq.push({track: 'audio', mute: (cmd.value === 'inactive')});
                 }
+                exe = Promise.resolve('ok');
               } else {
                 exe = Promise.reject('Track does NOT exist');
               }
             } else if ((cmd.path === '/media/video/status') && (cmd.value === 'inactive' || cmd.value === 'active')) {
               if (streams[streamId].media.video) {
                 if (streams[streamId].media.video.status !== cmd.value) {
-                  exe = setStreamMute(streamId, 'video', (cmd.value === 'inactive'));
-                } else {
-                  exe = Promise.resolve('ok');
+                  muteReq.push({track: 'video', mute: (cmd.value === 'inactive')});
                 }
+                exe = Promise.resolve('ok');
               } else {
                 exe = Promise.reject('Track does NOT exist');
               }
@@ -2116,8 +2118,11 @@ var Conference = function (rpcClient, selfRpcId) {
         return exe;
       })
     ).then(() => {
+      return Promise.all(muteReq.map((r) => {return setStreamMute(streamId, r.track, r.mute);}));
+    }).then(() => {
       callback('callback', streams[streamId]);
     }, (err) => {
+      log.warn('failed in controlStream, reason:', err.message ? err.message : err);
       callback('callback', 'error', err.message ? err.message : err);
     });
   };
