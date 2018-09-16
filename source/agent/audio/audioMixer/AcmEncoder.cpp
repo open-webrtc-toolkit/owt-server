@@ -32,6 +32,7 @@ DEFINE_LOGGER(AcmEncoder, "mcu.media.AcmEncoder");
 
 AcmEncoder::AcmEncoder(const FrameFormat format)
     : m_format(format)
+    , m_rtpSampleRate(0)
     , m_timestampOffset(0)
     , m_valid(false)
     , m_running(false)
@@ -85,6 +86,17 @@ bool AcmEncoder::init()
     if (ret != 0) {
         ELOG_ERROR_T("Error RegisterTransportCallback");
         return false;
+    }
+
+    switch (m_format) {
+        case FRAME_FORMAT_G722_16000_1:
+        case FRAME_FORMAT_G722_16000_2:
+            m_rtpSampleRate = getAudioSampleRate(m_format) / 2;
+            break;
+
+        default:
+            m_rtpSampleRate = getAudioSampleRate(m_format);
+            break;
     }
 
     //m_timestampOffset = currentTimeMs();
@@ -179,13 +191,13 @@ int32_t AcmEncoder::SendData(FrameType frame_type,
     frame.additionalInfo.audio.channels = getAudioChannels(frame.format);
     frame.payload = const_cast<uint8_t*>(payload_data);
     frame.length = payload_len_bytes;
-    frame.timeStamp = (AudioTime::currentTime()) * frame.additionalInfo.audio.sampleRate / 1000;
+    frame.timeStamp = (AudioTime::currentTime()) * m_rtpSampleRate / 1000;
 
     ELOG_TRACE_T("deliverFrame(%s), sampleRate(%d), channels(%d), timeStamp(%d), length(%d), %s",
             getFormatStr(frame.format),
             frame.additionalInfo.audio.sampleRate,
             frame.additionalInfo.audio.channels,
-            frame.timeStamp * 1000 / frame.additionalInfo.audio.sampleRate,
+            frame.timeStamp * 1000 / m_rtpSampleRate,
             frame.length,
             frame.additionalInfo.audio.isRtpPacket ? "RtpPacket" : "NonRtpPacket"
             );
