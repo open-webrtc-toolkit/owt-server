@@ -42,6 +42,7 @@ VideoFramePacketizer::VideoFramePacketizer(bool enableRed, bool enableUlpfec)
     , m_random(rtc::TimeMicros())
     , m_ssrc(0)
     , m_ssrc_generator(SsrcGenerator::GetSsrcGenerator())
+    , m_sendFrameCount(0)
 {
     videoSink_ = nullptr;
     m_ssrc = m_ssrc_generator->CreateSsrc();
@@ -89,6 +90,7 @@ void VideoFramePacketizer::enable(bool enabled)
         FeedbackMsg feedback = {.type = VIDEO_FEEDBACK, .cmd = REQUEST_KEY_FRAME};
         deliverFeedbackMsg(feedback);
         m_keyFrameArrived = false;
+        m_sendFrameCount = 0;
     }
 }
 
@@ -282,6 +284,19 @@ void VideoFramePacketizer::onFrame(const Frame& frame)
         } else {
             m_keyFrameArrived = true;
         }
+    }
+
+    //FIXME: This is a workround for peer client not send key-frame-request
+    if (m_sendFrameCount < 151) {
+        if ((m_sendFrameCount == 10)
+            || (m_sendFrameCount == 30)
+            || (m_sendFrameCount == 60)
+            || (m_sendFrameCount == 150)) {
+            ELOG_DEBUG("Self generated key-frame-request.");
+            FeedbackMsg feedback = {.type = VIDEO_FEEDBACK, .cmd = REQUEST_KEY_FRAME};
+            deliverFeedbackMsg(feedback);
+        }
+        m_sendFrameCount += 1;
     }
 
     webrtc::RTPVideoHeader h;

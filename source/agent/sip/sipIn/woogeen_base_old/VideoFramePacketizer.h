@@ -106,6 +106,7 @@ private:
     webrtc::Random m_random;
     uint32_t m_ssrc;
     SsrcGenerator* const m_ssrc_generator;
+    uint16_t m_sendFrameCount;
 
     boost::shared_mutex m_transport_mutex;
 };
