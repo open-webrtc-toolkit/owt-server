@@ -440,6 +440,10 @@ bool AVStreamOut::addVideoStream(FrameFormat format, uint32_t width, uint32_t he
         av_parser_close(parser);
     }
 
+    if (codec_id == AV_CODEC_ID_H265) {
+        par->codec_tag = 0x31637668; //hvc1
+    }
+
     return true;
 }
 
