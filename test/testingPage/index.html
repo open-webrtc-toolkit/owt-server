@@ -2,6 +2,9 @@
 <html lang="en">
 <head>
 	<meta http-equiv='X-UA-Compatible' content='IE=EmulateIE10'>
+        <META HTTP-EQUIV="pragma" CONTENT="no-cache">
+        <META HTTP-EQUIV="Cache-Control" CONTENT="no-cache, must-revalidate">
+        <META HTTP-EQUIV="expires" CONTENT="0">
 	<title>Woogeen Test</title>
 	<style type="text/css">
 		* {
@@ -293,7 +296,7 @@
                 <video playsinline autoplay muted controls></video>
             </div>
 			<div id='screenVideo' class="smallVideo">
-                <video ></video>
+                <video playsinline autoplay muted controls></video>
             </div>
             <div id='mixVideo' class="normalVideo">
                 <!-- <video playsinline muted autoplay controls></video> -->
@@ -319,12 +322,22 @@
                             <option value="">resolution</option>
                             <option value="sif">sif</option>
                             <option value="vga">vga</option>
+                            <option value="r640x360">r640x360</option>
                             <option value="hd720p">hd720p</option>
                             <option value="hd1080p">hd1080p</option>
+                            <option value="invalid">invalid</option>
+                        </select>
+                        <select id='audiodeviceid' class="fillparent">
+                            <option value="">audio device id</option>
+                            <option value="invalid">invalid</option>
+                        </select>
+                        <select id='videodeviceid' class="fillparent">
+                            <option value="">video device id</option>
+                            <option value="invalid">invalid</option>
                         </select>
                     </div>
     				<ul>
-                        <li><label class='labelinput'>ID: <input type='text' id='extensionid' placeholder='input extension id' /></label></li>
+                        <li><label class='labelinput'>ID: <input type='text' id='extensionid' value='caamnkgooanlpocmehlanokfmcjobblm' /></label></li>
                         <li><a href="javascript:void(0)" onclick="createLocalStream()">create local</a></li>
                         <li><a href="javascript:void(0)" onclick="stopLocal()">stop local</a></li>
     				</ul>
@@ -348,6 +361,7 @@
                             <option value="vp9">vp9</option>
                             <option value="h264">h264</option>
                             <option value="h265">h265</option>
+                            <option value="%^UJH">invalid</option>
                         </select>
                     </div>
                     <div class="options">
@@ -364,10 +378,12 @@
                             <option value="isac32">isac32</option>
                             <option value="ac3">ac3</option>
                             <option value="nellymoser">nellymoser</option>
+                            <option value="%^UJH">invalid</option>
                         </select>
                     </div>
                     <ul>
-                        <li><label class='labelinput'>maxBitrate: <input type='text' id='videomaxbitrate' /></label></li>
+                        <li><label class='labelinput'>vMB: <input type='text' id='videomaxbitrate' /></label></li>
+                        <li><label class='labelinput'>aMB: <input type='text' id='audiomaxbitrate' /></label></li>
                         <li><a href="javascript:void(0)" onclick="publish()">publish</a></li>
                     </ul>
     			</div>
@@ -385,6 +401,7 @@
                             <option value="audio">audio</option>
                             <option value="video">video</option>
                             <option value="av">audio-and-video</option>
+                            <option value="%^UJH">invalid</option>
                         </select>
                     </div>
                     <ul>
@@ -512,6 +529,16 @@
                      <select class="fillparent" id="participantlist">
                             <option value="">participant list</option>
                     </select>
+                    <select class="fillparent" id="audioforbidoptions">
+                            <option value="">audio</option>
+                            <option value="false">false</option>
+                            <option value="true">true</option>
+                    </select>
+                    <select class="fillparent" id="videoforbidoptions">
+                            <option value="">video</option>
+                            <option value="false">false</option>
+                            <option value="true">true</option>
+                    </select>
                     <ul>
                         <li><a href="javascript:void(0)" onclick="restListRooms()">list rooms</a></li>
                         <li><a href="javascript:void(0)" onclick="restGetRoom()">get room</a></li>
@@ -520,8 +547,8 @@
                         <li><a href="javascript:void(0)" onclick="restUpdateRoom()">update room</a></li>
                         <li><a href="javascript:void(0)" onclick="restListParticipants()">list participants</a></li>
                         <li><a href="javascript:void(0)" onclick="restGetParticipant()">get participant</a></li>
-                        <li><a href="javascript:void(0)" onclick="restForbidSub()">forbid sub</a></li>
-                        <li><a href="javascript:void(0)" onclick="restForbidPub()">forbid pub</a></li>
+                        <li><a href="javascript:void(0)" onclick="restForbidSub()">update sub</a></li>
+                        <li><a href="javascript:void(0)" onclick="restForbidPub()">update pub</a></li>
                         <li><a href="javascript:void(0)" onclick="restDropParticipant()">drop participant</a></li>
                     </ul>
                 </div>
@@ -572,8 +599,13 @@
                             <option value="active">active</option>
                             <option value="inactive">inactive</option>
                     </select>
+                    </select><select class="fillparent" id="rtspurl">
+                            <option value="rtsp://admin:master@10.239.44.67:554/h264/ch1/main/av_stream">HIKVISION</option>
+                            <option value="rtsp://10.239.44.8:554/rtsp_tunnel%3Fh26x=4%26line=1">Bosch</option>
+                            <option value="rtsp://admin:admin@10.239.44.135:554/cam/realmonitor?channel=1&subtype=0&unicast=true&proto=Onvif">Dahua</option>
+                    </select>
                     <ul>
-                        <li><label class='labelinput'>streamIn: <input type='text' id='rtspurl' value="rtsp://admin:master@10.239.44.67:554/h264/ch1/main/av_stream" /></label></li>
+                        <li><label class='labelinput'>rtmpin: <input type='text' id='rtmpin' value="" /></label></li>
                         <li><label class='labelinput'>streamOut: <input type='text' id='rtmpurl' value="rtmp://webrtc101.sh.intel.com:1935/liveshow/test" /></label></li>
                         <li><label class='labelinput'>outId: <input type='text' id='streamingoutid'/></label></li>
                         <li><a href="javascript:void(0)" onclick="restStartStreamingIn()">streamingIn start</a></li>
@@ -593,17 +625,11 @@
                         <li><a href="javascript:void(0)" onclick="restupdateRecording()">update recording</a></li>
                         <li><a href="javascript:void(0)" onclick="restListRecordings()">list recording</a></li>
                         <li><a href="javascript:void(0)" onclick="restStopRecording()">stop recording</a></li>
+                        <li><a href="javascript:void(0)" onclick="transCodec()">transCodec recording</a></li>
                     </ul>
                 </div>
             </div>
 		</div>
-	</div>
-	<input type="text" id="resultRecorder" />
-	<div id="frame">
-		<div><div class="streamFrame" id="mixFrame"></div>mix</div>
-		<div><div class="streamFrame" id="forwardFrame1"></div>screen</div>
-		<div><div class="streamFrame" id="forwardFrame2"></div><p>forward</p></div>
-		<div><div class="streamFrame" id="forwardFrame3"></div><p>forward</p></div>
 	</div>
 	<div id='woogeen-footer'>
 

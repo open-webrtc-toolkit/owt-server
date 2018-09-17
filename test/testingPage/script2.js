@@ -1,3 +1,4 @@
+let publicationTmp;
 let resolutionName2Value = {
     'cif': {
         width: 352,
@@ -70,7 +71,15 @@ let resolutionName2Value = {
     'r720x1280': {
         width: 720,
         height: 1280
-    }
+    },
+    'invaild': {
+        width: 333,
+        height: 222
+    },
+    'unbelievable':{
+        width:1111,
+        height:100,
+    },
 };
 let defaultRoomId = '',
     role = '',
@@ -96,6 +105,8 @@ mix = getParameterByName('mix') === 'false' ? false : true;
 isSignaling = getParameterByName('signaling') === 'true' ? true : false;
 videoMaxBitrate = parseInt(getParameterByName('videoMaxBitrate')) || 800;
 audioMaxBitrate = parseInt(getParameterByName('audioMaxBitrate')) || undefined;
+hasForward = getParameterByName('forward') === 'false' ? false : true;
+hasMixed = getParameterByName('mixed') === 'false' ? false : true;
 
 
 class EventMap {
@@ -190,7 +201,7 @@ var send = function(method, entity, body, okCallback, errCallback) {
             if (req.status === 200) {
                 okCallback(req.responseText);
             } else {
-                errCallback(req.responseTest);
+                errCallback(req.responseText);
             }
         }
     };
@@ -224,10 +235,11 @@ var getRoom = function(room, ok_cb, err_cb) {
 };
 
 var createRoom = function(name = 'testNewRoom', options, ok_cb, err_cb) {
+    //options.name = name;
     send('POST', '/rooms/', {
-        name: name,
-        options: options
-    }, ok_cb, err_cb);
+      name: name,
+      options: options
+     }, ok_cb, err_cb);
 };
 
 var deleteRoom = function(room, ok_cb, err_cb) {
@@ -246,25 +258,32 @@ var getParticipant = function(room, participant, ok_cb, err_cb) {
     send('GET', '/rooms/' + room + '/participants/' + participant + '/', undefined, ok_cb, err_cb);
 };
 
+function getForbidOptions(){
+    let audio = $('#audioforbidoptions').val() === 'false'?false:true;
+    let video = $('#videoforbidoptions').val() === 'false'?false:true;
+    return {audio, video}
+}
 var forbidSub = function(room, participant, ok_cb, err_cb) {
+    let {audio, video} = getForbidOptions();
     var jsonPatch = [{
         op: 'replace',
         path: '/permission/subscribe',
         value: {
-            audio: false,
-            video: false
+            audio: audio,
+            video: video
         }
     }];
     send('PATCH', '/rooms/' + room + '/participants/' + participant + '/', jsonPatch, ok_cb, err_cb);
 };
 
 var forbidPub = function(room, participant, ok_cb, err_cb) {
+    let {audio, video} = getForbidOptions();
     var jsonPatch = [{
         op: 'replace',
         path: '/permission/publish',
         value: {
-            audio: false,
-            video: false
+            audio: audio,
+            video: video
         }
     }];
     send('PATCH', '/rooms/' + room + '/participants/' + participant + '/', jsonPatch, ok_cb, err_cb);
@@ -361,8 +380,8 @@ var startStreamingIn = function(room, url, ok_cb, err_cb) {
             video: true
         },
         transport: {
-            protocol: 'udp',
-            bufferSize: 2048
+            protocol: 'tcp',
+            bufferSize: 4096
         }
     };
     send('POST', '/rooms/' + room + '/streaming-ins', options, ok_cb, err_cb);
@@ -428,7 +447,7 @@ function getRestfulParmas() {
         mixedStreamId = $('#mixstreamlist').val(),
         audioFrom = $('#audiofromlist').val(),
         videoFrom = $('#videofromlist').val(),
-        rtspUrl = $('#rtspurl').val(),
+        rtspUrl = $('#rtmpin').val() || $('#rtspurl').val(),
         rtmpUrl = $('#rtmpurl').val(),
         recorderId = $('#recorderid').val(),
         audioActive = $('#audioactive').val(),
@@ -484,12 +503,15 @@ function restGetRoom() {
 
 function restCreateRoom() {
     let options = {
-        viewports: [{
-            name: 'common1',
-            mediaMixing: {
-                audio: null,
-                video: {
-                    resolution: 'hd720p'
+        views: [{
+            label: 'common1',
+            audio: null,
+            video: {
+                parameters:{
+                    resolution: {
+                       width: 1280,
+                       height: 720
+                    }
                 }
             }
         }]
@@ -774,7 +796,7 @@ function restStartStreamingOut() {
         if (bitrate || resolution || frameRate || kfi) {
             mediaOptions.video.parameters = {
                 resolution,
-                bitrate: 'x' + bitrate,
+                bitrate: bitrate?'x' + bitrate:undefined,
                 framerate: frameRate,
                 keyFrameInterval: kfi,
             }
@@ -947,7 +969,7 @@ function restStartRecording() {
         }
         if (bitrate || resolution || frameRate || kfi) {
             options.media.video.parameters = {
-                bitrate: 'x' + bitrate,
+                bitrate: bitrate?'x' + bitrate:undefined,
                 resolution,
                 framerate: frameRate,
                 keyFrameInterval: kfi,
@@ -1060,6 +1082,99 @@ function restStopRecording() {
     }, err => {
         console.log('stop recording failed: ', err);
     })
+}
+function transCodec() {
+    let {
+        roomId,
+        audioFrom,
+        videoFrom,
+        container,
+    } = getRestfulParmas();
+
+    let audioCodecs =[
+        {name: "opus", channelCount: 2, clockRate: 48000},
+        {name: "pcma", channelCount: undefined, clockRate: undefined},
+        {name: "pcmu", channelCount: undefined, clockRate: undefined},
+        {"name":"aac","channelCount":2,"clockRate":48000},
+    ];
+    let videoCodecs =[
+        {name: 'vp8'},
+        {name: 'vp9'},
+        {name: 'h265'},
+        {name: 'h264', profile:'H'},
+        {name: 'h264', profile:'CB'},
+        {name: 'h264', profile:'M'},
+        {name: 'h264', profile:'B'},
+    ]
+    audioCodecs.forEach(function (audioCodec) {
+      videoCodecs.forEach(function(videoCodec){
+        let videoFormat = {
+            codec: videoCodec.name,
+            profile: videoCodec.profile
+        }
+        let options = {
+            media:{
+                audio:{
+                    from: audioFrom,
+                    format: {
+                        codec: audioCodec.name,
+                        sampleRate: audioCodec.clockRate,
+                        channelNum: audioCodec.channelCount,
+                    }
+                },
+                video:{
+                    from: videoFrom,
+                    format: videoFormat
+                }
+            }
+         }
+        startRecording(roomId, options, (resp) => {
+            resp = JSON.parse(resp);
+            console.log(`start recording ${audioFrom}, ${videoFrom} success: `, resp, 'recording options', options);
+            setTimeout(function(){
+                let recorderId = resp.id;
+                stopRecording(roomId, recorderId, (resp) => {
+                    console.log(`stop recording ${recorderId} success: `, resp);
+                }, err => {
+                    console.log('stop recording failed: ', err, JSON.streamify(options));
+                })
+            },10000)
+        }, err => {
+            console.log('start recording failed: ', err);
+        })
+      });
+       /*
+        let options = {
+            media:{
+                audio:{
+                    from: audioFrom,
+                    format: {
+                        codec: audioCodec.name,
+                        sampleRate: audioCodec.clockRate,
+                        channelNum: audioCodec.channelCount,
+                    }
+                },
+                video:{
+                    from: videoFrom
+                }
+            }
+         }
+        startRecording(roomId, options, (resp) => {
+            resp = JSON.parse(resp);
+            console.log(`start recording ${audioFrom}, ${videoFrom} success: `, resp);
+            setTimeout(function(){
+                let recorderId = resp.id;
+                stopRecording(roomId, recorderId, (resp) => {
+                    console.log(`stop recording ${recorderId} success: `, resp);
+                }, err => {
+                    console.log('stop recording failed: ', err);
+                })
+            },10000)
+        }, err => {
+            console.log('start recording failed: ', err);
+        })*/
+    })
+
 }
 
 
@@ -1181,7 +1296,11 @@ function clientEvent(client) {
             })
 
             remoteStreamMap.set(remoteStream.id, remoteStream);
-            subs(remoteStream);
+            if(remoteStream.origin){
+                hasForward && subs(remoteStream);
+            }else{
+                hasMixed && subs(remoteStream);
+            }
         },
         participantjoinedListener = (eve) => {
             let participant = eve.participant;
@@ -1273,20 +1392,34 @@ function streamEvent(stream) {
     let enedListener = (event) => {
         if (stream instanceof LocalStream) {
             console.log(`local stream ${stream.id} is ended`);
-            localStreams.delete(stream.id);
+            localStreams.delete(stream.source.video);
         } else {
             console.log(`remote stream ${stream.id} is ended`);
             remoteStreamMap.delete(stream.id);
         }
         destroyStreamUi(stream);
     };
-    stream.addEventListener('ended', enedListener)
+    let activeaudioinputchangeListener = (event) => {
+        console.log('activeaudioinputchange event triggered: ', event);
+    };
+    let layoutchangeListener = (event) => {
+        console.log('layoutchange event triggered: ', event);
+    };
+    let update = (event)=>{
+        console.log('streamupdate event triggered: ', event, stream.id);
+    }
+    stream.addEventListener('ended', enedListener);
+    stream.addEventListener('activeaudioinputchange', activeaudioinputchangeListener);
+    stream.addEventListener('layoutchange', layoutchangeListener);
+    stream.addEventListener('update', update);
+
 }
 
 function mediaStreamEvent(localStream) {
     localStream.mediaStream.getTracks().forEach(track => {
         track.onended = function() {
             console.log(`localStream ${localStream.id} ${track.kind} ended`);
+            localStreams.delete(localStream.source.video);
         }
     })
 }
@@ -1351,8 +1484,8 @@ remoteStreamMap.onLengthRemove((key) => {
     $('#videofromlist').find(`[value=${key}]`).remove();
 })
 participants.onLengthRemove((key) => {
-    $('#participantsid').find(`[value=${key}]`).remove();
-    $('#participantlist').find(`[value=${key}]`).remove();
+    $('#participantsid').find('[value="' + key + '"]').remove();
+    $('#participantlist').find('[value="' + key + '"]').remove();
 })
 allRooms.onLengthRemove((key) => {
     $('#roomlist').find(`[value=${key}]`).remove();
@@ -1360,7 +1493,8 @@ allRooms.onLengthRemove((key) => {
 
 
 //LocalStream action
-function stopLocal(name = 'camera') {
+function stopLocal() {
+    let name = $('#localstreamid').val() || 'camera';
     let localStream = localStreams.get(name);
     if (localStream) {
         localStream.mediaStream.getTracks().forEach(track => {
@@ -1369,7 +1503,6 @@ function stopLocal(name = 'camera') {
         localStreams.delete(name);
     }
 }
-
 function createLocalStream() {
     let videoSource = $('input[name="videosource"]:checked').val() || false;
     let audioSource = $('input[name="audiosource"]:checked').val() || false;
@@ -1378,13 +1511,17 @@ function createLocalStream() {
         width: 640,
         height: 480
     };
+    let audioDeviceId = $('#audiodeviceid').val() || undefined;
+    let videoDeviceId = $('#videodeviceid').val() || undefined;
     let audio, video;
     if (!audioSource) {
         audio = false;
         audioSource = undefined;
     } else {
         audio = {
-            source: audioSource
+            source: audioSource,
+            deviceId: audioDeviceId
+
         }
     }
     if (!videoSource) {
@@ -1393,7 +1530,8 @@ function createLocalStream() {
     } else {
         video = {
             source: videoSource,
-            resolution: resolution
+            resolution: resolution,
+            deviceId: videoDeviceId,
         }
     }
     let mediaStreamDeviceConstraints = {
@@ -1405,7 +1543,7 @@ function createLocalStream() {
     MediaStreamFactory.createMediaStream(mediaStreamDeviceConstraints)
         .then((mediaStream) => {
             console.log('create media stream success: ', mediaStream);
-            return new LocalStream(mediaStream, streamSourceInfo)
+            return new LocalStream(mediaStream, streamSourceInfo, {testAttributes: 'test'})
         }, (err) => {
             console.log('create mediaStream failed: ', err);
             return Promise.reject()
@@ -1453,7 +1591,7 @@ function joinRoom() {
         })
 }
 
-function getAudioCodec(audioCodecName, videoCodecName) {
+function getAudioAndVideoCodec(audioCodecName, videoCodecName) {
     let audioCodec, videoCodec;
     switch (audioCodecName) {
         case 'g722-1':
@@ -1506,20 +1644,21 @@ function getAudioCodec(audioCodecName, videoCodecName) {
         videoCodec,
     }
 }
-
 function publish() {
-    let localStream = localStreams.get($('#localstreamid').val());
+    let localStream = localStreams.get($('#localstreamid').val() || 'camera');
     let audioCodecName = $('#audiocodec').val();
     let videoCodecName = $('#videocodec').val();
     let videoMaxBitrate = $('#videomaxbitrate').val();
+    let audioMaxBitrate = $('#audiomaxbitrate').val();
     let {
         audioCodec,
         videoCodec
-    } = getAudioCodec(audioCodecName, videoCodecName);
+    } = getAudioAndVideoCodec(audioCodecName, videoCodecName);
 
     let options = {
         audio: [{
             codec: audioCodec,
+            maxBitrate: parseInt(audioMaxBitrate),
         }],
         video: [{
             codec: videoCodec,
@@ -1530,16 +1669,31 @@ function publish() {
     client.publish(stream, options).then((publication) => {
         publications.set(publication.id, publication);
         console.log(`get publication ${publication.id}`);
+        publicationTmp = publication;
     }, (err) => {
         console.log('publish local stream failed: ', err);
     })
 }
-
+function unpublish_publish() {
+   let count = parseInt($('#cycleCounts').val()) || 20;
+   let intervals_tmp = parseInt($('#intervals').val()) || 200;
+   let inter = setInterval(()=>{
+       if(count === 0){
+             clearInterval(inter);
+          }
+       count--;
+       publicationTmp.stop().then(()=>{
+          publish();
+       }, (err)=>{
+          console.log('publication stop failed', err);
+       });
+   }, intervals_tmp);
+}
 function addOption(select, optionsArr) {
     select.children('option:not(:first)').remove();
     optionsArr.forEach((item) => {
         if (typeof item === 'object') {
-            select.append($(`<option value=${JSON.stringify(item)}>${item.name || item.width + 'X' + item.height}</option>`));
+            select.append($(`<option value=${JSON.stringify(item)}>${item.name?item.name + (item.profile === undefined?'':'-' + item.profile): item.width + 'X' + item.height}</option>`));
         } else {
             select.append($(`<option value=${item}>${item}</option>`));
         }
@@ -1575,7 +1729,10 @@ $('#availableremotestream').change(function() {
 
 function getSubOptions() {
     let remoteStreamId = $('#availableremotestream').val();
-    if (!remoteStreamId) throw new Error('You must select one remote stream');
+    console.log("remote stream id: ", remoteStreamId);
+    if (!remoteStreamId) {
+        return {};
+    }
     let trackKind = $('#subscribetrackkind').val() || undefined;
     let videoCodec = $('#supportedvideocodec').val() ? JSON.parse($('#supportedvideocodec').val()) : undefined;
     let audioCodec = $('#supportedaudiocodec').val() ? JSON.parse($('#supportedaudiocodec').val()) : undefined;
@@ -1613,7 +1770,7 @@ function subscribe() {
         video = false;
     } else {
         video = {
-            codecs: [videoCodec],
+            codecs:[videoCodec],
             resolution: resolution,
             frameRate: frameRate,
             bitrateMultiplier: bitrate,
@@ -1809,8 +1966,182 @@ function subscriptionApplyOption() {
             console.log('subscription apply options failed: ', err);
         })
 }
+//multiple
+Promise.prototype.delay = function(timeout=3000, value){
+     return this.then(()=>{
+        return new Promise(function (resolve, reject) {
+            setTimeout(resolve, value, timeout);
+        });
+     });
+};
+let promiseSub = Promise.resolve();
+
+function subscribeTest(apply){
+    let remoteStreams = remoteStreamMap.getMap();
+    remoteStreams.forEach((item, key)=>{
+        let {audio: audioCapabilities, video: videoCapabilities} = item.capabilities
+        let audioCodecs = audioCapabilities.codecs;
+        let {codecs: videoCodecs, bitrateMultipliers, frameRates, keyFrameIntervals, resolutions} = videoCapabilities;
+        audioCodecs.forEach((audioCodec)=>{
+            videoCodecs.forEach((videoCodec=>{
+                frameRates.forEach((frameRate)=>{
+                    keyFrameIntervals.forEach((kfi)=>{
+                        resolutions.forEach((resolution)=>{
+                            bitrateMultipliers.forEach((bitrate)=>{
+                                let options = {
+                                    audio: {
+                                        codecs: [audioCodec],
+                                    },
+                                    video: {
+                                        codecs: [videoCodec],
+                                        resolution: resolution,
+                                        frameRate: frameRate,
+                                        bitrateMultiplier: bitrate,
+                                        keyFrameInterval: kfi,
+                                    }
+                                };
+                                let sp;
+                                promiseSub = promiseSub.then(()=>{
+                                    return client.subscribe(item, options)
+                                })
+                                .then(subscription=>{
+                                    displayStream(item);
+                                    sp = subscription;
+                                    return Promise.resolve(subscription);
+                                })
+                                .delay(10000)
+                                .then(()=>{
+                                    return sp.stop();
+                                })
+                                .then(()=>{
+                                    destroy(item);
+                                })
+                            });
+                        });
+                    });
+                });
+            }));
+        });
+    });
+};
+
+function joinAllRooms(){
+    let count=0;
+    listRooms((rooms) => {
+        rooms = JSON.parse(rooms);
+        rooms.forEach((item) => {
+            count++;
+            setTimeout(function(){
+            createToken(item._id, 'testroom', 'presenter', (token)=>{
+               let client = new ConferenceClient();
+               client.join(token)
+               .then((resp)=>{
+                   console.log('join room successsssss: ', resp, item._id);
+                   client.leave()
+                   .then(resp=>{
+                       console.log('leave success, ', item._id);
+                   }, err=>{
+                       console.log('leave failed, ', item._id);
+                   });
+               }, (err)=>{
+                   console.log('join room faileddddddd: ', err, item._id);
+               });
+            }, (err)=>{
+               console.log('create token failednnnnnn: ', err, item._id);
+            })
+            }, count*000);
+        })
+    }, (err) => {
+        console.log('list rooms failed', err);
+    })
+}
+function listAllUsers(){
+     listRooms((rooms) => {
+        rooms = JSON.parse(rooms);
+        rooms.forEach((item) => {
+            let roomId = item._id;
+            listParticipants(roomId, (resp) => {
+                resp = JSON.parse(resp);
+                console.log(`get ${roomId} participants: `, resp);
+            }, err => {
+                console.log(`get ${roomId} participants failed: `, err);
+            })
+       })
+    }, (err) => {
+        console.log('list rooms failed', err);
+    })
+}
+function lotOfUserJoin(count = 100, leave){
+    for(let i = 0; i < count; i++){
+        let client = new ConferenceClient();
+      setInterval(()=>{
+        createToken(defaultRoomId, 'lotof'+i, 'presenter', token=>{
+            client.join(token)
+            .then(resp=>{
+                console.log('lotof join room success: ', resp, i);
+                leave && client.leave()
+                   .then(resp=>{
+                       console.log('leave success, ', client.id);
+                   }, err=>{
+                       console.log('leave failed, ', client.id);
+                   });
+            }, err=>{
+                console.log('lotof join foom failed: ', err, i);
+            });
+        }, err=>{
+            console.log('lotof create token failed: ', i);
+        });
+      }, 200);
+    }
+}
+
+//publication mute/unmute
+function pub_mute_unmute(timeout = 1000, count = 20){
+    let [publicationArr, trackKind] = getPublicationParams();
+    console.log('mute_unmute: ', getPublicationParams());
+    if(publicationArr.length === 0 || publicationArr[0] === undefined) throw new Error("there are no publications");
+    let itv = setInterval(function(){
+    publicationArr.forEach((publication) => {
+        publication.unmute(trackKind)
+            .then(() => {
+                console.log(`${publication.id} unmute ${trackKind} success`)
+                publication.mute(trackKind);
+            }, err => {
+                console.log(`${publication.id} unmute failed: `, err);
+            })
+    })
+    count--;
+    if(count < 0){
+      clearInterval(itv);
+    }
+    }, timeout);
+}
 
 window.onload = function() {
+    navigator.mediaDevices.enumerateDevices()
+    .then(devicesInfos =>{
+        devicesInfos.forEach((deviceInfo)=>{
+            if(deviceInfo.kind === 'audioinput'){
+                $('#audiodeviceid').append(`<option value=${deviceInfo.deviceId}>${deviceInfo.deviceId}</option>`);
+            }
+        });
+    })
+    .catch(err => {
+        console.log('get device info failed:', err);
+    })
+    navigator.mediaDevices.enumerateDevices()
+    .then(devicesInfos =>{
+        devicesInfos.forEach((deviceInfo)=>{
+            if(deviceInfo.kind === 'videoinput'){
+                $('#videodeviceid').append(`<option value=${deviceInfo.deviceId}>${deviceInfo.deviceId}</option>`);
+            }
+        });
+    })
+    .catch(err => {
+        console.log('get device info failed:', err);
+    })
+
+
     let publishOputions = {
         audio: [{
             codec: {
@@ -1838,7 +2169,11 @@ window.onload = function() {
                 //subscribe remote streams.
                 remoteStreams.forEach((stream) => {
                     remoteStreamMap.set(stream.id, stream);
-                    subs(stream)
+                    if(stream.origin){
+                        hasForward && subs(stream);
+                    }else{
+                        hasMixed && subs(stream);
+                    }
                 })
                 participantArr.forEach((participant) => {
                     participants.set(participant.id, participant);
@@ -1864,7 +2199,7 @@ window.onload = function() {
                     })
                     .then((mediaStream) => {
                         console.log('media stream is', mediaStream);
-                        return new LocalStream(mediaStream, new StreamSourceInfo('mic', 'camera'));
+                        return new LocalStream(mediaStream, new StreamSourceInfo('mic', 'camera'), {attributes: 'test attributes'});
                     }, (err) => {
                         console.log('create media stream failed: ', err);
                         return Promise.reject();
@@ -1877,6 +2212,7 @@ window.onload = function() {
                             .then((publication) => {
                                 publications.set(publication.id, publication);
                                 console.log('publish success:', publication);
+                                publicationTmp = publication;
                             }, err => {
                                 console.log('publish failed', err);
                             })
@@ -1893,23 +2229,27 @@ window.onload = function() {
 
 
 };
-
-window.onbeforeunload = function() {
+window.addEventListener('unload', ()=>{
+    console.log('first beforeunload');
+});
+window.onbeforeunload = function(event) {
+    event.preventDefault();
+    console.log('on beforeunload triggered');
     subscriptions.forEach((value) => {
         value.stop()
-            .then(resp => {
+       /*     .then(resp => {
                 console.log(`stop subscription success ${resp}`);
             }, err => {
                 console.log(`stop subscription failed ${err}`);
-            })
+            })*/
     });
     publications.forEach((value) => {
         value.stop()
-            .then(resp => {
+          /*  .then(resp => {
                 console.log(`stop publication success ${resp}`);
             }, err => {
                 console.log(`stop publicattion failed ${err}`);
-            })
+            })*/
     });
     stopLocal();
     stopLocal('screen-cast');
