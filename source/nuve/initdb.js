@@ -34,23 +34,25 @@ function upgradeH264(next) {
     for (i = 0; i < total; i++) {
       room = rooms[i];
       room.mediaOut.video.format.forEach((fmt) => {
-        if (fmt.codec === 'h264' && !fmt.profile) {
+        if (fmt && fmt.codec === 'h264' && !fmt.profile) {
           fmt.profile = 'CB';
         }
       });
       room.mediaOut.video.format = room.mediaOut.video.format.filter((fmt) => {
-        return (fmt.codec !== 'h265');
+        return (fmt && fmt.codec !== 'h265');
       });
       room.mediaIn.video = room.mediaIn.video.filter((fmt) => {
-        return (fmt.codec !== 'h265');
+        return (fmt && fmt.codec !== 'h265');
       });
       room.views.forEach((viewSettings) => {
         var fmt = viewSettings.video.format;
-        if (fmt.codec === 'h264' && !fmt.profile) {
+        if (fmt && fmt.codec === 'h264' && !fmt.profile) {
           fmt.profile = 'CB';
-        } else if (fmt.codec === 'h265') {
+        } else if (fmt && fmt.codec === 'h265') {
           fmt.codec = 'h264';
           fmt.profile = 'CB';
+        } else if (!fmt) {
+          viewSettings.video.format = { codec: 'vp8' };
         }
       });
 
@@ -102,10 +104,25 @@ function checkVersion (next) {
             require('./SchemaUpdate3to4').update(function() {
               upgradeNext(next);
             });
-            return;
+          } else {
+            var rl = require('readline').createInterface({
+              input: process.stdin,
+              output: process.stdout
+            });
+            rl.question('This operation will upgrade stored data to version 4.1. Are you ' +
+                'sure you want to proceed this operation anyway?[y/n]', (answer) => {
+              rl.close();
+              answer = answer.toLowerCase();
+              if (answer === 'y' || answer === 'yes') {
+                upgradeNext(next);
+              } else {
+                process.exit(0);
+              }
+            });
           }
+        } else {
+          upgradeNext(next);
         }
-        upgradeNext(next);
       });
     }
   });
