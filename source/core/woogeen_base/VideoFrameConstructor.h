@@ -133,6 +133,7 @@ private:
     boost::scoped_ptr<webrtc::RemoteBitrateEstimator> m_remoteBitrateEstimator;
     boost::scoped_ptr<webrtc::ViEReceiver> m_videoReceiver;
     boost::scoped_ptr<webrtc::RtpRtcp> m_rtpRtcp;
+    boost::shared_mutex m_rtpRtcpMutex;
     boost::shared_ptr<WebRTCTransport<erizoExtra::VIDEO>> m_videoTransport;
 
     boost::shared_ptr<WebRTCTaskRunner> m_taskRunner;

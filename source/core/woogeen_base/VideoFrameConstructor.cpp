@@ -65,6 +65,7 @@ VideoFrameConstructor::~VideoFrameConstructor()
         m_taskRunner->DeRegisterModule(m_video_receiver.get());;
     }
     m_taskRunner->Stop();
+    boost::unique_lock<boost::shared_mutex> lock(m_rtpRtcpMutex);
 }
 
 bool VideoFrameConstructor::init()
@@ -173,8 +174,9 @@ void VideoFrameConstructor::unbindTransport()
 
 void VideoFrameConstructor::enable(bool enabled)
 {
+    boost::shared_lock<boost::shared_mutex> lock(m_rtpRtcpMutex);
     m_enabled = enabled;
-    if (m_enabled) {
+    if (m_enabled && m_rtpRtcp) {
         m_rtpRtcp->RequestKeyFrame();
     }
 }
@@ -187,13 +189,21 @@ bool VideoFrameConstructor::setBitrate(uint32_t kbps)
 
 int32_t VideoFrameConstructor::ResendPackets(const uint16_t* sequenceNumbers, uint16_t length)
 {
-    return m_rtpRtcp->SendNACK(sequenceNumbers, length);
+    boost::shared_lock<boost::shared_mutex> lock(m_rtpRtcpMutex);
+    if (m_rtpRtcp) {
+        return m_rtpRtcp->SendNACK(sequenceNumbers, length);
+    }
+    return 0;
 }
 
 int32_t VideoFrameConstructor::RequestKeyFrame()
 {
-    // ELOG_INFO("RequestKeyFrame");
-    return m_rtpRtcp->RequestKeyFrame();
+    boost::shared_lock<boost::shared_mutex> lock(m_rtpRtcpMutex);
+    if (m_rtpRtcp) {
+        // ELOG_INFO("RequestKeyFrame");
+        return m_rtpRtcp->RequestKeyFrame();
+    }
+    return 0;
 }
 
 int32_t VideoFrameConstructor::OnInitializeDecoder(
@@ -213,8 +223,11 @@ int32_t VideoFrameConstructor::OnInitializeDecoder(
 
 void VideoFrameConstructor::OnIncomingSSRCChanged(const uint32_t ssrc)
 {
-    m_rtpRtcp->SetRemoteSSRC(ssrc);
-    m_ssrc = ssrc;
+    boost::shared_lock<boost::shared_mutex> lock(m_rtpRtcpMutex);
+    if (m_rtpRtcp) {
+        m_rtpRtcp->SetRemoteSSRC(ssrc);
+        m_ssrc = ssrc;
+    }
 }
 
 void VideoFrameConstructor::ResetStatistics(uint32_t ssrc)
@@ -343,7 +356,8 @@ int VideoFrameConstructor::deliverVideoData_(std::shared_ptr<erizo::DataPacket> 
         return m_videoReceiver->ReceivedRTCPPacket(buf, video_packet->length) == -1 ? 0 : video_packet->length;
 
     PacketTime current;
-    if (m_videoReceiver->ReceivedRTPPacket(buf, video_packet->length, current) != -1) {
+    boost::shared_lock<boost::shared_mutex> lock(m_rtpRtcpMutex);
+    if (m_rtpRtcp && m_videoReceiver->ReceivedRTPPacket(buf, video_packet->length, current) != -1) {
         // FIXME: Decode should be invoked as often as possible.
         // To invoke it in current work thread is not a good idea. We may need to create
         // a dedicated thread to keep on invoking vcm::VideoReceiver::Decode, and, with a wait time other than 0.

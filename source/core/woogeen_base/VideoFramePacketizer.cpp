@@ -148,7 +148,10 @@ int VideoFramePacketizer::deliverFeedback_(std::shared_ptr<erizo::DataPacket> da
 {
     // ELOG_INFO("deliverFeedback_ %p", this);
     boost::shared_lock<boost::shared_mutex> lock(m_rtpRtcpMutex);
-    return m_rtpRtcp->IncomingRtcpPacket(reinterpret_cast<uint8_t*>(data_packet->data), data_packet->length) == -1 ? 0 : data_packet->length;
+    if (m_rtpRtcp) {
+        return m_rtpRtcp->IncomingRtcpPacket(reinterpret_cast<uint8_t*>(data_packet->data), data_packet->length) == -1 ? 0 : data_packet->length;
+    }
+    return 0;
 }
 
 void VideoFramePacketizer::receiveRtpData(char* buf, int len, erizoExtra::DataType type, uint32_t channelId)
