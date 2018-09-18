@@ -342,7 +342,7 @@ This a format for client reconnects.
 	object(TextReceiveMessage)::
 	  {
 	   from: string(ParticipantId),
-	   type: 'unicast' | 'broadcast',
+	   to: 'me' | 'all',
 	   message: string(Message)
 	  }
 
