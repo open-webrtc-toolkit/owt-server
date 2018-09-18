@@ -410,7 +410,9 @@ LiveStreamIn::LiveStreamIn(const Options& options, EventRegistry* handle)
     , m_audioFormat(FRAME_FORMAT_UNKNOWN)
     , m_audioSampleRate(0)
     , m_audioChannels(0)
-    , m_readSpeedControl(false)
+    , m_isFileInput(false)
+    , m_timstampOffset(0)
+    , m_lastTimstamp(0)
 {
     ELOG_INFO_T("url: %s, audio: %s, video: %s, transport: %s, bufferSize: %d"
             , m_url.c_str(), m_enableAudio.c_str(), m_enableVideo.c_str(), options.transport.c_str(), options.bufferSize);
@@ -448,7 +450,7 @@ LiveStreamIn::LiveStreamIn(const Options& options, EventRegistry* handle)
     }
 
     if (isFileInput()) {
-        m_readSpeedControl = true;
+        m_isFileInput = true;
     }
 
     m_running = true;
@@ -787,6 +789,9 @@ bool LiveStreamIn::reconnect()
         }
     }
 
+    if (m_isFileInput)
+        m_timstampOffset = m_lastTimstamp + 1;
+
     av_read_play(m_context);
 
     if (m_videoJitterBuffer)
@@ -827,7 +832,7 @@ void LiveStreamIn::receiveLoop()
 
     memset(&m_avPacket, 0, sizeof(m_avPacket));
     while (m_running) {
-        if (m_readSpeedControl) {
+        if (m_isFileInput) {
             if (m_videoJitterBuffer && m_videoJitterBuffer->sizeInMs() > 500) {
                 usleep(1000);
                 continue;
@@ -842,7 +847,7 @@ void LiveStreamIn::receiveLoop()
         m_timeoutHandler->reset(10000);
         ret = av_read_frame(m_context, &m_avPacket);
         if (ret < 0) {
-            ELOG_ERROR_T("Error read frame, %s", ff_err2str(ret));
+            ELOG_WARN_T("Error read frame, %s", ff_err2str(ret));
             // Try to re-open the input - silently.
             ret = reconnect();
             if (!ret) {
@@ -855,8 +860,8 @@ void LiveStreamIn::receiveLoop()
 
         if (m_avPacket.stream_index == m_videoStreamIndex) { //packet is video
             AVStream *video_st = m_context->streams[m_videoStreamIndex];
-            m_avPacket.dts = timeRescale(m_avPacket.dts, video_st->time_base, m_msTimeBase);
-            m_avPacket.pts = timeRescale(m_avPacket.pts, video_st->time_base, m_msTimeBase);
+            m_avPacket.dts = timeRescale(m_avPacket.dts, video_st->time_base, m_msTimeBase) + m_timstampOffset;
+            m_avPacket.pts = timeRescale(m_avPacket.pts, video_st->time_base, m_msTimeBase) + m_timstampOffset;
 
             ELOG_TRACE_T("Receive video frame packet, dts %ld, size %d"
                     , m_avPacket.dts, m_avPacket.size);
@@ -872,8 +877,8 @@ void LiveStreamIn::receiveLoop()
             }
         } else if (m_avPacket.stream_index == m_audioStreamIndex) { //packet is audio
             AVStream *audio_st = m_context->streams[m_audioStreamIndex];
-            m_avPacket.dts = timeRescale(m_avPacket.dts, audio_st->time_base, m_msTimeBase);
-            m_avPacket.pts = timeRescale(m_avPacket.pts, audio_st->time_base, m_msTimeBase);
+            m_avPacket.dts = timeRescale(m_avPacket.dts, audio_st->time_base, m_msTimeBase) + m_timstampOffset;
+            m_avPacket.pts = timeRescale(m_avPacket.pts, audio_st->time_base, m_msTimeBase) + m_timstampOffset;
 
             ELOG_TRACE_T("Receive audio frame packet, dts %ld, duration %ld, size %d"
                     , m_avPacket.dts, m_avPacket.duration, m_avPacket.size);
@@ -883,6 +888,7 @@ void LiveStreamIn::receiveLoop()
             else
                 deliverAudioFrame(&m_avPacket);
         }
+        m_lastTimstamp = m_avPacket.dts;
         av_packet_unref(&m_avPacket);
     }
 

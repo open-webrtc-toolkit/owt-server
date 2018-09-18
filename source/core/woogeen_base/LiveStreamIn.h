@@ -231,7 +231,9 @@ private:
     boost::shared_ptr<JitterBuffer> m_videoJitterBuffer;
     boost::shared_ptr<JitterBuffer> m_audioJitterBuffer;
 
-    bool m_readSpeedControl;
+    bool m_isFileInput;
+    int64_t m_timstampOffset;
+    int64_t m_lastTimstamp;
 
     char m_errbuff[500];
     char *ff_err2str(int errRet);
