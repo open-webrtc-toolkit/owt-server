@@ -74,6 +74,33 @@ var DEFAULT_ROLES = [
   }
 ];
 
+function getAudioOnlyLabels(roomOption) {
+  var labels = [];
+  if (roomOption.views && roomOption.views.forEach) {
+    roomOption.views.forEach((view) => {
+      if (view.video === false) {
+        labels.push(view.label);
+      }
+    });
+  }
+  return labels;
+}
+
+function updateAudioOnlyViews(roomId, labels, room, callback) {
+  Room.update({_id: roomId, 'views.label': {$in: labels}}, {$set: {'views.$.video': false }}, function (err, raw) {
+    if (err) return callback(err, null);
+    if (room.views && room.views.map) {
+      room.views = room.views.map((view) => {
+        if (labels.indexOf(view.label) > -1) {
+          view.video = false;
+        }
+        return view;
+      });
+    }
+    callback(null, room);
+  });
+}
+
 /*
  * Create Room.
  */
@@ -100,12 +127,17 @@ exports.create = function (serviceId, roomOption, callback) {
     roomOption.roles = DEFAULT_ROLES;
   }
 
+  var labels = getAudioOnlyLabels(roomOption);
   var room = new Room(roomOption);
   room.save().then((saved) => {
     Service.findById(serviceId).then((service) => {
       service.rooms.push(saved._id);
       service.save().then(() => {
-        callback(null, saved.toObject());
+        if (labels.length > 0) {
+          updateAudioOnlyViews(saved._id, labels, saved.toObject(), callback);
+        } else {
+          callback(null, saved.toObject());
+        }
       });
     });
   }).catch((err) => {
@@ -174,10 +206,14 @@ exports.delete = function (serviceId, roomId, callback) {
  * Update Room. Update a determined room from the data base.
  */
 exports.update = function (serviceId, roomId, updates, callback) {
-  removeNull(updates);
+  var labels = getAudioOnlyLabels(updates);
   Room.findOneAndUpdate({ _id: roomId }, updates, { overwrite: true, new: true, runValidators: true }, function (err, ret) {
     if (err) return callback(err, null);
-    callback(null, ret.toObject());
+    if (labels.length > 0) {
+      updateAudioOnlyViews(roomId, labels, ret.toObject(), callback);
+    } else {
+      callback(null, ret.toObject());
+    }
   });
 };
 

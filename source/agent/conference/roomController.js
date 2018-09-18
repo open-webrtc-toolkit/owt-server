@@ -228,7 +228,8 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                         }
                     );
                 } else {
-                    mix_views[view].video = { mixer: null, supported_formats: [] };
+                    mix_views[view].video = { mixer: null, supported_formats: { encode: [], decode: [] } };
+                    onInitOk();
                 }
             },
             function onAudioFail(reason) {

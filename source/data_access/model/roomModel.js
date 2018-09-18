@@ -155,10 +155,12 @@ RoomSchema.statics.ViewSchema = mongoose.model('View', ViewSchema);
 RoomSchema.statics.processLayout = function(room) {
   if (room && room.views) {
     room.views.forEach(function (view) {
-      view.video.layout.templates = Layout.applyTemplate(
-        view.video.layout.templates.base,
-        view.video.maxInput,
-        view.video.layout.templates.custom);
+      if (view.video) {
+        view.video.layout.templates = Layout.applyTemplate(
+          view.video.layout.templates.base,
+          view.video.maxInput,
+          view.video.layout.templates.custom);
+      }
     });
   }
   return room;
