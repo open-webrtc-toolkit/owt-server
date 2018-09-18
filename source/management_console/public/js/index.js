@@ -280,6 +280,13 @@ function tableHandlerRoom(rooms) {
       if (updates.all && typeof updates.all === 'object') {
         updates = updates.all;
       }
+      if (updates.views && updates.views.forEach) {
+        updates.views.forEach(function(view) {
+          if (!view.video) {
+            view.video = false;
+          }
+        });
+      }
       nuve.updateRoom(roomId, updates, function(err, resp) {
         if (err) return notify('error', 'Update Room', resp);
         setTimeout(function() {
@@ -788,7 +795,7 @@ function tableHandlerRoom(rooms) {
     if (room.views) {
       room.views.forEach(function(view) {
         view.audio.format = audioFormat2Name(view.audio.format);
-        view.video.format = videoFormat2NameOut(view.video.format);
+        view.video && (view.video.format = videoFormat2NameOut(view.video.format));
       });
     }
     if (room.mediaIn) {
