@@ -93,7 +93,7 @@ var getTokenKey = function(id, on_key, on_error) {
   dataAccess.token.key(id).then(function (key) {
     on_key(key);
   }).catch(function (err) {
-    log.info('Failed to get token key. err:', err.message ? err.message : err);
+    log.info('Failed to get token key. err:', (err && err.message) ? err.message : err);
     on_error(err);
   });
 };
@@ -189,7 +189,7 @@ var startServers = function(id, tokenKey) {
       refreshTokenKey(id, portal, tokenKey);
     })
     .catch(function(err) {
-      log.error('Failed to start servers, reason:', err.message);
+      log.error('Failed to start servers, reason:', err && err.message);
       throw err;
     });
 };
