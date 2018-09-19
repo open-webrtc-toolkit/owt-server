@@ -601,6 +601,16 @@ parameters:
         op: 'replace',
         path: '/info/layout/[0-9]+/stream',     // '/info/layout/[0-9]+/stream' is a pattern to match the needed path.
         value: string
+         OR
+        op: 'replace',
+        path: '/info/layout',
+        value: [
+            object(StreamRegion):
+            {
+                stream: string | undefined,
+                region: object(Region)
+            }
+        ]
     }
 response body:
 
