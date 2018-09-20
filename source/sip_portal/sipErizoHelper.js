@@ -10,7 +10,7 @@ var log = logger.getLogger('SipErizoHelper');
 module.exports = function (spec) {
 
     var that = {},
-        /*{ErizoId: {agent: AgentId}*/
+        /*{ErizoId: {agent: AgentId, kaCount: number()}*/
         erizos = {};
 
     var cluster = spec.cluster,
@@ -19,27 +19,37 @@ module.exports = function (spec) {
 
     var callbackFor = function(erizo_id) {
         return function(ok) {
-            if (ok !== true && erizos[erizo_id] !== undefined) {
-                log.info('ErizoJS[', erizo_id, '] check alive timeout!');
-                on_erizo_broken(erizo_id);
-                var for_whom = erizos[erizo_id].for_whom;
+            if (erizos[erizo_id] !== undefined) {
+                if (ok === true) {
+                    erizos[erizo_id].kaCount = 0;
+                } else {
+                    log.debug('ErizoJS[', erizo_id, '] check alive timeout!');
+                    erizos[erizo_id].kaCount += 1;
+                }
 
-                var afterRecycle = function() {
-                    delete erizos[erizo_id];
+                if (erizos[erizo_id].kaCount === 5) {
+                    log.info('ErizoJS[', erizo_id, '] is no longer alive!');
+
+                    var afterRecycle = function() {
+                        if (erizos[erizo_id]) {
+                            delete erizos[erizo_id];
+                        }
+                    };
+
+                    makeRPC(rpcClient,
+                            erizos[erizo_id].agent,
+                            'recycleNode',
+                            [erizo_id, erizos[erizo_id].for_whom],
+                            afterRecycle,
+                            afterRecycle);
+
                     on_erizo_broken(erizo_id);
-                };
-
-                makeRPC(rpcClient,
-                        erizos[erizo_id].agent,
-                        'recycleNode',
-                        [erizo_id, for_whom],
-                        afterRecycle,
-                        afterRecycle);
+                }
             }
         };
     };
 
-    var KEEPALIVE_INTERVAL = 12*1000;
+    var KEEPALIVE_INTERVAL = 2*1000;
     var sendKeepAlive = function() {
         for (var erizo_id in erizos) {
             makeRPC(rpcClient,
@@ -87,7 +97,7 @@ module.exports = function (spec) {
                     'getNode',
                     [for_whom],
                     function(erizo_id) {
-                        erizos[erizo_id] = {agent: result.id, for_whom: for_whom};
+                        erizos[erizo_id] = {agent: result.id, for_whom: for_whom, kaCount: 0};
                         log.info("Successully schedule sip node ", erizo_id, " for ", for_whom);
                         on_ok({id: erizo_id, addr: result.addr});
                     },
