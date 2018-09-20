@@ -2240,7 +2240,7 @@ var Conference = function (rpcClient, selfRpcId) {
           }
 
           if (subDesc.media.video && !subDesc.media.video.format) {
-            subDesc.media.video.format = {codec: 'h264'};
+            subDesc.media.video.format = {codec: 'h264', profile: 'CB'};
           }
 
           //FIXME: To support codecs other than those in the following list.
