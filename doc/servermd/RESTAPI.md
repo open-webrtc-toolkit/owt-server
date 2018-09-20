@@ -704,15 +704,13 @@ Streaming-outs model:
     object(StreamingOutAudio):
     {
         from: string(StreamId),
-        format: object(AudioFormat),      // Refers to object(AudioFormat) in 5.3, streams data model.
-        status: 'active' | 'inactive'
+        format: object(AudioFormat)      // Refers to object(AudioFormat) in 5.3, streams data model.
     }
     object(StreamingOutVideo):
     {
         from: string(StreamId),
         format: object(VideoFormat),     // Refers to object(VideoFormat) in 5.3, streams data model.
-        parameters: object(VideoParametersSpecification),
-        status: 'active' | 'inactive'
+        parameters: object(VideoParametersSpecification)
     }
     object(VideoParametersSpecification):
     {
