@@ -86,18 +86,18 @@ function getAudioOnlyLabels(roomOption) {
   return labels;
 }
 
-function updateAudioOnlyViews(roomId, labels, room, callback) {
-  Room.update({_id: roomId, 'views.label': {$in: labels}}, {$set: {'views.$.video': false }}, function (err, raw) {
+function updateAudioOnlyViews(labels, room, callback) {
+  if (room.views && room.views.map) {
+    room.views = room.views.map((view) => {
+      if (labels.indexOf(view.label) > -1) {
+        view.video = false;
+      }
+      return view;
+    });
+  }
+  room.save({validateBeforeSave: false}, function (err, raw) {
     if (err) return callback(err, null);
-    if (room.views && room.views.map) {
-      room.views = room.views.map((view) => {
-        if (labels.indexOf(view.label) > -1) {
-          view.video = false;
-        }
-        return view;
-      });
-    }
-    callback(null, room);
+    callback(null, room.toObject());
   });
 }
 
@@ -144,7 +144,7 @@ exports.create = function (serviceId, roomOption, callback) {
       service.rooms.push(saved._id);
       service.save().then(() => {
         if (labels.length > 0) {
-          updateAudioOnlyViews(saved._id, labels, saved.toObject(), callback);
+          updateAudioOnlyViews(labels, saved, callback);
         } else {
           callback(null, saved.toObject());
         }
@@ -221,7 +221,7 @@ exports.update = function (serviceId, roomId, updates, callback) {
   Room.findOneAndUpdate({ _id: roomId }, updates, { overwrite: true, new: true, runValidators: true }, function (err, ret) {
     if (err) return callback(err, null);
     if (labels.length > 0) {
-      updateAudioOnlyViews(roomId, labels, ret.toObject(), callback);
+      updateAudioOnlyViews(labels, ret, callback);
     } else {
       callback(null, ret.toObject());
     }
