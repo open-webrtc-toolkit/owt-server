@@ -57,7 +57,7 @@ var ViewSchema = new Schema({
   },
   video: {
     format: {
-      codec: { type: String, default: 'h264' },
+      codec: { type: String, default: 'vp8' },
       profile: { type: String }
     },
     parameters: {
@@ -140,14 +140,6 @@ var RoomSchema = new Schema({
     participantActivities: { type: Boolean, default: true },
     streamChange: { type: Boolean, default: true }
   }
-});
-
-ViewSchema.pre('save', function(next) {
-  if (this.video && this.video.format &&
-      this.video.format.codec === 'h264' && !this.video.format.profile) {
-    this.video.format.profile = 'CB';
-  }
-  next();
 });
 
 RoomSchema.statics.ViewSchema = mongoose.model('View', ViewSchema);
