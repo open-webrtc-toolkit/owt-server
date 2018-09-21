@@ -245,7 +245,7 @@ module.exports = function (spec, on_status, on_mediaUpdate) {
                 }
             }
 
-            if (video_fmt.codec === 'h264' && final_prf) {
+            if (video_fmt && video_fmt.codec === 'h264' && final_prf) {
                 video_fmt.profile = final_prf;
             }
 
