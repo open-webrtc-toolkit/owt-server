@@ -138,6 +138,10 @@ class InputManager {
         this.freeIndex.reverse();
     }
 
+    reset(maxInput) {
+      constructor(maxInput);
+    }
+
     // Has the streamId
     has(streamId) {
         return (!!this.inputs[streamId] || !!this.pendingInputs[streamId]);
@@ -733,6 +737,42 @@ function VMixer(rpcClient, clusterIP) {
 
     that.setLayout = function (layout, callback) {
         log.debug('setLayout, layout:', JSON.stringify(layout));
+
+        var specified_streams = layout.map((obj) => {return obj.stream ? obj.stream : null;}).filter((st) => { return st;});
+        var current_streams = [];
+
+        inputManager.getStreamList().map((stream_id) => {
+            let input = inputManager.remove(stream_id);
+            if (input.id >= 0) {
+                engine.removeInput(input.id);
+            }
+
+            input.stream = stream_id;
+
+            if (specified_streams.indexOf(stream_id) >= 0) {
+              current_streams.unshift(input);
+            } else {
+              current_streams.push(input);
+            }
+        });
+
+        inputManager.reset(layout.length);
+
+        current_streams.forEach((obj) => {
+          let input = inputManager.add(obj.stream, obj.codec, obj.conn, obj.avatar);
+          if (input >= 0) {
+            engine.addInput(input, obj.codec, obj.conn, obj.avatar);
+            if (specified_streams.indexOf(obj.stream) < 0) {
+              for (var i in layout) {
+                if (!layout[i].stream) {
+                  layout[i].stream = obj.stream;
+                  break;
+                }
+              }
+            }
+          }
+        });
+
         var inputLayout = layout.map((obj) => {
           if (obj.stream) {
             return {input: inputManager.get(obj.stream).id, region: obj.region};
@@ -740,8 +780,8 @@ function VMixer(rpcClient, clusterIP) {
             return {region: obj.region};
           }
         });
+
         layoutProcessor.setLayout(inputLayout, function(layoutSolution) {
-          //TODO: try to schedule the pending inputs into the new layout template.
           callback('callback', formatLayoutSolution(layoutSolution));
         }, function(err) {
           callback('callback', 'error', 'layoutProcessor failed');
