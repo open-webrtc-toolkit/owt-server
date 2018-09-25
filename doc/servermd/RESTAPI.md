@@ -14,7 +14,7 @@ Verb: HTTP verb. The mapping to operations is as following:
     - Delete operations: DELETE
 URI: the Universal Resource Identifier, or name through which the resource can be manipulated.<br>
 
-Request Body: the request data that user need supply to call the API. Json format data is requried.<br>
+Request Body: the request data that user need supply to call the API. JSON format data is requried.<br>
 
 Response Body: the response data is returned through HTTP response in JSON/text format.
 
@@ -80,9 +80,7 @@ The management API can only be called after authorized. To get authorized, each 
 - mauth_timestamp is the timestamp of the request.
 - mauth_signature is a signature of this request. It uses HMAC_SHA256 to sign timestamp, cnonce, username(optional), role(optional) with service key. Then encrypted it with BASE64.
 
-Example of encryption algorithm (python):
-
-    {.py}
+Python example of encryption algorithm (JavaScript version can be found in provided samples):
 
     from hashlib import HMAC_SHA256
     import hmac
@@ -98,7 +96,7 @@ Example of encryption algorithm (python):
         return signed
 **toSign** is the signature.<br>
 
-**Note:**<br>
+**Note:**
 If authentication failed, a response with code 401 would be returned.
 # 5 Management Resource {#RESTAPIsection5}
 The management API uses REST model to accessing different resources. The resources in conference management can be grouped into 7 kinds:
@@ -119,68 +117,68 @@ Data Model:<br>
 
     object(Room):
     {
-      "_id": string,
-      "name": string,
-      "participantLimit": number,                // -1 means no limit
-      "inputLimit": number,
-      "roles": arrayOf(Role),
-      "views": arrayOf(object(View)),
-      "mediaIn": object(MeidaIn),
-      "mediaOut": object(MediaOut),
-      "transcoding": object(Transcoding),
-      "notifying": object(Notifying),
-      "sip": object(Sip)
+      _id: string,
+      name: string,
+      participantLimit: number,                    // -1 means no limit
+      inputLimit: number,
+      roles: [ object(Role) ],
+      views: [ object(View) ],
+      mediaIn: object(MeidaIn),
+      mediaOut: object(MediaOut),
+      transcoding: object(Transcoding),
+      notifying: object(Notifying),
+      sip: object(Sip)
     }
     object(Role): {
-      'role': 'string',
-      'publish': {
-        'video': boolean,
-        'audio': boolean
+      role: string,
+      publish: {
+        video: boolean,
+        audio: boolean
       },
-      'subscirbe': {
-        'video': boolean,
-        'audio': boolean
+      subscirbe: {
+        video: boolean,
+        audio: boolean
       }
     }
     object(View): {
-      "label": string,
-      "audio": object(Audio),
-      "video": object(Video)
+      label: string,
+      audio: object(ViewAudio),
+      video: object(ViewVideo) | false
     }
-    object(Audio): {
-      "format": {
-        "codec": string,                     // 'opus', 'pcmu', 'pcma', 'aac', 'ac3', 'nellymoser'
-        "sampleRate": number,
-        "channelNum": number
+    object(ViewAudio): {
+      format: {                                   // AudioFormat
+        codec: string,                            // "opus", "pcmu", "pcma", "aac", "ac3", "nellymoser"
+        sampleRate: number,
+        channelNum: number
       },
-      "vad": boolean
+      vad: boolean
     }
-    object(Video):{
-      "format": {
-        "codec": string,                    // 'h264', 'vp8', 'h265', 'vp9'
-        "profile": string                   // 'CB', 'B', 'M', 'H' for 'h264'
+    object(ViewVideo):{
+      format: {                                   // VideoFormat
+        codec: string,                            // "h264", "vp8", "h265", "vp9"
+        profile: string                           // "CB", "B", "M", "H" for "h264"
       },
-      "parameters": {
-        "resolution": object(Resolution),
-        "framerate": number, valid values in [6, 12, 15, 24, 30, 48, 60]
-        "bitrate": number
-        "keyFrameInterval": number, valid values in [100, 30, 5, 2, 1]
+      parameters: {
+        resolution: object(Resolution),
+        framerate: number,                        // valid values in [6, 12, 15, 24, 30, 48, 60]
+        bitrate: number,                          // Kbps
+        keyFrameInterval: number,                 // valid values in [100, 30, 5, 2, 1]
       },
-      "maxInput": number, positive integer
-      "bgColor": {
-        "r": 0 ~ 255,
-        "g": 0 ~ 255,
-        "b": 0 ~ 255
+      maxInput: number,                           // positive integer
+      bgColor: {
+        r: 0 ~ 255,
+        g: 0 ~ 255,
+        b: 0 ~ 255
       },
-      "motionFactor": number,
-      "keepActiveInputPrimary": boolean,
-      "layout": {
-        "fitPolicy": string,                  // 'letterbox' or 'crop'.
-        "templates": {
-          "base": string,                     // valid values ["fluid", "lecture", "void"].
-          "custom": [
-            { "primary": string, "region": arrayOf(object(Region))},
-            { "primary": string, "region": arrayOf(object(Region))}
+      motionFactor: number,
+      keepActiveInputPrimary: boolean,
+      layout: {
+        fitPolicy: string,                         // "letterbox" or "crop".
+        templates: {
+          base: string,                            // valid values ["fluid", "lecture", "void"].
+          custom: [
+            { region: [ object(Region) ] },
+            { region: [ object(Region) ] }
           ]
          }
       }
@@ -190,48 +188,48 @@ Data Model:<br>
       height: number
     }
     object(Region): {
-      "id": string,
-      "shape": string,
-      "area": {
-        "left": number,
-        "top": number,
-        "width": number,
-        "height": number
+      id: string,
+      shape: string,
+      area: {
+        left: number,
+        top: number,
+        width: number,
+        height: number
       }
     }
     object(MeidaIn): {
-      "audio": arrayOf(Audio)，               // Refers to the format list above.
-      "video": arrayOf(Video)                 // Refers to the format list above.
+      audio: [ object(AudioFormat) ]，              // Refers to the format list above.
+      video: [ object(VideoFormat) ]                // Refers to the format list above.
     }
     object(MediaOut): {
-      "audio": arrayOf(Audio),                // Refers to the format list above.
-      "video": {
-        "format": arrayOf(Video),                // Refers to the format list above.
-        "parameters": {
-          "resolution": array,                 // Array of resolution.E.g. ['x3/4', 'x2/3', ... 'cif']
-          "framerate": array,                  // Array of framerate.E.g. [5, 15, 24, 30, 48, 60]
-          "bitrate": array,                    // Array of bitrate.E.g. ['x1.6', ... , '0.4']
-          "keyFrameInterval": array            // Array of keyFrameInterval.E.g. [100, 30, 5, 2, 1]
+      audio: [ object(AudioFormat) ],               // Refers to the format list above.
+      video: {
+        format: [ object(VideoFormat) ],            // Refers to the format list above.
+        parameters: {
+          resolution: [ string ],                   // Array of resolution.E.g. ["x3/4", "x2/3", ... "cif"]
+          framerate: [ number ],                    // Array of framerate.E.g. [5, 15, 24, 30, 48, 60]
+          bitrate: [ number ],                      // Array of bitrate.E.g. [500, 1000, ... ]
+          keyFrameInterval: [ number ]              // Array of keyFrameInterval.E.g. [100, 30, 5, 2, 1]
         }
       }
     }
     object(Transcoding): {
-      "audio": boolean,
-      "video": {
-        "format": boolean,
-        "framerate": boolean,
-        "bitrate": boolean,
-        "keyFrameInterval": boolean
+      audio: boolean,
+      video: {
+        format: boolean,
+        framerate: boolean,
+        bitrate: boolean,
+        keyFrameInterval: boolean
       }
     }
     object(Notifying): {
-      "participantActivities": boolean,
-      "streamChange": boolean
+      participantActivities: boolean,
+      streamChange: boolean
     }
     object(Sip): {
-      "sipServer": string,
-      "username": string,
-      "password": string
+      sipServer: string,
+      username: string,
+      password: string
     }
 Resources:<br>
 
@@ -247,9 +245,9 @@ parameters:
 
 | parameters |   type   | annotation |
 | :----------|:------|:------------------|
-| roomConfig | request body | Configuration used to create room |
+| RoomConfig | request body | Configuration used to create room |
 
-This is for *roomConfig*:
+This is for *RoomConfig*:
 
     object(RoomConfig):
     {
@@ -286,7 +284,7 @@ Pagination<br>
 
 Requests that return multiple rooms will not be paginated by default. To avoid too much data of one call, you can set a custom page size with the ?per_page parameter.You can also specify further pages with the ?page parameter.<br>
 
-GET 'https://sample.api/rooms?page=2&per_page=10'<br>
+GET "https://sample.api/rooms?page=2&per_page=10"<br>
 
 Note that page numbering is 1-based and that omitting the ?page parameter will return the first page.
 
@@ -417,14 +415,14 @@ parameters:
     ]
     object(PermissionUpdate):
     {
-        op: 'replace',
+        op: "replace",
 
-        // There are two kind of path and value. Choose one of them.
+        // There are 2 kinds of path and value. Choose one of them.
 
-        path: '/permission/[publish|subscribe]',
+        path: "/permission/[publish|subscribe]",
         value: object(Value)
           OR
-        path: '/permission/[publish|subscribe]/[video|audio]',
+        path: "/permission/[publish|subscribe]/[video|audio]",
         value: boolean
     }
     object(Value):
@@ -588,18 +586,18 @@ parameters:
     ]
     object(StreamInfoUpdate):
     {
-        // There are three kind of op, path, value. Choose one of them.
+        // There are 4 kinds of op, path, value. Choose one of them.
 
-        op: 'add' | 'remove',
-        path: '/info/inViews',
+        op: "add" | "remove",
+        path: "/info/inViews",
         value: string
          OR
-        op: 'replace',
-        path: '/media/audio/status' | '/media/video/status',
-        value: 'active' | 'inactive'
+        op: "replace",
+        path: "/media/audio/status" | "/media/video/status",
+        value: "active" | "inactive"
          OR
-        op: 'replace',
-        path: '/info/layout/[0-9]+/stream',     // '/info/layout/[0-9]+/stream' is a pattern to match the needed path.
+        op: "replace",
+        path: "/info/layout/[0-9]+/stream",     // "/info/layout/[0-9]+/stream" is a pattern to match the needed path.
         value: string
          OR
         op: 'replace',
@@ -650,19 +648,19 @@ parameters:
 | parameters | type | annotation |
 |:----------|:----|:----------|
 |    {roomId}    | URL |    Room ID    |
-| pub_req | request body | Json format data with connection and media |
+| pub_req | request body | JSON format data with connection and media |
 
 **Note**:
 
     Object(StreamingInRequest) {
         url: string,
         media: {
-          audio: 'auto' | true | false,
-          video: 'auto' | true | false
+          audio: "auto" | true | false,
+          video: "auto" | true | false
         },
         transport: {
-          protocol: 'udp' | 'tcp',    // 'tcp' by default.
-          bufferSize: number          // The buffer size in bytes in case 'udp' is specified, 8192 by default.
+          protocol: "udp" | "tcp",    // "tcp" by default.
+          bufferSize: number          // The buffer size in bytes in case "udp" is specified, 8192 by default.
         }
     }
 
@@ -749,7 +747,7 @@ parameters:
 | parameters | type | annotation |
 |:----------|:----|:----------|
 |    {roomId}    | URL |    Room ID    |
-| options | request body | Json format with url and media |
+| options | request body | JSON format with url and media |
 
 **Note**:
 
@@ -758,7 +756,7 @@ parameters:
         audio: {
             from: string,          // target StreamID
             format: {
-              codec: string,       // 'opus', 'pcmu' ... available codec in target stream
+              codec: string,       // "opus", "pcmu" ... available codec in target stream
               sampleRate: number,  // optional, depends on codec
               channelNum: number   // optional, depends on codec
             }
@@ -766,7 +764,7 @@ parameters:
         video: {
             from: string,          // target StreamID
             format: {
-              codec: string,       // 'vp8', 'h264' ... available codec in target stream
+              codec: string,       // "vp8", "h264" ... available codec in target stream
               profile: string      // optional, depends on codec
             },
             parameters: {          // following values should be in stream's default/optional list
@@ -808,27 +806,27 @@ parameters:
     ]
     object(SubscriptionControlInfo):
     {
-        // There are six kind of op, path and value. Choose one of them.
+        // There are 6 kinds of op, path and value. Choose one of them.
 
-        op: 'replace',
-        path: '/media/audio/from' | '/media/video/from',
+        op: "replace",
+        path: "/media/audio/from" | "/media/video/from",
         value: string
          OR
-        op: 'replace',
-        path: '/media/video/parameters/resolution',
+        op: "replace",
+        path: "/media/video/parameters/resolution",
         value: object(Resolution)        // Refers to object(Resolution) in 5.3 streams, streams model.
          OR
-        op: 'replace',
-        path: '/media/video/parameters/framerate',
-        value: '6' | '12' | '15' | '24' | '30' | '48' | '60'
+        op: "replace",
+        path: "/media/video/parameters/framerate",
+        value: "6" | "12" | "15" | "24" | "30" | "48" | "60"
          OR
-        op: 'replace',
-        path: '/media/video/parameters/bitrate',
-        value: 'x0.8' | 'x0.6' | 'x0.4' | 'x0.2'
+        op: "replace",
+        path: "/media/video/parameters/bitrate",
+        value: "x0.8" | "x0.6" | "x0.4" | "x0.2"
          OR
-        op: 'replace',
-        path: '/media/video/parameters/keyFrameInterval',
-        value: '1' | '2' | '5' | '30' | '100'
+        op: "replace",
+        path: "/media/video/parameters/keyFrameInterval",
+        value: "1" | "2" | "5" | "30" | "100"
     }
 response body:
 
@@ -896,14 +894,14 @@ parameters:
 | parameters | type | annotation |
 |:----------|:----|:----------|
 |    {roomId}    | URL |    Room ID    |
-| options | request body | Json format with container and media |
+| options | request body | JSON format with container and media |
 **Note**:<br>
 
     options={
         container: string,
         media: object(MediaSubOptions)       // Refers to object(MediaSubOptions) in 5.5.
     }
-    container={'mp4' | 'mkv' | 'auto' | 'ts'}  // The container type of the recording file, 'auto' by default.
+    container={"mp4" | "mkv" | "auto" | "ts"}  // The container type of the recording file, "auto" by default.
 
 response body:
 
@@ -913,7 +911,7 @@ response body:
 ### /v1/rooms/{roomId}/recordings/{recordingId}
 #### PATCH
 Description:<br>
-Update a recording's given attributes in the specified room.<br>
+Update a recording"s given attributes in the specified room.<br>
 
 parameters:
 
@@ -952,7 +950,7 @@ Description:<br>
 A token is the ticket for joining the room. The token contains information through which clients can connect to server application. Note that the different rooms may have different network information, so the room must be specified for token resource. The same token cannot be reused if it has been used once. Re-generate token if clients need to connect at the second time.<br>
 
 Data Model:<br>
-Token data in Json example:
+Token data in JSON example:
 
     object(Tokens):
     {
@@ -980,7 +978,7 @@ parameters:
 | parameters | type | annotation |
 |:----------|:----|:----------|
 |    {roomId}    | URL |    Room ID    |
-| {preference_body} | request body | Json format with preference, user and role |
+| {preference_body} | request body | JSON format with preference, user and role |
 **Note**:
 
     preference_body={
@@ -993,3 +991,98 @@ response body:
 | type | content |
 |:-------------|:-------|
 |  json | A token created for a new participant |
+
+## 5.8 Service {#RESTAPIsection5_7}
+Description:<br>
+The service represents the host of a set of rooms. Each service has its own identifier. The service ID and key are required to generate authentication header for HTTP requests. Note that there is one super service whose ID can be specified by toml file. The service resource can only be manipulated under super service authentication while other resouces require corresponding host service's authentication. (This API may change in later versions)
+
+Data Model:<br>
+Service data in JSON example:
+
+    object(Service):
+    {
+        _id: string,                   // The ID of the service
+        name: string,                  // The name of the service
+        key: string,                   // The key of the service
+        encrypted: boolean             // Encrypted or not
+        rooms: [ string ]              // The list of room ID under this service
+    }
+Resources:
+
+- /services
+- /services/{serviceId}
+
+### /services
+#### GET
+Description:<br>
+Get all the services.<br>
+
+parameters:
+
+| parameters | type | annotation |
+|:----------|:----|:----------|
+|    null    | null |    null    |
+
+response body:
+
+| type | content |
+|:-------------|:-------|
+|      json     | List of service data |
+
+Here is an example of json data:
+
+    [service0, service1, ...]
+**Note**: Elements in list are of service data model.<br>
+
+#### POST
+Description:<br>
+This function can create a service.<br>
+
+parameters:
+
+| parameters |   type   | annotation |
+| :----------|:------|:------------------|
+| ServiceConfig | request body | Configuration used to create service |
+
+This is for *ServiceConfig*:
+
+    object(ServiceConfig):
+    {
+        name: string,   // Name of the service to create
+        key: string     // Key of the service to create
+    }
+response body:
+
+| type | content |
+|:-------------|:-------|
+|      json     |  A service data model represents the service created |
+
+### /services/{serviceId}
+#### GET
+Description:<br>
+Get information on the specified service.<br>
+
+parameters:
+
+| parameters | type | annotation |
+|:----------|:----|:----------|
+|    {serviceId}    | URL |    Room ID    |
+| undefined | request body | Request body is null |
+response body:
+
+| type | content |
+|:-------------|:-------|
+|      json     | The required service data model |
+
+#### DELETE
+Description:<br>
+Delete the specified service.<br>
+
+parameters:
+
+| parameters | type | annotation |
+|:----------|:----|:----------|
+|    {serviceId}    | URL |    Room ID to be deleted   |
+| undefined | request body| Request body is null |
+
+response body: response body is **empty**.
