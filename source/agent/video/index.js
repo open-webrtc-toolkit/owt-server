@@ -456,7 +456,7 @@ function VMixer(rpcClient, clusterIP) {
         layoutProcessor.on('layoutChange', function (layoutSolution) {
             log.debug('layoutChange', layoutSolution);
             if (typeof engine.updateLayoutSolution === 'function') {
-               engine.updateLayoutSolution(layoutSolution);
+               engine.updateLayoutSolution(layoutSolution.filter((obj) => {return obj.input !== undefined;}));
             } else {
                 log.warn('No native method: updateLayoutSolution');
             }
