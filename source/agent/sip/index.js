@@ -863,7 +863,7 @@ module.exports = function (rpcC, spec) {
         }
     };
 
-    that.drop = function(clientId, fromRoom, callback) {
+    that.drop = function(clientId, fromRoom) {
         log.debug('drop, clientId:', clientId, 'fromRoom:', fromRoom);
         if (calls[clientId]) {
             gateway.hangup(calls[clientId].peerURI);
@@ -871,7 +871,6 @@ module.exports = function (rpcC, spec) {
             calls[clientId].conn && calls[clientId].conn.close({input: true, output: true});
             delete calls[clientId];
         }
-        callback('callback', 'ok');
     };
 
     that.notify = function(participantId, event, data, callback) {
