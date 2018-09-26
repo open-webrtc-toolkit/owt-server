@@ -254,12 +254,12 @@ This a format for client reconnects.
 		        {
 		         label: string(ViewLable),
 		         activeInput: string(StreamId) | "unknown",
-		         layout: [object(SubStream2RegionMapping)]
+		         layout: [object(MixedVideoLayout)]
 		        }
 
-		        object(SubStream2RegionMapping)::
+		        object(MixedVideoLayout)::
 		          {
-		           stream: string(StreamId),
+		           stream: string(StreamId) | undefined/*If this region is empty*/,
 		           region: object(Region)
 		          }
 
@@ -406,7 +406,7 @@ This a format for client reconnects.
 	  object(StreamUpdate)::
 	    {
 	     field: "audio.status" | "video.status"  | "video.layout" | "activeInput" | ".",
-	     value: "active" | "inactive" | [object(SubStream2RegionMapping)] | string(inputStreamId) | object(StreamInfo)
+	     value: "active" | "inactive" | [object(MixedVideoLayout)] | string(inputStreamId) | object(StreamInfo)
 	    }
 ### 3.3.10 Participant Controls a Stream {#CPCPSsection3_3_10}
 **RequestName**: “stream-control”<br>

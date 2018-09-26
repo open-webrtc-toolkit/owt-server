@@ -240,6 +240,10 @@ LayoutProcessor.prototype.updateInputPositions = function() {
                 input: this.inputList[i],
                 region: this.currentRegions[i]
             });
+        } else {
+            this.layoutSolution.push({
+                region: this.currentRegions[i]
+            });
         }
     }
     // Trigger "layoutChange" event
@@ -263,11 +267,10 @@ LayoutProcessor.prototype.setLayout = function(layout, on_ok, on_error) {
   this.currentRegions = this.templates[layout.length];
 
   this.inputList = [];
-  this.layoutSolution = [];
+  this.layoutSolution = layout;
   layout.forEach((obj) => {
     if (obj.input !== undefined) {
       this.inputList.push(obj.input);
-      this.layoutSolution.push(obj);
     }
   });
 

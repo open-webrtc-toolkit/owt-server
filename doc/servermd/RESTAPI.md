@@ -524,7 +524,7 @@ Streams model:
     {
       label: string(ViewLabel),
       layout: [{
-        stream: string(StreamId),
+        stream: string(StreamId) | undefined,
         region: object(Region)
       }]
     }
@@ -605,7 +605,7 @@ parameters:
         value: [
             object(StreamRegion):
             {
-                stream: string | undefined,
+                stream: string | undefined,    // stream can ONLY be absent at the very last consecutive positions.
                 region: object(Region)
             }
         ]

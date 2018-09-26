@@ -2059,9 +2059,27 @@ var Conference = function (rpcClient, selfRpcId) {
             } else if (cmd.path === '/info/layout') {
               if (streams[streamId].type === 'mixed') {
                 if (cmd.value instanceof Array) {
+                  var first_absence = 65535;//FIXME: stream id hole is not allowed
+                  var stream_id_hole = false;//FIXME: stream id hole is not allowed
+                  var stream_id_dup = false;
                   var stream_ok = true;
                   var region_ok = true;
                   for (var i in cmd.value) {
+                    if (first_absence === 65535 && !cmd.value[i].stream) {
+                      first_absence = i;
+                    }
+
+                    if (cmd.value[i].stream && first_absence < i) {
+                      stream_id_hole = true;
+                      break;
+                    }
+
+                    for (var j = 0; j < i; j++) {
+                      if (cmd.value[j].stream && cmd.value[j].stream === cmd.value[i].stream) {
+                        stream_id_dup = true;
+                      }
+                    }
+
                     if (cmd.value[i].stream && (!streams[cmd.value[i].stream] || (streams[cmd.value[i].stream].type !== 'forward'))) {
                       stream_ok = false;
                       break;
@@ -2087,7 +2105,11 @@ var Conference = function (rpcClient, selfRpcId) {
                     }
                   }
 
-                  if (!stream_ok) {
+                  if (stream_id_hole) {
+                    exe = Promise.reject('Stream ID hole is not allowed');
+                  } else if (stream_id_dup) {
+                    exe = Promise.reject('Stream ID duplicates');
+                  } else if (!stream_ok) {
                     exe = Promise.reject('Invalid input stream id');
                   } else if (!region_ok) {
                     exe = Promise.reject('Invalid region');
