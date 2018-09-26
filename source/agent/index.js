@@ -285,6 +285,8 @@ var api = function (worker) {
         getNode: function(task, callback) {
             log.debug('getNode, task:', task);
             var reportCallback = function (id, timeout) {
+                var wait_count = 0;
+                var wait_expiration = timeout / 100 + 1;
                 var waitForInitialization = function () {
                     if (!processes[id]) {
                         log.warn('process', id, 'not found');
@@ -292,9 +294,16 @@ var api = function (worker) {
                     }
                     if (processes[id].READY === undefined) {
                         log.debug(id, 'not ready');
-                        setTimeout(waitForInitialization, timeout);
+                        if (wait_count < wait_expiration) {
+                            wait_count += 1;
+                            setTimeout(waitForInitialization, 100);
+                        } else {
+                            dropErizoJS(id);
+                            callback('callback', 'error', 'node not ready');
+                        }
                         return;
                     }
+
                     if (processes[id].READY === true) {
                         log.debug(id, 'ready');
                         callback('callback', id);
@@ -311,7 +320,7 @@ var api = function (worker) {
                     for (i in erizos) {
                         erizo_id = erizos[i];
                         if (tasks[erizo_id] !== undefined && tasks[erizo_id][room_id] !== undefined) {
-                            reportCallback(erizo_id, 100);
+                            reportCallback(erizo_id, 1500);
                             return;
                         }
                     }
@@ -319,7 +328,7 @@ var api = function (worker) {
                     for (i in idle_erizos) {
                         erizo_id = idle_erizos[i];
                         if (tasks[erizo_id] !== undefined && tasks[erizo_id][room_id] !== undefined) {
-                            reportCallback(erizo_id, 100);
+                            reportCallback(erizo_id, 1500);
                             return;
                         }
                     }
@@ -331,7 +340,7 @@ var api = function (worker) {
                 }
 
                 erizo_id = idle_erizos.shift();
-                reportCallback(erizo_id, 100);
+                reportCallback(erizo_id, 1500);
 
                 erizos.push(erizo_id);
 
