@@ -755,16 +755,16 @@ parameters:
     {
         audio: {
             from: string,          // target StreamID
-            format: {
-              codec: string,       // "opus", "pcmu" ... available codec in target stream
+            format: {              // not work for streaming-out, "aac" will be used
+              codec: string,       // for recording, "opus", "pcmu" ... available codec in target stream
               sampleRate: number,  // optional, depends on codec
               channelNum: number   // optional, depends on codec
             }
         } || false,
         video: {
             from: string,          // target StreamID
-            format: {
-              codec: string,       // "vp8", "h264" ... available codec in target stream
+            format: {              // not work for streaming-out, "h264" will be used
+              codec: string,       // for recording, "vp8", "h264" ... available codec in target stream
               profile: string      // optional, depends on codec
             },
             parameters: {          // following values should be in stream's default/optional list
