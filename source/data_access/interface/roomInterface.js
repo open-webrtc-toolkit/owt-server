@@ -86,6 +86,40 @@ function getAudioOnlyLabels(roomOption) {
   return labels;
 }
 
+function checkMediaOut(room, roomOption) {
+  var valid = true;
+  var i;
+  if (room && room.views) {
+    room.views.forEach((view, vindex) => {
+      if (!valid)
+        return;
+
+      i = room.mediaOut.audio.findIndex((afmt) => {
+        return (afmt.codec === view.audio.format.codec
+          && afmt.sampleRate === view.audio.format.sampleRate
+          && afmt.channelNum === view.audio.format.channelNum);
+      });
+      if (i === -1) {
+        valid = false;
+        return;
+      }
+
+      if (roomOption.views && roomOption.views[vindex]
+            && roomOption.views[vindex].video === false) {
+        return;
+      }
+
+      i = room.mediaOut.video.format.findIndex((vfmt) => {
+        return (vfmt.codec === view.video.format.codec
+          && vfmt.profile === view.video.format.profile);
+      });
+      if (i === -1)
+        valid = false;
+    });
+  }
+  return valid;
+}
+
 function updateAudioOnlyViews(labels, room, callback) {
   if (room.views && room.views.map) {
     room.views = room.views.map((view) => {
@@ -139,6 +173,10 @@ exports.create = function (serviceId, roomOption, callback) {
   removeNull(roomOption);
   var labels = getAudioOnlyLabels(roomOption);
   var room = new Room(roomOption);
+  if (!checkMediaOut(room, roomOption)) {
+    callback(new Error('MediaOut conflicts with View Setting'), null);
+    return;
+  }
   room.save().then((saved) => {
     Service.findById(serviceId).then((service) => {
       service.rooms.push(saved._id);
@@ -218,13 +256,20 @@ exports.delete = function (serviceId, roomId, callback) {
 exports.update = function (serviceId, roomId, updates, callback) {
   removeNull(updates);
   var labels = getAudioOnlyLabels(updates);
-  Room.findOneAndUpdate({ _id: roomId }, updates, { overwrite: true, new: true, runValidators: true }, function (err, ret) {
-    if (err) return callback(err, null);
-    if (labels.length > 0) {
-      updateAudioOnlyViews(labels, ret, callback);
-    } else {
-      callback(null, ret.toObject());
+  Room.findById(roomId).then((room) => {
+    var newRoom = Object.assign(room, updates);
+    if (!checkMediaOut(newRoom, updates)) {
+      throw new Error('MediaOut conflicts with View Setting');
     }
+    return newRoom.save();
+  }).then((saved) => {
+    if (labels.length > 0) {
+      updateAudioOnlyViews(labels, saved, callback);
+    } else {
+      callback(null, saved.toObject());
+    }
+  }).catch((err) => {
+    callback(err, null);
   });
 };
 

@@ -84,7 +84,7 @@ exports.updateRoom = function (req, res, next) {
                         cloudHandler.notifySipPortal(changeType, result, function(){});
                     }
                 } else {
-                    next(new e.BadRequestError('Bad room configuration'));
+                    next(new e.BadRequestError(err && err.message || 'Bad room configuration'));
                 }
             });
         }
