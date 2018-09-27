@@ -611,9 +611,10 @@ protected:
         m_encParam->mfx.FrameInfo.CropW   = m_width;
         m_encParam->mfx.FrameInfo.CropH   = m_height;
 
+        m_encParam->mfx.FrameInfo.Width   = ALIGN16(m_width);
+        m_encParam->mfx.FrameInfo.Height  = ALIGN16(m_height);
+
         if (m_format == FRAME_FORMAT_H265) {
-            m_encParam->mfx.FrameInfo.Width   = ALIGN32(m_width);
-            m_encParam->mfx.FrameInfo.Height  = ALIGN32(m_height);
             if ((!((m_encParam->mfx.FrameInfo.CropW & 15) ^ 8)) ||
                     (!((m_encParam->mfx.FrameInfo.CropH & 15) ^ 8))) {
                 m_encExtHevcParam->Header.BufferId          = MFX_EXTBUFF_HEVC_PARAM;
@@ -623,9 +624,6 @@ protected:
 
                 m_encExtParams.push_back(reinterpret_cast<mfxExtBuffer *>(m_encExtHevcParam.get()));
             }
-        } else {
-            m_encParam->mfx.FrameInfo.Width   = ALIGN16(m_width);
-            m_encParam->mfx.FrameInfo.Height  = ALIGN16(m_height);
         }
 
         m_encParam->mfx.TargetKbps        = m_bitRateKbps ? m_bitRateKbps : calcBitrate(m_width, m_height);
