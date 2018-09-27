@@ -1,0 +1,25 @@
+From e71e5f8a062294c45d637f4e460a86647f5a8df6 Mon Sep 17 00:00:00 2001
+From: Chen Li1 <li1.chen@intel.com>
+Date: Thu, 27 Sep 2018 10:14:55 +0800
+Subject: [PATCH] Update state when established connection failed
+
+---
+ erizo/src/erizo/LibNiceConnection.cpp | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/erizo/src/erizo/LibNiceConnection.cpp b/erizo/src/erizo/LibNiceConnection.cpp
+index b6cce85..bc0bf07 100644
+--- a/erizo/src/erizo/LibNiceConnection.cpp
++++ b/erizo/src/erizo/LibNiceConnection.cpp
+@@ -429,6 +429,8 @@ void LibNiceConnection::updateComponentState(unsigned int component_id, IceState
+           return;
+         }
+       }
++    } else if (this->checkIceState() == IceState::READY) {
++      ELOG_WARN("%s message: state change from ready to failed", toLog());
+     } else {
+       ELOG_WARN("%s message: failed and not received all candidates, newComponentState:%u", toLog(), state);
+       return;
+-- 
+2.7.4
+
