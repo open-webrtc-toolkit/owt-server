@@ -72,13 +72,13 @@ Table 2-1 describes the system requirements for installing the MCU server. Table
 **Table 2-1. Server requirements**
 Application name|OS version
 -------------|--------------
-MCU server|CentOS* 7.3
+MCU server|CentOS* 7.4
 
-The evaluation version of MCU server is also provided for Ubuntu 14.04 LTS* 64-bit.
+The evaluation version of MCU server is also provided for Ubuntu 16.04 LTS* 64-bit.
 
 If you want to set up video conference service with H.264 codec support powered by non GPU-accelerated MCU server, OpenH264 library is required. See [Deploy Cisco OpenH264* Library](#Conferencesection2_3_4) section for more details.
 
-If you want to set up video conference service powered by GPU-accelerated MCU server through Intel® Media Server Studio, please follow the below instructions to install server side SDK on CentOS* 7.3 where the video-agents run.
+If you want to set up video conference service powered by GPU-accelerated MCU server through Intel® Media Server Studio, please follow the below instructions to install server side SDK on CentOS* 7.4 where the video-agents run.
 
 If you are working on the following platforms with the integrated graphics, please install Intel® Media Server Studio for Linux* 2018 R1.
 
@@ -798,7 +798,7 @@ The installation requirements for the peer server are listed in Table 5-1 and 5-
 **Table 5-1. Installation requirements**
 Component name | OS version
 ----|-----
-Peer server | Ubuntu 14.04/16.04 LTS, CentOS* 7.2/7.3
+Peer server | Ubuntu 14.04/16.04 LTS, CentOS* 7.3/7.4
 
 > **Note**: The peer server has been fully tested on Ubuntu14.04 LTS,64-bit.
 **Table 5-2. Peer Server Dependencies**
