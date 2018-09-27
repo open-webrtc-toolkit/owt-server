@@ -394,6 +394,13 @@ module.exports = function (rpcC, spec) {
                 calls[client_id].currentInfo = info;
             }
             return info;
+        }).catch((err) => {
+          log.warn('Call denied...');
+          gateway.hangup(calls[client_id].peerURI);
+          teardownCall(client_id);
+          calls[client_id].conn && calls[client_id].conn.close({input: true, output: true});
+          do_leave(calls[client_id].conference_controller, client_id);
+          delete calls[client_id];
         });
     };
 
@@ -890,7 +897,7 @@ module.exports = function (rpcC, spec) {
                 if (calls[client_id].conference_controller &&
                     ((message.type === 'node' && message.id === calls[client_id].conference_controller) || (message.type === 'worker' && calls[client_id].conference_controller.startsWith(message.id)))){
                     log.error('Fault detected on conference_controller:', message.id, 'of call:', client_id , ', terminate it');
-                    gateway.hangup(client_id);
+                    gateway.hangup(calls[client_id].peerURI);
                     teardownCall(client_id);
                     calls[client_id].conn && calls[client_id].conn.close({input: true, output: true});
                     delete calls[client_id];

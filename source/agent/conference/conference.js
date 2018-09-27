@@ -647,6 +647,13 @@ var Conference = function (rpcClient, selfRpcId) {
     return result;
   };
 
+  const extractVideoFormat = (videoInfo) => {
+    var result = {codec: videoInfo.codec};
+    videoInfo.profile && (result.profile = videoInfo.profile);
+
+    return result;
+  };
+
   const constructMediaInfo = (media) => {
     var result = {};
 
@@ -673,7 +680,7 @@ var Conference = function (rpcClient, selfRpcId) {
     if (media.video) {
       result.video = {
         status: 'active',
-        format: {codec: media.video.codec}
+        format: extractVideoFormat(media.video)
       };
 
       //FIXME: sometimes, streaming send invalid resolution { width: 0, height: 0}
@@ -682,7 +689,6 @@ var Conference = function (rpcClient, selfRpcId) {
       }
 
       media.video.source && (result.video.source = media.video.source);
-      media.video.profile && (result.video.format.profile = media.video.profile);
       media.video.resolution && (media.video.resolution.width !== 0) && (media.video.resolution.height !== 0) && (result.video.parameters || (result.video.parameters = {})) && (result.video.parameters.resolution = media.video.resolution);
       media.video.framerate && (media.video.framerate !== 0) && (result.video.parameters || (result.video.parameters = {})) && (result.video.parameters.framerate = Math.floor(media.video.framerate));
       media.video.bitrate && (result.video.parameters || (result.video.parameters = {})) && (result.video.parameters.bitrate = media.video.bitrate);
@@ -757,7 +763,33 @@ var Conference = function (rpcClient, selfRpcId) {
     return Promise.resolve('ok');
   };
 
+  const isAudioFmtAcceptable = (audioIn, audioInList) => {
+    for (var i in audioInList) {
+      if (isAudioFmtCompatible(audioIn, audioInList[i])) {
+        return true;
+      }
+    }
+    return false;
+  };
+
+  const isVideoFmtAcceptable = (videoIn, videoInList) => {
+    for (var i in videoInList) {
+      if (isVideoFmtCompatible(videoIn, videoInList[i])) {
+        return true;
+      }
+    }
+    return false;
+  };
+
   const addStream = (id, locality, media, info) => {
+    if (media.audio && (!room_config.mediaIn.audio.length || !isAudioFmtAcceptable(extractAudioFormat(media.audio), room_config.mediaIn.audio))) {
+      return Promise.reject('Audio format unacceptable');
+    }
+
+    if (media.video && (!room_config.mediaIn.video.length || !isVideoFmtAcceptable(extractVideoFormat(media.video), room_config.mediaIn.video))) {
+      return Promise.reject('Video format unacceptable');
+    }
+
     return new Promise((resolve, reject) => {
       roomController && roomController.publish(info.owner, id, locality, media, info.type, function() {
         if (participants[info.owner]) {
@@ -1198,7 +1230,7 @@ var Conference = function (rpcClient, selfRpcId) {
       });
   };
 
-  const isAudioFmtAcceptable = (streamAudio, fmt) => {
+  const isAudioFmtAvailable = (streamAudio, fmt) => {
     //log.debug('streamAudio:', JSON.stringify(streamAudio), 'fmt:', fmt);
     if (isAudioFmtCompatible(streamAudio.format, fmt)) {
       return true;
@@ -1216,7 +1248,7 @@ var Conference = function (rpcClient, selfRpcId) {
     }
 
     if (req.format) {
-      if (!isAudioFmtAcceptable(streams[req.from].media.audio, req.format)) {
+      if (!isAudioFmtAvailable(streams[req.from].media.audio, req.format)) {
         err && (err.message = 'Format is not acceptable');
         return false;
       }
@@ -1225,7 +1257,7 @@ var Conference = function (rpcClient, selfRpcId) {
     return true;
   };
 
-  const isVideoFmtAcceptable = (streamVideo, fmt) => {
+  const isVideoFmtAvailable = (streamVideo, fmt) => {
     //log.debug('streamVideo:', JSON.stringigy(streamVideo), 'fmt:', fmt);
     if (isVideoFmtCompatible(streamVideo.format, fmt)) {
       return true;
@@ -1240,7 +1272,7 @@ var Conference = function (rpcClient, selfRpcId) {
     return (r1.width === r2.width) && (r1.height === r2.height);
   };
 
-  const isResolutionAcceptable = (streamVideo, resolution) => {
+  const isResolutionAvailable = (streamVideo, resolution) => {
     if (streamVideo.parameters && streamVideo.parameters.resolution && isResolutionEqual(streamVideo.parameters.resolution, resolution)) {
       return true;
     }
@@ -1250,7 +1282,7 @@ var Conference = function (rpcClient, selfRpcId) {
     return false;
   };
 
-  const isFramerateAcceptable = (streamVideo, framerate) => {
+  const isFramerateAvailable = (streamVideo, framerate) => {
     if (streamVideo.parameters && streamVideo.parameters.framerate && (streamVideo.parameters.framerate === framerate)) {
       return true;
     }
@@ -1260,14 +1292,14 @@ var Conference = function (rpcClient, selfRpcId) {
     return false;
   };
 
-  const isBitrateAcceptable = (streamVideo, bitrate) => {
+  const isBitrateAvailable = (streamVideo, bitrate) => {
     if (streamVideo.optional && streamVideo.optional.parameters && streamVideo.optional.parameters.bitrate && (streamVideo.optional.parameters.bitrate.findIndex((b) => {return b === bitrate;}) >= 0)) {
       return true;
     }
     return false;
   };
 
-  const isKeyFrameIntervalAcceptable = (streamVideo, keyFrameInterval) => {
+  const isKeyFrameIntervalAvailable = (streamVideo, keyFrameInterval) => {
     if (streamVideo.parameters && streamVideo.parameters.resolution && (streamVideo.parameters.keyFrameInterval === keyFrameInterval)) {
       return true;
     }
@@ -1283,18 +1315,18 @@ var Conference = function (rpcClient, selfRpcId) {
       return false;
     }
 
-    if (req.format && !isVideoFmtAcceptable(streams[req.from].media.video, req.format)) {
+    if (req.format && !isVideoFmtAvailable(streams[req.from].media.video, req.format)) {
       err && (err.message = 'Format is not acceptable');
       return false;
     }
 
     if (req.parameters) {
-      if (req.parameters.resolution && !isResolutionAcceptable(streams[req.from].media.video, req.parameters.resolution)) {
+      if (req.parameters.resolution && !isResolutionAvailable(streams[req.from].media.video, req.parameters.resolution)) {
         err && (err.message = 'Resolution is not acceptable');
         return false;
       }
 
-      if (req.parameters.framerate && !isFramerateAcceptable(streams[req.from].media.video, req.parameters.framerate)) {
+      if (req.parameters.framerate && !isFramerateAvailable(streams[req.from].media.video, req.parameters.framerate)) {
         err && (err.message = 'Framerate is not acceptable');
         return false;
       }
@@ -1303,12 +1335,12 @@ var Conference = function (rpcClient, selfRpcId) {
       if (req.parameters.bitrate === 'x1.0' || req.parameters.bitrate === 'x1') {
         req.parameters.bitrate = undefined;
       }
-      if (req.parameters.bitrate && !isBitrateAcceptable(streams[req.from].media.video, req.parameters.bitrate)) {
+      if (req.parameters.bitrate && !isBitrateAvailable(streams[req.from].media.video, req.parameters.bitrate)) {
         err && (err.message = 'Bitrate is not acceptable');
         return false;
       }
 
-      if (req.parameters.keyFrameInterval && !isKeyFrameIntervalAcceptable(streams[req.from].media.video, req.parameters.keyFrameInterval)) {
+      if (req.parameters.keyFrameInterval && !isKeyFrameIntervalAvailable(streams[req.from].media.video, req.parameters.keyFrameInterval)) {
         err && (err.message = 'KeyFrameInterval is not acceptable');
         return false;
       }
@@ -1943,7 +1975,7 @@ var Conference = function (rpcClient, selfRpcId) {
         return new Promise((resolve, reject) => {
           var count = 0, wait = 1420;
           var interval = setInterval(() => {
-            if (count > wait) {
+            if (count > wait || !streams[stream_id]) {
               clearInterval(interval);
               accessController.terminate('admin', stream_id, 'Participant terminate');
               removeStream(stream_id);
@@ -2282,7 +2314,7 @@ var Conference = function (rpcClient, selfRpcId) {
         return new Promise((resolve, reject) => {
           var count = 0, wait = 300;
           var interval = setInterval(() => {
-            if (count > wait) {
+            if (count > wait || !subscriptions[subscription_id]) {
               clearInterval(interval);
               accessController.terminate('admin', subscription_id, 'Participant terminate');
               removeSubscription(subscription_id);
