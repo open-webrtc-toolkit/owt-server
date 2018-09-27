@@ -1,0 +1,27 @@
+From a3219a83e1e3a73857fd40804f334264f966a5bc Mon Sep 17 00:00:00 2001
+From: Chen Li1 <li1.chen@intel.com>
+Date: Thu, 27 Sep 2018 10:18:16 +0800
+Subject: [PATCH] Send STUN keepalive request after pair selected in RFC5245
+ mode
+
+---
+ agent/conncheck.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/agent/conncheck.c b/agent/conncheck.c
+index c090d02..476afa7 100644
+--- a/agent/conncheck.c
++++ b/agent/conncheck.c
+@@ -563,7 +563,8 @@ static gboolean priv_conn_keepalive_tick_unlocked (NiceAgent *agent)
+       if (component->selected_pair.local != NULL) {
+ 	CandidatePair *p = &component->selected_pair;
+ 
+-        if (agent->compatibility == NICE_COMPATIBILITY_GOOGLE) {
++        if (agent->compatibility == NICE_COMPATIBILITY_GOOGLE ||
++            agent->compatibility == NICE_COMPATIBILITY_RFC5245) {
+           guint32 priority = nice_candidate_ice_priority_full (
+                   NICE_CANDIDATE_TYPE_PREF_PEER_REFLEXIVE, 1,
+                   p->local->component_id);
+-- 
+2.7.4
+
