@@ -97,7 +97,7 @@ Either Professional Edition or Community Edition is applicable. For download or 
 The external stream output (rtsp/rtmp) feature relies on AAC encoder libfdk_aac support in ffmpeg library, please see [Compile and deploy ffmpeg with libfdk_aac](#Conferencesection2_3_5) section for detailed instructions.
 
  **Table 2-2. Client compatibility**
-Application Name|Google Chrome\* 65|Mozilla Firefox\* 59|Microsoft Edge\* 42.17134.1.0|Safari\* 11.1|Intel CS for WebRTC Client SDK for Android | Intel CS for WebRTC Client SDK for iOS | Intel CS for WebRTC Client SDK for Windows
+Application Name|Google Chrome\* 69|Mozilla Firefox\* 62|Microsoft Edge\* 42.17134.1.0|Safari\* 12.1|Intel CS for WebRTC Client SDK for Android | Intel CS for WebRTC Client SDK for iOS | Intel CS for WebRTC Client SDK for Windows
 --------|--------|--------|--------|--------|--------|--------|--------
 MCU Client|YES|YES|YES|YES|YES|YES|YES
 Management Console|YES|YES|YES|YES|N/A|N/A|N/A
@@ -108,7 +108,7 @@ This section describes the dependencies and steps for installing the MCU.
 **Table 2-3. MCU Dependencies**
 Name|Version|Remarks
 --------|--------|--------
-Node.js |6.9.*|Website: http://nodejs.org/
+Node.js |8.11.*|Website: http://nodejs.org/
 Node modules|Specified|N/A
 MongoDB| 2.4.9 |Website: http://mongodb.org
 System libraries|Latest|N/A
@@ -117,7 +117,7 @@ All dependencies, except system libraries and node, are provided with the releas
 
 All essential system libraries are installed when you install the MCU package using the Ubuntu or CentOS's package management system.
 
-Regarding Node.js*, make sure it's installed in your system prior to installing the MCU. We recommend version 6.9.5. Refer to http://nodejs.org/ for the details and installation.
+Regarding Node.js*, make sure it's installed in your system prior to installing the MCU. We recommend version 8.11.1. Refer to http://nodejs.org/ for the details and installation.
 
 Before installing the MCU, make sure your login account has sys-admin privileges; i.e. the ability to execute `sudo`.
 
@@ -227,7 +227,7 @@ To launch the MCU server on one machine, follow steps below:
     If you want to enable GPU-acceleration through Intel Media Server Studio, use following command:
 
         bin/init-all.sh [--deps] --hardware
-   > **Note**: If you have already installed the required system libraries, then --deps is not required. If you have installed early version of MCU, the stored data will not be compatible with 4.0 version. Pay attention to the warning and run the nuve/SchemaUpdate3to4.js to update your MCU data in mongodb.
+   > **Note**: If you have already installed the required system libraries, then --deps is not required. If you have installed early version of MCU, the stored data will not be compatible with 4.1 version. Pay attention to the warning and choose option to update your MCU data in mongodb.
 
 2. Run the following commands to start the MCU:
 
@@ -294,7 +294,7 @@ Follow the steps below to set up a MCU cluster:
         cd Release-<Version>/
         nuve/init.sh
 
-    **Note**: If you have installed early version of MCU, the stored data will not be compatible with 4.0 version. Pay attention to the warning and run the nuve/SchemaUpdate3to4.js to update your MCU data in mongodb.
+    **Note**: If you have installed early version of MCU, the stored data will not be compatible with 4.0 version. Pay attention to the warning and choose option to update your MCU data in mongodb.
 
     2) Run MCU manager nuve and the sample application with following commands:
 
@@ -572,7 +572,7 @@ views | The view list for the room, each view represents a combination of mix st
 view.label | The label for a certain view, two view labels in one room cannot be duplicated
 view.audio.format | The default audio format of the view selected from 'mediaOut.audio' configuration
 view.audio.vad | The 'activeInput' event will be emitted if this option is true, note that if a client publish more than one audio stream, this may not work well
-view.video.format | The default video format of the view selected from 'mediaOut.video' configuration
+view.video.format | The default video format of the view selected from 'mediaOut.format.video' configuration
 view.video.parameters.resolution | The default video resolution of the view
 view.video.parameters.framerate | The default video framerate of the view
 view.video.parameters.bitrate | The default video bitrate of the view, if it's not specified, the mix engine will generate a default one, see Table 3-3 for more details
@@ -609,6 +609,8 @@ h264 | video
 h265 | video
 vp8 | video
 vp9 | video
+
+> **Note**: When video format is "h264", for decoding, either software or hardware version MCU supports all profiles. For encoding, software version MCU with openh264 supports constrained-baseline profile and hardware version supports profiles including constrained-baseline, baseline, main, high.
 
  **Table 3-3 Default bitrate for typical resolutions (30fps)**
 |Resolution|Default bitrate(kbps)|
@@ -807,10 +809,10 @@ Peer server | Ubuntu 14.04/16.04 LTS, CentOS* 7.2/7.3
 **Table 5-2. Peer Server Dependencies**
 Name | Version | Remarks
 -----|----|----
-Node.js | 6.9.* | Website: http://nodejs.org/
+Node.js | 8.11.* | Website: http://nodejs.org/
 Node modules | Specified | N/A
 
-Regarding Node.js*, make sure it's installed in your system prior to installing the Peer Server. We recommend version 6.9.5. Refer to http://nodejs.org/ for installation details.
+Regarding Node.js*, make sure it's installed in your system prior to installing the Peer Server. We recommend version 8.11.1. Refer to http://nodejs.org/ for installation details.
 ## 5.3 Installation {#Conferencesection5_3}
 On the server machine, unpack the peer server release package, and install node modules
 
