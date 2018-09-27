@@ -80,17 +80,12 @@ If you want to set up video conference service with H.264 codec support powered 
 
 If you want to set up video conference service powered by GPU-accelerated MCU server through Intel® Media Server Studio, please follow the below instructions to install server side SDK on CentOS* 7.3 where the video-agents run.
 
-If you are working on the following platforms with the integrated graphics, please install Intel® Media Server Studio for Linux* 2017 R3.
+If you are working on the following platforms with the integrated graphics, please install Intel® Media Server Studio for Linux* 2018 R1.
 
  - Intel® Xeon® E3-1200 v4 Family with C226 chipset
  - Intel® Xeon® E3-1200 and E3-1500 v5 Family with C236 chipset
  - 5th Generation Intel® Core™
  - 6th Generation Intel® Core™
-
- If the following earlier generation platforms with the integrated graphics are used, please install Intel® Media Server Studio for Linux* 2016 R1.
-
- - Intel® Xeon® E3-1200 v3 Family with C226 chipset
- - 4th Generation Intel® Core™
 
 Either Professional Edition or Community Edition is applicable. For download or installation instructions, please visit its website at https://software.intel.com/en-us/intel-media-server-studio.
 
