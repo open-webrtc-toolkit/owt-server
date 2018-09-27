@@ -123,7 +123,7 @@ Data Model:<br>
       inputLimit: number,
       roles: [ object(Role) ],
       views: [ object(View) ],
-      mediaIn: object(MeidaIn),
+      mediaIn: object(MediaIn),
       mediaOut: object(MediaOut),
       transcoding: object(Transcoding),
       notifying: object(Notifying),
@@ -146,17 +146,17 @@ Data Model:<br>
       video: object(ViewVideo) | false
     }
     object(ViewAudio): {
-      format: {                                   // AudioFormat
+      format: {                                   // object(AudioFormat)
         codec: string,                            // "opus", "pcmu", "pcma", "aac", "ac3", "nellymoser"
-        sampleRate: number,
-        channelNum: number
+        sampleRate: number,                       // "opus/48000/2", "isac/16000/2", "isac/32000/2", "g722/16000/1"
+        channelNum: number                        // E.g "opus/48000/2", "opus" is codec, 48000 is sampleRate, 2 is channelNum
       },
       vad: boolean
     }
     object(ViewVideo):{
-      format: {                                   // VideoFormat
+      format: {                                   // object(VideoFormat)
         codec: string,                            // "h264", "vp8", "h265", "vp9"
-        profile: string                           // "CB", "B", "M", "H" for "h264"
+        profile: string                           // For "h264" output only, CB", "B", "M", "H"
       },
       parameters: {
         resolution: object(Resolution),
@@ -170,12 +170,12 @@ Data Model:<br>
         g: 0 ~ 255,
         b: 0 ~ 255
       },
-      motionFactor: number,
+      motionFactor: number,                       // float
       keepActiveInputPrimary: boolean,
       layout: {
-        fitPolicy: string,                         // "letterbox" or "crop".
+        fitPolicy: string,                        // "letterbox" or "crop".
         templates: {
-          base: string,                            // valid values ["fluid", "lecture", "void"].
+          base: string,                           // valid values ["fluid", "lecture", "void"].
           custom: [
             { region: [ object(Region) ] },
             { region: [ object(Region) ] }
@@ -198,13 +198,13 @@ Data Model:<br>
       }
     }
     object(MeidaIn): {
-      audio: [ object(AudioFormat) ]，              // Refers to the format list above.
-      video: [ object(VideoFormat) ]                // Refers to the format list above.
+      audio: [ object(AudioFormat) ]，              // Refers to the AudioFormat above.
+      video: [ object(VideoFormat) ]                // Refers to the VideoFormat above.
     }
     object(MediaOut): {
-      audio: [ object(AudioFormat) ],               // Refers to the format list above.
+      audio: [ object(AudioFormat) ],               // Refers to the AudioFormat above.
       video: {
-        format: [ object(VideoFormat) ],            // Refers to the format list above.
+        format: [ object(VideoFormat) ],            // Refers to the VideoFormat above.
         parameters: {
           resolution: [ string ],                   // Array of resolution.E.g. ["x3/4", "x2/3", ... "cif"]
           framerate: [ number ],                    // Array of framerate.E.g. [5, 15, 24, 30, 48, 60]
@@ -597,10 +597,10 @@ parameters:
         value: "active" | "inactive"
          OR
         op: "replace",
-        path: "/info/layout/[0-9]+/stream",     // "/info/layout/[0-9]+/stream" is a pattern to match the needed path.
+        path: "/info/layout/[0-9]+/stream",    // "/info/layout/[0-9]+/stream" is a pattern to match the needed path.
         value: string
          OR
-        op: 'replace',
+        op: 'replace',                         // For mixed stream
         path: '/info/layout',
         value: [
             object(StreamRegion):
@@ -751,6 +751,11 @@ parameters:
 
 **Note**:
 
+    options={
+      url: url,
+      media: object(MediaSubOptions)
+    }
+
     object(MediaSubOptions):
     {
         audio: {
@@ -774,11 +779,6 @@ parameters:
               keyFrameInterval: number                             // optional
             }
         } || false
-    }
-
-    options={
-      url: url,
-      media: object(MediaSubOptions)
     }
 
 response body:
