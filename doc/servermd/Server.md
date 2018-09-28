@@ -72,9 +72,9 @@ Table 2-1 describes the system requirements for installing the MCU server. Table
 **Table 2-1. Server requirements**
 Application name|OS version
 -------------|--------------
-MCU server|CentOS* 7.4
+MCU server|CentOS* 7.4, Ubuntu 14.04/16.04 LTS
 
-The evaluation version of MCU server is also provided for Ubuntu 16.04 LTS* 64-bit.
+The GPU-acceleration can only be enabled on CentOS version.
 
 If you want to set up video conference service with H.264 codec support powered by non GPU-accelerated MCU server, OpenH264 library is required. See [Deploy Cisco OpenH264* Library](#Conferencesection2_3_4) section for more details.
 
