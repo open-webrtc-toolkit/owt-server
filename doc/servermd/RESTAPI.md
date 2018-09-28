@@ -505,6 +505,7 @@ Streams model:
     object(VideoFormat):
     {
         codec: "h264" | "h265" | "vp8" | "vp9",
+        profile: "CB" | "B" | "M" | "H"    // For "h264" codec only
     }
     object(VideoParameters):
     {
@@ -770,7 +771,7 @@ parameters:
             from: string,          // target StreamID
             format: {              // not work for streaming-out, "h264" will be used
               codec: string,       // for recording, "vp8", "h264" ... available codec in target stream
-              profile: string      // optional, depends on codec
+              profile: string      // optional, depends on codec ("h264")
             },
             parameters: {          // following values should be in stream's default/optional list
               resolution: { width: number, height: number },       // optional
@@ -992,7 +993,7 @@ response body:
 |:-------------|:-------|
 |  json | A token created for a new participant |
 
-## 5.8 Service {#RESTAPIsection5_7}
+## 5.8 Service {#RESTAPIsection5_8}
 Description:<br>
 The service represents the host of a set of rooms. Each service has its own identifier. The service ID and key are required to generate authentication header for HTTP requests. Note that there is one super service whose ID can be specified by toml file. The service resource can only be manipulated under super service authentication while other resouces require corresponding host service's authentication. (This API may change in later versions)
 
