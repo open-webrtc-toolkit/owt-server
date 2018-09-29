@@ -520,7 +520,7 @@ The following instructions are provided only as recommendations regarding securi
 
     **Resolution**:
 
-    Use the proper MongoDB version as outlined in the Dependencies section.
+    Use the proper MongoDB version as outlined in the [Dependencies](#Conferencesection2_3_1) section.
 4. Run into network port conflicts on MCU, and probably some error message like "net::ERR_CONNECTION_TIMED_OUT" or "ERROR: server connection failed: connection_error"
 
     **Resolution**:
