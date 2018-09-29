@@ -503,6 +503,7 @@ The following instructions are provided only as recommendations regarding securi
 
 ## 2.6 FAQ {#Conferencesection2_6}
 1. Sudden low volume when connecting Chrome on Windows to MCU
+
     **Resolution**:
 
     Both the Chrome browser and Windows system itself can reduce the volume during a connection to the MCU server. To resolve this issue, disable the following Communications feature found in the Sound Settings using the Windows Control Panel.
