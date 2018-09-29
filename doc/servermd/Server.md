@@ -538,7 +538,7 @@ Once you have launched MCU servers, you can then access the console via a browse
 
 After inputting your service-id and service-key in the dialog prompt, choose 'remember me' and click 'save changes' to save your session. If you want to switch to another service, click the ‘profile' button on the upper-right corner to get in this dialog prompt and do the similar procedure again. If you want to log out the management console, click the red ‘clear cookie' button in the dialog prompt.
 
-If you have not launched MCU severs, you should launch the nuve server before accessing the management console:
+If you have not launched MCU servers, you should launch the nuve server before accessing the management console:
 
     cd Release-<Version>/
     bin/daemon.sh start nuve
@@ -573,13 +573,13 @@ view.video.parameters.resolution | The default video resolution of the view
 view.video.parameters.framerate | The default video framerate of the view
 view.video.parameters.bitrate | The default video bitrate of the view, if it's not specified, the mix engine will generate a default one, see Table 3-3 for more details
 view.video.parameters.keyFrameInterval | The default video key frame interval of the view
-view.video.maxInput | This indicates the maximum number of video inputs for the video layout definition, input that exceed the value will not be shown in mix stream
+view.video.maxInput | This indicates the maximum number of video inputs for the video layout definition, input that exceed the value will not be shown in mixed stream
 view.video.motionFactor | The video motion factor is used to affact the default bitrate of the video stream
-view.video.bgColor | The RGB representation for background color of the mix video stream
+view.video.bgColor | The RGB representation for background color of the mixed video stream
 view.keepActiveInputPrimary | The active input will always be shown in the 'primary' region when this option is set to true with 'vad' also enabled
-view.layout | The layout of mix video stream
+view.layout | The layout of mixed video stream
 view.layout.fitPolicy | The fit policy for input that does not perfectly match the width/height ratio
-view.layout.templates | The layout template for the mix video stream, a user can choose a base layout template and customize its own preferred ones, which would be combined as a whole for rendering mixed video
+view.layout.templates | The layout template for the mixed video stream, a user can choose a base layout template and customize its own preferred ones, which would be combined as a whole for rendering mixed video
 view.layout.templates.base | The template base for video layout
 view.layout.templates.custom | The customized video layout uppon the base, see the [Section 3.5.1](#Conferencesection3_5_1)
 mediaIn | The audio/video format that the room can accept, see the Table 3-2 for supported format
@@ -722,14 +722,14 @@ Each "region" defines video panes that are used to display participant video str
 
 Regions are rendered on top of the root mixed stream. "id" is the identifier for each video layout region.
 
-The size of a region is specified relative to the size of the root mixed stream using the "width" and "height" attribute.
+The size of a region is specified relative to the size of the root mixed stream using the "width" and "height" attributes.
 
 Regions are located on the root window based on the value of the position attributes "top" and "left".  These attributes define the position of the top left corner of the region as an offset from the top left corner of the root mixed stream, which is a percent of the vertical or horizontal dimension of the root mixed stream.
 
 ### 3.5.2 Enable SIP connectivity {#Conferencesection3_5_2}
-The MCU server supports connection from SIP clients. Before setting up SIP connectivity for rooms, make sure SIP server (like Kamailio) and related SIP user accounts are available. The SIP setting can be enabled through SDK or management console. On the console page, find the room that needs interacting with SIP clients and click the related "Room Detail" field. Then find the SIP setting fields in sub-section "sip".
+The MCU server supports connection from SIP clients. Before setting up SIP connectivity for rooms, make sure SIP server (like Kamailio) and related SIP user accounts are available. The SIP settings can be enabled through SDK or management console. On the console page, find the room that needs interaction with SIP clients and click the related "Room Detail" field. Then find the SIP setting fields in sub-section "sip".
 
-The meanings of each fields are listed below:
+The meaning of each field is listed below:
 
         sipServer: The SIP server's hostname or IP address.
         username: The user name registered in the above SIP server.
@@ -774,9 +774,9 @@ For example, connect to the MCU sample application server XXXXX with the followi
         https://XXXXX:3004/?room=some_particular_room_id
 This will direct the conference connection to the MCU room with the ID some_particular_room_id.
 ### 4.2.2 Connect to an MCU conference to subscribe forward streams {#Conferencesection4_2_2}
-Since MCU room can now produce both forward streams and mix stream at the same time, including the screen sharing stream, the client is able to subscribe specified stream(s) by a query string in your URL: forward. The default value for the key word is false.
+Since MCU room can now produce both forward streams and mixed stream at the same time, including the screen sharing stream, the client is able to subscribe specified stream(s) by a query string in your URL: forward. The default value for the key word is false.
 
-For example, to subscribe forward stream instead of mix stream from MCU, connect to the MCU sample application server XXXXX with the following URL:
+For example, to subscribe forward stream instead of mixed stream from MCU, connect to the MCU sample application server XXXXX with the following URL:
 
         https://XXXXX:3004/?forward=true
 
