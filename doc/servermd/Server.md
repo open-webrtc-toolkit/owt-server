@@ -461,7 +461,7 @@ sip-agent/node|All sip participants it carries should be dropped by session node
 
 Intel CS for WebRTC MCU server provides the following settings in configuration files to configure the network interfaces for public access.
 
- **Table 2-7. Configuriton Items for Public Access**
+ **Table 2-7. Configuration Items for Public Access**
 Configuration Item|Location|Usage
 --------|--------|--------
 webrtc.network_interfaces | webrtc_agent/agent.toml | The network interfaces of webrtc-agent that clients in public network can connect to
