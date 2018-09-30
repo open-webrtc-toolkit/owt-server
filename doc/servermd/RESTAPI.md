@@ -1,5 +1,6 @@
-# MCU Management API
----
+MCU Management REST API
+----------------------
+
 # 1 Introduction {#RESTAPIsection1}
 Intel WebRTC solution provides a set of REST (Representational State Transfer) API for conference management. Manager clients can be implemented by different programming languages through these APIs.
 # 2 Definitions {#RESTAPIsection2}
