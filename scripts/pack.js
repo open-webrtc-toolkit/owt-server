@@ -81,6 +81,7 @@ if (options.binary) {
   } catch (e) {
     execSync('npm install -g pkg@4.2.5');
   }
+  options['install-module'] = true;
 }
 
 function getTargets() {
@@ -181,14 +182,23 @@ function packTarget(target) {
             var loaderData = { bin: 'erizoJS' };
             fs.writeFileSync(path.join(packDist, 'loader.json'), JSON.stringify(loaderData));
           }
+          if (fs.existsSync('initdb.js')) {
+            execSync(`pkg initdb.js -t ${pkg.targets}`);
+          }
+          if (fs.existsSync('initcert.js')) {
+            execSync(`pkg initcert.js -t ${pkg.targets}`);
+          }
           execSync('pkg .');
-          execSync('find . -maxdepth 1 -name "*.js" -not -name "AgentLoader*" -not -name "init*" -not -name "cipher.js" ! -perm -g+x  -delete');
+          execSync('find . -maxdepth 1 -name "*.js" -not -name "AgentLoader*" -delete');
           execSync('rm -rf auth');
           execSync('rm -rf data_access');
           execSync('rm -rf resource');
           execSync('rm -rf rpc');
           execSync('rm -rf package.json');
           execSync('rm -rf packrule.json');
+          if (!target.rules.node) {
+            execSync('rm -rf node_modules');
+          }
         }
       }
       if (options.encrypt)
@@ -564,6 +574,9 @@ function encrypt(target) {
     `-path "*/node_modules" -prune -o -type f -name "*.js" -print`
   )
   .then((stdout, stderr) => {
+    if (stdout.length === 0) {
+      return Promise.resolve();
+    }
     var jsJobs = stdout.trim().split('\n').map((line) => {
       return exec(`babel --presets es2015,stage-0 ${line} -o "${line}.es5"`, { env })
         .then(() => {

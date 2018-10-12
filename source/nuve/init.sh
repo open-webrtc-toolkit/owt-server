@@ -37,7 +37,8 @@ check_node_version() {
 install_config() {
   echo -e "\x1b[32mInitializing nuve configuration...\x1b[0m"
   export DB_URL
-  [[ -s ${this}/initdb.js ]] && node ${this}/initdb.js || return 1
+  [[ -s ${this}/initdb.js ]] && node ${this}/initdb.js && return 0
+  [[ -s ${this}/initdb ]] && ${this}/initdb || return 1
 }
 
 shopt -s extglob
