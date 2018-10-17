@@ -1,0 +1,161 @@
+From 4fb3eaff989715d515bd4c97b08289ed70d31fc0 Mon Sep 17 00:00:00 2001
+From: Chen Li1 <li1.chen@intel.com>
+Date: Wed, 17 Oct 2018 10:39:33 +0800
+Subject: [PATCH] Handle ICE-restart requests by updating remote credentials
+
+---
+ erizo/src/erizo/SdpInfo.cpp          | 15 ++++++++----
+ erizo/src/erizo/SdpInfo.h            |  2 ++
+ erizo/src/erizo/WebRtcConnection.cpp | 44 ++++++++++++++++++++++++++++++++++--
+ 3 files changed, 54 insertions(+), 7 deletions(-)
+
+diff --git a/erizo/src/erizo/SdpInfo.cpp b/erizo/src/erizo/SdpInfo.cpp
+index c18b04a..3dbddd3 100644
+--- a/erizo/src/erizo/SdpInfo.cpp
++++ b/erizo/src/erizo/SdpInfo.cpp
+@@ -63,6 +63,9 @@ namespace erizo {
+     videoSdpMLine = -1;
+     audioSdpMLine = -1;
+     videoBandwidth = 0;
++
++    gen_random(msidtemp,10);
++    msidtemp[10] = 0;
+   }
+ 
+   SdpInfo::~SdpInfo() {
+@@ -163,9 +166,6 @@ namespace erizo {
+   }
+ 
+   std::string SdpInfo::getSdp() {
+-    char msidtemp[11];
+-    gen_random(msidtemp, 10);
+-
+     ELOG_DEBUG("Getting SDP");
+ 
+     std::ostringstream sdp;
+@@ -428,7 +428,7 @@ namespace erizo {
+       }
+       if (videoDirection != RECVONLY) {
+         std::for_each(video_ssrc_list.begin(), video_ssrc_list.end(),
+-            [&sdp, &msidtemp](uint32_t &video_ssrc){
++            [&sdp, this](uint32_t &video_ssrc){
+             sdp << "a=ssrc:" << video_ssrc << " cname:o/i14u9pJrxRKAsu" << endl <<
+             "a=ssrc:" << video_ssrc << " msid:"<< msidtemp << " v0"<< endl <<
+             "a=ssrc:" << video_ssrc << " mslabel:"<< msidtemp << endl <<
+@@ -672,7 +672,12 @@ namespace erizo {
+           for (unsigned int tagno = 2; tagno < parts.size(); tagno++) {
+             ELOG_DEBUG("Adding %s to bundle vector", parts[tagno].c_str());
+             BundleTag theTag(parts[tagno], OTHER);
+-            bundleTags.push_back(theTag);
++            if (std::find_if(bundleTags.begin(), bundleTags.end(),
++                             [theTag](const BundleTag& tag) -> bool {
++                               return theTag.id == tag.id;
++                             }) == bundleTags.end()) {
++              bundleTags.push_back(theTag);
++            }
+           }
+         }
+       }
+diff --git a/erizo/src/erizo/SdpInfo.h b/erizo/src/erizo/SdpInfo.h
+index 236e721..9e55761 100644
+--- a/erizo/src/erizo/SdpInfo.h
++++ b/erizo/src/erizo/SdpInfo.h
+@@ -305,6 +305,8 @@ class SdpInfo {
+   std::string iceVideoPassword_, iceAudioPassword_;
+   std::map<unsigned int, RtpMap> payload_parsed_map_;
+   std::vector<ExtMap> supported_ext_map_;
++
++  char msidtemp[11];
+ };
+ }  // namespace erizo
+ #endif  // ERIZO_SRC_ERIZO_SDPINFO_H_
+diff --git a/erizo/src/erizo/WebRtcConnection.cpp b/erizo/src/erizo/WebRtcConnection.cpp
+index dbd5461..77c8a2b 100644
+--- a/erizo/src/erizo/WebRtcConnection.cpp
++++ b/erizo/src/erizo/WebRtcConnection.cpp
+@@ -176,6 +176,17 @@ bool WebRtcConnection::setRemoteSdp(const std::string &sdp) {
+     return true;
+   }
+ 
++  // Detecting ICE restart. (RFC5245 9.2.2.1)
++  // Restarting a single stream is not support yet. We only support full
++  // restart now.
++  // ICE restart always initialized by client side.
++  // Get previous remote ufrag here.
++  bool iceRestarting = false;
++  std::string remoteUfrag = remoteSdp_.getUsername(VIDEO_TYPE);
++  if (remoteUfrag.empty()) {
++    remoteUfrag = remoteSdp_.getUsername(AUDIO_TYPE);
++  }
++
+   remoteSdp_.initWithSdp(sdp, "");
+ 
+   if (remoteSdp_.videoBandwidth != 0) {
+@@ -185,7 +196,6 @@ bool WebRtcConnection::setRemoteSdp(const std::string &sdp) {
+ 
+   if (pipeline_initialized_) {
+     pipeline_->notifyUpdate();
+-    return true;
+   }
+ 
+ 
+@@ -230,6 +240,13 @@ bool WebRtcConnection::setRemoteSdp(const std::string &sdp) {
+           ELOG_DEBUG("%s message: Updating videoTransport, ufrag: %s, pass: %s",
+                       toLog(), username.c_str(), password.c_str());
+           videoTransport_->getIceConnection()->setRemoteCredentials(username, password);
++
++          // Detecting ICE restart on video
++          if (!remoteUfrag.empty() && username != remoteUfrag) {
++            ELOG_DEBUG("%s message: Detected ICE restart on video", toLog());
++            iceRestarting = true;
++            videoTransport_->refreshRemoteCandidates(false);
++          }
+         }
+       }
+       if (!bundle_ && remoteSdp_.hasAudio) {
+@@ -247,10 +264,31 @@ bool WebRtcConnection::setRemoteSdp(const std::string &sdp) {
+           ELOG_DEBUG("%s message: Update audioTransport, ufrag: %s, pass: %s",
+                       toLog(), username.c_str(), password.c_str());
+           audioTransport_->getIceConnection()->setRemoteCredentials(username, password);
++
++          // Detecting ICE restart on audio
++          if (!remoteUfrag.empty() && username != remoteUfrag) {
++            ELOG_DEBUG("%s message: Detected ICE restart on audio", toLog());
++            iceRestarting = true;
++            audioTransport_->refreshRemoteCandidates(false);
++          }
+         }
+       }
+     }
+   }
++
++  if (iceRestarting) {
++    ELOG_DEBUG("Handle ICE restart");
++    // It seems that updating candidate generation in answer SDP has no effect
++    /*
++    for (CandidateInfo& cand : localSdp_.getCandidateInfos()) {
++      ELOG_DEBUG("Update candidate generation");
++      cand.generation++;
++    }
++    */
++    connEventListener_->notifyEvent(CONN_SDP, localSdp_.getSdp());
++    return true;
++  }
++
+   if (this->getCurrentState() >= CONN_GATHERED) {
+     if (!remoteSdp_.getCandidateInfos().empty()) {
+       ELOG_DEBUG("%s message: Setting remote candidates after gathered", toLog());
+@@ -270,7 +308,9 @@ bool WebRtcConnection::setRemoteSdp(const std::string &sdp) {
+     }
+   }
+ 
+-  initializePipeline();
++  if (!pipeline_initialized_) {
++    initializePipeline();
++  }
+ 
+   return true;
+ }
+-- 
+2.7.4
+
