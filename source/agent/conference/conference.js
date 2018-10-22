@@ -555,6 +555,10 @@ var Conference = function (rpcClient, selfRpcId) {
 
   var destroyRoom = function() {
     if (room_id) {
+      for (var pid in participants) {
+        doDropParticipant(pid);
+      }
+      removeParticipant('admin');
       accessController && accessController.destroy();
       accessController = undefined;
       roomController && roomController.destroy();

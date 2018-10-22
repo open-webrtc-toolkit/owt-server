@@ -29,22 +29,28 @@ exports.represent = function (req, res, next) {
  */
 exports.deleteRoom = function (req, res, next) {
     var authData = req.authData;
-    dataAccess.room.delete(authData.service._id, req.params.room, function(err, room) {
-        if (err) return next(err);
+    dataAccess.room.get(authData.service._id, req.params.room, function (err, room) {
         if (!room) {
             log.info('Room ', req.params.room, ' does not exist');
             next(new e.NotFoundError('Room not found'));
         } else {
-            var id = req.params.room;
-            log.debug('Room ', id, ' deleted for service ', authData.service._id);
-            cloudHandler.deleteRoom(id, function () {});
-            res.send('Room deleted');
+            var sip_info = room.sip;
+            dataAccess.room.delete(authData.service._id, req.params.room, function(err, room) {
+                if (err) {
+                  return next(err);
+                } else {
+                    var id = req.params.room;
+                    log.debug('Room ', id, ' deleted for service ', authData.service._id);
+                    cloudHandler.deleteRoom(id, function () {});
+                    res.send('Room deleted');
 
-            // Notify SIP portal if SIP room deleted
-            if (room.sip) {
-                log.debug('Notify SIP Portal on delete Room');
-                cloudHandler.notifySipPortal('delete', room, function(){});
-            }
+                    // Notify SIP portal if SIP room deleted
+                    if (sip_info) {
+                        log.debug('Notify SIP Portal on delete Room');
+                        cloudHandler.notifySipPortal('delete', {_id: id, sip: sip_info}, function(){});
+                    }
+                }
+            });
         }
     });
 };
