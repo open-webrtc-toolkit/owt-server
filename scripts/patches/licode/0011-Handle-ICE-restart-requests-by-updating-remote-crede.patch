@@ -1,4 +1,4 @@
-From 4fb3eaff989715d515bd4c97b08289ed70d31fc0 Mon Sep 17 00:00:00 2001
+From 5ea1b7cb63f4dc6ca947a1808350effc9db1bd2f Mon Sep 17 00:00:00 2001
 From: Chen Li1 <li1.chen@intel.com>
 Date: Wed, 17 Oct 2018 10:39:33 +0800
 Subject: [PATCH] Handle ICE-restart requests by updating remote credentials
@@ -70,7 +70,7 @@ index 236e721..9e55761 100644
  }  // namespace erizo
  #endif  // ERIZO_SRC_ERIZO_SDPINFO_H_
 diff --git a/erizo/src/erizo/WebRtcConnection.cpp b/erizo/src/erizo/WebRtcConnection.cpp
-index dbd5461..77c8a2b 100644
+index 7b7bf6f..b71f0a1 100644
 --- a/erizo/src/erizo/WebRtcConnection.cpp
 +++ b/erizo/src/erizo/WebRtcConnection.cpp
 @@ -176,6 +176,17 @@ bool WebRtcConnection::setRemoteSdp(const std::string &sdp) {
@@ -108,7 +108,7 @@ index dbd5461..77c8a2b 100644
 +          if (!remoteUfrag.empty() && username != remoteUfrag) {
 +            ELOG_DEBUG("%s message: Detected ICE restart on video", toLog());
 +            iceRestarting = true;
-+            videoTransport_->refreshRemoteCandidates(false);
++            videoTransport_->removeRemoteCandidates();
 +          }
          }
        }
@@ -122,7 +122,7 @@ index dbd5461..77c8a2b 100644
 +          if (!remoteUfrag.empty() && username != remoteUfrag) {
 +            ELOG_DEBUG("%s message: Detected ICE restart on audio", toLog());
 +            iceRestarting = true;
-+            audioTransport_->refreshRemoteCandidates(false);
++            audioTransport_->removeRemoteCandidates();
 +          }
          }
        }
