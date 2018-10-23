@@ -554,11 +554,21 @@ var Conference = function (rpcClient, selfRpcId) {
   };
 
   var destroyRoom = function() {
+    var exit_delay = 0;
     if (room_id) {
-      for (var pid in participants) {
-        doDropParticipant(pid);
+      if (Object.keys(streams).length > 0 || Object.keys(subscriptions).length > 0) {
+        exit_delay = 5000;
       }
+
+      for (var pid in participants) {
+        if (pid !== 'admin') {
+          accessController && accessController.participantLeave(pid);
+          removeParticipant(pid);
+        }
+      }
+      accessController && accessController.participantLeave('admin');
       removeParticipant('admin');
+
       accessController && accessController.destroy();
       accessController = undefined;
       roomController && roomController.destroy();
@@ -568,7 +578,7 @@ var Conference = function (rpcClient, selfRpcId) {
       participants = {};
       room_id = undefined;
     }
-    process.exit();
+    setTimeout(() => {process.exit();}, exit_delay);
   };
 
   const sendMsgTo = function(to, msg, data) {
