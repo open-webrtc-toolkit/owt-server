@@ -66,6 +66,7 @@ NAN_MODULE_INIT(WebRtcConnection::Init) {
   Nan::SetPrototypeMethod(tpl, "init", init);
   Nan::SetPrototypeMethod(tpl, "setRemoteSdp", setRemoteSdp);
   Nan::SetPrototypeMethod(tpl, "addRemoteCandidate", addRemoteCandidate);
+  Nan::SetPrototypeMethod(tpl, "removeRemoteCandidate", removeRemoteCandidate);
   Nan::SetPrototypeMethod(tpl, "getLocalSdp", getLocalSdp);
   Nan::SetPrototypeMethod(tpl, "setAudioReceiver", setAudioReceiver);
   Nan::SetPrototypeMethod(tpl, "setVideoReceiver", setVideoReceiver);
@@ -523,6 +524,23 @@ NAN_METHOD(WebRtcConnection::addRemoteCandidate) {
   std::string sdp = std::string(*param2);
 
   bool r = me->addRemoteCandidate(mid, sdpMLine, sdp);
+
+  info.GetReturnValue().Set(Nan::New(r));
+}
+
+NAN_METHOD(WebRtcConnection::removeRemoteCandidate) {
+  WebRtcConnection* obj = Nan::ObjectWrap::Unwrap<WebRtcConnection>(info.Holder());
+  std::shared_ptr<erizo::WebRtcConnection> me = obj->me;
+
+  v8::String::Utf8Value param(Nan::To<v8::String>(info[0]).ToLocalChecked());
+  std::string mid = std::string(*param);
+
+  int sdpMLine = info[1]->IntegerValue();
+
+  v8::String::Utf8Value param2(Nan::To<v8::String>(info[2]).ToLocalChecked());
+  std::string sdp = std::string(*param2);
+
+  bool r = me->removeRemoteCandidate(mid, sdpMLine, sdp);
 
   info.GetReturnValue().Set(Nan::New(r));
 }

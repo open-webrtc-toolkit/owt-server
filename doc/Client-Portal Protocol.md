@@ -514,7 +514,7 @@ This a format for client reconnects.
 	object(SOACMessage)::
 	  {
 	   id: string(SessionId), /* StreamId returned in publishing or SubscriptionId returned in subscribing*/
-	   signaling: object(OfferAnswer) | object(Candidate) | object(RemovedCandidates)
+	   signaling: object(OfferAnswer) | object(CandidateMessage) | object(RemovedCandidatesMessage)
 	  }
 
 	  object(OfferAnswer)::
@@ -523,16 +523,23 @@ This a format for client reconnects.
 	     sdp: string(SDP)
 	    }
 
-	  object(Candidate)::
+	  object(CandidateMessage)::
 	    {
 	     type: "candidate",
-	     candidate: string(Candidate)
+	     candidate: object(Candidate)
 	    }
 
-	  object(RemovedCandidates)::
+	  object(RemovedCandidatesMessage)::
 	    {
 	     type: "removed-candidates",
-	     candidates: [ (string(Candidate) ]
+	     candidates: [ (object(Candidate) ]
+	    }
+
+	  object(Candidate)::
+	    {
+	     sdpMid: string(mid),                 // optional in RemovedCandidatesMessage
+	     sdpMLineIndex: number(mLineIndex),   // optional in RemovedCandidatesMessage
+	     candidate: string(candidateSdp)
 	    }
 **ResponseData**: undefined if **ResponseStatus** is “ok”.
 ### 3.3.15 Participant Receives Session Progress {#CPCPSsection3_3_15}
@@ -544,7 +551,7 @@ This a format for client reconnects.
 	  {
 	   id: string(SessionId), /* StreamId returned in publishing or SubscriptionId returned in subscribing*/
 	   status: "soac" | "ready" | "error",
-	   data: object(OfferAnswer) | ojbect(Candidate)/*If status equals “soac”*/
+	   data: object(OfferAnswer) | object(CandidateMessage)/*If status equals “soac”*/
 	        | (undefined/*If status equals “ready” and session is NOT for recording*/
 	           | object(RecorderInfo)/*If status equals “ready” and session is for recording*/ )
 	        | string(Reason)/*If status equals “error”*/

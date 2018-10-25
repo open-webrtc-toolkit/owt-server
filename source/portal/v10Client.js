@@ -93,7 +93,8 @@ var V10Client = function(clientId, sigConnection, portal) {
       .then(() => {
         if (SOAC.signaling.type === 'offer'
             || SOAC.signaling.type === 'answer'
-            || SOAC.signaling.type === 'candidate') {
+            || SOAC.signaling.type === 'candidate'
+            || SOAC.signaling.type === 'removed-candidates') {
           return Promise.resolve(SOAC);
         } else {
           return Promise.reject('Invalid signaling type');
