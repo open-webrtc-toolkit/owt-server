@@ -1,19 +1,19 @@
-From 22aac8a10c057022f4ca1a776b4ec6435a1be587 Mon Sep 17 00:00:00 2001
+From a384eed789a85d7e554550d0f782860f40960e34 Mon Sep 17 00:00:00 2001
 From: Chen Li1 <li1.chen@intel.com>
-Date: Tue, 21 Aug 2018 14:29:40 +0800
-Subject: [PATCH] Add remove_remote_candidates interface
+Date: Thu, 25 Oct 2018 14:19:40 +0800
+Subject: [PATCH] Add remove_remote_candidates API
 
 ---
- agent/agent.c    | 68 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- agent/agent.h    | 19 ++++++++++++++++
+ agent/agent.c    | 75 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ agent/agent.h    | 19 ++++++++++++++
  nice/libnice.sym |  1 +
- 3 files changed, 88 insertions(+)
+ 3 files changed, 95 insertions(+)
 
 diff --git a/agent/agent.c b/agent/agent.c
-index 1ce6b6a..2c347fc 100644
+index 3ea020b..42b297f 100644
 --- a/agent/agent.c
 +++ b/agent/agent.c
-@@ -2312,6 +2312,74 @@ nice_agent_set_remote_candidates (NiceAgent *agent, guint stream_id, guint compo
+@@ -2337,6 +2337,81 @@ nice_agent_set_remote_candidates (NiceAgent *agent, guint stream_id, guint compo
    return added;
  }
  
@@ -23,9 +23,9 @@ index 1ce6b6a..2c347fc 100644
 +  int removed = 0;
 +  Stream *stream;
 +  Component *component;
-+  GList *i, *j;
-+  GList *remotes = NULL;
-+  bool select = false;
++  GSList *i;
++  const GSList *j;
++  GSList *new_remotes = NULL;
 +  bool match;
 +
 +  nice_debug ("Agent %p: remove_remote_candidates %d %d", agent, stream_id, component_id);
@@ -40,51 +40,58 @@ index 1ce6b6a..2c347fc 100644
 +    goto done;
 +  }
 +
-+  component->selected_pair.priority = 0;
-+  /* use the following code later if 'removed-candidates' events implemented */
-+  // for (i = candidates; i; i = i->next) {
-+  //   NiceCandidate *d = (NiceCandidate*) i->data;
-+  //   if (nice_address_equal(&d->addr, &component->selected_pair.remote->addr)) {
-+  //     component->selected_pair.priority = 0;
-+  //     select = true;
-+  //     break;
-+  //   }
-+  // }
++  /* step: stop connectivity checks (note: for the whole stream) */
++  conn_check_prune_stream (agent, stream);
 +
-+  // /* get updated remote candidates list */
-+  // for (i = component->remote_candidates; i; i = i->next) {
-+  //   NiceCandidate *r = (NiceCandidate*) i->data;
-+  //   match = false;
-+  //   for (j = candidates; j; j = j->next) {
-+  //     NiceCandidate *d = (NiceCandidate*) j->data;
-+  //     if (nice_address_equal(&d->addr, &r->addr)) {
-+  //       match = true;
-+  //       removed++;
-+  //       break;
-+  //     }
-+  //   }
-+  //   if (!match) {
-+  //     remotes = g_slist_append(remotes, nice_candidate_copy(r));
-+  //   }
-+  // }
++  /* treat empty candidate list as "remove all", or create a new interface? */
++  if (!candidates) {
++    component->selected_pair.priority = 0;
++    g_slist_free_full(component->remote_candidates, (GDestroyNotify)&nice_candidate_free);
++    component->remote_candidates = NULL;
++    goto done;
++  }
 +
-+  // g_slist_free_full(component->remote_candidates, (GDestroyNotify)&nice_candidate_free);
-+  // component->remote_candidates = NULL;
-+  // if (g_slist_length(remotes) > 0) {
-+  //   if (select) {
-+  //     /* retrigger conncheck for remained candidates */
-+  //     _set_remote_candidates_locked (agent, stream, component, remotes);
-+  //     g_slist_free_full(remotes, (GDestroyNotify)&nice_candidate_free);
-+  //   } else {
-+  //     component->remote_candidates = remotes;
-+  //   }
-+  // }
++  /* get updated remote candidates list */
++  for (i = component->remote_candidates; i; i = i->next) {
++    NiceCandidate *r = (NiceCandidate*) i->data;
++    match = false;
++    for (j = candidates; j; j = j->next) {
++      NiceCandidate *d = (NiceCandidate*) j->data;
++      if (nice_address_equal(&d->addr, &r->addr)) {
++        match = true;
++        break;
++      }
++    }
++
++    if (match) {
++      removed++;
++      if (nice_address_equal(&r->addr, &component->selected_pair.remote->addr)) {
++        /* selected candidate is removed */
++        component->selected_pair.priority = 0;
++      }
++    } else  {
++      new_remotes = g_slist_append(new_remotes, nice_candidate_copy(r));
++    }
++  }
++
++  g_slist_free_full(component->remote_candidates, (GDestroyNotify)&nice_candidate_free);
++  component->remote_candidates = NULL;
++  if (g_slist_length(new_remotes) > 0) {
++    if (component->selected_pair.priority == 0) {
++      /* retrigger conncheck for remained candidates */
++      _set_remote_candidates_locked (agent, stream, component, new_remotes);
++      g_slist_free_full(new_remotes, (GDestroyNotify)&nice_candidate_free);
++    } else {
++      component->remote_candidates = new_remotes;
++    }
++  }
 +
 + done:
 +  agent_unlock(agent);
 +
 +  return removed;
 +}
++
  
  static gint
  _nice_agent_recv (

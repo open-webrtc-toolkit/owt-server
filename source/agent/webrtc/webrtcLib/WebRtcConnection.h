@@ -90,6 +90,12 @@ class WebRtcConnection : public MediaSink, public erizo::WebRtcConnectionEventLi
      * @return true if the SDP was received correctly.
      */
     static NAN_METHOD(addRemoteCandidate);
+    /**
+     * Remove remote candidate (from remote peer).
+     * @param sdp The candidate in SDP format.
+     * @return true if the SDP was received correctly.
+     */
+    static NAN_METHOD(removeRemoteCandidate);
     /*
      * Obtains the local SDP.
      * Returns the SDP as a string.
