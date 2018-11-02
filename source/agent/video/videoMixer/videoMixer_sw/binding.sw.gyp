@@ -40,5 +40,26 @@
       '<!@(pkg-config --libs libavcodec)',
       '<!@(pkg-config --libs libavformat)',
     ],
+
+    'variables': {
+        'LINUX_RELEASE%': '<!(../../../../../scripts/detectOS.sh | sed "s/[A-Z]/\l&/g" | sed "s/.*\(ubuntu\).*/\\1/g")',
+    },
+    'conditions': [
+        ['LINUX_RELEASE=="ubuntu"', {
+            'defines': [
+                'ENABLE_SVT_HEVC_ENCODER',
+            ],
+            'sources': [
+                '../../../../core/woogeen_base/SVTHEVCEncoder.cpp',
+            ],
+            'include_dirs': [
+                '$(CORE_HOME)/../../third_party/SVT-HEVC/Source/API',
+            ],
+            'libraries': [
+                '-L$(CORE_HOME)/../../third_party/SVT-HEVC', '-lHevcEncoder',
+            ],
+        }]
+    ],
+
   }]
 }

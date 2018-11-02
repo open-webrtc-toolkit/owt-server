@@ -103,6 +103,11 @@ if [ "$NIGHTLY" != "true" ]; then
       install_libvautils
   fi
 
+  if [[ "$OS" =~ .*ubuntu.* ]]
+  then
+      install_svt_hevc
+  fi
+
 fi
 
 ${NO_INTERNAL} || install_webrtc

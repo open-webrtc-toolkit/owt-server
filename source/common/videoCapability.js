@@ -11,6 +11,10 @@ const detectSWModeCapability = function () {
         //FIXME: The detection of installation of openh264 is not accurate here.
         videoCapability.encode.push('h264_CB');
     }
+
+    if (fs.existsSync('./lib/libHevcEncoder.so') && (fs.statSync('./lib/libHevcEncoder.so').size > 100000)) {
+        videoCapability.encode.push('h265');
+    }
 };
 
 if (global.config.video.hardwareAccelerated) {
