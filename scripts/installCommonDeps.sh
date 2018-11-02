@@ -389,6 +389,34 @@ install_libvautils(){
   popd
 }
 
+install_svt_hevc(){
+    pushd $ROOT/third_party
+    rm -rf SVT-HEVC
+    git clone https://github.com/intel/SVT-HEVC.git
+
+    pushd SVT-HEVC
+    git checkout 61da60f0fcb537a460ef1f4bbdeeeeadb7023567 #new_api branch
+
+    pushd Build
+    pushd linux
+    chmod +x build.sh
+    ./build.sh debug
+    popd
+    popd
+    cp -v ./Bin/Debug/libHevcEncoder.so ./
+
+    # pseudo lib
+    echo \
+        'const char* stub() {return "this is a stub lib";}' \
+        > pseudo-hevcEncoder.cpp
+
+    gcc pseudo-hevcEncoder.cpp -fPIC -shared -o pseudo-hevcEncoder.so
+
+    popd
+
+    popd
+}
+
 cleanup_common(){
   if [ -d $LIB_DIR ]; then
     cd $LIB_DIR

@@ -462,6 +462,11 @@ function packAddon(target) {
           execSync(`cp -av ${vasrc} ${vadist}`);
         }
       }
+      if (osType.includes('ubuntu')) {
+        let libHevcEncoder = path.join(libDist, 'libHevcEncoder.so');
+        let dummyHevcEncoder = path.join(rootDir, 'third_party/SVT-HEVC/pseudo-hevcEncoder.so');
+        execSync(`cp -av ${dummyHevcEncoder} ${libHevcEncoder}`);
+      }
       console.log(target.rules.name, '- Pack addon finished.');
     });
 }
@@ -478,6 +483,11 @@ function getAddonLibs(addonPath) {
   env['LD_LIBRARY_PATH'] = path.join(depsDir, 'lib') +
     ':' + path.join(rootDir, 'third_party/openh264') +
     ':' + env['LD_LIBRARY_PATH'];
+
+    if (osType.includes('ubuntu')) {
+        env['LD_LIBRARY_PATH'] = ':' + path.join(rootDir, 'third_party/SVT-HEVC') +
+            ':' + env['LD_LIBRARY_PATH'];
+    }
 
   return exec(`ldd ${addonPath} | grep '=>' | awk '{print $3}' | sort | uniq | grep -v "^("`, { env })
     .then((stdout, stderr) => {

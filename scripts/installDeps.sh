@@ -165,6 +165,16 @@ then
     esac
 fi
 
+if [[ "$OS" =~ .*ubuntu.* ]]
+then
+    read -p "Installing SVT HEVC Encoder ? [No/yes]" yn
+    case $yn in
+      [Yy]* ) install_svt_hevc;;
+      [Nn]* ) ;;
+      * ) ;;
+    esac
+fi
+
 if [ "$CLEANUP" = "true" ]; then
   echo "Cleaning up..."
   cleanup

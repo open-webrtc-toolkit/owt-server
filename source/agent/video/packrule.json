@@ -31,7 +31,8 @@
             "../../common/makeRPC.js",
             "../../common/rpcChannel.js",
             "../../common/videoCapability.js",
-            "../../../scripts/detectOS.sh"
+            "../../../scripts/detectOS.sh",
+            "compile_svtHevcEncoder.sh"
         ],
         "folders": {
             "avatars": [

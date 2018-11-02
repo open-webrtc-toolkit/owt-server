@@ -39,6 +39,10 @@
 #include <MsdkFrameEncoder.h>
 #endif
 
+#ifdef ENABLE_SVT_HEVC_ENCODER
+#include <SVTHEVCEncoder.h>
+#endif
+
 namespace mcu {
 
 class VideoFrameTranscoderImpl : public VideoFrameTranscoder, public woogeen_base::FrameSource, public woogeen_base::FrameDestination {
@@ -170,6 +174,12 @@ inline bool VideoFrameTranscoderImpl::addOutput(int output,
         encoder.reset(new woogeen_base::MsdkFrameEncoder(format, profile, false));
     }
 #endif
+
+#if ENABLE_SVT_HEVC_ENCODER
+    if (!encoder && format == woogeen_base::FRAME_FORMAT_H265)
+        encoder.reset(new woogeen_base::SVTHEVCEncoder(format, profile));
+#endif
+
     if (!encoder) {
         encoder.reset(new woogeen_base::VCMFrameEncoder(format, profile));
     }

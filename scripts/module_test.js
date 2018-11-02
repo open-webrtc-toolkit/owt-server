@@ -7,6 +7,7 @@ if (!process.env.MODULE_TEST) {
   process.env.LD_LIBRARY_PATH = [
     path.resolve(__dirname, '../build/libdeps/build/lib'),
     path.resolve(__dirname, '../third_party/openh264'),
+    path.resolve(__dirname, '../third_party/SVT-HEVC'),
     process.env.LD_LIBRARY_PATH || '',
   ].join(':');
   require('child_process').fork(process.argv[1], process.argv.slice(2));
@@ -23,18 +24,8 @@ if (!process.env.MODULE_TEST) {
         return p.length > 0;
       }).map(function (module) {
         try {
-          module = path.resolve(process.cwd(), module);
-          if (path.basename(module) == "videoMixer-hw-msdk.node") {
-            process.env.LD_LIBRARY_PATH = [
-              path.resolve(__dirname, '/usr/lib64'),
-              process.env.LD_LIBRARY_PATH || '',
-            ].join(':');
-            var subScript = path.resolve(__dirname, './msdk_test.js'); 
-            require('child_process').fork(subScript, [module]);
-          }else {
-            require(module);
-            console.log('[PASS]', path.basename(module));
-          }
+          require(module);
+          console.log('[PASS]', path.basename(module));
         } catch (e) {
           console.log('[FAIL]', path.basename(module), e);
         }

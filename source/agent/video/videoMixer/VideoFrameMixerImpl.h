@@ -38,6 +38,10 @@
 #include <MsdkFrameEncoder.h>
 #endif
 
+#ifdef ENABLE_SVT_HEVC_ENCODER
+#include <SVTHEVCEncoder.h>
+#endif
+
 namespace mcu {
 
 class CompositeIn : public woogeen_base::FrameDestination
@@ -254,6 +258,11 @@ inline bool VideoFrameMixerImpl::addOutput(int output,
 #ifdef ENABLE_MSDK
         if (!encoder && woogeen_base::MsdkFrameEncoder::supportFormat(format))
             encoder.reset(new woogeen_base::MsdkFrameEncoder(format, profile, m_useSimulcast));
+#endif
+
+#if ENABLE_SVT_HEVC_ENCODER
+        if (!encoder && format == woogeen_base::FRAME_FORMAT_H265)
+            encoder.reset(new woogeen_base::SVTHEVCEncoder(format, profile, m_useSimulcast));
 #endif
 
         if (!encoder)
