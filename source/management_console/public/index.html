@@ -7,13 +7,6 @@
     <meta name="description" content="">
     <meta name="author" content="">
     <title>Intel WebRTC Collaboration Suite</title>
-    <link href="vendor/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="vendor/css/pnotify.custom.min.css">
-    <link rel="stylesheet" href="vendor/css/bootstrap-editable.css">
-    <link rel="stylesheet" href="vendor/css/jquery.colorpickersliders.css">
-    <link rel="stylesheet" href="vendor/css/bootstrap.colorpickersliders.min.css">
-    <link rel="stylesheet" href='vendor/css/brutusin-json-forms.min.css'/>
-    <link href="css/dashboard.css" rel="stylesheet">
   </head>
 
   <body>
@@ -30,125 +23,47 @@
           </ul>
         </div>
       </div>
-      <!-- profile setting -->
-      <div id="myModal" class="modal fade" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true" data-backdrop="false" style="display: none;">
-        <div class="modal-backdrop fade in"></div>
-        <div class="modal-dialog">
-          <div class="modal-content">
-            <div class="modal-header">
-              <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
-              <h4 class="modal-title" id="myModalLabel">Profile</h4>
-            </div>
-            <div class="modal-body">
-              <label for="inputId">Service Id</label>
-              <input type="email" id="inputId" class="form-control" placeholder="" required>
-              <label for="inputKey">Service Key</label>
-              <input type="password" id="inputKey" class="form-control" placeholder="" required autofocus>
-              <div class="checkbox">
-                <label>
-                  <input type="checkbox" value="remember-me"> Remember me
-                </label>
-              </div>
-            </div>
-            <div class="modal-footer">
-              <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
-              <button type="button" class="btn btn-primary" id="saveSericeInfo">Save changes</button>
-              <button type="button" class="btn btn-danger" id="clearCookie">Clear cookie!</button>
-            </div>
-          </div>
-        </div>
-      </div>
-      <div id="serviceModal" class="modal fade" tabindex="-1" role="dialog" aria-labelledby="createServiceModal" aria-hidden="true" style="display: none;">
-        <div class="modal-dialog">
-          <div class="modal-content">
-            <div class="modal-header">
-              <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
-              <h4 class="modal-title" id="createServiceModal">Create Service</h4>
-            </div>
-            <div class="modal-body">
-              <form id="cs-form">
-                <div class="input-group form-creation">
-                  <span class="input-group-addon">Service Name</span>
-                  <input type="text" class="form-control" id="cs-name" aria-describedby="cs-name">
-                </div>
-                <div class="input-group form-creation">
-                  <span class="input-group-addon">Service Key</span>
-                  <input type="text" class="form-control" id="cs-key" aria-describedby="cs-key">
-                </div>
-              </form>
-            </div>
-            <div class="modal-footer">
-              <button type="button" class="btn btn-primary" data-dismiss="modal"><i class="glyphicon glyphicon-ok"></i></button>
-              <button type="button" class="btn btn-default" data-dismiss="modal"><i class="glyphicon glyphicon-remove"></i></button>
-            </div>
-          </div>
-        </div>
-      </div>
-      <div id="mediaMixingModal" class="modal fade" tabindex="-1" role="dialog" aria-labelledby="editTableModal" aria-hidden="true" style="display: none;">
-        <div class="modal-dialog modal-lg">
-          <div class="modal-content">
-            <div class="modal-header">
-              <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
-              <h4 class="modal-title" id="editTableModal"></h4>
-            </div>
-            <div class="modal-body">
-              <a href="#" id="addview" data-type="text" data-pk="1" data-title="Enter View Label" class="editable pull-right" ></a>
-              <ul class="nav nav-tabs marginBottom" id="myTab">
-              </ul>
-              <div class="table-responsive" id="inRoomTable">
-                <table class="table table-striped">
-                  <tbody>
-                  </tbody>
-                </table>
-              </div>
-            </div>
-            <div class="modal-footer">
-            </div>
-          </div>
-        </div>
-      </div>
-      <!-- Modal -->
-      <div id="newViewModal" class="modal fade"  tabindex="-1" role="dialog" aria-labelledby="newViewModal" aria-hidden="true">
-          <div class="modal-dialog">
-              <div class="modal-content">
-                  <!-- Modal Header -->
-                  <div class="modal-header">
-                      <h4 class="modal-title">
-                          Enter a Label for the new View
-                      </h4>
-                  </div>
-                  <!-- Modal Body -->
-                  <div class="modal-body">
-                    <input type="text" class="form-control" id="inputViewLabel" placeholder="Enter your label"/>
-                  </div>
-                  <!-- Modal Footer -->
-                  <div class="modal-footer">
-                    <button type="button" id="viewLabelBtn" class="btn btn-primary" data-dismiss="modal"><i class="glyphicon glyphicon-ok"></i></button>
-                    <button type="button" class="btn btn-default" data-dismiss="modal"><i class="glyphicon glyphicon-remove"></i></button>
-                  </div>
-              </div>
-          </div>
-      </div>
-
-      <div id="AllModal" class="modal fade" tabindex="-1" role="dialog" aria-labelledby="editTableModal" aria-hidden="true" style="display: none;">
-        <div class="modal-dialog modal-lg">
-          <div class="modal-content">
-            <div class="modal-header">
-              <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
-              <h4 class="modal-title" id="editTableModal"></h4>
-            </div>
-            <div class="modal-body">
-              <div id="jfContainer">
-              </div>
-            </div>
-            <div class="modal-footer">
-              <button type="button" class="btn btn-primary" data-dismiss="modal"><i class="glyphicon glyphicon-ok"></i></button>
-              <button type="button" class="btn btn-default" data-dismiss="modal"><i class="glyphicon glyphicon-remove"></i></button>
-            </div>
-          </div>
-        </div>
-      </div>
     </nav>
+
+    <!-- profile setting -->
+    <div id="myModal" class="modal fade" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true" data-backdrop="false" style="display: none;">
+      <div class="modal-backdrop fade in"></div>
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">×</span></button>
+            <h4 class="modal-title" id="myModalLabel">Profile</h4>
+          </div>
+          <div class="modal-body">
+            <label for="inputId">Service Id</label>
+            <input type="email" id="inputId" class="form-control" placeholder="" required>
+            <label for="inputKey">Service Key</label>
+            <input type="password" id="inputKey" class="form-control" placeholder="" required autofocus>
+            <div class="checkbox">
+              <label>
+                <input type="checkbox" value="remember-me"> Remember me
+              </label>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+            <button type="button" class="btn btn-primary" id="saveServiceInfo">Save changes</button>
+            <button type="button" class="btn btn-danger" id="clearCookie">Clear cookie!</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal -->
+    <div id="mainModal" class="modal fade" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+      <div  class="modal-dialog" role="document">
+        <div class="modal-content">
+          <div class="modal-body">
+            ...
+          </div>
+        </div>
+      </div>
+    </div>
 
     <div class="container-fluid">
       <div class="row">
@@ -165,126 +80,40 @@
             </div>
           </div>
         </div>
-        <div class="col-sm-9 col-sm-offset-3 col-md-10 col-md-offset-2 main">
-          <h1 class="page-header">Rooms in current Service</h1>
-          <div calss ="pull-right"><span>Page:</span><select class="btn btn-mini" id="selPage"></select></div>
-          <div class="overview">
-            <div style="position: absolute; right: 41px; top: 10px;">
-              <a href="#"><img src="img/plus.svg" id="createService" width="50%" title="click to toggle service creation form"></a>
-            </div>
-            <div class="row placeholders" id="serviceGraph">
-            </div>
-
-            <div class="table-responsive" id="serviceTable">
-              <h3 id="tableTitle">Rooms in service</h3>
-              <table class="table table-striped">
-                <thead>
-                  <tr>
-                    <th>#</th>
-                    <th>Name</th>
-                    <th>Input Limit</th>
-                    <th>Participant Limit</th>
-                    <th>Room Detail</th>
-                  </tr>
-                </thead>
-                <tbody>
-                </tbody>
-              </table>
-            </div>
-          </div>
-          <div class="room">
-            <div class="table-responsive" id="serviceTable">
-              <table class="table table-striped">
-                <thead>
-                  <tr>
-                    <th>#</th>
-                    <th>Name</th>
-                    <th>Input Limit</th>
-                    <th>Participant Limit</th>
-                    <th>Room Detail</th>
-                    <th class="col-md-1"></th>
-                  </tr>
-                </thead>
-                <tbody>
-                </tbody>
-              </table>
-            </div>
-          </div>
-          <div class="runtime">
-            <div class="row placeholders" id="mcu-nuve">
-              <div class="col-xs-6 col-sm-3 placeholder">
-                <a href="#"><img class="img-responsive" src="img/node.svg" width="33%"></a>
-                <h4 class="text-primary">Nuve</h4>
-                <span></span>
-              </div>
-            </div>
-            <div class="row placeholders" id="mcu-ecs">
-            </div>
-            <div class="table-responsive" id="ec-config-table" style="display:none">
-              <h3 id="tableTitle"></h3>
-              <table class="table table-striped">
-                <thead>
-                  <tr>
-                    <th>defaultVideoBW</th>
-                    <th>maxVideoBW</th>
-                    <th>turn</th>
-                    <th>stun</th>
-                    <th>warning_n_rooms</th>
-                    <th>limit_n_rooms</th>
-                  </tr>
-                </thead>
-                <tbody>
-                </tbody>
-              </table>
-            </div>
-            <div class="table-responsive" id="mcu-ecs-table">
-              <h3></h3>
-              <table class="table table-striped">
-                <thead>
-                  <tr>
-                    <th>#</th>
-                    <th>IP/Hostname</th>
-                    <th>Port</th>
-                    <th>State</th>
-                    <th>rpcId</th>
-                    <th>KeepAlive</th>
-                    <th>SSL</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr>
-                    <td>{{index}}</td>
-                    <td>{{address}}</td>
-                    <td>{{port}}</td>
-                    <td>{{state}}</td>
-                    <td><code>{{rpcID}}</code></td>
-                    <td>{{keepAlive}}</td>
-                    <td>{{ssl}}</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
+        <div id="mainApp" class="col-sm-9 col-sm-offset-3 col-md-10 col-md-offset-2 main">
+          ...
         </div>
       </div>
     </div>
 
+    <!-- CSS -->
+    <link rel="stylesheet" href="vendor/css/bootstrap.min.css">
+    <link rel="stylesheet" href="vendor/css/pnotify.custom.min.css">
+    <link rel="stylesheet" href="css/dashboard.css">
+
     <script src="vendor/js/jquery.min.js"></script><!-- v1.11.1 -->
-    <script src="vendor/js/jquery.colorpickersliders.js"></script> <!-- v3.0.2 -->
     <script src="vendor/js/bootstrap.min.js"></script> <!-- v3.3.1 -->
-    <script src="vendor/js/mustache.min.js"></script> <!-- v1.0.0 -->
     <script src="vendor/js/pnotify.custom.min.js"></script> <!-- v2.0-bundle -->
-    <script src="vendor/js/bootstrap-editable.min.js"></script> <!-- v1.5-bootstrap3 -->
     <!--<script src="vendor/js/run_prettify.js"></script>  v3.0.2 -->
-    <script src="vendor/js/tinycolor.js"></script> <!-- v3.0.2 -->
-    <script src="vendor/js/bootstrap.colorpickersliders.nocielch.min.js"></script> <!-- v3.0.2 -->
-    <script src="vendor/js/bootstrap.colorpickersliders.min.js"></script> <!-- v3.0.2 -->
     <script src="vendor/js/hmac-sha256.js"></script> <!-- v3.0.2 -->
-    <script src="vendor/js/brutusin-json-forms.min.js"></script>
     <script src="js/libnuve.js"></script>
     <script src="js/util.js"></script>
     <script src="js/vroom.js"></script>
     <script src="js/index.js"></script>
+
+    <!-- Load React. -->
+    <script src="vendor/js/react.production.min.js" crossorigin></script>
+    <script src="vendor/js/react-dom.production.min.js" crossorigin></script>
+
+    <!-- CSS -->
+    <link rel="stylesheet" href="vendor/css/react-table.css">
+
+    <!-- JS -->
+    <script src="vendor/js/react-table.min.js"></script>
+    <script src="vendor/js/lodash.min.js"></script>
+
+    <!-- Load our React component. -->
+    <script src="js/App.js"></script>
   </body>
 </html>
 

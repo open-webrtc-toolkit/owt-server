@@ -46,24 +46,21 @@ function getCookie (cname) {
 }
 
 function notify(level, title, message) {
-  'use strict';
-  $(function(){
-    var notice = new PNotify({
-      title: title,
-      text: message,
-      mouse_reset: false,
-      buttons: {
-        sticker: false
-      },
-      history: {
-        history: false
-      },
-      opacity: 0.8,
-      type: level
-    });
-    notice.get().click(function() {
-      notice.remove();
-    });
+  var notice = new PNotify({
+    title: title,
+    text: message,
+    mouse_reset: false,
+    buttons: {
+      sticker: false
+    },
+    history: {
+      history: false
+    },
+    opacity: 0.8,
+    type: level
+  });
+  notice.get().click(function() {
+    notice.remove();
   });
 }
 
