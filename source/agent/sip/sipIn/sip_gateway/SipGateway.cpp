@@ -53,7 +53,7 @@ bool SipGateway::sipRegister(const std::string& sipServerAddr, const std::string
 bool SipGateway::makeCall(const std::string& calleeURI, bool requireAudio, bool requireVideo)
 {
     if (m_sipEP->makeCall(calleeURI,requireAudio, requireVideo)) {
-        std::string peerURI = "sip:" + calleeURI;
+        std::string peerURI = (strncmp(calleeURI.c_str(), "sip:", 4) ? "sip:" + calleeURI : calleeURI);
         ELOG_DEBUG("makeCall CallInfo: %s", peerURI.c_str());
         insertCallInfoByPeerURI(peerURI, requireAudio, requireVideo);
         return true;

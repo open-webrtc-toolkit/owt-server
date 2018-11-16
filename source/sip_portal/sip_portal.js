@@ -61,6 +61,13 @@ var api = {
         } else if (update.type === 'delete') {
             deleteSipConnectivity(room_id);
         }
+    },
+    getSipConnectivity: function(roomId, callback) {
+      if (erizos[roomId]) {
+        callback('callback', erizos[roomId]);
+      } else {
+        callback('callback', 'error', 'No SIP connectivity');
+      }
     }
 };
 

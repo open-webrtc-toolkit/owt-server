@@ -379,12 +379,146 @@ const SubscriptionUpdate = {
   items: {$ref: '/SubscriptionControlInfo'}
 };
 
+const SipCallAdd = {
+  type: 'object',
+  properties: {
+    'peerURI': { type: 'string' },
+    'mediaIn': {
+      type: 'object',
+      properties: {
+        'audio': {type: 'boolean'},
+        'video': {type: 'boolean'}
+      },
+      additionalProperties: false,
+      required: ['audio', 'video']
+    },
+    'mediaOut': { $ref: '#/definitions/MediaOutOptions' },
+  },
+  additionalProperties: false,
+  required: ['peerURI', 'mediaIn', 'mediaOut'],
+
+  definitions: {
+    'MediaOutOptions': {
+      type: 'object',
+      properties: {
+        'audio': {
+          anyOf: [
+            { $ref: '#/definitions/AudioOutOptions'},
+            { 'const': false }
+          ]
+        },
+        'video': {
+          anyOf: [
+            { $ref: '#/definitions/VideoOutOptions'},
+            { 'const': false }
+          ]
+        }
+      },
+      additionalProperties: false,
+      required: ['audio', 'video']
+    },
+
+    'AudioOutOptions': {
+      type: 'object',
+      properties: {
+        'from': { type: 'string' }
+      },
+      additionalProperties: false,
+      required: ['from']
+    },
+
+    'VideoOutOptions': {
+      type: 'object',
+      properties: {
+        'from': { type: 'string' },
+        'parameters': { $ref: '#/definitions/VideoParametersSpecification' }
+      },
+      additionalProperties: false,
+      required: ['from']
+    },
+
+    'VideoParametersSpecification': {
+      type: 'object',
+      properties: {
+        'resolution': { $ref: '/Resolution' },
+        'framerate': { type: 'number' },
+        'bitrate': { type: ['string', 'number'] },
+        'keyFrameInterval': { type: 'number' }
+      },
+      additionalProperties: false
+    }
+  }
+};
+
+const SipCallControlInfo = {
+  id: '/SipCallControlInfo',
+  type: 'object',
+  anyOf: [
+    {
+      properties: {
+        'op': { 'const': 'replace' },
+        'path': { enum: ['/output/media/audio/status', '/output/media/video/status'] },
+        'value': { enum: ['active', 'inactive'] }
+      },
+      additionalProperties: false
+    },
+    {
+      properties: {
+        'op': { 'const': 'replace' },
+        'path': { enum: ['/output/media/audio/from', '/output/media/video/from'] },
+        'value': { type: 'string' }
+      },
+      additionalProperties: false
+    },
+    {
+      properties: {
+        'op': { 'const': 'replace' },
+        'path': { 'const': '/output/media/video/parameters/resolution' },
+        'value': { $ref: '/Resolution' }
+      },
+      additionalProperties: false
+    },
+    {
+      properties: {
+        'op': { 'const': 'replace' },
+        'path': { 'const': '/output/media/video/parameters/framerate' },
+        'value': { enum: [6, 12, 15, 24, 30, 48, 60] }
+      },
+      additionalProperties: false
+    },
+    {
+      properties: {
+        'op': { 'const': 'replace' },
+        'path': { 'const': '/output/media/video/parameters/bitrate' },
+        'value': { enum: ['x0.8', 'x0.6', 'x0.4', 'x0.2'] }
+      },
+      additionalProperties: false
+    },
+    {
+      properties: {
+        'op': { 'const': 'replace' },
+        'path': { 'const': '/output/media/video/parameters/keyFrameInterval' },
+        'value': { enum: [1, 2, 5, 30, 100] }
+      },
+      additionalProperties: false
+    }
+  ],
+  required: ['op', 'path', 'value']
+};
+ajv.addSchema(SipCallControlInfo);
+
+const SipCallUpdate = {
+  type: 'array',
+  items: {$ref: '/SipCallControlInfo'}
+};
 var validators = {
   'participant-update': generateValidator(ParticipantUpdate),
   'streamingIn-req': generateValidator(StreamingInRequest),
   'stream-update': generateValidator(StreamUpdate),
   'serverSideSub-req': generateValidator(ServerSideSubscriptionRequest),
   'subscription-update': generateValidator(SubscriptionUpdate),
+  'sipcall-add': generateValidator(SipCallAdd),
+  'sipcall-update': generateValidator(SipCallUpdate)
 };
 
 // Export JSON validator functions

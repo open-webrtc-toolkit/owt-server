@@ -438,16 +438,12 @@ This a format for client reconnects.
 
 	    object(AudioSubOptions)::
 	      {
-	       from: string(StreamId),
-	       format: object(AudioFormat)/*If type does NOT equal "webrtc", and audio transcoding is needed or non-default mixed audio is wanted*/
-	               | undefined/*If type equals "webrtc", or original forward audio or default mixed audio is wanted*/
+	       from: string(StreamId)
 	      }
 
 	    object(VideoSubOptions)::
 	      {
 	       from: string(StreamId),
-	       format: object(VideoFormat)/*If type does NOT equal "webrtc", and video transcoding is needed or non-default mixed video is wanted*/
-	               | undefined/*If type equals "webrtc", or original forward video or default mixed video is wanted*/,
 	       parameters: object(VideoParametersSpecification)/*If specific video parameters are wanted*/
 	                   | undefined/*If default video parameters are wanted*/
 	      }
