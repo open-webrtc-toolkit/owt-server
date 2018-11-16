@@ -704,12 +704,12 @@ Streaming-outs model:
     object(StreamingOutAudio):
     {
         from: string(StreamId),
-        format: object(AudioFormat)      // Refers to object(AudioFormat) in 5.3, streams data model.
+        format: object(AudioFormat) | undefined   // Refers to object(AudioFormat) in 5.3, streams data model.
     }
     object(StreamingOutVideo):
     {
         from: string(StreamId),
-        format: object(VideoFormat),     // Refers to object(VideoFormat) in 5.3, streams data model.
+        format: object(VideoFormat) | undefined,  // Refers to object(VideoFormat) in 5.3, streams data model.
         parameters: object(VideoParametersSpecification)
     }
     object(VideoParametersSpecification):
@@ -947,7 +947,132 @@ parameters:
 |  undefined | request body | Request body is null |
 
 response body: response body is **empty**.<br>
-## 5.7 Token {#RESTAPIsection5_7}
+## 5.7 Sip calls {#RESTAPIsection5_7}
+Description:
+
+Sip call data model:
+
+    object(SipCall):
+    {
+        id: string(id),
+        type: string(type),
+        peer: string(peerURI),
+        input: object(StreamInfo),
+        output: {
+          id: string(SubscriptionId),
+          media: object(OutMedia)
+        }
+    }
+    type={"dial-in" | "dial-out"}
+
+Resources:
+
+- /v1/rooms/{roomId}/sipcalls
+- /v1/rooms/{roomId}/sipcalls/{sipCallId}
+
+### /v1/rooms/{roomId}/sipcalls
+#### GET
+Description:<br>
+Get all the ongoing sip calls in the specified room.<br>
+
+parameters:
+
+| parameters | type | annotation |
+|:----------|:----|:----------|
+|    {roomId}    | URL |    Room ID    |
+|  undefined | request body | Request body is null |
+response body:
+
+| type | content |
+|:-------------|:-------|
+|  json | All the ongoing sip calls in the specified room |
+#### POST
+Description:<br>
+Make a 'dial-out' typed sip call in the specified room.<br>
+
+parameters:
+
+| parameters | type | annotation |
+|:----------|:----|:----------|
+|    {roomId}    | URL |    Room ID    |
+| options | request body | JSON format with peer URI and input/output media requirement|
+**Note**:<br>
+
+    options={
+        peerURI: string,
+        mediaIn: {
+            audio: boolean(),
+            video: boolean()
+        }
+        mediaOut: object(OutMedia)
+    }
+
+response body:
+
+| type | content |
+|:-------------|:-------|
+|  json | A SipCall record in the specified room |
+### /v1/rooms/{roomId}/sipcalls/{sipCallId}
+#### PATCH
+Description:<br>
+Update a sip calls specified output attributes in the specified room.<br>
+
+parameters:
+
+| parameters | type | annotation |
+|:----------|:----|:----------|
+|    {roomId}    | URL |    Room ID    |
+| {sipCallId} | URL | Sip Call ID|
+| items | request body | An array with attributes to be updated|
+
+**Note**: Here is the definition of *items*.<br>
+
+    items=[
+        object(MediaOutControlInfo)
+    ]
+    object(MediaOutControlInfo):
+    {
+        // There are 6 kinds of op, path and value. Choose one of them.
+
+        op: "replace",
+        path: "/output/media/audio/from" | "/output/media/video/from",
+        value: string
+         OR
+        op: "replace",
+        path: "/output/media/video/parameters/resolution",
+        value: object(Resolution)        // Refers to object(Resolution) in 5.3 streams, streams model.
+         OR
+        op: "replace",
+        path: "/output/media/video/parameters/framerate",
+        value: "6" | "12" | "15" | "24" | "30" | "48" | "60"
+         OR
+        op: "replace",
+        path: "/output/media/video/parameters/bitrate",
+        value: "x0.8" | "x0.6" | "x0.4" | "x0.2"
+         OR
+        op: "replace",
+        path: "/output/media/video/parameters/keyFrameInterval",
+        value: "1" | "2" | "5" | "30" | "100"
+    }
+response body:
+
+| type | content |
+|:-------------|:-------|
+|  json | A updated SipCall data |
+#### DELETE
+Description:<br>
+End the specified sip call in the specified room.<br>
+
+parameters:
+
+| parameters | type | annotation |
+|:----------|:----|:----------|
+|    {roomId}    | URL |    Room ID    |
+| {sipCallId} | URL | Sip Call ID|
+|  undefined | request body | Request body is null |
+
+response body: response body is **empty**.<br>
+## 5.8 Token {#RESTAPIsection5_8}
 Description:<br>
 A token is the ticket for joining the room. The token contains information through which clients can connect to server application. Note that the different rooms may have different network information, so the room must be specified for token resource. The same token cannot be reused if it has been used once. Re-generate token if clients need to connect at the second time.<br>
 
@@ -994,7 +1119,7 @@ response body:
 |:-------------|:-------|
 |  json | A token created for a new participant |
 
-## 5.8 Service {#RESTAPIsection5_8}
+## 5.9 Service {#RESTAPIsection5_9}
 Description:<br>
 The service represents the host of a set of rooms. Each service has its own identifier. The service ID and key are required to generate authentication header for HTTP requests. Note that there is one super service whose ID can be specified by toml file. The service resource can only be manipulated under super service authentication while other resouces require corresponding host service's authentication. (This API may change in later versions)
 

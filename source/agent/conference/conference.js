@@ -2355,12 +2355,7 @@ var Conference = function (rpcClient, selfRpcId) {
     }
   };
 
-  that.controlSubscription = function(subId, commands, callback) {
-    log.debug('controlSubscription', subId, 'commands:', commands);
-    if (subscriptions[subId] === undefined) {
-      callback('callback', 'error', 'Subscription does NOT exist');
-    }
-
+  var doControlSubscription = function(subId, commands) {
     var subUpdate;
     var muteReqs = [];
     return Promise.all(
@@ -2431,7 +2426,17 @@ var Conference = function (rpcClient, selfRpcId) {
       } else {
         return 'ok';
       }
-    }).then(() => {
+    });
+  };
+
+  that.controlSubscription = function(subId, commands, callback) {
+    log.debug('controlSubscription', subId, 'commands:', commands);
+    if (subscriptions[subId] === undefined) {
+      callback('callback', 'error', 'Subscription does NOT exist');
+    }
+
+    return doControlSubscription(subId, commands)
+    .then(() => {
       if (subscriptions[subId]) {
         callback('callback', subscriptionAbstract(subId));
       } else {
@@ -2456,6 +2461,110 @@ var Conference = function (rpcClient, selfRpcId) {
       .catch((e) => {
         callback('callback', 'error', e.message ? e.message : e);
       });
+  };
+
+  var getSipCallInfo = function(sipCallId) {
+      var pInfo = participants[sipCallId].getInfo();
+      var sipcall = {id: pInfo.id, peer: pInfo.user}
+      sipcall.type = (pInfo.id.startsWith('SipIn') ? 'dial-in' : 'dial-out');
+
+      for (var stream_id in streams) {
+        if (streams[stream_id].info.owner === pInfo.id) {
+          sipcall.input = streams[stream_id];
+          break;
+        }
+      }
+
+      for (var subscription_id in subscriptions) {
+        if (subscriptions[subscription_id].info.owner === pInfo.id) {
+          sipcall.output = subscriptionAbstract(subscription_id);
+          break;
+        }
+      }
+
+      return sipcall;
+  };
+
+  that.getSipCalls = function(callback) {
+    var result = [];
+    for (var pid in participants) {
+      if (participants[pid].getInfo().role === 'sip') {
+        result.push(getSipCallInfo(pid));
+      }
+    }
+    callback('callback', result);
+  };
+
+  that.makeSipCall = function(roomId, options, callback) {
+    return rpcReq.getSipConnectivity('sip-portal', roomId)
+      .then((sipNode) => {
+        return rpcReq.makeSipCall(sipNode, options.peerURI, options.mediaIn, options.mediaOut, selfRpcId);
+      }).then((sipCallId) => {
+        return new Promise((resolve, reject) => {
+          var count = 0, wait = 880;
+          var interval = setInterval(() => {
+            if (count > wait || !participants[sipCallId]) {
+              clearInterval(interval);
+              rpcReq.endSipCall(sipCallId);
+              reject('No answer timeout');
+            } else {
+              if (participants[sipCallId]) {
+                clearInterval(interval);
+                resolve(sipCallId);
+              } else {
+                count = count + 1;
+              }
+            }
+          }, 100);
+        });
+      }).then((sipCallId) => {
+        callback('callback', getSipCallInfo(sipCallId));
+      }).catch((err) => {
+        var reason = (err.message || err);
+        log.error('makeSipCall failed, reason:', reason);
+        callback('callback', 'error', reason);
+      });
+  };
+
+  that.controlSipCall = function(sipCallId, cmds, callback) {
+    log.debug('controlSipCall, sipCallId:', sipCallId, 'cmds:', JSON.stringify(cmds));
+    if (participants[sipCallId] && participants[sipCallId].getInfo().role === 'sip') {
+      var subscription_id;
+      for (var sub_id in subscriptions) {
+        if (subscriptions[sub_id].info.owner === sipCallId) {
+          subscription_id = sub_id;
+          break;
+        }
+      }
+
+      if (!subscription_id) {
+        return callback('callback', 'error', 'Sip call has no output');
+      }
+
+      cmds = cmds.map((cmd) => {cmd.path = cmd.path.replace(/^(\/output)/,""); return cmd;});
+      return doControlSubscription(subscription_id, cmds)
+        .then(() => {
+          callback('callback', getSipCallInfo(sipCallId));
+        }).catch((err) => {
+          var reason = (err.message || err);
+          log.error('controlSipCall failed, reason:', reason);
+          callback('callback', 'error', reason);
+        });
+    } else {
+      callback('callback', 'error', 'Sip call does NOT exist');
+    }
+
+  };
+
+  that.endSipCall = function(sipCallId, callback) {
+    log.debug('endSipCall, sipCallId:', sipCallId);
+    if (participants[sipCallId] && participants[sipCallId].getInfo().role === 'sip') {
+      rpcReq.endSipCall(participants[sipCallId].getPortal(), sipCallId);
+      removeParticipant(sipCallId);
+      callback('callback', 'ok');
+    } else {
+      callback('callback', 'error', 'Sip call does NOT exist');
+    }
   };
 
   that.destroy = function(callback) {
@@ -2525,6 +2634,10 @@ module.exports = function (rpcClient, selfRpcId) {
     addServerSideSubscription: conference.addServerSideSubscription,
     controlSubscription: conference.controlSubscription,
     deleteSubscription: conference.deleteSubscription,
+    getSipCalls: conference.getSipCalls,
+    makeSipCall: conference.makeSipCall,
+    controlSipCall: conference.controlSipCall,
+    endSipCall: conference.endSipCall,
     destroy: conference.destroy
   };
 

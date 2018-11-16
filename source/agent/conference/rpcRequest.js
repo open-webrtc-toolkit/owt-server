@@ -63,6 +63,18 @@ var RpcRequest = function(rpcChannel) {
     return rpcChannel.makeRPC(portal, 'drop', [participantId]);
   };
 
+  that.getSipConnectivity = function(sipPortal, roomId) {
+    return rpcChannel.makeRPC(sipPortal, 'getSipConnectivity', [roomId]);
+  };
+
+  that.makeSipCall = function(sipNode, peerURI, mediaIn, mediaOut, controller) {
+    return rpcChannel.makeRPC(sipNode, 'makeCall', [peerURI, mediaIn, mediaOut, controller]);
+  };
+
+  that.endSipCall = function(sipNode, sipCallId) {
+    return rpcChannel.makeRPC(sipNode, 'endCall', [sipCallId]);
+  };
+
   return that;
 };
 

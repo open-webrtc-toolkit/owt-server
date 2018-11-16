@@ -29,6 +29,7 @@
     "StreamsResource": "INFO",
     "ParticipantsResource": "INFO",
     "StreamingOutsResource": "INFO",
-    "RecordingsResource": "INFO"
+    "RecordingsResource": "INFO",
+    "SipCallsResource": "INFO"
   }
 }

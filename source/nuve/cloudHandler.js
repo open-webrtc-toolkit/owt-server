@@ -342,6 +342,106 @@ exports.deleteSubscription = function (roomId, subId, callback) {
     });
 };
 
+exports.getSipCallsInRoom = function (roomId, callback) {
+  return validateId('Room ID', roomId)
+    .then((ok) => {
+      return getRoomController(roomId);
+    }).then((controller) => {
+      rpc.callRpc(controller, 'getSipCalls', [], {callback: function (sipCalls) {
+        log.debug('Got subscriptions:', sipCalls);
+        if (sipCalls === 'timeout' || sipCalls === 'error') {
+          callback('error');
+        } else {
+          callback(sipCalls);
+        }
+      }});
+    }).catch((err) => {
+      log.info('getSipCallsInRoom failed, reason:', err.message ? err.message : err);
+      if (err === 'Room is inactive') {
+        callback([]);
+      } else {
+        callback('error');
+      }
+    });
+};
+
+exports.addSipCall = function (roomId, options, callback) {
+  log.debug('addSipCall, roomId:', roomId, 'options:', options);
+  return validateId('Room ID', roomId)
+    .then((ok) => {
+      return validateReq('sipcall-add', options);
+    }).then((ok) => {
+      getRoomController(roomId)
+        .catch((e) => {
+          if (e === 'Room is inactive') {
+            return scheduleRoomController(roomId);
+          } else {
+            return Promise.reject('Failed to get room controller');
+          }
+        })
+        .then((controller) => {
+          rpc.callRpc(controller, 'makeSipCall', [roomId, options], {callback: function (result, edata) {
+            if (result === 'error' || result === 'timeout') {
+              log.debug('RPC fail', result, edata);
+              callback('error', new e.CloudError('RPC:makeSipCall failed'));
+            } else {
+              callback(result);
+            }
+          }}, 90 * 1000);
+        })
+        .catch((err) => {
+          callback('error', new e.CloudError(err && err.message ? err.message : ''));
+        });
+    }).catch((err) => {
+      var msg = err && err.message ? err.message : '';
+      callback('error', new e.BadRequestError(msg));
+    });
+};
+
+exports.updateSipCall = function (roomId, sipCallId, cmds, callback) {
+  log.debug('updateSipCall, roomId:', roomId, 'sipCallId:', sipCallId, 'cmds:', cmds);
+  return validateId('Room ID', roomId)
+    .then((ok) => {
+      return validateId('Sip call ID', sipCallId);
+    }).then((ok) => {
+      return validateReq('sipcall-update', cmds);
+    }).then((ok) => {
+      return getRoomController(roomId);
+    }).then((controller) => {
+      rpc.callRpc(controller, 'controlSipCall', [sipCallId, cmds], {callback: function (result) {
+        if (result === 'error' || result === 'timeout') {
+          callback('error');
+        } else {
+          callback(result);
+        }
+      }});
+    }).catch((err) => {
+      var msg = err && err.message ? err.message : '';
+      callback('error', new e.BadRequestError(msg));
+    });
+};
+
+exports.deleteSipCall = function (roomId, sipCallId, callback) {
+  log.debug('deleteSipCall, roomId:', roomId, 'sipCallId:', sipCallId);
+  return validateId('Room ID', roomId)
+    .then((ok) => {
+      return validateId('Sip call ID', sipCallId);
+    }).then((ok) => {
+      return getRoomController(roomId);
+    }).then((controller) => {
+      rpc.callRpc(controller, 'endSipCall', [sipCallId], {callback: function (result) {
+        if (result === 'error' || result === 'timeout') {
+          callback('error');
+        } else {
+          callback(result);
+        }
+      }});
+    }).catch((err) => {
+      var msg = err && err.message ? err.message : '';
+      callback('error', new e.BadRequestError(msg));
+    });
+};
+
 exports.notifySipPortal = function (changeType, room, callback) {
         var arg = {
             type: changeType,

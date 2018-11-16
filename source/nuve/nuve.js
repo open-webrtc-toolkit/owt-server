@@ -30,6 +30,7 @@ var participantsResource = require('./resource/participantsResource');
 var streamsResource = require('./resource/streamsResource');
 var streamingOutsResource = require('./resource/streamingOutsResource');
 var recordingsResource = require('./resource/recordingsResource');
+var sipcallsResource = require('./resource/sipcallsResource');
 
 // parse application/x-www-form-urlencoded
 app.use(bodyParser.urlencoded({ extended: true }))
@@ -101,6 +102,12 @@ app.get('/v1/rooms/:room/recordings', recordingsResource.getList);
 app.post('/v1/rooms/:room/recordings', recordingsResource.add);//FIXME: Validation on body.type === 'recording' is needed.
 app.patch('/v1/rooms/:room/recordings/:id', recordingsResource.patch);
 app.delete('/v1/rooms/:room/recordings/:id', recordingsResource.delete);
+
+//Sip call management
+app.get('/v1/rooms/:room/sipcalls', sipcallsResource.getList);
+app.post('/v1/rooms/:room/sipcalls', sipcallsResource.add);
+app.patch('/v1/rooms/:room/sipcalls/:id', sipcallsResource.patch);
+app.delete('/v1/rooms/:room/sipcalls/:id', sipcallsResource.delete);
 
 //Create token.
 app.post('/v1/rooms/:room/tokens', tokensResource.create);
