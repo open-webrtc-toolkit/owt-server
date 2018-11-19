@@ -261,6 +261,17 @@ bool MsdkBase::loadDecoderPlugin(uint32_t codecId, MFXVideoSession *pSession, mf
         case MFX_CODEC_AVC:
             return true;
 
+        case MFX_CODEC_VP8:
+            ELOG_DEBUG("Load plugin MFX_PLUGINID_VP8D_HW");
+            sts = MFXVideoUSER_Load(*pSession, &MFX_PLUGINID_VP8D_HW, 1);
+            if (sts != MFX_ERR_NONE) {
+                ELOG_ERROR("Failed to load codec plugin.");
+                return false;
+            }
+
+            memcpy(pluginID, &MFX_PLUGINID_VP8D_HW, sizeof(mfxPluginUID));
+            return true;
+
         default:
             return false;
     }

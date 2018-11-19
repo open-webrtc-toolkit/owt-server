@@ -29,6 +29,7 @@
 #include <mfxdefs.h>
 #include <mfxvideo++.h>
 #include <mfxplugin++.h>
+#include <mfxvp8.h>
 
 #ifndef MFX_VERSION
 #define MFX_VERSION (MFX_VERSION_MAJOR * 1000 + MFX_VERSION_MINOR)

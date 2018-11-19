@@ -187,6 +187,9 @@ bool MsdkFrameDecoder::init(FrameFormat format)
             break;
 
         case FRAME_FORMAT_VP8:
+            m_videoParam->mfx.CodecId = MFX_CODEC_VP8;
+            break;
+
         default:
             ELOG_ERROR_T("Unspported video frame format %s(%d)", getFormatStr(format), format);
             return false;
@@ -372,6 +375,11 @@ retry:
         boost::shared_ptr<MsdkFrame> outFrame = m_framePool->getFrame(pOutSurface);
         outFrame->setSyncPoint(syncP);
         outFrame->setSyncFlag(true);
+
+        //workaroung vp8 vpp issue
+        if (m_videoParam->mfx.CodecId == MFX_CODEC_VP8)
+            outFrame->getSurface()->Info.PicStruct = MFX_PICSTRUCT_PROGRESSIVE;
+
         //outFrame->dump();
 
         MsdkFrameHolder holder;
