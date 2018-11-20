@@ -132,17 +132,35 @@ install_openh264(){
   MINOR=7
   SOVER=4
 
-  RELNAME=libopenh264-${MAJOR}.${MINOR}.0-linux64.${SOVER}.so
-
   cd $ROOT/third_party/openh264
-  wget -c http://ciscobinary.openh264.org/${RELNAME}.bz2
-  bzip2 -d ${RELNAME}.bz2
-  mv ${RELNAME} libopenh264.so
-  local symbol=$(readelf -d ./libopenh264.so | grep soname | sed 's/.*\[\(.*\)\]/\1/g')
-  if [ -f "$symbol" ]; then
-    rm -f $symbol
-  fi
-  ln -s libopenh264.so ${symbol}
+
+  SOURCE=v${MAJOR}.${MINOR}.0.tar.gz
+  BINARY=libopenh264-${MAJOR}.${MINOR}.0-linux64.${SOVER}.so
+
+  # delete
+  rm ${SOURCE} openh264-${MAJOR}.${MINOR}.0 codec -rf
+  rm ${BINARY}.bz2 ${BINARY} libopenh264.so.${SOVER} libopenh264.so -rf
+  rm pseudo-openh264.cpp pseudo-openh264.so
+
+  # download
+  wget https://github.com/cisco/openh264/archive/${SOURCE}
+  wget -c https://github.com/cisco/openh264/releases/download/v${MAJOR}.${MINOR}.0/${BINARY}.bz2
+
+  # api
+  tar -zxf ${SOURCE} openh264-${MAJOR}.${MINOR}.0/codec/api
+  ln -s -v openh264-${MAJOR}.${MINOR}.0/codec codec
+
+  # binary
+  bzip2 -d ${BINARY}.bz2
+  ln -s -v ${BINARY} libopenh264.so.${SOVER}
+  ln -s -v libopenh264.so.${SOVER} libopenh264.so
+
+  # pseudo lib
+  echo \
+      'const char* stub() {return "this is a stub lib";}' \
+      > pseudo-openh264.cpp
+  gcc pseudo-openh264.cpp -fPIC -shared -o pseudo-openh264.so
+
   cd $CURRENT_DIR
 }
 
@@ -409,7 +427,6 @@ install_svt_hevc(){
     echo \
         'const char* stub() {return "this is a stub lib";}' \
         > pseudo-hevcEncoder.cpp
-
     gcc pseudo-hevcEncoder.cpp -fPIC -shared -o pseudo-hevcEncoder.so
 
     popd

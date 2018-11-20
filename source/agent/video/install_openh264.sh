@@ -14,7 +14,7 @@ SONAME=libopenh264.so.${SOVER}
 
 download_openh264(){
   echo "Download OpenH264..."
-  wget -c http://ciscobinary.openh264.org/${RELNAME}.bz2 && \
+  wget -c https://github.com/cisco/openh264/releases/download/v${MAJOR}.${MINOR}.0/${RELNAME}.bz2 && \
   bzip2 -d ${RELNAME}.bz2 && \
   echo "Download ${RELNAME} success."
 }
