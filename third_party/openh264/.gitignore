@@ -1,2 +1,6 @@
-# Shared objects (inc. Windows DLLs)
 libopenh264*
+pseudo-openh264.*
+codec
+openh264-1*
+v1*.tar.gz
+
