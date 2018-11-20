@@ -67,12 +67,12 @@ bool VCMFrameDecoder::init(FrameFormat format)
         m_decoder.reset(VP9Decoder::Create());
         break;
     case FRAME_FORMAT_H264:
-    if (ELOG_IS_TRACE_ENABLED())
-        av_log_set_level(AV_LOG_DEBUG);
-    else if (ELOG_IS_DEBUG_ENABLED())
-        av_log_set_level(AV_LOG_INFO);
-    else
-        av_log_set_level(AV_LOG_QUIET);
+        if (ELOG_IS_TRACE_ENABLED())
+            av_log_set_level(AV_LOG_DEBUG);
+        else if (ELOG_IS_DEBUG_ENABLED())
+            av_log_set_level(AV_LOG_INFO);
+        else
+            av_log_set_level(AV_LOG_QUIET);
 
         codecType = VideoCodecType::kVideoCodecH264;
         m_decoder.reset(H264Decoder::Create());

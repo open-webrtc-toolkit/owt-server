@@ -433,7 +433,7 @@ retry:
         outFrame.additionalInfo.video.width = m_width;
         outFrame.additionalInfo.video.height = m_height;
         outFrame.additionalInfo.video.isKeyFrame = isKeyFrame(bsBuffer->FrameType);
-        outFrame.timeStamp = (m_frameCount++) * 1000 / 30 * 90;
+        outFrame.timeStamp = (m_frameCount++) * 1000 / m_frameRate * 90;
 
         ELOG_TRACE_T("deliverFrame, %s, %dx%d(%s), length(%d)",
                 getFormatStr(outFrame.format),
@@ -818,7 +818,7 @@ protected:
                 outFrame.additionalInfo.video.width = m_width;
                 outFrame.additionalInfo.video.height = m_height;
                 outFrame.additionalInfo.video.isKeyFrame = isKeyFrame(bsBuffer->FrameType);
-                outFrame.timeStamp = (m_frameCount++) * 1000 / 30 * 90;
+                outFrame.timeStamp = (m_frameCount++) * 1000 / m_frameRate * 90;
 
                 ELOG_TRACE_T("deliverFrame, %s, %dx%d(%s), length(%d)",
                         getFormatStr(outFrame.format),
