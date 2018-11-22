@@ -923,6 +923,33 @@ MsdkFrameEncoder::~MsdkFrameEncoder()
     m_streams.clear();
 }
 
+bool MsdkFrameEncoder::supportFormat(FrameFormat format)
+{
+    mfxU32 codecId = 0;
+    switch (format) {
+        case FRAME_FORMAT_H264:
+            codecId = MFX_CODEC_AVC;
+            break;
+        case FRAME_FORMAT_H265:
+            codecId = MFX_CODEC_HEVC;
+            break;
+        case FRAME_FORMAT_VP8:
+            codecId = MFX_CODEC_VP8;
+            break;
+        case FRAME_FORMAT_VP9:
+            codecId = MFX_CODEC_VP9;
+            break;
+        default:
+            return false;
+    }
+
+    MsdkBase *msdkBase = MsdkBase::get();
+    if (!msdkBase)
+        return false;
+
+    return msdkBase->isSupportedEncoder(codecId);
+}
+
 bool MsdkFrameEncoder::canSimulcast(FrameFormat format, uint32_t width, uint32_t height)
 {
     boost::shared_lock<boost::shared_mutex> lock(m_mutex);
