@@ -47,7 +47,7 @@ public:
 
     FrameFormat getInputFormat() {return FRAME_FORMAT_MSDK;}
 
-    static bool supportFormat(FrameFormat format) {return (format == FRAME_FORMAT_H264 || format == FRAME_FORMAT_H265);}
+    static bool supportFormat(FrameFormat format);
 
     // Implements VideoFrameEncoder.
     int32_t generateStream(uint32_t width, uint32_t height, uint32_t frameRate, uint32_t bitrateKbps, uint32_t keyFrameIntervalSeconds, FrameDestination* dest);

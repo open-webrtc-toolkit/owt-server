@@ -42,7 +42,7 @@ public:
     MsdkFrameDecoder();
     ~MsdkFrameDecoder();
 
-    static bool supportFormat(FrameFormat format) {return (format == FRAME_FORMAT_H264 || format == FRAME_FORMAT_H265);}
+    static bool supportFormat(FrameFormat format);
 
     void onFrame(const Frame&);
     bool init(FrameFormat);

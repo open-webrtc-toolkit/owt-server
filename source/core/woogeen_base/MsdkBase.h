@@ -54,6 +54,9 @@ public:
 
     static MsdkBase *get(void);
 
+    bool isSupportedDecoder(mfxU32 codecId);
+    bool isSupportedEncoder(mfxU32 codecId);
+
     void setConfigHevcEncoderGaccPlugin(bool hevcEncoderGaccPlugin);
     bool getConfigHevcEncoderGaccPlugin();
 
@@ -85,6 +88,8 @@ protected:
 private:
     static MsdkBase *sSingleton;
     static boost::shared_mutex sSingletonLock;
+    static std::vector<mfxU32> sSupportedDecoders;
+    static std::vector<mfxU32> sSupportedEncoders;
 
     int m_fd;
     void *m_vaDisp;

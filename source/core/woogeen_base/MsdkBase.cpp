@@ -33,6 +33,8 @@ DEFINE_LOGGER(MsdkBase, "woogeen.MsdkBase");
 
 boost::shared_mutex MsdkBase::sSingletonLock;
 MsdkBase *MsdkBase::sSingleton = NULL;
+std::vector<mfxU32> MsdkBase::sSupportedDecoders;
+std::vector<mfxU32> MsdkBase::sSupportedEncoders;
 
 static bool AreGuidsEqual(const mfxPluginUID *guid1, const mfxPluginUID *guid2)
 {
@@ -127,6 +129,77 @@ bool MsdkBase::init()
             ELOG_WARN("MFX Runtime Version: %d, major(%d), minor(%d)", ver.Major * 1000 + ver.Minor, ver.Major, ver.Minor);
     }
 
+    mfxStatus sts = MFX_ERR_NONE;
+    mfxVideoParam videoParam;
+    mfxPluginUID pluginID;
+    std::vector<mfxU32> codecs;
+
+    // supported decoders
+    MFXVideoDECODE *dec = new MFXVideoDECODE(*m_mainSession);
+    if (dec) {
+        codecs.clear();
+        codecs.push_back(MFX_CODEC_AVC);
+        codecs.push_back(MFX_CODEC_HEVC);
+
+        //disable VPx codec
+        //codecs.push_back(MFX_CODEC_VP8);
+        //codecs.push_back(MFX_CODEC_VP9);
+
+        for (auto &codec : codecs) {
+            memset(&videoParam, 0, sizeof(videoParam));
+            videoParam.mfx.CodecId = codec;
+
+            loadDecoderPlugin(videoParam.mfx.CodecId, m_mainSession, &pluginID);
+            sts = dec->Query(NULL, &videoParam);
+            unLoadPlugin(m_mainSession, &pluginID);
+
+            if (sts == MFX_ERR_NONE) {
+                ELOG_INFO("Supported decoder: %c%c%c%c"
+                        , codec & 0xff
+                        , (codec >> 8) & 0xff
+                        , (codec >> 16) & 0xff
+                        , (codec >> 24) & 0xff
+                        );
+               sSupportedDecoders.push_back(codec);
+            }
+        }
+        dec->Close();
+        delete dec;
+    }
+
+    // supported encoders
+    MFXVideoENCODE *enc = new MFXVideoENCODE(*m_mainSession);
+    if (enc) {
+        codecs.clear();
+        codecs.push_back(MFX_CODEC_AVC);
+        codecs.push_back(MFX_CODEC_HEVC);
+
+        //disable VPx codec
+        //codecs.push_back(MFX_CODEC_VP8);
+        //codecs.push_back(MFX_CODEC_VP9);
+
+        for (auto &codec : codecs) {
+            memset(&videoParam, 0, sizeof(videoParam));
+            videoParam.mfx.CodecId = codec;
+
+            loadEncoderPlugin(videoParam.mfx.CodecId, m_mainSession, &pluginID);
+            sts = enc->Query(NULL, &videoParam);
+            unLoadPlugin(m_mainSession, &pluginID);
+
+            if (sts == MFX_ERR_NONE) {
+                ELOG_INFO("Supported encoder: %c%c%c%c"
+                        , codec & 0xff
+                        , (codec >> 8) & 0xff
+                        , (codec >> 16) & 0xff
+                        , (codec >> 24) & 0xff
+                        );
+               sSupportedEncoders.push_back(codec);
+            }
+        }
+        enc->Close();
+        delete enc;
+    }
+
     return true;
 }
 
@@ -154,6 +227,24 @@ MsdkBase *MsdkBase::get(void)
     }
 
     return sSingleton;
+}
+
+bool MsdkBase::isSupportedDecoder(mfxU32 codecId)
+{
+    for (auto &c : sSupportedDecoders)
+        if (codecId == c)
+            return true;
+
+    return false;
+}
+
+bool MsdkBase::isSupportedEncoder(mfxU32 codecId)
+{
+    for (auto &c : sSupportedEncoders)
+        if (codecId == c)
+            return true;
+
+    return false;
 }
 
 void MsdkBase::setConfigHevcEncoderGaccPlugin(bool hevcEncoderGaccPlugin)
