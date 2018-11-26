@@ -307,7 +307,12 @@ exit:
 bool AVStreamOut::connect()
 {
     const char *formatName = getFormatName(m_url);
-    avformat_alloc_output_context2(&m_context, NULL, formatName, m_url.c_str());
+    std::string url(m_url);
+    // url for dash: 'dash:///path/to/mpd/file'
+    if (m_url.find("dash://") == 0) {
+        url = m_url.substr(7);
+    }
+    avformat_alloc_output_context2(&m_context, NULL, formatName, url.c_str());
     if (!m_context) {
         ELOG_ERROR("Cannot allocate output context, format(%s), url(%s)", formatName ? formatName : "", m_url.c_str());
         return false;
