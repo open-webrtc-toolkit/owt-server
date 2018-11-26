@@ -68,6 +68,8 @@ const char *LiveStreamOut::getFormatName(std::string& url)
         return "flv";
     else if (url.find("http://") == 0)
         return "hls";
+    else if (url.find("dash://") == 0)
+        return "dash";
 
     ELOG_ERROR("Invalid format for url(%s)", url.c_str());
     return NULL;
@@ -107,6 +109,15 @@ bool LiveStreamOut::getHeaderOpt(std::string& url, AVDictionary **options)
         av_dict_set(options, "hls_list_size", "4", 0);
         av_dict_set(options, "hls_flags", "delete_segments", 0);
         av_dict_set(options, "method", "PUT", 0);
+
+    } else if (url.compare(0, 7, "dash://") == 0) {
+        av_dict_set(options, "streaming", "1", 0);
+        av_dict_set(options, "use_template", "1", 0);
+        av_dict_set(options, "use_timeline", "1", 0);
+        av_dict_set(options, "seg_duration", "1"/*seconds*/, 0);
+        av_dict_set(options, "dash_segment_type", "mp4", 0);
+        av_dict_set(options, "window_size", "5", 0);
+        av_dict_set(options, "remove_at_exit", "1", 0);
     }
 
     return true;
