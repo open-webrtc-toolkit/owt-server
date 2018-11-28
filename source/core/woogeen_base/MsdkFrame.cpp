@@ -92,7 +92,6 @@ MsdkFrame::MsdkFrame(mfxFrameInfo &info, mfxMemId &id, boost::shared_ptr<mfxFram
 
 MsdkFrame::~MsdkFrame()
 {
-    printfFuncEnter;
     if (m_valid) {
         mfxStatus sts = MFX_ERR_NONE;
 
@@ -119,7 +118,6 @@ MsdkFrame::~MsdkFrame()
             m_nv12TBuffer = NULL;
         }
     }
-    printfFuncExit;
 }
 
 bool MsdkFrame::init()
@@ -569,8 +567,6 @@ MsdkFramePool::MsdkFramePool(mfxFrameAllocRequest &request, boost::shared_ptr<mf
 
 MsdkFramePool::~MsdkFramePool()
 {
-    printfFuncEnter;
-
     m_framePool.clear();
     if (m_allocator && m_response.NumFrameActual > 0) {
         mfxStatus sts = MFX_ERR_NONE;
@@ -580,8 +576,6 @@ MsdkFramePool::~MsdkFramePool()
             ELOG_ERROR("mfxFrameAllocator Free() failed, ret %d", sts);
         }
     }
-
-    printfFuncExit;
 }
 
 boost::shared_ptr<MsdkFrame> MsdkFramePool::getFreeFrame()

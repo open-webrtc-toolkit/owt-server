@@ -37,11 +37,6 @@
 
 namespace woogeen_base {
 
-//#define printfLine      ELOG_TRACE(":%d-(%p)%s - Mark", __LINE__, this, __FUNCTION__)
-
-#define printfFuncEnter ELOG_TRACE(":%d-(%p)%s ++++++++++ Enter", __LINE__, this, __FUNCTION__)
-#define printfFuncExit  ELOG_TRACE(":%d-(%p)%s ---------- Exit", __LINE__, this, __FUNCTION__)
-
 #define ALIGN16(x) ((((x) + 15) >> 4) << 4)
 
 enum DumpType{ MFX_DEC, MFX_VPP, MFX_ENC };

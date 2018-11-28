@@ -936,9 +936,6 @@ bool MsdkFrameEncoder::supportFormat(FrameFormat format)
         case FRAME_FORMAT_VP8:
             codecId = MFX_CODEC_VP8;
             break;
-        case FRAME_FORMAT_VP9:
-            codecId = MFX_CODEC_VP9;
-            break;
         default:
             return false;
     }
