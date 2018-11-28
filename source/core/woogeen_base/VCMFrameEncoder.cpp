@@ -29,8 +29,6 @@
 #include "MsdkFrame.h"
 #endif
 
-#include "WGOpenH264Encoder.h"
-
 using namespace webrtc;
 
 namespace woogeen_base {
@@ -170,7 +168,6 @@ int32_t VCMFrameEncoder::generateStream(uint32_t width, uint32_t height, uint32_
                 ELOG_WARN_T("Only support profile (Constrained Baseline), required (%d)", m_profile);
             }
 
-            //m_encoder.reset(WGOpenH264Encoder::Create());
             m_encoder.reset(H264Encoder::Create(cricket::VideoCodec(cricket::kH264CodecName)));
 
             VCMCodecDataBase::Codec(kVideoCodecH264, &codecSettings);
