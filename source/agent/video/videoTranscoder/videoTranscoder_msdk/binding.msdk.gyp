@@ -10,7 +10,6 @@
       '../../../../core/woogeen_base/FrameConverter.cpp',
       '../../../../core/woogeen_base/VCMFrameDecoder.cpp',
       '../../../../core/woogeen_base/VCMFrameEncoder.cpp',
-      '../../../../core/woogeen_base/WGOpenH264Encoder.cpp',
       '../../../../core/woogeen_base/FrameProcesser.cpp',
       '../../../../core/woogeen_base/MsdkFrameDecoder.cpp',
       '../../../../core/woogeen_base/MsdkFrameEncoder.cpp',
@@ -42,7 +41,6 @@
                       '$(CORE_HOME)/../../third_party/mediasdk/samples/sample_common/include',
                       '$(CORE_HOME)/../../build/libdeps/build/include',
                       '/opt/intel/mediasdk/include',
-                      '$(CORE_HOME)/../../third_party/openh264',
     ],
     'libraries': [
       '-lboost_thread',

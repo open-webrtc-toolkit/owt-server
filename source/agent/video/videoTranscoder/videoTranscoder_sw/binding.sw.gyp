@@ -10,7 +10,6 @@
       '../../../../core/woogeen_base/I420BufferManager.cpp',
       '../../../../core/woogeen_base/VCMFrameDecoder.cpp',
       '../../../../core/woogeen_base/VCMFrameEncoder.cpp',
-      '../../../../core/woogeen_base/WGOpenH264Encoder.cpp',
       '../../../../core/woogeen_base/FrameProcesser.cpp',
     ],
     'cflags_cc': [
@@ -29,7 +28,6 @@
                       '$(CORE_HOME)/../../third_party/webrtc/src',
                       '$(CORE_HOME)/../../third_party/webrtc/src/third_party/libyuv/include',
                       '$(CORE_HOME)/../../build/libdeps/build/include',
-                      '$(CORE_HOME)/../../third_party/openh264',
     ],
     'libraries': [
       '-lboost_thread',
