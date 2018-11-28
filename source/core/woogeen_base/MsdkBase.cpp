@@ -205,8 +205,6 @@ bool MsdkBase::init()
 
 MsdkBase::~MsdkBase()
 {
-    printfFuncEnter;
-    printfFuncExit;
 }
 
 MsdkBase *MsdkBase::get(void)

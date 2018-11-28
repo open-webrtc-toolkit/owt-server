@@ -49,8 +49,6 @@ MsdkFrameDecoder::MsdkFrameDecoder()
 
 MsdkFrameDecoder::~MsdkFrameDecoder()
 {
-    printfFuncEnter;
-
     flushOutput();
 
     if (m_dec) {
@@ -84,8 +82,6 @@ MsdkFrameDecoder::~MsdkFrameDecoder()
     if (m_bsDumpfp) {
         fclose(m_bsDumpfp);
     }
-
-    printfFuncExit;
 }
 
 bool MsdkFrameDecoder::supportFormat(FrameFormat format)
@@ -100,9 +96,6 @@ bool MsdkFrameDecoder::supportFormat(FrameFormat format)
             break;
         case FRAME_FORMAT_VP8:
             codecId = MFX_CODEC_VP8;
-            break;
-        case FRAME_FORMAT_VP9:
-            codecId = MFX_CODEC_VP9;
             break;
         default:
             return false;
@@ -150,8 +143,6 @@ bool MsdkFrameDecoder::allocateFrames(void)
 
 void MsdkFrameDecoder::flushOutput(void)
 {
-    printfFuncEnter;
-
     MsdkFrameHolder holder;
     holder.frame = NULL;
     holder.cmd = MsdkCmd_DEC_FLUSH;
@@ -166,8 +157,6 @@ void MsdkFrameDecoder::flushOutput(void)
     frame.timeStamp = 0;
 
     deliverFrame(frame);
-
-    printfFuncExit;
 }
 
 bool MsdkFrameDecoder::resetDecoder(void)
@@ -495,8 +484,6 @@ void MsdkFrameDecoder::updateBitstream(const Frame& frame)
 
 void MsdkFrameDecoder::onFrame(const Frame& frame)
 {
-    printfFuncEnter;
-
     if (frame.payload == NULL || frame.length == 0) {
         ELOG_DEBUG_T("Null frame, request key frame");
         FeedbackMsg msg {.type = VIDEO_FEEDBACK, .cmd = REQUEST_KEY_FRAME};
@@ -518,8 +505,6 @@ retry:
             goto retry;
         }
     }
-
-    printfFuncExit;
 }
 
 void MsdkFrameDecoder::dump(uint8_t *buf, int len)
