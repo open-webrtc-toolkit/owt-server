@@ -199,7 +199,7 @@ exports.create = function (serviceId, roomOption, callback) {
 exports.list = function (serviceId, options, callback) {
   var popOption = {
     path: 'rooms',
-    options: { sort: '-createdAt' }
+    options: { sort: {_id: 1} }
   };
   if (options) {
     if (typeof options.per_page === 'number' && options.per_page > 0) {
