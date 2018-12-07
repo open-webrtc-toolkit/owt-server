@@ -18,44 +18,51 @@
  * and approved by Intel in writing.
  */
 
-#ifndef VCMFrameDecoder_h
-#define VCMFrameDecoder_h
-
-#include "MediaFramePipeline.h"
+#ifndef FFmpegFrameDecoder_h
+#define FFmpegFrameDecoder_h
 
 #include <boost/scoped_ptr.hpp>
+#include <boost/shared_ptr.hpp>
 #include <logger.h>
 
-#include <webrtc/modules/video_coding/include/video_codec_interface.h>
-#include <webrtc/video_decoder.h>
+#include "MediaFramePipeline.h"
+#include "I420BufferManager.h"
+
+extern "C" {
+#include <libavcodec/avcodec.h>
+}
 
 namespace woogeen_base {
 
-class VCMFrameDecoder : public VideoFrameDecoder, public webrtc::DecodedImageCallback {
+class FFmpegFrameDecoder : public VideoFrameDecoder {
     DECLARE_LOGGER();
 
 public:
-    VCMFrameDecoder(FrameFormat format);
-    ~VCMFrameDecoder();
+    FFmpegFrameDecoder();
+    ~FFmpegFrameDecoder();
 
-    static bool supportFormat(FrameFormat format) {
-        return (format == FRAME_FORMAT_VP8
-                || format == FRAME_FORMAT_VP9
-                || format == FRAME_FORMAT_H264);
-    }
-
-    bool init(FrameFormat format);
+    static bool supportFormat(FrameFormat format) {return true;}
 
     void onFrame(const Frame&);
-    int32_t Decoded(webrtc::VideoFrame& decodedImage);
+    bool init(FrameFormat);
+
+protected:
+    static int AVGetBuffer(AVCodecContext *s, AVFrame *frame, int flags);
+    static void AVFreeBuffer(void* opaque, uint8_t* data);
 
 private:
-    bool m_needDecode;
-    bool m_needKeyFrame;
-    webrtc::CodecSpecificInfo m_codecInfo;
-    boost::scoped_ptr<webrtc::VideoDecoder> m_decoder;
+    AVCodecContext *m_decCtx;
+    AVFrame *m_decFrame;
+
+    AVPacket m_packet;
+
+    boost::scoped_ptr<woogeen_base::I420BufferManager> m_bufferManager;
+
+    char m_errbuff[500];
+    char *ff_err2str(int errRet);
 };
 
 } /* namespace woogeen_base */
 
-#endif /* VCMFrameDecoder_h */
+#endif /* FFmpegFrameDecoder_h */
+

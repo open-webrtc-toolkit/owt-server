@@ -84,6 +84,12 @@ public:
     VCMFrameEncoder(FrameFormat format, VideoCodecProfile profile, bool useSimulcast = false);
     ~VCMFrameEncoder();
 
+    static bool supportFormat(FrameFormat format) {
+        return (format == FRAME_FORMAT_VP8
+                || format == FRAME_FORMAT_VP9
+                || format == FRAME_FORMAT_H264);
+    }
+
     FrameFormat getInputFormat() {return FRAME_FORMAT_I420;}
 
     // Implements DecodedImageCallback.

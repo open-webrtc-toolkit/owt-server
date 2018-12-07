@@ -1,6 +1,6 @@
 /*FIXME: should be double checked whether hardware acceleration is actually running*/
 var videoCapability = {
-  decode: ['vp8', 'vp9', 'h264'],
+  decode: ['vp8', 'vp9', 'h264', 'h265'],
   encode: ['vp8', 'vp9']
 };
 
@@ -33,7 +33,6 @@ if (global.config.video.hardwareAccelerated) {
     global.config.video.hardwareAccelerated = (info.indexOf('VA-API version') != -1);
 }
 if (global.config.video.hardwareAccelerated) {
-    videoCapability.decode.push('h265');
     videoCapability.encode.push('h265');
     videoCapability.encode.push('h264_CB');
     videoCapability.encode.push('h264_B');
