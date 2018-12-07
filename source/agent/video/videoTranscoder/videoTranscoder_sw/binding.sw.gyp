@@ -10,6 +10,7 @@
       '../../../../core/woogeen_base/I420BufferManager.cpp',
       '../../../../core/woogeen_base/VCMFrameDecoder.cpp',
       '../../../../core/woogeen_base/VCMFrameEncoder.cpp',
+      '../../../../core/woogeen_base/FFmpegFrameDecoder.cpp',
       '../../../../core/woogeen_base/FrameProcesser.cpp',
     ],
     'cflags_cc': [

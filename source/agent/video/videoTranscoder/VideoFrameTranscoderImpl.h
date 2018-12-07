@@ -32,6 +32,8 @@
 #include <VCMFrameDecoder.h>
 #include <VCMFrameEncoder.h>
 
+#include <FFmpegFrameDecoder.h>
+
 #include <FrameProcesser.h>
 
 #ifdef ENABLE_MSDK
@@ -129,8 +131,15 @@ inline bool VideoFrameTranscoderImpl::setInput(int input, woogeen_base::FrameFor
     if (!decoder && woogeen_base::MsdkFrameDecoder::supportFormat(format))
         decoder.reset(new woogeen_base::MsdkFrameDecoder());
 #endif
-    if (!decoder)
+
+    if (!decoder && woogeen_base::VCMFrameDecoder::supportFormat(format))
         decoder.reset(new woogeen_base::VCMFrameDecoder(format));
+
+    if (!decoder && woogeen_base::FFmpegFrameDecoder::supportFormat(format))
+        decoder.reset(new woogeen_base::FFmpegFrameDecoder());
+
+    if (!decoder)
+        return false;
 
     if (decoder->init(format)) {
         decoder->addVideoDestination(this);
@@ -180,9 +189,11 @@ inline bool VideoFrameTranscoderImpl::addOutput(int output,
         encoder.reset(new woogeen_base::SVTHEVCEncoder(format, profile));
 #endif
 
-    if (!encoder) {
-        encoder.reset(new woogeen_base::VCMFrameEncoder(format, profile));
-    }
+    if (!encoder && woogeen_base::VCMFrameEncoder::supportFormat(format))
+        encoder.reset(new woogeen_base::VCMFrameEncoder(format, profile, false));
+
+    if (!encoder)
+        return false;
 
     streamId = encoder->generateStream(rootSize.width, rootSize.height, framerateFPS, bitrateKbps, keyFrameIntervalSeconds, dest);
     if (streamId < 0)

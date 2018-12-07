@@ -11,6 +11,7 @@
       '../../../../core/woogeen_base/FrameConverter.cpp',
       '../../../../core/woogeen_base/VCMFrameDecoder.cpp',
       '../../../../core/woogeen_base/VCMFrameEncoder.cpp',
+      '../../../../core/woogeen_base/FFmpegFrameDecoder.cpp',
       '../../../../core/woogeen_base/MsdkFrameDecoder.cpp',
       '../../../../core/woogeen_base/MsdkFrameEncoder.cpp',
       '../../../../core/woogeen_base/MsdkBase.cpp',
@@ -50,6 +51,9 @@
       '-L/opt/intel/mediasdk/lib64', '-lmfxhw64', '-Wl,-rpath=/opt/intel/mediasdk/lib64',
       '-L$(CORE_HOME)/../../build/libdeps/build/lib', '-ldispatch_shared',
       '-lva -lva-drm',
+      '<!@(pkg-config --libs libavutil)',
+      '<!@(pkg-config --libs libavcodec)',
+      '<!@(pkg-config --libs libavformat)',
     ],
   }]
 }

@@ -11,6 +11,7 @@
       '../../../../core/woogeen_base/FrameConverter.cpp',
       '../../../../core/woogeen_base/VCMFrameDecoder.cpp',
       '../../../../core/woogeen_base/VCMFrameEncoder.cpp',
+      '../../../../core/woogeen_base/FFmpegFrameDecoder.cpp',
     ],
     'cflags_cc': [
         '-Wall',

@@ -29,8 +29,11 @@
 #include <MediaFramePipeline.h>
 
 #include "SoftVideoCompositor.h"
+
 #include <VCMFrameDecoder.h>
 #include <VCMFrameEncoder.h>
+
+#include <FFmpegFrameDecoder.h>
 
 #ifdef ENABLE_MSDK
 #include "MsdkVideoCompositor.h"
@@ -164,8 +167,14 @@ inline bool VideoFrameMixerImpl::addInput(int input, woogeen_base::FrameFormat f
         decoder.reset(new woogeen_base::MsdkFrameDecoder());
 #endif
 
-    if (!decoder)
+    if (!decoder && woogeen_base::VCMFrameDecoder::supportFormat(format))
         decoder.reset(new woogeen_base::VCMFrameDecoder(format));
+
+    if (!decoder && woogeen_base::FFmpegFrameDecoder::supportFormat(format))
+        decoder.reset(new woogeen_base::FFmpegFrameDecoder());
+
+    if (!decoder)
+        return false;
 
     if (decoder->init(format)) {
         boost::shared_ptr<CompositeIn> compositorIn(new CompositeIn(input, avatar, m_compositor));
@@ -265,8 +274,11 @@ inline bool VideoFrameMixerImpl::addOutput(int output,
             encoder.reset(new woogeen_base::SVTHEVCEncoder(format, profile, m_useSimulcast));
 #endif
 
-        if (!encoder)
+        if (!encoder && woogeen_base::VCMFrameEncoder::supportFormat(format))
             encoder.reset(new woogeen_base::VCMFrameEncoder(format, profile, m_useSimulcast));
+
+        if (!encoder)
+            return false;
 
         streamId = encoder->generateStream(outputSize.width, outputSize.height, framerateFPS, bitrateKbps, keyFrameIntervalSeconds, dest);
         if (streamId < 0)
