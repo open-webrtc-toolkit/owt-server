@@ -74,7 +74,9 @@ SipCallConnection::SipCallConnection(SipGateway* gateway, const std::string& pee
       sequenceNumberFIR_(0)
 {
     const CallInfo *info = gateway->getCallInfoByPeerURI(peerURI);
-    m_sipCall = info->sipCall;
+    if (info) {
+        m_sipCall = info->sipCall;
+    }
     m_audioCodec = info->audioCodec;
     m_videoCodec = info->videoCodec;
     if (m_sipCall)

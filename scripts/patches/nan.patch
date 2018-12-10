@@ -1,0 +1,13 @@
+diff -Naur node_modules/nan/nan_callbacks_12_inl.h nan_s/nan_callbacks_12_inl.h
+--- node_modules/nan/nan_callbacks_12_inl.h	2018-08-25 20:11:08.000000000 +0800
++++ nan_s/nan_callbacks_12_inl.h	2018-12-10 14:12:23.553301445 +0800
+@@ -168,6 +168,9 @@
+ static
+ void FunctionCallbackWrapper(const v8::FunctionCallbackInfo<v8::Value> &info) {
+   v8::Local<v8::Object> obj = info.Data().As<v8::Object>();
++  if (obj.IsEmpty())
++    return;
++
+   FunctionCallback callback = reinterpret_cast<FunctionCallback>(
+       reinterpret_cast<intptr_t>(
+           obj->GetInternalField(kFunctionIndex).As<v8::External>()->Value()));

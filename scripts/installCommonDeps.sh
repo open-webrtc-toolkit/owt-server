@@ -297,7 +297,10 @@ install_node() {
 install_node_tools() {
   npm install -g --loglevel error node-gyp grunt-cli underscore jsdoc
   pushd ${ROOT} >/dev/null
-  npm install nan
+  npm install nan@2.11.1
+  pushd ${ROOT}/node_modules/nan >/dev/null
+  patch -p1 < $PATHNAME/patches/nan.patch
+  popd >/dev/null
   popd >/dev/null
   local GATEWAY_SDK_DIR="${ROOT}/source/client_sdk"
   cd ${GATEWAY_SDK_DIR}

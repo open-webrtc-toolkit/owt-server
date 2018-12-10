@@ -464,7 +464,9 @@ LiveStreamIn::~LiveStreamIn()
 {
     ELOG_INFO_T("Closing %s" , m_url.c_str());
     m_running = false;
-    m_timeoutHandler->stop();
+    if (m_timeoutHandler) {
+        m_timeoutHandler->stop();
+    }
     m_thread.join();
 
     if (m_videoJitterBuffer) {

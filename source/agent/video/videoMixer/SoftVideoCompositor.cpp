@@ -118,7 +118,7 @@ boost::shared_ptr<webrtc::VideoFrame> AvatarManager::loadImage(const std::string
 
     boost::shared_ptr<webrtc::VideoFrame> frame(new webrtc::VideoFrame(i420Buffer, webrtc::kVideoRotation_0, 0));
 
-    delete image;
+    delete [] image;
 
     return frame;
 }
