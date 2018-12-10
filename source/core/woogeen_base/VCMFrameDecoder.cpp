@@ -155,8 +155,10 @@ void VCMFrameDecoder::onFrame(const Frame& frame)
 
     if (padding > 0) {
         payload = (uint8_t *)malloc(size);
-        memcpy(payload, frame.payload, length);
-        memset(payload + length, 0, padding);
+        if (payload) {
+            memcpy(payload, frame.payload, length);
+            memset(payload + length, 0, padding);
+        }
     } else {
         payload = frame.payload;
     }

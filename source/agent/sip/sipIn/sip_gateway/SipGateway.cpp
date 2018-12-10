@@ -114,6 +114,9 @@ void SipGateway::onCallEstablished(const std::string& peerURI, void *call,
                                    const char *audioDir, const char *videoDir)
 {
     const CallInfo *info = getCallInfoByPeerURI(peerURI);
+    if (!info)
+        return;
+
     //TODO: pass red/ulpfec support from EP
     std::string str = "{\"peerURI\":\"" + peerURI + "\"," +
                        "\"audio\":" + ((audioDir!=NULL) ? ("true,\"audio_codec\":\"" + info->audioCodec + "\"," +
@@ -133,6 +136,9 @@ void SipGateway::onCallEstablished(const std::string& peerURI, void *call,
 void SipGateway::onCallUpdated(const std::string& peerURI, const char *audioDir, const char *videoDir)
 {
     const CallInfo *info = getCallInfoByPeerURI(peerURI);
+    if (!info)
+        return;
+
     std::string str = "{\"peerURI\":\"" + peerURI + "\"," +
                        "\"audio\":" + ((audioDir!=NULL) ? ("true,\"audio_codec\":\"" + info->audioCodec + "\"," +
                                                            "\"audio_dir\": \"" + audioDir + "\"")
