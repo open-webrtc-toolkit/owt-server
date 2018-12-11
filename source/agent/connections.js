@@ -1,4 +1,3 @@
-/*global require, module, GLOBAL*/
 'use strict';
 
 require = require('module')._load('./AgentLoader');

@@ -1,4 +1,3 @@
-/*global exports, require, Buffer*/
 'use strict';
 
 var dataAccess = require('../data_access');

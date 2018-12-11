@@ -1,4 +1,3 @@
-/*global require, exports, Buffer*/
 'use strict';
 var crypto = require('crypto');
 

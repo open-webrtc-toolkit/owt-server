@@ -1,4 +1,3 @@
-/*global exports*/
 'use strict';
 
 exports.makeRPC = function (rpcClient, remote_node, remote_function, parameters_list, on_ok, on_error) {

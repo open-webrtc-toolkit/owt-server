@@ -1,4 +1,3 @@
-/*global require, module, global, process*/
 'use strict';
 
 var Fraction = require('fraction.js');

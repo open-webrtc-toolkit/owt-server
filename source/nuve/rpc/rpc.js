@@ -1,4 +1,3 @@
-/*global exports, require, setTimeout, clearTimeout*/
 'use strict';
 var amqp = require('amqp');
 var log = require('./../logger').logger.getLogger('RPC');

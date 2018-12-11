@@ -1,4 +1,3 @@
-/*global require, __dirname, process, global*/
 'use strict';
 
 var logger = require('./logger').logger;

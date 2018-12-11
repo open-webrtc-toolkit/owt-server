@@ -1,4 +1,3 @@
-/*global require, global, process*/
 'use strict';
 require = require('module')._load('./AgentLoader');
 var fs = require('fs');

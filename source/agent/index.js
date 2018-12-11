@@ -1,4 +1,3 @@
-/*global require, global, process*/
 'use strict';
 var Getopt = require('node-getopt');
 var spawn = require('child_process').spawn;

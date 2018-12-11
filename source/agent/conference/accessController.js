@@ -1,4 +1,4 @@
-/* global require */
+'use strict';
 
 var path = require('path');
 var url = require('url');

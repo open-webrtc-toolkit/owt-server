@@ -1,4 +1,3 @@
-/*global require, exports*/
 'use strict';
 require = require('module')._load('./AgentLoader');
 var woogeenInternalIO = require('./internalIO/build/Release/internalIO');

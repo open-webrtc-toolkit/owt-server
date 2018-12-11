@@ -1,4 +1,3 @@
-/*global require, Buffer, exports, GLOBAL, process*/
 'use strict';
 var fs = require('fs');
 var toml = require('toml');

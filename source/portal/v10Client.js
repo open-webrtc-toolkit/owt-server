@@ -1,4 +1,3 @@
-/* global require */
 'use strict';
 
 var log = require('./logger').logger.getLogger('V10Client');
