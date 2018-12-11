@@ -1,4 +1,3 @@
-/*global require, exports*/
 'use strict';
 var amqp = require('amqp');
 var log = require('./logger').logger.getLogger('AmqpClient');

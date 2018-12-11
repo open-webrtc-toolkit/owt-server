@@ -1,4 +1,3 @@
-/*global require, process*/
 'use strict';
 
 var amqper = require('./amqp_client')();

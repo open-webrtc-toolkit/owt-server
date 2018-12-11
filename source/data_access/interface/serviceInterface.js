@@ -1,4 +1,3 @@
-/*global exports, require*/
 'use strict';
 var Service = require('./../model/serviceModel');
 

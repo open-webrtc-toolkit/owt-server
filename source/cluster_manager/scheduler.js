@@ -1,4 +1,3 @@
-/*global require, setTimeout, clearTimeout, exports*/
 'use strict';
 var logger = require('./logger').logger;
 var Matcher = require('./matcher');

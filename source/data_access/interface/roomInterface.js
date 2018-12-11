@@ -1,4 +1,3 @@
-/*global exports, require*/
 'use strict';
 var mongoose = require('mongoose');
 var Room = require('./../model/roomModel');

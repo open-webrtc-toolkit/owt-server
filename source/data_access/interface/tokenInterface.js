@@ -1,4 +1,3 @@
-/*global exports, require, Buffer*/
 'use strict';
 var mongoose = require('mongoose');
 var Token = require('./../model/tokenModel');

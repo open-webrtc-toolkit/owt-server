@@ -1,4 +1,3 @@
-/*global require, exports, global*/
 'use strict';
 var validateReq = require('./restReqValidator').validate;
 var rpc = require('./rpc/rpc');

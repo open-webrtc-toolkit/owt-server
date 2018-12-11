@@ -1,4 +1,3 @@
-/*global require, setInterval, module*/
 'use strict';
 
 var logger = require('./logger').logger;

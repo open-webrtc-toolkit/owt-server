@@ -1,4 +1,3 @@
-/* global require, module */
 'use strict';
 
 var crypto = require('crypto');

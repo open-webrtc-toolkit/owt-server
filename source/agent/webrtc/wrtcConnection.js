@@ -1,4 +1,3 @@
-/*global require, module, global*/
 'use strict';
 require = require('module')._load('./AgentLoader');
 var woogeenWebrtc = require('./webrtcLib/build/Release/webrtc');

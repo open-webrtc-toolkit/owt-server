@@ -1,4 +1,3 @@
-/*global require, exports, Buffer, global*/
 'use strict';
 var dataAccess = require('../data_access');
 var mauthParser = require('./mauthParser');

@@ -1,4 +1,3 @@
-/*global require, exports*/
 'use strict';
 var logger = require('./logger').logger;
 

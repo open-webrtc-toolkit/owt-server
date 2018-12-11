@@ -1,4 +1,3 @@
-/*global require, setTimeout, setInterval, exports*/
 'use strict';
 var logger = require('./logger').logger;
 var Scheduler = require('./scheduler').Scheduler;
