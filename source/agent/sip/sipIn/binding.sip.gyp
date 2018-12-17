@@ -35,8 +35,8 @@
       '-lboost_thread',
       '-lboost_system',
       # Add following arguments to help ldd find libraries during packing
-      '-L$(CORE_HOME)/../../third_party/libre-0.4.16', '-lre',
-      '-Wl,-rpath,$(CORE_HOME)/../../third_party/libre-0.4.16',
+      '-L$(CORE_HOME)/../../third_party/re', '-lre',
+      '-Wl,-rpath,$(CORE_HOME)/../../third_party/re',
       '-Wl,-rpath,<!(pwd)/build/$(BUILDTYPE)',
     ],
     'conditions': [
@@ -69,12 +69,12 @@
         'sip_gateway/sipua/include',
         '$(CORE_HOME)/common',
         '$(CORE_HOME)/../../build/libdeps/build/include',
-        '$(CORE_HOME)/../../third_party/libre-0.4.16/include',
+        '$(CORE_HOME)/../../third_party/re/include',
     ],
     'libraries': [
         '-L<!(pwd)/sip_gateway/sipua', '-lsipua',
         '-L$(CORE_HOME)/../../build/libdeps/build/lib',
-        '-L$(CORE_HOME)/../../third_party/libre-0.4.16', '-lre',
+        '-L$(CORE_HOME)/../../third_party/re', '-lre',
         '-llog4cxx',
         '-lboost_thread',
         '-lboost_system',

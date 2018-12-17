@@ -132,15 +132,16 @@ install_openh264(){
   MINOR=7
   SOVER=4
 
+  rm $ROOT/third_party/openh264 -rf
+  mkdir $ROOT/third_party/openh264
+
   cd $ROOT/third_party/openh264
+
+  # license
+  wget https://www.openh264.org/BINARY_LICENSE.txt
 
   SOURCE=v${MAJOR}.${MINOR}.0.tar.gz
   BINARY=libopenh264-${MAJOR}.${MINOR}.0-linux64.${SOVER}.so
-
-  # delete
-  rm ${SOURCE} openh264-${MAJOR}.${MINOR}.0 codec -rf
-  rm ${BINARY}.bz2 ${BINARY} libopenh264.so.${SOVER} libopenh264.so -rf
-  rm pseudo-openh264.cpp pseudo-openh264.so
 
   # download
   wget https://github.com/cisco/openh264/archive/${SOURCE}
@@ -164,15 +165,6 @@ install_openh264(){
   cd $CURRENT_DIR
 }
 
-install_libsrtp(){
-  cd $ROOT/third_party/srtp
-  ./configure --prefix=$PREFIX_DIR
-  make clean
-  make -s V=0
-  make uninstall
-  make install
-  cd $CURRENT_DIR
-}
 install_msdk_dispatcher(){
   [ -d $LIB_DIR ] || mkdir -p $LIB_DIR
   mkdir -p ${LIB_DIR}/dispatcher
@@ -302,14 +294,17 @@ install_node_tools() {
   patch -p1 < $PATHNAME/patches/nan.patch
   popd >/dev/null
   popd >/dev/null
-  local GATEWAY_SDK_DIR="${ROOT}/source/client_sdk"
-  cd ${GATEWAY_SDK_DIR}
-  mkdir -p node_modules && npm install --prefix . --development --loglevel error
 }
 
 install_libre() {
-  local LIBRE_DIR="${ROOT}/third_party/libre-0.4.16"
-  cd "${LIBRE_DIR}" && make clean && make RELEASE=1
+  pushd ${ROOT}/third_party >/dev/null
+  rm -rf re
+  git clone https://github.com/creytiv/re.git
+  pushd re >/dev/null
+  git checkout v0.4.16
+  make RELEASE=1
+  popd >/dev/null
+  popd >/dev/null
 }
 
 install_usrsctp() {

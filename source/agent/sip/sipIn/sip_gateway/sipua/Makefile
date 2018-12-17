@@ -18,15 +18,15 @@ PROJECT	  := sipua
 VERSION   := 0.0.1
 
 ifndef LIBRE_MK
-LIBRE_MK  := $(shell [ -f ../../../../../../third_party/libre-$(LIBRE_VERSION)/mk/re.mk ] && \
-	echo "../../../../../../third_party/libre-$(LIBRE_VERSION)/mk/re.mk")
+LIBRE_MK  := $(shell [ -f ../../../../../../third_party/re/mk/re.mk ] && \
+	echo "../../../../../../third_party/re/mk/re.mk")
 endif
 
 include $(LIBRE_MK)
 include mk/modules.mk
 
-LIBRE_INC :=../../../../../../third_party/libre-$(LIBRE_VERSION)/include
-LIBRE_SO  :=../../../../third_party/libre-$(LIBRE_VERSION)
+LIBRE_INC :=../../../../../../third_party/re/include
+LIBRE_SO  :=../../../../third_party/re
 
 
 CFLAGS    += -I. -Iinclude -I$(LIBRE_INC) -I$(SYSROOT)/include
