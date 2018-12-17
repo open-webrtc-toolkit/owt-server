@@ -1,0 +1,114 @@
+From d30f113fc0c1ab7dda2b1528178703460661cdd6 Mon Sep 17 00:00:00 2001
+From: Chen Li1 <li1.chen@intel.com>
+Date: Wed, 19 Dec 2018 16:42:07 +0800
+Subject: [PATCH] Remove nicer use
+
+---
+ erizo/src/erizo/DtlsTransport.cpp   |  5 ++--
+ erizo/src/erizo/thread/IOWorker.cpp | 60 ++++++++++++++++++-------------------
+ 2 files changed, 33 insertions(+), 32 deletions(-)
+
+diff --git a/erizo/src/erizo/DtlsTransport.cpp b/erizo/src/erizo/DtlsTransport.cpp
+index bbe7d99..62dfa1e 100644
+--- a/erizo/src/erizo/DtlsTransport.cpp
++++ b/erizo/src/erizo/DtlsTransport.cpp
+@@ -11,7 +11,7 @@
+ #include "./SrtpChannel.h"
+ #include "rtp/RtpHeaders.h"
+ #include "./LibNiceConnection.h"
+-#include "./NicerConnection.h"
++// #include "./NicerConnection.h"
+ 
+ using erizo::Resender;
+ using erizo::DtlsTransport;
+@@ -110,7 +110,8 @@ DtlsTransport::DtlsTransport(MediaType med, const std::string &transport_name, c
+     iceConfig_.username = username;
+     iceConfig_.password = password;
+     if (iceConfig_.use_nicer) {
+-      ice_ = NicerConnection::create(io_worker_, this, iceConfig_);
++      // ice_ = NicerConnection::create(io_worker_, this, iceConfig_);
++      ice_.reset(LibNiceConnection::create(this, iceConfig_));
+     } else {
+       ice_.reset(LibNiceConnection::create(this, iceConfig_));
+     }
+diff --git a/erizo/src/erizo/thread/IOWorker.cpp b/erizo/src/erizo/thread/IOWorker.cpp
+index 62b28dc..93dcc28 100644
+--- a/erizo/src/erizo/thread/IOWorker.cpp
++++ b/erizo/src/erizo/thread/IOWorker.cpp
+@@ -1,10 +1,10 @@
+ #include "thread/IOWorker.h"
+ 
+-extern "C" {
+-#include <r_errors.h>
+-#include <async_wait.h>
+-#include <async_timer.h>
+-}
++// extern "C" {
++// #include <r_errors.h>
++// #include <async_wait.h>
++// #include <async_timer.h>
++// }
+ 
+ #include <chrono>  // NOLINT
+ 
+@@ -23,32 +23,32 @@ void IOWorker::start() {
+ }
+ 
+ void IOWorker::start(std::shared_ptr<std::promise<void>> start_promise) {
+-  if (started_.exchange(true)) {
+-    return;
+-  }
++  // if (started_.exchange(true)) {
++  //   return;
++  // }
+ 
+-  thread_ = std::unique_ptr<std::thread>(new std::thread([this, start_promise] {
+-    start_promise->set_value();
+-    while (!closed_) {
+-      int events;
+-      struct timeval towait = {0, 100000};
+-      struct timeval tv;
+-      int r = NR_async_event_wait2(&events, &towait);
+-      if (r == R_EOD) {
+-        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+-      }
+-      gettimeofday(&tv, 0);
+-      NR_async_timer_update_time(&tv);
+-      std::vector<Task> tasks;
+-      {
+-        std::unique_lock<std::mutex> lock(task_mutex_);
+-        tasks.swap(tasks_);
+-      }
+-      for (Task &task : tasks) {
+-        task();
+-      }
+-    }
+-  }));
++  // thread_ = std::unique_ptr<std::thread>(new std::thread([this, start_promise] {
++  //   start_promise->set_value();
++  //   while (!closed_) {
++  //     int events;
++  //     struct timeval towait = {0, 100000};
++  //     struct timeval tv;
++  //     int r = NR_async_event_wait2(&events, &towait);
++  //     if (r == R_EOD) {
++  //       std::this_thread::sleep_for(std::chrono::milliseconds(10));
++  //     }
++  //     gettimeofday(&tv, 0);
++  //     NR_async_timer_update_time(&tv);
++  //     std::vector<Task> tasks;
++  //     {
++  //       std::unique_lock<std::mutex> lock(task_mutex_);
++  //       tasks.swap(tasks_);
++  //     }
++  //     for (Task &task : tasks) {
++  //       task();
++  //     }
++  //   }
++  // }));
+ }
+ 
+ void IOWorker::task(Task f) {
+-- 
+2.7.4
+

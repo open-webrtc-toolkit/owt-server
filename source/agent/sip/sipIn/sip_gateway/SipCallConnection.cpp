@@ -74,13 +74,15 @@ SipCallConnection::SipCallConnection(SipGateway* gateway, const std::string& pee
       sequenceNumberFIR_(0)
 {
     const CallInfo *info = gateway->getCallInfoByPeerURI(peerURI);
+    m_sipCall = NULL;
     if (info) {
+        m_audioCodec = info->audioCodec;
+        m_videoCodec = info->videoCodec;
         m_sipCall = info->sipCall;
+        if (m_sipCall)
+            gateway->helpSetCallOwner(m_sipCall, static_cast<void*>(this));
     }
-    m_audioCodec = info->audioCodec;
-    m_videoCodec = info->videoCodec;
-    if (m_sipCall)
-        gateway->helpSetCallOwner(m_sipCall, static_cast<void*>(this));
+
     videoSink_ = NULL;
     audioSink_ = NULL;
     fbSink_ = NULL;
