@@ -116,7 +116,8 @@ bool LiveStreamOut::getHeaderOpt(std::string& url, AVDictionary **options)
         av_dict_set(options, "use_timeline", "1", 0);
         av_dict_set(options, "seg_duration", "1"/*seconds*/, 0);
         av_dict_set(options, "dash_segment_type", "mp4", 0);
-        av_dict_set(options, "window_size", "5", 0);
+        av_dict_set(options, "window_size", "3", 0);
+        av_dict_set(options, "extra_window_size", "0", 0);
         av_dict_set(options, "remove_at_exit", "1", 0);
     }
 
