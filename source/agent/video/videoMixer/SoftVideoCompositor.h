@@ -25,7 +25,8 @@
 
 #include <boost/scoped_ptr.hpp>
 #include <boost/shared_ptr.hpp>
-#include <boost/thread/shared_mutex.hpp>
+#include <boost/asio.hpp>
+#include <boost/thread.hpp>
 
 #include <webrtc/system_wrappers/include/clock.h>
 #include <webrtc/api/video/video_frame.h>
@@ -126,10 +127,11 @@ public:
 protected:
     rtc::scoped_refptr<webrtc::VideoFrameBuffer> generateFrame();
     rtc::scoped_refptr<webrtc::VideoFrameBuffer> layout();
+    static void layout_regions(SoftFrameGenerator *t, rtc::scoped_refptr<webrtc::I420Buffer> compositeBuffer, const LayoutSolution &regions);
 
     void reconfigureIfNeeded();
 
-public:
+private:
     const webrtc::Clock *m_clock;
 
     SoftVideoCompositor *m_owner;
@@ -156,6 +158,12 @@ public:
     boost::scoped_ptr<woogeen_base::I420BufferManager> m_bufferManager;
 
     boost::scoped_ptr<JobTimer> m_jobTimer;
+
+    // parallel composition
+    uint32_t m_parallelNum;
+    boost::shared_ptr<boost::asio::io_service> m_srv;
+    boost::shared_ptr<boost::asio::io_service::work> m_srvWork;
+    boost::shared_ptr<boost::thread_group> m_thrGrp;
 };
 
 /**

@@ -26,6 +26,8 @@
 #include <iostream>
 #include <fstream>
 
+#include <boost/make_shared.hpp>
+
 using namespace webrtc;
 using namespace woogeen_base;
 
@@ -271,6 +273,7 @@ SoftFrameGenerator::SoftFrameGenerator(
     , m_bgColor(bgColor)
     , m_crop(crop)
     , m_configureChanged(false)
+    , m_parallelNum(0)
 {
     ELOG_DEBUG_T("Support fps max(%d), min(%d)", m_maxSupportedFps, m_minSupportedFps);
 
@@ -296,6 +299,23 @@ SoftFrameGenerator::SoftFrameGenerator(
 
     m_bufferManager.reset(new I420BufferManager(1));
 
+    // parallet composition
+    uint32_t nThreads = boost::thread::hardware_concurrency();
+    m_parallelNum = nThreads / 2;
+    if (m_parallelNum > 16)
+        m_parallelNum = 16;
+
+    ELOG_INFO_T("hardware concurrency %d, parallel composition num %d", nThreads, m_parallelNum);
+
+    if (m_parallelNum > 1) {
+        m_srv       = boost::make_shared<boost::asio::io_service>();
+        m_srvWork   = boost::make_shared<boost::asio::io_service::work>(*m_srv);
+        m_thrGrp    = boost::make_shared<boost::thread_group>();
+
+        for (uint32_t i = 0; i < m_parallelNum; i++)
+            m_thrGrp->create_thread(boost::bind(&boost::asio::io_service::run, m_srv));
+    }
+
     m_jobTimer.reset(new JobTimer(m_maxSupportedFps, this));
     m_jobTimer->start();
 }
@@ -303,6 +323,19 @@ SoftFrameGenerator::SoftFrameGenerator(
 SoftFrameGenerator::~SoftFrameGenerator()
 {
     ELOG_DEBUG_T("Exit");
+
+    if (m_srvWork)
+        m_srvWork.reset();
+
+    if (m_srv) {
+        m_srv->stop();
+        m_srv.reset();
+    }
+
+    if (m_thrGrp) {
+        m_thrGrp->join_all();
+        m_thrGrp.reset();
+    }
 
     m_jobTimer->stop();
 
@@ -424,26 +457,13 @@ rtc::scoped_refptr<webrtc::VideoFrameBuffer> SoftFrameGenerator::generateFrame()
     return layout();
 }
 
-rtc::scoped_refptr<webrtc::VideoFrameBuffer> SoftFrameGenerator::layout()
+void SoftFrameGenerator::layout_regions(SoftFrameGenerator *t, rtc::scoped_refptr<webrtc::I420Buffer> compositeBuffer, const LayoutSolution &regions)
 {
-    rtc::scoped_refptr<webrtc::I420Buffer> compositeBuffer = m_bufferManager->getFreeBuffer(m_size.width, m_size.height);
-    if (!compositeBuffer) {
-        ELOG_ERROR("No valid composite buffer");
-        return NULL;
-    }
+    uint32_t composite_width = compositeBuffer->width();
+    uint32_t composite_height = compositeBuffer->height();
 
-    // Set the background color
-    libyuv::I420Rect(
-            compositeBuffer->MutableDataY(), compositeBuffer->StrideY(),
-            compositeBuffer->MutableDataU(), compositeBuffer->StrideU(),
-            compositeBuffer->MutableDataV(), compositeBuffer->StrideV(),
-            0, 0, compositeBuffer->width(), compositeBuffer->height(),
-            m_bgColor.y, m_bgColor.cb, m_bgColor.cr);
-
-    for (LayoutSolution::iterator it = m_layout.begin(); it != m_layout.end(); ++it) {
-        int index = it->input;
-
-        boost::shared_ptr<webrtc::VideoFrame> inputFrame = m_owner->getInputFrame(index);
+    for (LayoutSolution::const_iterator it = regions.begin(); it != regions.end(); ++it) {
+        boost::shared_ptr<webrtc::VideoFrame> inputFrame = t->m_owner->getInputFrame(it->input);
         if (inputFrame == NULL) {
             continue;
         }
@@ -451,16 +471,16 @@ rtc::scoped_refptr<webrtc::VideoFrameBuffer> SoftFrameGenerator::layout()
         rtc::scoped_refptr<webrtc::VideoFrameBuffer> inputBuffer = inputFrame->video_frame_buffer();
 
         Region region = it->region;
-        uint32_t dst_x      = (uint64_t)m_size.width * region.area.rect.left.numerator / region.area.rect.left.denominator;
-        uint32_t dst_y      = (uint64_t)m_size.height * region.area.rect.top.numerator / region.area.rect.top.denominator;
-        uint32_t dst_width  = (uint64_t)m_size.width * region.area.rect.width.numerator / region.area.rect.width.denominator;
-        uint32_t dst_height = (uint64_t)m_size.height * region.area.rect.height.numerator / region.area.rect.height.denominator;
+        uint32_t dst_x      = (uint64_t)composite_width * region.area.rect.left.numerator / region.area.rect.left.denominator;
+        uint32_t dst_y      = (uint64_t)composite_height * region.area.rect.top.numerator / region.area.rect.top.denominator;
+        uint32_t dst_width  = (uint64_t)composite_width * region.area.rect.width.numerator / region.area.rect.width.denominator;
+        uint32_t dst_height = (uint64_t)composite_height * region.area.rect.height.numerator / region.area.rect.height.denominator;
 
-        if (dst_x + dst_width > m_size.width)
-            dst_width = m_size.width - dst_x;
+        if (dst_x + dst_width > composite_width)
+            dst_width = composite_width - dst_x;
 
-        if (dst_y + dst_height > m_size.height)
-            dst_height = m_size.height - dst_y;
+        if (dst_y + dst_height > composite_height)
+            dst_height = composite_height - dst_y;
 
         uint32_t cropped_dst_width;
         uint32_t cropped_dst_height;
@@ -468,7 +488,7 @@ rtc::scoped_refptr<webrtc::VideoFrameBuffer> SoftFrameGenerator::layout()
         uint32_t src_y;
         uint32_t src_width;
         uint32_t src_height;
-        if (m_crop) {
+        if (t->m_crop) {
             src_width   = std::min((uint32_t)inputBuffer->width(), dst_width * inputBuffer->height() / dst_height);
             src_height  = std::min((uint32_t)inputBuffer->height(), dst_height * inputBuffer->width() / dst_width);
             src_x       = (inputBuffer->width() - src_width) / 2;
@@ -510,6 +530,58 @@ rtc::scoped_refptr<webrtc::VideoFrameBuffer> SoftFrameGenerator::layout()
                 libyuv::kFilterBox);
         if (ret != 0)
             ELOG_ERROR("I420Scale failed, ret %d", ret);
+    }
+}
+
+rtc::scoped_refptr<webrtc::VideoFrameBuffer> SoftFrameGenerator::layout()
+{
+    rtc::scoped_refptr<webrtc::I420Buffer> compositeBuffer = m_bufferManager->getFreeBuffer(m_size.width, m_size.height);
+    if (!compositeBuffer) {
+        ELOG_ERROR("No valid composite buffer");
+        return NULL;
+    }
+
+    // Set the background color
+    libyuv::I420Rect(
+            compositeBuffer->MutableDataY(), compositeBuffer->StrideY(),
+            compositeBuffer->MutableDataU(), compositeBuffer->StrideU(),
+            compositeBuffer->MutableDataV(), compositeBuffer->StrideV(),
+            0, 0, compositeBuffer->width(), compositeBuffer->height(),
+            m_bgColor.y, m_bgColor.cb, m_bgColor.cr);
+
+    bool isParallelFrameComposition = m_parallelNum > 1 && m_layout.size() > 4;
+
+    if (isParallelFrameComposition) {
+        int nParallelRegions = (m_layout.size() + m_parallelNum - 1) / m_parallelNum;
+        int nRegions = m_layout.size();
+
+        LayoutSolution::iterator regions_begin = m_layout.begin();
+        LayoutSolution::iterator regions_end = m_layout.begin();
+
+        std::vector<boost::shared_ptr<boost::packaged_task<void>>> tasks;
+        while (nRegions > 0) {
+            if (nRegions < nParallelRegions)
+                nParallelRegions = nRegions;
+
+            regions_begin = regions_end;
+            advance(regions_end, nParallelRegions);
+
+            boost::shared_ptr<boost::packaged_task<void>> task = boost::make_shared<boost::packaged_task<void>>(
+                    boost::bind(SoftFrameGenerator::layout_regions,
+                        this,
+                        compositeBuffer,
+                        LayoutSolution(regions_begin, regions_end))
+                    );
+            m_srv->post(boost::bind(&boost::packaged_task<void>::operator(), task));
+            tasks.push_back(task);
+
+            nRegions -= nParallelRegions;
+        }
+
+        for (auto& task : tasks)
+            task->get_future().wait();
+    } else {
+        layout_regions(this, compositeBuffer, m_layout);
     }
 
     return compositeBuffer;
