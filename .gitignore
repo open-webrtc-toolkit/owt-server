@@ -4,6 +4,8 @@ third_party/node-v*
 third_party/usrsctp/
 third_party/licode/
 third_party/openh264
+third_party/nICEr
+third_party/re
 node_modules/
 *.o
 *.d
