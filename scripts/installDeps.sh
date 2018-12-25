@@ -94,9 +94,6 @@ install_libnice014
 pause "Installing openssl library...  [press Enter]"
 install_openssl
 
-pause "Installing libsrtp library...  [press Enter]"
-install_libsrtp
-
 ${NO_INTERNAL} || (pause "Installing webrtc library... [press Enter]" && install_webrtc)
 
 read -p "Installing tcmalloc library? [No/yes]" yn
@@ -134,11 +131,11 @@ case $yn in
   * ) install_libsrtp2;;
 esac
 
-read -p "Installing nicer? [Yes/no]" yn
+read -p "Installing nicer? [No/yes]" yn
 case $yn in
   [Yy]* ) install_nicer;;
   [Nn]* ) ;;
-  * ) install_nicer;;
+  * ) ;;
 esac
 
 read -p "Installing licode? [Yes/no]" yn

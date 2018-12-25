@@ -81,10 +81,6 @@ if [ "$NIGHTLY" != "true" ]; then
 
   install_openssl
 
-  install_libsrtp
-
-  #install_oovoosdk
-
   install_openh264
 
   install_libre
@@ -92,8 +88,6 @@ if [ "$NIGHTLY" != "true" ]; then
   install_usrsctp
 
   install_libsrtp2
-
-  install_nicer
 
   install_licode
 
