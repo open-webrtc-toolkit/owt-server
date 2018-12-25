@@ -10,11 +10,11 @@ var log = logger.getLogger('Connections');
 
 module.exports = function Connections () {
     var that = {},
-        /*{ConnectionID: {type: 'webrtc' | 'avstream' | 'recording' | 'internal',
+        /*{ConnectionID: {type: 'webrtc' | 'avstream' | 'recording' | 'internal' | 'quic',
                           direction: 'in' | 'out',
                           audioFrom: ConnectionID | undefined,
                           videoFrom: ConnectionID | undefined,
-                          connnection: WebRtcConnection | InternalOut | RTSPConnectionOut
+                          connnection: WebRtcConnection | InternalOut | RTSPConnectionOut |
                          }
           }
         */

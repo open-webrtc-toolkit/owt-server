@@ -168,6 +168,7 @@ const SubscriptionRequest = {
       type: 'object',
       properties: {
         'media': { $ref: '#/definitions/MediaSubOptions' },
+        'transport': { $ref: '#/definitions/TransportOptions' },
       },
       additionalProperties: false,
       required: ['media']
@@ -245,6 +246,14 @@ const SubscriptionRequest = {
         'framerate': { type: 'number' },
         'bitrate': { type: ['string', 'number'] },
         'keyFrameInterval': { type: 'number' }
+      },
+      additionalProperties: false
+    },
+
+    'TransportOptions': {
+      type: 'object',
+      properties: {
+        'protocol': { type: 'string' }
       },
       additionalProperties: false
     }

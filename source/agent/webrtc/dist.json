@@ -1,6 +1,18 @@
 {
     "name": "webrtc-agent",
     "dest": "webrtc_agent",
+    "node": {
+        "bin": "woogeen_webrtc",
+        "entry": "../erizoJS.js",
+        "libpath": "webrtc",
+        "libfiles": [
+            "index.js",
+            "wrtcConnection.js",
+            "quicConnection.js",
+            "../connections.js",
+            "../InternalConnectionFactory.js"
+        ]
+    },
     "common": {
         "package": "package.json",
         "files": [

@@ -1,4 +1,7 @@
 {
+  'variables':{
+    'oms_enable_quic%': 0,  # Enable QUIC and other standard WebRTC objects.
+  },
   'targets': [{
     'target_name': 'rtcConn',
     'variables': {
@@ -79,6 +82,15 @@
           'cflags_cc' : ['-Wall', '-O3', '-g' , '-std=c++11', '-fexceptions'],
           'cflags_cc!' : ['-fno-exceptions'],
           'cflags_cc!' : ['-fno-rtti']
+      }],
+      [ 'oms_enable_quic==1', {
+        'sources':[
+          'RTCIceTransport.cc',
+          'RTCIceCandidate.cc',
+        ],
+        'defines':[
+          'OMS_ENABLE_QUIC=1',
+        ]
       }],
     ]
   }]

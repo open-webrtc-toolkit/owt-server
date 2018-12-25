@@ -9,6 +9,7 @@ var WrtcConnection = require('./wrtcConnection');
 var Connections = require('./connections');
 var InternalConnectionFactory = require('./InternalConnectionFactory');
 var logger = require('../logger').logger;
+const QuicConnection = require('./quicConnection');
 
 // Logger
 var log = logger.getLogger('WebrtcNode');
@@ -275,26 +276,28 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
         }
 
         var conn = null;
-        if (connectionType === 'internal') {
-            conn = internalConnFactory.fetch(operationId, 'out');
-            if (conn) {
-                conn.connect(options);
-                connections.addConnection(operationId, connectionType, options.controller, conn, 'out')
-                .then(onSuccess(callback), onError(callback));
-            }
-        } else if (connectionType === 'webrtc') {
-            if (!options.transportId) {
-                // Generate a transportId
-
-            }
-            conn = createWebRTCConnection(options.transportId, options.controller);
-            options.tracks.forEach(function trackOp(t) {
-                conn.addTrackOperation(operationId, t.mid, t.type, 'recvonly', t.formatPreference);
-            });
-            mappingTransports.set(operationId, options.transportId);
-            callback('callback', 'ok');
-        } else {
-            log.error('Connection type invalid:' + connectionType);
+        switch (connectionType) {
+            case 'internal':
+                conn = internalConnFactory.fetch(connectionId, 'out');
+                if (conn)
+                    conn.connect(options);//FIXME: May FAIL here!!!!!
+                break;
+            case 'webrtc':
+                if (options.transport && options.transport.protocol === 'quic') {
+                  log.warn(
+                    'QUIC is an experimental feature. It may not work as you expected.'
+                  );
+                  conn = new QuicConnection(connectionId, (data) => {
+                    notifyStatus(options.controller, connectionId, 'out',
+                      data);
+                  });
+                } else {
+                  conn = createWebRTCConnection(connectionId, 'out', options,
+                    callback);
+                }
+                break;
+            default:
+                log.error('Connection type invalid:' + connectionType);
         }
 
         if (!conn) {
@@ -335,8 +338,13 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
         log.debug('onTransportSignaling, connection id:', connectionId, 'msg:', msg);
         var conn = getWebRTCConnection(connectionId);
         if (conn) {
-            conn.onSignalling(msg, connectionId);
-            callback('callback', 'ok');
+            if (conn.type === 'webrtc') { //NOTE: Only webrtc connection supports signaling.
+                conn.connection.onSignalling(msg);
+                callback('callback', 'ok');
+            } else {
+                log.info('signaling on non-webrtc connection');
+                callback('callback', 'error', 'signaling on non-webrtc connection');
+            }
         } else {
           callback('callback', 'error', 'Connection does NOT exist:' + connectionId);
         }

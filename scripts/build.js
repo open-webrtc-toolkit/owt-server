@@ -20,6 +20,7 @@ optParser.addOption('v', 'verbose', 'boolean', 'Whether use verbose level in bui
 optParser.addOption('r', 'rebuild', 'boolean', 'Whether clean before build');
 optParser.addOption('c', 'check', 'boolean', 'Whether check after build');
 optParser.addOption('j', 'jobs', 'string', 'Number of concurrent build jobs');
+optParser.addOption('f', 'features', 'list', 'Specify experinmental features to be enabled. Available features: quic.')
 
 const options = optParser.parseArgs(process.argv);
 
@@ -90,6 +91,10 @@ function constructBuildEnv() {
     env['OPTIMIZATION_LEVEL'] = '3';
     env['CFLAGS'] = env['CFLAGS'] + ' -D_FORTIFY_SOURCE=2';
     env['CXXFLAGS'] = env['CFLAGS'];
+  }
+
+  if (options.features && options.features.includes('quic')) {
+    env['GYP_DEFINES'] += [' oms_enable_quic=1'];
   }
 
   console.log(env['PKG_CONFIG_PATH']);

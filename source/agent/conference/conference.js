@@ -224,7 +224,10 @@ var Conference = function (rpcClient, selfRpcId) {
    *       type: 'webrtc' | 'streaming' | 'recording' | 'sip' | 'analytics',
    *       location: {host: string(HostIPorDN), path: string(FileFullPath)} | undefined,
    *       url: string(URLofStreamingOut) | undefined
-   *     }
+   *     },
+   *     transport: {
+   *       protocol: 'quic' | undefined
+   *     } | undefined
    *   }
    * }
    */
@@ -1357,6 +1360,7 @@ var Conference = function (rpcClient, selfRpcId) {
         callback('callback', result);
       })
       .catch((e) => {
+        log.error('accessController.init failed. '+e);
         removeSubscription(subscriptionId);
         callback('callback', 'error', e.message ? e.message : e);
       });
