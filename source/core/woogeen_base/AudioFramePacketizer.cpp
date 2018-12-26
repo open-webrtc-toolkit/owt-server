@@ -111,7 +111,7 @@ void AudioFramePacketizer::onFrame(const Frame& frame)
 
     if (frame.additionalInfo.audio.isRtpPacket) { // FIXME: Temporarily use Frame to carry rtp-packets due to the premature AudioFrameConstructor implementation.
         //reinterpret_cast<RTPHeader*>(frame.payload)->setSeqNumber(m_seqNo++);
-        updateSeqNo(frame.payload);
+        // updateSeqNo(frame.payload);
         audio_sink_->deliverAudioData(std::make_shared<erizo::DataPacket>(0, reinterpret_cast<char*>(frame.payload), frame.length, erizo::AUDIO_PACKET));
         return;
     }
