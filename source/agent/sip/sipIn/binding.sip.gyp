@@ -102,7 +102,7 @@
         'outputs': [
           '<!(pwd)/sip_gateway/sipua/libsipua.a'
         ],
-        'action': ['eval', 'cd <!(pwd)/sip_gateway/sipua && make'],
+        'action': ['eval', 'cd <!(pwd)/sip_gateway/sipua && make clean && make'],
       }
     ]
   },
