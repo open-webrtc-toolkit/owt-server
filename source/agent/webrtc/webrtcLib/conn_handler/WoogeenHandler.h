@@ -1,6 +1,7 @@
 #ifndef ERIZO_EXTRA_WOOGEENHANDLER_H_
 #define ERIZO_EXTRA_WOOGEENHANDLER_H_
 
+#include <queue>
 #include "./logger.h"
 #include "pipeline/Handler.h"
 #include "WebRtcConnection.h"
@@ -13,7 +14,15 @@ class WoogeenHandler: public Handler, public std::enable_shared_from_this<Woogee
   DECLARE_LOGGER();
 
  public:
-  explicit WoogeenHandler(WebRtcConnection *connection) : connection_{connection}, enabled_{true} {}
+  explicit WoogeenHandler(WebRtcConnection *connection)
+    : connection_{connection},
+      enabled_{true} {
+    if (connection_ && connection_->getAudioSinkSSRC() != 0) {
+      isOutgoing_ = true;
+    } else {
+      isOutgoing_ = false;
+    }
+  }
 
   // Enabled always
   void enable() override {}
@@ -31,6 +40,7 @@ class WoogeenHandler: public Handler, public std::enable_shared_from_this<Woogee
   WebRtcConnection *connection_;
   bool enabled_;
   char deliverMediaBuffer[3000];
+  bool isOutgoing_;
 };
 
 }  // namespace erizo
