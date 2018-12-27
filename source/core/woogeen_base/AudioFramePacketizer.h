@@ -59,12 +59,6 @@ public:
     // Implements FrameDestination.
     void onFrame(const Frame&);
 
-    // Implements FeedbackSink.
-    //int deliverFeedback(char* buf, int len);
-
-    // Implements erizo::MediaSource.
-    //int sendFirPacket() {return 0;}
-
     // Implements RTPDataReceiver.
     void receiveRtpData(char*, int len, erizoExtra::DataType, uint32_t channelId);
 
@@ -83,6 +77,7 @@ private:
     FrameFormat m_frameFormat;
     boost::shared_mutex m_transport_mutex;
 
+    uint16_t m_lastOriginSeqNo;
     uint16_t m_seqNo;
     uint32_t m_ssrc;
     SsrcGenerator* const m_ssrc_generator;
