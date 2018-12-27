@@ -69,18 +69,20 @@ namespace sip_gateway {
 DEFINE_LOGGER(SipCallConnection, "sip.SipCallConnection");
 
 SipCallConnection::SipCallConnection(SipGateway* gateway, const std::string& peerURI):
+      m_sipCall(NULL),
       m_gateway(gateway),
       m_peerURI(peerURI),
       sequenceNumberFIR_(0)
 {
-    const CallInfo *info = gateway->getCallInfoByPeerURI(peerURI);
-    m_sipCall = NULL;
-    if (info) {
-        m_audioCodec = info->audioCodec;
-        m_videoCodec = info->videoCodec;
-        m_sipCall = info->sipCall;
-        if (m_sipCall)
-            gateway->helpSetCallOwner(m_sipCall, static_cast<void*>(this));
+    if (gateway) {
+        const CallInfo *info = gateway->getCallInfoByPeerURI(peerURI);
+        if (info) {
+            m_audioCodec = info->audioCodec;
+            m_videoCodec = info->videoCodec;
+            m_sipCall = info->sipCall;
+            if (m_sipCall)
+                gateway->helpSetCallOwner(m_sipCall, static_cast<void*>(this));
+        }
     }
 
     videoSink_ = NULL;
