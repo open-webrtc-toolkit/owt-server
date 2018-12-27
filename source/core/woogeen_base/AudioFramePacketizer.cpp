@@ -32,6 +32,7 @@ DEFINE_LOGGER(AudioFramePacketizer, "woogeen.AudioFramePacketizer");
 AudioFramePacketizer::AudioFramePacketizer()
     : m_enabled(true)
     , m_frameFormat(FRAME_FORMAT_UNKNOWN)
+    , m_lastOriginSeqNo(0)
     , m_seqNo(0)
     , m_ssrc(0)
     , m_ssrc_generator(SsrcGenerator::GetSsrcGenerator())
@@ -110,8 +111,7 @@ void AudioFramePacketizer::onFrame(const Frame& frame)
     }
 
     if (frame.additionalInfo.audio.isRtpPacket) { // FIXME: Temporarily use Frame to carry rtp-packets due to the premature AudioFrameConstructor implementation.
-        //reinterpret_cast<RTPHeader*>(frame.payload)->setSeqNumber(m_seqNo++);
-        // updateSeqNo(frame.payload);
+        updateSeqNo(frame.payload);
         audio_sink_->deliverAudioData(std::make_shared<erizo::DataPacket>(0, reinterpret_cast<char*>(frame.payload), frame.length, erizo::AUDIO_PACKET));
         return;
     }
@@ -162,7 +162,18 @@ void AudioFramePacketizer::close()
 }
 
 void AudioFramePacketizer::updateSeqNo(uint8_t* rtp) {
-    *(reinterpret_cast<uint16_t*>(&rtp[2])) = htons(m_seqNo++);
+    uint16_t originSeqNo = *(reinterpret_cast<uint16_t*>(&rtp[2]));
+    if ((m_lastOriginSeqNo == m_seqNo) && (m_seqNo == 0)) {
+    } else {
+        uint16_t step = ((originSeqNo < m_lastOriginSeqNo) ? (UINT16_MAX - m_lastOriginSeqNo + originSeqNo + 1) : (originSeqNo - m_lastOriginSeqNo));
+        if ((step == 1) || (step > 10)) {
+          m_seqNo += 1;
+        } else {
+          m_seqNo += step;
+        }
+    }
+    m_lastOriginSeqNo = originSeqNo;
+    *(reinterpret_cast<uint16_t*>(&rtp[2])) = htons(m_seqNo);
 }
 
 int AudioFramePacketizer::sendPLI() {
