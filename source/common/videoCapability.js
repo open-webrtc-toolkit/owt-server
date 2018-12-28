@@ -12,7 +12,7 @@ const detectSWModeCapability = function () {
         videoCapability.encode.push('h264_CB');
     }
 
-    if (fs.existsSync('./lib/libHevcEncoder.so') && (fs.statSync('./lib/libHevcEncoder.so').size > 100000)) {
+    if (fs.existsSync('./lib/libSvtHevcEnc.so.1') && (fs.statSync('./lib/libSvtHevcEnc.so.1').size > 100000)) {
         videoCapability.encode.push('h265');
     }
 };

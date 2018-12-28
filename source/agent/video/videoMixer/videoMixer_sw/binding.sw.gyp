@@ -55,7 +55,7 @@
                 '$(CORE_HOME)/../../third_party/SVT-HEVC/Source/API',
             ],
             'libraries': [
-                '-L$(CORE_HOME)/../../third_party/SVT-HEVC', '-lHevcEncoder',
+                '-L$(CORE_HOME)/../../third_party/SVT-HEVC', '-lSvtHevcEnc',
             ],
         }]
     ],

@@ -463,9 +463,9 @@ function packAddon(target) {
         }
       }
       if (osType.includes('ubuntu')) {
-        let libHevcEncoder = path.join(libDist, 'libHevcEncoder.so');
-        let dummyHevcEncoder = path.join(rootDir, 'third_party/SVT-HEVC/pseudo-hevcEncoder.so');
-        execSync(`cp -av ${dummyHevcEncoder} ${libHevcEncoder}`);
+        let libSvtHevcEnc = path.join(libDist, 'libSvtHevcEnc.so.1');
+        let dummySvtHevcEnc = path.join(rootDir, 'third_party/SVT-HEVC/pseudo-svtHevcEnc.so');
+        execSync(`cp -av ${dummySvtHevcEnc} ${libSvtHevcEnc}`);
       }
       console.log(target.rules.name, '- Pack addon finished.');
     });
