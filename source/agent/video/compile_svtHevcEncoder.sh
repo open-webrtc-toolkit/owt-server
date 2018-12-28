@@ -49,7 +49,7 @@ install_svt_hevc(){
     git clone https://github.com/intel/SVT-HEVC.git
 
     pushd SVT-HEVC
-    git checkout 61da60f0fcb537a460ef1f4bbdeeeeadb7023567 #new_api branch
+    git checkout 5b3feae186f83942d8039ba574a97aa2f4789f90
 
     pushd Build
     pushd linux
@@ -59,7 +59,7 @@ install_svt_hevc(){
     popd
 
     popd
-    cp -v ./SVT-HEVC/Bin/Debug/libHevcEncoder.so ./
+    cp -v ./SVT-HEVC/Bin/Debug/libSvtHevcEnc.so.1 ./
 
     popd
 }
