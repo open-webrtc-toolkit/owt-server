@@ -14,7 +14,7 @@ enable_intel_gpu_top() {
 
 install_apt_deps(){
   sudo -E apt-get update
-  sudo -E apt-get install git make gcc g++ libssl-dev libglib2.0-dev pkg-config libboost-regex-dev libboost-thread-dev libboost-system-dev liblog4cxx10-dev rabbitmq-server mongodb openjdk-8-jre curl libboost-test-dev nasm yasm gyp libx11-dev libkrb5-dev intel-gpu-tools m4 autoconf libtool automake libsdl1.2-dev
+  sudo -E apt-get install git make gcc g++ libssl-dev libglib2.0-dev pkg-config libboost-regex-dev libboost-thread-dev libboost-system-dev liblog4cxx10-dev rabbitmq-server mongodb openjdk-8-jre curl libboost-test-dev nasm yasm gyp libx11-dev libkrb5-dev intel-gpu-tools m4 autoconf libtool automake libsdl1.2-dev cmake
   enable_intel_gpu_top libffi-dev libgnutls-dev
 }
 
