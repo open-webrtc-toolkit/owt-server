@@ -188,8 +188,10 @@ install_webrtc(){
     fi
   fi
 
+  rm $ROOT/third_party/webrtc -rf
+  mkdir $ROOT/third_party/webrtc
+
   pushd ${ROOT}/third_party/webrtc
-  rm -rf src
   git clone -b 59-mcu ssh://${GIT_ACCOUNT}@git-ccr-1.devtools.intel.com:29418/webrtc-webrtcstack src
   ./src/tools-woogeen/install.sh
   ./src/tools-woogeen/build.sh
