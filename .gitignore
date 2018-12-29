@@ -6,6 +6,7 @@ third_party/licode/
 third_party/openh264
 third_party/nICEr
 third_party/re
+third_party/webrtc
 third_party/SVT-HEVC
 node_modules/
 *.o
