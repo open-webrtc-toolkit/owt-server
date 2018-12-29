@@ -21,10 +21,10 @@ check_proxy(){
 }
 
 install_fdkaac(){
-  local VERSION="0.1.4"
+  local VERSION="0.1.6"
   local SRC="fdk-aac-${VERSION}.tar.gz"
   local SRC_URL="http://sourceforge.net/projects/opencore-amr/files/fdk-aac/${SRC}/download"
-  local SRC_MD5SUM="e274a7d7f6cd92c71ec5c78e4dc9f8b7"
+  local SRC_MD5SUM="13c04c5f4f13f4c7414c95d7fcdea50f"
   mkdir -p ${LIB_DIR}
   pushd ${LIB_DIR}
   [[ ! -s ${SRC} ]] && wget -c ${SRC_URL} -O ${SRC}
@@ -344,7 +344,7 @@ install_libre() {
 install_usrsctp() {
   local TP_DIR="${ROOT}/third_party"
   if [ -d $TP_DIR ]; then
-    local USRSCTP_VERSION="2f6478eb8d40f1766a96b5b033ed26c0c2244589"
+    local USRSCTP_VERSION="30d7f1bd0b58499e1e1f2415e84d76d951665dc8"
     local USRSCTP_FILE="${USRSCTP_VERSION}.tar.gz"
     local USRSCTP_EXTRACT="usrsctp-${USRSCTP_VERSION}"
     local USRSCTP_URL="https://github.com/sctplab/usrsctp/archive/${USRSCTP_FILE}"
