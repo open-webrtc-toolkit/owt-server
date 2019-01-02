@@ -114,6 +114,7 @@ public:
         m_encParam.reset();
         m_encExtCodingOpt.reset();
         m_encExtCodingOpt2.reset();
+        m_encExtCodingOpt3.reset();
         m_encExtHevcParam.reset();
 #if (MFX_VERSION >= 1025)
         m_encExtMultiFrameParam.reset();
@@ -405,50 +406,6 @@ retry:
             m_bsBufferSyncQueue.push_back(bsBufferSync);
             m_syncCond.notify_one();
         }
-
-#if 0
-        sts = m_encSession->SyncOperation(syncp, MFX_INFINITE);
-        if(sts != MFX_ERR_NONE) {
-            ELOG_ERROR("(%p)SyncOperation failed, ret %d", this, sts);
-            return;
-        }
-
-        if (bsBuffer->DataLength <= 0) {
-            ELOG_ERROR("(%p)No output bitstream buffer", this);
-            return;
-        }
-
-        ELOG_TRACE("(%p)Output FrameType %s(0x%x), DataOffset %d , DataLength %d", this,
-                getFrameType(bsBuffer->FrameType),
-                bsBuffer->FrameType,
-                bsBuffer->DataOffset,
-                bsBuffer->DataLength
-              );
-
-        Frame outFrame;
-        memset(&outFrame, 0, sizeof(outFrame));
-        outFrame.format = m_format;
-        outFrame.payload = bsBuffer->Data + bsBuffer->DataOffset;
-        outFrame.length = bsBuffer->DataLength;
-        outFrame.additionalInfo.video.width = m_width;
-        outFrame.additionalInfo.video.height = m_height;
-        outFrame.additionalInfo.video.isKeyFrame = isKeyFrame(bsBuffer->FrameType);
-        outFrame.timeStamp = (m_frameCount++) * 1000 / m_frameRate * 90;
-
-        ELOG_TRACE_T("deliverFrame, %s, %dx%d(%s), length(%d)",
-                getFormatStr(outFrame.format),
-                outFrame.additionalInfo.video.width,
-                outFrame.additionalInfo.video.height,
-                outFrame.additionalInfo.video.isKeyFrame ? "key" : "delta",
-                outFrame.length);
-
-        dump(outFrame.payload, outFrame.length);
-
-        deliverFrame(outFrame);
-
-        bsBuffer->DataOffset   = 0;
-        bsBuffer->DataLength   = 0;
-#endif
     }
 
     void setBitrate(unsigned short kbps)
@@ -491,18 +448,6 @@ protected:
         m_encParam.reset(new mfxVideoParam);
         memset(m_encParam.get(), 0, sizeof(mfxVideoParam));
 
-        m_encExtCodingOpt.reset(new mfxExtCodingOption);
-        memset(m_encExtCodingOpt.get(), 0, sizeof(mfxExtCodingOption));
-
-        m_encExtCodingOpt2.reset(new mfxExtCodingOption2);
-        memset(m_encExtCodingOpt2.get(), 0, sizeof(mfxExtCodingOption2));
-
-        m_encExtHevcParam.reset(new mfxExtHEVCParam);
-        memset(m_encExtHevcParam.get(), 0, sizeof(mfxExtHEVCParam));
-
-        m_encExtParams.push_back(reinterpret_cast<mfxExtBuffer *>(m_encExtCodingOpt.get()));
-        m_encExtParams.push_back(reinterpret_cast<mfxExtBuffer *>(m_encExtCodingOpt2.get()));
-
         // FrameInfo
         m_encParam->mfx.FrameInfo.FourCC          = MFX_FOURCC_NV12;
         m_encParam->mfx.FrameInfo.ChromaFormat    = MFX_CHROMAFORMAT_YUV420;
@@ -536,7 +481,7 @@ protected:
         m_encParam->mfx.NumThread                 = 0;
 
         // mfx Enc
-        m_encParam->mfx.TargetUsage               = 0;
+        m_encParam->mfx.TargetUsage               = MFX_TARGETUSAGE_BALANCED; // MFX_TARGETUSAGE_4
         m_encParam->mfx.GopPicSize                = 3000;
         m_encParam->mfx.GopRefDist                = 1; // Workaround for Windows Chrome 4K H264 Decoding
         m_encParam->mfx.GopOptFlag                = 0;
@@ -550,26 +495,43 @@ protected:
         m_encParam->mfx.MaxKbps                   = m_encParam->mfx.TargetKbps;
 
         m_encParam->mfx.NumSlice                  = 0;
-        m_encParam->mfx.NumRefFrame               = 1;
+        m_encParam->mfx.NumRefFrame               = 2;
         m_encParam->mfx.EncodedOrder              = 0;
 
         // MFX_EXTBUFF_CODING_OPTION
+        m_encExtCodingOpt.reset(new mfxExtCodingOption);
+        memset(m_encExtCodingOpt.get(), 0, sizeof(mfxExtCodingOption));
+
         m_encExtCodingOpt->Header.BufferId             = MFX_EXTBUFF_CODING_OPTION;
         m_encExtCodingOpt->Header.BufferSz             = sizeof(*m_encExtCodingOpt);
-        //m_encExtCodingOpt->MaxDecFrameBuffering        = m_encParam->mfx.NumRefFrame;
-        m_encExtCodingOpt->AUDelimiter                 = MFX_CODINGOPTION_OFF;//No AUD
-        //m_encExtCodingOpt->RecoveryPointSEI            = MFX_CODINGOPTION_OFF;//No SEI
+        m_encExtCodingOpt->AUDelimiter                 = MFX_CODINGOPTION_OFF;
         m_encExtCodingOpt->PicTimingSEI                = MFX_CODINGOPTION_OFF;
         m_encExtCodingOpt->VuiNalHrdParameters         = MFX_CODINGOPTION_OFF;
-        //m_encExtCodingOpt->VuiVclHrdParameters         = MFX_CODINGOPTION_OFF;
+
+        m_encExtParams.push_back(reinterpret_cast<mfxExtBuffer *>(m_encExtCodingOpt.get()));
 
         // MFX_EXTBUFF_CODING_OPTION2
+        m_encExtCodingOpt2.reset(new mfxExtCodingOption2);
+        memset(m_encExtCodingOpt2.get(), 0, sizeof(mfxExtCodingOption2));
+
         m_encExtCodingOpt2->Header.BufferId            = MFX_EXTBUFF_CODING_OPTION2;
         m_encExtCodingOpt2->Header.BufferSz            = sizeof(*m_encExtCodingOpt2);
-        m_encExtCodingOpt2->RepeatPPS                  = MFX_CODINGOPTION_OFF;//No repeat pps
-        //m_encExtCodingOpt2->MBBRC                      = 0;//Disable
-        //m_encExtCodingOpt2->LookAheadDepth             = 0;//For MFX_RATECONTROL_LA
-        //m_encExtCodingOpt2->MaxSliceSize               = 0;
+        m_encExtCodingOpt2->RepeatPPS                  = MFX_CODINGOPTION_OFF;
+        m_encExtCodingOpt2->ExtBRC                     = MFX_CODINGOPTION_ON;
+
+        m_encExtParams.push_back(reinterpret_cast<mfxExtBuffer *>(m_encExtCodingOpt2.get()));
+
+#if (MFX_VERSION >= 1026)
+        // MFX_EXTBUFF_CODING_OPTION3
+        m_encExtCodingOpt3.reset(new mfxExtCodingOption3);
+        memset(m_encExtCodingOpt3.get(), 0, sizeof(mfxExtCodingOption3));
+
+        m_encExtCodingOpt3->Header.BufferId            = MFX_EXTBUFF_CODING_OPTION3;
+        m_encExtCodingOpt3->Header.BufferSz            = sizeof(*m_encExtCodingOpt3);
+        m_encExtCodingOpt3->ExtBrcAdaptiveLTR          = MFX_CODINGOPTION_ON;
+
+        m_encExtParams.push_back(reinterpret_cast<mfxExtBuffer *>(m_encExtCodingOpt3.get()));
+#endif
 
 #if (MFX_VERSION >= 1025)
         uint32_t MFE_timeout = MsdkBase::get()->getConfigMFETimeout();
@@ -617,6 +579,9 @@ protected:
         if (m_format == FRAME_FORMAT_H265) {
             if ((!((m_encParam->mfx.FrameInfo.CropW & 15) ^ 8)) ||
                     (!((m_encParam->mfx.FrameInfo.CropH & 15) ^ 8))) {
+                m_encExtHevcParam.reset(new mfxExtHEVCParam);
+                memset(m_encExtHevcParam.get(), 0, sizeof(mfxExtHEVCParam));
+
                 m_encExtHevcParam->Header.BufferId          = MFX_EXTBUFF_HEVC_PARAM;
                 m_encExtHevcParam->Header.BufferSz          = sizeof(m_encExtHevcParam);
                 m_encExtHevcParam->PicWidthInLumaSamples    = m_encParam->mfx.FrameInfo.CropW;
@@ -873,6 +838,7 @@ private:
     std::vector<mfxExtBuffer *> m_encExtParams;
     boost::scoped_ptr<mfxExtCodingOption> m_encExtCodingOpt;
     boost::scoped_ptr<mfxExtCodingOption2> m_encExtCodingOpt2;
+    boost::scoped_ptr<mfxExtCodingOption3> m_encExtCodingOpt3;
     boost::scoped_ptr<mfxExtHEVCParam> m_encExtHevcParam;
 
 #if (MFX_VERSION >= 1025)

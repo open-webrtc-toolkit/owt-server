@@ -657,6 +657,16 @@ void MsdkBase::printfVideoParam(mfxVideoParam *pVideoParam, DumpType type)
                 }
                 break;
 
+            case MFX_EXTBUFF_CODING_OPTION3:
+                {
+                    mfxExtCodingOption3 *pCodingOption3 = (mfxExtCodingOption3 *)pVideoParam->ExtParam[i];
+
+#if (MFX_VERSION >= 1026)
+                    printf("\t\t\t ExtBrcAdaptiveLTR %d\n", (int)pCodingOption3->ExtBrcAdaptiveLTR);
+#endif
+                }
+                break;
+
 #if (MFX_VERSION >= 1025)
             case MFX_EXTBUFF_MULTI_FRAME_PARAM:
                 {
