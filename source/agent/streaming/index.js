@@ -52,6 +52,17 @@ module.exports = function (rpcClient) {
                                 url: options.connection.url,
                                 initializeTimeout: global.config.avstream.initializeTimeout};
 
+        if (options.connection.url.indexOf('dash://') === 0) {
+            // check the existence of the dash mpd file.
+            var fileName = options.connection.url.substring(7);
+            var fs = require('fs');
+            if (fs.existsSync(fileName)) {
+                log.error('avstream-out init error: file existed.');
+                notifyStatus(options.controller, connectionId, 'out', {type: 'failed', reason: 'file existed.'});
+                return;
+            }
+        }
+
         var connection = new AVStreamOut(avstream_options, function (error) {
             if (error) {
                 log.error('avstream-out init error:', error);
