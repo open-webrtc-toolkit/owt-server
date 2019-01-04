@@ -111,6 +111,27 @@ bool LiveStreamOut::getHeaderOpt(std::string& url, AVDictionary **options)
         av_dict_set(options, "method", "PUT", 0);
 
     } else if (url.compare(0, 7, "dash://") == 0) {
+
+        std::string::size_type last_slash = url.rfind('/');
+        if(last_slash == std::string::npos) {
+            ELOG_ERROR("Unexpected format of %s", url.c_str());
+            return false;
+        }
+        std::string::size_type last_dot = url.rfind('.');
+        if(last_dot == std::string::npos || last_dot < last_slash) {
+            last_dot = url.length() - 1;
+        }
+        std::string dash_uri(url.substr(last_slash + 1, last_dot - last_slash - 1));
+
+        std::string init_seg_uri(dash_uri);
+        init_seg_uri.append("-init-stream$RepresentationID$.m4s");
+
+        std::string media_seg_uri(dash_uri);
+        media_seg_uri.append("-chunk-stream$RepresentationID$-$Number%05d$.m4s");
+
+        av_dict_set(options, "init_seg_name", init_seg_uri.c_str(), 0);
+        av_dict_set(options, "media_seg_name", media_seg_uri.c_str(), 0);
+
         av_dict_set(options, "streaming", "1", 0);
         av_dict_set(options, "use_template", "1", 0);
         av_dict_set(options, "use_timeline", "1", 0);
