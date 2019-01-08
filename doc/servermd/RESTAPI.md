@@ -497,7 +497,7 @@ Streams model:
           parameters: {
             resolution: [object(Resolution)],
             framerate: [number(FramerateFPS)],
-            bitrate: [number(Kbps] | string("x" + Multiple),
+            bitrate: [number(Kbps)] | [string("x" + Multiple)],
             keyFrameRate: [number(Seconds)]
           }
         }
@@ -716,7 +716,7 @@ Streaming-outs model:
     {
          resolution: object(Resolution),  // Refers to object(Resolution) in 5.3, streams data model.
          framerate: number(WantedFrameRateFPS),
-         bitrate: number(WantedBitrateKbps) | string(WantedBitrateMultiple),
+         bitrate: number(WantedBitrateKbps) | string(WantedBitrateMultiple), // Must be in array of VideoInfo.optional.parameters.bitrate in 5.3, streams data model.
          keyFrameInterval: number(WantedKeyFrameIntervalSecond)
     }
 Resources:
@@ -820,7 +820,7 @@ parameters:
          OR
         op: "replace",
         path: "/media/video/parameters/framerate",
-        value: "6" | "12" | "15" | "24" | "30" | "48" | "60"
+        value: 6 | 12 | 15 | 24 | 30 | 48 | 60
          OR
         op: "replace",
         path: "/media/video/parameters/bitrate",
@@ -828,7 +828,7 @@ parameters:
          OR
         op: "replace",
         path: "/media/video/parameters/keyFrameInterval",
-        value: "1" | "2" | "5" | "30" | "100"
+        value: 1 | 2 | 5 | 30 | 100
     }
 response body:
 
@@ -960,10 +960,24 @@ Sip call data model:
         input: object(StreamInfo),
         output: {
           id: string(SubscriptionId),
-          media: object(OutMedia)
+          media: object(SipOutMedia)
         }
     }
     type={"dial-in" | "dial-out"}
+    object(SipOutMedia):
+    {
+        audio: object(SipOutAudio) | false,
+        video: object(SipOutVideo) | false
+    }
+    object(SipOutAudio):
+    {
+        from: string(StreamId),
+    }
+    object(SipOutVideo):
+    {
+        from: string(StreamId),
+        parameters: object(VideoParametersSpecification) // Refer to definition in 5.5
+    }
 
 Resources:
 
@@ -1001,10 +1015,10 @@ parameters:
     options={
         peerURI: string,
         mediaIn: {
-            audio: boolean(),
-            video: boolean()
+            audio: boolean(),      // Must be consistent with mediaOut.audio
+            video: boolean()       // Must be consistent with mediaOut.video
         }
-        mediaOut: object(OutMedia)
+        mediaOut: object(SipOutMedia)
     }
 
 response body:
@@ -1044,7 +1058,7 @@ parameters:
          OR
         op: "replace",
         path: "/output/media/video/parameters/framerate",
-        value: "6" | "12" | "15" | "24" | "30" | "48" | "60"
+        value: 6 | 12 | 15 | 24 | 30 | 48 | 60
          OR
         op: "replace",
         path: "/output/media/video/parameters/bitrate",
@@ -1052,7 +1066,7 @@ parameters:
          OR
         op: "replace",
         path: "/output/media/video/parameters/keyFrameInterval",
-        value: "1" | "2" | "5" | "30" | "100"
+        value: 1 | 2 | 5 | 30 | 100
     }
 response body:
 
