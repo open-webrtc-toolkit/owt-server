@@ -10,6 +10,7 @@ const detectSWModeCapability = function () {
     if (fs.existsSync('./lib/libopenh264.so.4') && (fs.statSync('./lib/libopenh264.so.4').size > 100000)) {
         //FIXME: The detection of installation of openh264 is not accurate here.
         videoCapability.encode.push('h264_CB');
+        videoCapability.encode.push('h264_B'); //FIXME: This is a workround for the profile compability issue, should be removed and fix it by adding accurate profile selecting logic in conference controller.
     }
 
     if (fs.existsSync('./lib/libSvtHevcEnc.so.1') && (fs.statSync('./lib/libSvtHevcEnc.so.1').size > 100000)) {
