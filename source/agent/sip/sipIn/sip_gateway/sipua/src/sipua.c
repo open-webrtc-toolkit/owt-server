@@ -166,7 +166,7 @@ int sipua_new(struct sipua_entity **sipuap, void *endpoint, const char *sip_serv
 
     sipua = mem_zalloc(sizeof(struct sipua_entity), sipua_destructor);
 
-    if (pipe(params.pfd) < 0){
+    if (sipua == NULL || pipe(params.pfd) < 0){
     	goto out;
     }
 
@@ -192,7 +192,7 @@ int sipua_new(struct sipua_entity **sipuap, void *endpoint, const char *sip_serv
 	sipua->thid = thread;
 
 out:
-    if (n < 0 || sipua->mq == NULL || sipua->uag == NULL){
+    if (n < 0 || sipua == NULL || sipua->mq == NULL || sipua->uag == NULL){
     	err = -1;
     	mem_deref(sipua);
     }else if (sipuap){

@@ -1,7 +1,7 @@
-From d30f113fc0c1ab7dda2b1528178703460661cdd6 Mon Sep 17 00:00:00 2001
+From e72befa32045295af9e806b63b7fa80e6e1345ee Mon Sep 17 00:00:00 2001
 From: Chen Li1 <li1.chen@intel.com>
 Date: Wed, 19 Dec 2018 16:42:07 +0800
-Subject: [PATCH] Remove nicer use
+Subject: [PATCH 14/16] Remove nicer use
 
 ---
  erizo/src/erizo/DtlsTransport.cpp   |  5 ++--

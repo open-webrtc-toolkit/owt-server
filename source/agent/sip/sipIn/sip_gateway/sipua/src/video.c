@@ -456,6 +456,8 @@ static void rtcp_handler(struct rtcp_msg *msg, void *arg)
 {
 	struct video *v = arg;
 	void *owner = call_get_owner(v->call);
+	if (!owner)
+		return;
 
 	switch (msg->hdr.pt) {
 
@@ -692,7 +694,7 @@ int video_encoder_set(struct video *v, struct vidcodec *vc,
 
 	vtx = &v->vtx;
 
-	if (vc != vtx->vc) {
+	if (vc != vtx->vc && call_get_ua(v->call) && call_peeruri(v->call)) {
 		info("Set video encoder: %s %s (%u bit/s, %u fps)\n",
 		     vc->name, vc->variant, v->cfg.bitrate, get_fps(v));
 
