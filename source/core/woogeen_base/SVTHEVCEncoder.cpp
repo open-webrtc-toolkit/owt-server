@@ -34,8 +34,13 @@ namespace woogeen_base {
 DEFINE_LOGGER(SVTHEVCEncoder, "woogeen.SVTHEVCEncoder");
 
 SVTHEVCEncoder::SVTHEVCEncoder(FrameFormat format, VideoCodecProfile profile, bool useSimulcast)
-    : m_ready(false)
+    : m_encoderReady(false)
     , m_dest(NULL)
+    , m_width(0)
+    , m_height(0)
+    , m_frameRate(0)
+    , m_bitrateKbps(0)
+    , m_keyFrameIntervalSeconds(0)
     , m_handle(NULL)
     , m_forceIDR(false)
     , m_frameCount(0)
@@ -47,7 +52,7 @@ SVTHEVCEncoder::SVTHEVCEncoder(FrameFormat format, VideoCodecProfile profile, bo
 
 SVTHEVCEncoder::~SVTHEVCEncoder()
 {
-    if (m_ready) {
+    if (m_encoderReady) {
         EbDeinitEncoder(m_handle);
         EbDeinitHandle(m_handle);
 
@@ -58,9 +63,10 @@ SVTHEVCEncoder::~SVTHEVCEncoder()
             m_bsDumpfp = NULL;
         }
 
-        m_dest  = NULL;
-        m_ready = false;
+        m_encoderReady = false;
     }
+
+    m_dest = NULL;
 }
 
 void SVTHEVCEncoder::initDefaultParameters()
@@ -189,47 +195,48 @@ void SVTHEVCEncoder::initDefaultParameters()
 void SVTHEVCEncoder::updateParameters(uint32_t width, uint32_t height, uint32_t frameRate, uint32_t bitrateKbps, uint32_t keyFrameIntervalSeconds)
 {
     //resolution
-    m_encParameters.sourceWidth = width;
-    m_encParameters.sourceHeight = height;
+    m_encParameters.sourceWidth         = width;
+    m_encParameters.sourceHeight        = height;
 
     //gop
-    uint32_t intraPeriodLength              = keyFrameIntervalSeconds * frameRate;
-    m_encParameters.intraPeriodLength       = (intraPeriodLength < 255) ? intraPeriodLength : 255;
+    uint32_t intraPeriodLength          = keyFrameIntervalSeconds * frameRate;
+    m_encParameters.intraPeriodLength   = (intraPeriodLength < 255) ? intraPeriodLength : 255;
 
-    m_encParameters.frameRate               = frameRate;
-    m_encParameters.injectorFrameRate       = frameRate << 16;
-    m_encParameters.targetBitRate           = bitrateKbps * 1000;
+    //framerate
+    m_encParameters.frameRate           = frameRate;
+    m_encParameters.injectorFrameRate   = frameRate << 16;
+
+    //bitrate
+    m_encParameters.targetBitRate       = bitrateKbps * 1000;
 }
 
 bool SVTHEVCEncoder::canSimulcast(FrameFormat format, uint32_t width, uint32_t height)
 {
+    boost::shared_lock<boost::shared_mutex> lock(m_mutex);
+
     return false;
 }
 
 bool SVTHEVCEncoder::isIdle()
 {
-    return !m_ready;
+    boost::shared_lock<boost::shared_mutex> lock(m_mutex);
+
+    return (m_dest == NULL);
 }
 
-int32_t SVTHEVCEncoder::generateStream(uint32_t width, uint32_t height, uint32_t frameRate, uint32_t bitrateKbps, uint32_t keyFrameIntervalSeconds, woogeen_base::FrameDestination* dest)
+bool SVTHEVCEncoder::initEncoder(uint32_t width, uint32_t height, uint32_t frameRate, uint32_t bitrateKbps, uint32_t keyFrameIntervalSeconds)
 {
-    ELOG_INFO_T("generateStream: {.width=%d, .height=%d, .frameRate=%d, .bitrateKbps=%d, .keyFrameIntervalSeconds=%d}"
-            , width, height, frameRate, bitrateKbps, keyFrameIntervalSeconds);
-
     EB_ERRORTYPE return_error = EB_ErrorNone;
 
-    if (m_ready) {
-        ELOG_ERROR_T("Only support one stream!");
-        return -1;
-    }
+    ELOG_DEBUG_T("initEncoder: width=%d, height=%d, frameRate=%d, bitrateKbps=%d, .keyFrameIntervalSeconds=%d}"
+            , width, height, frameRate, bitrateKbps, keyFrameIntervalSeconds);
 
     return_error = EbInitHandle(&m_handle, this, &m_encParameters);
     if (return_error != EB_ErrorNone) {
         ELOG_ERROR_T("InitHandle failed, ret 0x%x", return_error);
-        return -1;
+        return false;
     }
 
-    ELOG_DEBUG_T("SetParameter");
     initDefaultParameters();
     updateParameters(width, height, frameRate, bitrateKbps, keyFrameIntervalSeconds);
 
@@ -238,16 +245,15 @@ int32_t SVTHEVCEncoder::generateStream(uint32_t width, uint32_t height, uint32_t
         ELOG_ERROR_T("SetParameter failed, ret 0x%x", return_error);
 
         EbDeinitHandle(m_handle);
-        return -1;
+        return false;
     }
 
-    ELOG_DEBUG_T("InitEncoder");
     return_error = EbInitEncoder(m_handle);
     if (return_error != EB_ErrorNone) {
         ELOG_ERROR_T("InitEncoder failed, ret 0x%x", return_error);
 
         EbDeinitHandle(m_handle);
-        return -1;
+        return false;
     }
 
     if (!allocateBuffers()) {
@@ -256,7 +262,7 @@ int32_t SVTHEVCEncoder::generateStream(uint32_t width, uint32_t height, uint32_t
         deallocateBuffers();
         EbDeinitEncoder(m_handle);
         EbDeinitHandle(m_handle);
-        return -1;
+        return false;
     }
 
     if (m_enableBsDump) {
@@ -271,18 +277,46 @@ int32_t SVTHEVCEncoder::generateStream(uint32_t width, uint32_t height, uint32_t
         }
     }
 
+    m_encoderReady = true;
+    return true;
+}
+
+int32_t SVTHEVCEncoder::generateStream(uint32_t width, uint32_t height, uint32_t frameRate, uint32_t bitrateKbps, uint32_t keyFrameIntervalSeconds, woogeen_base::FrameDestination* dest)
+{
+    boost::unique_lock<boost::shared_mutex> ulock(m_mutex);
+
+    ELOG_INFO_T("generateStream: {.width=%d, .height=%d, .frameRate=%d, .bitrateKbps=%d, .keyFrameIntervalSeconds=%d}"
+            , width, height, frameRate, bitrateKbps, keyFrameIntervalSeconds);
+
+    if (m_dest) {
+        ELOG_ERROR_T("Only support one stream!");
+        return -1;
+    }
+
+    m_width = width;
+    m_height = height;
+    m_frameRate = frameRate;
+    m_bitrateKbps = bitrateKbps;
+    m_keyFrameIntervalSeconds = keyFrameIntervalSeconds;
+
+    if (m_width != 0 && m_height != 0) {
+        if (!initEncoder(m_width, m_height, m_frameRate, m_bitrateKbps, m_keyFrameIntervalSeconds))
+            return -1;
+    }
+
     m_frameCount = 0;
     m_dest = dest;
-    m_ready = true;
-    ELOG_INFO_T("Generate Stream OK!");
+
     return 0;
 }
 
 void SVTHEVCEncoder::degenerateStream(int32_t streamId)
 {
-    ELOG_INFO_T("%s", __FUNCTION__);
+    boost::unique_lock<boost::shared_mutex> ulock(m_mutex);
 
-    if (m_ready) {
+    ELOG_DEBUG_T("degenerateStream");
+
+    if (m_encoderReady) {
         EbDeinitEncoder(m_handle);
         EbDeinitHandle(m_handle);
 
@@ -293,30 +327,50 @@ void SVTHEVCEncoder::degenerateStream(int32_t streamId)
             m_bsDumpfp = NULL;
         }
 
-        m_dest  = NULL;
-        m_ready = false;
+        m_encoderReady = false;
     }
+
+    m_dest = NULL;
 }
 
 void SVTHEVCEncoder::setBitrate(unsigned short kbps, int32_t streamId)
 {
-    ELOG_INFO_T("%s", __FUNCTION__);
+    boost::shared_lock<boost::shared_mutex> lock(m_mutex);
+
+    ELOG_WARN_T("%s", __FUNCTION__);
 }
 
 void SVTHEVCEncoder::requestKeyFrame(int32_t streamId)
 {
-    ELOG_INFO_T("%s", __FUNCTION__);
+    boost::shared_lock<boost::shared_mutex> lock(m_mutex);
+
+    ELOG_DEBUG_T("%s", __FUNCTION__);
 
     m_forceIDR = true;
 }
 
 void SVTHEVCEncoder::onFrame(const Frame& frame)
 {
-    ELOG_TRACE_T("%s", __FUNCTION__);
-
+    boost::shared_lock<boost::shared_mutex> lock(m_mutex);
     EB_ERRORTYPE return_error = EB_ErrorNone;
 
-    if (!m_ready) {
+    if (m_dest == NULL) {
+        return;
+    }
+
+    if (m_width == 0 || m_height == 0) {
+        m_width = frame.additionalInfo.video.width;
+        m_height = frame.additionalInfo.video.height;
+
+        if (m_bitrateKbps == 0)
+            m_bitrateKbps = calcBitrate(m_width, m_height, m_frameRate);
+
+        if (!initEncoder(m_width, m_height, m_frameRate, m_bitrateKbps, m_keyFrameIntervalSeconds)) {
+            return;
+        }
+    }
+
+    if (!m_encoderReady) {
         ELOG_ERROR_T("Encoder not ready!");
         return;
     }
@@ -353,8 +407,6 @@ void SVTHEVCEncoder::onFrame(const Frame& frame)
     }else if (return_error != EB_NoErrorEmptyQueue) {
         fillPacketDone(streamBufferHeader);
     }
-
-    //m_freeInputBuffers.pop();
 }
 
 bool SVTHEVCEncoder::convert2BufferHeader(const Frame& frame, EB_BUFFERHEADERTYPE *bufferHeader)
@@ -366,13 +418,6 @@ bool SVTHEVCEncoder::convert2BufferHeader(const Frame& frame, EB_BUFFERHEADERTYP
             int ret;
             webrtc::VideoFrame *videoFrame = reinterpret_cast<webrtc::VideoFrame*>(frame.payload);
             rtc::scoped_refptr<webrtc::VideoFrameBuffer> videoBuffer = videoFrame->video_frame_buffer();
-
-            ELOG_TRACE_T("Convert frame, %dx%d -> %dx%d"
-                    , videoBuffer->width()
-                    , videoBuffer->height()
-                    , m_encParameters.sourceWidth
-                    , m_encParameters.sourceHeight
-                    );
 
             if ((uint32_t)videoBuffer->width() == m_encParameters.sourceWidth
                     && (uint32_t)videoBuffer->height() == m_encParameters.sourceHeight) {
@@ -427,8 +472,6 @@ bool SVTHEVCEncoder::convert2BufferHeader(const Frame& frame, EB_BUFFERHEADERTYP
 
 bool SVTHEVCEncoder::allocateBuffers()
 {
-    ELOG_INFO_T("%s", __FUNCTION__);
-
     // one buffer
     uint32_t inputOutputBufferFifoInitCount = 1;
 
@@ -502,8 +545,6 @@ bool SVTHEVCEncoder::allocateBuffers()
 
 void SVTHEVCEncoder::deallocateBuffers()
 {
-    ELOG_INFO_T("%s", __FUNCTION__);
-
     for (auto& bufferHeader : m_inputBufferPool) {
         if (bufferHeader.pBuffer) {
             EB_H265_ENC_INPUT* inputPtr = (EB_H265_ENC_INPUT*)bufferHeader.pBuffer;
@@ -540,9 +581,7 @@ void SVTHEVCEncoder::deallocateBuffers()
 
 void SVTHEVCEncoder::fillPacketDone(EB_BUFFERHEADERTYPE* pBufferHeader)
 {
-    ELOG_TRACE_T("%s", __FUNCTION__);
-
-    ELOG_DEBUG_T("Fill packet done, nFilledLen(%d), nTickCount %d(ms), dts(%lld), pts(%lld), nFlags(0x%x), qpValue(%d), sliceType(%d)"
+    ELOG_TRACE_T("Fill packet done, nFilledLen(%d), nTickCount %d(ms), dts(%lld), pts(%lld), nFlags(0x%x), qpValue(%d), sliceType(%d)"
             , pBufferHeader->nFilledLen
             , pBufferHeader->nTickCount
             , pBufferHeader->dts
@@ -564,7 +603,7 @@ void SVTHEVCEncoder::fillPacketDone(EB_BUFFERHEADERTYPE* pBufferHeader)
     outFrame.additionalInfo.video.height        = m_encParameters.sourceHeight;
     outFrame.additionalInfo.video.isKeyFrame    = (pBufferHeader->sliceType == EB_IDR_SLICE);
 
-    ELOG_DEBUG_T("deliverFrame, %s, %dx%d(%s), length(%d)",
+    ELOG_TRACE_T("deliverFrame, %s, %dx%d(%s), length(%d)",
             getFormatStr(outFrame.format),
             outFrame.additionalInfo.video.width,
             outFrame.additionalInfo.video.height,

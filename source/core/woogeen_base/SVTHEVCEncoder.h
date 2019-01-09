@@ -61,6 +61,8 @@ protected:
     bool allocateBuffers();
     void deallocateBuffers();
 
+    bool initEncoder(uint32_t width, uint32_t height, uint32_t frameRate, uint32_t bitrateKbps, uint32_t keyFrameIntervalSeconds);
+
     bool convert2BufferHeader(const Frame& frame, EB_BUFFERHEADERTYPE *bufferHeader);
 
     void fillPacketDone(EB_BUFFERHEADERTYPE* pBufferHeader);
@@ -68,8 +70,14 @@ protected:
     void dump(uint8_t *buf, int len);
 
 private:
-    bool                        m_ready;
+    bool                        m_encoderReady;
     FrameDestination            *m_dest;
+
+    uint32_t m_width;
+    uint32_t m_height;
+    uint32_t m_frameRate;
+    uint32_t m_bitrateKbps;
+    uint32_t m_keyFrameIntervalSeconds;
 
     EB_COMPONENTTYPE            *m_handle;
     EB_H265_ENC_CONFIGURATION   m_encParameters;
@@ -80,6 +88,8 @@ private:
 
     bool m_forceIDR;
     uint32_t m_frameCount;
+
+    boost::shared_mutex m_mutex;
 
     bool m_enableBsDump;
     FILE *m_bsDumpfp;
