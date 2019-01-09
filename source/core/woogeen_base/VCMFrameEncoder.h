@@ -26,8 +26,8 @@
 
 #include <boost/scoped_ptr.hpp>
 #include <boost/shared_ptr.hpp>
+#include <boost/asio.hpp>
 #include <boost/thread.hpp>
-#include <boost/thread/shared_mutex.hpp>
 
 #include <webrtc/modules/video_coding/codecs/h264/include/h264.h>
 #include <webrtc/modules/video_coding/codecs/vp8/include/vp8.h>
@@ -107,9 +107,11 @@ public:
     void requestKeyFrame(int32_t streamId);
 
 protected:
-    void doEncoding();
-    void encodeLoop();
-    void encodeOneFrame();
+    static void Encode(VCMFrameEncoder *This, boost::shared_ptr<webrtc::VideoFrame> videoFrame) {This->encode(videoFrame);};
+    void encode(boost::shared_ptr<webrtc::VideoFrame> videoFrame);
+
+    boost::shared_ptr<webrtc::VideoFrame> frameConvert(const Frame& frame);
+
     void dump(uint8_t *buf, int len);
 
 private:
@@ -121,6 +123,7 @@ private:
     };
 
     int32_t m_streamId;
+    std::map<int32_t/*streamId*/, OutStream> m_streams;
 
     FrameFormat m_encodeFormat;
     VideoCodecProfile m_profile;
@@ -128,15 +131,12 @@ private:
     webrtc::TemporalLayersFactory tl_factory_;
 
     boost::scoped_ptr<I420BufferManager> m_bufferManager;
-    std::map<int32_t/*streamId*/, OutStream> m_streams;
+
     boost::shared_mutex m_mutex;
 
-    bool m_running;
-    boost::thread m_thread;
-    boost::mutex m_encMutex;
-    boost::condition_variable m_encCond;
-
-    uint32_t m_incomingFrameCount;
+    boost::shared_ptr<boost::asio::io_service> m_srv;
+    boost::shared_ptr<boost::asio::io_service::work> m_srvWork;
+    boost::shared_ptr<boost::thread> m_thread;
 
     std::atomic<bool> m_requestKeyFrame;
     std::atomic<uint32_t> m_updateBitrateKbps;
@@ -148,8 +148,6 @@ private:
     uint32_t m_bitrateKbps;
 
     boost::scoped_ptr<FrameConverter> m_converter;
-
-    boost::shared_ptr<webrtc::VideoFrame> m_busyFrame;
 
     bool m_enableBsDump;
     FILE *m_bsDumpfp;

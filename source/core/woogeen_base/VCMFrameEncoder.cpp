@@ -18,6 +18,8 @@
  * and approved by Intel in writing.
  */
 
+#include <boost/make_shared.hpp>
+
 #include <webrtc/system_wrappers/include/cpu_info.h>
 #include <webrtc/modules/video_coding/codec_database.h>
 
@@ -39,8 +41,6 @@ VCMFrameEncoder::VCMFrameEncoder(FrameFormat format, VideoCodecProfile profile, 
     : m_streamId(0)
     , m_encodeFormat(format)
     , m_profile(profile)
-    , m_running(false)
-    , m_incomingFrameCount(0)
     , m_requestKeyFrame(false)
     , m_updateBitrateKbps(0)
     , m_isAdaptiveMode(false)
@@ -54,15 +54,17 @@ VCMFrameEncoder::VCMFrameEncoder(FrameFormat format, VideoCodecProfile profile, 
     m_bufferManager.reset(new I420BufferManager(3));
     m_converter.reset(new FrameConverter());
 
-    m_running = true;
-    m_thread = boost::thread(&VCMFrameEncoder::encodeLoop, this);
+    m_srv       = boost::make_shared<boost::asio::io_service>();
+    m_srvWork   = boost::make_shared<boost::asio::io_service::work>(*m_srv);
+    m_thread    = boost::make_shared<boost::thread>(boost::bind(&boost::asio::io_service::run, m_srv));
 }
 
 VCMFrameEncoder::~VCMFrameEncoder()
 {
-    m_running = false;
-    m_encCond.notify_one();
-    m_thread.join();
+    m_srvWork.reset();
+    m_srv->stop();
+    m_thread.reset();
+    m_srv.reset();
 
     m_streamId = 0;
 
@@ -190,7 +192,7 @@ int32_t VCMFrameEncoder::generateStream(uint32_t width, uint32_t height, uint32_
 
     ret = m_encoder->InitEncode(&codecSettings, webrtc::CpuInfo::DetectNumberOfCores(), 0);
     if (ret) {
-        printf("Video encoder init faild.\n");
+        ELOG_ERROR_T("Video encoder init faild.\n");
         return -1;
     }
 
@@ -284,6 +286,7 @@ int32_t VCMFrameEncoder::generateStream(uint32_t width, uint32_t height, uint32_
 void VCMFrameEncoder::degenerateStream(int32_t streamId)
 {
     boost::upgrade_lock<boost::shared_mutex> lock(m_mutex);
+
     ELOG_DEBUG_T("degenerateStream(%d)", streamId);
 
     auto it = m_streams.find(streamId);
@@ -296,6 +299,7 @@ void VCMFrameEncoder::degenerateStream(int32_t streamId)
 void VCMFrameEncoder::setBitrate(unsigned short kbps, int32_t streamId)
 {
     boost::shared_lock<boost::shared_mutex> lock(m_mutex);
+
     ELOG_DEBUG_T("setBitrate(%d), %d(kbps)", streamId, kbps);
 
     auto it = m_streams.find(streamId);
@@ -307,6 +311,7 @@ void VCMFrameEncoder::setBitrate(unsigned short kbps, int32_t streamId)
 void VCMFrameEncoder::requestKeyFrame(int32_t streamId)
 {
     boost::shared_lock<boost::shared_mutex> lock(m_mutex);
+
     ELOG_DEBUG_T("requestKeyFrame(%d)", streamId);
 
     auto it = m_streams.find(streamId);
@@ -317,13 +322,29 @@ void VCMFrameEncoder::requestKeyFrame(int32_t streamId)
 
 void VCMFrameEncoder::onFrame(const Frame& frame)
 {
+    boost::shared_lock<boost::shared_mutex> lock(m_mutex);
+
+    if (m_streams.size() == 0) {
+        return;
+    }
+
+    boost::shared_ptr<webrtc::VideoFrame> videoFrame = frameConvert(frame);
+    if (videoFrame == NULL) {
+        return;
+    }
+
+    m_srv->post(boost::bind(&VCMFrameEncoder::Encode, this, videoFrame));
+}
+
+boost::shared_ptr<webrtc::VideoFrame> VCMFrameEncoder::frameConvert(const Frame& frame)
+{
     int32_t dstFrameWidth = m_isAdaptiveMode ? frame.additionalInfo.video.width : m_width;
     int32_t dstFrameHeight = m_isAdaptiveMode ? frame.additionalInfo.video.height: m_height;
 
     rtc::scoped_refptr<webrtc::I420Buffer> rawBuffer = m_bufferManager->getFreeBuffer(dstFrameWidth, dstFrameHeight);
     if (!rawBuffer) {
-        ELOG_ERROR("No valid buffer");
-        return;
+        ELOG_ERROR_T("No valid buffer");
+        return NULL;
     }
 
     boost::shared_ptr<webrtc::VideoFrame> dstFrame;
@@ -331,14 +352,14 @@ void VCMFrameEncoder::onFrame(const Frame& frame)
     switch (frame.format) {
     case FRAME_FORMAT_I420: {
         if (m_encodeFormat == FRAME_FORMAT_UNKNOWN)
-            return;
+            return NULL;
 
         VideoFrame *inputFrame = reinterpret_cast<VideoFrame*>(frame.payload);
         rtc::scoped_refptr<webrtc::VideoFrameBuffer> inputBuffer = inputFrame->video_frame_buffer();
 
         if (!m_converter->convert(inputBuffer.get(), rawBuffer.get())) {
-            ELOG_ERROR("frameConverter failed");
-            return;
+            ELOG_ERROR_T("frameConverter failed");
+            return NULL;
         }
 
         dstFrame.reset(new VideoFrame(rawBuffer, inputFrame->timestamp(), 0, webrtc::kVideoRotation_0));
@@ -347,14 +368,14 @@ void VCMFrameEncoder::onFrame(const Frame& frame)
 #ifdef ENABLE_MSDK
     case FRAME_FORMAT_MSDK: {
         if (m_encodeFormat == FRAME_FORMAT_UNKNOWN)
-            return;
+            return NULL;
 
         MsdkFrameHolder *holder = (MsdkFrameHolder *)frame.payload;
         boost::shared_ptr<MsdkFrame> msdkFrame = holder->frame;
 
         if (!m_converter->convert(msdkFrame.get(), rawBuffer.get())) {
-            ELOG_ERROR("frameConverter failed");
-            return;
+            ELOG_ERROR_T("frameConverter failed");
+            return NULL;
         }
 
         dstFrame.reset(new VideoFrame(rawBuffer, frame.timeStamp, 0, webrtc::kVideoRotation_0));
@@ -363,26 +384,27 @@ void VCMFrameEncoder::onFrame(const Frame& frame)
 #endif
     default:
         assert(false);
+        return NULL;
+    }
+
+    return dstFrame;
+}
+
+void VCMFrameEncoder::encode(boost::shared_ptr<webrtc::VideoFrame> frame)
+{
+    boost::shared_lock<boost::shared_mutex> lock(m_mutex);
+    int ret;
+
+    if (m_streams.size() == 0) {
         return;
     }
 
-    m_busyFrame = dstFrame;
-    encodeOneFrame();
-}
-
-void VCMFrameEncoder::doEncoding()
-{
-    int ret;
-    boost::shared_ptr<webrtc::VideoFrame> frame = m_busyFrame;
-    if (!frame)
-        return;
-
     if (m_width != frame->width() || m_height != frame->height()) {
-        ELOG_DEBUG("Update encoder resolution %dx%d->%dx%d", m_width, m_height, frame->width(), frame->height());
+        ELOG_DEBUG_T("Update encoder resolution %dx%d->%dx%d", m_width, m_height, frame->width(), frame->height());
 
         ret = m_encoder->SetResolution(frame->width(), frame->height());
         if (ret != 0) {
-            ELOG_WARN("Update Encode size error: %d", ret);
+            ELOG_WARN_T("Update Encode size error: %d", ret);
         }
 
         m_width = frame->width();
@@ -391,7 +413,7 @@ void VCMFrameEncoder::doEncoding()
     }
 
     if (m_updateBitrateKbps) {
-        ELOG_DEBUG("Update encoder bitrate %d(kbps)->%d(kbps)", m_bitrateKbps, m_updateBitrateKbps.load());
+        ELOG_DEBUG_T("Update encoder bitrate %d(kbps)->%d(kbps)", m_bitrateKbps, m_updateBitrateKbps.load());
 
         if (m_bitrateKbps != m_updateBitrateKbps) {
             BitrateAllocation bitrate;
@@ -399,7 +421,7 @@ void VCMFrameEncoder::doEncoding()
 
             ret = m_encoder->SetRateAllocation(bitrate, m_frameRate);
             if (ret != 0) {
-                ELOG_WARN("Update Encode bitrate error: %d", ret);
+                ELOG_WARN_T("Update Encode bitrate error: %d", ret);
             }
             m_bitrateKbps = m_updateBitrateKbps;
         }
@@ -414,43 +436,8 @@ void VCMFrameEncoder::doEncoding()
 
     ret = m_encoder->Encode(*frame.get(), NULL, types.size() ? &types : NULL);
     if (ret != 0) {
-        ELOG_ERROR("Encode frame error: %d", ret);
+        ELOG_ERROR_T("Encode frame error: %d", ret);
     }
-}
-
-void VCMFrameEncoder::encodeLoop()
-{
-    while (true) {
-        {
-            boost::mutex::scoped_lock lock(m_encMutex);
-            while (m_running && m_incomingFrameCount == 0) {
-                m_encCond.wait(lock);
-            }
-
-            if (!m_running)
-                break;
-
-            m_incomingFrameCount--;
-        }
-
-        doEncoding();
-    }
-
-    ELOG_TRACE_T("Thread exited!");
-}
-
-void VCMFrameEncoder::encodeOneFrame()
-{
-    boost::mutex::scoped_lock lock(m_encMutex);
-
-    m_incomingFrameCount++;
-    m_encCond.notify_one();
-
-    if (m_incomingFrameCount == 100)
-        ELOG_WARN_T("Too many pending frames(%d)!!!", m_incomingFrameCount);
-
-    if (m_incomingFrameCount > 100)
-        ELOG_DEBUG_T("Too many pending frames(%d)!!!", m_incomingFrameCount);
 }
 
 webrtc::EncodedImageCallback::Result VCMFrameEncoder::OnEncodedImage(const EncodedImage& encoded_frame,
@@ -458,6 +445,7 @@ webrtc::EncodedImageCallback::Result VCMFrameEncoder::OnEncodedImage(const Encod
         const RTPFragmentationHeader* fragmentation)
 {
     boost::shared_lock<boost::shared_mutex> lock(m_mutex);
+
     if (!m_streams.empty()) {
         Frame frame;
         memset(&frame, 0, sizeof(frame));
