@@ -1,15 +1,12 @@
-From cf070d6671a2e10afb1887b6c68fcb11b3e47077 Mon Sep 17 00:00:00 2001
+From f43d4816a09af0946c13984cbc0acc1bfdf9843d Mon Sep 17 00:00:00 2001
 From: Chen Li1 <li1.chen@intel.com>
 Date: Thu, 27 Dec 2018 15:39:01 +0800
-Subject: [PATCH] Enable incomming stats handler
+Subject: [PATCH 16/16] Enable incomming stats handler
 
 ---
- erizo/src/erizo/WebRtcConnection.cpp |   4 +-
- erizo/src/erizo/rtp/StatsHandler.cpp | 222 +++++++++++++++++++++++++++++++++++
- erizo/src/erizo/rtp/StatsHandler.h   |  87 ++++++++++++++
- 3 files changed, 311 insertions(+), 2 deletions(-)
- create mode 100644 erizo/src/erizo/rtp/StatsHandler.cpp
- create mode 100644 erizo/src/erizo/rtp/StatsHandler.h
+ erizo/src/erizo/WebRtcConnection.cpp | 4 ++--
+ erizo/src/erizo/rtp/StatsHandler.cpp | 8 ++++++++
+ 2 files changed, 10 insertions(+), 2 deletions(-)
 
 diff --git a/erizo/src/erizo/WebRtcConnection.cpp b/erizo/src/erizo/WebRtcConnection.cpp
 index d7c3760..7060980 100644
@@ -34,326 +31,31 @@ index d7c3760..7060980 100644
    // pipeline_->addFront(RtpSlideShowHandler());
    // pipeline_->addFront(RtpPaddingGeneratorHandler());
 diff --git a/erizo/src/erizo/rtp/StatsHandler.cpp b/erizo/src/erizo/rtp/StatsHandler.cpp
-new file mode 100644
-index 0000000..92f6302
---- /dev/null
+index e3284cd..92f6302 100644
+--- a/erizo/src/erizo/rtp/StatsHandler.cpp
 +++ b/erizo/src/erizo/rtp/StatsHandler.cpp
-@@ -0,0 +1,222 @@
-+#include "rtp/StatsHandler.h"
-+
-+#include <string>
-+
-+#include "./MediaDefinitions.h"
-+#include "./WebRtcConnection.h"
-+
-+
-+
-+namespace erizo {
-+
-+DEFINE_LOGGER(StatsCalculator, "rtp.StatsCalculator");
-+DEFINE_LOGGER(IncomingStatsHandler, "rtp.IncomingStatsHandler");
-+DEFINE_LOGGER(OutgoingStatsHandler, "rtp.OutgoingStatsHandler");
-+
+@@ -13,6 +13,8 @@ DEFINE_LOGGER(StatsCalculator, "rtp.StatsCalculator");
+ DEFINE_LOGGER(IncomingStatsHandler, "rtp.IncomingStatsHandler");
+ DEFINE_LOGGER(OutgoingStatsHandler, "rtp.OutgoingStatsHandler");
+ 
 +const uint32_t AVG_LOSS_WINDOW = 10;
 +
-+void StatsCalculator::update(WebRtcConnection *connection, std::shared_ptr<Stats> stats) {
-+  if (!connection_) {
-+    connection_ = connection;
-+    stats_ = stats;
-+    if (!getStatsInfo().hasChild("total")) {
-+      getStatsInfo()["total"].insertStat("bitrateCalculated", MovingIntervalRateStat{kRateStatIntervalSize,
-+        kRateStatIntervals, 8.});
-+    }
-+  }
-+}
-+
-+void StatsCalculator::processPacket(std::shared_ptr<DataPacket> packet) {
-+  RtcpHeader *chead = reinterpret_cast<RtcpHeader*> (packet->data);
-+  if (chead->isRtcp()) {
-+    processRtcpPacket(packet);
-+  } else {
-+    processRtpPacket(packet);
-+  }
-+}
-+
-+void StatsCalculator::processRtpPacket(std::shared_ptr<DataPacket> packet) {
-+  char* buf = packet->data;
-+  int len = packet->length;
-+  RtpHeader* head = reinterpret_cast<RtpHeader*>(buf);
-+  uint32_t ssrc = head->getSSRC();
-+  if (!connection_->isSinkSSRC(ssrc) && !connection_->isSourceSSRC(ssrc)) {
-+    ELOG_DEBUG("message: Unknown SSRC in processRtpPacket, ssrc: %u, PT: %u", ssrc, head->getPayloadType());
-+    return;
-+  }
-+  if (!getStatsInfo()[ssrc].hasChild("bitrateCalculated")) {
-+    if (connection_->isVideoSourceSSRC(ssrc) || connection_->isVideoSinkSSRC(ssrc)) {
-+      getStatsInfo()[ssrc].insertStat("type", StringStat{"video"});
-+    } else if (connection_->isAudioSourceSSRC(ssrc) || connection_->isAudioSinkSSRC(ssrc)) {
-+      getStatsInfo()[ssrc].insertStat("type", StringStat{"audio"});
-+    }
-+    getStatsInfo()[ssrc].insertStat("bitrateCalculated", MovingIntervalRateStat{kRateStatIntervalSize,
-+        kRateStatIntervals, 8.});
-+  }
-+  getStatsInfo()[ssrc]["bitrateCalculated"] += len;
-+  getStatsInfo()["total"]["bitrateCalculated"] += len;
-+  if (packet->type == VIDEO_PACKET && packet->is_keyframe) {
-+    incrStat(ssrc, "keyFrames");
-+  }
-+}
-+
-+void StatsCalculator::incrStat(uint32_t ssrc, std::string stat) {
-+  if (!getStatsInfo()[ssrc].hasChild(stat)) {
-+    getStatsInfo()[ssrc].insertStat(stat, CumulativeStat{1});
-+    return;
-+  }
-+  getStatsInfo()[ssrc][stat]++;
-+}
-+
-+void StatsCalculator::processRtcpPacket(std::shared_ptr<DataPacket> packet) {
-+  char* buf = packet->data;
-+  int len = packet->length;
-+
-+  char* movingBuf = buf;
-+  int rtcpLength = 0;
-+  int totalLength = 0;
-+  uint32_t ssrc = 0;
-+
-+  bool is_feedback_on_publisher = false;
-+
-+  RtcpHeader *chead = reinterpret_cast<RtcpHeader*>(movingBuf);
-+  if (chead->isFeedback()) {
-+    ssrc = chead->getSourceSSRC();
-+    if (!connection_->isSinkSSRC(ssrc)) {
-+      is_feedback_on_publisher = true;
-+    }
-+  } else {
-+    ssrc = chead->getSSRC();
-+    if (!connection_->isSourceSSRC(ssrc)) {
-+      return;
-+    }
-+  }
-+
-+  ELOG_DEBUG("RTCP packet received, type: %u, size: %u, packetLength: %u", chead->getPacketType(),
-+       ((ntohs(chead->length) + 1) * 4), len);
-+  do {
-+    movingBuf += rtcpLength;
-+    RtcpHeader *chead = reinterpret_cast<RtcpHeader*>(movingBuf);
-+    rtcpLength = (ntohs(chead->length) + 1) * 4;
-+    totalLength += rtcpLength;
-+    ELOG_DEBUG("RTCP SubPacket: PT %d, SSRC %u, sourceSSRC %u, block count %d",
-+        chead->packettype, chead->getSSRC(), chead->getSourceSSRC(), chead->getBlockCount());
-+    switch (chead->packettype) {
-+      case RTCP_SDES_PT:
-+        ELOG_DEBUG("SDES");
-+        break;
-+      case RTCP_BYE:
-+        ELOG_DEBUG("RTCP BYE");
-+        break;
-+      case RTCP_Receiver_PT:
-+        if (is_feedback_on_publisher) {
-+          break;
-+        }
-+        ELOG_DEBUG("RTP RR: Fraction Lost %u, packetsLost %u", chead->getFractionLost(), chead->getLostPackets());
-+        getStatsInfo()[ssrc].insertStat("fractionLost", CumulativeStat{chead->getFractionLost()});
-+        getStatsInfo()[ssrc].insertStat("packetsLost", CumulativeStat{chead->getLostPackets()});
-+        getStatsInfo()[ssrc].insertStat("jitter", CumulativeStat{chead->getJitter()});
-+        getStatsInfo()[ssrc].insertStat("sourceSsrc", CumulativeStat{ssrc});
+ void StatsCalculator::update(WebRtcConnection *connection, std::shared_ptr<Stats> stats) {
+   if (!connection_) {
+     connection_ = connection;
+@@ -115,6 +117,12 @@ void StatsCalculator::processRtcpPacket(std::shared_ptr<DataPacket> packet) {
+         getStatsInfo()[ssrc].insertStat("packetsLost", CumulativeStat{chead->getLostPackets()});
+         getStatsInfo()[ssrc].insertStat("jitter", CumulativeStat{chead->getJitter()});
+         getStatsInfo()[ssrc].insertStat("sourceSsrc", CumulativeStat{ssrc});
 +
 +        // Get average fraction loss (among AVG_LOSS_WINDOW fraction loss)
 +        if (!getStatsInfo()[ssrc].hasChild("avgFractionLost")) {
 +          getStatsInfo()[ssrc].insertStat("avgFractionLost", MovingAverageStat{AVG_LOSS_WINDOW});
 +        }
 +        getStatsInfo()[ssrc]["avgFractionLost"] += (chead->getFractionLost());
-+        break;
-+      case RTCP_Sender_PT:
-+        ELOG_DEBUG("RTP SR: Packets Sent %u, Octets Sent %u", chead->getPacketsSent(), chead->getOctetsSent());
-+        getStatsInfo()[ssrc].insertStat("packetsSent", CumulativeStat{chead->getPacketsSent()});
-+        getStatsInfo()[ssrc].insertStat("bytesSent", CumulativeStat{chead->getOctetsSent()});
-+        break;
-+      case RTCP_RTP_Feedback_PT:
-+        ELOG_DEBUG("RTP FB: Usually NACKs: %u", chead->getBlockCount());
-+        ELOG_DEBUG("PID %u BLP %u", chead->getNackPid(), chead->getNackBlp());
-+        incrStat(ssrc, "NACK");
-+        break;
-+      case RTCP_PS_Feedback_PT:
-+        ELOG_DEBUG("RTCP PS FB TYPE: %u", chead->getBlockCount() );
-+        switch (chead->getBlockCount()) {
-+          case RTCP_PLI_FMT:
-+            ELOG_DEBUG("PLI Packet, SSRC %u, sourceSSRC %u", chead->getSSRC(), chead->getSourceSSRC());
-+            incrStat(ssrc, "PLI");
-+            break;
-+          case RTCP_SLI_FMT:
-+            ELOG_DEBUG("SLI Message");
-+            incrStat(ssrc, "SLI");
-+            break;
-+          case RTCP_FIR_FMT:
-+            ELOG_DEBUG("FIR Packet, SSRC %u, sourceSSRC %u", chead->getSSRC(), chead->getSourceSSRC());
-+            incrStat(ssrc, "FIR");
-+            break;
-+          case RTCP_AFB:
-+            {
-+              if (is_feedback_on_publisher) {
-+                break;
-+              }
-+              ELOG_DEBUG("REMB Packet, SSRC %u, sourceSSRC %u", chead->getSSRC(), chead->getSourceSSRC());
-+              char *uniqueId = reinterpret_cast<char*>(&chead->report.rembPacket.uniqueid);
-+              if (!strncmp(uniqueId, "REMB", 4)) {
-+                uint64_t bitrate = chead->getREMBBitRate();
-+                // ELOG_DEBUG("REMB Packet numSSRC %u mantissa %u exp %u, tot %lu bps",
-+                //             chead->getREMBNumSSRC(), chead->getBrMantis(), chead->getBrExp(), bitrate);
-+                getStatsInfo()[ssrc].insertStat("bandwidth", CumulativeStat{bitrate});
-+              } else {
-+                ELOG_DEBUG("Unsupported AFB Packet not REMB")
-+              }
-+              break;
-+            }
-+          default:
-+            ELOG_WARN("Unsupported RTCP_PS FB TYPE %u", chead->getBlockCount());
-+            break;
-+        }
-+        break;
-+      default:
-+        ELOG_DEBUG("Unknown RTCP Packet, %d", chead->packettype);
-+        break;
-+    }
-+  } while (totalLength < len);
-+  notifyStats();
-+}
-+
-+IncomingStatsHandler::IncomingStatsHandler() : connection_{nullptr} {}
-+
-+void IncomingStatsHandler::enable() {}
-+
-+void IncomingStatsHandler::disable() {}
-+
-+void IncomingStatsHandler::notifyUpdate() {
-+  if (connection_) {
-+    return;
-+  }
-+  auto pipeline = getContext()->getPipelineShared();
-+  update(pipeline->getService<WebRtcConnection>().get(),
-+             pipeline->getService<Stats>());
-+}
-+
-+void IncomingStatsHandler::read(Context *ctx, std::shared_ptr<DataPacket> packet) {
-+  processPacket(packet);
-+  ctx->fireRead(std::move(packet));
-+}
-+
-+OutgoingStatsHandler::OutgoingStatsHandler() : connection_{nullptr} {}
-+
-+void OutgoingStatsHandler::enable() {}
-+
-+void OutgoingStatsHandler::disable() {}
-+
-+void OutgoingStatsHandler::notifyUpdate() {
-+  if (connection_) {
-+    return;
-+  }
-+  auto pipeline = getContext()->getPipelineShared();
-+  update(pipeline->getService<WebRtcConnection>().get(),
-+             pipeline->getService<Stats>());
-+}
-+
-+void OutgoingStatsHandler::write(Context *ctx, std::shared_ptr<DataPacket> packet) {
-+  processPacket(packet);
-+  ctx->fireWrite(std::move(packet));
-+}
-+
-+}  // namespace erizo
-diff --git a/erizo/src/erizo/rtp/StatsHandler.h b/erizo/src/erizo/rtp/StatsHandler.h
-new file mode 100644
-index 0000000..8013aef
---- /dev/null
-+++ b/erizo/src/erizo/rtp/StatsHandler.h
-@@ -0,0 +1,87 @@
-+#ifndef ERIZO_SRC_ERIZO_RTP_STATSHANDLER_H_
-+#define ERIZO_SRC_ERIZO_RTP_STATSHANDLER_H_
-+
-+#include <string>
-+
-+#include "./logger.h"
-+#include "pipeline/Handler.h"
-+#include "./Stats.h"
-+
-+namespace erizo {
-+
-+constexpr duration kRateStatIntervalSize = std::chrono::milliseconds(100);
-+constexpr uint32_t kRateStatIntervals = 30;
-+
-+class WebRtcConnection;
-+
-+class StatsCalculator {
-+  DECLARE_LOGGER();
-+
-+ public:
-+  StatsCalculator() : connection_{nullptr} {}
-+  virtual ~StatsCalculator() {}
-+
-+  void update(WebRtcConnection *connection, std::shared_ptr<Stats> stats);
-+  void processPacket(std::shared_ptr<DataPacket> packet);
-+
-+  StatNode& getStatsInfo() {
-+    return stats_->getNode();
-+  }
-+
-+  void notifyStats() {
-+    stats_->sendStats();
-+  }
-+
-+ private:
-+  void processRtpPacket(std::shared_ptr<DataPacket> packet);
-+  void processRtcpPacket(std::shared_ptr<DataPacket> packet);
-+  void incrStat(uint32_t ssrc, std::string stat);
-+
-+ private:
-+  WebRtcConnection *connection_;
-+  std::shared_ptr<Stats> stats_;
-+};
-+
-+class IncomingStatsHandler: public InboundHandler, public StatsCalculator {
-+  DECLARE_LOGGER();
-+
-+ public:
-+  IncomingStatsHandler();
-+
-+  void enable() override;
-+  void disable() override;
-+
-+  std::string getName() override {
-+    return "incoming-stats";
-+  }
-+
-+  void read(Context *ctx, std::shared_ptr<DataPacket> packet) override;
-+  void notifyUpdate() override;
-+
-+ private:
-+  WebRtcConnection* connection_;
-+};
-+
-+class OutgoingStatsHandler: public OutboundHandler, public StatsCalculator {
-+  DECLARE_LOGGER();
-+
-+ public:
-+  OutgoingStatsHandler();
-+
-+  void enable() override;
-+  void disable() override;
-+
-+  std::string getName() override {
-+    return "outgoing-stats";
-+  }
-+
-+  void write(Context *ctx, std::shared_ptr<DataPacket> packet) override;
-+  void notifyUpdate() override;
-+
-+ private:
-+  WebRtcConnection* connection_;
-+};
-+
-+}  // namespace erizo
-+
-+#endif  // ERIZO_SRC_ERIZO_RTP_STATSHANDLER_H_
+         break;
+       case RTCP_Sender_PT:
+         ELOG_DEBUG("RTP SR: Packets Sent %u, Octets Sent %u", chead->getPacketsSent(), chead->getOctetsSent());
 -- 
 2.7.4
 

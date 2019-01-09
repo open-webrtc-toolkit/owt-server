@@ -652,7 +652,7 @@ int audio_encoder_set(struct audio *a, const struct aucodec *ac,
 	}
 
 	/* Should anounce the gateway about the encode params */
-	if (reset) {
+	if (reset && call_get_ua(a->call)) {
 		ep_update_audio_params((call_get_ua(a->call))->owner->ep, call_peeruri(a->call), ac->name, get_srate(ac), ac->ch, params);
 		settledown_audio_codec(stream_sdpmedia(a->strm), ac->name, get_srate(ac), ac->ch);
 	}
@@ -808,7 +808,7 @@ static int pre_decode_rtpheader(struct rtp_header *hdr, uint8_t *buf, size_t len
 void audio_send(struct audio *a, uint8_t *data, size_t len)
 {
 	struct rtp_header hdr;
-	struct autx *tx;
+	struct autx *tx = NULL;
 	int err, pl_pos, pl_len;
 
     if (!a) {
@@ -847,5 +847,7 @@ void audio_send(struct audio *a, uint8_t *data, size_t len)
 	}
 
  out:
-    tx->marker = false;
+    if (tx) {
+      tx->marker = false;
+    }
 }

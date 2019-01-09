@@ -43,7 +43,7 @@ void ua_event(struct ua *ua, enum ua_event ev, struct call *call,
 	va_end(ap);
 
 	/* send event to all clients */
-	if (!uag) {
+	if (uag) {
 		for (le = uag->ehl.head; le; le = le->next) {
 
 			struct ua_eh *eh = le->data;
@@ -223,6 +223,8 @@ static void call_event_handler(struct call *call, enum call_event ev,
 	int err;
 
 	peeruri = call_peeruri(call);
+        if (!peeruri)
+		return;
 
 	switch (ev) {
 
