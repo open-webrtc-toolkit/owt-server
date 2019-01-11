@@ -88,6 +88,13 @@ install_node_tools
 pause "Installing glib library...  [press Enter]"
 install_glib
 
+read -p "Installing zlib? [Yes/no]" yn
+case $yn in
+  [Yy]* ) install_zlib;;
+  [Nn]* ) ;;
+  * ) install_zlib;;
+esac
+
 pause "Installing libnice library...  [press Enter]"
 install_libnice014
 
@@ -115,6 +122,13 @@ case $yn in
   [Yy]* ) install_libre;;
   [Nn]* ) ;;
   * ) install_libre;;
+esac
+
+read -p "Installing libexpat? [Yes/no]" yn
+case $yn in
+  [Yy]* ) install_libexpat;;
+  [Nn]* ) ;;
+  * ) install_libexpat;;
 esac
 
 read -p "Installing libusrsctp? [Yes/no]" yn
