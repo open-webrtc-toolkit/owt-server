@@ -77,6 +77,8 @@ if [ "$NIGHTLY" != "true" ]; then
     install_glib
   fi
 
+  install_zlib
+
   install_libnice014
 
   install_openssl
@@ -84,6 +86,8 @@ if [ "$NIGHTLY" != "true" ]; then
   install_openh264
 
   install_libre
+
+  install_libexpat
 
   install_usrsctp
 
