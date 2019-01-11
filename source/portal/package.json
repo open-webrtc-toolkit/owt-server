@@ -12,7 +12,7 @@
     "fraction.js": "*"
   },
   "devDependencies": {
-    "mocha": "^2.2.5",
+    "mocha": "^5.2.0",
     "chai": "^3.0.0",
     "chai-as-promised": "^5.1.0",
     "sinon": "^1.15.4",
@@ -20,7 +20,7 @@
     "istanbul": "*",
     "request": "*",
     "mockery": "*",
-    "socket.io-client": "*"
+    "socket.io-client": "2.2.0"
   },
   "scripts": {
     "test": "mocha ./test -R spec --timeout 5000",
