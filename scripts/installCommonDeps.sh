@@ -65,10 +65,29 @@ install_ffmpeg(){
   popd
 }
 
+install_zlib() {
+  local VERSION="1.2.11"
+  if [ -d $LIB_DIR ]; then
+    pushd $LIB_DIR >/dev/null
+    rm -rf zlib-*
+    rm -f ./build/lib/zlib.*
+    wget -c https://zlib.net/zlib-${VERSION}.tar.gz
+    tar -zxf zlib-${VERSION}.tar.gz
+    pushd zlib-${VERSION} >/dev/null
+    ./configure --prefix=$PREFIX_DIR
+    make && make install
+    popd >/dev/null
+    popd >/dev/null
+  else
+    mkdir -p $LIB_DIR
+    install_zlib
+  fi
+}
+
+#libnice depends on zlib
 install_libnice0114(){
   if [ -d $LIB_DIR ]; then
     cd $LIB_DIR
-    rm -f libnice-0.1.*
     rm -f ./build/lib/libnice.*
     rm -rf libnice-0.1.*
     wget -c http://nice.freedesktop.org/releases/libnice-0.1.14.tar.gz
@@ -84,10 +103,10 @@ install_libnice0114(){
   fi
 }
 
+#libnice depends on zlib
 install_libnice014(){
   if [ -d $LIB_DIR ]; then
     cd $LIB_DIR
-    rm -f libnice-0.1.*
     rm -f ./build/lib/libnice.*
     rm -rf libnice-0.1.*
     wget -c http://nice.freedesktop.org/releases/libnice-0.1.4.tar.gz
@@ -107,8 +126,11 @@ install_libnice014(){
 
 install_openssl(){
   if [ -d $LIB_DIR ]; then
-    local SSL_VERSION="1.0.2i"
+    local SSL_VERSION="1.0.2q"
     cd $LIB_DIR
+    rm -f ./build/lib/libssl.*
+    rm -f ./build/lib/libcrypto.*
+    rm -rf openssl-1*
     wget -c http://www.openssl.org/source/openssl-${SSL_VERSION}.tar.gz
     tar xf openssl-${SSL_VERSION}.tar.gz
     cd openssl-${SSL_VERSION}
@@ -174,6 +196,26 @@ install_msdk_dispatcher(){
   make
   cp -av __lib/libdispatch_shared.a ${PREFIX_DIR}/lib/libdispatch_shared.a
   popd
+}
+
+install_libexpat() {
+  if [ -d $LIB_DIR ]; then
+    local VERSION="2.2.6"
+    local DURL="https://github.com/libexpat/libexpat/releases/download/R_2_2_6/expat-${VERSION}.tar.bz2"
+    pushd ${LIB_DIR} >/dev/null
+    rm -rf expat-*
+    rm -f ./build/lib/libexpat.*
+    wget -c $DURL
+    tar jxf expat-${VERSION}.tar.bz2
+    pushd expat-${VERSION} >/dev/null
+    ./configure --prefix=${PREFIX_DIR} --with-docbook --without-xmlwf
+    make && make install
+    popd >/dev/null
+    popd >/dev/null
+  else
+    mkdir -p $LIB_DIR
+    install_libexpat
+  fi
 }
 
 install_webrtc(){
@@ -298,13 +340,14 @@ install_node_tools() {
   popd >/dev/null
 }
 
+# libre depends on openssl
 install_libre() {
   pushd ${ROOT}/third_party >/dev/null
   rm -rf re
   git clone https://github.com/creytiv/re.git
   pushd re >/dev/null
   git checkout v0.4.16
-  make RELEASE=1
+  make SYSROOT_ALT=${PREFIX_DIR} RELEASE=1
   popd >/dev/null
   popd >/dev/null
 }
