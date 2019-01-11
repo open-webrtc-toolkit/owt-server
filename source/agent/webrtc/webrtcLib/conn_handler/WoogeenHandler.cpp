@@ -6,7 +6,6 @@ namespace erizo {
 
 DEFINE_LOGGER(WoogeenHandler, "WoogeenHandler");
 
-const int LOSS_THRESHOLD = 20;
 
 void WoogeenHandler::read(Context *ctx, std::shared_ptr<DataPacket> packet) {
   char* buf = packet->data;
@@ -73,30 +72,6 @@ void WoogeenHandler::write(Context *ctx, std::shared_ptr<DataPacket> packet) {
         return;
       }
     }
-
-    int externalOPUS = connection_->getRemoteSdpInfo().getVideoExternalPT(OPUS_48000_PT);
-    if (h->getPayloadType() == externalOPUS) {
-      if (isOutgoing_ && getContext()) {
-        auto pipeline = getContext()->getPipelineShared();
-        if (pipeline) {
-          std::shared_ptr<Stats> stats = pipeline->getService<Stats>();
-
-          // This is in front of StatsHandler
-          uint32_t mssrc = h->getSSRC();
-          if (stats && stats->getNode().hasChild(mssrc) &&
-              stats->getNode()[mssrc].hasChild("avgFractionLost")) {
-            uint64_t avgLoss = stats->getNode()[mssrc]["avgFractionLost"].value();
-
-            ELOG_DEBUG("Here is average loss: %d, fractionLOST for opus ssrc: %u", (int)avgLoss, h->getSSRC());
-            if (avgLoss > LOSS_THRESHOLD) {
-              ELOG_DEBUG("dup opus packet");
-              ctx->fireWrite(packet);
-            }
-          }
-        }
-      }
-    }
-
   }
 
   ctx->fireWrite(std::move(packet));
