@@ -1,7 +1,7 @@
-From 3dca13f12babdf8956689e4f149288e59ba2a9f1 Mon Sep 17 00:00:00 2001
+From a998d9a65fb2ede61e69cc035937d20846a1d3a9 Mon Sep 17 00:00:00 2001
 From: Chen Li1 <li1.chen@intel.com>
 Date: Mon, 10 Dec 2018 10:52:56 +0800
-Subject: [PATCH 13/16] Remove Klocwork severity critical warnings
+Subject: [PATCH] Remove Klocwork severity critical warnings
 
 ---
  erizo/src/erizo/DtlsTransport.cpp                  |  10 +-
@@ -26,7 +26,7 @@ Subject: [PATCH 13/16] Remove Klocwork severity critical warnings
  erizo/src/erizo/rtp/RtpPaddingGeneratorHandler.h   |  73 ------
  erizo/src/erizo/rtp/RtpPaddingRemovalHandler.cpp   | 133 ----------
  erizo/src/erizo/rtp/RtpPaddingRemovalHandler.h     |  48 ----
- erizo/src/erizo/rtp/RtpRetransmissionHandler.cpp   |   6 +-
+ erizo/src/erizo/rtp/RtpRetransmissionHandler.cpp   |  11 +-
  erizo/src/erizo/rtp/RtpSlideShowHandler.cpp        | 263 --------------------
  erizo/src/erizo/rtp/RtpSlideShowHandler.h          |  66 -----
  erizo/src/erizo/rtp/RtpTrackMuteHandler.cpp        | 131 ----------
@@ -35,7 +35,8 @@ Subject: [PATCH 13/16] Remove Klocwork severity critical warnings
  erizo/src/erizo/rtp/SRPacketHandler.h              |  51 ----
  .../rtp/SenderBandwidthEstimantionHandler.cpp      | 184 --------------
  .../erizo/rtp/SenderBandwidthEstimationHandler.h   |  73 ------
- 31 files changed, 34 insertions(+), 2705 deletions(-)
+ erizo/src/erizo/rtp/StatsHandler.cpp               |   6 +-
+ 32 files changed, 42 insertions(+), 2708 deletions(-)
  delete mode 100644 erizo/src/erizo/rtp/BandwidthEstimationHandler.cpp
  delete mode 100644 erizo/src/erizo/rtp/BandwidthEstimationHandler.h
  delete mode 100644 erizo/src/erizo/rtp/FecReceiverHandler.cpp
@@ -2084,10 +2085,22 @@ index 2847440..0000000
 -
 -#endif  // ERIZO_SRC_ERIZO_RTP_RTPPADDINGREMOVALHANDLER_H_
 diff --git a/erizo/src/erizo/rtp/RtpRetransmissionHandler.cpp b/erizo/src/erizo/rtp/RtpRetransmissionHandler.cpp
-index 47ea198..d798aea 100644
+index 47ea198..d4e4f62 100644
 --- a/erizo/src/erizo/rtp/RtpRetransmissionHandler.cpp
 +++ b/erizo/src/erizo/rtp/RtpRetransmissionHandler.cpp
-@@ -27,6 +27,9 @@ void RtpRetransmissionHandler::disable() {
+@@ -15,7 +15,10 @@ RtpRetransmissionHandler::RtpRetransmissionHandler(std::shared_ptr<erizo::Clock>
+     connection_{nullptr},
+     initialized_{false}, enabled_{true},
+     bucket_{static_cast<uint64_t>(kDefaultBitrate * kMarginRtxBitrate), kBurstSize, clock_},
+-    last_bitrate_time_{clock_->now()} {}
++    last_bitrate_time_{} {
++  if (clock_)
++    last_bitrate_time_ = clock_->now();
++}
+ 
+ 
+ void RtpRetransmissionHandler::enable() {
+@@ -27,6 +30,9 @@ void RtpRetransmissionHandler::disable() {
  }
  
  void RtpRetransmissionHandler::notifyUpdate() {
@@ -2097,7 +2110,7 @@ index 47ea198..d798aea 100644
    auto pipeline = getContext()->getPipelineShared();
    if (pipeline && !connection_) {
      connection_ = pipeline->getService<WebRtcConnection>().get();
-@@ -99,7 +102,8 @@ void RtpRetransmissionHandler::read(Context *ctx, std::shared_ptr<DataPacket> pa
+@@ -99,7 +105,8 @@ void RtpRetransmissionHandler::read(Context *ctx, std::shared_ptr<DataPacket> pa
              RtpHeader *recovered_head = reinterpret_cast<RtpHeader*> (recovered->data);
              if (recovered_head->getSeqNumber() == seq_num) {
                getRtxBitrateStat() += recovered->length;
@@ -3066,6 +3079,30 @@ index 9bbc23a..0000000
 -};
 -}  // namespace erizo
 -#endif  //  ERIZO_SRC_ERIZO_RTP_SENDERBANDWIDTHESTIMATIONHANDLER_H_
+diff --git a/erizo/src/erizo/rtp/StatsHandler.cpp b/erizo/src/erizo/rtp/StatsHandler.cpp
+index e3284cd..353f54d 100644
+--- a/erizo/src/erizo/rtp/StatsHandler.cpp
++++ b/erizo/src/erizo/rtp/StatsHandler.cpp
+@@ -188,7 +188,8 @@ void IncomingStatsHandler::notifyUpdate() {
+ 
+ void IncomingStatsHandler::read(Context *ctx, std::shared_ptr<DataPacket> packet) {
+   processPacket(packet);
+-  ctx->fireRead(std::move(packet));
++  if (ctx)
++    ctx->fireRead(std::move(packet));
+ }
+ 
+ OutgoingStatsHandler::OutgoingStatsHandler() : connection_{nullptr} {}
+@@ -208,7 +209,8 @@ void OutgoingStatsHandler::notifyUpdate() {
+ 
+ void OutgoingStatsHandler::write(Context *ctx, std::shared_ptr<DataPacket> packet) {
+   processPacket(packet);
+-  ctx->fireWrite(std::move(packet));
++  if (ctx)
++    ctx->fireWrite(std::move(packet));
+ }
+ 
+ }  // namespace erizo
 -- 
 2.7.4
 

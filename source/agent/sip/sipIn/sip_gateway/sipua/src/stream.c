@@ -341,12 +341,14 @@ struct sdp_media *stream_sdpmedia(const struct stream *s)
 static void stream_start_keepalive(struct stream *s)
 {
 	const char *rtpkeep = NULL;
+	struct account *uaccount = NULL;
 
 	if (!s)
 		return;
 
-        if (ua_prm(call_get_ua(s->call)))
-		rtpkeep = ua_prm(call_get_ua(s->call))->rtpkeep;
+        uaccount = ua_prm(call_get_ua(s->call));
+	if (uaccount)
+		rtpkeep = uaccount->rtpkeep;
 
 	s->rtpkeep = mem_deref(s->rtpkeep);
 
