@@ -46,8 +46,8 @@ index 3ea020b..42b297f 100644
 +  /* treat empty candidate list as "remove all", or create a new interface? */
 +  if (!candidates) {
 +    component->selected_pair.priority = 0;
-+    g_slist_free_full(component->remote_candidates, (GDestroyNotify)&nice_candidate_free);
-+    component->remote_candidates = NULL;
++    //g_slist_free_full(component->remote_candidates, (GDestroyNotify)&nice_candidate_free);
++    //component->remote_candidates = NULL;
 +    goto done;
 +  }
 +
