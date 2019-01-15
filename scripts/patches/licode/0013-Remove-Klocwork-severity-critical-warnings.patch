@@ -1,4 +1,4 @@
-From a998d9a65fb2ede61e69cc035937d20846a1d3a9 Mon Sep 17 00:00:00 2001
+From 62efd72c23ed25d8c1a737842d98e9e965a6b83f Mon Sep 17 00:00:00 2001
 From: Chen Li1 <li1.chen@intel.com>
 Date: Mon, 10 Dec 2018 10:52:56 +0800
 Subject: [PATCH] Remove Klocwork severity critical warnings
@@ -35,8 +35,8 @@ Subject: [PATCH] Remove Klocwork severity critical warnings
  erizo/src/erizo/rtp/SRPacketHandler.h              |  51 ----
  .../rtp/SenderBandwidthEstimantionHandler.cpp      | 184 --------------
  .../erizo/rtp/SenderBandwidthEstimationHandler.h   |  73 ------
- erizo/src/erizo/rtp/StatsHandler.cpp               |   6 +-
- 32 files changed, 42 insertions(+), 2708 deletions(-)
+ erizo/src/erizo/rtp/StatsHandler.cpp               |  16 +-
+ 32 files changed, 48 insertions(+), 2712 deletions(-)
  delete mode 100644 erizo/src/erizo/rtp/BandwidthEstimationHandler.cpp
  delete mode 100644 erizo/src/erizo/rtp/BandwidthEstimationHandler.h
  delete mode 100644 erizo/src/erizo/rtp/FecReceiverHandler.cpp
@@ -3080,10 +3080,23 @@ index 9bbc23a..0000000
 -}  // namespace erizo
 -#endif  //  ERIZO_SRC_ERIZO_RTP_SENDERBANDWIDTHESTIMATIONHANDLER_H_
 diff --git a/erizo/src/erizo/rtp/StatsHandler.cpp b/erizo/src/erizo/rtp/StatsHandler.cpp
-index e3284cd..353f54d 100644
+index e3284cd..4c93ea1 100644
 --- a/erizo/src/erizo/rtp/StatsHandler.cpp
 +++ b/erizo/src/erizo/rtp/StatsHandler.cpp
-@@ -188,7 +188,8 @@ void IncomingStatsHandler::notifyUpdate() {
+@@ -178,17 +178,19 @@ void IncomingStatsHandler::enable() {}
+ void IncomingStatsHandler::disable() {}
+ 
+ void IncomingStatsHandler::notifyUpdate() {
+-  if (connection_) {
++  if (connection_ || !getContext()) {
+     return;
+   }
+   auto pipeline = getContext()->getPipelineShared();
+-  update(pipeline->getService<WebRtcConnection>().get(),
++  if (pipeline)
++    update(pipeline->getService<WebRtcConnection>().get(),
+              pipeline->getService<Stats>());
+ }
  
  void IncomingStatsHandler::read(Context *ctx, std::shared_ptr<DataPacket> packet) {
    processPacket(packet);
@@ -3093,7 +3106,20 @@ index e3284cd..353f54d 100644
  }
  
  OutgoingStatsHandler::OutgoingStatsHandler() : connection_{nullptr} {}
-@@ -208,7 +209,8 @@ void OutgoingStatsHandler::notifyUpdate() {
+@@ -198,17 +200,19 @@ void OutgoingStatsHandler::enable() {}
+ void OutgoingStatsHandler::disable() {}
+ 
+ void OutgoingStatsHandler::notifyUpdate() {
+-  if (connection_) {
++  if (connection_ || !getContext()) {
+     return;
+   }
+   auto pipeline = getContext()->getPipelineShared();
+-  update(pipeline->getService<WebRtcConnection>().get(),
++  if (pipeline)
++    update(pipeline->getService<WebRtcConnection>().get(),
+              pipeline->getService<Stats>());
+ }
  
  void OutgoingStatsHandler::write(Context *ctx, std::shared_ptr<DataPacket> packet) {
    processPacket(packet);
