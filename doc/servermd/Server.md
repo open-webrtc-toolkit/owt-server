@@ -92,7 +92,7 @@ Either Professional Edition or Community Edition is applicable. For download or 
 The external stream output (rtsp/rtmp) feature relies on AAC encoder libfdk_aac support in ffmpeg library, please see [Compile and deploy ffmpeg with libfdk_aac](#Conferencesection2_3_5) section for detailed instructions.
 
  **Table 2-2. Client compatibility**
-Application Name|Google Chrome\* 69|Mozilla Firefox\* 62|Microsoft Edge\* 42.17134.1.0|Safari\* 12.1|Intel CS for WebRTC Client SDK for Android | Intel CS for WebRTC Client SDK for iOS | Intel CS for WebRTC Client SDK for Windows
+Application Name|Google Chrome\* 71|Mozilla Firefox\* 64|Microsoft Edge\* 42.17134.1.0|Safari\* 12.02|Intel CS for WebRTC Client SDK for Android | Intel CS for WebRTC Client SDK for iOS | Intel CS for WebRTC Client SDK for Windows
 --------|--------|--------|--------|--------|--------|--------|--------
 MCU Client|YES|YES|YES|YES|YES|YES|YES
 Management Console|YES|YES|YES|YES|N/A|N/A|N/A
@@ -103,9 +103,9 @@ This section describes the dependencies and steps for installing the MCU.
 **Table 2-3. MCU Dependencies**
 Name|Version|Remarks
 --------|--------|--------
-Node.js |8.11.*|Website: http://nodejs.org/
+Node.js |8.15.0|Website: http://nodejs.org/
 Node modules|Specified|N/A
-MongoDB| 2.4.9 |Website: http://mongodb.org
+MongoDB| 2.6.10 |Website: http://mongodb.org
 System libraries|Latest|N/A
 
 All dependencies, except system libraries and node, are provided with the release package.
@@ -181,7 +181,7 @@ Or you can also use install_openh264.sh or uninstall_openh264.sh scripts under R
 
 ### 2.3.5 Compile and deploy ffmpeg with libfdk_aac {#Conferencesection2_3_5}
 
-The default ffmpeg library used by MCU server has no libfdk_aac support. If you want to enable libfdk_aac for external stream output, please compile and deploy ffmpeg yourself with following steps:
+The default ffmpeg library used by MCU server has no libfdk_aac support. If you want to enable libfdk_aac for external stream output or mp4 format recording, please compile and deploy ffmpeg yourself with following steps:
 
    > **Note**: The libfdk_aac is designated as "non-free", please make sure you have got proper authority before using it.
 
@@ -805,7 +805,7 @@ Peer server | Ubuntu 14.04/16.04 LTS, CentOS* 7.3/7.4
 **Table 5-2. Peer Server Dependencies**
 Name | Version | Remarks
 -----|----|----
-Node.js | 8.11.* | Website: http://nodejs.org/
+Node.js | 8.15.0 | Website: http://nodejs.org/
 Node modules | Specified | N/A
 
 Regarding Node.js*, make sure it's installed in your system prior to installing the Peer Server. We recommend version 8.11.1. Refer to http://nodejs.org/ for installation details.

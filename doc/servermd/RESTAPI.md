@@ -198,7 +198,7 @@ Data Model:<br>
         height: number
       }
     }
-    object(MeidaIn): {
+    object(MediaIn): {
       audio: [ object(AudioFormat) ]，              // Refers to the AudioFormat above.
       video: [ object(VideoFormat) ]                // Refers to the VideoFormat above.
     }
@@ -217,10 +217,13 @@ Data Model:<br>
     object(Transcoding): {
       audio: boolean,
       video: {
-        format: boolean,
-        framerate: boolean,
-        bitrate: boolean,
-        keyFrameInterval: boolean
+        parameters: {
+          resolution: boolean,
+          framerate: boolean,
+          bitrate: boolean,
+          keyFrameInterval: boolean
+        },
+        format: boolean
       }
     }
     object(Notifying): {
@@ -911,8 +914,8 @@ parameters:
      * Use "auto" to generate "container" format automatically.
      * The "container" with "mkv"/"mp4" should use following codecs,
      * MP4:
-     * audio codec must be "aac"
-     * video codec can be "h264", "h265", "vp9"
+     * audio codec must be "aac", this requires "lib-fdk-aac"
+     * video codec can be "h264", "h265", or set video to false to only record audio
      * MKV:
      * the combination of video and audio codecs not listed in MP4
      */
@@ -926,7 +929,7 @@ response body:
 ### /v1/rooms/{roomId}/recordings/{recordingId}
 #### PATCH
 Description:<br>
-Update a recording"s given attributes in the specified room.<br>
+Update a recording's given attributes in the specified room.<br>
 
 parameters:
 
@@ -1060,6 +1063,8 @@ parameters:
     object(MediaOutControlInfo):
     {
         // There are 6 kinds of op, path and value. Choose one of them.
+        // The valid values of ("resolution", "framerate", "bitrate", "keyFrameInterval")
+        // are according to those in Room-MediaOut-video-parameters
 
         op: "replace",
         path: "/output/media/audio/from" | "/output/media/video/from",
@@ -1067,7 +1072,7 @@ parameters:
          OR
         op: "replace",
         path: "/output/media/video/parameters/resolution",
-        value: object(Resolution)        // Refers to object(Resolution) in 5.3 streams, streams model.
+        value: object(Resolution)                     // Refers to object(Resolution) in 5.3 streams, streams model.
          OR
         op: "replace",
         path: "/output/media/video/parameters/framerate",
