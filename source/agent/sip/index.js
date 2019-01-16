@@ -224,6 +224,7 @@ module.exports = function (rpcC, spec) {
         erizo = {id:spec.id, addr:spec.addr},
         room_id,
         gateway,
+        sip_server,
         streams = {},
         calls = {},
         subscriptions = {},
@@ -631,6 +632,8 @@ module.exports = function (rpcC, spec) {
             callback('callback', 'error', 'SIP registration fail');
         }
 
+        sip_server = options.sip_server;
+
         gateway.addEventListener('IncomingCall', function(peerURI) {
             log.debug('IncommingCall: ', peerURI);
             for (var cid in calls) {
@@ -883,6 +886,10 @@ module.exports = function (rpcC, spec) {
         log.debug('makeCall, peerURI:', peerURI, 'mediaIn:', mediaIn, 'mediaOut:', mediaOut, 'controller:', controller);
         if (!peerURI.startsWith('sip:')) {
             peerURI = 'sip:' + peerURI;
+        }
+
+        if (!peerURI.includes('@')) {
+            peerURI = peerURI + '@' + sip_server;
         }
 
         for (var cid in calls) {
