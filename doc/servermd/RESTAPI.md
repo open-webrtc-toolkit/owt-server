@@ -136,7 +136,7 @@ Data Model:<br>
         video: boolean,
         audio: boolean
       },
-      subscirbe: {
+      subscribe: {
         video: boolean,
         audio: boolean
       }
@@ -607,7 +607,11 @@ parameters:
         value: [
             object(StreamRegion):
             {
-                stream: string | undefined,    // stream can ONLY be absent at the very last consecutive positions.
+                stream: string,
+                region: object(Region)
+            } ||
+            object(EmptyRegion):               // Empty regions can ONLY appear at the very last consecutive positions.
+            {
                 region: object(Region)
             }
         ]
@@ -655,14 +659,14 @@ parameters:
 **Note**:
 
     Object(StreamingInRequest) {
-        url: string,
+        connection: {
+          url: url,                            // string, e.g. "rtsp://...."
+          transportProtocol: "udp" | "tcp",    // "tcp" by default.
+          bufferSize: number                   // The buffer size in bytes in case "udp" is specified, 8192 by default.
+        },
         media: {
           audio: "auto" | true | false,
           video: "auto" | true | false
-        },
-        transport: {
-          protocol: "udp" | "tcp",    // "tcp" by default.
-          bufferSize: number          // The buffer size in bytes in case "udp" is specified, 8192 by default.
         }
     }
 
@@ -777,7 +781,7 @@ parameters:
             parameters: {          // following values should be in stream's default/optional list
               resolution: { width: number, height: number },       // optional
               framerate: number,                                   // optional
-              bitrate: string || number,                           // optional
+              bitrate: string,                                     // optional, e.g. "x0.2", "x0.4"
               keyFrameInterval: number                             // optional
             }
         } || false
@@ -903,7 +907,16 @@ parameters:
         container: string,
         media: object(MediaSubOptions)       // Refers to object(MediaSubOptions) in 5.5.
     }
-    container={"mp4" | "mkv" | "auto" | "ts"}  // The container type of the recording file, "auto" by default.
+    /*
+     * Use "auto" to generate "container" format automatically.
+     * The "container" with "mkv"/"mp4" should use following codecs,
+     * MP4:
+     * audio codec must be "aac"
+     * video codec can be "h264", "h265", "vp9"
+     * MKV:
+     * the combination of video and audio codecs not listed in MP4
+     */
+    container={ "auto" | "mkv" | "mp4" }
 
 response body:
 
@@ -1098,7 +1111,7 @@ Token data in JSON example:
         room: roomID,
         user: participant's user ID,
         role: participant's role,
-        reprefence: object(Preference)
+        preference: object(Preference)
     }
     object(Preference):
     {
