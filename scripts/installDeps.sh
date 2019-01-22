@@ -85,6 +85,20 @@ fi
 pause "Installing node building tools... [press Enter]"
 install_node_tools
 
+read -p "Installing icu4c? [Yes/no]" yn
+case $yn in
+  [Yy]* ) install_icu4c;;
+  [Nn]* ) ;;
+  * ) install_icu4c;;
+esac
+
+read -p "Installing pcre? [Yes/no]" yn
+case $yn in
+  [Yy]* ) install_pcre;;
+  [Nn]* ) ;;
+  * ) install_pcre;;
+esac
+
 pause "Installing glib library...  [press Enter]"
 install_glib
 

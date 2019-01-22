@@ -65,6 +65,25 @@ install_ffmpeg(){
   popd
 }
 
+install_icu4c() {
+  if [ -d $LIB_DIR ]; then
+    pushd $LIB_DIR >/dev/null
+    rm -rf icu*
+    rm -f ./build/lib/libicu*
+    # Version 63
+    wget https://github.com/unicode-org/icu/releases/download/release-63-1/icu4c-63_1-src.tgz
+    tar xzf icu4c-63_1-src.tgz
+    pushd icu/source >/dev/null
+    ./configure --prefix=$PREFIX_DIR
+    make && make install
+    popd >/dev/null
+    popd >/dev/null
+  else
+    mkdir -p $LIB_DIR
+    install_icu4c
+  fi
+}
+
 install_zlib() {
   local VERSION="1.2.11"
   if [ -d $LIB_DIR ]; then
@@ -314,7 +333,7 @@ install_tcmalloc(){
 }
 
 install_node() {
-  local NODE_VERSION="v8.11.1"
+  local NODE_VERSION="v10.15.0"
   echo -e "\x1b[32mInstalling nvm...\x1b[0m"
   NVM_DIR="${HOME}/.nvm"
 
@@ -377,14 +396,39 @@ install_usrsctp() {
   fi
 }
 
+install_pcre() {
+  local VERSION="8.38"
+  if [ -d $LIB_DIR ]; then
+    pushd $LIB_DIR >/dev/null
+    rm -rf pcre-*
+    rm -f ./build/lib/libpcre*
+    wget https://ftp.pcre.org/pub/pcre/pcre-${VERSION}.zip
+    unzip pcre-${VERSION}.zip
+    pushd pcre-${VERSION} >/dev/null
+    ./configure --prefix=$PREFIX_DIR --enable-unicode-properties
+    make && make install
+    popd >/dev/null
+    popd >/dev/null
+  else
+    mkdir -p $LIB_DIR
+    install_pcre
+  fi
+}
+
 install_glib() {
   if [ -d $LIB_DIR ]; then
     local VERSION="2.54.1"
     cd $LIB_DIR
+    rm -rf glib-*
+    rm -f ./build/lib/libgio-*
+    rm -f ./build/lib/libglib-*
+    rm -f ./build/lib/libgmodule-*
+    rm -f ./build/lib/libgobject-*
+    rm -f ./build/lib/libgthread-*
     wget -c https://github.com/GNOME/glib/archive/${VERSION}.tar.gz -O glib-${VERSION}.tar.gz
-
-    tar -xvzf glib-${VERSION}.tar.gz ;cd glib-${VERSION}
-    ./autogen.sh --enable-libmount=no --prefix=${PREFIX_DIR}
+    tar -xvzf glib-${VERSION}.tar.gz
+    cd glib-${VERSION}
+    PKG_CONFIG_PATH=$PREFIX_DIR"/lib/pkgconfig":$PREFIX_DIR"/lib64/pkgconfig":$PKG_CONFIG_PATH ./autogen.sh --enable-libmount=no --prefix=${PREFIX_DIR}
     LD_LIBRARY_PATH=${PREFIX_DIR}/lib:$LD_LIBRARY_PATH make && make install
   else
     mkdir -p $LIB_DIR

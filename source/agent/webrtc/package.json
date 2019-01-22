@@ -12,7 +12,7 @@
     "node-gyp": "*"
   },
   "engine": {
-    "node": "8.11.1"
+    "node": "10.15.0"
   },
   "bin": "index.js",
   "pkg": {

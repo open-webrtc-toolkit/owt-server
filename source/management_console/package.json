@@ -7,6 +7,6 @@
     "http-proxy": "*"
   },
   "engine": {
-    "node": "8.11.1"
+    "node": "10.15.0"
   }
 }
