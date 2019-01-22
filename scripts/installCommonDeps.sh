@@ -42,11 +42,11 @@ install_fdkaac(){
 }
 
 install_ffmpeg(){
-  local VERSION="4.0.2"
+  local VERSION="4.1"
   local DIR="ffmpeg-${VERSION}"
   local SRC="${DIR}.tar.bz2"
   local SRC_URL="http://ffmpeg.org/releases/${SRC}"
-  local SRC_MD5SUM="5576e8a22f80b6a336db39808f427cfb"
+  local SRC_MD5SUM="8107e8f22a33b27a5e34b38e628eecc6"
   mkdir -p ${LIB_DIR}
   pushd ${LIB_DIR}
   [[ ! -s ${SRC} ]] && wget -c ${SRC_URL}
