@@ -72,13 +72,10 @@ if [ "$NIGHTLY" != "true" ]; then
 
   install_node_tools
 
-  install_icu4c
-
-  if [[ "$OS" =~ .*centos.* ]]; then
-    install_pcre
+  if [[ "$OS" =~ .*ubuntu.* ]]
+  then
+    install_glib
   fi
-
-  install_glib
 
   install_zlib
 
