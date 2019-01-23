@@ -36,6 +36,7 @@ init_software()
     ${ROOT}/bin/init-mongodb.sh --deps
     ${ROOT}/bin/init-rabbitmq.sh --deps
     ${ROOT}/nuve/init.sh
+    ${ROOT}/webrtc_agent/install_deps.sh
     ${ROOT}/video_agent/install_deps.sh
     ${ROOT}/video_agent/init.sh
   else
@@ -53,6 +54,7 @@ init_hardware()
     ${ROOT}/bin/init-mongodb.sh --deps
     ${ROOT}/bin/init-rabbitmq.sh --deps
     ${ROOT}/nuve/init.sh
+    ${ROOT}/webrtc_agent/install_deps.sh
     ${ROOT}/video_agent/install_deps.sh --hardware
     ${ROOT}/video_agent/init.sh --hardware
   else
@@ -82,11 +84,6 @@ while [[ $# -gt 0 ]]; do
   esac
   shift
 done
-
-if ${INSTALL_DEPS}; then
-  echo "Installing runtime dependencies"
-  ${ROOT}/bin/install-runtime-deps.sh
-fi
 
 if ${HARDWARE}; then
   echo "Initializing with hardware msdk"
