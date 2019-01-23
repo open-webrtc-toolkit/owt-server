@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# Copyright 2017 Intel Corporation All Rights Reserved.
+# Copyright 2019 Intel Corporation All Rights Reserved.
 #
 # The source code contained or described herein and all documents related to the
 # source code ("Material") are owned by Intel Corporation or its suppliers or
@@ -82,6 +82,11 @@ while [[ $# -gt 0 ]]; do
   esac
   shift
 done
+
+if ${INSTALL_DEPS}; then
+  echo "Installing runtime dependencies"
+  ${ROOT}/bin/install-runtime-deps.sh
+fi
 
 if ${HARDWARE}; then
   echo "Initializing with hardware msdk"

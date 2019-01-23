@@ -542,6 +542,14 @@ function filterLib(libSrc) {
       return false;
     }
   }
+  // Remove glib
+  if (libName.indexOf('libgio-2.0') === 0) return false;
+  if (libName.indexOf('libglib-2.0') === 0) return false;
+  if (libName.indexOf('libgmodule-2.0') === 0) return false;
+  if (libName.indexOf('libgobject-2.0') === 0) return false;
+  if (libName.indexOf('libgthread-2.0') === 0) return false;
+  // Remove pcre
+  if (libName.indexOf('libpcre') === 0) return false;
   return true;
 }
 
@@ -632,6 +640,7 @@ function packScripts() {
   execSync(`cp -a ${rootDir}/scripts/release/init-all.sh ${binDir}`);
   execSync(`cp -a ${rootDir}/scripts/release/init-rabbitmq.sh ${binDir}`);
   execSync(`cp -a ${rootDir}/scripts/release/init-mongodb.sh ${binDir}`);
+  execSync(`cp -a ${rootDir}/scripts/release/install-runtime-deps.sh ${binDir}`);
   execSync(`cp -a ${rootDir}/scripts/release/package.mcu.json ${distDir}/package.json`);
   execSync(`cp -a ${rootDir}/third_party/NOTICE ${distDir}`);
   execSync(`cp -a ${rootDir}/third_party/ThirdpartyLicenses.txt ${distDir}`);
