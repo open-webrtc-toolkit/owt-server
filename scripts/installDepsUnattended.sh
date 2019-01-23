@@ -72,11 +72,6 @@ if [ "$NIGHTLY" != "true" ]; then
 
   install_node_tools
 
-  if [[ "$OS" =~ .*ubuntu.* ]]
-  then
-    install_glib
-  fi
-
   install_zlib
 
   install_libnice014

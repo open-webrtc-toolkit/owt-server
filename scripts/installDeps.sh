@@ -85,8 +85,12 @@ fi
 pause "Installing node building tools... [press Enter]"
 install_node_tools
 
-pause "Installing glib library...  [press Enter]"
-install_glib
+read -p "Installing glib? [No/yes]" yn
+case $yn in
+  [Yy]* ) install_glib;;
+  [Nn]* ) ;;
+  * ) ;;
+esac
 
 read -p "Installing zlib? [Yes/no]" yn
 case $yn in
