@@ -52,6 +52,8 @@ install_deps() {
   if [[ "$OS" =~ .*centos.* ]]
   then
     echo -e "\x1b[32mInstalling dependent components and libraries via yum...\x1b[0m"
+    sudo yum update
+    sudo yum install wget
     if [[ "$OS" =~ .*6.* ]] # CentOS 6.x
     then
       wget -c http://dl.fedoraproject.org/pub/epel/6/x86_64/epel-release-6-8.noarch.rpm
@@ -62,11 +64,14 @@ install_deps() {
       sudo rpm -Uvh epel-release-latest-7*.rpm
     fi
     sudo sed -i 's/https/http/g' /etc/yum.repos.d/epel.repo
-    sudo -E yum install intel-gpu-tools -y
+    sudo yum install bzip2 -y
+    sudo yum install intel-gpu-tools -y
+
   elif [[ "$OS" =~ .*ubuntu.* ]]
   then
     echo -e "\x1b[32mInstalling dependent components and libraries via apt-get...\x1b[0m"
     sudo apt-get update
+    sudo apt-get install wget bzip2
     sudo apt-get install intel-gpu-tools
   else
     echo -e "\x1b[32mUnsupported platform...\x1b[0m"
