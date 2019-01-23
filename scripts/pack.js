@@ -550,6 +550,7 @@ function filterLib(libSrc) {
   if (libName.indexOf('libgthread-2.0') === 0) return false;
   // Remove pcre
   if (libName.indexOf('libpcre') === 0) return false;
+  if (libName.indexOf('libbz2') === 0) return false;
   return true;
 }
 
