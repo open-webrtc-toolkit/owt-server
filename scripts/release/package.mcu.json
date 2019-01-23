@@ -3,6 +3,6 @@
   "version":"4.1.0",
   "description": "Intel CS for WebRTC Conference Server",
   "engine": {
-    "node": "10.15.0"
+    "node": "8.15.0"
   }
 }
