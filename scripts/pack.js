@@ -551,6 +551,8 @@ function filterLib(libSrc) {
   // Remove pcre
   if (libName.indexOf('libpcre') === 0) return false;
   if (libName.indexOf('libbz2') === 0) return false;
+  // Remove ldap
+  if (libName.indexOf('libldap') === 0) return false;
   return true;
 }
 
