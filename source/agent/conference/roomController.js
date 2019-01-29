@@ -2225,6 +2225,32 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
         }
     };
 
+    that.drawText = function (streamId, textSpec, duration) {
+        var mixView = getViewOfMixStream(streamId);
+        var video_processor;
+        if (mixView) {
+            video_processor = getSubMediaMixer(view, 'video');
+        } else if (streams[streamId] && streams[streamId].video) {
+            streams[streamId].video.subscribers.forEach((t_id) => {
+                if (terminals[t_id] && (terminals[t_id].type === 'vxcoder')) {
+                    video_processor = t_id;
+                }
+            });
+        } else {
+            log.error('Non-existing stream to draw text:', streamId);
+        }
+
+        if (video_processor) {
+            makeRPC(
+                rpcClient,
+                video_processor,
+                'drawText',
+                [textSpec, duration]);
+        } else {
+            log.error('No video mixer/transcoder was found for stream:', streamId);
+        }
+    };
+
     assert.equal(typeof on_init_ok, 'function');
     assert.equal(typeof on_init_failed, 'function');
     return initialize(on_init_ok, on_init_failed);
