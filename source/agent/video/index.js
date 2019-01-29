@@ -793,6 +793,10 @@ function VMixer(rpcClient, clusterIP) {
             engine.forceKeyFrame(stream_id);
         }
     };
+    that.drawText = function (textSpec, duration) {
+        log.debug('drawText, textSpec:', textSpec, 'duration:', duration);
+    };
+
 
     return that;
 };
@@ -1107,6 +1111,10 @@ function VTranscoder(rpcClient, clusterIP) {
         if (outputs[stream_id] && engine) {
             engine.forceKeyFrame(stream_id);
         }
+    };
+
+    that.drawText = function (textSpec, duration) {
+        log.debug('drawText, textSpec:', textSpec, 'duration:', duration);
     };
 
     return that;

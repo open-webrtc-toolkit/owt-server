@@ -2566,6 +2566,15 @@ var Conference = function (rpcClient, selfRpcId) {
     }
   };
 
+  that.drawText = function(streamId, textSpec, duration, callback) {
+    if (roomController) {
+      roomController.drawText(streamId, textSpec, duration);
+      callback('callback', 'ok');
+    } else {
+      callback('callback', 'error', 'Controllers are not ready');
+    }
+  };
+
   that.destroy = function(callback) {
     log.info('Destroy room:', room_id);
     destroyRoom();
@@ -2637,6 +2646,7 @@ module.exports = function (rpcClient, selfRpcId) {
     makeSipCall: conference.makeSipCall,
     controlSipCall: conference.controlSipCall,
     endSipCall: conference.endSipCall,
+    drawText: conference.drawText,
     destroy: conference.destroy
   };
 
