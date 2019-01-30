@@ -55,6 +55,7 @@ public:
 protected:
     bool init(int width, int height);
     int configure(std::string arg);
+    void deinit();
 
     int copyFrame(AVFrame *dstAVFrame, Frame &srcFrame);
     int copyFrame(Frame &dstFrame, AVFrame *srcAVFrame);
@@ -75,6 +76,7 @@ private:
 
     std::string m_filter_desc;
     bool m_reconfigured;
+    bool m_validConfig;
 
     bool m_enabled;
 

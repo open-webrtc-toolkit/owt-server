@@ -57,6 +57,9 @@ public:
     void removeOutput(const std::string& outStreamID);
     void forceKeyFrame(const std::string& outStreamID);
 
+    void drawText(const std::string& textSpec);
+    void clearText();
+
 protected:
     int useAFreeInputIndex();
     void closeAll();

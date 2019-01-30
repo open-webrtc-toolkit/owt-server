@@ -79,6 +79,8 @@ bool FrameProcesser::init(FrameFormat format, const uint32_t width, const uint32
     if (m_format == FRAME_FORMAT_I420)
         m_bufferManager.reset(new I420BufferManager(3));
 
+    m_textDrawer.reset(new woogeen_base::FFmpegDrawText());
+
     if (m_outFrameRate != 0) {
         m_clock = Clock::GetRealTimeClock();
 
@@ -297,11 +299,24 @@ void FrameProcesser::SendFrame(rtc::scoped_refptr<webrtc::I420Buffer> i420Buffer
     outFrame.additionalInfo.video.height = i420Frame.height();
     outFrame.timeStamp = timeStamp;
 
+    m_textDrawer->drawFrame(outFrame);
+
     ELOG_TRACE_T("sendI420Frame, %dx%d",
             outFrame.additionalInfo.video.width,
             outFrame.additionalInfo.video.height);
 
     deliverFrame(outFrame);
+}
+
+void FrameProcesser::drawText(const std::string& textSpec)
+{
+    m_textDrawer->setText(textSpec);
+    m_textDrawer->enable(true);
+}
+
+void FrameProcesser::clearText()
+{
+    m_textDrawer->enable(false);
 }
 
 void FrameProcesser::onTimeout()

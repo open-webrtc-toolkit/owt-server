@@ -41,39 +41,14 @@ FFmpegDrawText::FFmpegDrawText()
     , m_width(0)
     , m_height(0)
     , m_reconfigured(false)
-    , m_enabled(true)
+    , m_validConfig(false)
+    , m_enabled(false)
 {
 }
 
 FFmpegDrawText::~FFmpegDrawText()
 {
-    if (m_input_frame) {
-        av_frame_free(&m_input_frame);
-        m_input_frame = NULL;
-    }
-
-    if (m_filt_frame) {
-        av_frame_free(&m_filt_frame);
-        m_filt_frame = NULL;
-    }
-
-    if (m_filter_inputs) {
-        avfilter_inout_free(&m_filter_inputs);
-        m_filter_inputs = NULL;
-    }
-
-    if (m_filter_outputs) {
-        avfilter_inout_free(&m_filter_outputs);
-        m_filter_outputs = NULL;
-    }
-
-    if (m_filter_graph) {
-        avfilter_graph_free(&m_filter_graph);
-        m_filter_graph = NULL;
-    }
-
-    m_buffersrc_ctx = NULL;
-    m_buffersink_ctx = NULL;
+    deinit();
 }
 
 bool FFmpegDrawText::init(int width, int height)
@@ -84,6 +59,8 @@ bool FFmpegDrawText::init(int width, int height)
     enum AVPixelFormat pix_fmts[] = { AV_PIX_FMT_YUV420P, AV_PIX_FMT_NONE };
     char src_args[512];
     char default_desc[] = "drawtext=fontfile=/usr/share/fonts/gnu-free/FreeSerif.ttf:text=''"; //centos
+
+    ELOG_TRACE_T("init: %s", default_desc);
 
     m_filter_outputs = avfilter_inout_alloc();
     m_filter_inputs  = avfilter_inout_alloc();
@@ -193,6 +170,37 @@ end:
     return false;
 }
 
+void FFmpegDrawText::deinit()
+{
+    if (m_input_frame) {
+        av_frame_free(&m_input_frame);
+        m_input_frame = NULL;
+    }
+
+    if (m_filt_frame) {
+        av_frame_free(&m_filt_frame);
+        m_filt_frame = NULL;
+    }
+
+    if (m_filter_inputs) {
+        avfilter_inout_free(&m_filter_inputs);
+        m_filter_inputs = NULL;
+    }
+
+    if (m_filter_outputs) {
+        avfilter_inout_free(&m_filter_outputs);
+        m_filter_outputs = NULL;
+    }
+
+    if (m_filter_graph) {
+        avfilter_graph_free(&m_filter_graph);
+        m_filter_graph = NULL;
+    }
+
+    m_buffersrc_ctx = NULL;
+    m_buffersink_ctx = NULL;
+}
+
 int FFmpegDrawText::configure(std::string arg)
 {
     int ret;
@@ -230,7 +238,7 @@ int FFmpegDrawText::drawFrame(Frame& frame)
             break;
 
         default:
-            ELOG_ERROR_T("Unspported video frame format: %s", getFormatStr(frame.format));
+            ELOG_TRACE_T("Unspported video frame format: %s", getFormatStr(frame.format));
             return 0;
     }
 
@@ -252,19 +260,29 @@ int FFmpegDrawText::drawFrame(Frame& frame)
 
     if (m_width != frame.additionalInfo.video.width
             || m_height != frame.additionalInfo.video.height) {
-        ELOG_WARN_T("Unsupported re-config size: %dx%d -> %dx%d",
+        ELOG_DEBUG_T("re-config size: %dx%d -> %dx%d",
                 m_width, m_height,
                 frame.additionalInfo.video.width,
-                frame.additionalInfo.video.height)
-            return 0;
+                frame.additionalInfo.video.height);
+
+        m_width = frame.additionalInfo.video.width;
+        m_height = frame.additionalInfo.video.height;
     }
 
     if (m_reconfigured) {
-        configure(m_filter_desc);
+        if (configure(m_filter_desc))
+            m_validConfig = true;
+        else {
+            m_validConfig = false;
+
+            deinit();
+            init(m_width, m_height);
+        }
+
         m_reconfigured = false;
     }
 
-    if (!m_enabled) {
+    if (!m_enabled || !m_validConfig) {
         return 1;
     }
 
@@ -305,17 +323,34 @@ int FFmpegDrawText::copyFrame(AVFrame *dstAVFrame, Frame &srcFrame)
     VideoFrame *videoFrame = reinterpret_cast<VideoFrame*>(srcFrame.payload);
     rtc::scoped_refptr<webrtc::VideoFrameBuffer> i420Buffer = videoFrame->video_frame_buffer();
 
-    ret = libyuv::I420Copy(
-            i420Buffer->DataY(), i420Buffer->StrideY(),
-            i420Buffer->DataU(), i420Buffer->StrideU(),
-            i420Buffer->DataV(), i420Buffer->StrideV(),
-            dstAVFrame->data[0], dstAVFrame->linesize[0],
-            dstAVFrame->data[1], dstAVFrame->linesize[1],
-            dstAVFrame->data[2], dstAVFrame->linesize[2],
-            i420Buffer->width(),        i420Buffer->height());
-    if (ret != 0) {
-        ELOG_ERROR_T("libyuv::I420Copy failed(%d)", ret);
-        return false;
+    if (i420Buffer->width() == dstAVFrame->width && i420Buffer->height() == dstAVFrame->height) {
+        ret = libyuv::I420Copy(
+                i420Buffer->DataY(), i420Buffer->StrideY(),
+                i420Buffer->DataU(), i420Buffer->StrideU(),
+                i420Buffer->DataV(), i420Buffer->StrideV(),
+                dstAVFrame->data[0], dstAVFrame->linesize[0],
+                dstAVFrame->data[1], dstAVFrame->linesize[1],
+                dstAVFrame->data[2], dstAVFrame->linesize[2],
+                i420Buffer->width(), i420Buffer->height());
+        if (ret != 0) {
+            ELOG_ERROR_T("libyuv::I420Copy failed(%d)", ret);
+            return false;
+        }
+    } else {
+        ret = libyuv::I420Scale(
+                i420Buffer->DataY(), i420Buffer->StrideY(),
+                i420Buffer->DataU(), i420Buffer->StrideU(),
+                i420Buffer->DataV(), i420Buffer->StrideV(),
+                i420Buffer->width(), i420Buffer->height(),
+                dstAVFrame->data[0], dstAVFrame->linesize[0],
+                dstAVFrame->data[1], dstAVFrame->linesize[1],
+                dstAVFrame->data[2], dstAVFrame->linesize[2],
+                dstAVFrame->width,   dstAVFrame->height,
+                libyuv::kFilterBox);
+        if (ret != 0) {
+            ELOG_ERROR_T("libyuv::I420Scale failed(%d)", ret);
+            return false;
+        }
     }
 
     return true;
@@ -327,17 +362,34 @@ int FFmpegDrawText::copyFrame(Frame &dstFrame, AVFrame *srcAVFrame)
     VideoFrame *videoFrame = reinterpret_cast<VideoFrame*>(dstFrame.payload);
     rtc::scoped_refptr<webrtc::VideoFrameBuffer> i420Buffer = videoFrame->video_frame_buffer();
 
-    ret = libyuv::I420Copy(
-            srcAVFrame->data[0], srcAVFrame->linesize[0],
-            srcAVFrame->data[1], srcAVFrame->linesize[1],
-            srcAVFrame->data[2], srcAVFrame->linesize[2],
-            const_cast< uint8_t*>(i420Buffer->DataY()), i420Buffer->StrideY(),
-            const_cast< uint8_t*>(i420Buffer->DataU()), i420Buffer->StrideU(),
-            const_cast< uint8_t*>(i420Buffer->DataV()), i420Buffer->StrideV(),
-            i420Buffer->width(),        i420Buffer->height());
-    if (ret != 0) {
-        ELOG_ERROR_T("libyuv::I420Copy failed(%d)", ret);
-        return false;
+    if (i420Buffer->width() == srcAVFrame->width && i420Buffer->height() == srcAVFrame->height) {
+        ret = libyuv::I420Copy(
+                srcAVFrame->data[0], srcAVFrame->linesize[0],
+                srcAVFrame->data[1], srcAVFrame->linesize[1],
+                srcAVFrame->data[2], srcAVFrame->linesize[2],
+                const_cast< uint8_t*>(i420Buffer->DataY()), i420Buffer->StrideY(),
+                const_cast< uint8_t*>(i420Buffer->DataU()), i420Buffer->StrideU(),
+                const_cast< uint8_t*>(i420Buffer->DataV()), i420Buffer->StrideV(),
+                i420Buffer->width(), i420Buffer->height());
+        if (ret != 0) {
+            ELOG_ERROR_T("libyuv::I420Copy failed(%d)", ret);
+            return false;
+        }
+    } else {
+        ret = libyuv::I420Scale(
+                srcAVFrame->data[0], srcAVFrame->linesize[0],
+                srcAVFrame->data[1], srcAVFrame->linesize[1],
+                srcAVFrame->data[2], srcAVFrame->linesize[2],
+                srcAVFrame->width, srcAVFrame->height,
+                const_cast< uint8_t*>(i420Buffer->DataY()), i420Buffer->StrideY(),
+                const_cast< uint8_t*>(i420Buffer->DataU()), i420Buffer->StrideU(),
+                const_cast< uint8_t*>(i420Buffer->DataV()), i420Buffer->StrideV(),
+                i420Buffer->width(), i420Buffer->height(),
+                libyuv::kFilterBox);
+        if (ret != 0) {
+            ELOG_ERROR_T("libyuv::I420Scale failed(%d)", ret);
+            return false;
+        }
     }
 
     return true;

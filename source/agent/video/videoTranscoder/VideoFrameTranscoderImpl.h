@@ -67,6 +67,9 @@ public:
 
     void requestKeyFrame(int output);
 
+    void drawText(const std::string& textSpec);
+    void clearText();
+
     void onFrame(const woogeen_base::Frame& frame) {deliverFrame(frame);}
 
 private:
@@ -90,7 +93,6 @@ private:
 
 VideoFrameTranscoderImpl::VideoFrameTranscoderImpl()
 {
-
 }
 
 VideoFrameTranscoderImpl::~VideoFrameTranscoderImpl()
@@ -236,6 +238,20 @@ inline void VideoFrameTranscoderImpl::requestKeyFrame(int output)
     auto it = m_outputs.find(output);
     if (it != m_outputs.end())
         it->second.encoder->requestKeyFrame(it->second.streamId);
+}
+
+inline void VideoFrameTranscoderImpl::drawText(const std::string& textSpec)
+{
+    boost::shared_lock<boost::shared_mutex> lock(m_outputMutex);
+    for (auto it = m_outputs.begin(); it != m_outputs.end(); ++it)
+        it->second.processer->drawText(textSpec);
+}
+
+inline void VideoFrameTranscoderImpl::clearText()
+{
+    boost::shared_lock<boost::shared_mutex> lock(m_outputMutex);
+    for (auto it = m_outputs.begin(); it != m_outputs.end(); ++it)
+        it->second.processer->clearText();
 }
 
 }
