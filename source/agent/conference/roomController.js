@@ -2229,7 +2229,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
         var mixView = getViewOfMixStream(streamId);
         var video_processor;
         if (mixView) {
-            video_processor = getSubMediaMixer(view, 'video');
+            video_processor = getSubMediaMixer(mixView, 'video');
         } else if (streams[streamId] && streams[streamId].video) {
             streams[streamId].video.subscribers.forEach((t_id) => {
                 if (terminals[t_id] && (terminals[t_id].type === 'vxcoder')) {
@@ -2240,10 +2240,10 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
             log.error('Non-existing stream to draw text:', streamId);
         }
 
-        if (video_processor) {
+        if (video_processor && terminals[video_processor]) {
             makeRPC(
                 rpcClient,
-                video_processor,
+                terminals[video_processor].locality.node,
                 'drawText',
                 [textSpec, duration]);
         } else {
