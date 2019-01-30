@@ -39,6 +39,7 @@
 #include "VideoFrameMixer.h"
 #include "VideoLayout.h"
 #include "I420BufferManager.h"
+#include "FFmpegDrawText.h"
 
 namespace mcu {
 class SoftVideoCompositor;
@@ -167,6 +168,8 @@ private:
     boost::shared_ptr<boost::asio::io_service> m_srv;
     boost::shared_ptr<boost::asio::io_service::work> m_srvWork;
     boost::shared_ptr<boost::thread_group> m_thrGrp;
+
+    boost::shared_ptr<woogeen_base::FFmpegDrawText> m_textDrawer;
 };
 
 /**

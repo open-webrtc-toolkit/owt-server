@@ -200,7 +200,7 @@ int FFmpegDrawText::configure(std::string arg)
     ELOG_INFO_T("config: %s", arg.c_str());
 
     if (!m_filter_graph) {
-        ELOG_ERROR_T("Invalid filter graph");
+        ELOG_TRACE_T("Invalid filter graph");
         return 0;
     }
 
@@ -269,7 +269,7 @@ int FFmpegDrawText::drawFrame(Frame& frame)
     }
 
     if (!m_filter_graph) {
-        ELOG_INFO_T("filter graph not ready!");
+        ELOG_TRACE_T("filter graph not ready!");
         return 0;
     }
 
