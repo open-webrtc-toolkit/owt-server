@@ -601,6 +601,14 @@ void SoftFrameGenerator::reconfigureIfNeeded()
     ELOG_DEBUG_T("reconfigure");
 }
 
+void SoftFrameGenerator::drawText(const std::string& textSpec)
+{
+}
+
+void SoftFrameGenerator::clearText()
+{
+}
+
 DEFINE_LOGGER(SoftVideoCompositor, "mcu.media.SoftVideoCompositor");
 
 SoftVideoCompositor::SoftVideoCompositor(uint32_t maxInput, VideoSize rootSize, YUVColor bgColor, bool crop)
@@ -713,6 +721,20 @@ boost::shared_ptr<webrtc::VideoFrame> SoftVideoCompositor::getInputFrame(int ind
     }
 
     return src;
+}
+
+void SoftVideoCompositor::drawText(const std::string& textSpec)
+{
+    for (auto& generator : m_generators) {
+        generator->drawText(textSpec);
+    }
+}
+
+void SoftVideoCompositor::clearText()
+{
+    for (auto& generator : m_generators) {
+        generator->clearText();
+    }
 }
 
 }

@@ -92,6 +92,9 @@ public:
 
     void updateLayoutSolution(LayoutSolution& solution);
 
+    void drawText(const std::string& textSpec);
+    void clearText();
+
 private:
     struct Input {
         woogeen_base::FrameSource* source;
@@ -306,6 +309,16 @@ inline void VideoFrameMixerImpl::removeOutput(int32_t output)
         boost::upgrade_to_unique_lock<boost::shared_mutex> ulock(lock);
         m_outputs.erase(output);
     }
+}
+
+inline void VideoFrameMixerImpl::drawText(const std::string& textSpec)
+{
+    m_compositor->drawText(textSpec);
+}
+
+inline void VideoFrameMixerImpl::clearText()
+{
+    m_compositor->clearText();
 }
 
 }

@@ -261,6 +261,9 @@ public:
     bool addOutput(const uint32_t width, const uint32_t height, const uint32_t framerateFPS, woogeen_base::FrameDestination *dst) override;
     bool removeOutput(woogeen_base::FrameDestination *dst) override;
 
+    void drawText(const std::string& textSpec) {}
+    void clearText() {}
+
 protected:
     void createAllocator();
     boost::shared_ptr<woogeen_base::MsdkFrame> getInputFrame(int index);

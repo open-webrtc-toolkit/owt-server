@@ -217,12 +217,12 @@ void VideoMixer::updateLayoutSolution(LayoutSolution& solution) {
 
 void VideoMixer::drawText(const std::string& textSpec)
 {
-    ELOG_WARN("To be implemented");
+    m_frameMixer->drawText(textSpec);
 }
 
 void VideoMixer::clearText()
 {
-    ELOG_WARN("To be implemented");
+    m_frameMixer->clearText();
 }
 
 void VideoMixer::closeAll()

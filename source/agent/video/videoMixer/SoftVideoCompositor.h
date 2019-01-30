@@ -122,6 +122,9 @@ public:
     bool addOutput(const uint32_t width, const uint32_t height, const uint32_t fps, woogeen_base::FrameDestination *dst);
     bool removeOutput(woogeen_base::FrameDestination *dst);
 
+    void drawText(const std::string& textSpec);
+    void clearText();
+
     void onTimeout() override;
 
 protected:
@@ -191,6 +194,9 @@ public:
 
     bool addOutput(const uint32_t width, const uint32_t height, const uint32_t framerateFPS, woogeen_base::FrameDestination *dst) override;
     bool removeOutput(woogeen_base::FrameDestination *dst) override;
+
+    void drawText(const std::string& textSpec);
+    void clearText();
 
 protected:
     boost::shared_ptr<webrtc::VideoFrame> getInputFrame(int index);
