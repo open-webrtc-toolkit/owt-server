@@ -12,6 +12,7 @@
       '../../../../core/woogeen_base/VCMFrameDecoder.cpp',
       '../../../../core/woogeen_base/VCMFrameEncoder.cpp',
       '../../../../core/woogeen_base/FFmpegFrameDecoder.cpp',
+      '../../../../core/woogeen_base/FFmpegDrawText.cpp',
     ],
     'cflags_cc': [
         '-Wall',
@@ -38,6 +39,7 @@
       '<!@(pkg-config --libs libavutil)',
       '<!@(pkg-config --libs libavcodec)',
       '<!@(pkg-config --libs libavformat)',
+      '<!@(pkg-config --libs libavfilter)',
     ],
 
     'variables': {
