@@ -316,6 +316,8 @@ SoftFrameGenerator::SoftFrameGenerator(
             m_thrGrp->create_thread(boost::bind(&boost::asio::io_service::run, m_srv));
     }
 
+    m_textDrawer.reset(new woogeen_base::FFmpegDrawText());
+
     m_jobTimer.reset(new JobTimer(m_maxSupportedFps, this));
     m_jobTimer->start();
 }
@@ -430,6 +432,8 @@ void SoftFrameGenerator::onTimeout()
             frame.timeStamp = compositeFrame.timestamp();
             frame.additionalInfo.video.width = compositeFrame.width();
             frame.additionalInfo.video.height = compositeFrame.height();
+
+            m_textDrawer->drawFrame(frame);
 
             {
                 boost::unique_lock<boost::shared_mutex> lock(m_outputMutex);
@@ -603,10 +607,13 @@ void SoftFrameGenerator::reconfigureIfNeeded()
 
 void SoftFrameGenerator::drawText(const std::string& textSpec)
 {
+    m_textDrawer->setText(textSpec);
+    m_textDrawer->enable(true);
 }
 
 void SoftFrameGenerator::clearText()
 {
+    m_textDrawer->enable(false);
 }
 
 DEFINE_LOGGER(SoftVideoCompositor, "mcu.media.SoftVideoCompositor");
