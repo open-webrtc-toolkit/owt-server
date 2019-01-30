@@ -265,6 +265,8 @@ function VMixer(rpcClient, clusterIP) {
         controller,
         view,
 
+        drawing_text_tmr,
+
         motion_factor = 0.8,
         default_resolution = {width: 640, height: 480},
         default_framerate = 30,
@@ -481,6 +483,11 @@ function VMixer(rpcClient, clusterIP) {
     };
 
     that.deinit = function () {
+        if (drawing_text_tmr) {
+          clearTimeout(drawing_text_tmr);
+          drawing_text_tmr = undefined;
+        }
+
         for (var stream_id in outputs) {
             removeOutput(stream_id);
         }
@@ -793,8 +800,19 @@ function VMixer(rpcClient, clusterIP) {
             engine.forceKeyFrame(stream_id);
         }
     };
+
     that.drawText = function (textSpec, duration) {
         log.debug('drawText, textSpec:', textSpec, 'duration:', duration);
+        if (drawing_text_tmr) {
+          clearTimeout(drawing_text_tmr);
+          drawing_text_tmr = undefined;
+        }
+
+        engine.drawText(textSpec);
+
+        if (duration > 0) {
+            drawing_text_tmr = setTimeout(() => {engine.clearText();}, duration);
+        }
     };
 
 
@@ -805,6 +823,8 @@ function VTranscoder(rpcClient, clusterIP) {
     var that = {},
         engine,
         controller,
+
+        drawing_text_tmr,
 
         motion_factor = 1.0,
         default_resolution = {width: 0, height: 0},
@@ -941,6 +961,11 @@ function VTranscoder(rpcClient, clusterIP) {
     };
 
     that.deinit = function () {
+        if (drawing_text_tmr) {
+          clearTimeout(drawing_text_tmr);
+          drawing_text_tmr = undefined;
+        }
+
         for (var stream_id in outputs) {
             removeOutput(stream_id);
         }
@@ -1115,6 +1140,16 @@ function VTranscoder(rpcClient, clusterIP) {
 
     that.drawText = function (textSpec, duration) {
         log.debug('drawText, textSpec:', textSpec, 'duration:', duration);
+        if (drawing_text_tmr) {
+          clearTimeout(drawing_text_tmr);
+          drawing_text_tmr = undefined;
+        }
+
+        engine.drawText(textSpec);
+
+        if (duration > 0) {
+            drawing_text_tmr = setTimeout(() => {engine.clearText();}, duration);
+        }
     };
 
     return that;

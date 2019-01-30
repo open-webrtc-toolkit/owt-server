@@ -71,6 +71,9 @@ public:
     // Update Layout solution
     void updateLayoutSolution(LayoutSolution& solution);
 
+    void drawText(const std::string& textSpec);
+    void clearText();
+
 private:
     void closeAll();
 
