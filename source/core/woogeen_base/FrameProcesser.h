@@ -40,6 +40,7 @@
 #include "I420BufferManager.h"
 
 #include "FrameConverter.h"
+#include "FFmpegDrawText.h"
 
 namespace woogeen_base {
 
@@ -56,6 +57,9 @@ public:
     bool init(FrameFormat format, const uint32_t width, const uint32_t height, const uint32_t frameRate);
 
     void onTimeout();
+
+    void drawText(const std::string& textSpec);
+    void clearText();
 
 protected:
     bool filterFrame(const Frame& frame);
@@ -89,6 +93,8 @@ private:
     const webrtc::Clock *m_clock;
     boost::scoped_ptr<FrameConverter> m_converter;
     boost::scoped_ptr<JobTimer> m_jobTimer;
+
+    boost::shared_ptr<woogeen_base::FFmpegDrawText> m_textDrawer;
 };
 
 } /* namespace woogeen_base */

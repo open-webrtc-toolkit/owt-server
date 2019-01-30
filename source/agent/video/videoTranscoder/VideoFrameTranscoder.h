@@ -42,6 +42,9 @@ public:
     virtual void removeOutput(int output) = 0;
 
     virtual void requestKeyFrame(int output) = 0;
+
+    virtual void drawText(const std::string& textSpec) = 0;
+    virtual void clearText() = 0;
 };
 
 }

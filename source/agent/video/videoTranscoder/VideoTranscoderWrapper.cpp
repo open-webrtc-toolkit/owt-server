@@ -171,3 +171,27 @@ void VideoTranscoder::forceKeyFrame(const v8::FunctionCallbackInfo<v8::Value>& a
 
   me->forceKeyFrame(outStreamID);
 }
+
+void VideoTranscoder::drawText(const v8::FunctionCallbackInfo<v8::Value>& args) {
+  Isolate* isolate = Isolate::GetCurrent();
+  HandleScope scope(isolate);
+
+  VideoTranscoder* obj = ObjectWrap::Unwrap<VideoTranscoder>(args.Holder());
+  mcu::VideoTranscoder* me = obj->me;
+
+  String::Utf8Value param0(args[0]->ToString());
+  std::string textSpec = std::string(*param0);
+
+  me->drawText(textSpec);
+}
+
+void VideoTranscoder::clearText(const v8::FunctionCallbackInfo<v8::Value>& args) {
+  Isolate* isolate = Isolate::GetCurrent();
+  HandleScope scope(isolate);
+
+  VideoTranscoder* obj = ObjectWrap::Unwrap<VideoTranscoder>(args.Holder());
+  mcu::VideoTranscoder* me = obj->me;
+
+  me->clearText();
+}
+

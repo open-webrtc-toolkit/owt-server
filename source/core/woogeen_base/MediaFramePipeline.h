@@ -296,6 +296,8 @@ class VideoFrameProcesser : public FrameSource, public FrameDestination {
 public:
     virtual ~VideoFrameProcesser() { }
     virtual bool init(FrameFormat format, const uint32_t width, const uint32_t height, const uint32_t frameRate) = 0;
+    virtual void drawText(const std::string& textSpec) = 0;
+    virtual void clearText() = 0;
 };
 
 class VideoFrameEncoder : public FrameDestination {

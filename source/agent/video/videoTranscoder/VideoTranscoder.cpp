@@ -186,6 +186,16 @@ void VideoTranscoder::forceKeyFrame(const std::string& outStreamID)
     }
 }
 
+void VideoTranscoder::drawText(const std::string& textSpec)
+{
+    m_frameTranscoder->drawText(textSpec);
+}
+
+void VideoTranscoder::clearText()
+{
+    m_frameTranscoder->clearText();
+}
+
 void VideoTranscoder::closeAll()
 {
     ELOG_DEBUG("CloseAll");
