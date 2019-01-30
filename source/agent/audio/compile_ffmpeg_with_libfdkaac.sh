@@ -70,7 +70,7 @@ install_build_deps() {
   if [[ "$OS" =~ .*centos.* ]]
   then
     echo -e "\x1b[32mInstalling dependent components and libraries via yum...\x1b[0m"
-    sudo -E yum install gcc gcc-c++ nasm yasm SDL2-devel -y
+    sudo -E yum install gcc gcc-c++ nasm yasm SDL2-devel freetype-devel -y
   elif [[ "$OS" =~ .*ubuntu.* ]]
   then
     echo -e "\x1b[32mInstalling dependent components and libraries via apt-get...\x1b[0m"
