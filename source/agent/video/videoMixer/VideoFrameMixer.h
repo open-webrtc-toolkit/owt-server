@@ -40,6 +40,9 @@ public:
 
     virtual bool addOutput(const uint32_t width, const uint32_t height, const uint32_t framerateFPS, woogeen_base::FrameDestination *dst) = 0;
     virtual bool removeOutput(woogeen_base::FrameDestination *dst) = 0;
+
+    virtual void drawText(const std::string& textSpec) = 0;
+    virtual void clearText() = 0;
 };
 
 // VideoFrameMixer accepts frames from multiple inputs and mixes them.
@@ -64,6 +67,9 @@ public:
     virtual void requestKeyFrame(int output) = 0;
 
     virtual void updateLayoutSolution(LayoutSolution& solution) = 0;
+
+    virtual void drawText(const std::string& textSpec) = 0;
+    virtual void clearText() = 0;
 };
 
 }
