@@ -75,7 +75,7 @@ install_build_deps() {
   then
     echo -e "\x1b[32mInstalling dependent components and libraries via apt-get...\x1b[0m"
     sudo apt-get update
-    sudo -E apt-get install make gcc g++ nasm yasm libsdl1.2-dev
+    sudo -E apt-get install make gcc g++ nasm yasm libsdl1.2-dev libfreetype6-dev
   else
     echo -e "\x1b[32mUnsupported platform...\x1b[0m"
   fi
