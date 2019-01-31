@@ -43,6 +43,8 @@ void VideoTranscoder::Init(Handle<Object> exports, Handle<Object> module) {
   NODE_SET_PROTOTYPE_METHOD(tpl, "addOutput", addOutput);
   NODE_SET_PROTOTYPE_METHOD(tpl, "removeOutput", removeOutput);
   NODE_SET_PROTOTYPE_METHOD(tpl, "forceKeyFrame", forceKeyFrame);
+  NODE_SET_PROTOTYPE_METHOD(tpl, "drawText", drawText);
+  NODE_SET_PROTOTYPE_METHOD(tpl, "clearText", clearText);
 
   constructor.Reset(isolate, tpl->GetFunction());
   module->Set(String::NewFromUtf8(isolate, "exports"), tpl->GetFunction());
