@@ -90,11 +90,7 @@ if [ "$NIGHTLY" != "true" ]; then
 
   install_licode
 
-  if [[ "$OS" =~ .*centos.* ]]
-  then
-      install_msdk_dispatcher
-      install_libvautils
-  fi
+  install_libvautils
 
   if [[ "$OS" =~ .*ubuntu.* ]]
   then
