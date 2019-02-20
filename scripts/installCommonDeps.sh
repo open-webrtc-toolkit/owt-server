@@ -35,8 +35,8 @@ install_fdkaac(){
   rm -fr fdk-aac-${VERSION}
   tar xf ${SRC}
   pushd fdk-aac-${VERSION}
-  ./configure --prefix=/usr/local --enable-shared --enable-static
-  make -s V=0 && sudo make install && sudo ldconfig
+  ./configure --prefix=${PREFIX_DIR} --enable-shared --disable-static
+  make -j4 -s V=0 && make install
   popd
   popd
 }
