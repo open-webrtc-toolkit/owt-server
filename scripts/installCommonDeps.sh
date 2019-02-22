@@ -187,17 +187,6 @@ install_openh264(){
   cd $CURRENT_DIR
 }
 
-install_msdk_dispatcher(){
-  [ -d $LIB_DIR ] || mkdir -p $LIB_DIR
-  mkdir -p ${LIB_DIR}/dispatcher
-  pushd ${LIB_DIR}/dispatcher
-  rm * -rf
-  cmake -D__ARCH:STRING=intel64 /opt/intel/mediasdk/opensource/mfx_dispatch/
-  make
-  cp -av __lib/libdispatch_shared.a ${PREFIX_DIR}/lib/libdispatch_shared.a
-  popd
-}
-
 install_libexpat() {
   if [ -d $LIB_DIR ]; then
     local VERSION="2.2.6"
@@ -420,6 +409,8 @@ install_gcc(){
 }
 
 install_libvautils(){
+  export PKG_CONFIG_PATH=/opt/intel/mediasdk/lib64/pkgconfig/
+
   local version_str=`pkg-config --variable=libva_version libva`
   local major=`echo $version_str | sed 's/\([0-9]\+\)\.\([0-9]\+\).*/\1/'`
   local minor=`echo $version_str | sed 's/\([0-9]\+\)\.\([0-9]\+\).*/\2/'`

@@ -163,22 +163,12 @@ case $yn in
   * ) install_licode;;
 esac
 
-if [[ "$OS" =~ .*centos.* ]]
-then
-    read -p "Installing msdk dispatcher library? [No/yes]" yn
-    case $yn in
-      [Yy]* ) install_msdk_dispatcher;;
-      [Nn]* ) ;;
-      * ) ;;
-    esac
-
-    read -p "Installing vainfo util? [No/yes]" yn
-    case $yn in
-      [Yy]* ) install_libvautils;;
-      [Nn]* ) ;;
-      * ) ;;
-    esac
-fi
+read -p "Installing vainfo util? [No/yes]" yn
+case $yn in
+  [Yy]* ) install_libvautils;;
+  [Nn]* ) ;;
+  * ) ;;
+esac
 
 if [[ "$OS" =~ .*ubuntu.* ]]
 then

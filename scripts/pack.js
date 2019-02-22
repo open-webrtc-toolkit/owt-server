@@ -528,16 +528,17 @@ function filterLib(libSrc) {
 
   //console.log('require:', libSrc);
   const libName = path.basename(libSrc);
-  // Remove libmsdk
-  if (libName.indexOf('libmfxhw') === 0) return false;
-  // Remove libva
+
+  // Remove mfx/libva/libdrm
+  if (libName.indexOf('libmfx') === 0) return false;
   if (libName.indexOf('libva') === 0) return false;
+  if (libName.indexOf('libdrm') === 0) return false;
+
   // Remove libfdk-aac
   if (libName.indexOf('libfdk-aac') === 0 && options['archive']) return false;
   // Remove libav/ffmpeg if aac
   if (libName.indexOf('libav') === 0 || libName.indexOf('libsw') === 0) {
     let output = execSync(`ldd ${libSrc}`).toString();
-    //console.log('libav output:', output);
     if (options['archive'] && output.indexOf('libfdk-aac') >= 0) {
       return false;
     }
