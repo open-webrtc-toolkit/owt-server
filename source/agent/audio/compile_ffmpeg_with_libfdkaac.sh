@@ -70,12 +70,12 @@ install_build_deps() {
   if [[ "$OS" =~ .*centos.* ]]
   then
     echo -e "\x1b[32mInstalling dependent components and libraries via yum...\x1b[0m"
-    sudo -E yum install gcc gcc-c++ nasm yasm SDL2-devel freetype-devel -y
+    sudo -E yum install gcc gcc-c++ nasm yasm freetype-devel -y
   elif [[ "$OS" =~ .*ubuntu.* ]]
   then
     echo -e "\x1b[32mInstalling dependent components and libraries via apt-get...\x1b[0m"
     sudo apt-get update
-    sudo -E apt-get install make gcc g++ nasm yasm libsdl1.2-dev libfreetype6-dev
+    sudo -E apt-get install make gcc g++ nasm yasm libfreetype6-dev
   else
     echo -e "\x1b[32mUnsupported platform...\x1b[0m"
   fi
@@ -98,7 +98,7 @@ install_fdkaac(){
 
   echo "Building fdk-aac-${VERSION}"
   pushd fdk-aac-${VERSION}
-  ./configure --prefix=${DOWNLOAD_DIR} --enable-shared --enable-static
+  ./configure --prefix=${DOWNLOAD_DIR} --enable-shared --disable-static
   make -s V=0 && make install
   popd
 }
