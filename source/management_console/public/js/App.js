@@ -820,6 +820,54 @@ class RoomModal extends React.Component {
     );
   }
 
+  renderSip() {
+    const room = this.state.room;
+    const sipRow = (path) => {
+      const value = _.get(this.state.room.sip, path, '');
+      return e(
+        'div',
+        {className: 'row form-group'},
+        e('div', {className: 'col-sm-3'}, e('label', {}, path)),
+        e(
+          'div',
+          {className: 'col-sm-3'},
+          e('input',
+            {
+              type: 'text',
+              value,
+              className: 'form-control',
+              onChange: (e) => {
+                let newRoom = _.cloneDeep(this.state.room);
+                if (!newRoom.sip) {
+                  newRoom.sip = {sipServer: '', username: '', password: ''};
+                }
+                newRoom.sip[path] = e.target.value;
+                this.setState({room: newRoom});
+              },
+            },
+          )
+        ),
+      );
+    };
+
+    return e(
+      'div',
+      {className: 'panel panel-default'},
+      e('div', {className: 'panel-heading'}, 'SIP'),
+      e(
+        'div',
+        {className: 'panel-body'},
+        e(
+          'div',
+          {className: 'container-fluid'},
+          sipRow('sipServer'),
+          sipRow('username'),
+          sipRow('password'),
+        ),
+      )
+    );
+  }
+
   render() {
     return e(
       'div',
@@ -850,6 +898,7 @@ class RoomModal extends React.Component {
           {className: 'modal-body'},
           this.renderMediaIn(),
           this.renderMediaOut(),
+          this.renderSip(),
           e(
             RoomView,
             {
