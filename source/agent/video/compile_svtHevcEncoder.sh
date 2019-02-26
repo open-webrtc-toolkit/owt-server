@@ -49,7 +49,7 @@ install_svt_hevc(){
     git clone https://github.com/intel/SVT-HEVC.git
 
     pushd SVT-HEVC
-    git checkout 5b3feae186f83942d8039ba574a97aa2f4789f90
+    git checkout v1.3.0
 
     pushd Build
     pushd linux
