@@ -73,15 +73,15 @@ void SVTHEVCEncoder::initDefaultParameters()
 {
     // Encoding preset
     m_encParameters.encMode                         = 9;
-    m_encParameters.tune                            = 0;
+    m_encParameters.tune                            = 1;
     m_encParameters.latencyMode                     = 0;
 
     // GOP Structure
-    m_encParameters.intraPeriodLength               = 255; //[-2 - 255]
+    m_encParameters.intraPeriodLength               = 255;
     m_encParameters.intraRefreshType                = 2;
     m_encParameters.hierarchicalLevels              = 3;
 
-    m_encParameters.predStructure                   = 0; //EB_PRED_LOW_DELAY_P;
+    m_encParameters.predStructure                   = 0;
     m_encParameters.baseLayerSwitchMode             = 0;
 
     // Input Info
@@ -101,9 +101,11 @@ void SVTHEVCEncoder::initDefaultParameters()
     // Interlaced Video
     m_encParameters.interlacedVideo                 = 0;
 
+#if 0
     // Quantization
-    m_encParameters.qp                              = 32;
+    m_encParameters.qp                              = 25;
     m_encParameters.useQpFile                       = 0;
+#endif
 
     // Deblock Filter
     m_encParameters.disableDlfFlag                  = 0;
@@ -114,37 +116,12 @@ void SVTHEVCEncoder::initDefaultParameters()
     // Motion Estimation Tools
     m_encParameters.useDefaultMeHme                 = 1;
     m_encParameters.enableHmeFlag                   = 1;
-    m_encParameters.enableHmeLevel0Flag             = 1;
-    m_encParameters.enableHmeLevel1Flag             = 0;
-    m_encParameters.enableHmeLevel2Flag             = 0;
 
+#if 0
     // ME Parameters
     m_encParameters.searchAreaWidth                 = 16;
     m_encParameters.searchAreaHeight                = 7;
-
-    // HME Parameters
-    m_encParameters.numberHmeSearchRegionInWidth    = 2;
-    m_encParameters.numberHmeSearchRegionInHeight   = 2;
-    m_encParameters.hmeLevel0TotalSearchAreaWidth   = 64;
-    m_encParameters.hmeLevel0TotalSearchAreaHeight  = 25;
-
-    m_encParameters.hmeLevel0SearchAreaInWidthArray[0]  = 32;
-    m_encParameters.hmeLevel0SearchAreaInWidthArray[1]  = 32;
-
-    m_encParameters.hmeLevel0SearchAreaInHeightArray[0] = 12;
-    m_encParameters.hmeLevel0SearchAreaInHeightArray[1] = 13;
-
-    m_encParameters.hmeLevel1SearchAreaInWidthArray[0]  = 1;
-    m_encParameters.hmeLevel1SearchAreaInWidthArray[1]  = 1;
-
-    m_encParameters.hmeLevel1SearchAreaInHeightArray[0] = 1;
-    m_encParameters.hmeLevel1SearchAreaInHeightArray[1] = 1;
-
-    m_encParameters.hmeLevel2SearchAreaInWidthArray[0]  = 1;
-    m_encParameters.hmeLevel2SearchAreaInWidthArray[1]  = 1;
-
-    m_encParameters.hmeLevel2SearchAreaInHeightArray[0] = 1;
-    m_encParameters.hmeLevel2SearchAreaInHeightArray[1] = 1;
+#endif
 
     // MD Parameters
     m_encParameters.constrainedIntra        = 0;
@@ -172,17 +149,19 @@ void SVTHEVCEncoder::initDefaultParameters()
     m_encParameters.profile                 = 1;
     m_encParameters.tier                    = 0;
     m_encParameters.level                   = 0;
+    m_encParameters.fpsInVps                = 0;
 
     // Application Specific parameters
     m_encParameters.channelId               = 0;
     m_encParameters.activeChannelCount      = 1;
 
     // Threads management
-    m_encParameters.logicalProcessors       = 0;
-    m_encParameters.targetSocket            = -1;
+    m_encParameters.logicalProcessors           = 0;
+    m_encParameters.targetSocket                = -1;
+    m_encParameters.switchThreadsToRtPriority   = 1;
 
     // ASM Type
-    m_encParameters.asmType = EB_ASM_AVX2;
+    m_encParameters.asmType = 1;
 
     // Demo features
     m_encParameters.speedControlFlag        = 1;
@@ -190,6 +169,22 @@ void SVTHEVCEncoder::initDefaultParameters()
 
     // Debug tools
     m_encParameters.reconEnabled            = false;
+
+#if 0
+    // SEI
+    m_encParameters.maxCLL;
+    m_encParameters.maxFALL;
+    m_encParameters.useMasteringDisplayColorVolume;
+    m_encParameters.useNaluFile;
+    m_encParameters.dolbyVisionProfile;
+
+    // Master Display Color Volume Parameters
+    m_encParameters.displayPrimaryX[3];
+    m_encParameters.displayPrimaryY[3];
+    m_encParameters.whitePointX, whitePointY;
+    m_encParameters.maxDisplayMasteringLuminance;
+    m_encParameters.minDisplayMasteringLuminance;
+#endif
 }
 
 void SVTHEVCEncoder::updateParameters(uint32_t width, uint32_t height, uint32_t frameRate, uint32_t bitrateKbps, uint32_t keyFrameIntervalSeconds)
@@ -385,10 +380,10 @@ void SVTHEVCEncoder::onFrame(const Frame& frame)
     }
 
     if (m_forceIDR) {
-        inputBufferHeader->sliceType = EB_IDR_SLICE;
+        inputBufferHeader->sliceType = EB_IDR_PICTURE;
         m_forceIDR = false;
     } else {
-        inputBufferHeader->sliceType = EB_INVALID_SLICE;
+        inputBufferHeader->sliceType = EB_INVALID_PICTURE;
     }
 
     ELOG_TRACE_T("SendPicture, sliceType(%d)", inputBufferHeader->sliceType);
@@ -400,7 +395,7 @@ void SVTHEVCEncoder::onFrame(const Frame& frame)
 
     EB_BUFFERHEADERTYPE *streamBufferHeader = &m_streamBufferPool[0];
 
-    return_error = EbH265GetPacket(m_handle, streamBufferHeader, false);
+    return_error = EbH265GetPacket(m_handle, &streamBufferHeader, false);
     if (return_error == EB_ErrorMax) {
         ELOG_ERROR_T("Error while encoding, code 0x%x", streamBufferHeader->nFlags);
         return;
@@ -517,7 +512,7 @@ bool SVTHEVCEncoder::allocateBuffers()
 
         m_inputBufferPool[bufferIndex].nAllocLen    = luma8bitSize + chroma8bitSize + chroma8bitSize;
         m_inputBufferPool[bufferIndex].pAppPrivate  = this;
-        m_inputBufferPool[bufferIndex].sliceType    = EB_INVALID_SLICE;
+        m_inputBufferPool[bufferIndex].sliceType    = EB_INVALID_PICTURE;
 
         m_freeInputBuffers.push(&m_inputBufferPool[bufferIndex]);
     }
@@ -537,7 +532,7 @@ bool SVTHEVCEncoder::allocateBuffers()
 
         m_streamBufferPool[bufferIndex].nAllocLen   = outputStreamBufferSize;
         m_streamBufferPool[bufferIndex].pAppPrivate = this;
-        m_streamBufferPool[bufferIndex].sliceType   = EB_INVALID_SLICE;
+        m_streamBufferPool[bufferIndex].sliceType   = EB_INVALID_PICTURE;
     }
 
     return true;
@@ -581,7 +576,7 @@ void SVTHEVCEncoder::deallocateBuffers()
 
 void SVTHEVCEncoder::fillPacketDone(EB_BUFFERHEADERTYPE* pBufferHeader)
 {
-    ELOG_TRACE_T("Fill packet done, nFilledLen(%d), nTickCount %d(ms), dts(%lld), pts(%lld), nFlags(0x%x), qpValue(%d), sliceType(%d)"
+    ELOG_TRACE_T("Fill packet done, nFilledLen(%d), nTickCount %d(ms), dts(%ld), pts(%ld), nFlags(0x%x), qpValue(%d), sliceType(%d)"
             , pBufferHeader->nFilledLen
             , pBufferHeader->nTickCount
             , pBufferHeader->dts
@@ -601,7 +596,7 @@ void SVTHEVCEncoder::fillPacketDone(EB_BUFFERHEADERTYPE* pBufferHeader)
     outFrame.timeStamp = (m_frameCount++) * 1000 / m_encParameters.frameRate * 90;
     outFrame.additionalInfo.video.width         = m_encParameters.sourceWidth;
     outFrame.additionalInfo.video.height        = m_encParameters.sourceHeight;
-    outFrame.additionalInfo.video.isKeyFrame    = (pBufferHeader->sliceType == EB_IDR_SLICE);
+    outFrame.additionalInfo.video.isKeyFrame    = (pBufferHeader->sliceType == EB_IDR_PICTURE);
 
     ELOG_TRACE_T("deliverFrame, %s, %dx%d(%s), length(%d)",
             getFormatStr(outFrame.format),
