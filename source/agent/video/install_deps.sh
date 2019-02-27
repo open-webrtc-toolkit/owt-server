@@ -55,7 +55,7 @@ install_deps() {
   if [[ "$OS" =~ .*centos.* ]]
   then
     echo -e "\x1b[32mInstalling dependent components and libraries via yum...\x1b[0m"
-    ${SUDO} yum update
+    ${OWT_UPDATE_DONE} || ${SUDO} yum update
     ${SUDO} yum install wget
     if [[ "$OS" =~ .*6.* ]] # CentOS 6.x
     then
@@ -67,14 +67,14 @@ install_deps() {
       ${SUDO} rpm -Uvh epel-release-latest-7*.rpm
     fi
     ${SUDO} sed -i 's/https/http/g' /etc/yum.repos.d/epel.repo
-    ${SUDO} yum install bzip2 -y
+    ${SUDO} yum install boost-system boost-thread log4cxx bzip2 -y
     ${SUDO} yum install intel-gpu-tools -y
 
   elif [[ "$OS" =~ .*ubuntu.* ]]
   then
     echo -e "\x1b[32mInstalling dependent components and libraries via apt-get...\x1b[0m"
-    ${SUDO} apt-get update
-    ${SUDO} apt-get install wget bzip2
+    ${OWT_UPDATE_DONE} || ${SUDO} apt-get update
+    ${SUDO} apt-get install libboost-system-dev libboost-thread-dev liblog4cxx-dev wget bzip2
     ${SUDO} apt-get install intel-gpu-tools
   else
     echo -e "\x1b[32mUnsupported platform...\x1b[0m"
