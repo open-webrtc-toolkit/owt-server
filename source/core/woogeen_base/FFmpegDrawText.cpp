@@ -231,6 +231,8 @@ int FFmpegDrawText::setText(std::string arg)
 
 int FFmpegDrawText::drawFrame(Frame& frame)
 {
+    return 0;//disable
+
     int ret;
 
     switch (frame.format) {
