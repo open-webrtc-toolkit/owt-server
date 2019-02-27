@@ -145,7 +145,7 @@ var launchErizoJS = function() {
     var out = fs.openSync('../logs/' + id + '.log', 'a');
     var err = fs.openSync('../logs/' + id + '.log', 'a');
     var execName = 'node';
-    if (!process.env.NODE_DEBUG_ERIZO && loadConfig.bin) {
+    if (process.env.NODE_DEBUG_ERIZO && loadConfig.bin) {
         execName = './' + loadConfig.bin;
     }
     var spawnArgs = ['./erizoJS.js', id, myPurpose, JSON.stringify(webrtcInterfaces), clusterIP, myId];

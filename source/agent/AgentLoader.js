@@ -44,8 +44,8 @@ function checkError(e) {
  */
 module.exports = function (loadPath) {
   var ret;
-  if (debug) {
-    // Loader in debug mode
+  if (!debug) {
+    // Loader in non-debug mode
     try {
       // Directly
       ret = require(loadPath);
@@ -57,7 +57,7 @@ module.exports = function (loadPath) {
     return require('./' + path.join(loadPrefix, loadPath));
   }
 
-  // Loader in release mode
+  // Loader in debug mode
   var normalPath = path.normalize(loadPath);
   if (normalPath === loadPath) {
     try {
