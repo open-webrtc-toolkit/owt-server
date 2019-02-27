@@ -21,7 +21,10 @@
 
 this=$(dirname "$0")
 this=$(cd "${this}"; pwd)
-
+SUDO=""
+if [[ $EUID -ne 0 ]]; then
+   SUDO="sudo -E"
+fi
 
 usage() {
   echo
@@ -35,13 +38,13 @@ usage() {
 enable_intel_gpu_top() {
   echo "Enable Intel GPU Top"
   # make intel-gpu-tools accessable by non-root users.
-  sudo chmod a+rw /sys/devices/pci0000:00/0000:00:02.0/resource*
+  ${SUDO} chmod a+rw /sys/devices/pci0000:00/0000:00:02.0/resource*
   # make the above change effect at every system startup.
-  sudo chmod +x /etc/rc.local /etc/rc.d/rc.local
-  if sudo grep -RInqs "chmod a+rw /sys/devices/pci0000:00/0000:00:02.0/resource*" /etc/rc.local; then
+  ${SUDO} chmod +x /etc/rc.local /etc/rc.d/rc.local
+  if ${SUDO} grep -RInqs "chmod a+rw /sys/devices/pci0000:00/0000:00:02.0/resource*" /etc/rc.local; then
     echo "intel-gpu-tools has been authorised to non-root users."
   else
-    sudo sh -c "echo \"chmod a+rw /sys/devices/pci0000:00/0000:00:02.0/resource*\" >> /etc/rc.local"
+    ${SUDO} sh -c "echo \"chmod a+rw /sys/devices/pci0000:00/0000:00:02.0/resource*\" >> /etc/rc.local"
   fi
 }
 
@@ -52,27 +55,27 @@ install_deps() {
   if [[ "$OS" =~ .*centos.* ]]
   then
     echo -e "\x1b[32mInstalling dependent components and libraries via yum...\x1b[0m"
-    sudo yum update
-    sudo yum install wget
+    ${SUDO} yum update
+    ${SUDO} yum install wget
     if [[ "$OS" =~ .*6.* ]] # CentOS 6.x
     then
       wget -c http://dl.fedoraproject.org/pub/epel/6/x86_64/epel-release-6-8.noarch.rpm
-      sudo rpm -Uvh epel-release-6*.rpm
+      ${SUDO} rpm -Uvh epel-release-6*.rpm
     elif [[ "$OS" =~ .*7.* ]] # CentOS 7.x
     then
       wget -c http://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
-      sudo rpm -Uvh epel-release-latest-7*.rpm
+      ${SUDO} rpm -Uvh epel-release-latest-7*.rpm
     fi
-    sudo sed -i 's/https/http/g' /etc/yum.repos.d/epel.repo
-    sudo yum install bzip2 -y
-    sudo yum install intel-gpu-tools -y
+    ${SUDO} sed -i 's/https/http/g' /etc/yum.repos.d/epel.repo
+    ${SUDO} yum install bzip2 -y
+    ${SUDO} yum install intel-gpu-tools -y
 
   elif [[ "$OS" =~ .*ubuntu.* ]]
   then
     echo -e "\x1b[32mInstalling dependent components and libraries via apt-get...\x1b[0m"
-    sudo apt-get update
-    sudo apt-get install wget bzip2
-    sudo apt-get install intel-gpu-tools
+    ${SUDO} apt-get update
+    ${SUDO} apt-get install wget bzip2
+    ${SUDO} apt-get install intel-gpu-tools
   else
     echo -e "\x1b[32mUnsupported platform...\x1b[0m"
   fi

@@ -21,9 +21,12 @@
 this=`dirname "$0"`
 this=`cd "$this"; pwd`
 ROOT=`cd "${this}/.."; pwd`
+SUDO=""
+if [[ $EUID -ne 0 ]]; then
+   SUDO="sudo -E"
+fi
 
 export WOOGEEN_HOME=${ROOT}
-
 
 usage() {
   echo
@@ -40,11 +43,11 @@ do_update() {
   if [[ "$OS" =~ .*centos.* ]]
   then
     echo -e "\x1b[32mRun yum update...\x1b[0m"
-    sudo yum update
+    ${SUDO} yum update
   elif [[ "$OS" =~ .*ubuntu.* ]]
   then
     echo -e "\x1b[32mRun apt-get update...\x1b[0m"
-    sudo apt-get update
+    ${SUDO} apt-get update
   else
     echo -e "\x1b[32mUnsupported platform...\x1b[0m"
   fi
@@ -54,12 +57,12 @@ install_deps() {
   if [[ "$OS" =~ .*centos.* ]]
   then
     echo -e "\x1b[32mInstalling deps via yum install...\x1b[0m"
-    sudo yum install wget
-    sudo yum install bzip2
+    ${SUDO} yum install wget
+    ${SUDO} yum install bzip2
   elif [[ "$OS" =~ .*ubuntu.* ]]
   then
     echo -e "\x1b[32mInstalling deps via apt-get install...\x1b[0m"
-    sudo apt-get install wget bzip2
+    ${SUDO} apt-get install wget bzip2
   fi
 }
 
