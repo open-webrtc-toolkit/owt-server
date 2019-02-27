@@ -13,19 +13,29 @@
 #if defined OMS_ENABLE_QUIC
 #include "RTCIceTransport.h"
 #include "RTCIceCandidate.h"
+#include "RTCQuicTransport.h"
+#include "RTCCertificate.h"
+#include "QuicStream.h"
 #endif
 #include <node.h>
 
 using namespace v8;
 
 void InitAll(Handle<Object> exports) {
+  WebRtcConnection::Init(exports);
+  MediaStream::Init(exports);
+  ThreadPool::Init(exports);
+  IOThreadPool::Init(exports);
   AudioFrameConstructor::Init(exports);
   AudioFramePacketizer::Init(exports);
   VideoFrameConstructor::Init(exports);
   VideoFramePacketizer::Init(exports);
-#if defined OMS_ENABLE_QUIC
+#ifdef OMS_ENABLE_QUIC
+  RTCQuicTransport::Init(exports);
   RTCIceTransport::Init(exports);
   RTCIceCandidate::Init(exports);
+  RTCCertificate::Init(exports);
+  QuicStream::Init(exports);
 #endif
 }
 

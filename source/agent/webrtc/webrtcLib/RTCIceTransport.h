@@ -16,20 +16,27 @@
 #include <nan.h>
 
 #include "RTCIceCandidate.h"
+#include "IceConnectionAdapter.h"
 
 enum class RTCIceTransportEventType : int {
-    IceCandidate = 1,
+    IceCandidate,
     StateChange
 };
 
 enum class RTCIceTransportState : int {
-    New = 1,
+    New,
     Checking,
     Connected,
     Completed,
     Disconnected,
     Failed,
     Closed
+};
+
+// https://w3c.github.io/webrtc-pc/#dom-rtcicerole
+enum class RTCIceRole:uint8_t{
+    Controlling,
+    Controlled
 };
 
 // https://w3c.github.io/webrtc-pc/#dom-rtciceparameters
@@ -46,14 +53,13 @@ class RTCIceTransport : public erizo::IceConnectionListener,
 
 public:
     static NAN_MODULE_INIT(Init);
+    std::shared_ptr<IceConnectionAdapter> iceConnection();
 
 protected:
     // Defined in erizo::IceConnectionListener.
     virtual void onPacketReceived(erizo::packetPtr packet) override;
     virtual void onCandidate(const erizo::CandidateInfo& candidate, erizo::IceConnection* conn) override;
     virtual void updateIceState(erizo::IceState state, erizo::IceConnection* conn) override;
-
-    virtual void notifyEvent(RTCIceTransportEventType type, v8::Local<v8::Value> value);
 
 private:
     RTCIceTransport();
@@ -67,7 +73,9 @@ private:
     static NAN_METHOD(getLocalParameters);
     static NAN_METHOD(addRemoteCandidate);
 
-    static NAUV_WORK_CB(eventsCallback);
+    static NAN_GETTER(roleGetter);
+
+    static NAUV_WORK_CB(onCandidateCallback);
 
     void drainPendingRemoteCandidates();
 
@@ -78,10 +86,9 @@ private:
     std::unique_ptr<RTCIceParameters> m_remoteParameters;
     std::mutex m_candidateMutex;
     std::vector<erizo::CandidateInfo> m_localCandidates;
+    std::queue<erizo::CandidateInfo> m_unnotifiedLocalCandidates; // onicecandidate is not triggered for these candidates.
     std::vector<erizo::CandidateInfo> m_pendingRemoteCandidates; // Receive remote candidates before having remote parameters.
-    uv_async_t m_async;
-    std::mutex m_eventMutex;
-    std::queue<std::pair<RTCIceTransportEventType, Nan::Persistent<v8::Value, v8::CopyablePersistentTraits<v8::Value>>>> m_events;
+    uv_async_t m_asyncOnCandidate;
     RTCIceTransportState m_state;
 };
 

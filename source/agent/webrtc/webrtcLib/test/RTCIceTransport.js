@@ -1,7 +1,14 @@
+/*
+ * Copyright (C) 2018 Intel Corporation
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+
 'use strict';
 
 const expect = require('chai').use(require('chai-as-promised')).expect;
-const addon = require('../build/Release/webrtc');
+const addon = require('../build/Debug/webrtc-quic');
 
 describe('Test RTCIceTransport with licode and libnice.', () => {
   let iceTransport;
@@ -11,13 +18,13 @@ describe('Test RTCIceTransport with licode and libnice.', () => {
   afterEach(() => {
     iceTransport.stop();
   });
-  it('Create an RTCIceTransport.', () => {
+  xit('Create an RTCIceTransport.', () => {
     const iceTransport2 = new addon.RTCIceTransport();
     expect(iceTransport).to.be.an.instanceof(addon.RTCIceTransport);
     iceTransport2.stop();
   });
 
-  it('Fire statechange and get local candidates on RTCIceTransport', (done) => {
+  xit('Fire statechange and get local candidates on RTCIceTransport', (done) => {
     iceTransport.onstatechange = () => {
       done();
     }
@@ -28,26 +35,27 @@ describe('Test RTCIceTransport with licode and libnice.', () => {
     let calledFirstTime = false;
     iceTransport.onicecandidate = (event) => {
       if (calledFirstTime) {
-        done();
+        console.log(event);
       } else {
         calledFirstTime = true;
+        done();
       }
     }
     iceTransport.gather();
   });
 
-  it('Add remote candidates and start.',(done)=>{
+  xit('Add remote candidates and start.',(done)=>{
     iceTransport.gather();
+    iceTransport.start({usernameFragment: 'qlkT', password: '0/MLO8kD6QgBOgQvzX1l8pmO'});
     const candidate = new addon.RTCIceCandidate({
       sdpMid: 0,
-      candidate: '2634527916 1 udp 2122194687 10.239.158.168 64275 typ host generation 0 ufrag l/WL network-id 2'
+      candidate: '4278134664 0 udp 2122063616 192.168.1.8 62630 typ host generation 0 ufrag qlkT network-id 2'
     });
     iceTransport.addRemoteCandidate(candidate);
-    iceTransport.start({usernameFragment: 'user', password: 'password'});
     done();
   });
 
-  it('Get local parameters.',(done)=>{
+  xit('Get local parameters.',(done)=>{
     iceTransport.gather();
     const parameters=iceTransport.getLocalParameters();
     expect(parameters.usernameFragment).to.be.a('string').that.is.not.empty;

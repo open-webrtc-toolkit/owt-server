@@ -92,6 +92,14 @@
     "webrtc-frame": {
         "path" : "source/agent/webrtc/rtcFrame"
     },
+    "webrtc" : {
+        "path" : "source/agent/webrtc/webrtcLib",
+        "gyp": "binding.webrtc.gyp"
+    },
+    "webrtc-quic" : {
+        "path" : "source/agent/webrtc/webrtcLib",
+        "gyp": "binding.quic.gyp"
+    },
     "sip" : {
         "path" : "source/agent/sip/sipIn",
         "gyp" : "binding.sip.gyp"

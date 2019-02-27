@@ -142,7 +142,7 @@ std::vector<std::string> RTCIceCandidate::split(const std::string& str) const
 
 std::unique_ptr<erizo::CandidateInfo> RTCIceCandidate::deserialize(const std::string& candidate) const
 {
-    ELOG_DEBUG("deserialize: %s", candidate);
+    ELOG_DEBUG("deserialize: %s", candidate.c_str());
     // Based on Licode SdpInfo::processCandidate.
     std::unique_ptr<erizo::CandidateInfo> cand(new erizo::CandidateInfo);
     auto pieces(split(candidate));
@@ -150,11 +150,11 @@ std::unique_ptr<erizo::CandidateInfo> RTCIceCandidate::deserialize(const std::st
     cand->foundation = pieces[0];
     cand->componentId = (unsigned int)strtoul(pieces[1].c_str(), nullptr, 10);
 
-    ELOG_DEBUG("%s %u", cand->foundation, cand->componentId);
+    ELOG_DEBUG("%s %u", cand->foundation.c_str(), cand->componentId);
     cand->netProtocol = pieces[2];
     // Libnice does not support tcp candidates, we ignore them.
     if (cand->netProtocol.compare("UDP") && cand->netProtocol.compare("udp")) {
-        ELOG_ERROR("Libnice does not support TCP candidates. %s", pieces[2]);
+        ELOG_ERROR("Libnice does not support TCP candidates. %s", pieces[2].c_str());
         return nullptr;
     }
     // a=candidate:0 1 udp 2130706432 1383 52314 typ host  generation 0

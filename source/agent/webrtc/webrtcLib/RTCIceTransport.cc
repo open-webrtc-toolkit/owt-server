@@ -31,7 +31,12 @@ RTCIceTransport::RTCIceTransport()
 {
 }
 
-RTCIceTransport::~RTCIceTransport() {}
+RTCIceTransport::~RTCIceTransport()
+{
+    if (!uv_is_closing(reinterpret_cast<uv_handle_t*>(&m_asyncOnCandidate))) {
+        uv_close(reinterpret_cast<uv_handle_t*>(&m_asyncOnCandidate), NULL);
+    }
+}
 
 NAN_MODULE_INIT(RTCIceTransport::Init)
 {
@@ -46,6 +51,8 @@ NAN_MODULE_INIT(RTCIceTransport::Init)
     Nan::SetPrototypeMethod(tpl, "getLocalParameters", getLocalParameters);
     Nan::SetPrototypeMethod(tpl, "addRemoteCandidate", addRemoteCandidate);
 
+    Nan::SetAccessor(tpl->InstanceTemplate(), Nan::New("role").ToLocalChecked(), roleGetter);
+
     constructor.Reset(tpl->GetFunction());
     Nan::Set(target, Nan::New("RTCIceTransport").ToLocalChecked(), Nan::GetFunction(tpl).ToLocalChecked());
 }
@@ -59,7 +66,7 @@ NAN_METHOD(RTCIceTransport::newInstance)
     config.ice_components = 1;
     RTCIceTransport* obj = new RTCIceTransport();
     obj->m_iceConnection.reset(erizo::LibNiceConnection::create(obj, config));
-    uv_async_init(uv_default_loop(), &obj->m_async, &RTCIceTransport::eventsCallback);
+    uv_async_init(uv_default_loop(), &obj->m_asyncOnCandidate, &RTCIceTransport::onCandidateCallback);
     obj->Wrap(info.This());
     info.GetReturnValue().Set(info.This());
 }
@@ -109,9 +116,8 @@ NAN_METHOD(RTCIceTransport::stop)
         // obj->m_iceConnection->close();
     }
     ELOG_DEBUG("Stop an RTCIceTransport.");
-    std::lock_guard<std::mutex> lock(obj->m_eventMutex);
-    if (!uv_is_closing(reinterpret_cast<uv_handle_t*>(&obj->m_async))) {
-        uv_close(reinterpret_cast<uv_handle_t*>(&obj->m_async), NULL);
+    if (!uv_is_closing(reinterpret_cast<uv_handle_t*>(&obj->m_asyncOnCandidate))) {
+        uv_close(reinterpret_cast<uv_handle_t*>(&obj->m_asyncOnCandidate), NULL);
     }
 }
 
@@ -148,57 +154,66 @@ NAN_METHOD(RTCIceTransport::addRemoteCandidate)
         std::lock_guard<std::mutex> lock(obj->m_candidateMutex);
         obj->m_pendingRemoteCandidates.push_back({ candidate->candidateInfo() });
     } else {
+        // TODO: Figure out why there is a candidate == "nullptr".
+        if(candidate&&candidate->toString()=="nullptr"){
+            return;
+        }
         ELOG_DEBUG("Adding remote candidate: %s.", candidate->toString().c_str());
         erizo::CandidateInfo candidateInfo = candidate->candidateInfo();
         candidateInfo.username = obj->m_remoteParameters->usernameFragment;
         candidateInfo.password = obj->m_remoteParameters->password;
         candidateInfo.componentId = 1;
+        candidateInfo.mediaType = erizo::MediaType::AUDIO_TYPE;
         obj->m_iceConnection->setRemoteCandidates({ candidateInfo }, false);
     }
 }
 
-NAUV_WORK_CB(RTCIceTransport::eventsCallback)
+NAN_GETTER(RTCIceTransport::roleGetter)
+{
+    // Server always performs as controlled mode. See LibNiceConnection.cpp.
+    info.GetReturnValue().Set(Nan::New("controlled").ToLocalChecked());
+}
+
+NAUV_WORK_CB(RTCIceTransport::onCandidateCallback)
 {
     Nan::HandleScope scope;
     RTCIceTransport* obj = reinterpret_cast<RTCIceTransport*>(async->data);
-    if (!obj || obj->m_iceConnection == NULL)
+    if (!obj || obj->m_unnotifiedLocalCandidates.empty())
         return;
-    std::lock_guard<std::mutex> lock(obj->m_eventMutex);
-    while (!obj->m_events.empty()) {
-        Nan::MaybeLocal<v8::Value> onEvent = Nan::Get(obj->handle(), Nan::New<v8::String>("on" + s_eventTypeNameMap[obj->m_events.front().first]).ToLocalChecked()).ToLocalChecked();
+    std::lock_guard<std::mutex> lock(obj->m_candidateMutex);
+    while (!obj->m_unnotifiedLocalCandidates.empty()) {
+        Nan::MaybeLocal<v8::Value> onEvent = Nan::Get(obj->handle(), Nan::New<v8::String>("onicecandidate").ToLocalChecked());
         if (!onEvent.IsEmpty()) {
             v8::Local<v8::Value> onEventLocal = onEvent.ToLocalChecked();
             if (onEventLocal->IsFunction()) {
                 v8::Local<v8::Function> eventCallback = onEventLocal.As<Function>();
                 Nan::AsyncResource* resource = new Nan::AsyncResource(Nan::New<v8::String>("EventCallback").ToLocalChecked());
-                Local<Value> args[] = { Nan::New(obj->m_events.front().second) };
+                v8::Local<v8::Object> candidateObject = Nan::New<v8::Object>();
+                auto candidate = obj->m_unnotifiedLocalCandidates.front();
+                Nan::Set(candidateObject, Nan::New("candidate").ToLocalChecked(), RTCIceCandidate::newInstance(candidate));
+                Local<Value> args[] = { candidateObject };
                 resource->runInAsyncScope(Nan::GetCurrentContext()->Global(), eventCallback, 1, args);
             }
         }
-        obj->m_events.pop();
+        obj->m_unnotifiedLocalCandidates.pop();
     }
-}
-
-void RTCIceTransport::notifyEvent(RTCIceTransportEventType type, v8::Local<Value> value)
-{
-    std::lock_guard<std::mutex> lock(m_eventMutex);
-    std::pair<RTCIceTransportEventType, Nan::Persistent<Value, v8::CopyablePersistentTraits<v8::Value>>> p(type, value);
-    this->m_events.push(p);
-    m_async.data = this;
-    uv_async_send(&m_async);
 }
 
 void RTCIceTransport::onPacketReceived(erizo::packetPtr packet)
 {
+    ELOG_DEBUG("RTCIceTransport::onPacketReceived");
 }
 
 void RTCIceTransport::onCandidate(const erizo::CandidateInfo& candidate, erizo::IceConnection* conn)
 {
-    m_localCandidates.push_back(candidate);
     ELOG_DEBUG("Adding new local candidates.");
-    v8::Local<v8::Object> iceEvent = Nan::New<v8::Object>();
-    Nan::Set(iceEvent, Nan::New("candidate").ToLocalChecked(), RTCIceCandidate::newInstance(candidate));
-    notifyEvent(RTCIceTransportEventType::IceCandidate, iceEvent);
+    {
+        std::lock_guard<std::mutex> lock(m_candidateMutex);
+        m_localCandidates.push_back(candidate);
+        m_unnotifiedLocalCandidates.push(candidate);
+    }
+    m_asyncOnCandidate.data = this;
+    uv_async_send(&m_asyncOnCandidate);
 }
 
 void RTCIceTransport::updateIceState(erizo::IceState state, erizo::IceConnection* conn)
@@ -216,4 +231,9 @@ void RTCIceTransport::drainPendingRemoteCandidates()
     }
     m_iceConnection->setRemoteCandidates(m_pendingRemoteCandidates, false);
     m_pendingRemoteCandidates.clear();
+}
+
+std::shared_ptr<IceConnectionAdapter> RTCIceTransport::iceConnection()
+{
+    return std::make_shared<IceConnectionAdapter>(m_iceConnection.get());
 }

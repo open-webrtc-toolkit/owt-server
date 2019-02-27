@@ -1,7 +1,13 @@
+/*
+ * Copyright (C) 2018 Intel Corporation
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 'use strict';
 
 const expect = require('chai').use(require('chai-as-promised')).expect;
-const addon = require('../build/Debug/webrtc');
+const addon = require('../build/Release/webrtc-quic');
 
 describe('Test RTCIceCandidate.', () => {
   it('Create an RTCIceCandidate.', () => {
