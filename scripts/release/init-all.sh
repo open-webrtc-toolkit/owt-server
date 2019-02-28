@@ -33,6 +33,7 @@ init_software()
 {
   if ${INSTALL_DEPS}; then
     echo "Installing dependency..."
+    ${ROOT}/bin/install_node.sh
     ${ROOT}/bin/init-mongodb.sh --deps
     ${ROOT}/bin/init-rabbitmq.sh --deps
     OWT_UPDATE_DONE=true
@@ -53,6 +54,7 @@ init_hardware()
 {
   if ${INSTALL_DEPS}; then
     echo "Installing dependency..."
+    ${ROOT}/bin/install_node.sh
     ${ROOT}/bin/init-mongodb.sh --deps
     ${ROOT}/bin/init-rabbitmq.sh --deps
     OWT_UPDATE_DONE=true
