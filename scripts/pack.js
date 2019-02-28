@@ -13,7 +13,7 @@ optParser.addOption('t', 'target', 'list', 'Specify target to pack (Eg. pack.js 
 optParser.addOption('i', 'install-module', 'boolean', 'Whether install node module after packing (Eg. pack.js -t portal -i)');
 optParser.addOption('r', 'repack', 'boolean', 'Whether clean dist before pack (Eg. pack.js -t portal -r)');
 optParser.addOption('e', 'encrypt', 'boolean', 'Whether encrypt during pack (Eg. pack.js -t portal -e)');
-optParser.addOption('d', 'debug', 'boolean', 'Whether pack debug version (Eg. pack.js -t portal -d)');
+optParser.addOption('d', 'debug', 'boolean', '(Disabled)');
 optParser.addOption('o', 'addon-debug', 'boolean', 'Whether pack debug addon (Eg. pack.js -t webrtc-agent -o)');
 optParser.addOption('f', 'full', 'boolean', 'Whether perform a full pack (--full is the equalivation of pack.js -t all -r -i)');
 optParser.addOption('s', 'sample-path', 'string', 'Specify sample path (Eg. pack.js -t all -s ${samplePath})');
@@ -36,6 +36,7 @@ const osType = execSync(`. ${osScript}`).toString().toLowerCase();
 
 var allTargets = [];
 
+options.debug = false;
 if (options.full) {
   options.target = ['all'];
   options.repack = true;
@@ -161,7 +162,7 @@ function packTarget(target) {
   chdir(distDir);
   return exec(`mkdir -p ${packDist}`)
     .then((mkdir) => {
-      return (options.debug ? packNodeDebug(target) : packNode(target));
+      return (options.debug ? packNode(target) : packWithoutNode(target));
     })
     .then((nodePacked) => {
       return packCommon(target);
@@ -302,10 +303,10 @@ function packNode(target) {
   console.log(target.rules.name, '- Pack node finished.')
 }
 
-function packNodeDebug(target) {
+function packWithoutNode(target) {
   if (!target.rules.node) return;
 
-  console.log('\x1b[32mPack node (debug) \x1b[0m -', target.rules.name);
+  console.log('\x1b[32mPack node (external) \x1b[0m -', target.rules.name);
   const node = target.rules.node;
   const packSrc = path.dirname(target.path);
   const packDist = path.join(distDir, target.rules.dest);
@@ -519,8 +520,35 @@ function getAddonLibs(addonPath) {
       return Promise.all(checks);
     })
     .then((results) => {
-      return results.filter((element) => filterLib(element));
+      return results.filter(filterLib).filter(isLibAllowed);
     });
+}
+
+function isLibAllowed(libSrc) {
+  if (!libSrc)
+    return false;
+
+  const whiteList = [
+    'libnice',
+    'libSvtHevcEnc',
+    'libusrsctp',
+    'libav',
+    'libsw',
+    'libopenh264',
+    'libre',
+    'sipLib',
+  ];
+  const libName = path.basename(libSrc);
+
+  var found = false;
+  for (let i in whiteList) {
+    if (libName.indexOf(whiteList[i]) === 0) {
+      found = true;
+      break;
+    }
+  }
+
+  return found;
 }
 
 function filterLib(libSrc) {
@@ -642,6 +670,7 @@ function packScripts() {
 
   execSync(`cp -a ${rootDir}/scripts/detectOS.sh ${binDir}`);
   execSync(`cp -a ${rootDir}/scripts/release/init-all.sh ${binDir}`);
+  execSync(`cp -a ${rootDir}/scripts/release/install_node.sh ${binDir}`);
   execSync(`cp -a ${rootDir}/scripts/release/init-rabbitmq.sh ${binDir}`);
   execSync(`cp -a ${rootDir}/scripts/release/init-mongodb.sh ${binDir}`);
   execSync(`cp -a ${rootDir}/scripts/release/package.mcu.json ${distDir}/package.json`);

@@ -58,7 +58,7 @@ then
   fi
 fi
 
-#install_node
+install_node
 
 check_proxy
 
