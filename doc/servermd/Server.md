@@ -340,10 +340,10 @@ Follow the steps below to set up a MCU cluster:
 
     1) Initialize agent workers for the first time execution if necessary
 
-       For video-agent, webrtc-agent, recording-agent, streaming-agent, follow these steps:
+       For each agent, follow these steps:
 
             cd Release-<Version>/
-            [video_agent/webrtc_agent/recording_agent/streaming_agent]/install_deps.sh
+            [video_agent/audio_agent/webrtc_agent/recording_agent/streaming_agent/sip_agent]/install_deps.sh
 
        If you want to enable GPU-acceleration for video-agent through Media Server Studio, follow these steps:
 

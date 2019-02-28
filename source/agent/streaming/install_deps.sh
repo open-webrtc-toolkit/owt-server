@@ -21,14 +21,15 @@
 this=`dirname "$0"`
 this=`cd "$this"; pwd`
 ROOT=`cd "${this}/.."; pwd`
-
-export WOOGEEN_HOME=${ROOT}
-
+SUDO=""
+if [[ $EUID -ne 0 ]]; then
+   SUDO="sudo -E"
+fi
 
 usage() {
   echo
   echo "Runtime Dependency Install Script"
-  echo "    This script install wget bzip2, "
+  echo "    This script install dependencies for this agent "
   echo "    This script is intended to run on a target machine."
   echo
 }
@@ -40,11 +41,11 @@ do_update() {
   if [[ "$OS" =~ .*centos.* ]]
   then
     echo -e "\x1b[32mRun yum update...\x1b[0m"
-    sudo yum update
+    ${SUDO} yum update
   elif [[ "$OS" =~ .*ubuntu.* ]]
   then
     echo -e "\x1b[32mRun apt-get update...\x1b[0m"
-    sudo apt-get update
+    ${SUDO} apt-get update
   else
     echo -e "\x1b[32mUnsupported platform...\x1b[0m"
   fi
@@ -54,17 +55,16 @@ install_deps() {
   if [[ "$OS" =~ .*centos.* ]]
   then
     echo -e "\x1b[32mInstalling deps via yum install...\x1b[0m"
-    sudo yum install wget
-    sudo yum install bzip2
+    ${SUDO} yum install boost-system boost-thread log4cxx wget bzip2
   elif [[ "$OS" =~ .*ubuntu.* ]]
   then
     echo -e "\x1b[32mInstalling deps via apt-get install...\x1b[0m"
-    sudo apt-get install wget bzip2
+    ${SUDO} apt-get install libboost-system-dev libboost-thread-dev liblog4cxx-dev wget bzip2
   fi
 }
 
 install_all() {
-  do_update
+  ${OWT_UPDATE_DONE} || do_update
   install_deps
 }
 

@@ -25,6 +25,10 @@ ROOT=`cd "${this}/.."; pwd`
 export WOOGEEN_HOME=${ROOT}
 
 LogDir=${WOOGEEN_HOME}/logs
+SUDO=""
+if [[ $EUID -ne 0 ]]; then
+   SUDO="sudo -E"
+fi
 
 usage() {
   echo
@@ -48,19 +52,19 @@ install_deps() {
     if [[ "$OS" =~ .*6.* ]] # CentOS 6.x
     then
       wget -c http://dl.fedoraproject.org/pub/epel/6/x86_64/epel-release-6-8.noarch.rpm
-      sudo rpm -Uvh epel-release-6*.rpm
+      ${SUDO} rpm -Uvh epel-release-6*.rpm
     elif [[ "$OS" =~ .*7.* ]] # CentOS 7.x
     then
       wget -c http://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
-      sudo rpm -Uvh epel-release-latest-7*.rpm
+      ${SUDO} rpm -Uvh epel-release-latest-7*.rpm
     fi
-    sudo sed -i 's/https/http/g' /etc/yum.repos.d/epel.repo
-    sudo -E yum install mongodb mongodb-server -y
+    ${SUDO} sed -i 's/https/http/g' /etc/yum.repos.d/epel.repo
+    ${SUDO} yum install mongodb mongodb-server -y
   elif [[ "$OS" =~ .*ubuntu.* ]]
   then
     echo -e "\x1b[32mInstalling dependent components and libraries via apt-get...\x1b[0m"
-    sudo apt-get update
-    sudo apt-get install mongodb
+    ${SUDO} apt-get update
+    ${SUDO} apt-get install mongodb
   else
     echo -e "\x1b[32mUnsupported platform...\x1b[0m"
   fi
@@ -79,11 +83,11 @@ install_db() {
     if [[ "$OS" =~ .*centos.* ]]
     then
       echo "Start mongodb - \"systemctl start mongod\""
-      sudo systemctl start mongod
+      ${SUDO} systemctl start mongod
     elif [[ "$OS" =~ .*ubuntu.* ]]
     then
       echo "Start mongodb - \"service mongodb start\""
-      sudo service mongodb start
+      ${SUDO} service mongodb start
     else
       echo -e "\x1b[32mUnsupported platform...\x1b[0m"
     fi

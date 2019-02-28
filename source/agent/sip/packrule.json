@@ -18,6 +18,7 @@
             "../AgentLoader.js",
             "agent.toml",
             "log4js_configuration.json",
+            "install_deps.sh",
             "../index.js",
             "../log4cxx.properties",
             "../../common/amqp_client.js",

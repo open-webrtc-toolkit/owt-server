@@ -21,9 +21,10 @@
 this=`dirname "$0"`
 this=`cd "$this"; pwd`
 ROOT=`cd "${this}/.."; pwd`
-
-export WOOGEEN_HOME=${ROOT}
-
+SUDO=""
+if [[ $EUID -ne 0 ]]; then
+   SUDO="sudo -E"
+fi
 
 usage() {
   echo
@@ -40,11 +41,11 @@ do_update() {
   if [[ "$OS" =~ .*centos.* ]]
   then
     echo -e "\x1b[32mRun yum update...\x1b[0m"
-    sudo yum update
+    ${SUDO} yum update
   elif [[ "$OS" =~ .*ubuntu.* ]]
   then
     echo -e "\x1b[32mRun apt-get update...\x1b[0m"
-    sudo apt-get update
+    ${SUDO} apt-get update
   else
     echo -e "\x1b[32mUnsupported platform...\x1b[0m"
   fi
@@ -54,16 +55,16 @@ install_glib() {
   if [[ "$OS" =~ .*centos.* ]]
   then
     echo -e "\x1b[32mInstalling GLib2.0 via yum install...\x1b[0m"
-    sudo yum install glib2
+    ${SUDO} yum install boost-system boost-thread log4cxx glib2
   elif [[ "$OS" =~ .*ubuntu.* ]]
   then
     echo -e "\x1b[32mInstalling GLib2.0 via apt-get install...\x1b[0m"
-    sudo apt-get install libglib2.0-0
+    ${SUDO} apt-get install libboost-system-dev libboost-thread-dev liblog4cxx-dev libglib2.0-0
   fi
 }
 
 install_all() {
-  do_update
+  ${OWT_UPDATE_DONE} || do_update
   install_glib
 }
 
