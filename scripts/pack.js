@@ -670,6 +670,7 @@ function packScripts() {
 
   execSync(`cp -a ${rootDir}/scripts/detectOS.sh ${binDir}`);
   execSync(`cp -a ${rootDir}/scripts/release/init-all.sh ${binDir}`);
+  execSync(`cp -a ${rootDir}/scripts/release/install_node.sh ${binDir}`);
   execSync(`cp -a ${rootDir}/scripts/release/init-rabbitmq.sh ${binDir}`);
   execSync(`cp -a ${rootDir}/scripts/release/init-mongodb.sh ${binDir}`);
   execSync(`cp -a ${rootDir}/scripts/release/package.mcu.json ${distDir}/package.json`);
