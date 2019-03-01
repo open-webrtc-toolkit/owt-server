@@ -1,3 +1,8 @@
+#!/usr/bin/env bash
+# Copyright (C) <2019> Intel Corporation
+#
+# SPDX-License-Identifier: Apache-2.0
+
 # SVT HEVC Encoder Library Install Script
 
 detect_OS() {
