@@ -1,5 +1,9 @@
 #!/usr/bin/env node
 
+// Copyright (C) <2019> Intel Corporation
+//
+// SPDX-License-Identifier: Apache-2.0
+
 // packing script
 const fs = require('fs');
 const path = require('path');
