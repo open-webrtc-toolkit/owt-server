@@ -50,18 +50,25 @@ public:
     /**
      * Implements MediaSink interfaces
      */
-    int deliverAudioData(char*, int len);
-    int deliverVideoData(char*, int len);
+    int deliverAudioData_(std::shared_ptr<erizo::DataPacket> audio_packet) override;
+    int deliverVideoData_(std::shared_ptr<erizo::DataPacket> video_packet) override;
+    int deliverEvent_(erizo::MediaEventPtr event) override { return 0; };
+    // int deliverAudioData(char*, int len);
+    // int deliverVideoData(char*, int len);
 
     /**
      * Implements MediaSource interfaces
      */
+    void close() override;
+
     int sendFirPacket();
 
     /*
      * Implements FeedbackSink interface
     */
-    int deliverFeedback(char*, int len);
+    int deliverFeedback_(std::shared_ptr<erizo::DataPacket> data_packet);
+    int sendPLI();
+    //int deliverFeedback(char*, int len);
 
     void onSipFIR();
 

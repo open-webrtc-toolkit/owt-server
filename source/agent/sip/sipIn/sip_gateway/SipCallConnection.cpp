@@ -85,39 +85,39 @@ SipCallConnection::SipCallConnection(SipGateway* gateway, const std::string& pee
         }
     }
 
-    videoSink_ = NULL;
-    audioSink_ = NULL;
-    fbSink_ = NULL;
-    sourcefbSink_ = this;
-    sinkfbSource_ = this;
+    video_sink_ = NULL;
+    audio_sink_ = NULL;
+    fb_sink_ = NULL;
+    source_fb_sink_ = this;
+    sink_fb_source_ = this;
     running = true;
     ELOG_DEBUG("SipCallConnection() Codec info %s %s", m_audioCodec.c_str(), m_videoCodec.c_str());
 }
 
 SipCallConnection::~SipCallConnection()
 {
-    videoSink_ = NULL;
-    audioSink_ = NULL;
-    fbSink_ = NULL;
+    video_sink_ = NULL;
+    audio_sink_ = NULL;
+    fb_sink_ = NULL;
     ELOG_DEBUG("~SipCallConnection");
 }
 
 // sink
-int SipCallConnection::deliverAudioData(char* buf, int len)
+int SipCallConnection::deliverAudioData_(std::shared_ptr<erizo::DataPacket> audio_packet)
 {
     //boost::shared_lock<boost::shared_mutex> lock(m_mutex);
     if (running) {
-        call_connection_tx_audio(m_sipCall, (uint8_t*)buf, (size_t)len);
+        call_connection_tx_audio(m_sipCall, (uint8_t*)audio_packet->data, (size_t)audio_packet->length);
     }
     return 0;
 }
 
 //sink
-int SipCallConnection::deliverVideoData(char* buf, int len)
+int SipCallConnection::deliverVideoData_(std::shared_ptr<erizo::DataPacket> video_packet)
 {
     //boost::shared_lock<boost::shared_mutex> lock(m_mutex);
     if (running) {
-      call_connection_tx_video(m_sipCall, (uint8_t*)buf, (size_t)len);
+      call_connection_tx_video(m_sipCall, (uint8_t*)video_packet->data, (size_t)video_packet->length);
 
       //Some sip devices, such as Jitsi, doesn't send FIR, which leads to that
       //it will wait for quite a while until it shows the video.
@@ -141,7 +141,12 @@ int SipCallConnection::sendFirPacket()
     return 0;
 }
 
-int SipCallConnection::deliverFeedback(char* buf, int len)
+int SipCallConnection::sendPLI() {
+    //return sendFirPacket();
+    return 0;
+}
+
+int SipCallConnection::deliverFeedback_(std::shared_ptr<erizo::DataPacket> data_packet)
 {
     //boost::shared_lock<boost::shared_mutex> lock(m_mutex);
     if (running) {
@@ -153,7 +158,7 @@ int SipCallConnection::deliverFeedback(char* buf, int len)
 void SipCallConnection::onSipAudioData(char* data, int len)
 {
     if (running) {
-        if (audioSink_ == NULL)
+        if (audio_sink_ == NULL)
             return;
 
         RTPHeader* head = reinterpret_cast<RTPHeader*>(data);
@@ -161,7 +166,7 @@ void SipCallConnection::onSipAudioData(char* data, int len)
             head->setPayloadType(OPUS_48000_PT);
        {
             //boost::shared_lock<boost::shared_mutex> lock(m_mutex);
-            audioSink_->deliverAudioData(data, len);
+            audio_sink_->deliverAudioData(std::make_shared<erizo::DataPacket>(0, data, len, erizo::AUDIO_PACKET));
        }
    }
 }
@@ -170,7 +175,7 @@ void SipCallConnection::onSipVideoData(char* data, int len)
 {
     //ELOG_DEBUG("SipCallConnection::onSipVideoData");
     if (running) {
-        if (videoSink_ == NULL)
+        if (video_sink_ == NULL)
             return;
 
         RTPHeader* head = reinterpret_cast<RTPHeader*>(data);
@@ -181,7 +186,7 @@ void SipCallConnection::onSipVideoData(char* data, int len)
         }
         {
           //boost::shared_lock<boost::shared_mutex> lock(m_mutex);
-          videoSink_->deliverVideoData(data, len);
+           video_sink_->deliverVideoData(std::make_shared<erizo::DataPacket>(0, data, len, erizo::VIDEO_PACKET));
         }
     }
 }
@@ -190,7 +195,7 @@ void SipCallConnection::onSipFIR()
 {
     ELOG_DEBUG("SipCallConnection::onSipFIR");
     if (running) {
-        if(fbSink_ == NULL)
+        if(fb_sink_ == NULL)
             return;
         //as the MediaSink, handle sip client fir request, deliver to FramePacketizer
         ++sequenceNumberFIR_;
@@ -224,7 +229,8 @@ void SipCallConnection::onSipFIR()
         rtcpPacket[pos++] = (uint8_t) 0;
         rtcpPacket[pos++] = (uint8_t) 0;
 
-        fbSink_->deliverFeedback((char *)rtcpPacket, pos);
+        fb_sink_->deliverFeedback(
+            std::make_shared<erizo::DataPacket>(0, (char *)rtcpPacket, pos, erizo::VIDEO_PACKET));
     }
 }
 
@@ -239,7 +245,11 @@ void SipCallConnection::onConnectionClosed()
 
 void SipCallConnection::refreshVideoStream() {
     // as the source
-    // sourcefbSink_->sendFirPacket();
+    // source_fb_sink_->sendFirPacket();
+}
+
+void SipCallConnection::close() {
+
 }
 
 } // end of extern "C"

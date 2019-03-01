@@ -30,7 +30,7 @@ static const int TRANSMISSION_MAXBITRATE_MULTIPLIER = 2;
 
 DEFINE_LOGGER(VideoFramePacketizer, "woogeen.VideoFramePacketizer");
 
-VideoFramePacketizer::VideoFramePacketizer(bool enableRed, bool enableUlpfec)
+VideoFramePacketizer::VideoFramePacketizer(bool enableRed, bool enableUlpfec, bool enableTransportcc, bool selfRequestKeyframe)
     : m_enabled(true)
     , m_enableDump(false)
     , m_keyFrameArrived(false)
@@ -40,6 +40,8 @@ VideoFramePacketizer::VideoFramePacketizer(bool enableRed, bool enableUlpfec)
     , m_random(rtc::TimeMicros())
     , m_ssrc(0)
     , m_ssrc_generator(SsrcGenerator::GetSsrcGenerator())
+    , m_selfRequestKeyframe(selfRequestKeyframe)
+    , m_sendFrameCount(0)
 {
     video_sink_ = nullptr;
     m_ssrc = m_ssrc_generator->CreateSsrc();
@@ -47,7 +49,7 @@ VideoFramePacketizer::VideoFramePacketizer(bool enableRed, bool enableUlpfec)
     m_videoTransport.reset(new WebRTCTransport<erizoExtra::VIDEO>(this, nullptr));
     m_taskRunner.reset(new woogeen_base::WebRTCTaskRunner("VideoFramePacketizer"));
     m_taskRunner->Start();
-    init(enableRed, enableUlpfec);
+    init(enableRed, enableUlpfec, enableTransportcc);
 }
 
 VideoFramePacketizer::~VideoFramePacketizer()
@@ -84,6 +86,7 @@ void VideoFramePacketizer::enable(bool enabled)
         FeedbackMsg feedback = {.type = VIDEO_FEEDBACK, .cmd = REQUEST_KEY_FRAME};
         deliverFeedbackMsg(feedback);
         m_keyFrameArrived = false;
+        m_sendFrameCount = 0;
     }
 }
 
@@ -163,6 +166,7 @@ void VideoFramePacketizer::receiveRtpData(char* buf, int len, erizoExtra::DataTy
 
     assert(type == erizoExtra::VIDEO);
 
+    ELOG_DEBUG("receiveRtpData %p", buf);
     video_sink_->deliverVideoData(std::make_shared<erizo::DataPacket>(0, buf, len, erizo::VIDEO_PACKET));
 }
 
@@ -288,6 +292,21 @@ void VideoFramePacketizer::onFrame(const Frame& frame)
         }
     }
 
+    if (m_selfRequestKeyframe) {
+        //FIXME: This is a workround for peer client not send key-frame-request
+        if (m_sendFrameCount < 151) {
+            if ((m_sendFrameCount == 10)
+                || (m_sendFrameCount == 30)
+                || (m_sendFrameCount == 60)
+                || (m_sendFrameCount == 150)) {
+                ELOG_DEBUG("Self generated key-frame-request.");
+                FeedbackMsg feedback = {.type = VIDEO_FEEDBACK, .cmd = REQUEST_KEY_FRAME};
+                deliverFeedbackMsg(feedback);
+            }
+            m_sendFrameCount += 1;
+        }
+    }
+
     webrtc::RTPVideoHeader h;
     memset(&h, 0, sizeof(webrtc::RTPVideoHeader));
     uint32_t transport_frame_id_out = 0;
@@ -366,7 +385,7 @@ int VideoFramePacketizer::sendFirPacket()
     return 0;
 }
 
-bool VideoFramePacketizer::init(bool enableRed, bool enableUlpfec)
+bool VideoFramePacketizer::init(bool enableRed, bool enableUlpfec, bool enableTransportcc)
 {
     using namespace webrtc;
     m_retransmissionRateLimiter.reset(new webrtc::RateLimiter(Clock::GetRealTimeClock(), 1000));
@@ -392,7 +411,8 @@ bool VideoFramePacketizer::init(bool enableRed, bool enableUlpfec)
     int red_pl_type = enableRed? RED_90000_PT : -1;
     int ulpfec_pl_type = enableUlpfec? ULP_90000_PT : -1;
     m_rtpRtcp->SetUlpfecConfig(red_pl_type, ulpfec_pl_type);
-    m_rtpRtcp->RegisterSendRtpHeaderExtension(RTPExtensionType::kRtpExtensionTransportSequenceNumber, 5);
+    if (enableTransportcc)
+        m_rtpRtcp->RegisterSendRtpHeaderExtension(RTPExtensionType::kRtpExtensionTransportSequenceNumber, 5);
     m_rtpRtcp->SetREMBStatus(true);
 
     // Enable NACK.

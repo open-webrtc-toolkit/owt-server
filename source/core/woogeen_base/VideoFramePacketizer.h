@@ -56,7 +56,7 @@ class VideoFramePacketizer : public FrameDestination,
     DECLARE_LOGGER();
 
 public:
-    VideoFramePacketizer(bool enableRed, bool enableUlpfec);
+    VideoFramePacketizer(bool enableRed, bool enableUlpfec, bool enableTransportcc = true, bool selfRequestKeyframe = false);
     ~VideoFramePacketizer();
 
     void bindTransport(erizo::MediaSink* sink);
@@ -85,13 +85,14 @@ public:
     void OnNetworkChanged(const uint32_t target_bitrate, const uint8_t fraction_loss, const int64_t rtt);
 
 private:
-    bool init(bool enableRed, bool enableUlpfec);
+    bool init(bool enableRed, bool enableUlpfec, bool enableTransportcc);
     void close();
     bool setSendCodec(FrameFormat, unsigned int width, unsigned int height);
 
     bool m_enabled;
     bool m_enableDump;
     bool m_keyFrameArrived;
+    bool m_selfRequestKeyframe;
     std::unique_ptr<webrtc::RateLimiter> m_retransmissionRateLimiter;
     boost::scoped_ptr<webrtc::BitrateController> m_bitrateController;
     boost::scoped_ptr<webrtc::RtcpBandwidthObserver> m_bandwidthObserver;
@@ -111,6 +112,7 @@ private:
 
     boost::shared_mutex m_transport_mutex;
 
+    uint16_t m_sendFrameCount;
     ///// NEW INTERFACE ///////////
     int deliverFeedback_(std::shared_ptr<erizo::DataPacket> data_packet);
     int sendPLI();

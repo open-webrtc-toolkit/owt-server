@@ -31,7 +31,9 @@
 /*
  * Wrapper class of woogeen_base::VideoFrameConstructor
  */
-class VideoFrameConstructor : public MediaSink, public NodeEventRegistry {
+class VideoFrameConstructor : public MediaSink,
+                              public NodeEventRegistry,
+                              public woogeen_base::VideoInfoListener {
  public:
   static void Init(v8::Local<v8::Object> exports);
   woogeen_base::VideoFrameConstructor* me;
@@ -58,6 +60,9 @@ class VideoFrameConstructor : public MediaSink, public NodeEventRegistry {
   static void requestKeyFrame(const v8::FunctionCallbackInfo<v8::Value>& args);
 
   static void addEventListener(const v8::FunctionCallbackInfo<v8::Value>& args);
+
+  // Implement woogeen_base::VideoInfoListener
+  void onVideoInfo(const std::string& message) override;
 };
 
 #endif
