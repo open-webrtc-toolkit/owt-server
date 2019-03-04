@@ -64,35 +64,15 @@ installYumDeps(){
   sudo -E yum install rabbitmq-server mongodb mongodb-server java-1.7.0-openjdk gyp intel-gpu-tools which libtool freetype-devel -y
   enable_intel_gpu_top
 
-  if [[ "$OS" =~ .*6.* ]] # CentOS 6.x
-  then
-    install_glib2
-    install_boost
-    install_gcc
-  elif [[ "$OS" =~ .*7.* ]] # CentOS 7.x
-  then
-    sudo -E yum install glib2-devel boost-devel -y
-  fi
+  sudo -E yum install glib2-devel boost-devel -y
 }
 
 installRepo(){
-  if [[ "$OS" =~ .*6.* ]] # CentOS 6.x
-  then
-    wget -c http://dl.fedoraproject.org/pub/epel/6/x86_64/epel-release-6-8.noarch.rpm
-    wget -c http://rpms.famillecollet.com/enterprise/remi-release-6.rpm
-    sudo rpm -Uvh remi-release-6*.rpm epel-release-6*.rpm
-    wget -c http://dl.atrpms.net/el6-x86_64/atrpms/stable/atrpms-repo-6-7.el6.x86_64.rpm
-    sudo rpm -Uvh atrpms-repo*rpm
-    sudo -E wget -c -qO- http://people.redhat.com/bkabrda/scl_python27.repo >> /etc/yum.repos.d/scl.repo
-    rm *.rpm
-  elif [[ "$OS" =~ .*7.* ]] # CentOS 7.x
-  then
-    wget -c http://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
-    wget -c http://rpms.famillecollet.com/enterprise/remi-release-7.rpm
-    sudo rpm -Uvh remi-release-7*.rpm epel-release-latest-7*.rpm
-    sudo sed -i 's/https/http/g' /etc/yum.repos.d/epel.repo
-    rm *.rpm
-  fi
+  wget -c http://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
+  wget -c http://rpms.famillecollet.com/enterprise/remi-release-7.rpm
+  sudo rpm -Uvh remi-release-7*.rpm epel-release-latest-7*.rpm
+  sudo sed -i 's/https/http/g' /etc/yum.repos.d/epel.repo
+  rm *.rpm
 }
 
 install_mediadeps_nonfree(){

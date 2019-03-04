@@ -139,9 +139,6 @@ install_openssl(){
     make -s V=0
     make install
 
-    if [ -d $PREFIX_DIR"/lib64" ]; then
-      cp -r $PREFIX_DIR"/lib64/*" $PREFIX_DIR"/lib"
-    fi
     cd $CURRENT_DIR
   else
     mkdir -p $LIB_DIR

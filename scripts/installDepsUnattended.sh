@@ -90,8 +90,6 @@ if [ "$NIGHTLY" != "true" ]; then
 
   install_licode
 
-  install_libvautils
-
   if [[ "$OS" =~ .*ubuntu.* ]]
   then
       install_svt_hevc
