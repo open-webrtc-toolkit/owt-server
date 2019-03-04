@@ -12,6 +12,7 @@ if (!process.env.MODULE_TEST) {
   process.env.LD_LIBRARY_PATH = [
     path.resolve(__dirname, '../build/libdeps/build/lib'),
     path.resolve(__dirname, '../third_party/openh264'),
+    path.resolve(__dirname, '../third_party/re'),
     path.resolve(__dirname, '../third_party/SVT-HEVC'),
     process.env.LD_LIBRARY_PATH || '',
   ].join(':');

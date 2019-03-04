@@ -12,7 +12,7 @@
 
 USE_VIDEO := 1
 USE_TLS := 1
-LIBRE_VERSION := 0.6.0
+LIBRE_VERSION := 0.4.16
 
 PROJECT	  := sipua
 VERSION   := 0.0.1
