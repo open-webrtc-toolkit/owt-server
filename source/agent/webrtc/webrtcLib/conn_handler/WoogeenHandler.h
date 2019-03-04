@@ -1,3 +1,7 @@
+// Copyright (C) <2019> Intel Corporation
+//
+// SPDX-License-Identifier: Apache-2.0
+
 #ifndef ERIZO_EXTRA_WOOGEENHANDLER_H_
 #define ERIZO_EXTRA_WOOGEENHANDLER_H_
 

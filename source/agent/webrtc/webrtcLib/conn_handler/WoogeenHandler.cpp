@@ -1,3 +1,7 @@
+// Copyright (C) <2019> Intel Corporation
+//
+// SPDX-License-Identifier: Apache-2.0
+
 #include "WoogeenHandler.h"
 #include "WebRtcConnection.h"
 #include <rtputils.h>
