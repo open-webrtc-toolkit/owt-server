@@ -70,7 +70,9 @@ function constructBuildEnv() {
   env['CXXFLAGS'] = env['CFLAGS'];
   env['LDFLAGS'] = '-z noexecstack -z relro';
   env['CORE_HOME'] = path.join(rootDir, 'source/core');
-  env['PKG_CONFIG_PATH'] = path.join(depsDir, 'lib/pkgconfig') + ':' + (env['PKG_CONFIG_PATH'] || '');
+  env['PKG_CONFIG_PATH'] = path.join(depsDir, 'lib/pkgconfig') +
+      ':' + path.join(depsDir, 'lib64/pkgconfig') +
+      ':' + (env['PKG_CONFIG_PATH'] || '');
   usergcc = path.join(depsDir, 'bin/gcc');
   usergxx = path.join(depsDir, 'bin/g++');
   // Use user compiler if exists

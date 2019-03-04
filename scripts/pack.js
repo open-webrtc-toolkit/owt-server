@@ -36,7 +36,7 @@ const originCwd = cwd();
 
 // Detect OS script
 const osScript = path.join(rootDir, 'scripts/detectOS.sh');
-const osType = execSync(`. ${osScript}`).toString().toLowerCase();
+const osType = execSync(`bash ${osScript}`).toString().toLowerCase();
 
 var allTargets = [];
 
@@ -487,6 +487,7 @@ function getAddonLibs(addonPath) {
   env['LD_LIBRARY_PATH'] = (env['LD_LIBRARY_PATH'] || '');
   env['LD_LIBRARY_PATH'] = path.join(depsDir, 'lib') +
     ':' + path.join(rootDir, 'third_party/openh264') +
+    ':' + path.join(rootDir, 'third_party/re') +
     ':' + env['LD_LIBRARY_PATH'];
 
     if (osType.includes('ubuntu')) {

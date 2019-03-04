@@ -384,7 +384,7 @@ int stream_send(struct stream *s, bool marker, int pt, uint32_t ts,
 
 	if (pt >= 0) {
 		err = rtp_send(s->rtp, sdp_media_raddr(s->sdp),
-			       marker, false, pt, ts, mb);
+			       marker, pt, ts, mb);
 		if (err)
 			s->metric_tx.n_err++;
 	}
