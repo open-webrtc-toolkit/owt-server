@@ -59,11 +59,10 @@ void VideoFrameConstructor::New(const FunctionCallbackInfo<Value>& args) {
   HandleScope scope(isolate);
 
   VideoFrameConstructor* obj = new VideoFrameConstructor();
-  obj->me = new woogeen_base::VideoFrameConstructor();
+  obj->me = new woogeen_base::VideoFrameConstructor(obj);
   obj->src = obj->me;
   obj->msink = obj->me;
 
-  obj->me->setEventRegistry(obj);
   obj->Wrap(args.This());
   args.GetReturnValue().Set(args.This());
 }
@@ -145,6 +144,10 @@ void VideoFrameConstructor::requestKeyFrame(const FunctionCallbackInfo<Value>& a
   woogeen_base::VideoFrameConstructor* me = obj->me;
 
   me->RequestKeyFrame();
+}
+
+void VideoFrameConstructor::onVideoInfo(const std::string& message) {
+    notifyAsyncEvent("mediaInfo", message);
 }
 
 void VideoFrameConstructor::addEventListener(const FunctionCallbackInfo<Value>& args)
