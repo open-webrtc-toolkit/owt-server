@@ -16,6 +16,12 @@
  * limitations under the License.
  */
 
+// Copyright (C) <2018> Intel Corporation
+//
+// SPDX-License-Identifier: Apache-2.0
+
+// This file is borrowed from lynckia/licode
+
 #ifndef ERIZO_SRC_ERIZO_LOGGER_H_
 #define ERIZO_SRC_ERIZO_LOGGER_H_
 

@@ -1,9 +1,7 @@
 #!/usr/bin/env bash
+# Copyright (C) <2019> Intel Corporation
 #
-#/**
-# * License placeholder.
-# */
-#
+# SPDX-License-Identifier: Apache-2.0
 
 this=`dirname "$0"`
 this=`cd "$this"; pwd`
