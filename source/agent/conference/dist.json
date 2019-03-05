@@ -4,7 +4,6 @@
     "common": {
         "package": "package.json",
         "files": [
-            "../AgentLoader.js",
             "../erizoJS.js",
             "participant.js",
             "agent.toml",

@@ -3,16 +3,15 @@
 // SPDX-License-Identifier: Apache-2.0
 
 'use strict';
-require = require('module')._load('./AgentLoader');
 
-var internalIO = require('./internalIO/build/Release/internalIO');
+var internalIO = require('../internalIO/build/Release/internalIO');
 var InternalIn = internalIO.In;
 var InternalOut = internalIO.Out;
 
-var avstream = require('./avstreamLib/build/Release/avstream');
+var avstream = require('../avstreamLib/build/Release/avstream');
 var AVStreamIn = avstream.AVStreamIn;
 var AVStreamOut = avstream.AVStreamOut;
-var logger = require('./logger').logger;
+var logger = require('../logger').logger;
 var path = require('path');
 var Connections = require('./connections');
 

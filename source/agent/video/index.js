@@ -3,11 +3,10 @@
 // SPDX-License-Identifier: Apache-2.0
 
 'use strict';
-require = require('module')._load('./AgentLoader');
 
-var MediaFrameMulticaster = require('./mediaFrameMulticaster/build/Release/mediaFrameMulticaster');
+var MediaFrameMulticaster = require('../mediaFrameMulticaster/build/Release/mediaFrameMulticaster');
 
-var logger = require('./logger').logger;
+var logger = require('../logger').logger;
 
 // Logger
 var log = logger.getLogger('VideoNode');
@@ -24,11 +23,11 @@ var useHardware = global.config.video.hardwareAccelerated,
 var VideoMixer, VideoTranscoder;
 try {
     if (useHardware) {
-        VideoMixer = require('./videoMixer_msdk/build/Release/videoMixer-msdk');
-        VideoTranscoder = require('./videoTranscoder_msdk/build/Release/videoTranscoder-msdk');
+        VideoMixer = require('../videoMixer_msdk/build/Release/videoMixer-msdk');
+        VideoTranscoder = require('../videoTranscoder_msdk/build/Release/videoTranscoder-msdk');
     } else {
-        VideoMixer = require('./videoMixer_sw/build/Release/videoMixer-sw');
-        VideoTranscoder = require('./videoTranscoder_sw/build/Release/videoTranscoder-sw');
+        VideoMixer = require('../videoMixer_sw/build/Release/videoMixer-sw');
+        VideoTranscoder = require('../videoTranscoder_sw/build/Release/videoTranscoder-sw');
     }
 } catch (e) {
     log.error(e);

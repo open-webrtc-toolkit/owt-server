@@ -3,7 +3,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
 'use strict';
-require = require('module')._load('./AgentLoader');
 
 /**
  * NodeJs LayoutProcessor
@@ -16,7 +15,7 @@ require = require('module')._load('./AgentLoader');
  */
 
 // Logger
-const log = require('./logger').logger.getLogger('LayoutProcessor');
+const log = require('../logger').logger.getLogger('LayoutProcessor');
 const util = require('util');
 const EventEmitter = require('events').EventEmitter;
 

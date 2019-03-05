@@ -3,21 +3,20 @@
 // SPDX-License-Identifier: Apache-2.0
 
 'use strict';
-require = require('module')._load('./AgentLoader');
-var woogeenWebrtc = require('./webrtcLib/build/Release/webrtc');
+var woogeenWebrtc = require('../webrtcLib/build/Release/webrtc');
 var AudioFrameConstructor = woogeenWebrtc.AudioFrameConstructor;
 var VideoFrameConstructor = woogeenWebrtc.VideoFrameConstructor;
 var AudioFramePacketizer = woogeenWebrtc.AudioFramePacketizer;
 var VideoFramePacketizer = woogeenWebrtc.VideoFramePacketizer;
 var path = require('path');
-var logger = require('./logger').logger;
-var cipher = require('./cipher');
+var logger = require('../logger').logger;
+var cipher = require('../cipher');
 // Logger
 var log = logger.getLogger('WrtcConnection');
 
 var transform = require('sdp-transform');
 
-var addon = require('./webrtcLib/build/Release/webrtc');//require('./erizo/build/Release/addon');
+var addon = require('../webrtcLib/build/Release/webrtc');//require('./erizo/build/Release/addon');
 
 var h264ProfileOrder = ['E', 'H', 'M', 'B', 'CB']; //'H10', 'H42', 'H44', 'H10I', 'H42I', 'H44I', 'C44I'
 

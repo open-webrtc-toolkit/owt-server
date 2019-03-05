@@ -40,7 +40,6 @@ const osType = execSync(`bash ${osScript}`).toString().toLowerCase();
 
 var allTargets = [];
 
-options.debug = false;
 if (options.full) {
   options.target = ['all'];
   options.repack = true;
@@ -90,7 +89,7 @@ if (options.binary) {
 }
 
 function getTargets() {
-  return exec(`find ${rootDir}/source -type f -name "packrule.json"`)
+  return exec(`find ${rootDir}/source -type f -name "dist.json"`)
   .then((packs) => {
     var lines = packs.split('\n');
     var line, target;
@@ -166,9 +165,6 @@ function packTarget(target) {
   chdir(distDir);
   return exec(`mkdir -p ${packDist}`)
     .then((mkdir) => {
-      return (options.debug ? packNode(target) : packWithoutNode(target));
-    })
-    .then((nodePacked) => {
       return packCommon(target);
     })
     .then((commonPacked) => {
@@ -181,11 +177,7 @@ function packTarget(target) {
         if (pkg) {
           chdir(packDist);
           if (fs.existsSync('erizoJS.js')) {
-            execSync('sed -i "/AgentLoader/d" erizoJS.js');
-            execSync('rm -f AgentLoader.js');
             execSync(`pkg erizoJS.js -t ${pkg.targets}`);
-            var loaderData = { bin: 'erizoJS' };
-            fs.writeFileSync(path.join(packDist, 'loader.json'), JSON.stringify(loaderData));
           }
           if (fs.existsSync('initdb.js')) {
             execSync(`pkg initdb.js -t ${pkg.targets}`);
@@ -194,13 +186,12 @@ function packTarget(target) {
             execSync(`pkg initcert.js -t ${pkg.targets}`);
           }
           execSync('pkg .');
-          execSync('find . -maxdepth 1 -name "*.js" -not -name "AgentLoader*" -delete');
           execSync('rm -rf auth');
           execSync('rm -rf data_access');
           execSync('rm -rf resource');
           execSync('rm -rf rpc');
           execSync('rm -rf package.json');
-          execSync('rm -rf packrule.json');
+          execSync('rm -rf dist.json');
           if (!target.rules.node) {
             execSync('rm -rf node_modules');
           }
@@ -209,132 +200,6 @@ function packTarget(target) {
       if (options.encrypt)
         return encrypt(target);
     });
-}
-
-function packNode(target) {
-  if (!target.rules.node) return;
-  const node = target.rules.node;
-  const packSrc = path.dirname(target.path);
-  const packDist = path.join(distDir, target.rules.dest);
-  const nodeDir = path.join(rootDir, `third_party/node-${process.version}`);
-
-  console.log('\x1b[32mPack node\x1b[0m -', target.rules.name);
-  console.log(`\x1b[33mUsing node: ${process.version}\x1b[0m`);
-
-  chdir(path.join(rootDir, 'third_party'));
-  console.log('Wget and unzip node...');
-  execSync(`wget -c http:\/\/nodejs.org\/dist\/${process.version}\/node-${process.version}.tar.gz 2>\/dev\/null`);
-  execSync(`tar -xzf node-${process.version}.tar.gz`);
-
-  console.log(`Switch to node directory: ${nodeDir}`);
-  chdir(nodeDir);
-  const entryFile = node.entry;
-  if (!entryFile) throw new Error('No Entry file when packing node');
-
-  // Copy entry file
-  execSync(`cp ${path.join(packSrc, entryFile)} lib/_third_party_main.js`);
-  execSync(`sed -i "/'library_files': \\[/a 'lib/_third_party_main.js'," node.gyp`);
-
-  // Copy lib files
-  var libpath;
-  if (node.libpath && node.libfiles) {
-    libpath = path.join('lib', node.libpath);
-    execSync(`rm -rf ${libpath}`);
-    execSync(`mkdir -p ${libpath}`);
-    for (let file of node.libfiles) {
-      let filePath = path.join(packSrc, file);
-      execSync(`cp ${filePath} ${libpath}`);
-      // Insert into node.gyp
-      execSync(`sed -i "/'library_files': \\[/a '${path.join(libpath, path.basename(file))}'," node.gyp`)
-    }
-
-    if (options.binary && target.rules.common) {
-      const common = target.rules.common;
-      if (common.files) {
-        for (let file of common.files) {
-          if (file.indexOf('AgentLoader') >= 0 || file.indexOf('index') >= 0)
-            continue;
-          let filePath = path.join(packSrc, file);
-          let dstFile = path.join(libpath, path.basename(file));
-          execSync(`cp -a ${filePath} ${libpath}`);
-          execSync(`sed -i "1s/^/require=require('module')._load('.\\/AgentLoader');\\n/" ${dstFile}`)
-          // Insert into node.gyp
-          execSync(`sed -i "/'library_files': \\[/a '${dstFile}'," node.gyp`)
-        }
-      }
-    }
-  }
-  // Construct env
-  var env = {};
-  for (const key in process.env) {
-    env[key] = process.env[key];
-  }
-  var pkgConfigPath =
-  env['PKG_CONFIG_PATH'] = (env['PKG_CONFIG_PATH'] || '');
-  env['PKG_CONFIG_PATH'] = path.join(depsDir, 'lib/pkgconfig') +
-    ':' + path.join(depsDir, 'lib64/pkgconfig') +
-    ':' + env['PKG_CONFIG_PATH'];
-
-  execSync(
-    `.\/configure --without-npm --prefix=${depsDir} --shared-openssl ` +
-    `--shared-openssl-libpath=${depsDir}\/lib ` +
-    `--shared-openssl-includes=${depsDir}\/include ` +
-    `--shared-openssl-libname=ssl,crypto`, { env });
-
-  env = {};
-  for (const key in process.env) {
-    env[key] = process.env[key];
-  }
-  env['LD_LIBRARY_PATH'] = (env['LD_LIBRARY_PATH'] || '');
-  env['LD_LIBRARY_PATH'] = path.join(depsDir, 'lib') + ':' + env['LD_LIBRARY_PATH'];
-
-  console.log('Building node...');
-  execSync('make V= -j5', { env });
-  execSync('make uninstall');
-  execSync('make install');
-  execSync(`cp ${path.join(depsDir, 'bin/node')} ${path.join(packDist, node.bin)}`);
-  execSync('make uninstall');
-
-  if (libpath) {
-    // Remove lib folders after build
-    execSync(`rm -rf ${libpath}`);
-  }
-
-  // Generate loader.json
-  var loaderData = { bin: node.bin, lib: node.libpath };
-  fs.writeFileSync(path.join(packDist, 'loader.json'), JSON.stringify(loaderData));
-
-  console.log(target.rules.name, '- Pack node finished.')
-}
-
-function packWithoutNode(target) {
-  if (!target.rules.node) return;
-
-  console.log('\x1b[32mPack node (external) \x1b[0m -', target.rules.name);
-  const node = target.rules.node;
-  const packSrc = path.dirname(target.path);
-  const packDist = path.join(distDir, target.rules.dest);
-
-  // Copy entry file
-  const entryFile = node.entry;
-  if (!entryFile) throw new Error('No Entry file when packing node');
-  execSync(`cp ${path.join(packSrc, entryFile)} ${packDist}`);
-  // Copy lib files
-  if (node.libpath && node.libfiles) {
-    const libpath = path.join(packDist, node.libpath);
-    execSync(`rm -rf ${libpath}`);
-    execSync(`mkdir -p ${libpath}`);
-    for (let file of node.libfiles) {
-      let filePath = path.join(packSrc, file);
-      execSync(`cp ${filePath} ${libpath}`);
-    }
-  }
-
-  // Generate loader.json
-  var loaderData = { bin: 'node', lib: node.libpath };
-  fs.writeFileSync(path.join(packDist, 'loader.json'), JSON.stringify(loaderData));
-
-  console.log(target.rules.name, '- Pack node (debug) finished.')
 }
 
 function packCommon(target) {

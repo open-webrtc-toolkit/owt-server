@@ -1,39 +1,28 @@
 {
-    "name": "webrtc-agent",
-    "dest": "webrtc_agent",
-    "node": {
-        "bin": "woogeen_webrtc",
-        "entry": "../erizoJS.js",
-        "libpath": "webrtc",
-        "libfiles": [
-            "index.js",
-            "wrtcConnection.js",
-            "../connections.js",
-            "../InternalConnectionFactory.js"
-        ]
-    },
+    "name": "recording-agent",
+    "dest": "recording_agent",
     "common": {
-        "package": "package.json",
+        "package": "../package.json",
         "files": [
-            "../AgentLoader.js",
             "agent.toml",
             "log4js_configuration.json",
             "install_deps.sh",
             "../index.js",
+            "../erizoJS.js",
             "../log4cxx.properties",
             "../../common/amqp_client.js",
-            "../../common/cipher.js",
             "../../common/clusterWorker.js",
             "../../common/loadCollector.js",
             "../../common/logger.js",
             "../../common/makeRPC.js",
             "../../common/rpcChannel.js",
-            "../../../scripts/release/initcert.js",
             "../../../scripts/detectOS.sh"
         ],
         "folders": {
-            "cert": [
-                "../../../cert/.woogeen.keystore"
+            "recording": [
+                "index.js",
+                "../connections.js",
+                "../InternalConnectionFactory.js"
             ]
         }
     },
@@ -41,8 +30,8 @@
         "libdist": "lib",
         "addons": [
             {
-                "folder": "webrtcLib",
-                "name": "webrtc"
+                "folder": "../addons/avstreamLib",
+                "name": "avstream"
             },
             {
                 "folder": "../addons/internalIO",
@@ -54,5 +43,5 @@
             }
         ]
     },
-    "start": "node . -U webrtc"
+    "start": "node . -U recording"
 }

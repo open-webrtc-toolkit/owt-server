@@ -3,14 +3,13 @@
 // SPDX-License-Identifier: Apache-2.0
 
 'use strict';
-require = require('module')._load('./AgentLoader');
-var internalIO = require('./internalIO/build/Release/internalIO');
+var internalIO = require('../internalIO/build/Release/internalIO');
 var InternalIn = internalIO.In;
 var InternalOut = internalIO.Out;
-var MediaFrameMulticaster = require('./mediaFrameMulticaster/build/Release/mediaFrameMulticaster');
-var AudioMixer = require('./audioMixer/build/Release/audioMixer');
+var MediaFrameMulticaster = require('../mediaFrameMulticaster/build/Release/mediaFrameMulticaster');
+var AudioMixer = require('../audioMixer/build/Release/audioMixer');
 
-var logger = require('./logger').logger;
+var logger = require('../logger').logger;
 
 // Logger
 var log = logger.getLogger('AudioNode');
