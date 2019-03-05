@@ -1,3 +1,7 @@
+// Copyright (C) <2019> Intel Corporation
+//
+// SPDX-License-Identifier: Apache-2.0
+
 'use strict';
 
 exports.makeRPC = function (rpcClient, remote_node, remote_function, parameters_list, on_ok, on_error) {

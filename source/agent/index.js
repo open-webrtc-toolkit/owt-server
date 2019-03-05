@@ -1,3 +1,7 @@
+// Copyright (C) <2019> Intel Corporation
+//
+// SPDX-License-Identifier: Apache-2.0
+
 'use strict';
 var Getopt = require('node-getopt');
 var spawn = require('child_process').spawn;
