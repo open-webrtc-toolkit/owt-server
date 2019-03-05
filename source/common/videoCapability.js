@@ -1,3 +1,7 @@
+// Copyright (C) <2019> Intel Corporation
+//
+// SPDX-License-Identifier: Apache-2.0
+
 /*FIXME: should be double checked whether hardware acceleration is actually running*/
 var videoCapability = {
   decode: ['vp8', 'vp9', 'h264', 'h265'],

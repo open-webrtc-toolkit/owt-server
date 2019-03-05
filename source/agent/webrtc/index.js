@@ -1,3 +1,7 @@
+// Copyright (C) <2019> Intel Corporation
+//
+// SPDX-License-Identifier: Apache-2.0
+
 'use strict';
 require = require('module')._load('./AgentLoader');
 var path = require('path');

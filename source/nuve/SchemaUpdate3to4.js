@@ -1,3 +1,7 @@
+// Copyright (C) <2019> Intel Corporation
+//
+// SPDX-License-Identifier: Apache-2.0
+
 #!/usr/bin/env node
 'use strict';
 var Fraction = require('fraction.js');
