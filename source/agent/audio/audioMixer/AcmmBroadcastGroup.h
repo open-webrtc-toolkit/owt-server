@@ -16,7 +16,7 @@
 
 namespace mcu {
 
-using namespace woogeen_base;
+using namespace owt_base;
 using namespace webrtc;
 
 class AcmmBroadcastGroup {
@@ -28,8 +28,8 @@ public:
     AcmmBroadcastGroup();
     ~AcmmBroadcastGroup();
 
-    bool addDest(const woogeen_base::FrameFormat format, woogeen_base::FrameDestination* destination);
-    void removeDest(woogeen_base::FrameDestination* destination);
+    bool addDest(const owt_base::FrameFormat format, owt_base::FrameDestination* destination);
+    void removeDest(owt_base::FrameDestination* destination);
 
     int32_t NeededFrequency();
     void NewMixedAudio(const AudioFrame* audioFrame);
@@ -41,8 +41,8 @@ private:
     const uint16_t m_groupId;
 
     std::vector<bool> m_outputIds;
-    std::map<woogeen_base::FrameFormat, boost::shared_ptr<AcmmOutput>> m_outputMap;
-    std::map<woogeen_base::FrameDestination*, woogeen_base::FrameFormat> m_formatMap;
+    std::map<owt_base::FrameFormat, boost::shared_ptr<AcmmOutput>> m_outputMap;
+    std::map<owt_base::FrameDestination*, owt_base::FrameFormat> m_formatMap;
 };
 
 } /* namespace mcu */

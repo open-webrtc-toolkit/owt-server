@@ -11,12 +11,12 @@
 #include <node_object_wrap.h>
 
 /*
- * Wrapper class of woogeen_base::VideoFramePacketizer
+ * Wrapper class of owt_base::VideoFramePacketizer
  */
 class VideoFramePacketizer : public FrameDestination {
  public:
   static void Init(v8::Local<v8::Object> exports);
-  woogeen_base::VideoFramePacketizer* me;
+  owt_base::VideoFramePacketizer* me;
 
  private:
   VideoFramePacketizer();

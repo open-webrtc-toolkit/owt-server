@@ -37,7 +37,7 @@ NAN_MODULE_INIT(AudioFrameConstructor::Init) {
 NAN_METHOD(AudioFrameConstructor::New) {
   if (info.IsConstructCall()) {
     AudioFrameConstructor* obj = new AudioFrameConstructor();
-    obj->me = new woogeen_base::AudioFrameConstructor();
+    obj->me = new owt_base::AudioFrameConstructor();
     obj->src = obj->me;
     obj->msink = obj->me;
 
@@ -53,13 +53,13 @@ NAN_METHOD(AudioFrameConstructor::New) {
 
 NAN_METHOD(AudioFrameConstructor::close) {
   AudioFrameConstructor* obj = Nan::ObjectWrap::Unwrap<AudioFrameConstructor>(info.Holder());
-  woogeen_base::AudioFrameConstructor* me = obj->me;
+  owt_base::AudioFrameConstructor* me = obj->me;
   delete me;
 }
 
 NAN_METHOD(AudioFrameConstructor::bindTransport) {
   AudioFrameConstructor* obj = Nan::ObjectWrap::Unwrap<AudioFrameConstructor>(info.Holder());
-  woogeen_base::AudioFrameConstructor* me = obj->me;
+  owt_base::AudioFrameConstructor* me = obj->me;
 
   WebRtcConnection* param = Nan::ObjectWrap::Unwrap<WebRtcConnection>(Nan::To<v8::Object>(info[0]).ToLocalChecked());
   auto wr = std::shared_ptr<erizo::WebRtcConnection>(param->me).get();
@@ -71,34 +71,34 @@ NAN_METHOD(AudioFrameConstructor::bindTransport) {
 
 NAN_METHOD(AudioFrameConstructor::unbindTransport) {
   AudioFrameConstructor* obj = Nan::ObjectWrap::Unwrap<AudioFrameConstructor>(info.Holder());
-  woogeen_base::AudioFrameConstructor* me = obj->me;
+  owt_base::AudioFrameConstructor* me = obj->me;
 
   me->unbindTransport();
 }
 
 NAN_METHOD(AudioFrameConstructor::addDestination) {
   AudioFrameConstructor* obj = Nan::ObjectWrap::Unwrap<AudioFrameConstructor>(info.Holder());
-  woogeen_base::AudioFrameConstructor* me = obj->me;
+  owt_base::AudioFrameConstructor* me = obj->me;
 
   FrameDestination* param = node::ObjectWrap::Unwrap<FrameDestination>(info[0]->ToObject());
-  woogeen_base::FrameDestination* dest = param->dest;
+  owt_base::FrameDestination* dest = param->dest;
 
   me->addAudioDestination(dest);
 }
 
 NAN_METHOD(AudioFrameConstructor::removeDestination) {
   AudioFrameConstructor* obj = Nan::ObjectWrap::Unwrap<AudioFrameConstructor>(info.Holder());
-  woogeen_base::AudioFrameConstructor* me = obj->me;
+  owt_base::AudioFrameConstructor* me = obj->me;
 
   FrameDestination* param = node::ObjectWrap::Unwrap<FrameDestination>(info[0]->ToObject());
-  woogeen_base::FrameDestination* dest = param->dest;
+  owt_base::FrameDestination* dest = param->dest;
 
   me->removeAudioDestination(dest);
 }
 
 NAN_METHOD(AudioFrameConstructor::enable) {
   AudioFrameConstructor* obj = Nan::ObjectWrap::Unwrap<AudioFrameConstructor>(info.Holder());
-  woogeen_base::AudioFrameConstructor* me = obj->me;
+  owt_base::AudioFrameConstructor* me = obj->me;
 
   bool b = (info[0]->ToBoolean())->BooleanValue();
   me->enable(b);

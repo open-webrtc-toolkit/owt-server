@@ -17,7 +17,7 @@
 
 namespace mcu {
 
-using namespace woogeen_base;
+using namespace owt_base;
 using namespace webrtc;
 
 class AcmmGroup {

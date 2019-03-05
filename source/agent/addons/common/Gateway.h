@@ -13,7 +13,7 @@
 #include <node_object_wrap.h>
 
 /*
- * Wrapper class of woogeen_base::Gateway
+ * Wrapper class of owt_base::Gateway
  *
  * Represents connection between WebRTC clients, or between a WebRTC client
  * and other third-party clients.
@@ -23,7 +23,7 @@
 class Gateway : public NodeEventedObjectWrap {
 public:
   static void Init(v8::Local<v8::Object> exports);
-  woogeen_base::Gateway* me;
+  owt_base::Gateway* me;
 
 private:
   Gateway();

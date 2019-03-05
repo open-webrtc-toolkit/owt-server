@@ -10,7 +10,7 @@
 namespace mcu {
 
 using namespace webrtc;
-using namespace woogeen_base;
+using namespace owt_base;
 
 DEFINE_LOGGER(AcmEncoder, "mcu.media.AcmEncoder");
 
@@ -168,7 +168,7 @@ int32_t AcmEncoder::SendData(FrameType frame_type,
         return -1;
     }
 
-    woogeen_base::Frame frame;
+    owt_base::Frame frame;
     memset(&frame, 0, sizeof(frame));
     frame.format = m_format;
     frame.additionalInfo.audio.sampleRate = getAudioSampleRate(frame.format);

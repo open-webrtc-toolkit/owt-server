@@ -11,12 +11,12 @@
 #include <node_object_wrap.h>
 
 /*
- * Wrapper class of woogeen_base::InternalOut
+ * Wrapper class of owt_base::InternalOut
  */
 class InternalOut : public FrameDestination {
  public:
   static void Init(v8::Local<v8::Object> exports);
-  woogeen_base::InternalOut* me;
+  owt_base::InternalOut* me;
 
  private:
   InternalOut();
