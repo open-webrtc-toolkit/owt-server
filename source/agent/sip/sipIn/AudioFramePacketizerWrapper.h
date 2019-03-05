@@ -11,12 +11,12 @@
 #include <node_object_wrap.h>
 
 /*
- * Wrapper class of woogeen_base::AudioFramePacketizer
+ * Wrapper class of owt_base::AudioFramePacketizer
  */
 class AudioFramePacketizer : public FrameDestination {
  public:
   static void Init(v8::Local<v8::Object> exports);
-  woogeen_base::AudioFramePacketizer* me;
+  owt_base::AudioFramePacketizer* me;
 
  private:
   AudioFramePacketizer();

@@ -27,17 +27,17 @@ public:
     VideoTranscoder(const VideoTranscoderConfig& config);
     virtual ~VideoTranscoder();
 
-    bool setInput(const std::string& inStreamID, const std::string& codec, woogeen_base::FrameSource* source);
+    bool setInput(const std::string& inStreamID, const std::string& codec, owt_base::FrameSource* source);
     void unsetInput(const std::string& inStreamID);
 
     bool addOutput(const std::string& outStreamID
             , const std::string& codec
-            , const woogeen_base::VideoCodecProfile profile
+            , const owt_base::VideoCodecProfile profile
             , const std::string& resolution
             , const unsigned int framerateFPS
             , const unsigned int bitrateKbps
             , const unsigned int keyFrameIntervalSeconds
-            , woogeen_base::FrameDestination* dest);
+            , owt_base::FrameDestination* dest);
     void removeOutput(const std::string& outStreamID);
     void forceKeyFrame(const std::string& outStreamID);
 

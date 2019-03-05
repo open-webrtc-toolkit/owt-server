@@ -70,8 +70,8 @@ struct InputRegion {
 typedef std::list<InputRegion> LayoutSolution;
 
 // Default video layout configuration
-const woogeen_base::VideoSize DEFAULT_VIDEO_SIZE = {640, 480};
-const woogeen_base::YUVColor DEFAULT_VIDEO_BG_COLOR = {0x00, 0x80, 0x80};
+const owt_base::VideoSize DEFAULT_VIDEO_SIZE = {640, 480};
+const owt_base::YUVColor DEFAULT_VIDEO_BG_COLOR = {0x00, 0x80, 0x80};
 
 }
 #endif

@@ -145,7 +145,7 @@ void AcmmFrameMixer::resetVAD()
     m_mostActiveInput.reset();
 }
 
-bool AcmmFrameMixer::addInput(const std::string& group, const std::string& inStream, const woogeen_base::FrameFormat format, woogeen_base::FrameSource* source)
+bool AcmmFrameMixer::addInput(const std::string& group, const std::string& inStream, const owt_base::FrameFormat format, owt_base::FrameSource* source)
 {
     boost::unique_lock<boost::shared_mutex> lock(m_mutex);
     boost::shared_ptr<AcmmGroup> acmmGroup;
@@ -321,7 +321,7 @@ void AcmmFrameMixer::setInputActive(const std::string& group, const std::string&
     ELOG_DEBUG("---setInputActive: group(%s), inStream(%s), active(%d)", group.c_str(), inStream.c_str(), active);
 }
 
-bool AcmmFrameMixer::addOutput(const std::string& group, const std::string& outStream, const woogeen_base::FrameFormat format, woogeen_base::FrameDestination* destination)
+bool AcmmFrameMixer::addOutput(const std::string& group, const std::string& outStream, const owt_base::FrameFormat format, owt_base::FrameDestination* destination)
 {
     boost::unique_lock<boost::shared_mutex> lock(m_mutex);
     boost::shared_ptr<AcmmGroup> acmmGroup;

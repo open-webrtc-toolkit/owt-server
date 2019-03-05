@@ -11,7 +11,7 @@
 #include "MsdkVideoCompositor.h"
 
 using namespace webrtc;
-using namespace woogeen_base;
+using namespace owt_base;
 
 namespace mcu {
 
@@ -71,7 +71,7 @@ bool MsdkAvatarManager::getImageSize(const std::string &url, uint32_t *pWidth, u
     return true;
 }
 
-boost::shared_ptr<woogeen_base::MsdkFrame> MsdkAvatarManager::loadImage(const std::string &url)
+boost::shared_ptr<owt_base::MsdkFrame> MsdkAvatarManager::loadImage(const std::string &url)
 {
     uint32_t width, height;
 
@@ -102,7 +102,7 @@ boost::shared_ptr<woogeen_base::MsdkFrame> MsdkAvatarManager::loadImage(const st
 
     delete image;
 
-    boost::shared_ptr<woogeen_base::MsdkFrame> frame(new woogeen_base::MsdkFrame(width, height, m_allocator));
+    boost::shared_ptr<owt_base::MsdkFrame> frame(new owt_base::MsdkFrame(width, height, m_allocator));
     if(!frame->init())
         return NULL;
 
@@ -157,7 +157,7 @@ bool MsdkAvatarManager::unsetAvatar(uint8_t index)
     return true;
 }
 
-boost::shared_ptr<woogeen_base::MsdkFrame> MsdkAvatarManager::getAvatarFrame(uint8_t index)
+boost::shared_ptr<owt_base::MsdkFrame> MsdkAvatarManager::getAvatarFrame(uint8_t index)
 {
     boost::unique_lock<boost::shared_mutex> lock(m_mutex);
 
@@ -171,7 +171,7 @@ boost::shared_ptr<woogeen_base::MsdkFrame> MsdkAvatarManager::getAvatarFrame(uin
         return it2->second;
     }
 
-    boost::shared_ptr<woogeen_base::MsdkFrame> frame = loadImage(it->second);
+    boost::shared_ptr<owt_base::MsdkFrame> frame = loadImage(it->second);
     m_frames[it->second] = frame;
     return frame;
 }
@@ -212,7 +212,7 @@ bool MsdkInput::isActivate()
     return m_active;
 }
 
-void MsdkInput::pushInput(const woogeen_base::Frame& frame)
+void MsdkInput::pushInput(const owt_base::Frame& frame)
 {
     if (!processCmd(frame)) {
         boost::shared_ptr<MsdkFrame> msdkFrame = convert(frame);
@@ -250,7 +250,7 @@ bool MsdkInput::initSwFramePool(int width, int height)
     return true;
 }
 
-boost::shared_ptr<woogeen_base::MsdkFrame> MsdkInput::getMsdkFrame(const uint32_t width, const uint32_t height)
+boost::shared_ptr<owt_base::MsdkFrame> MsdkInput::getMsdkFrame(const uint32_t width, const uint32_t height)
 {
     if (m_msdkFrame == NULL) {
         m_msdkFrame.reset(new MsdkFrame(width, height, m_allocator));
@@ -279,7 +279,7 @@ boost::shared_ptr<woogeen_base::MsdkFrame> MsdkInput::getMsdkFrame(const uint32_
     return m_msdkFrame;
 }
 
-bool MsdkInput::processCmd(const woogeen_base::Frame& frame)
+bool MsdkInput::processCmd(const owt_base::Frame& frame)
 {
     if (frame.format == FRAME_FORMAT_MSDK) {
         MsdkFrameHolder *holder = (MsdkFrameHolder *)frame.payload;
@@ -310,7 +310,7 @@ bool MsdkInput::processCmd(const woogeen_base::Frame& frame)
     return false;
 }
 
-boost::shared_ptr<MsdkFrame> MsdkInput::convert(const woogeen_base::Frame& frame)
+boost::shared_ptr<MsdkFrame> MsdkInput::convert(const owt_base::Frame& frame)
 {
     if (frame.format == FRAME_FORMAT_MSDK) {
         MsdkFrameHolder *holder = (MsdkFrameHolder *)frame.payload;
@@ -366,7 +366,7 @@ boost::shared_ptr<MsdkFrame> MsdkInput::convert(const woogeen_base::Frame& frame
 
 DEFINE_LOGGER(MsdkVpp, "mcu.media.MsdkVideoCompositor.MsdkVpp");
 
-MsdkVpp::MsdkVpp(woogeen_base::VideoSize &size, woogeen_base::YUVColor &bgColor, const bool crop)
+MsdkVpp::MsdkVpp(owt_base::VideoSize &size, owt_base::YUVColor &bgColor, const bool crop)
     : m_size(size)
     , m_bgColor(bgColor)
     , m_crop(crop)
@@ -576,7 +576,7 @@ bool MsdkVpp::resetVpp()
     return true;
 }
 
-void MsdkVpp::convertToCompInputStream(mfxVPPCompInputStream *vppStream, const woogeen_base::VideoSize& rootSize, const Region& region)
+void MsdkVpp::convertToCompInputStream(mfxVPPCompInputStream *vppStream, const owt_base::VideoSize& rootSize, const Region& region)
 {
     uint32_t sub_width      = (uint64_t)rootSize.width * region.area.rect.width.numerator / region.area.rect.width.denominator;
     uint32_t sub_height     = (uint64_t)rootSize.height * region.area.rect.height.numerator / region.area.rect.height.denominator;
@@ -595,7 +595,7 @@ void MsdkVpp::convertToCompInputStream(mfxVPPCompInputStream *vppStream, const w
     vppStream->DstH = sub_height;
 }
 
-void MsdkVpp::applyAspectRatio(std::vector<boost::shared_ptr<woogeen_base::MsdkFrame>> &inputFrames)
+void MsdkVpp::applyAspectRatio(std::vector<boost::shared_ptr<owt_base::MsdkFrame>> &inputFrames)
 {
     uint32_t size = inputFrames.size();
 
@@ -697,7 +697,7 @@ bool MsdkVpp::init()
     return true;
 }
 
-bool MsdkVpp::update(woogeen_base::VideoSize &size, woogeen_base::YUVColor &bgColor, LayoutSolution &layout)
+bool MsdkVpp::update(owt_base::VideoSize &size, owt_base::YUVColor &bgColor, LayoutSolution &layout)
 {
     m_layout = layout;
 
@@ -724,8 +724,8 @@ bool MsdkVpp::update(woogeen_base::VideoSize &size, woogeen_base::YUVColor &bgCo
     return true;
 }
 
-boost::shared_ptr<woogeen_base::MsdkFrame> MsdkVpp::mix(
-            std::vector<boost::shared_ptr<woogeen_base::MsdkFrame>> &inputFrames)
+boost::shared_ptr<owt_base::MsdkFrame> MsdkVpp::mix(
+            std::vector<boost::shared_ptr<owt_base::MsdkFrame>> &inputFrames)
 {
     if (m_layout.size() == 0) {
         ELOG_TRACE_T("Feed default root frame");
@@ -788,8 +788,8 @@ DEFINE_LOGGER(MsdkFrameGenerator, "mcu.media.MsdkVideoCompositor.MsdkFrameGenera
 
 MsdkFrameGenerator::MsdkFrameGenerator(
             MsdkVideoCompositor *owner,
-            woogeen_base::VideoSize &size,
-            woogeen_base::YUVColor &bgColor,
+            owt_base::VideoSize &size,
+            owt_base::YUVColor &bgColor,
             const bool crop,
             const uint32_t maxFps,
             const uint32_t minFps)
@@ -865,7 +865,7 @@ bool MsdkFrameGenerator::isSupported(uint32_t width, uint32_t height, uint32_t f
     return false;
 }
 
-bool MsdkFrameGenerator::addOutput(const uint32_t width, const uint32_t height, const uint32_t fps, woogeen_base::FrameDestination *dst) {
+bool MsdkFrameGenerator::addOutput(const uint32_t width, const uint32_t height, const uint32_t fps, owt_base::FrameDestination *dst) {
     assert(isSupported(width, height, fps));
 
     boost::unique_lock<boost::shared_mutex> lock(m_outputMutex);
@@ -877,7 +877,7 @@ bool MsdkFrameGenerator::addOutput(const uint32_t width, const uint32_t height, 
     return true;
 }
 
-bool MsdkFrameGenerator::removeOutput(woogeen_base::FrameDestination *dst) {
+bool MsdkFrameGenerator::removeOutput(owt_base::FrameDestination *dst) {
     boost::unique_lock<boost::shared_mutex> lock(m_outputMutex);
 
     for (uint32_t i = 0; i < m_outputs.size(); i++) {
@@ -923,9 +923,9 @@ void MsdkFrameGenerator::onTimeout()
             holder.frame = compositeFrame;
             holder.cmd = MsdkCmd_NONE;
 
-            woogeen_base::Frame frame;
+            owt_base::Frame frame;
             memset(&frame, 0, sizeof(frame));
-            frame.format = woogeen_base::FRAME_FORMAT_MSDK;
+            frame.format = owt_base::FRAME_FORMAT_MSDK;
             frame.payload = reinterpret_cast<uint8_t*>(&holder);
             frame.length = 0; // unused.
             frame.additionalInfo.video.width = compositeFrame->getVideoWidth();
@@ -975,7 +975,7 @@ void MsdkFrameGenerator::reconfigureIfNeeded()
 
 boost::shared_ptr<MsdkFrame> MsdkFrameGenerator::layout()
 {
-    std::vector<boost::shared_ptr<woogeen_base::MsdkFrame>> inputFrames;
+    std::vector<boost::shared_ptr<owt_base::MsdkFrame>> inputFrames;
     for (auto& l : m_layout) {
         boost::shared_ptr<MsdkFrame> src = m_owner->getInputFrame(l.input);
         inputFrames.push_back(src);
@@ -1115,7 +1115,7 @@ bool MsdkVideoCompositor::unsetAvatar(int input)
     return m_avatarManager->unsetAvatar(input);
 }
 
-void MsdkVideoCompositor::pushInput(int input, const woogeen_base::Frame& frame)
+void MsdkVideoCompositor::pushInput(int input, const owt_base::Frame& frame)
 {
     ELOG_TRACE("+++pushInput %d", input);
 
@@ -1124,7 +1124,7 @@ void MsdkVideoCompositor::pushInput(int input, const woogeen_base::Frame& frame)
     ELOG_TRACE("---pushInput %d", input);
 }
 
-bool MsdkVideoCompositor::addOutput(const uint32_t width, const uint32_t height, const uint32_t framerateFPS, woogeen_base::FrameDestination *dst)
+bool MsdkVideoCompositor::addOutput(const uint32_t width, const uint32_t height, const uint32_t framerateFPS, owt_base::FrameDestination *dst)
 {
     ELOG_DEBUG("addOutput, %dx%d, fps(%d), dst(%p)", width, height, framerateFPS, dst);
 
@@ -1138,7 +1138,7 @@ bool MsdkVideoCompositor::addOutput(const uint32_t width, const uint32_t height,
     return false;
 }
 
-bool MsdkVideoCompositor::removeOutput(woogeen_base::FrameDestination *dst)
+bool MsdkVideoCompositor::removeOutput(owt_base::FrameDestination *dst)
 {
     ELOG_DEBUG("removeOutput, dst(%p)", dst);
 
@@ -1170,9 +1170,9 @@ void MsdkVideoCompositor::flush()
 #endif
 }
 
-boost::shared_ptr<woogeen_base::MsdkFrame> MsdkVideoCompositor::getInputFrame(int index)
+boost::shared_ptr<owt_base::MsdkFrame> MsdkVideoCompositor::getInputFrame(int index)
 {
-    boost::shared_ptr<woogeen_base::MsdkFrame> src;
+    boost::shared_ptr<owt_base::MsdkFrame> src;
 
     auto& input = m_inputs[index];
     if (input->isActivate()) {

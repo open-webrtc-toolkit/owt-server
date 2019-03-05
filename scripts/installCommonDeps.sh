@@ -207,10 +207,10 @@ install_libexpat() {
 install_webrtc(){
   export GIT_SSL_NO_VERIFY=1
   local GIT_ACCOUNT="lab_webrtctest"
-  local WOOGEEN_GIT_URL=`git config --get remote.origin.url`
-  if [ ! -z "$WOOGEEN_GIT_URL" ]; then
-    if echo $WOOGEEN_GIT_URL | grep "@" -q -s; then
-      GIT_ACCOUNT=`echo $WOOGEEN_GIT_URL | awk -F '\/\/' '{print $2}' | awk -F '@' '{print $1}'`
+  local OWT_GIT_URL=`git config --get remote.origin.url`
+  if [ ! -z "$OWT_GIT_URL" ]; then
+    if echo $OWT_GIT_URL | grep "@" -q -s; then
+      GIT_ACCOUNT=`echo $OWT_GIT_URL | awk -F '\/\/' '{print $2}' | awk -F '@' '{print $1}'`
     else
       GIT_ACCOUNT=`whoami`
     fi

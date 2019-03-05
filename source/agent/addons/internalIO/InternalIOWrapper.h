@@ -13,7 +13,7 @@
 
 
 /*
- * Wrapper class of woogeen_base::InternalSctp
+ * Wrapper class of owt_base::InternalSctp
  * In fact, class SctpIn & class SctpOut are same,
  * but we cannot extends to FrameSource and FrameDestination both
  */
@@ -21,7 +21,7 @@ class SctpIn : public FrameSource {
   DECLARE_LOGGER();
 public:
   static void Init(v8::Local<v8::Object> exports);
-  woogeen_base::InternalSctp* me;
+  owt_base::InternalSctp* me;
 
 private:
   SctpIn();
@@ -43,7 +43,7 @@ class SctpOut : public FrameDestination {
   DECLARE_LOGGER();
 public:
   static void Init(v8::Local<v8::Object> exports);
-  woogeen_base::InternalSctp* me;
+  owt_base::InternalSctp* me;
 
 private:
   SctpOut();

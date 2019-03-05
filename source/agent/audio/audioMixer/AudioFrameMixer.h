@@ -19,12 +19,12 @@ public:
     virtual void disableVAD() = 0;
     virtual void resetVAD() = 0;
 
-    virtual bool addInput(const std::string& group, const std::string& inStream, const woogeen_base::FrameFormat format, woogeen_base::FrameSource* source) = 0;
+    virtual bool addInput(const std::string& group, const std::string& inStream, const owt_base::FrameFormat format, owt_base::FrameSource* source) = 0;
     virtual void removeInput(const std::string& group, const std::string& inStream) = 0;
 
     virtual void setInputActive(const std::string& group, const std::string& inStream, bool active) = 0;
 
-    virtual bool addOutput(const std::string& group, const std::string& outStream, const woogeen_base::FrameFormat format, woogeen_base::FrameDestination* destination) = 0;
+    virtual bool addOutput(const std::string& group, const std::string& outStream, const owt_base::FrameFormat format, owt_base::FrameDestination* destination) = 0;
     virtual void removeOutput(const std::string& group, const std::string& outStream) = 0;
 
     virtual void setEventRegistry(EventRegistry* handle) = 0;

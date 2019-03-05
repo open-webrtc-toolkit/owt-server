@@ -43,7 +43,7 @@ void VideoFrameConstructor::New(const FunctionCallbackInfo<Value>& args) {
   HandleScope scope(isolate);
 
   VideoFrameConstructor* obj = new VideoFrameConstructor();
-  obj->me = new woogeen_base::VideoFrameConstructor(obj);
+  obj->me = new owt_base::VideoFrameConstructor(obj);
   obj->src = obj->me;
   obj->msink = obj->me;
 
@@ -55,7 +55,7 @@ void VideoFrameConstructor::close(const FunctionCallbackInfo<Value>& args) {
   Isolate* isolate = Isolate::GetCurrent();
   HandleScope scope(isolate);
   VideoFrameConstructor* obj = ObjectWrap::Unwrap<VideoFrameConstructor>(args.Holder());
-  woogeen_base::VideoFrameConstructor* me = obj->me;
+  owt_base::VideoFrameConstructor* me = obj->me;
   delete me;
 }
 
@@ -64,7 +64,7 @@ void VideoFrameConstructor::bindTransport(const FunctionCallbackInfo<Value>& arg
   HandleScope scope(isolate);
 
   VideoFrameConstructor* obj = ObjectWrap::Unwrap<VideoFrameConstructor>(args.Holder());
-  woogeen_base::VideoFrameConstructor* me = obj->me;
+  owt_base::VideoFrameConstructor* me = obj->me;
 
   SipCallConnection* param = ObjectWrap::Unwrap<SipCallConnection>(args[0]->ToObject());
   sip_gateway::SipCallConnection* transport = param->me;
@@ -77,7 +77,7 @@ void VideoFrameConstructor::unbindTransport(const FunctionCallbackInfo<Value>& a
   HandleScope scope(isolate);
 
   VideoFrameConstructor* obj = ObjectWrap::Unwrap<VideoFrameConstructor>(args.Holder());
-  woogeen_base::VideoFrameConstructor* me = obj->me;
+  owt_base::VideoFrameConstructor* me = obj->me;
 
   me->unbindTransport();
 }
@@ -87,10 +87,10 @@ void VideoFrameConstructor::addDestination(const FunctionCallbackInfo<Value>& ar
   HandleScope scope(isolate);
 
   VideoFrameConstructor* obj = ObjectWrap::Unwrap<VideoFrameConstructor>(args.Holder());
-  woogeen_base::VideoFrameConstructor* me = obj->me;
+  owt_base::VideoFrameConstructor* me = obj->me;
 
   FrameDestination* param = ObjectWrap::Unwrap<FrameDestination>(args[0]->ToObject());
-  woogeen_base::FrameDestination* dest = param->dest;
+  owt_base::FrameDestination* dest = param->dest;
 
   me->addVideoDestination(dest);
 }
@@ -100,10 +100,10 @@ void VideoFrameConstructor::removeDestination(const FunctionCallbackInfo<Value>&
   HandleScope scope(isolate);
 
   VideoFrameConstructor* obj = ObjectWrap::Unwrap<VideoFrameConstructor>(args.Holder());
-  woogeen_base::VideoFrameConstructor* me = obj->me;
+  owt_base::VideoFrameConstructor* me = obj->me;
 
   FrameDestination* param = ObjectWrap::Unwrap<FrameDestination>(args[0]->ToObject());
-  woogeen_base::FrameDestination* dest = param->dest;
+  owt_base::FrameDestination* dest = param->dest;
 
   me->removeVideoDestination(dest);
 }
@@ -113,7 +113,7 @@ void VideoFrameConstructor::setBitrate(const FunctionCallbackInfo<Value>& args) 
   HandleScope scope(isolate);
 
   VideoFrameConstructor* obj = ObjectWrap::Unwrap<VideoFrameConstructor>(args.Holder());
-  woogeen_base::VideoFrameConstructor* me = obj->me;
+  owt_base::VideoFrameConstructor* me = obj->me;
 
   int bitrate = args[0]->IntegerValue();
 
@@ -125,7 +125,7 @@ void VideoFrameConstructor::requestKeyFrame(const FunctionCallbackInfo<Value>& a
   HandleScope scope(isolate);
 
   VideoFrameConstructor* obj = ObjectWrap::Unwrap<VideoFrameConstructor>(args.Holder());
-  woogeen_base::VideoFrameConstructor* me = obj->me;
+  owt_base::VideoFrameConstructor* me = obj->me;
 
   me->RequestKeyFrame();
 }

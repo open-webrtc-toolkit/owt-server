@@ -10,7 +10,7 @@
 namespace mcu {
 
 using namespace webrtc;
-using namespace woogeen_base;
+using namespace owt_base;
 
 static enum AVSampleFormat getCodecPreferedSampleFmt(AVCodec *codec, enum AVSampleFormat PreferedSampleFmt)
 {
@@ -248,7 +248,7 @@ void FfEncoder::encode()
 
 void FfEncoder::sendOut(AVPacket &pkt)
 {
-    woogeen_base::Frame frame;
+    owt_base::Frame frame;
     memset(&frame, 0, sizeof(frame));
     frame.format = m_format;
     frame.payload = const_cast<uint8_t *>(pkt.data);

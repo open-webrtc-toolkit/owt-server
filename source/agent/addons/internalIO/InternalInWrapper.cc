@@ -44,7 +44,7 @@ void InternalIn::New(const FunctionCallbackInfo<Value>& args) {
   }
 
   InternalIn* obj = new InternalIn();
-  obj->me = new woogeen_base::InternalIn(protocol, minPort, maxPort);
+  obj->me = new owt_base::InternalIn(protocol, minPort, maxPort);
   obj->src = obj->me;
 
   obj->Wrap(args.This());
@@ -55,7 +55,7 @@ void InternalIn::close(const FunctionCallbackInfo<Value>& args) {
   Isolate* isolate = Isolate::GetCurrent();
   HandleScope scope(isolate);
   InternalIn* obj = ObjectWrap::Unwrap<InternalIn>(args.Holder());
-  woogeen_base::InternalIn* me = obj->me;
+  owt_base::InternalIn* me = obj->me;
   delete me;
 }
 
@@ -64,7 +64,7 @@ void InternalIn::getListeningPort(const FunctionCallbackInfo<Value>& args) {
   HandleScope scope(isolate);
 
   InternalIn* obj = ObjectWrap::Unwrap<InternalIn>(args.This());
-  woogeen_base::InternalIn* me = obj->me;
+  owt_base::InternalIn* me = obj->me;
 
   uint32_t port = me->getListeningPort();
 
@@ -76,13 +76,13 @@ void InternalIn::addDestination(const FunctionCallbackInfo<Value>& args) {
   HandleScope scope(isolate);
 
   InternalIn* obj = ObjectWrap::Unwrap<InternalIn>(args.Holder());
-  woogeen_base::InternalIn* me = obj->me;
+  owt_base::InternalIn* me = obj->me;
 
   String::Utf8Value param0(args[0]->ToString());
   std::string track = std::string(*param0);
 
   FrameDestination* param = ObjectWrap::Unwrap<FrameDestination>(args[1]->ToObject());
-  woogeen_base::FrameDestination* dest = param->dest;
+  owt_base::FrameDestination* dest = param->dest;
 
   if (track == "audio") {
     me->addAudioDestination(dest);
@@ -96,13 +96,13 @@ void InternalIn::removeDestination(const FunctionCallbackInfo<Value>& args) {
   HandleScope scope(isolate);
 
   InternalIn* obj = ObjectWrap::Unwrap<InternalIn>(args.Holder());
-  woogeen_base::InternalIn* me = obj->me;
+  owt_base::InternalIn* me = obj->me;
 
   String::Utf8Value param0(args[0]->ToString());
   std::string track = std::string(*param0);
 
   FrameDestination* param = ObjectWrap::Unwrap<FrameDestination>(args[1]->ToObject());
-  woogeen_base::FrameDestination* dest = param->dest;
+  owt_base::FrameDestination* dest = param->dest;
 
   if (track == "audio") {
     me->removeAudioDestination(dest);

@@ -4,11 +4,11 @@
     'sources': [
       'addon.cc',
       'MediaFrameMulticasterWrapper.cc',
-      '../../../core/woogeen_base/MediaFrameMulticaster.cpp',
-      '../../../core/woogeen_base/MediaFramePipeline.cpp',
+      '../../../core/owt_base/MediaFrameMulticaster.cpp',
+      '../../../core/owt_base/MediaFramePipeline.cpp',
     ],
     'include_dirs': ['$(CORE_HOME)/common',
-                      '$(CORE_HOME)/woogeen_base'],
+                      '$(CORE_HOME)/owt_base'],
     'libraries': [
       '-lboost_thread',
     ],

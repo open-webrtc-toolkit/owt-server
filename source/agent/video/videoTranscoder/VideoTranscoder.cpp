@@ -9,7 +9,7 @@
 #include "VideoFrameTranscoderImpl.h"
 
 using namespace webrtc;
-using namespace woogeen_base;
+using namespace owt_base;
 
 namespace mcu {
 
@@ -75,14 +75,14 @@ int VideoTranscoder::useAFreeInputIndex()
     return -1;
 }
 
-bool VideoTranscoder::setInput(const std::string& inStreamID, const std::string& codec, woogeen_base::FrameSource* source)
+bool VideoTranscoder::setInput(const std::string& inStreamID, const std::string& codec, owt_base::FrameSource* source)
 {
     if (m_inputCount == m_maxInputCount) {
         ELOG_WARN("Exceeding maximum number of sources (%u), ignoring the addSource request", m_maxInputCount);
         return false;
     }
 
-    woogeen_base::FrameFormat format = getFormat(codec);
+    owt_base::FrameFormat format = getFormat(codec);
 
     boost::upgrade_lock<boost::shared_mutex> lock(m_inputsMutex);
     auto it = m_inputs.find(inStreamID);
@@ -121,14 +121,14 @@ void VideoTranscoder::unsetInput(const std::string& inStreamID)
 bool VideoTranscoder::addOutput(
     const std::string& outStreamID
     , const std::string& codec
-    , const woogeen_base::VideoCodecProfile profile
+    , const owt_base::VideoCodecProfile profile
     , const std::string& resolution
     , const unsigned int framerateFPS
     , const unsigned int bitrateKbps
     , const unsigned int keyFrameIntervalSeconds
-    , woogeen_base::FrameDestination* dest)
+    , owt_base::FrameDestination* dest)
 {
-    woogeen_base::FrameFormat format = getFormat(codec);
+    owt_base::FrameFormat format = getFormat(codec);
     VideoSize vSize{0, 0};
     VideoResolutionHelper::getVideoSize(resolution, vSize);
     if (m_frameTranscoder->addOutput(m_nextOutputIndex, format, profile, vSize, framerateFPS, bitrateKbps, keyFrameIntervalSeconds, dest)) {

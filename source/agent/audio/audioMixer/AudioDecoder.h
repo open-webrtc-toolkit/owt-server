@@ -10,15 +10,15 @@
 
 namespace mcu {
 
-class AudioDecoder : public woogeen_base::FrameDestination {
+class AudioDecoder : public owt_base::FrameDestination {
 public:
     virtual ~AudioDecoder() { }
 
     virtual bool init() = 0;
     virtual bool getAudioFrame(webrtc::AudioFrame *audioFrame) = 0;
 
-    // Implements woogeen_base::FrameDestination
-    virtual void onFrame(const woogeen_base::Frame& frame) = 0;
+    // Implements owt_base::FrameDestination
+    virtual void onFrame(const owt_base::Frame& frame) = 0;
 };
 
 } /* namespace mcu */

@@ -64,7 +64,7 @@ void AVStreamInWrap::New(const FunctionCallbackInfo<Value>& args)
     Local<String> keyBufferSize = String::NewFromUtf8(isolate, "buffer_size");
     Local<String> keyAudio = String::NewFromUtf8(isolate, "has_audio");
     Local<String> keyVideo = String::NewFromUtf8(isolate, "has_video");
-    woogeen_base::LiveStreamIn::Options param{};
+    owt_base::LiveStreamIn::Options param{};
     Local<Object> options = args[0]->ToObject();
     if (options->Has(keyUrl))
         param.url = std::string(*String::Utf8Value(options->Get(keyUrl)->ToString()));
@@ -80,9 +80,9 @@ void AVStreamInWrap::New(const FunctionCallbackInfo<Value>& args)
     AVStreamInWrap* obj = new AVStreamInWrap();
     std::string type = std::string(*String::Utf8Value(options->Get(String::NewFromUtf8(isolate, "type"))->ToString()));
     if (type.compare("streaming") == 0)
-        obj->me = new woogeen_base::LiveStreamIn(param, obj);
+        obj->me = new owt_base::LiveStreamIn(param, obj);
     else if (type.compare("file") == 0)
-        obj->me = new woogeen_base::MediaFileIn();
+        obj->me = new owt_base::MediaFileIn();
     else {
         isolate->ThrowException(Exception::TypeError(String::NewFromUtf8(isolate, "Unsupported AVStreamIn type")));
         return;
@@ -117,7 +117,7 @@ void AVStreamInWrap::addDestination(const FunctionCallbackInfo<Value>& args)
         return;
     std::string track = std::string(*String::Utf8Value(args[0]->ToString()));
     FrameDestination* param = ObjectWrap::Unwrap<FrameDestination>(args[1]->ToObject());
-    woogeen_base::FrameDestination* dest = param->dest;
+    owt_base::FrameDestination* dest = param->dest;
 
     if (track == "audio")
         obj->me->addAudioDestination(dest);
@@ -135,7 +135,7 @@ void AVStreamInWrap::removeDestination(const FunctionCallbackInfo<Value>& args)
         return;
     std::string track = std::string(*String::Utf8Value(args[0]->ToString()));
     FrameDestination* param = ObjectWrap::Unwrap<FrameDestination>(args[1]->ToObject());
-    woogeen_base::FrameDestination* dest = param->dest;
+    owt_base::FrameDestination* dest = param->dest;
 
     if (track == "audio")
         obj->me->removeAudioDestination(dest);

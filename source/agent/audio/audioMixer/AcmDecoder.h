@@ -16,7 +16,7 @@
 #include "AudioDecoder.h"
 
 namespace mcu {
-using namespace woogeen_base;
+using namespace owt_base;
 using namespace webrtc;
 
 class AcmDecoder : public AudioDecoder {
@@ -29,7 +29,7 @@ public:
     bool init() override;
     bool getAudioFrame(AudioFrame *audioFrame) override;
 
-    // Implements woogeen_base::FrameDestination
+    // Implements owt_base::FrameDestination
     void onFrame(const Frame& frame) override;
 
 private:

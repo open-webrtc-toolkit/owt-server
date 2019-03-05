@@ -39,7 +39,7 @@ void VideoFramePacketizer::New(const FunctionCallbackInfo<Value>& args) {
   bool supportRED = (args[0]->ToBoolean())->BooleanValue();
   bool supportULPFEC = (args[1]->ToBoolean())->BooleanValue();
   VideoFramePacketizer* obj = new VideoFramePacketizer();
-  obj->me = new woogeen_base::VideoFramePacketizer(supportRED, supportULPFEC, false, true);
+  obj->me = new owt_base::VideoFramePacketizer(supportRED, supportULPFEC, false, true);
   obj->dest = obj->me;
 
   obj->Wrap(args.This());
@@ -50,7 +50,7 @@ void VideoFramePacketizer::close(const FunctionCallbackInfo<Value>& args) {
   Isolate* isolate = Isolate::GetCurrent();
   HandleScope scope(isolate);
   VideoFramePacketizer* obj = ObjectWrap::Unwrap<VideoFramePacketizer>(args.Holder());
-  woogeen_base::VideoFramePacketizer* me = obj->me;
+  owt_base::VideoFramePacketizer* me = obj->me;
   delete me;
 }
 
@@ -59,7 +59,7 @@ void VideoFramePacketizer::bindTransport(const FunctionCallbackInfo<Value>& args
   HandleScope scope(isolate);
 
   VideoFramePacketizer* obj = ObjectWrap::Unwrap<VideoFramePacketizer>(args.Holder());
-  woogeen_base::VideoFramePacketizer* me = obj->me;
+  owt_base::VideoFramePacketizer* me = obj->me;
 
   SipCallConnection* param = ObjectWrap::Unwrap<SipCallConnection>(args[0]->ToObject());
   sip_gateway::SipCallConnection* transport = param->me;
@@ -72,7 +72,7 @@ void VideoFramePacketizer::unbindTransport(const FunctionCallbackInfo<Value>& ar
   HandleScope scope(isolate);
 
   VideoFramePacketizer* obj = ObjectWrap::Unwrap<VideoFramePacketizer>(args.Holder());
-  woogeen_base::VideoFramePacketizer* me = obj->me;
+  owt_base::VideoFramePacketizer* me = obj->me;
 
   me->unbindTransport();
 }
