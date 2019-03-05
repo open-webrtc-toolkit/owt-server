@@ -1,3 +1,7 @@
+// Copyright (C) <2019> Intel Corporation
+//
+// SPDX-License-Identifier: Apache-2.0
+
 var assert = require("assert");
 var mockery = require("mockery");
 var expect = require('chai').use(require('chai-as-promised')).expect;

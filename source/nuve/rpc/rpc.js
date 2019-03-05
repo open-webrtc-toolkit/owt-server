@@ -1,3 +1,7 @@
+// Copyright (C) <2019> Intel Corporation
+//
+// SPDX-License-Identifier: Apache-2.0
+
 'use strict';
 var amqp = require('amqp');
 var log = require('./../logger').logger.getLogger('RPC');
