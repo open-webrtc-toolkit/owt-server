@@ -1,8 +1,9 @@
+#!/usr/bin/env node
+
 // Copyright (C) <2019> Intel Corporation
 //
 // SPDX-License-Identifier: Apache-2.0
 
-#!/usr/bin/env node
 'use strict';
 
 var dbURL = process.env.DB_URL;
