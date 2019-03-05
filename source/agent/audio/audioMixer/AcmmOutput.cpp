@@ -13,7 +13,7 @@
 namespace mcu {
 
 using namespace webrtc;
-using namespace woogeen_base;
+using namespace owt_base;
 
 DEFINE_LOGGER(AcmmOutput, "mcu.media.AcmmOutput");
 

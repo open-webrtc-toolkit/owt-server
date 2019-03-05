@@ -39,7 +39,7 @@ void AudioFramePacketizer::New(const FunctionCallbackInfo<Value>& args) {
   HandleScope scope(isolate);
 
   AudioFramePacketizer* obj = new AudioFramePacketizer();
-  obj->me = new woogeen_base::AudioFramePacketizer();
+  obj->me = new owt_base::AudioFramePacketizer();
   obj->dest = obj->me;
 
   obj->Wrap(args.This());
@@ -50,7 +50,7 @@ void AudioFramePacketizer::close(const FunctionCallbackInfo<Value>& args) {
   Isolate* isolate = Isolate::GetCurrent();
   HandleScope scope(isolate);
   AudioFramePacketizer* obj = ObjectWrap::Unwrap<AudioFramePacketizer>(args.Holder());
-  woogeen_base::AudioFramePacketizer* me = obj->me;
+  owt_base::AudioFramePacketizer* me = obj->me;
   delete me;
 }
 
@@ -59,7 +59,7 @@ void AudioFramePacketizer::bindTransport(const FunctionCallbackInfo<Value>& args
   HandleScope scope(isolate);
 
   AudioFramePacketizer* obj = ObjectWrap::Unwrap<AudioFramePacketizer>(args.Holder());
-  woogeen_base::AudioFramePacketizer* me = obj->me;
+  owt_base::AudioFramePacketizer* me = obj->me;
 
   WebRtcConnection* param = Nan::ObjectWrap::Unwrap<WebRtcConnection>(Nan::To<v8::Object>(args[0]).ToLocalChecked());
   auto wr = std::shared_ptr<erizo::WebRtcConnection>(param->me).get();
@@ -74,7 +74,7 @@ void AudioFramePacketizer::unbindTransport(const FunctionCallbackInfo<Value>& ar
   HandleScope scope(isolate);
 
   AudioFramePacketizer* obj = ObjectWrap::Unwrap<AudioFramePacketizer>(args.Holder());
-  woogeen_base::AudioFramePacketizer* me = obj->me;
+  owt_base::AudioFramePacketizer* me = obj->me;
 
   me->unbindTransport();
 }
@@ -84,7 +84,7 @@ void AudioFramePacketizer::enable(const v8::FunctionCallbackInfo<v8::Value>& arg
   HandleScope scope(isolate);
 
   AudioFramePacketizer* obj = ObjectWrap::Unwrap<AudioFramePacketizer>(args.Holder());
-  woogeen_base::AudioFramePacketizer* me = obj->me;
+  owt_base::AudioFramePacketizer* me = obj->me;
 
   bool b = (args[0]->ToBoolean())->BooleanValue();
   me->enable(b);

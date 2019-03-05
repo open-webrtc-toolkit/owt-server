@@ -12,12 +12,12 @@
 
 
 /*
- * Wrapper class of woogeen_base::MediaFrameMulticaster
+ * Wrapper class of owt_base::MediaFrameMulticaster
  */
 class MediaFrameMulticaster : public FrameDestination {
  public:
   static void Init(v8::Handle<v8::Object>, v8::Handle<v8::Object>);
-  woogeen_base::MediaFrameMulticaster* me;
+  owt_base::MediaFrameMulticaster* me;
 
  private:
   MediaFrameMulticaster();

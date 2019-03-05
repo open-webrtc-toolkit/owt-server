@@ -38,7 +38,7 @@ void InternalOut::New(const v8::FunctionCallbackInfo<v8::Value>& args) {
   unsigned int dest_port = args[2]->Uint32Value();
 
   InternalOut* obj = new InternalOut();
-  obj->me = new woogeen_base::InternalOut(protocol, dest_ip, dest_port);
+  obj->me = new owt_base::InternalOut(protocol, dest_ip, dest_port);
   obj->dest = obj->me;
 
   obj->Wrap(args.This());
@@ -49,6 +49,6 @@ void InternalOut::close(const v8::FunctionCallbackInfo<v8::Value>& args) {
   Isolate* isolate = Isolate::GetCurrent();
   HandleScope scope(isolate);
   InternalOut* obj = ObjectWrap::Unwrap<InternalOut>(args.Holder());
-  woogeen_base::InternalOut* me = obj->me;
+  owt_base::InternalOut* me = obj->me;
   delete me;
 }

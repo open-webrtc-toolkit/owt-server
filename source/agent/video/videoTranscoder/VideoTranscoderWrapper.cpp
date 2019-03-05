@@ -73,7 +73,7 @@ void VideoTranscoder::setInput(const v8::FunctionCallbackInfo<v8::Value>& args) 
   String::Utf8Value param1(args[1]->ToString());
   std::string codec = std::string(*param1);
   FrameSource* param2 = ObjectWrap::Unwrap<FrameSource>(args[2]->ToObject());
-  woogeen_base::FrameSource* src = param2->src;
+  owt_base::FrameSource* src = param2->src;
 
   bool r = me->setInput(inStreamID, codec, src);
 
@@ -110,20 +110,20 @@ void VideoTranscoder::addOutput(const v8::FunctionCallbackInfo<v8::Value>& args)
   unsigned int bitrateKbps = args[4]->Uint32Value();
   unsigned int keyFrameIntervalSeconds = args[5]->Uint32Value();
   FrameDestination* param6 = ObjectWrap::Unwrap<FrameDestination>(args[6]->ToObject());
-  woogeen_base::FrameDestination* dest = param6->dest;
+  owt_base::FrameDestination* dest = param6->dest;
 
-  woogeen_base::VideoCodecProfile profile = woogeen_base::PROFILE_UNKNOWN;
+  owt_base::VideoCodecProfile profile = owt_base::PROFILE_UNKNOWN;
   if (codec.find("h264") != std::string::npos) {
     if (codec == "h264_cb") {
-      profile = woogeen_base::PROFILE_AVC_CONSTRAINED_BASELINE;
+      profile = owt_base::PROFILE_AVC_CONSTRAINED_BASELINE;
     } else if (codec == "h264_b") {
-      profile = woogeen_base::PROFILE_AVC_BASELINE;
+      profile = owt_base::PROFILE_AVC_BASELINE;
     } else if (codec == "h264_m") {
-      profile = woogeen_base::PROFILE_AVC_MAIN;
+      profile = owt_base::PROFILE_AVC_MAIN;
     } else if (codec == "h264_e") {
-      profile = woogeen_base::PROFILE_AVC_MAIN;
+      profile = owt_base::PROFILE_AVC_MAIN;
     } else if (codec == "h264_h") {
-      profile = woogeen_base::PROFILE_AVC_HIGH;
+      profile = owt_base::PROFILE_AVC_HIGH;
     }
     codec = "h264";
   }

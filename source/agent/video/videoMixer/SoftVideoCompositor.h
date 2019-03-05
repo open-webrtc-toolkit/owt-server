@@ -71,9 +71,9 @@ private:
     boost::shared_ptr<webrtc::VideoFrame> m_busyFrame;
     boost::shared_mutex m_mutex;
 
-    boost::scoped_ptr<woogeen_base::I420BufferManager> m_bufferManager;
+    boost::scoped_ptr<owt_base::I420BufferManager> m_bufferManager;
 
-    boost::scoped_ptr<woogeen_base::FrameConverter> m_converter;
+    boost::scoped_ptr<owt_base::FrameConverter> m_converter;
 };
 
 class SoftFrameGenerator : public JobTimerListener
@@ -86,14 +86,14 @@ class SoftFrameGenerator : public JobTimerListener
         uint32_t width;
         uint32_t height;
         uint32_t fps;
-        woogeen_base::FrameDestination *dest;
+        owt_base::FrameDestination *dest;
     };
 
 public:
     SoftFrameGenerator(
             SoftVideoCompositor *owner,
-            woogeen_base::VideoSize &size,
-            woogeen_base::YUVColor &bgColor,
+            owt_base::VideoSize &size,
+            owt_base::YUVColor &bgColor,
             const bool crop,
             const uint32_t maxFps,
             const uint32_t minFps);
@@ -104,8 +104,8 @@ public:
 
     bool isSupported(uint32_t width, uint32_t height, uint32_t fps);
 
-    bool addOutput(const uint32_t width, const uint32_t height, const uint32_t fps, woogeen_base::FrameDestination *dst);
-    bool removeOutput(woogeen_base::FrameDestination *dst);
+    bool addOutput(const uint32_t width, const uint32_t height, const uint32_t fps, owt_base::FrameDestination *dst);
+    bool removeOutput(owt_base::FrameDestination *dst);
 
     void drawText(const std::string& textSpec);
     void clearText();
@@ -133,8 +133,8 @@ private:
     boost::shared_mutex                 m_outputMutex;
 
     // configure
-    woogeen_base::VideoSize     m_size;
-    woogeen_base::YUVColor      m_bgColor;
+    owt_base::VideoSize     m_size;
+    owt_base::YUVColor      m_bgColor;
     bool                        m_crop;
 
     // reconfifure
@@ -143,7 +143,7 @@ private:
     bool                        m_configureChanged;
     boost::shared_mutex         m_configMutex;
 
-    boost::scoped_ptr<woogeen_base::I420BufferManager> m_bufferManager;
+    boost::scoped_ptr<owt_base::I420BufferManager> m_bufferManager;
 
     boost::scoped_ptr<JobTimer> m_jobTimer;
 
@@ -153,7 +153,7 @@ private:
     boost::shared_ptr<boost::asio::io_service::work> m_srvWork;
     boost::shared_ptr<boost::thread_group> m_thrGrp;
 
-    boost::shared_ptr<woogeen_base::FFmpegDrawText> m_textDrawer;
+    boost::shared_ptr<owt_base::FFmpegDrawText> m_textDrawer;
 };
 
 /**
@@ -166,21 +166,21 @@ class SoftVideoCompositor : public VideoFrameCompositor {
     friend class SoftFrameGenerator;
 
 public:
-    SoftVideoCompositor(uint32_t maxInput, woogeen_base::VideoSize rootSize, woogeen_base::YUVColor bgColor, bool crop);
+    SoftVideoCompositor(uint32_t maxInput, owt_base::VideoSize rootSize, owt_base::YUVColor bgColor, bool crop);
     ~SoftVideoCompositor();
 
     bool activateInput(int input);
     void deActivateInput(int input);
     bool setAvatar(int input, const std::string& avatar);
     bool unsetAvatar(int input);
-    void pushInput(int input, const woogeen_base::Frame&);
+    void pushInput(int input, const owt_base::Frame&);
 
-    void updateRootSize(woogeen_base::VideoSize& rootSize);
-    void updateBackgroundColor(woogeen_base::YUVColor& bgColor);
+    void updateRootSize(owt_base::VideoSize& rootSize);
+    void updateBackgroundColor(owt_base::YUVColor& bgColor);
     void updateLayoutSolution(LayoutSolution& solution);
 
-    bool addOutput(const uint32_t width, const uint32_t height, const uint32_t framerateFPS, woogeen_base::FrameDestination *dst) override;
-    bool removeOutput(woogeen_base::FrameDestination *dst) override;
+    bool addOutput(const uint32_t width, const uint32_t height, const uint32_t framerateFPS, owt_base::FrameDestination *dst) override;
+    bool removeOutput(owt_base::FrameDestination *dst) override;
 
     void drawText(const std::string& textSpec);
     void clearText();

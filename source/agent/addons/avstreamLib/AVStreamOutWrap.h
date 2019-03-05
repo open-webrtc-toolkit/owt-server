@@ -10,13 +10,13 @@
 #include <AVStreamOut.h>
 
 /*
- * Wrapper class of woogeen_base::AVStreamOut
+ * Wrapper class of owt_base::AVStreamOut
  */
 class AVStreamOutWrap : public FrameDestination, public NodeEventRegistry {
  public:
   static void Init(v8::Handle<v8::Object>);
   static void Init(v8::Handle<v8::Object>, v8::Handle<v8::Object>);
-  woogeen_base::AVStreamOut* me;
+  owt_base::AVStreamOut* me;
 
  private:
   AVStreamOutWrap();

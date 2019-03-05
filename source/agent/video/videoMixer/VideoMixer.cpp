@@ -10,7 +10,7 @@
 #include "VideoFrameMixer.h"
 
 using namespace webrtc;
-using namespace woogeen_base;
+using namespace owt_base;
 
 namespace mcu {
 
@@ -73,7 +73,7 @@ VideoMixer::~VideoMixer()
     closeAll();
 }
 
-bool VideoMixer::addInput(const int inputIndex, const std::string& codec, woogeen_base::FrameSource* source, const std::string& avatar)
+bool VideoMixer::addInput(const int inputIndex, const std::string& codec, owt_base::FrameSource* source, const std::string& avatar)
 {
     if (m_inputs.find(inputIndex) != m_inputs.end()) {
         ELOG_WARN("addInput already exist:%d", inputIndex);
@@ -84,7 +84,7 @@ bool VideoMixer::addInput(const int inputIndex, const std::string& codec, woogee
         return false;
     }
 
-    woogeen_base::FrameFormat format = getFormat(codec);
+    owt_base::FrameFormat format = getFormat(codec);
 
     if (m_frameMixer->addInput(inputIndex, format, source, avatar)) {
         m_inputs.insert(inputIndex);
@@ -118,14 +118,14 @@ void VideoMixer::setInputActive(const int inputIndex, bool active)
 bool VideoMixer::addOutput(
     const std::string& outStreamID
     , const std::string& codec
-    , const woogeen_base::VideoCodecProfile profile
+    , const owt_base::VideoCodecProfile profile
     , const std::string& resolution
     , const unsigned int framerateFPS
     , const unsigned int bitrateKbps
     , const unsigned int keyFrameIntervalSeconds
-    , woogeen_base::FrameDestination* dest)
+    , owt_base::FrameDestination* dest)
 {
-    woogeen_base::FrameFormat format = getFormat(codec);
+    owt_base::FrameFormat format = getFormat(codec);
     VideoSize vSize;
     VideoResolutionHelper::getVideoSize(resolution, vSize);
 
