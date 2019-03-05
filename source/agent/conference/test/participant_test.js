@@ -1,3 +1,7 @@
+// Copyright (C) <2019> Intel Corporation
+//
+// SPDX-License-Identifier: Apache-2.0
+
 'use strict';
 var expect = require('chai').use(require('chai-as-promised')).expect;
 var sinon = require('sinon');
