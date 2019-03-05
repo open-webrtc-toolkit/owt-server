@@ -13,17 +13,17 @@ namespace mcu {
 // VideoFrameCompositor accepts the raw I420VideoFrame from multiple inputs and
 // composites them into one I420VideoFrame with the given VideoLayout.
 // The composited I420VideoFrame will be handed over to one VideoFrameConsumer.
-class VideoFrameCompositor : public woogeen_base::FrameSource {
+class VideoFrameCompositor : public owt_base::FrameSource {
 public:
     virtual bool activateInput(int input) = 0;
     virtual void deActivateInput(int input) = 0;
     virtual bool setAvatar(int input, const std::string& avatar) = 0;
     virtual bool unsetAvatar(int input) = 0;
-    virtual void pushInput(int input, const woogeen_base::Frame&) = 0;
+    virtual void pushInput(int input, const owt_base::Frame&) = 0;
     virtual void updateLayoutSolution(LayoutSolution& solution) = 0;
 
-    virtual bool addOutput(const uint32_t width, const uint32_t height, const uint32_t framerateFPS, woogeen_base::FrameDestination *dst) = 0;
-    virtual bool removeOutput(woogeen_base::FrameDestination *dst) = 0;
+    virtual bool addOutput(const uint32_t width, const uint32_t height, const uint32_t framerateFPS, owt_base::FrameDestination *dst) = 0;
+    virtual bool removeOutput(owt_base::FrameDestination *dst) = 0;
 
     virtual void drawText(const std::string& textSpec) = 0;
     virtual void clearText() = 0;
@@ -33,18 +33,18 @@ public:
 // It can have multiple outputs with different FrameFormat or framerate/bitrate settings.
 class VideoFrameMixer {
 public:
-    virtual bool addInput(int input, woogeen_base::FrameFormat, woogeen_base::FrameSource*, const std::string& avatar) = 0;
+    virtual bool addInput(int input, owt_base::FrameFormat, owt_base::FrameSource*, const std::string& avatar) = 0;
     virtual void removeInput(int input) = 0;
     virtual void setInputActive(int input, bool active) = 0;
 
     virtual bool addOutput(int output,
-            woogeen_base::FrameFormat,
-            const woogeen_base::VideoCodecProfile profile,
-            const woogeen_base::VideoSize&,
+            owt_base::FrameFormat,
+            const owt_base::VideoCodecProfile profile,
+            const owt_base::VideoSize&,
             const unsigned int framerateFPS,
             const unsigned int bitrateKbps,
             const unsigned int keyFrameIntervalSeconds,
-            woogeen_base::FrameDestination*) = 0;
+            owt_base::FrameDestination*) = 0;
     virtual void removeOutput(int output) = 0;
 
     //virtual void setBitrate(unsigned short kbps, int output) = 0;

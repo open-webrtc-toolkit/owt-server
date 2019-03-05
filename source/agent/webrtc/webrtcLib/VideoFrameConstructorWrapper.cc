@@ -38,7 +38,7 @@ NAN_MODULE_INIT(VideoFrameConstructor::Init) {
 NAN_METHOD(VideoFrameConstructor::New) {
   if (info.IsConstructCall()) {
     VideoFrameConstructor* obj = new VideoFrameConstructor();
-    obj->me = new woogeen_base::VideoFrameConstructor(obj);
+    obj->me = new owt_base::VideoFrameConstructor(obj);
     obj->src = obj->me;
     obj->msink = obj->me;
 
@@ -56,7 +56,7 @@ NAN_METHOD(VideoFrameConstructor::New) {
 
 NAN_METHOD(VideoFrameConstructor::close) {
   VideoFrameConstructor* obj = Nan::ObjectWrap::Unwrap<VideoFrameConstructor>(info.Holder());
-  woogeen_base::VideoFrameConstructor* me = obj->me;
+  owt_base::VideoFrameConstructor* me = obj->me;
 
   if (!uv_is_closing(reinterpret_cast<uv_handle_t*>(&obj->async_))) {
     uv_close(reinterpret_cast<uv_handle_t*>(&obj->async_), NULL);
@@ -67,7 +67,7 @@ NAN_METHOD(VideoFrameConstructor::close) {
 
 NAN_METHOD(VideoFrameConstructor::bindTransport) {
   VideoFrameConstructor* obj = Nan::ObjectWrap::Unwrap<VideoFrameConstructor>(info.Holder());
-  woogeen_base::VideoFrameConstructor* me = obj->me;
+  owt_base::VideoFrameConstructor* me = obj->me;
 
   WebRtcConnection* param = Nan::ObjectWrap::Unwrap<WebRtcConnection>(Nan::To<v8::Object>(info[0]).ToLocalChecked());
   auto wr = std::shared_ptr<erizo::WebRtcConnection>(param->me).get();
@@ -80,34 +80,34 @@ NAN_METHOD(VideoFrameConstructor::bindTransport) {
 
 NAN_METHOD(VideoFrameConstructor::unbindTransport) {
   VideoFrameConstructor* obj = Nan::ObjectWrap::Unwrap<VideoFrameConstructor>(info.Holder());
-  woogeen_base::VideoFrameConstructor* me = obj->me;
+  owt_base::VideoFrameConstructor* me = obj->me;
 
   me->unbindTransport();
 }
 
 NAN_METHOD(VideoFrameConstructor::addDestination) {
   VideoFrameConstructor* obj = Nan::ObjectWrap::Unwrap<VideoFrameConstructor>(info.Holder());
-  woogeen_base::VideoFrameConstructor* me = obj->me;
+  owt_base::VideoFrameConstructor* me = obj->me;
 
   FrameDestination* param = node::ObjectWrap::Unwrap<FrameDestination>(info[0]->ToObject());
-  woogeen_base::FrameDestination* dest = param->dest;
+  owt_base::FrameDestination* dest = param->dest;
 
   me->addVideoDestination(dest);
 }
 
 NAN_METHOD(VideoFrameConstructor::removeDestination) {
   VideoFrameConstructor* obj = Nan::ObjectWrap::Unwrap<VideoFrameConstructor>(info.Holder());
-  woogeen_base::VideoFrameConstructor* me = obj->me;
+  owt_base::VideoFrameConstructor* me = obj->me;
 
   FrameDestination* param = node::ObjectWrap::Unwrap<FrameDestination>(info[0]->ToObject());
-  woogeen_base::FrameDestination* dest = param->dest;
+  owt_base::FrameDestination* dest = param->dest;
 
   me->removeVideoDestination(dest);
 }
 
 NAN_METHOD(VideoFrameConstructor::setBitrate) {
   VideoFrameConstructor* obj = Nan::ObjectWrap::Unwrap<VideoFrameConstructor>(info.Holder());
-  woogeen_base::VideoFrameConstructor* me = obj->me;
+  owt_base::VideoFrameConstructor* me = obj->me;
 
   int bitrate = info[0]->IntegerValue();
 
@@ -116,14 +116,14 @@ NAN_METHOD(VideoFrameConstructor::setBitrate) {
 
 NAN_METHOD(VideoFrameConstructor::requestKeyFrame) {
   VideoFrameConstructor* obj = Nan::ObjectWrap::Unwrap<VideoFrameConstructor>(info.Holder());
-  woogeen_base::VideoFrameConstructor* me = obj->me;
+  owt_base::VideoFrameConstructor* me = obj->me;
 
   me->RequestKeyFrame();
 }
 
 NAN_METHOD(VideoFrameConstructor::enable) {
   VideoFrameConstructor* obj = Nan::ObjectWrap::Unwrap<VideoFrameConstructor>(info.Holder());
-  woogeen_base::VideoFrameConstructor* me = obj->me;
+  owt_base::VideoFrameConstructor* me = obj->me;
 
   bool b = (info[0]->ToBoolean())->BooleanValue();
   me->enable(b);

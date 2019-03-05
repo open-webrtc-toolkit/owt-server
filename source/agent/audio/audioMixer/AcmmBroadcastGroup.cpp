@@ -7,7 +7,7 @@
 namespace mcu {
 
 using namespace webrtc;
-using namespace woogeen_base;
+using namespace owt_base;
 
 DEFINE_LOGGER(AcmmBroadcastGroup, "mcu.media.AcmmBroadcastGroup");
 
@@ -41,7 +41,7 @@ bool AcmmBroadcastGroup::getFreeOutputId(uint16_t *id)
     return false;
 }
 
-bool AcmmBroadcastGroup::addDest(const woogeen_base::FrameFormat format, woogeen_base::FrameDestination* destination)
+bool AcmmBroadcastGroup::addDest(const owt_base::FrameFormat format, owt_base::FrameDestination* destination)
 {
     boost::shared_ptr<AcmmOutput> acmmOutput;
 
@@ -69,9 +69,9 @@ bool AcmmBroadcastGroup::addDest(const woogeen_base::FrameFormat format, woogeen
     return true;
 }
 
-void AcmmBroadcastGroup::removeDest(woogeen_base::FrameDestination* destination)
+void AcmmBroadcastGroup::removeDest(owt_base::FrameDestination* destination)
 {
-    woogeen_base::FrameFormat format;
+    owt_base::FrameFormat format;
 
     ELOG_DEBUG("removeDest: dest(%p)", destination);
 

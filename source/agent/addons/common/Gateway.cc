@@ -42,7 +42,7 @@ void Gateway::New(const FunctionCallbackInfo<Value>& args) {
   std::string customParam = std::string(*param);
 
   Gateway* obj = new Gateway();
-  obj->me = woogeen_base::Gateway::createGatewayInstance(customParam);
+  obj->me = owt_base::Gateway::createGatewayInstance(customParam);
   obj->me->setEventRegistry(obj);
   obj->Wrap(args.This());
 
@@ -53,7 +53,7 @@ void Gateway::close(const FunctionCallbackInfo<Value>& args) {
   Isolate* isolate = Isolate::GetCurrent();
   HandleScope scope(isolate);
   Gateway* obj = ObjectWrap::Unwrap<Gateway>(args.Holder());
-  woogeen_base::Gateway* me = obj->me;
+  owt_base::Gateway* me = obj->me;
   delete me;
 }
 
@@ -62,7 +62,7 @@ void Gateway::addPublisher(const FunctionCallbackInfo<Value>& args) {
   HandleScope scope(isolate);
 
   Gateway* obj = ObjectWrap::Unwrap<Gateway>(args.Holder());
-  woogeen_base::Gateway* me = obj->me;
+  owt_base::Gateway* me = obj->me;
 
   WebRtcConnection* param0 =
       ObjectWrap::Unwrap<WebRtcConnection>(args[0]->ToObject());
@@ -85,7 +85,7 @@ void Gateway::removePublisher(const FunctionCallbackInfo<Value>& args) {
   HandleScope scope(isolate);
 
   Gateway* obj = ObjectWrap::Unwrap<Gateway>(args.Holder());
-  woogeen_base::Gateway* me = obj->me;
+  owt_base::Gateway* me = obj->me;
   String::Utf8Value param(args[0]->ToString());
   std::string id = std::string(*param);
 
@@ -97,7 +97,7 @@ void Gateway::addSubscriber(const FunctionCallbackInfo<Value>& args) {
   HandleScope scope(isolate);
 
   Gateway* obj = ObjectWrap::Unwrap<Gateway>(args.Holder());
-  woogeen_base::Gateway* me = obj->me;
+  owt_base::Gateway* me = obj->me;
 
   WebRtcConnection* param =
       ObjectWrap::Unwrap<WebRtcConnection>(args[0]->ToObject());
@@ -117,7 +117,7 @@ void Gateway::removeSubscriber(const FunctionCallbackInfo<Value>& args) {
   HandleScope scope(isolate);
 
   Gateway* obj = ObjectWrap::Unwrap<Gateway>(args.Holder());
-  woogeen_base::Gateway* me = obj->me;
+  owt_base::Gateway* me = obj->me;
 
   // get the param
   v8::String::Utf8Value param(args[0]->ToString());
@@ -136,7 +136,7 @@ void Gateway::customMessage(const FunctionCallbackInfo<Value>& args) {
   }
 
   Gateway* obj = ObjectWrap::Unwrap<Gateway>(args.Holder());
-  woogeen_base::Gateway* me = obj->me;
+  owt_base::Gateway* me = obj->me;
   v8::String::Utf8Value str(args[0]->ToString());
   std::string message = std::string(*str);
   me->customMessage(message);
@@ -147,7 +147,7 @@ void Gateway::retrieveStatistics(const FunctionCallbackInfo<Value>& args) {
   HandleScope scope(isolate);
 
   Gateway* obj = ObjectWrap::Unwrap<Gateway>(args.Holder());
-  woogeen_base::Gateway* me = obj->me;
+  owt_base::Gateway* me = obj->me;
 
   std::string stats = me->retrieveStatistics();
 
@@ -158,7 +158,7 @@ void Gateway::subscribeStream(const FunctionCallbackInfo<Value>& args) {
   Isolate* isolate = Isolate::GetCurrent();
   HandleScope scope(isolate);
   Gateway* obj = ObjectWrap::Unwrap<Gateway>(args.Holder());
-  woogeen_base::Gateway* me = obj->me;
+  owt_base::Gateway* me = obj->me;
   v8::String::Utf8Value param(args[0]->ToString());
   std::string id = std::string(*param);
   bool isAudio = args[1]->BooleanValue();
@@ -169,7 +169,7 @@ void Gateway::unsubscribeStream(const FunctionCallbackInfo<Value>& args) {
   Isolate* isolate = Isolate::GetCurrent();
   HandleScope scope(isolate);
   Gateway* obj = ObjectWrap::Unwrap<Gateway>(args.Holder());
-  woogeen_base::Gateway* me = obj->me;
+  owt_base::Gateway* me = obj->me;
   v8::String::Utf8Value param(args[0]->ToString());
   std::string id = std::string(*param);
   bool isAudio = args[1]->BooleanValue();
@@ -180,7 +180,7 @@ void Gateway::publishStream(const FunctionCallbackInfo<Value>& args) {
   Isolate* isolate = Isolate::GetCurrent();
   HandleScope scope(isolate);
   Gateway* obj = ObjectWrap::Unwrap<Gateway>(args.Holder());
-  woogeen_base::Gateway* me = obj->me;
+  owt_base::Gateway* me = obj->me;
   v8::String::Utf8Value param(args[0]->ToString());
   std::string id = std::string(*param);
   bool isAudio = args[1]->BooleanValue();
@@ -191,7 +191,7 @@ void Gateway::unpublishStream(const FunctionCallbackInfo<Value>& args) {
   Isolate* isolate = Isolate::GetCurrent();
   HandleScope scope(isolate);
   Gateway* obj = ObjectWrap::Unwrap<Gateway>(args.Holder());
-  woogeen_base::Gateway* me = obj->me;
+  owt_base::Gateway* me = obj->me;
   v8::String::Utf8Value param(args[0]->ToString());
   std::string id = std::string(*param);
   bool isAudio = args[1]->BooleanValue();

@@ -6,16 +6,16 @@
       'InternalInWrapper.cc',
       'InternalOutWrapper.cc',
       'InternalIOWrapper.cc',
-      '../../../core/woogeen_base/InternalIn.cpp',
-      '../../../core/woogeen_base/InternalOut.cpp',
-      '../../../core/woogeen_base/InternalSctp.cpp',
-      '../../../core/woogeen_base/MediaFramePipeline.cpp',
-      '../../../core/woogeen_base/RawTransport.cpp',
-      '../../../core/woogeen_base/SctpTransport.cpp',
+      '../../../core/owt_base/InternalIn.cpp',
+      '../../../core/owt_base/InternalOut.cpp',
+      '../../../core/owt_base/InternalSctp.cpp',
+      '../../../core/owt_base/MediaFramePipeline.cpp',
+      '../../../core/owt_base/RawTransport.cpp',
+      '../../../core/owt_base/SctpTransport.cpp',
     ],
     'include_dirs': [
       '$(CORE_HOME)/common',
-      '$(CORE_HOME)/woogeen_base',
+      '$(CORE_HOME)/owt_base',
       '$(CORE_HOME)/../../third_party/usrsctp/usrsctplib'
     ],
     'libraries': [
@@ -46,13 +46,13 @@
 #    'target_name': 'SctpTest',
 #    'type' : 'executable',
 #    'sources': [
-#      '../../../core/woogeen_base/RawTransport.cpp',
-#      '../../../core/woogeen_base/SctpTransport.cpp',
-#      '../../../core/woogeen_base/SctpTransportTest.cpp',
+#      '../../../core/owt_base/RawTransport.cpp',
+#      '../../../core/owt_base/SctpTransport.cpp',
+#      '../../../core/owt_base/SctpTransportTest.cpp',
 #    ],
 #    'include_dirs': [
 #      '$(CORE_HOME)/common',
-#      '$(CORE_HOME)/woogeen_base',
+#      '$(CORE_HOME)/owt_base',
 #      '$(CORE_HOME)/../../third_party/usrsctp/usrsctplib'
 #    ],
 #    'libraries': [

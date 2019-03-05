@@ -53,9 +53,9 @@ check_node_version()
   [[ ${NODE_VERSION} == ${NODE_VERSION_USE} ]] && return 0 || (echo "node version not match. Please use node ${NODE_VERSION}"; return 1;)
 }
 
-[[ -z ${WOOGEEN_HOME} ]] && WOOGEEN_HOME="${ROOT}/build"
-[[ ! -d ${WOOGEEN_HOME} ]] && WOOGEEN_HOME="${ROOT}"
-export WOOGEEN_HOME=${WOOGEEN_HOME}
+[[ -z ${OWT_HOME} ]] && OWT_HOME="${ROOT}/build"
+[[ ! -d ${OWT_HOME} ]] && OWT_HOME="${ROOT}"
+export OWT_HOME=${OWT_HOME}
 
 forced=$1
 FORCEDKILL=false
@@ -72,15 +72,15 @@ if [ ! -z ${forced} ]; then
 fi
 
 # create log directory
-LogDir="${WOOGEEN_HOME}/logs"
+LogDir="${OWT_HOME}/logs"
 mkdir -p "$LogDir"
 
-stdout=${LogDir}/woogeen-${command}.stdout
-pid=${LogDir}/woogeen-${command}.pid
+stdout=${LogDir}/owt-${command}.stdout
+pid=${LogDir}/owt-${command}.pid
 
 # Set default scheduling priority
-if [ "$WOOGEEN_NICENESS" = "" ]; then
-    export WOOGEEN_NICENESS=0
+if [ "$OWT_NICENESS" = "" ]; then
+    export OWT_NICENESS=0
 fi
 
 case $startStop in
@@ -97,86 +97,86 @@ case $startStop in
     echo "starting $command, stdout -> $stdout"
     case ${command} in
       nuve )
-        cd ${WOOGEEN_HOME}/nuve
-        nohup nice -n ${WOOGEEN_NICENESS} ./WooGeen-MCU-Nuve \
+        cd ${OWT_HOME}/nuve
+        nohup nice -n ${OWT_NICENESS} ./WooGeen-MCU-Nuve \
           > "${stdout}" 2>&1 </dev/null &
         echo $! > ${pid}
         ;;
       cluster-manager )
-        cd ${WOOGEEN_HOME}/cluster_manager
-        nohup nice -n ${WOOGEEN_NICENESS} ./WooGeen-MCU-Cluster-Manager \
+        cd ${OWT_HOME}/cluster_manager
+        nohup nice -n ${OWT_NICENESS} ./WooGeen-MCU-Cluster-Manager \
           > "${stdout}" 2>&1 </dev/null &
         echo $! > ${pid}
         ;;
       portal )
-        cd ${WOOGEEN_HOME}/portal
-        nohup nice -n ${WOOGEEN_NICENESS} ./WooGeen-MCU-Portal \
+        cd ${OWT_HOME}/portal
+        nohup nice -n ${OWT_NICENESS} ./WooGeen-MCU-Portal \
           > "${stdout}" 2>&1 </dev/null &
         echo $! > ${pid}
         ;;
       conference-agent )
-        cd ${WOOGEEN_HOME}/conference_agent
-        nohup nice -n ${WOOGEEN_NICENESS} ./WooGeen-MCU-Conference-Controller . -U conference\
+        cd ${OWT_HOME}/conference_agent
+        nohup nice -n ${OWT_NICENESS} ./WooGeen-MCU-Conference-Controller . -U conference\
           > "${stdout}" 2>&1 </dev/null &
         echo $! > ${pid}
         ;;
       webrtc-agent )
-        cd ${WOOGEEN_HOME}/webrtc_agent
+        cd ${OWT_HOME}/webrtc_agent
         export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:./lib
-        nohup nice -n ${WOOGEEN_NICENESS} ./WooGeen-MCU-Agent . -U webrtc\
+        nohup nice -n ${OWT_NICENESS} ./WooGeen-MCU-Agent . -U webrtc\
           > "${stdout}" 2>&1 </dev/null &
         echo $! > ${pid}
         ;;
       streaming-agent )
-        cd ${WOOGEEN_HOME}/streaming_agent
+        cd ${OWT_HOME}/streaming_agent
         export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:./lib
-        nohup nice -n ${WOOGEEN_NICENESS} ./WooGeen-MCU-Agent . -U streaming\
+        nohup nice -n ${OWT_NICENESS} ./WooGeen-MCU-Agent . -U streaming\
           > "${stdout}" 2>&1 </dev/null &
         echo $! > ${pid}
         ;;
       recording-agent )
-        cd ${WOOGEEN_HOME}/recording_agent
+        cd ${OWT_HOME}/recording_agent
         export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:./lib
-        nohup nice -n ${WOOGEEN_NICENESS} ./WooGeen-MCU-Agent . -U recording\
+        nohup nice -n ${OWT_NICENESS} ./WooGeen-MCU-Agent . -U recording\
           > "${stdout}" 2>&1 </dev/null &
         echo $! > ${pid}
         ;;
       sip-agent )
-        cd ${WOOGEEN_HOME}/sip_agent
+        cd ${OWT_HOME}/sip_agent
         export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:./lib
-        nohup nice -n ${WOOGEEN_NICENESS} ./WooGeen-MCU-Agent . -U sip\
+        nohup nice -n ${OWT_NICENESS} ./WooGeen-MCU-Agent . -U sip\
           > "${stdout}" 2>&1 </dev/null &
         echo $! > ${pid}
         ;;
       sip-portal )
-        cd ${WOOGEEN_HOME}/sip_portal
-        nohup nice -n ${WOOGEEN_NICENESS} ./WooGeen-MCU-SIP-Portal \
+        cd ${OWT_HOME}/sip_portal
+        nohup nice -n ${OWT_NICENESS} ./WooGeen-MCU-SIP-Portal \
           > "${stdout}" 2>&1 </dev/null &
         echo $! > ${pid}
         ;;
       audio-agent )
-        cd ${WOOGEEN_HOME}/audio_agent
+        cd ${OWT_HOME}/audio_agent
         export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:./lib
-        nohup nice -n ${WOOGEEN_NICENESS} ./WooGeen-MCU-Agent . -U audio\
+        nohup nice -n ${OWT_NICENESS} ./WooGeen-MCU-Agent . -U audio\
           > "${stdout}" 2>&1 </dev/null &
         echo $! > ${pid}
         ;;
       video-agent )
-        cd ${WOOGEEN_HOME}/video_agent
+        cd ${OWT_HOME}/video_agent
         export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:./lib
-        nohup nice -n ${WOOGEEN_NICENESS} ./WooGeen-MCU-Agent . -U video\
+        nohup nice -n ${OWT_NICENESS} ./WooGeen-MCU-Agent . -U video\
           > "${stdout}" 2>&1 </dev/null &
         echo $! > ${pid}
         ;;
       management-console )
-        cd ${WOOGEEN_HOME}/management_console
-        nohup nice -n ${WOOGEEN_NICENESS} node . \
+        cd ${OWT_HOME}/management_console
+        nohup nice -n ${OWT_NICENESS} node . \
           > "${stdout}" 2>&1 </dev/null &
         echo $! > ${pid}
         ;;
       app )
-        cd ${WOOGEEN_HOME}/extras/basic_example/
-        nohup nice -n ${WOOGEEN_NICENESS} node samplertcservice.js \
+        cd ${OWT_HOME}/extras/basic_example/
+        nohup nice -n ${OWT_NICENESS} node samplertcservice.js \
           > "${stdout}" 2>&1 </dev/null &
         echo $! > ${pid}
         ;;

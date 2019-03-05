@@ -15,13 +15,13 @@
 #include <nan.h>
 
 /*
- * Wrapper class of woogeen_base::VideoFrameConstructor
+ * Wrapper class of owt_base::VideoFrameConstructor
  */
-class VideoFrameConstructor : public MediaSink, public woogeen_base::VideoInfoListener {
+class VideoFrameConstructor : public MediaSink, public owt_base::VideoInfoListener {
  public:
   static NAN_MODULE_INIT(Init);
-  woogeen_base::VideoFrameConstructor* me;
-  woogeen_base::FrameSource* src;
+  owt_base::VideoFrameConstructor* me;
+  owt_base::FrameSource* src;
 
   std::queue<std::string> videoInfoMsgs;
   boost::mutex mutex;

@@ -34,8 +34,8 @@ class AcmmFrameMixer : public AudioFrameMixer,
     static const int32_t MIXER_FREQUENCY = 100;
 
     struct OutputInfo {
-        woogeen_base::FrameFormat format;
-        woogeen_base::FrameDestination *dest;
+        owt_base::FrameFormat format;
+        owt_base::FrameDestination *dest;
     };
 
 public:
@@ -47,12 +47,12 @@ public:
     void disableVAD() override;
     void resetVAD() override;
 
-    bool addInput(const std::string& group, const std::string& inStream, const woogeen_base::FrameFormat format, woogeen_base::FrameSource* source) override;
+    bool addInput(const std::string& group, const std::string& inStream, const owt_base::FrameFormat format, owt_base::FrameSource* source) override;
     void removeInput(const std::string& group, const std::string& inStream) override;
 
     void setInputActive(const std::string& group, const std::string& inStream, bool active) override;
 
-    bool addOutput(const std::string& group, const std::string& outStream, const woogeen_base::FrameFormat format, woogeen_base::FrameDestination* destination) override;
+    bool addOutput(const std::string& group, const std::string& outStream, const owt_base::FrameFormat format, owt_base::FrameDestination* destination) override;
     void removeOutput(const std::string& group, const std::string& outStream) override;
 
     void setEventRegistry(EventRegistry* handle) override;

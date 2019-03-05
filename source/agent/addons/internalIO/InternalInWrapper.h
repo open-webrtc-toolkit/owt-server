@@ -12,12 +12,12 @@
 
 
 /*
- * Wrapper class of woogeen_base::InternalIn
+ * Wrapper class of owt_base::InternalIn
  */
 class InternalIn : public FrameSource {
  public:
   static void Init(v8::Local<v8::Object> exports);
-  woogeen_base::InternalIn* me;
+  owt_base::InternalIn* me;
 
  private:
   InternalIn();

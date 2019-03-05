@@ -6,9 +6,9 @@ this=`dirname "$0"`
 this=`cd "$this"; pwd`
 ROOT=`cd "${this}/.."; pwd`
 
-export WOOGEEN_HOME=${ROOT}
+export OWT_HOME=${ROOT}
 
-LogDir=${WOOGEEN_HOME}/logs
+LogDir=${OWT_HOME}/logs
 SUDO=""
 if [[ $EUID -ne 0 ]]; then
    SUDO="sudo -E"

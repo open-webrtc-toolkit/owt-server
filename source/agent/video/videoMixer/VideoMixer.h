@@ -38,17 +38,17 @@ public:
     VideoMixer(const VideoMixerConfig& config);
     virtual ~VideoMixer();
 
-    bool addInput(const int inputIndex, const std::string& codec, woogeen_base::FrameSource* source, const std::string& avatar);
+    bool addInput(const int inputIndex, const std::string& codec, owt_base::FrameSource* source, const std::string& avatar);
     void removeInput(const int inputIndex);
     void setInputActive(const int inputIndex, bool active);
     bool addOutput(const std::string& outStreamID
             , const std::string& codec
-            , const woogeen_base::VideoCodecProfile profile
+            , const owt_base::VideoCodecProfile profile
             , const std::string& resolution
             , const unsigned int framerateFPS
             , const unsigned int bitrateKbps
             , const unsigned int keyFrameIntervalSeconds
-            , woogeen_base::FrameDestination* dest);
+            , owt_base::FrameDestination* dest);
     void removeOutput(const std::string& outStreamID);
     void forceKeyFrame(const std::string& outStreamID);
 

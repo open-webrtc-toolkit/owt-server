@@ -34,7 +34,7 @@ void MediaFrameMulticaster::New(const FunctionCallbackInfo<Value>& args) {
   HandleScope scope(isolate);
 
   MediaFrameMulticaster* obj = new MediaFrameMulticaster();
-  obj->me = new woogeen_base::MediaFrameMulticaster();
+  obj->me = new owt_base::MediaFrameMulticaster();
   obj->dest = obj->me;
 
   obj->Wrap(args.This());
@@ -45,7 +45,7 @@ void MediaFrameMulticaster::close(const FunctionCallbackInfo<Value>& args) {
   Isolate* isolate = Isolate::GetCurrent();
   HandleScope scope(isolate);
   MediaFrameMulticaster* obj = ObjectWrap::Unwrap<MediaFrameMulticaster>(args.Holder());
-  woogeen_base::MediaFrameMulticaster* me = obj->me;
+  owt_base::MediaFrameMulticaster* me = obj->me;
   delete me;
 }
 
@@ -54,13 +54,13 @@ void MediaFrameMulticaster::addDestination(const FunctionCallbackInfo<Value>& ar
   HandleScope scope(isolate);
 
   MediaFrameMulticaster* obj = ObjectWrap::Unwrap<MediaFrameMulticaster>(args.Holder());
-  woogeen_base::MediaFrameMulticaster* me = obj->me;
+  owt_base::MediaFrameMulticaster* me = obj->me;
 
   String::Utf8Value param0(args[0]->ToString());
   std::string track = std::string(*param0);
 
   FrameDestination* param = ObjectWrap::Unwrap<FrameDestination>(args[1]->ToObject());
-  woogeen_base::FrameDestination* dest = param->dest;
+  owt_base::FrameDestination* dest = param->dest;
 
   if (track == "audio") {
     me->addAudioDestination(dest);
@@ -74,13 +74,13 @@ void MediaFrameMulticaster::removeDestination(const FunctionCallbackInfo<Value>&
   HandleScope scope(isolate);
 
   MediaFrameMulticaster* obj = ObjectWrap::Unwrap<MediaFrameMulticaster>(args.Holder());
-  woogeen_base::MediaFrameMulticaster* me = obj->me;
+  owt_base::MediaFrameMulticaster* me = obj->me;
 
   String::Utf8Value param0(args[0]->ToString());
   std::string track = std::string(*param0);
 
   FrameDestination* param = ObjectWrap::Unwrap<FrameDestination>(args[1]->ToObject());
-  woogeen_base::FrameDestination* dest = param->dest;
+  owt_base::FrameDestination* dest = param->dest;
 
   if (track == "audio") {
     me->removeAudioDestination(dest);
