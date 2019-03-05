@@ -3,16 +3,15 @@
 // SPDX-License-Identifier: Apache-2.0
 
 'use strict';
-require = require('module')._load('./AgentLoader');
-var woogeenInternalIO = require('./internalIO/build/Release/internalIO');
-var woogeenSipGateway = require('./sipIn/build/Release/sipIn');
+var woogeenInternalIO = require('../internalIO/build/Release/internalIO');
+var woogeenSipGateway = require('../sipIn/build/Release/sipIn');
 var SipCallConnection = require('./sipCallConnection').SipCallConnection;
 var InternalIn = woogeenInternalIO.In;
 var InternalOut = woogeenInternalIO.Out;
-var logger = require('./logger').logger;
+var logger = require('../logger').logger;
 var rpcClient;
 var path = require('path');
-var makeRPC = require('./makeRPC').makeRPC;
+var makeRPC = require('../makeRPC').makeRPC;
 
 var cluster_name = ((global.config || {}).cluster || {}).name || 'woogeen-cluster';
 

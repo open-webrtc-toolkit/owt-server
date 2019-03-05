@@ -3,14 +3,13 @@
 // SPDX-License-Identifier: Apache-2.0
 
 'use strict';
-require = require('module')._load('./AgentLoader');
-var internalIO = require('./internalIO/build/Release/internalIO');
+var internalIO = require('../internalIO/build/Release/internalIO');
 var SctpIn = internalIO.SctpIn;
 var SctpOut = internalIO.SctpOut;
 var InternalIn = internalIO.In;
 var InternalOut = internalIO.Out;
 
-var logger = require('./logger').logger;
+var logger = require('../logger').logger;
 // Logger
 var log = logger.getLogger('InternalConnectionFactory');
 

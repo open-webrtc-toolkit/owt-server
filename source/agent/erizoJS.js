@@ -3,7 +3,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
 'use strict';
-require = require('module')._load('./AgentLoader');
 var fs = require('fs');
 var Getopt = require('node-getopt');
 var toml = require('toml');
@@ -131,7 +130,7 @@ function init_controller() {
                 controller = require('./webrtc')(rpcClient);
                 break;
             case 'streaming':
-                controller = require('./avstream')(rpcClient);
+                controller = require('./streaming')(rpcClient);
                 break;
             case 'recording':
                 controller = require('./recording')(rpcClient, rpcID);

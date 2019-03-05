@@ -1,21 +1,9 @@
 {
     "name": "video-agent",
     "dest": "video_agent",
-    "node": {
-        "bin": "woogeen_video",
-        "entry": "../erizoJS.js",
-        "libpath": "video",
-        "libfiles": [
-            "index.js",
-            "layout.js",
-            "../connections.js",
-            "../InternalConnectionFactory.js"
-        ]
-    },
     "common": {
         "package": "../package.json",
         "files": [
-            "../AgentLoader.js",
             "agent.toml",
             "log4js_configuration.json",
             "init.sh",
@@ -23,6 +11,7 @@
             "install_openh264.sh",
             "uninstall_openh264.sh",
             "../index.js",
+            "../erizoJS.js",
             "../log4cxx.properties",
             "../../common/amqp_client.js",
             "../../common/clusterWorker.js",
@@ -35,6 +24,12 @@
             "compile_svtHevcEncoder.sh"
         ],
         "folders": {
+            "video": [
+                "index.js",
+                "layout.js",
+                "../connections.js",
+                "../InternalConnectionFactory.js"
+            ],
             "avatars": [
                 "avatars/*"
             ]

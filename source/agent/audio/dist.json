@@ -1,25 +1,15 @@
 {
     "name": "audio-agent",
     "dest": "audio_agent",
-    "node": {
-        "bin": "woogeen_audio",
-        "entry": "../erizoJS.js",
-        "libpath": "audio",
-        "libfiles": [
-            "index.js",
-            "../connections.js",
-            "../InternalConnectionFactory.js"
-        ]
-    },
     "common": {
         "package": "../package.json",
         "files": [
-            "../AgentLoader.js",
             "agent.toml",
             "log4js_configuration.json",
             "compile_ffmpeg_with_libfdkaac.sh",
             "install_deps.sh",
             "../index.js",
+            "../erizoJS.js",
             "../log4cxx.properties",
             "../../common/amqp_client.js",
             "../../common/clusterWorker.js",
@@ -27,7 +17,14 @@
             "../../common/logger.js",
             "../../common/makeRPC.js",
             "../../common/rpcChannel.js"
-        ]
+        ],
+        "folders": {
+            "audio": [
+                "index.js",
+                "../connections.js",
+                "../InternalConnectionFactory.js"
+            ]
+        }
     },
     "natives": {
         "libdist": "lib",

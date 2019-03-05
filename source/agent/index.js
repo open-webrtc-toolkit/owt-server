@@ -18,13 +18,6 @@ try {
   process.exit(1);
 }
 
-var loadConfig = {};
-try {
-  loadConfig = require('./loader.json');
-} catch (e) {
-  log.debug('No loader.json found.');
-}
-
 // Configuration default values
 global.config = config || {};
 
@@ -149,13 +142,8 @@ var launchErizoJS = function() {
     var out = fs.openSync('../logs/' + id + '.log', 'a');
     var err = fs.openSync('../logs/' + id + '.log', 'a');
     var execName = 'node';
-    if (process.env.NODE_DEBUG_ERIZO && loadConfig.bin) {
-        execName = './' + loadConfig.bin;
-    }
     var spawnArgs = ['./erizoJS.js', id, myPurpose, JSON.stringify(webrtcInterfaces), clusterIP, myId];
-    if (loadConfig.bin === 'erizoJS') {
-        spawnArgs.shift();
-    }
+
     var child = spawn(execName, spawnArgs, {
         detached: true,
         stdio: [ 'ignore', out, err, 'ipc' ]

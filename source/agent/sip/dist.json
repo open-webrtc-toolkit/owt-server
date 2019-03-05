@@ -1,40 +1,37 @@
 {
-    "name": "recording-agent",
-    "dest": "recording_agent",
-    "node": {
-        "bin": "woogeen_recording",
-        "entry": "../erizoJS.js",
-        "libpath": "recording",
-        "libfiles": [
-            "index.js",
-            "../connections.js",
-            "../InternalConnectionFactory.js"
-        ]
-    },
+    "name": "sip-agent",
+    "dest": "sip_agent",
     "common": {
         "package": "../package.json",
         "files": [
-            "../AgentLoader.js",
             "agent.toml",
             "log4js_configuration.json",
             "install_deps.sh",
             "../index.js",
+            "../erizoJS.js",
             "../log4cxx.properties",
             "../../common/amqp_client.js",
             "../../common/clusterWorker.js",
             "../../common/loadCollector.js",
             "../../common/logger.js",
             "../../common/makeRPC.js",
-            "../../common/rpcChannel.js",
-            "../../../scripts/detectOS.sh"
-        ]
+            "../../common/rpcChannel.js"
+        ],
+        "folders": {
+            "sip": [
+                "index.js",
+                "sipCallConnection.js",
+                "../connections.js",
+                "../InternalConnectionFactory.js"
+            ]
+        }
     },
     "natives": {
         "libdist": "lib",
         "addons": [
             {
-                "folder": "../addons/avstreamLib",
-                "name": "avstream"
+                "folder": "sipIn",
+                "name": "sipIn"
             },
             {
                 "folder": "../addons/internalIO",
@@ -46,5 +43,5 @@
             }
         ]
     },
-    "start": "node . -U recording"
+    "start": "node . -U sip"
 }
