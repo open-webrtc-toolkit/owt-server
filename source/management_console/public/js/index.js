@@ -4,7 +4,7 @@
 
 'use strict';
 
-var nuve;
+var restApi;
 var mode = "";
 var metadata;
 var ENUMERATE = {
@@ -27,8 +27,8 @@ function checkProfile(callback) {
     $('#myModal').modal('show');
     return;
   }
-  nuve = Nuve.init(serviceId, serviceKey);
-  nuve.getService(serviceId, function (err, text) {
+  restApi = ManagementApi.init(serviceId, serviceKey);
+  restApi.getService(serviceId, function (err, text) {
     if (err) {
       notify('error', 'Failed to get service information', err);
     } else {
@@ -56,16 +56,16 @@ $('button#saveServiceInfo').click(function() {
       setCookie('serviceId', serviceId, 365);
       setCookie('serviceKey', serviceKey, 365);
     }
-    nuve = Nuve.init(serviceId, serviceKey);
+    restApi = ManagementApi.init(serviceId, serviceKey);
     judgePermissions();
   }
-  if (nuve) {
+  if (restApi) {
     $("#myModal").modal("hide");
   }
 });
 
 function judgePermissions() {
-  nuve.getServices(function(err, text) {
+  restApi.getServices(function(err, text) {
     if (!err) {
       $(".li").removeClass("hideLi");
     } else {

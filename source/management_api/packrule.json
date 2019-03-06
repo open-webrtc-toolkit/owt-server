@@ -1,6 +1,6 @@
 {
-    "name": "nuve",
-    "dest": "nuve",
+    "name": "management-api",
+    "dest": "management_api",
     "common": {
         "package": "package.json",
         "files": [
@@ -20,5 +20,5 @@
             ]
         }
     },
-    "start": "node nuve.js"
+    "start": "node server.js"
 }

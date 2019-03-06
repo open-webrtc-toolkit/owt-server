@@ -3,7 +3,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-usage="Usage: daemon.sh (start|stop|status) (nuve|mcu|app)"
+usage="Usage: daemon.sh (start|stop|status) (management-api|{purpose}-agent|app)"
 
 # if no args specified, show usage
 if [ $# -le 1 ]; then
@@ -19,7 +19,7 @@ ROOT=`cd "${bin}/.."; pwd`
 startStop=$1
 shift
 
-command=$1 #nuve, mcu, app
+command=$1 #management-api, conference-agent, ...
 shift
 
 umask 0000
@@ -96,9 +96,9 @@ case $startStop in
     rotate_log $stdout
     echo "starting $command, stdout -> $stdout"
     case ${command} in
-      nuve )
-        cd ${OWT_HOME}/nuve
-        nohup nice -n ${OWT_NICENESS} node nuve.js \
+      management-api )
+        cd ${OWT_HOME}/management_api
+        nohup nice -n ${OWT_NICENESS} node server.js \
           > "${stdout}" 2>&1 </dev/null &
         echo $! > ${pid}
         ;;

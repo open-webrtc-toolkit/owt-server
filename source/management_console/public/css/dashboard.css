@@ -133,3 +133,7 @@ html, body{
 .nav>.hideLi{
   display: none;
 }
+
+.modal-backdrop.in {
+  z-index: auto;
+}

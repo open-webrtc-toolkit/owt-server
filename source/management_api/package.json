@@ -1,5 +1,5 @@
 {
-  "name": "WooGeen-MCU-Nuve",
+  "name": "WooGeen-MCU-Management-API",
   "version":"4.1.0",
   "dependencies": {
     "amqp": "*",
@@ -15,7 +15,7 @@
   "engine": {
     "node": "8.15.0"
   },
-  "bin": "nuve.js",
+  "bin": "server.js",
   "pkg": {
     "assets": [
       "node_modules*"

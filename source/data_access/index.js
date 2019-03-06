@@ -6,7 +6,7 @@
 
 global.config = global.config || {};
 global.config.mongo = global.config.mongo || {};
-global.config.mongo.dataBaseURL = global.config.mongo.dataBaseURL || 'localhost/nuvedb';
+global.config.mongo.dataBaseURL = global.config.mongo.dataBaseURL || 'localhost/owtdb';
 var databaseUrl = global.config.mongo.dataBaseURL;
 
 // Connect to MongoDB
