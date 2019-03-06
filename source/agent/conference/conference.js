@@ -1886,7 +1886,7 @@ var Conference = function (rpcClient, selfRpcId) {
     }
   };
 
-  //The following interfaces are reserved to serve nuve
+  //The following interfaces are reserved to serve management-api
   that.getParticipants = function(callback) {
     log.debug('getParticipants, room_id:', room_id);
     var result = [];

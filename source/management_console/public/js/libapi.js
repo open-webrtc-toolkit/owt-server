@@ -1,8 +1,31 @@
+// MIT License
+//
+// Copyright (c) 2012 Universidad Politécnica de Madrid
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
+
 // Copyright (C) <2019> Intel Corporation
 //
 // SPDX-License-Identifier: Apache-2.0
 
-/* global CryptoJS */
+// This file is borrowed from lynckia/licode with some modifications.
+
 'use strict';
 var encodeBase64 = (function () {
     var END_OF_INPUT = -1;
@@ -67,7 +90,7 @@ function calculateSignature (toSign, key) {
     return encodeBase64(hex);
 }
 
-function Nuve (spec) {
+function ManagementApi (spec) {
     this.id = spec.id;
     this.key = spec.key;
     this.url = spec.url || '/';
@@ -123,83 +146,50 @@ function Nuve (spec) {
     };
 }
 
-Nuve.init = function (serviceId, servicekey) {
-    return new Nuve({
+ManagementApi.init = function (serviceId, servicekey) {
+    return new ManagementApi({
         id: serviceId,
         key: servicekey
     });
 };
 
-Nuve.prototype.createRoom = function (room, callback) {
+ManagementApi.prototype.createRoom = function (room, callback) {
     this.send('POST', {name: room.name, options: room.options}, 'v1/rooms', callback);
 };
 
-Nuve.prototype.getRooms = function (page, per_page, callback) {
+ManagementApi.prototype.getRooms = function (page, per_page, callback) {
     this.send('GET', undefined, 'v1/rooms?page=' + page + '&per_page=' + per_page, callback);
 };
 
-Nuve.prototype.getRoom = function (roomId, callback) {
+ManagementApi.prototype.getRoom = function (roomId, callback) {
     roomId = roomId || null;
     this.send('GET', undefined, 'v1/rooms/' + roomId, callback);
 };
 
-Nuve.prototype.deleteRoom = function (roomId, callback) {
+ManagementApi.prototype.deleteRoom = function (roomId, callback) {
     roomId = roomId || null;
     this.send('DELETE', undefined, 'v1/rooms/' + roomId, callback);
 };
 
-Nuve.prototype.updateRoom = function (roomId, updates, callback) {
+ManagementApi.prototype.updateRoom = function (roomId, updates, callback) {
     roomId = roomId || null;
     this.send('PUT', (updates || {}), 'v1/rooms/' + roomId, callback);
 };
 
-Nuve.prototype.createService = function (name, key, callback) {
+ManagementApi.prototype.createService = function (name, key, callback) {
     this.send('POST', {name: name, key: key}, 'services', callback);
 };
 
-Nuve.prototype.getServices = function (callback) {
+ManagementApi.prototype.getServices = function (callback) {
     this.send('GET', undefined, 'services', callback);
 };
 
-Nuve.prototype.getService = function (serviceId, callback) {
+ManagementApi.prototype.getService = function (serviceId, callback) {
     serviceId = serviceId || null;
     this.send('GET', undefined, 'services/' + serviceId, callback);
 };
 
-Nuve.prototype.deleteService = function (serviceId, callback) {
+ManagementApi.prototype.deleteService = function (serviceId, callback) {
     serviceId = serviceId || null;
     this.send('DELETE', undefined, 'services/' + serviceId, callback);
-};
-
-Nuve.prototype.getUsers = function (roomId, callback) {
-    roomId = roomId || null;
-    this.send('GET', undefined, 'rooms/' + roomId + '/users', callback);
-};
-
-Nuve.prototype.getUser = function (roomId, user, callback) {
-    roomId = roomId || null;
-    user = user || null;
-    this.send('GET', undefined, 'rooms/' + roomId + '/users/' + user, callback);
-};
-
-Nuve.prototype.deleteUser = function (roomId, user, callback) {
-    roomId = roomId || null;
-    user = user || null;
-    this.send('DELETE', undefined, 'rooms/' + roomId + '/users/' + user, callback);
-};
-
-Nuve.prototype.getClusterNodes = function (callback) {
-    this.send('GET', undefined, 'cluster/nodes', callback);
-};
-
-Nuve.prototype.getClusterNode = function (nodeIndex, callback) {
-    this.send('GET', undefined, 'cluster/nodes/' + nodeIndex, callback);
-};
-
-Nuve.prototype.getClusterNodeConfig = function (nodeRpcId, callback) {
-    this.send('GET', undefined, 'cluster/nodes/' + nodeRpcId + '/config', callback);
-};
-
-Nuve.prototype.getClusterRooms = function (callback) {
-    this.send('GET', undefined, 'cluster/rooms', callback);
 };

@@ -38,9 +38,9 @@ var e = require('../errors');
 var log = logger.getLogger('TokensResource');
 
 var getTokenString = function (id, token) {
-    return dataAccess.token.key().then(function(nuveKey) {
+    return dataAccess.token.key().then(function(serverKey) {
         var toSign = id + ',' + token.host,
-            hex = crypto.createHmac('sha256', nuveKey).update(toSign).digest('hex'),
+            hex = crypto.createHmac('sha256', serverKey).update(toSign).digest('hex'),
             signed = (new Buffer(hex)).toString('base64'),
 
             tokenJ = {
@@ -54,12 +54,12 @@ var getTokenString = function (id, token) {
         return tokenS;
 
     }).catch(function(err) {
-        log.error('Get nuveKey error:', err);
+        log.error('Get serverKey error:', err);
     });
 };
 
 /*
- * Generates new token. 
+ * Generates new token.
  * The format of a token is:
  * {tokenId: id, host: erizoController host, signature: signature of the token};
  */
