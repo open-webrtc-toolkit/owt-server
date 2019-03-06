@@ -566,6 +566,7 @@ class RoomView extends React.Component {
                 e('span', {className: 'input-group-btn'}, createButton)
               )
             ),
+            e('div', {className: 'col-sm-3'}, removeButton),
           ),
           this.renderAudio(),
           this.renderVideo(),
