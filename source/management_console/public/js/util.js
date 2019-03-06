@@ -23,6 +23,8 @@ function getCookie (cname) {
   return '';
 }
 
+PNotify.prototype.options.styling = "bootstrap3";
+
 function notify(level, title, message) {
   var notice = new PNotify({
     title: title,
