@@ -676,6 +676,10 @@ module.exports = function (rpcC, spec) {
         });
     };
 
+    that.keepAlive = function (callback) {
+      callback('callback', true);
+    };
+
     that.clean = function() {
         log.debug('Clean SipGateway');
 
