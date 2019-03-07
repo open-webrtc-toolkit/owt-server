@@ -30,7 +30,7 @@ class ServiceApp extends React.Component {
 
   fetchData(state, instance) {
     this.setState({ loading: true });
-    api.getServices((err, resp) => {
+    restApi.getServices((err, resp) => {
       if (err) {
         return notify('error', 'Failed to get services', err);
       }

@@ -98,7 +98,7 @@ case $startStop in
     case ${command} in
       management-api )
         cd ${OWT_HOME}/management_api
-        nohup nice -n ${OWT_NICENESS} node server.js \
+        nohup nice -n ${OWT_NICENESS} node api.js \
           > "${stdout}" 2>&1 </dev/null &
         echo $! > ${pid}
         ;;

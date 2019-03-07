@@ -20,5 +20,5 @@
             ]
         }
     },
-    "start": "node server.js"
+    "start": "node api.js"
 }
