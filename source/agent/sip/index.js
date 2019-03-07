@@ -14,7 +14,7 @@ var rpcClient;
 var path = require('path');
 var makeRPC = require('./makeRPC').makeRPC;
 
-var cluster_name = ((global.config || {}).cluster || {}).name || 'woogeen-cluster';
+var cluster_name = ((global.config || {}).cluster || {}).name || 'owt-cluster';
 
 // Logger
 var log = logger.getLogger('SipNode');

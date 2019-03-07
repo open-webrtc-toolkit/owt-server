@@ -1,5 +1,5 @@
 {
-  "name": "WooGeen-MCU-SIP-Portal",
+  "name": "OWT-MCU-SIP-Portal",
   "version":"4.1.0",
   "dependencies": {
     "amqp": "*",

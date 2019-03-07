@@ -114,6 +114,7 @@ module.exports = function (spec, spawnOptions, onNodeAbnormallyQuit, onTaskAdded
           log.debug('message from node', id, ':', message);
           if (message === 'READY') {
               child.READY = true;
+              child.alive_count = 0;
               child.check_alive_interval = setInterval(function() {
                 if (child.READY && (child.alive_count === 0)) {
                     log.info('Node(', id, ') is no longer responsive!');

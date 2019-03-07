@@ -7,7 +7,7 @@ prerunProcesses = 2 #default: 2
 
 [cluster]
 #The name of the cluster to join.
-name = "woogeen-cluster"
+name = "owt-cluster"
 
 #The number of times to try joining
 join_retry = 60 #default: 60

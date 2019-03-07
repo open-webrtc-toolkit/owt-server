@@ -41,7 +41,7 @@ var rpcReq = require('../rpcRequest');
 
 const testTokenKey = '6d96729ffd07202e7a65ac81278c43a2c87fc6367736431e614607e9d3ceee201f9680cdfcb88df508829e9810c46aaf02c9cc8dcf46369de122ee5b22ec963c';
 const testSelfRpcId = 'portal-38A87euk9kfh';
-const testClusterName = 'woogeen-cluster';
+const testClusterName = 'owt-cluster';
 const testPortalSpec = {tokenKey: testTokenKey,
                         clusterName: testClusterName,
                         selfRpcId: testSelfRpcId
@@ -270,7 +270,7 @@ describe('portal.join: Participants join.', function() {
 
     return portal.join(testParticipantId, testToken).then(function(result) {
       expect(result).to.deep.equal(final_result);
-      expect(mockrpcReq.getController.getCall(0).args).to.deep.equal(['woogeen-cluster', testRoom]);
+      expect(mockrpcReq.getController.getCall(0).args).to.deep.equal(['owt-cluster', testRoom]);
       expect(mockrpcReq.join.getCall(0).args).to.deep.equal(['rpcIdOfController', testRoom, {id: testParticipantId, user: delete_token_result.user, role: delete_token_result.role, portal: testSelfRpcId, origin: delete_token_result.origin}]);
     });
   });

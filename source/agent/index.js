@@ -33,7 +33,7 @@ global.config.agent.maxProcesses = global.config.agent.maxProcesses || 13;
 global.config.agent.prerunProcesses = global.config.agent.prerunProcesses || 2;
 
 global.config.cluster = global.config.cluster || {};
-global.config.cluster.name = global.config.cluster.name || 'woogeen-cluster';
+global.config.cluster.name = global.config.cluster.name || 'owt-cluster';
 global.config.cluster.join_retry = global.config.cluster.join_retry || 60;
 global.config.cluster.report_load_interval = global.config.cluster.report_load_interval || 1000;
 global.config.cluster.max_load = global.config.cluster.max_load || 0.85;
