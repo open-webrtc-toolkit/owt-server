@@ -241,7 +241,7 @@ module.exports = function (spec, spawnOptions, onNodeAbnormallyQuit, onTaskAdded
       let node_id = idle_nodes.shift();
       nodes.push(node_id);
       setTimeout(() => {
-        if ((spec.maxNodeNum > 0) && ((nodes.length + idle_nodes.length) < spec.maxNodeNum)) {
+        if ((spec.maxNodeNum < 0) || ((nodes.length + idle_nodes.length) < spec.maxNodeNum)) {
           fillNodes();
         } else if (spec.reuseNode) {
           idle_nodes.push(nodes.shift());
