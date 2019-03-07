@@ -703,7 +703,7 @@ function packScripts() {
   var startCommands = '';
   var stopCommands = '';
   var scriptItems = [];
-  scriptItems.push('nuve');
+  scriptItems.push('management-api');
   scriptItems.push('cluster-manager');
   for (let i = 0; i < allTargets.length; i++) {
     let name = allTargets[i].rules.name;

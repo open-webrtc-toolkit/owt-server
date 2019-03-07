@@ -172,7 +172,7 @@ var startServers = function(id, tokenKey) {
   var rpcReq = require('./rpcRequest')(rpcChannel);
 
   portal = require('./portal')({tokenKey: tokenKey,
-                                tokenServer: 'nuve',
+                                tokenServer: 'ManagementApi',
                                 clusterName: config.cluster.name,
                                 selfRpcId: id},
                                 rpcReq);

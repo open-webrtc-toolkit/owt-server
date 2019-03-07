@@ -57,7 +57,7 @@ exports.genKey = function (callback) {
   var newOne = new Key({ key: key });
   Key.findOneAndUpdate({ _id: 0 }, newOne, { upsert: true }, function (err, saved) {
     if (err) {
-      console.log('Save nuveKey error:', err);
+      console.log('Save serverKey error:', err);
     }
   });
 };

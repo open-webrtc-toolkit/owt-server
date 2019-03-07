@@ -6,7 +6,7 @@
 
 const e = React.createElement;
 const ReactTable = window.ReactTable.default;
-// const nuve = window.nuve;
+// const restApi = window.restApi;
 // const notify = window.notify;
 // const notifyConfirm = window.notifyConfirm;
 
@@ -30,7 +30,7 @@ class ServiceApp extends React.Component {
 
   fetchData(state, instance) {
     this.setState({ loading: true });
-    nuve.getServices((err, resp) => {
+    restApi.getServices((err, resp) => {
       if (err) {
         return notify('error', 'Failed to get services', err);
       }
@@ -128,7 +128,7 @@ class ServiceApp extends React.Component {
                 notify('Warning', 'Create Service', 'Empty service name or key');
                 return;
               }
-              nuve.createService(
+              restApi.createService(
                 this.state.createName,
                 this.state.createKey,
                 (err, resp) => {
@@ -159,7 +159,7 @@ class ServiceApp extends React.Component {
           className: 'btn btn-sm btn-warning',
           onClick: ()=>{
             notifyConfirm('Delete', 'Are you sure want to delete Service ' + opService._id, ()=>{
-              nuve.deleteService(opService._id, (err, resp) => {
+              restApi.deleteService(opService._id, (err, resp) => {
                 if (err) {
                   return notify('error', 'Delete Service', resp);
                 }
@@ -971,7 +971,7 @@ class RoomApp extends React.Component {
 
   fetchData(state, instance) {
     this.setState({ loading: true });
-    nuve.getRooms(state.page, state.pageSize, (err, resp) => {
+    restApi.getRooms(state.page, state.pageSize, (err, resp) => {
       if (err) {
         return notify('error', 'Failed to get rooms', err);
       }
@@ -1047,7 +1047,7 @@ class RoomApp extends React.Component {
           className: 'btn btn-sm btn-success',
           style: { marginRight: '5px' },
           onClick: ()=>{
-            nuve.updateRoom(opRoom._id, opRoom, (err, resp) => {
+            restApi.updateRoom(opRoom._id, opRoom, (err, resp) => {
               if (err) {
                 return notify('error', 'Update Room', resp);
               }
@@ -1064,7 +1064,7 @@ class RoomApp extends React.Component {
           className: 'btn btn-sm btn-warning',
           onClick: ()=>{
             notifyConfirm('Delete', 'Are you sure want to delete room ' + opRoom._id, ()=>{
-              nuve.deleteRoom(opRoom._id, (err, resp) => {
+              restApi.deleteRoom(opRoom._id, (err, resp) => {
                 if (err) {
                   return notify('error', 'Delete Room', resp);
                 }
@@ -1113,7 +1113,7 @@ class RoomApp extends React.Component {
             className: 'btn btn-sm',
             onClick: (e)=>{
               e.stopPropagation();
-              nuve.createRoom({name: 'NewRoom'}, (err, resp) => {
+              restApi.createRoom({name: 'NewRoom'}, (err, resp) => {
                 if (err) {
                   return notify('error', 'Add Room Failed', resp);
                 }

@@ -29,12 +29,12 @@
 'use strict';
 
 var logger = require('./logger').logger;
-var log = logger.getLogger('Nuve');
+var log = logger.getLogger('ManagementServer');
 var fs = require('fs');
 var toml = require('toml');
 
 try {
-  global.config = toml.parse(fs.readFileSync('./nuve.toml'));
+  global.config = toml.parse(fs.readFileSync('./management_api.toml'));
 } catch (e) {
   log.error('Parsing config error on line ' + e.line + ', column ' + e.column + ': ' + e.message);
   process.exit(1);
@@ -47,7 +47,7 @@ var express = require('express');
 var bodyParser = require('body-parser');
 var app = express();
 
-var nuveAuthenticator = require('./auth/nuveAuthenticator');
+var serverAuthenticator = require('./auth/serverAuthenticator');
 var roomsResource = require('./resource/roomsResource');
 var roomResource = require('./resource/roomResource');
 var tokensResource = require('./resource/tokensResource');
@@ -77,11 +77,11 @@ app.options('*', function(req, res) {
 
 // Only following paths need authentication.
 var authPaths = ['/rooms*', '/v1/rooms*', '/services*', '/cluster*'];
-app.get(authPaths, nuveAuthenticator.authenticate);
-app.post(authPaths, nuveAuthenticator.authenticate);
-app.delete(authPaths, nuveAuthenticator.authenticate);
-app.put(authPaths, nuveAuthenticator.authenticate);
-app.patch(authPaths, nuveAuthenticator.authenticate);
+app.get(authPaths, serverAuthenticator.authenticate);
+app.post(authPaths, serverAuthenticator.authenticate);
+app.delete(authPaths, serverAuthenticator.authenticate);
+app.put(authPaths, serverAuthenticator.authenticate);
+app.patch(authPaths, serverAuthenticator.authenticate);
 
 app.post('/services', servicesResource.create);
 app.get('/services', servicesResource.represent);
@@ -163,19 +163,19 @@ app.use(function(err, req, res, next) {
 });
 
 
-var nuveConfig = global.config.nuve || {};
+var serverConfig = global.config.server || {};
 // Mutiple process setup
 var cluster = require("cluster");
-var nuvePort = nuveConfig.port || 3000;
-var numCPUs = nuveConfig.numberOfProcess || 1;
+var serverPort = serverConfig.port || 3000;
+var numCPUs = serverConfig.numberOfProcess || 1;
 
 if (cluster.isMaster) {
     // Master Process
 
-    // Save nuve key to database.
-    // FIXME: we should check if nuve key already exists
+    // Save server key to database.
+    // FIXME: we should check if server key already exists
     // in cache/database before generating a new one when
-    // there are multiple machine running nuve.
+    // there are multiple machine running server.
     var dataAccess = require('./data_access');
     dataAccess.token.genKey();
 
@@ -203,17 +203,17 @@ if (cluster.isMaster) {
     // Worker Process
     rpc.connect(global.config.rabbit);
 
-    if (nuveConfig.ssl === true) {
+    if (serverConfig.ssl === true) {
         var cipher = require('./cipher');
         var path = require('path');
-        var keystore = path.resolve(path.dirname(nuveConfig.keystorePath), '.woogeen.keystore');
+        var keystore = path.resolve(path.dirname(serverConfig.keystorePath), '.woogeen.keystore');
         cipher.unlock(cipher.k, keystore, function cb (err, passphrase) {
             if (!err) {
                 try {
                     require('https').createServer({
-                        pfx: require('fs').readFileSync(nuveConfig.keystorePath),
+                        pfx: require('fs').readFileSync(serverConfig.keystorePath),
                         passphrase: passphrase
-                    }, app).listen(nuvePort);
+                    }, app).listen(serverPort);
                 } catch (e) {
                     err = e;
                 }
@@ -223,14 +223,14 @@ if (cluster.isMaster) {
             }
         });
     } else {
-        app.listen(nuvePort);
+        app.listen(serverPort);
     }
 
     log.info(`Worker ${process.pid} started`);
 
     ['SIGINT', 'SIGTERM'].map(function (sig) {
         process.on(sig, function () {
-            // This log won't be showed in nuve log,
+            // This log won't be showed in server log,
             // because worker process disconnected.
             log.warn('Worker exiting on', sig);
             process.exit();
