@@ -27,7 +27,7 @@ config.rabbit.host = config.rabbit.host || 'localhost';
 config.rabbit.port = config.rabbit.port || 5672;
 
 config.cluster = config.cluster || {};
-config.cluster.name = config.cluster.name || 'woogeen-cluster';
+config.cluster.name = config.cluster.name || 'owt-cluster';
 
 global.config = config;
 

@@ -98,73 +98,73 @@ case $startStop in
     case ${command} in
       management-api )
         cd ${OWT_HOME}/management_api
-        nohup nice -n ${OWT_NICENESS} ./WooGeen-MCU-Management-API \
+        nohup nice -n ${OWT_NICENESS} ./OWT-MCU-Management-API \
           > "${stdout}" 2>&1 </dev/null &
         echo $! > ${pid}
         ;;
       cluster-manager )
         cd ${OWT_HOME}/cluster_manager
-        nohup nice -n ${OWT_NICENESS} ./WooGeen-MCU-Cluster-Manager \
+        nohup nice -n ${OWT_NICENESS} ./OWT-MCU-Cluster-Manager \
           > "${stdout}" 2>&1 </dev/null &
         echo $! > ${pid}
         ;;
       portal )
         cd ${OWT_HOME}/portal
-        nohup nice -n ${OWT_NICENESS} ./WooGeen-MCU-Portal \
+        nohup nice -n ${OWT_NICENESS} ./OWT-MCU-Portal \
           > "${stdout}" 2>&1 </dev/null &
         echo $! > ${pid}
         ;;
       conference-agent )
         cd ${OWT_HOME}/conference_agent
-        nohup nice -n ${OWT_NICENESS} ./WooGeen-MCU-Conference-Controller . -U conference\
+        nohup nice -n ${OWT_NICENESS} ./OWT-MCU-Conference-Controller . -U conference\
           > "${stdout}" 2>&1 </dev/null &
         echo $! > ${pid}
         ;;
       webrtc-agent )
         cd ${OWT_HOME}/webrtc_agent
         export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:./lib
-        nohup nice -n ${OWT_NICENESS} ./WooGeen-MCU-Agent . -U webrtc\
+        nohup nice -n ${OWT_NICENESS} ./OWT-MCU-Agent . -U webrtc\
           > "${stdout}" 2>&1 </dev/null &
         echo $! > ${pid}
         ;;
       streaming-agent )
         cd ${OWT_HOME}/streaming_agent
         export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:./lib
-        nohup nice -n ${OWT_NICENESS} ./WooGeen-MCU-Agent . -U streaming\
+        nohup nice -n ${OWT_NICENESS} ./OWT-MCU-Agent . -U streaming\
           > "${stdout}" 2>&1 </dev/null &
         echo $! > ${pid}
         ;;
       recording-agent )
         cd ${OWT_HOME}/recording_agent
         export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:./lib
-        nohup nice -n ${OWT_NICENESS} ./WooGeen-MCU-Agent . -U recording\
+        nohup nice -n ${OWT_NICENESS} ./OWT-MCU-Agent . -U recording\
           > "${stdout}" 2>&1 </dev/null &
         echo $! > ${pid}
         ;;
       sip-agent )
         cd ${OWT_HOME}/sip_agent
         export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:./lib
-        nohup nice -n ${OWT_NICENESS} ./WooGeen-MCU-Agent . -U sip\
+        nohup nice -n ${OWT_NICENESS} ./OWT-MCU-Agent . -U sip\
           > "${stdout}" 2>&1 </dev/null &
         echo $! > ${pid}
         ;;
       sip-portal )
         cd ${OWT_HOME}/sip_portal
-        nohup nice -n ${OWT_NICENESS} ./WooGeen-MCU-SIP-Portal \
+        nohup nice -n ${OWT_NICENESS} ./OWT-MCU-SIP-Portal \
           > "${stdout}" 2>&1 </dev/null &
         echo $! > ${pid}
         ;;
       audio-agent )
         cd ${OWT_HOME}/audio_agent
         export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:./lib
-        nohup nice -n ${OWT_NICENESS} ./WooGeen-MCU-Agent . -U audio\
+        nohup nice -n ${OWT_NICENESS} ./OWT-MCU-Agent . -U audio\
           > "${stdout}" 2>&1 </dev/null &
         echo $! > ${pid}
         ;;
       video-agent )
         cd ${OWT_HOME}/video_agent
         export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:./lib
-        nohup nice -n ${OWT_NICENESS} ./WooGeen-MCU-Agent . -U video\
+        nohup nice -n ${OWT_NICENESS} ./OWT-MCU-Agent . -U video\
           > "${stdout}" 2>&1 </dev/null &
         echo $! > ${pid}
         ;;

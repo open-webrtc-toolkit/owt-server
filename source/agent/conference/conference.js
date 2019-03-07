@@ -407,7 +407,7 @@ var Conference = function (rpcClient, selfRpcId) {
             return new Promise(function(resolve, reject) {
               RoomController.create(
                 {
-                  cluster: global.config.cluster.name || 'woogeen-cluster',
+                  cluster: global.config.cluster.name || 'owt-cluster',
                   rpcReq: rpcReq,
                   rpcClient: rpcClient,
                   room: roomId,
@@ -528,7 +528,7 @@ var Conference = function (rpcClient, selfRpcId) {
                                                        permission: {}
                                                       }, rpcReq);
 
-                  accessController = AccessController.create({clusterName: global.config.cluster.name || 'woogeen-cluster',
+                  accessController = AccessController.create({clusterName: global.config.cluster.name || 'owt-cluster',
                                                               selfRpcId: selfRpcId,
                                                               inRoom: room_id,
                                                               mediaIn: room_config.mediaIn,

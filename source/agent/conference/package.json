@@ -1,5 +1,5 @@
 {
-  "name": "WooGeen-MCU-Conference-Controller",
+  "name": "OWT-MCU-Conference-Controller",
   "version":"4.1.0",
   "dependencies": {
     "amqp": "*",

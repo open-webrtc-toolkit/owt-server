@@ -1,5 +1,5 @@
 {
-  "name": "WooGeen-MCU-Manage-Console",
+  "name": "OWT-MCU-Manage-Console",
   "version":"4.1.0",
   "dependencies": {
     "express": "4.16.4",

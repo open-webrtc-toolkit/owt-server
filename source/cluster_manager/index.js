@@ -19,7 +19,7 @@ try {
 }
 
 config.manager = config.manager || {};
-config.manager.name = config.manager.name || 'woogeen-cluster';
+config.manager.name = config.manager.name || 'owt-cluster';
 config.manager.initial_time = config.manager.initial_time || 10 * 1000;
 config.manager.check_alive_interval = config.manager.check_alive_interval || 1000;
 config.manager.check_alive_count = config.manager.check_alive_count || 10;

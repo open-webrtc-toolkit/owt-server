@@ -6,4 +6,4 @@ port = 5672 #default: 5672
 dataBaseURL = "localhost/owtdb" #default: "localhost/owtdb"
 
 [cluster]
-name = "woogeen-cluster"
+name = "owt-cluster"
