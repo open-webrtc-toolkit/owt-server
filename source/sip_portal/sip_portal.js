@@ -44,7 +44,7 @@ var erizos = {};
 var roomInfo = {};
 
 var api = {
-	//define rpc calls to receive sip info change from nuve
+	//define rpc calls to receive sip info change from management-api
     handleSipUpdate : function(update) {
         // Argument update: {type: (create|update|delete), room_id:room-id, sipInfo:updated-sipInfo}
         log.debug("on handleSipUpdate, update:", update);
@@ -108,9 +108,9 @@ function initSipRooms() {
         .then(function(rooms) {
             // Get sip rooms here
             if (!Array.isArray(rooms)) {
-                log.warn('Get sip rooms from nuve failed:', rooms);
+                log.warn('Get sip rooms from management-api failed:', rooms);
                 setTimeout(function() {
-                    log.info('Try to re-get sip rooms from nuve.');
+                    log.info('Try to re-get sip rooms from management-api.');
                     initSipRooms();
                 }, 5000);
                 return;

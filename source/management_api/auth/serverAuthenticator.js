@@ -30,7 +30,7 @@
 var dataAccess = require('../data_access');
 var mauthParser = require('./mauthParser');
 var cipher = require('../cipher');
-var log = require('./../logger').logger.getLogger('NuveAuthenticator');
+var log = require('./../logger').logger.getLogger('ServerAuthenticator');
 var e = require('../errors');
 
 var cache = {};
@@ -81,7 +81,7 @@ var checkSignature = function (params, key) {
 };
 
 /*
- * This function has the logic needed for authenticate a nuve request.
+ * This function has the logic needed for authenticate a request.
  * If the authentication success exports the service and the user and role (if needed). Else send back
  * a response with an authentication request to the client.
  */

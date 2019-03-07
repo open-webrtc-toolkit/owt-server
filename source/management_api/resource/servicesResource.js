@@ -40,7 +40,7 @@ var log = logger.getLogger('ServicesResource');
  * Gets the service and checks if it is superservice. Only superservice can do actions about services.
  */
 var doInit = function (currentService) {
-    var superService = global.config.nuve.superserviceID;
+    var superService = global.config.server.superserviceID;
     currentService._id = currentService._id + '';
     return (currentService._id === superService);
 };

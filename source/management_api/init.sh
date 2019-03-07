@@ -7,16 +7,16 @@ this=`dirname "$0"`
 this=`cd "$this"; pwd`
 ROOT=`cd "${this}/.."; pwd`
 
-DB_URL='localhost/nuvedb'
+DB_URL='localhost/owtdb'
 
 usage() {
   echo
   echo "WooGeen Initialization Script"
-  echo "    This script initializes WooGeen-MCU Nuve."
+  echo "    This script initializes WooGeen-MCU ManagementAPIServer."
   echo "    This script is intended to run on a target machine."
   echo
   echo "Usage:"
-  echo "    --dburl=HOST/DBNAME                 specify mongodb URL other than default \`localhost/nuvedb'"
+  echo "    --dburl=HOST/DBNAME                 specify mongodb URL other than default \`localhost/owtdb'"
   echo "    --help                              print this help"
   echo
 }
@@ -33,7 +33,7 @@ check_node_version() {
 }
 
 install_config() {
-  echo -e "\x1b[32mInitializing nuve configuration...\x1b[0m"
+  echo -e "\x1b[32mInitializing ManagementAPIServer configuration...\x1b[0m"
   export DB_URL
   [[ -s ${this}/initdb.js ]] && node ${this}/initdb.js && return 0
   [[ -s ${this}/initdb ]] && ${this}/initdb || return 1

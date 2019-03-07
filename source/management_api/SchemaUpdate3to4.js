@@ -7,12 +7,12 @@
 'use strict';
 var Fraction = require('fraction.js');
 
-var databaseUrl = 'localhost/nuvedb';
+var databaseUrl = 'localhost/owtdb';
 var collections = ['rooms', 'services'];
 
 var databaseUrl = process.env.DB_URL;
 if (!databaseUrl) {
-  databaseUrl = 'localhost/nuvedb';
+  databaseUrl = 'localhost/owtdb';
 }
 
 var db = require('mongojs')(databaseUrl, ['rooms', 'services']);

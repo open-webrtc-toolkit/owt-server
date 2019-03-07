@@ -19,7 +19,7 @@ var db = require('mongojs')(dbURL, ['services', 'infos', 'rooms']);
 var cipher = require('./cipher');
 
 var dirName = !process.pkg ? __dirname : path.dirname(process.execPath);
-var configFile = path.join(dirName, 'nuve.toml');
+var configFile = path.join(dirName, 'management_api.toml');
 var sampleServiceFile = path.resolve(dirName, '../extras/basic_example/samplertcservice.js');
 
 function upgradeH264(next) {
