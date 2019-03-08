@@ -14,6 +14,7 @@ if (!process.env.MODULE_TEST) {
     path.resolve(__dirname, '../third_party/openh264'),
     path.resolve(__dirname, '../third_party/re'),
     path.resolve(__dirname, '../third_party/SVT-HEVC'),
+    path.resolve(__dirname, '/opt/intel/mediasdk/lib64'),
     process.env.LD_LIBRARY_PATH || '',
   ].join(':');
   require('child_process').fork(process.argv[1], process.argv.slice(2));
