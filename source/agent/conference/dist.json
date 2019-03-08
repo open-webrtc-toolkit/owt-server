@@ -4,7 +4,8 @@
     "common": {
         "package": "package.json",
         "files": [
-            "../erizoJS.js",
+            "../nodeManager.js",
+            "../workingNode.js",
             "participant.js",
             "agent.toml",
             "roomController.js",

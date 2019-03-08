@@ -459,8 +459,8 @@ function generateStart(target) {
   // Generate a start.sh
   if (!target.rules.start) return;
   const packDist = path.join(distDir, target.rules.dest);
-  const stdout = `../logs/woogeen-${target.rules.name}.stdout`;
-  const pid = `../logs/woogeen-${target.rules.name}.pid`;
+  const stdout = `../logs/owt-${target.rules.name}.stdout`;
+  const pid = `../logs/owt-${target.rules.name}.pid`;
   const command = 'nohup nice -n 0 ' + target.rules.start +
     ' > "${stdout}" 2>&1 </dev/null & echo $! > ${pid}\n' +
     'sleep 1; [[ -f ${stdout} ]] && head "$stdout"';
@@ -568,7 +568,7 @@ function packScripts() {
   var startCommands = '';
   var stopCommands = '';
   var scriptItems = [];
-  scriptItems.push('nuve');
+  scriptItems.push('management-api');
   scriptItems.push('cluster-manager');
   for (let i = 0; i < allTargets.length; i++) {
     let name = allTargets[i].rules.name;

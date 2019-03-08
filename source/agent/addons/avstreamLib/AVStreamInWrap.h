@@ -9,13 +9,13 @@
 #include <MediaFramePipeline.h>
 
 /*
- * Wrapper class of woogeen_base::FrameSource
+ * Wrapper class of owt_base::FrameSource
  */
 class AVStreamInWrap : public NodeEventedObjectWrap {
  public:
   static void Init(v8::Handle<v8::Object>);
   static void Init(v8::Handle<v8::Object>, v8::Handle<v8::Object>);
-  woogeen_base::FrameSource* me;
+  owt_base::FrameSource* me;
 
  private:
   AVStreamInWrap();

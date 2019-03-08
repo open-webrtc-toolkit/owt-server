@@ -10,7 +10,7 @@
 
 namespace mcu {
 
-class AudioEncoder : public woogeen_base::FrameSource {
+class AudioEncoder : public owt_base::FrameSource {
 public:
     virtual ~AudioEncoder() { }
 

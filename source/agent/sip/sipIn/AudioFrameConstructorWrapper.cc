@@ -39,7 +39,7 @@ void AudioFrameConstructor::New(const FunctionCallbackInfo<Value>& args) {
   HandleScope scope(isolate);
 
   AudioFrameConstructor* obj = new AudioFrameConstructor();
-  obj->me = new woogeen_base::AudioFrameConstructor();
+  obj->me = new owt_base::AudioFrameConstructor();
   obj->src = obj->me;
   obj->msink = obj->me;
 
@@ -51,7 +51,7 @@ void AudioFrameConstructor::close(const FunctionCallbackInfo<Value>& args) {
   Isolate* isolate = Isolate::GetCurrent();
   HandleScope scope(isolate);
   AudioFrameConstructor* obj = ObjectWrap::Unwrap<AudioFrameConstructor>(args.Holder());
-  woogeen_base::AudioFrameConstructor* me = obj->me;
+  owt_base::AudioFrameConstructor* me = obj->me;
   delete me;
 }
 
@@ -60,7 +60,7 @@ void AudioFrameConstructor::bindTransport(const FunctionCallbackInfo<Value>& arg
   HandleScope scope(isolate);
 
   AudioFrameConstructor* obj = ObjectWrap::Unwrap<AudioFrameConstructor>(args.Holder());
-  woogeen_base::AudioFrameConstructor* me = obj->me;
+  owt_base::AudioFrameConstructor* me = obj->me;
 
   SipCallConnection* param = ObjectWrap::Unwrap<SipCallConnection>(args[0]->ToObject());
   sip_gateway::SipCallConnection* transport = param->me;
@@ -73,7 +73,7 @@ void AudioFrameConstructor::unbindTransport(const FunctionCallbackInfo<Value>& a
   HandleScope scope(isolate);
 
   AudioFrameConstructor* obj = ObjectWrap::Unwrap<AudioFrameConstructor>(args.Holder());
-  woogeen_base::AudioFrameConstructor* me = obj->me;
+  owt_base::AudioFrameConstructor* me = obj->me;
 
   me->unbindTransport();
 }
@@ -83,10 +83,10 @@ void AudioFrameConstructor::addDestination(const FunctionCallbackInfo<Value>& ar
   HandleScope scope(isolate);
 
   AudioFrameConstructor* obj = ObjectWrap::Unwrap<AudioFrameConstructor>(args.Holder());
-  woogeen_base::AudioFrameConstructor* me = obj->me;
+  owt_base::AudioFrameConstructor* me = obj->me;
 
   FrameDestination* param = ObjectWrap::Unwrap<FrameDestination>(args[0]->ToObject());
-  woogeen_base::FrameDestination* dest = param->dest;
+  owt_base::FrameDestination* dest = param->dest;
 
   me->addAudioDestination(dest);
 }
@@ -96,10 +96,10 @@ void AudioFrameConstructor::removeDestination(const FunctionCallbackInfo<Value>&
   HandleScope scope(isolate);
 
   AudioFrameConstructor* obj = ObjectWrap::Unwrap<AudioFrameConstructor>(args.Holder());
-  woogeen_base::AudioFrameConstructor* me = obj->me;
+  owt_base::AudioFrameConstructor* me = obj->me;
 
   FrameDestination* param = ObjectWrap::Unwrap<FrameDestination>(args[0]->ToObject());
-  woogeen_base::FrameDestination* dest = param->dest;
+  owt_base::FrameDestination* dest = param->dest;
 
   me->removeAudioDestination(dest);
 }

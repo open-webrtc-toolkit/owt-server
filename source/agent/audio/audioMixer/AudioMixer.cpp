@@ -69,12 +69,12 @@ void AudioMixer::resetVAD()
     m_mixer->resetVAD();
 }
 
-bool AudioMixer::addInput(const std::string& endpoint, const std::string& inStreamId, const std::string& codec, woogeen_base::FrameSource* source)
+bool AudioMixer::addInput(const std::string& endpoint, const std::string& inStreamId, const std::string& codec, owt_base::FrameSource* source)
 {
     assert(source);
 
-    woogeen_base::FrameFormat format = getFormat(codec);
-    if (format == woogeen_base::FRAME_FORMAT_UNKNOWN) {
+    owt_base::FrameFormat format = getFormat(codec);
+    if (format == owt_base::FRAME_FORMAT_UNKNOWN) {
         ELOG_ERROR("addInput, invalid codec(%s)", codec.c_str());
         return false;
     }
@@ -94,12 +94,12 @@ void AudioMixer::setInputActive(const std::string& endpoint, const std::string& 
     return;
 }
 
-bool AudioMixer::addOutput(const std::string& endpoint, const std::string& outStreamId, const std::string& codec, woogeen_base::FrameDestination* dest)
+bool AudioMixer::addOutput(const std::string& endpoint, const std::string& outStreamId, const std::string& codec, owt_base::FrameDestination* dest)
 {
     assert(dest);
 
-    woogeen_base::FrameFormat format = getFormat(codec);
-    if (format == woogeen_base::FRAME_FORMAT_UNKNOWN) {
+    owt_base::FrameFormat format = getFormat(codec);
+    if (format == owt_base::FRAME_FORMAT_UNKNOWN) {
         ELOG_ERROR("addOutput, invalid codec(%s)", codec.c_str());
         return false;
     }

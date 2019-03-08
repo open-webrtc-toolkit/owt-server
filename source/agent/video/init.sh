@@ -8,8 +8,8 @@ this=$(cd "${this}"; pwd)
 
 usage() {
   echo
-  echo "WooGeen Initialization Script"
-  echo "    This script initializes WooGeen-MCU Video Agent."
+  echo "OWT Initialization Script"
+  echo "    This script initializes OWT-MCU Video Agent."
   echo "    This script is intended to run on a target machine."
   echo
   echo "Usage:"

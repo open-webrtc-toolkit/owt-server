@@ -16,9 +16,9 @@ try {
   process.exit(1);
 }
 
-// Default manage-console port, nuve port, keystorePath.
+// Default manage-console port, api port, keystorePath.
 var port = config.console.port || 3300;
-var nuveHost = config.nuve.host || 'http://localhost:3000';
+var apiHost = config.api.host || 'http://localhost:3000';
 var keystorePath = config.console.keystorePath || './cert/certificate.pfx';
 
 var express = require('express');
@@ -29,7 +29,7 @@ app.use('/console', express.static(__dirname + '/public'));
 var httpProxy = require('http-proxy');
 var proxyOption = {};
 
-if (url.parse(nuveHost).protocol === 'https:' && !config.nuve.secure) {
+if (url.parse(apiHost).protocol === 'https:' && !config.api.secure) {
   proxyOption.secure = false;
 }
 
@@ -53,7 +53,7 @@ app.use(function (req, res) {
   //proxyRequest(req, res);
   if (isAllowed(req.path)) {
     try {
-      proxy.web(req, res, {target: nuveHost});
+      proxy.web(req, res, {target: apiHost});
     } catch (e) {
       res.status(400).send('Invalid path');
     }

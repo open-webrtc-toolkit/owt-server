@@ -22,7 +22,7 @@ init_software()
     ${ROOT}/bin/init-mongodb.sh --deps
     ${ROOT}/bin/init-rabbitmq.sh --deps
     OWT_UPDATE_DONE=true
-    ${ROOT}/nuve/init.sh
+    ${ROOT}/management_api/init.sh
     ${ROOT}/webrtc_agent/install_deps.sh
     ${ROOT}/video_agent/install_deps.sh
     ${ROOT}/video_agent/init.sh
@@ -30,7 +30,7 @@ init_software()
     ${ROOT}/bin/init-mongodb.sh
     ${ROOT}/bin/init-rabbitmq.sh
     OWT_UPDATE_DONE=true
-    ${ROOT}/nuve/init.sh
+    ${ROOT}/management_api/init.sh
     ${ROOT}/video_agent/init.sh
   fi
 }
@@ -43,7 +43,7 @@ init_hardware()
     ${ROOT}/bin/init-mongodb.sh --deps
     ${ROOT}/bin/init-rabbitmq.sh --deps
     OWT_UPDATE_DONE=true
-    ${ROOT}/nuve/init.sh
+    ${ROOT}/management_api/init.sh
     ${ROOT}/webrtc_agent/install_deps.sh
     ${ROOT}/video_agent/install_deps.sh --hardware
     ${ROOT}/video_agent/init.sh --hardware
@@ -51,7 +51,7 @@ init_hardware()
     ${ROOT}/bin/init-mongodb.sh
     ${ROOT}/bin/init-rabbitmq.sh
     OWT_UPDATE_DONE=true
-    ${ROOT}/nuve/init.sh
+    ${ROOT}/management_api/init.sh
     ${ROOT}/video_agent/init.sh --hardware
   fi
 }

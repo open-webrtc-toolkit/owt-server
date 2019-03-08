@@ -13,7 +13,7 @@
 #include <boost/make_shared.hpp>
 
 using namespace webrtc;
-using namespace woogeen_base;
+using namespace owt_base;
 
 namespace mcu {
 
@@ -181,7 +181,7 @@ SoftInput::SoftInput()
     : m_active(false)
 {
     m_bufferManager.reset(new I420BufferManager(3));
-    m_converter.reset(new woogeen_base::FrameConverter());
+    m_converter.reset(new owt_base::FrameConverter());
 }
 
 SoftInput::~SoftInput()
@@ -242,8 +242,8 @@ DEFINE_LOGGER(SoftFrameGenerator, "mcu.media.SoftVideoCompositor.SoftFrameGenera
 
 SoftFrameGenerator::SoftFrameGenerator(
             SoftVideoCompositor *owner,
-            woogeen_base::VideoSize &size,
-            woogeen_base::YUVColor &bgColor,
+            owt_base::VideoSize &size,
+            owt_base::YUVColor &bgColor,
             const bool crop,
             const uint32_t maxFps,
             const uint32_t minFps)
@@ -300,7 +300,7 @@ SoftFrameGenerator::SoftFrameGenerator(
             m_thrGrp->create_thread(boost::bind(&boost::asio::io_service::run, m_srv));
     }
 
-    m_textDrawer.reset(new woogeen_base::FFmpegDrawText());
+    m_textDrawer.reset(new owt_base::FFmpegDrawText());
 
     m_jobTimer.reset(new JobTimer(m_maxSupportedFps, this));
     m_jobTimer->start();
@@ -355,7 +355,7 @@ bool SoftFrameGenerator::isSupported(uint32_t width, uint32_t height, uint32_t f
     return false;
 }
 
-bool SoftFrameGenerator::addOutput(const uint32_t width, const uint32_t height, const uint32_t fps, woogeen_base::FrameDestination *dst) {
+bool SoftFrameGenerator::addOutput(const uint32_t width, const uint32_t height, const uint32_t fps, owt_base::FrameDestination *dst) {
     assert(isSupported(width, height, fps));
 
     boost::unique_lock<boost::shared_mutex> lock(m_outputMutex);
@@ -367,7 +367,7 @@ bool SoftFrameGenerator::addOutput(const uint32_t width, const uint32_t height, 
     return true;
 }
 
-bool SoftFrameGenerator::removeOutput(woogeen_base::FrameDestination *dst) {
+bool SoftFrameGenerator::removeOutput(owt_base::FrameDestination *dst) {
     boost::unique_lock<boost::shared_mutex> lock(m_outputMutex);
 
     for (uint32_t i = 0; i < m_outputs.size(); i++) {
@@ -408,9 +408,9 @@ void SoftFrameGenerator::onTimeout()
                     );
             compositeFrame.set_timestamp(compositeFrame.timestamp_us() * kMsToRtpTimestamp);
 
-            woogeen_base::Frame frame;
+            owt_base::Frame frame;
             memset(&frame, 0, sizeof(frame));
-            frame.format = woogeen_base::FRAME_FORMAT_I420;
+            frame.format = owt_base::FRAME_FORMAT_I420;
             frame.payload = reinterpret_cast<uint8_t*>(&compositeFrame);
             frame.length = 0; // unused.
             frame.timeStamp = compositeFrame.timestamp();
@@ -666,13 +666,13 @@ bool SoftVideoCompositor::unsetAvatar(int input)
 
 void SoftVideoCompositor::pushInput(int input, const Frame& frame)
 {
-    assert(frame.format == woogeen_base::FRAME_FORMAT_I420);
+    assert(frame.format == owt_base::FRAME_FORMAT_I420);
     webrtc::VideoFrame* i420Frame = reinterpret_cast<webrtc::VideoFrame*>(frame.payload);
 
     m_inputs[input]->pushInput(i420Frame);
 }
 
-bool SoftVideoCompositor::addOutput(const uint32_t width, const uint32_t height, const uint32_t framerateFPS, woogeen_base::FrameDestination *dst)
+bool SoftVideoCompositor::addOutput(const uint32_t width, const uint32_t height, const uint32_t framerateFPS, owt_base::FrameDestination *dst)
 {
     ELOG_DEBUG("addOutput, %dx%d, fps(%d), dst(%p)", width, height, framerateFPS, dst);
 
@@ -686,7 +686,7 @@ bool SoftVideoCompositor::addOutput(const uint32_t width, const uint32_t height,
     return false;
 }
 
-bool SoftVideoCompositor::removeOutput(woogeen_base::FrameDestination *dst)
+bool SoftVideoCompositor::removeOutput(owt_base::FrameDestination *dst)
 {
     ELOG_DEBUG("removeOutput, dst(%p)", dst);
 

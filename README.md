@@ -1,47 +1,37 @@
-# WooGeen 2.0 Build & Package Brief Instruction
+## Open WebRTC Toolkit Media Server
 
-## Dependency
+The media server for OWT provides an efficient video conference and streaming service that is based on WebRTC. It scales a single WebRTC stream out to many endpoints. At the same time, it enables media analytics capabilities for media streams. It features:
 
-- Interactive mode: `scripts/installDeps.sh --disable-nonfree`
-- Non-interactive mode: `scripts/installDepsUnattended.sh --disable-nonfree`.
+- Distributed, scalable, and reliable SFU + MCU server
+- High performance VP8, VP9, H.264, and HEVC real-time transcoding on Intel® Core™ and Intel® Xeon® processors
+- Wide streaming protocols support including WebRTC, RTSP, RTMP, HLS, MPEG-DASH
+- Efficient mixing of HD video streams to save bandwidth and power on mobile devices
+- Intelligent Quality of Service (QoS) control mechanisms that adapt to different network environments
+- Customer defined media analytics plugins to perform analytics on streams from MCU
+- The usage scenarios for real-time media stream analytics including but not limited to movement/object detection
 
+## How to install develop dependency
 
-## MCU
+- Interactive mode: `scripts/installDeps.sh`
+- Non-interactive mode: `scripts/installDepsUnattended.sh`
 
-### Build
+## How to build release package
+1. Build native components: `scripts/build.js -t all --check`
+2. Pack built components and js files: `scripts/pack.js -t all --install-module --sample-path ${webrtc-javascript-sdk-sample-conference-dist}`.
+3. For other build & pack options, run the scripts above with "--help".
 
-- without msdk: `scripts/build.js -t mcu`
-- with msdk: `scripts/build.js -t mcu-msdk`
-- specified target: `scripts/build.sh -t ${name}`
-- check after build: `scripts/build.js -t mcu --check`
-- rebuild (add this option if libraries update): `scripts/build.js -t mcu --rebuild`
+## Where to find API documents
+See "doc/servermd/Server.md" and "doc/servermd/RESTAPI.md".
 
-### Package
+## How to contribute
+We warmly welcome community contributions to Open WebRTC Toolkit Media Server repository. If you are willing to contribute your features and ideas to OWT, follow the process below:
+- Make sure your patch will not break anything, including all the build and tests
+- Submit a pull request onto https://github.com/open-webrtc-toolkit/owt-server/pulls
+- Watch your patch for review comments if any, until it is accepted and merged
+OWT project is licensed under Apache License, Version 2.0. By contributing to the project, you agree to the license and copyright terms therein and release your contributions under these terms.
 
-- release: `scripts/pack.js --full --sample-path ${webrtc-javascript-sdk}/dist/samples/conference`
-- release alias: `scripts/pack.js --target all --repack --install-module --sample-path ${webrtc-javascript-sdk}/dist/samples/conference`
-- without repack, node modules and sample: `scripts/pack.js --target (or -t) all`
-- debug: `scripts/pack.js --target all --debug`
-- pack specified target: `scripts/pack.js --target ${target-name} [ --target ${target-name} ]`
-- use help option for details: `scripts/pack.js --help`
+## How to report issues
+Use the "Issues" tab on Github.
 
-### Run
-
-    - `cd dist`
-    - follow sections 2.3.6 and 2.3.7 from user guide doc/servermd/Server.md
-
-## Gateway
-
-### Build
-
-- `scripts/build.sh --gateway --sdk`
-
-### Package
-
-- `scripts/release/pack.sh --gateway`
-
-- run in package:
-
-    - `cd dist`
-    - `bin/start-all.sh`
-
+## See Also
+http://webrtc.intel.com

@@ -3,7 +3,7 @@ host = "localhost" #default: "localhost"
 port = 5672 #default: 5672
 
 [mongo]
-dataBaseURL = "localhost/nuvedb" #default: "localhost/nuvedb"
+dataBaseURL = "localhost/owtdb" #default: "localhost/owtdb"
 
 [cluster]
-name = "woogeen-cluster"
+name = "owt-cluster"

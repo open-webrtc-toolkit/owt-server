@@ -12,22 +12,22 @@
 
 
 /*
- * Wrapper class of woogeen_base::FrameDestination
+ * Wrapper class of owt_base::FrameDestination
  */
 class FrameDestination : public node::ObjectWrap{
 public:
 
-  woogeen_base::FrameDestination* dest;
+  owt_base::FrameDestination* dest;
 };
 
 
 /*
- * Wrapper class of woogeen_base::FrameSource
+ * Wrapper class of owt_base::FrameSource
  */
 class FrameSource : public node::ObjectWrap{
 public:
 
-  woogeen_base::FrameSource* src;
+  owt_base::FrameSource* src;
 };
 
 
