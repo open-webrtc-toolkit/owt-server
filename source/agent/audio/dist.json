@@ -1,41 +1,42 @@
 {
-    "name": "streaming-agent",
-    "dest": "streaming_agent",
-    "node": {
-        "bin": "woogeen_streaming",
-        "entry": "../workingNode.js",
-        "libpath": "avstream",
-        "libfiles": [
-            "index.js",
-            "../connections.js",
-            "../InternalConnectionFactory.js"
-        ]
-    },
+    "name": "audio-agent",
+    "dest": "audio_agent",
     "common": {
         "package": "../package.json",
         "files": [
-            "../AgentLoader.js",
-            "../nodeManager.js",
             "agent.toml",
             "log4js_configuration.json",
+            "compile_ffmpeg_with_libfdkaac.sh",
             "install_deps.sh",
             "../index.js",
+            "../nodeManager.js",
+            "../workingNode.js",
             "../log4cxx.properties",
             "../../common/amqp_client.js",
             "../../common/clusterWorker.js",
             "../../common/loadCollector.js",
             "../../common/logger.js",
             "../../common/makeRPC.js",
-            "../../common/rpcChannel.js",
-            "../../../scripts/detectOS.sh"
-        ]
+            "../../common/rpcChannel.js"
+        ],
+        "folders": {
+            "audio": [
+                "index.js",
+                "../connections.js",
+                "../InternalConnectionFactory.js"
+            ]
+        }
     },
     "natives": {
         "libdist": "lib",
         "addons": [
             {
-                "folder": "../addons/avstreamLib",
-                "name": "avstream"
+                "folder": "audioMixer",
+                "name": "audioMixer"
+            },
+            {
+                "folder": "../addons/mediaFrameMulticaster",
+                "name": "mediaFrameMulticaster"
             },
             {
                 "folder": "../addons/internalIO",
@@ -47,5 +48,5 @@
             }
         ]
     },
-    "start": "node . -U streaming"
+    "start": "node . -U audio"
 }

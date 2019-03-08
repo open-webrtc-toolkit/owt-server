@@ -18,13 +18,6 @@ try {
   process.exit(1);
 }
 
-var loadConfig = {};
-try {
-  loadConfig = require('./loader.json');
-} catch (e) {
-  log.debug('No loader.json found.');
-}
-
 // Configuration default values
 global.config = config || {};
 
@@ -171,7 +164,6 @@ var joinCluster = function (on_ok) {
     var loss = function () {
         log.info(myPurpose, 'agent lost.');
         manager && manager.dropAllNodes(false);
-        fillErizos();
     };
 
     var recovery = function () {
@@ -211,7 +203,7 @@ var init_manager = () => {
   var consumeNodeByRoom = !(myPurpose === 'audio' || myPurpose === 'video');
 
   var spawnOptions = {
-    cmd: (process.env.NODE_DEBUG_ERIZO && loadConfig.bin) ? './' + loadConfig.bin : 'node',
+    cmd: 'node',
     config: Object.assign({}, global.config)
   };
 

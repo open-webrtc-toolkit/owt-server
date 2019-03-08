@@ -3,16 +3,15 @@
 // SPDX-License-Identifier: Apache-2.0
 
 'use strict';
-require = require('module')._load('./AgentLoader');
-var InternalIO = require('./internalIO/build/Release/internalIO');
-var SipGateway = require('./sipIn/build/Release/sipIn');
+var InternalIO = require('../internalIO/build/Release/internalIO');
+var SipGateway = require('../sipIn/build/Release/sipIn');
 var SipCallConnection = require('./sipCallConnection').SipCallConnection;
 var InternalIn = InternalIO.In;
 var InternalOut = InternalIO.Out;
-var logger = require('./logger').logger;
+var logger = require('../logger').logger;
 var rpcClient;
 var path = require('path');
-var makeRPC = require('./makeRPC').makeRPC;
+var makeRPC = require('../makeRPC').makeRPC;
 
 var cluster_name = ((global.config || {}).cluster || {}).name || 'owt-cluster';
 
