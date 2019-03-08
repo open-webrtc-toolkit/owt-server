@@ -1,7 +1,7 @@
 void setBuildStatus(String message, String state) {
   step([
       $class: "GitHubCommitStatusSetter",
-      reposSource: [$class: "ManuallyEnteredRepositorySource", url: "https://github.com/open-media-streamer/owt-server"],
+      reposSource: [$class: "ManuallyEnteredRepositorySource", url: "$env.REPO_URL/owt-server"],
       contextSource: [$class: "ManuallyEnteredCommitContextSource", context: "ci/jenkins/server"],
       errorHandlers: [[$class: "ChangingBuildStatusErrorHandler", result: "UNSTABLE"]],
       statusResultSource: [ $class: "ConditionalStatusResultSource", results: [[$class: "AnyBuildResult", message: message, state: state]] ]
@@ -18,7 +18,7 @@ pipeline {
                 ]){
                     node ('pack-mcu-server') {
                       container ('pack-on-centos-server') {
-                        sh "/root/packMCUInDocker.sh software $env.CHANGE_BRANCH $env.GIT_BRANCH $env.CHANGE_ID"
+                        sh "/root/packMCUInDocker.sh software $env.GIT_COMMIT $env.GIT_BRANCH $env.CHANGE_ID"
                       }
                     }
                 }
@@ -36,7 +36,7 @@ pipeline {
                                 container('api-test-server') {
                                     sh "ls -al"
                                     sh "pwd"
-                                    sh "/root/start.sh server-${env.GIT_BRANCH}1 ConferenceClient_api"
+                                    sh "/root/start.sh ${env.GIT_COMMIT}1 ConferenceClient_api"
                                 }
                             }
                         }
@@ -52,7 +52,7 @@ pipeline {
                                 container('subscribe-test-server') {
                                     sh "ls -al"
                                     sh "pwd"
-                                    sh "/root/start.sh server-${env.GIT_BRANCH}2 ConferenceClient_subscribe"
+                                    sh "/root/start.sh ${env.GIT_COMMIT}2 ConferenceClient_subscribe"
                                 }
                             }
                         }
