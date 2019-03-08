@@ -101,12 +101,6 @@ for (var prop in opt.options) {
 
 var rpc = require('./amqp_client')();
 
-function init_env() {
-    if (process.argv[3] === 'video') {
-        global.config.video.codecs = require('./videoCapability');
-    }
-};
-
 var controller;
 function init_controller() {
     log.info('pid:', process.pid);
@@ -127,6 +121,7 @@ function init_controller() {
                 controller = require('./audio')(rpcClient);
                 break;
             case 'video':
+                global.config.video.codecs = require('./videoCapability');
                 controller = require('./video')(rpcClient, clusterIP);
                 break;
             case 'webrtc':
@@ -222,6 +217,5 @@ process.on('SIGUSR2', function() {
 });
 
 (function main() {
-    init_env();
     init_controller();
 })();
