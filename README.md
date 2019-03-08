@@ -37,7 +37,7 @@ If "--archive ${name}" option is appended to the pack command, a "Release-${name
 In the repository root, run following commands to start media server on single machine:
 1. `./bin/init-all.sh --deps`
 2. `./bin/start-all.sh`
-3. Open http://localhost:3001 or https://localhost:3004 to visit the javscript conference sample. Due to the test certificate, you may need click "load unsafe script" on http, or click "proceed to localhost:3004/localhost:8080" on https.
+3. Open https://localhost:3004 to visit the web sample page. Due to the test certificate, you may need confirm this unsafe access.
 
 ## Where to find API documents
 See "doc/servermd/Server.md" and "doc/servermd/RESTAPI.md".
