@@ -11,8 +11,8 @@ DB_URL='localhost/owtdb'
 
 usage() {
   echo
-  echo "WooGeen Initialization Script"
-  echo "    This script initializes WooGeen-MCU ManagementAPIServer."
+  echo "OWT Initialization Script"
+  echo "    This script initializes OWT-MCU ManagementAPIServer."
   echo "    This script is intended to run on a target machine."
   echo
   echo "Usage:"

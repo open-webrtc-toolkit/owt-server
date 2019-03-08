@@ -3,7 +3,7 @@
     "dest": "streaming_agent",
     "node": {
         "bin": "woogeen_streaming",
-        "entry": "../erizoJS.js",
+        "entry": "../workingNode.js",
         "libpath": "avstream",
         "libfiles": [
             "index.js",
@@ -15,6 +15,7 @@
         "package": "../package.json",
         "files": [
             "../AgentLoader.js",
+            "../nodeManager.js",
             "agent.toml",
             "log4js_configuration.json",
             "install_deps.sh",

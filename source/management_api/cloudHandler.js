@@ -30,7 +30,7 @@
 var validateReq = require('./restReqValidator').validate;
 var rpc = require('./rpc/rpc');
 var log = require('./logger').logger.getLogger('CloudHandler');
-var cluster_name = ((global.config || {}).cluster || {}).name || 'woogeen-cluster';
+var cluster_name = ((global.config || {}).cluster || {}).name || 'owt-cluster';
 var e = require('./errors');
 
 exports.schedulePortal = function (tokenCode, origin, callback) {

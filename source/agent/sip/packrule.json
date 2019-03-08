@@ -3,7 +3,7 @@
     "dest": "sip_agent",
     "node": {
         "bin": "woogeen_sip",
-        "entry": "../erizoJS.js",
+        "entry": "../workingNode.js",
         "libpath": "sip",
         "libfiles": [
             "index.js",
@@ -16,6 +16,7 @@
         "package": "../package.json",
         "files": [
             "../AgentLoader.js",
+            "../nodeManager.js",
             "agent.toml",
             "log4js_configuration.json",
             "install_deps.sh",

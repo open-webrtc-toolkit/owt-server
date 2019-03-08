@@ -8,7 +8,7 @@ var spawn = require('child_process').spawn;
 var fs = require('fs');
 var toml = require('toml');
 var logger = require('./logger').logger;
-var log = logger.getLogger('ErizoAgent');
+var log = logger.getLogger('WorkingAgent');
 
 var config;
 try {
@@ -33,7 +33,7 @@ global.config.agent.maxProcesses = global.config.agent.maxProcesses || 13;
 global.config.agent.prerunProcesses = global.config.agent.prerunProcesses || 2;
 
 global.config.cluster = global.config.cluster || {};
-global.config.cluster.name = global.config.cluster.name || 'woogeen-cluster';
+global.config.cluster.name = global.config.cluster.name || 'owt-cluster';
 global.config.cluster.join_retry = global.config.cluster.join_retry || 60;
 global.config.cluster.report_load_interval = global.config.cluster.report_load_interval || 1000;
 global.config.cluster.max_load = global.config.cluster.max_load || 0.85;
@@ -59,9 +59,6 @@ global.config.video.enableBetterHEVCQuality = !!global.config.video.enableBetter
 var getopt = new Getopt([
   ['r' , 'rabbit-host=ARG'            , 'RabbitMQ Host'],
   ['g' , 'rabbit-port=ARG'            , 'RabbitMQ Port'],
-  ['l' , 'logging-config-file=ARG'    , 'Logging Config File'],
-  ['M' , 'maxProcesses=ARG'           , 'Stun Server URL'],
-  ['P' , 'prerunProcesses=ARG'        , 'Default video Bandwidth'],
   ['U' , 'my-purpose=ARG'             , 'Purpose of this agent'],
   ['h' , 'help'                       , 'display this help']
 ]);
@@ -110,277 +107,15 @@ for (var prop in opt.options) {
 }
 
 var clusterWorker = require('./clusterWorker');
+var nodeManager = require('./nodeManager');
 var amqper = require('./amqp_client')();
 var rpcClient;
 var monitoringTarget;
 
-var erizo_index = 0;
-var idle_erizos = [];
-var erizos = [];
-var processes = {};
-var tasks = {}; // {erizo_id: {RoomID: [TaskID]}}
 var load_collection = {period: global.config.cluster.report_load_interval};
 var capacity = global.config.capacity;
 var worker;
-
-var spawn_failed = false;
-
-function cleanupErizoJS (id) {
-    processes[id].check_alive_interval && clearInterval(processes[id].check_alive_interval);
-    processes[id].check_alive_interval = undefined;
-
-    delete processes[id];
-    delete tasks[id];
-    var index = erizos.indexOf(id);
-    if (index !== -1) {
-        erizos.splice(index, 1);
-    }
-    index = idle_erizos.indexOf(id);
-    if (index !== -1) {
-        idle_erizos.splice(index, 1);
-    }
-}
-
-var launchErizoJS = function() {
-    var id = myId + '_' + erizo_index++;
-    if (!fs.existsSync('../logs')){
-        fs.mkdirSync('../logs');
-    }
-    var out = fs.openSync('../logs/' + id + '.log', 'a');
-    var err = fs.openSync('../logs/' + id + '.log', 'a');
-    var execName = 'node';
-    if (process.env.NODE_DEBUG_ERIZO && loadConfig.bin) {
-        execName = './' + loadConfig.bin;
-    }
-    var spawnArgs = ['./erizoJS.js', id, myPurpose, JSON.stringify(webrtcInterfaces), clusterIP, myId];
-    if (loadConfig.bin === 'erizoJS') {
-        spawnArgs.shift();
-    }
-    var child = spawn(execName, spawnArgs, {
-        detached: true,
-        stdio: [ 'ignore', out, err, 'ipc' ]
-    });
-    child.unref();
-    child.out_log_fd = out;
-    child.err_log_fd = err;
-
-    log.debug('launchErizoJS, id:', id);
-    child.on('close', function (code, signal) {
-        log.debug('Node', id, 'exited with code:', code, 'signal:', signal);
-        if (code !== 0) {
-            log.info('Node', id, 'is closed on unexpected code:', code);
-        }
-
-        if (processes[id]) {
-            monitoringTarget && monitoringTarget.notify('abnormal', {purpose: myPurpose, id: id, type: 'node'});
-            cleanupErizoJS(id);
-        }
-
-        try {
-            fs.closeSync(child.out_log_fd);
-            fs.closeSync(child.err_log_fd);
-        } catch (e) {
-            log.warn('Close fd failed');
-        }
-
-        if (!spawn_failed) {
-            fillErizos();
-        }
-    });
-    child.on('error', function (error) {
-        log.error('failed to launch worker', id, 'error:', JSON.stringify(error));
-        child.READY = false;
-        //FIXME: the 'error' message may be emitted in one of the following cases:
-        // 1) The process could not be spawned, or
-        // 2) The process could not be killed, or
-        // 3) Sending a message to the child process failed.
-        // And we supposed only the first case, accurately either error.code === 'ENOENT' or error.code === 'EMFILE' or error.code === 'EAGAIN' will happen in our usage
-        //if (error.code === 'ENOENT' || error.code === 'EMFILE' || error.code === 'EAGAIN') {
-            spawn_failed = true;
-            //TODO: The status of this agent should be set to 'invalid' in this case.
-            setTimeout(() => {spawn_failed = false;}, 2000);
-        //}
-    });
-    child.on('message', function (message) { // currently only used for sending ready message from worker to agent;
-        log.debug('message from node', id, ':', message);
-        if (message === 'READY') {
-            child.READY = true;
-            child.check_alive_interval = setInterval(function() {
-              child.READY && rpcClient.remoteCall(id, 'keepAlive', [], {callback: function (result) {
-                if (result !== true) {
-                  log.info('Node(', id, ') is no longer responsive!');
-                  dropErizoJS(id);
-                  monitoringTarget && monitoringTarget.notify('abnormal', {purpose: myPurpose, id: id, type: 'node'});
-                }
-              }});
-            }, 3000);
-            spawn_failed = false;
-        } else {
-            child.READY = false;
-            child.kill();
-            fs.closeSync(child.out_log_fd);
-            fs.closeSync(child.err_log_fd);
-            cleanupErizoJS(id);
-        }
-    });
-
-    processes[id] = child;
-    tasks[id] = {};
-    idle_erizos.push(id);
-};
-
-var dropErizoJS = function(id) {
-    log.debug('dropErizoJS, id:', id);
-    if (processes.hasOwnProperty(id)) {
-        processes[id].kill();
-        cleanupErizoJS(id);
-    }
-};
-
-var dropAll = function(quietly) {
-    Object.keys(processes).map(function (k) {
-        dropErizoJS(k);
-        !quietly && monitoringTarget && monitoringTarget.notify('abnormal', {purpose: myPurpose, id: k, type: 'node'});
-    });
-};
-
-var fillErizos = function() {
-    for (var i = idle_erizos.length; i < global.config.agent.prerunProcesses; i++) {
-        launchErizoJS();
-    }
-};
-
-var addTask = function(worker, nodeId, task) {
-    tasks[nodeId] = tasks[nodeId] || {};
-    tasks[nodeId][task.room] = tasks[nodeId][task.room] || [];
-
-    if (tasks[nodeId][task.room].indexOf(task.task) === -1) {
-        worker && worker.addTask(task.task);
-    }
-
-    tasks[nodeId][task.room].push(task.task);
-};
-
-var removeTask = function(worker, nodeId, task, on_last_task_leave) {
-    if (tasks[nodeId]) {
-        if (tasks[nodeId][task.room]) {
-            var i = tasks[nodeId][task.room].indexOf(task.task);
-            if (i > -1) {
-                tasks[nodeId][task.room].splice(i, 1);
-            }
-
-            if (tasks[nodeId][task.room].indexOf(task.task) === -1) {
-                worker && worker.removeTask(task.task);
-            }
-
-            if (tasks[nodeId][task.room].length === 0) {
-                delete tasks[nodeId][task.room];
-                if (Object.keys(tasks[nodeId]).length === 0) {
-                    on_last_task_leave();
-                }
-            }
-        }
-    }
-};
-
-var api = function (worker) {
-    return {
-        getNode: function(task, callback) {
-            log.debug('getNode, task:', task);
-            var reportCallback = function (id, timeout) {
-                var wait_count = 0;
-                var wait_expiration = timeout / 100 + 1;
-                var waitForInitialization = function () {
-                    if (!processes[id]) {
-                        log.warn('process', id, 'not found');
-                        return;
-                    }
-                    if (processes[id].READY === undefined) {
-                        log.debug(id, 'not ready');
-                        if (wait_count < wait_expiration) {
-                            wait_count += 1;
-                            setTimeout(waitForInitialization, 100);
-                        } else {
-                            dropErizoJS(id);
-                            callback('callback', 'error', 'node not ready');
-                        }
-                        return;
-                    }
-
-                    if (processes[id].READY === true) {
-                        log.debug(id, 'ready');
-                        callback('callback', id);
-                        addTask(worker, id, task);
-                    }
-                };
-                waitForInitialization();
-            };
-            try {
-                var room_id = task.room;
-                var erizo_id;
-                if (reuse) {
-                    var i;
-                    for (i in erizos) {
-                        erizo_id = erizos[i];
-                        if (tasks[erizo_id] !== undefined && tasks[erizo_id][room_id] !== undefined) {
-                            reportCallback(erizo_id, 1500);
-                            return;
-                        }
-                    }
-
-                    for (i in idle_erizos) {
-                        erizo_id = idle_erizos[i];
-                        if (tasks[erizo_id] !== undefined && tasks[erizo_id][room_id] !== undefined) {
-                            reportCallback(erizo_id, 1500);
-                            return;
-                        }
-                    }
-                }
-
-                if (idle_erizos.length < 1) {
-                  log.error('getNode error:', 'No available worker');
-                  return callback('callback', 'error', 'No available worker');
-                }
-
-                erizo_id = idle_erizos.shift();
-                reportCallback(erizo_id, 1500);
-
-                erizos.push(erizo_id);
-
-                if (reuse && myPurpose !== 'conference' && myPurpose !== 'sip' && ((erizos.length + idle_erizos.length) >= global.config.agent.maxProcesses)) {
-                    // We re-use Erizos
-                    idle_erizos.push(erizos.shift());
-                } else {
-                    // We launch more processes
-                    fillErizos();
-                }
-            } catch (error) {
-                log.error('getNode error:', error);
-            }
-        },
-
-        recycleNode: function(id, task, callback) {
-            log.debug('recycleNode, id:', id, 'task:', task);
-            try {
-                removeTask(worker, id, task, function() {
-                    dropErizoJS(id);
-                });
-                callback('callback', 'ok');
-            } catch(error) {
-                log.error('recycleNode error:', error);
-            }
-        },
-
-        queryNode: function(task, callback) {
-            for (var eid in tasks) {
-                if (tasks[eid][task] !== undefined) {
-                    return callback('callback', eid);
-                }
-            }
-            return callback('callback', 'error');
-        }
-    };
-};
+var manager;
 
 var clusterIP, clusterInterface;
 // It has three properties: name for interface's name, replaced_ip_address for replaced IP address, and ip_address for interface's IP address.
@@ -419,6 +154,7 @@ function collectIPs () {
     }
 }
 
+
 var joinCluster = function (on_ok) {
     var joinOK = function (id) {
         myId = id;
@@ -434,7 +170,7 @@ var joinCluster = function (on_ok) {
 
     var loss = function () {
         log.info(myPurpose, 'agent lost.');
-        dropAll(false);
+        manager && manager.dropAllNodes(false);
         fillErizos();
     };
 
@@ -445,7 +181,7 @@ var joinCluster = function (on_ok) {
     var overload = function () {
         log.warn(myPurpose, 'agent overloaded!');
         if (myPurpose === 'recording') {
-            dropAll(false);
+            manager && manager.dropAllNodes(false);
         }
     };
 
@@ -468,6 +204,82 @@ var joinCluster = function (on_ok) {
         onOverload: overload,
         loadCollection: load_collection
     });
+};
+
+var init_manager = () => {
+  var reuseNode = !(myPurpose === 'audio' || myPurpose === 'video' || myPurpose === 'conference' || myPurpose === 'sip');
+  var consumeNodeByRoom = !(myPurpose === 'audio' || myPurpose === 'video');
+
+  var spawnOptions = {
+    cmd: (process.env.NODE_DEBUG_ERIZO && loadConfig.bin) ? './' + loadConfig.bin : 'node',
+    config: Object.assign({}, global.config)
+  };
+
+  spawnOptions.config.purpose = myPurpose;
+  spawnOptions.config.clusterIP = clusterIP;
+
+  manager = nodeManager(
+    {
+      parentId: myId,
+      prerunNodeNum: global.config.agent.prerunProcesses,
+      maxNodeNum: global.config.agent.maxProcesses,
+      reuseNode: reuseNode,
+      consumeNodeByRoom: consumeNodeByRoom
+    },
+    spawnOptions,
+    (nodeId, tasks) => {
+      monitoringTarget && monitoringTarget.notify('abnormal', {purpose: myPurpose, id: nodeId, type: 'node'});
+      tasks.forEach(() => {
+        worker && worker.removeTask(task);
+      });
+    },
+    (task) => {
+      worker && worker.addTask(task);
+    },
+    (task) => {
+      worker && worker.removeTask(task);
+    }
+  );
+};
+
+var rpcAPI = function (worker) {
+    return {
+        getNode: function(task, callback) {
+          if (manager) {
+            return manager.getNode(task).then((nodeId) => {
+              callback('callback', nodeId);
+            }).catch((err) => {
+              callback('callback', 'error', err);
+            });
+          } else {
+            callback('callback', 'error', 'agent not ready');
+          }
+        },
+
+        recycleNode: function(id, task, callback) {
+          if (manager) {
+            return manager.recycleNode(id, task).then(() => {
+              callback('callback', 'ok');
+            }).catch((err) => {
+              callback('callback', 'error', err);
+            });
+          } else {
+            callback('callback', 'error', 'agent not ready');
+          }
+        },
+
+        queryNode: function(task, callback) {
+          if (manager) {
+            return manager.queryNode(task).then((nodeId) => {
+              callback('callback', nodeId);
+            }).catch((err) => {
+              callback('callback', 'error', err);
+            });
+          } else {
+            callback('callback', 'error', 'agent not ready');
+          }
+        }
+    };
 };
 
 (function init_env() {
@@ -534,11 +346,11 @@ var joinCluster = function (on_ok) {
 })();
 
 amqper.connect(global.config.rabbit, function () {
-    log.debug('Adding agent to cloudhandler, purpose:', myPurpose);
+    log.debug('Initializing RPC facilities, purpose:', myPurpose);
     amqper.asRpcClient(function(rpcClnt) {
         rpcClient = rpcClnt;
         joinCluster(function (rpcID) {
-            amqper.asRpcServer(rpcID, api(worker), function(rpcServer) {
+            amqper.asRpcServer(rpcID, rpcAPI(worker), function(rpcServer) {
                 log.info('as rpc server ok.');
                 amqper.asMonitoringTarget(function (monitoringTgt) {
                     monitoringTarget = monitoringTgt;
@@ -551,7 +363,7 @@ amqper.connect(global.config.rabbit, function () {
                 log.error(rpcID + ' as rpc server failed, reason:', reason);
                 process.exit();
             });
-            fillErizos();
+            init_manager();
         });
     }, function(reason) {
         log.error('Agent as rpc client failed, reason:', reason);
@@ -570,7 +382,7 @@ amqper.connect(global.config.rabbit, function () {
 });
 
 process.on('exit', function () {
-    dropAll(true);
+    manager && manager.dropAllNodes(true);
     worker && worker.quit();
     amqper.disconnect();
 });

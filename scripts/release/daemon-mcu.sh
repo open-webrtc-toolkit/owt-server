@@ -75,8 +75,8 @@ fi
 LogDir="${OWT_HOME}/logs"
 mkdir -p "$LogDir"
 
-stdout=${LogDir}/owt-${command}.stdout
-pid=${LogDir}/owt-${command}.pid
+stdout=${LogDir}/${command}.stdout
+pid=${LogDir}/${command}.pid
 
 # Set default scheduling priority
 if [ "$OWT_NICENESS" = "" ]; then

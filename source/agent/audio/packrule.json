@@ -3,7 +3,7 @@
     "dest": "audio_agent",
     "node": {
         "bin": "woogeen_audio",
-        "entry": "../erizoJS.js",
+        "entry": "../workingNode.js",
         "libpath": "audio",
         "libfiles": [
             "index.js",
@@ -15,6 +15,7 @@
         "package": "../package.json",
         "files": [
             "../AgentLoader.js",
+            "../nodeManager.js",
             "agent.toml",
             "log4js_configuration.json",
             "compile_ffmpeg_with_libfdkaac.sh",

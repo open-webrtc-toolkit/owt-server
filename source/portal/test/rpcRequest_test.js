@@ -18,9 +18,9 @@ describe('rpcRequest.getController', function() {
 
     var req = rpcRequest(mockRpcChannel);
 
-    return req.getController('woogeen-cluster', 'roomId').then(function(result) {
+    return req.getController('owt-cluster', 'roomId').then(function(result) {
       expect(result).to.equal('RpcIdOfController');
-      expect(mockRpcChannel.makeRPC.getCall(0).args).to.deep.equal(['woogeen-cluster', 'schedule', ['conference', 'roomId', 'preference', 30000]]);
+      expect(mockRpcChannel.makeRPC.getCall(0).args).to.deep.equal(['owt-cluster', 'schedule', ['conference', 'roomId', 'preference', 30000]]);
       expect(mockRpcChannel.makeRPC.getCall(1).args).to.deep.equal(['RpcIdOfControllerAgent', 'getNode', [{room: 'roomId', task: 'roomId'}]]);
     });
   });
@@ -32,7 +32,7 @@ describe('rpcRequest.getController', function() {
 
     var req = rpcRequest(mockRpcChannel);
 
-    return expect(req.getController('woogeen-cluster', 'roomId')).to.be.rejectedWith('error or timeout while getting agent');
+    return expect(req.getController('owt-cluster', 'roomId')).to.be.rejectedWith('error or timeout while getting agent');
   });
 
   it('Should fail if requiring node error or timeout occurs.', function() {
@@ -43,7 +43,7 @@ describe('rpcRequest.getController', function() {
 
     var req = rpcRequest(mockRpcChannel);
 
-    return expect(req.getController('woogeen-cluster', 'roomId')).to.be.rejectedWith('error or timeout');
+    return expect(req.getController('owt-cluster', 'roomId')).to.be.rejectedWith('error or timeout');
   });
 });
 
