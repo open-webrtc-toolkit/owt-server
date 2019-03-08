@@ -552,11 +552,6 @@ function packScripts() {
     execSync(`cp -a ${rootDir}/scripts/release/daemon-mcu.sh ${binDir}/daemon.sh`);
   }
 
-  if (options.debug) {
-    // Add debug variable
-    execSync(`sed -i "/ROOT=/aexport NODE_DEBUG_ERIZO=1" ${binDir}/daemon.sh`)
-  }
-
   const startScript = `${binDir}/start-all.sh`;
   const stopScript = `${binDir}/stop-all.sh`;
   const restartScript = `${binDir}/restart-all.sh`;

@@ -204,7 +204,7 @@ var init_manager = () => {
   var consumeNodeByRoom = !(myPurpose === 'audio' || myPurpose === 'video');
 
   var spawnOptions = {
-    cmd: (process.env.NODE_DEBUG_ERIZO && loadConfig.bin) ? './' + loadConfig.bin : 'node',
+    cmd: 'node',
     config: Object.assign({}, global.config)
   };
 
