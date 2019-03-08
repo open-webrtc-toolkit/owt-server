@@ -29,7 +29,7 @@
 'use strict';
 var validateReq = require('./restReqValidator').validate;
 var rpc = require('./rpc/rpc');
-var log = require('./logger').logger.getLogger('CloudHandler');
+var log = require('./logger').logger.getLogger('RequestHandler');
 var cluster_name = ((global.config || {}).cluster || {}).name || 'owt-cluster';
 var e = require('./errors');
 

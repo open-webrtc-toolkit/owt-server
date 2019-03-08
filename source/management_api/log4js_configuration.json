@@ -21,7 +21,7 @@
     "UserResource": "INFO",
     "TokensResource": "INFO",
     "NuveAuthenticator": "INFO",
-    "CloudHandler": "INFO",
+    "RequestHandler": "INFO",
     "RPCPublic": "INFO",
     "RPC": "INFO",
     "Nuve": "INFO",

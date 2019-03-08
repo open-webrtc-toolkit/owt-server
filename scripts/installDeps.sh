@@ -107,13 +107,6 @@ install_openssl
 
 ${NO_INTERNAL} || (pause "Installing webrtc library... [press Enter]" && install_webrtc)
 
-read -p "Installing tcmalloc library? [No/yes]" yn
-case $yn in
-  [Yy]* ) install_tcmalloc;;
-  [Nn]* ) ;;
-  * ) ;;
-esac
-
 read -p "Installing OpenH264 Video Codec provided by Cisco Systems, Inc.? [Yes/no]" yn
 case $yn in
   [Nn]* ) ;;

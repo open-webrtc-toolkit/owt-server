@@ -4,11 +4,11 @@
 
 'use strict';
 require = require('module')._load('./AgentLoader');
-var woogeenSipGateway = require('./sipIn/build/Release/sipIn');
-var AudioFrameConstructor = woogeenSipGateway.AudioFrameConstructor;
-var VideoFrameConstructor = woogeenSipGateway.VideoFrameConstructor;
-var AudioFramePacketizer = woogeenSipGateway.AudioFramePacketizer;
-var VideoFramePacketizer = woogeenSipGateway.VideoFramePacketizer;
+var SipGateway = require('./sipIn/build/Release/sipIn');
+var AudioFrameConstructor = SipGateway.AudioFrameConstructor;
+var VideoFrameConstructor = SipGateway.VideoFrameConstructor;
+var AudioFramePacketizer = SipGateway.AudioFramePacketizer;
+var VideoFramePacketizer = SipGateway.VideoFramePacketizer;
 var path = require('path');
 var logger = require('./logger').logger;
 var log = logger.getLogger('SipCallConnection');
@@ -28,7 +28,7 @@ exports.SipCallConnection = function (spec, onMediaUpdate) {
         videoFramePacketizer,
         sip_callConnection;
 
-    sip_callConnection = new woogeenSipGateway.SipCallConnection(gateway, clientID);
+    sip_callConnection = new SipGateway.SipCallConnection(gateway, clientID);
     if (audio) {
         // sip->mcu
         audioFrameConstructor = new AudioFrameConstructor();
