@@ -164,7 +164,6 @@ var joinCluster = function (on_ok) {
     var loss = function () {
         log.info(myPurpose, 'agent lost.');
         manager && manager.dropAllNodes(false);
-        fillErizos();
     };
 
     var recovery = function () {
