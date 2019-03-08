@@ -28,7 +28,7 @@
 
 'use strict';
 var dataAccess = require('../data_access');
-var cloudHandler = require('../cloudHandler');
+var requestHandler = require('../requestHandler');
 var logger = require('./../logger').logger;
 var e = require('../errors');
 
@@ -52,7 +52,7 @@ exports.represent = function (req, res, next) {
 };
 
 /*
- * Delete Room. Removes a determined room from the data base and asks cloudHandler to remove it from erizoController.
+ * Delete Room. Removes a determined room from the data base and asks requestHandler to remove it from erizoController.
  */
 exports.deleteRoom = function (req, res, next) {
     var authData = req.authData;
@@ -68,13 +68,13 @@ exports.deleteRoom = function (req, res, next) {
                 } else {
                     var id = req.params.room;
                     log.debug('Room ', id, ' deleted for service ', authData.service._id);
-                    cloudHandler.deleteRoom(id, function () {});
+                    requestHandler.deleteRoom(id, function () {});
                     res.send('Room deleted');
 
                     // Notify SIP portal if SIP room deleted
                     if (sip_info) {
                         log.debug('Notify SIP Portal on delete Room');
-                        cloudHandler.notifySipPortal('delete', {_id: id, sip: sip_info}, function(){});
+                        requestHandler.notifySipPortal('delete', {_id: id, sip: sip_info}, function(){});
                     }
                 }
             });
@@ -114,7 +114,7 @@ exports.updateRoom = function (req, res, next) {
                     }
                     if (changeType) {
                         log.debug('Change type', changeType);
-                        cloudHandler.notifySipPortal(changeType, result, function(){});
+                        requestHandler.notifySipPortal(changeType, result, function(){});
                     }
                 } else {
                     next(new e.BadRequestError(err && err.message || 'Bad room configuration'));

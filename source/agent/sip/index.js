@@ -3,11 +3,11 @@
 // SPDX-License-Identifier: Apache-2.0
 
 'use strict';
-var woogeenInternalIO = require('../internalIO/build/Release/internalIO');
-var woogeenSipGateway = require('../sipIn/build/Release/sipIn');
+var InternalIO = require('../internalIO/build/Release/internalIO');
+var SipGateway = require('../sipIn/build/Release/sipIn');
 var SipCallConnection = require('./sipCallConnection').SipCallConnection;
-var InternalIn = woogeenInternalIO.In;
-var InternalOut = woogeenInternalIO.Out;
+var InternalIn = InternalIO.In;
+var InternalOut = InternalIO.Out;
 var logger = require('../logger').logger;
 var rpcClient;
 var path = require('path');
@@ -615,7 +615,7 @@ module.exports = function (rpcC, spec) {
 
         room_id = options.room_id;
 
-        gateway = new woogeenSipGateway.SipGateway();
+        gateway = new SipGateway.SipGateway();
 
         gateway.addEventListener('SIPRegisterOK', function() {
             callback('callback', 'ok');
