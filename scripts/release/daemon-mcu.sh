@@ -164,7 +164,7 @@ case $startStop in
       video-agent )
         cd ${OWT_HOME}/video_agent
         export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:./lib
-        export PATH=${PATH}:./bin
+        export PATH=${PATH}:/opt/intel/mediasdk/bin
         nohup nice -n ${OWT_NICENESS} node . -U video\
           > "${stdout}" 2>&1 </dev/null &
         echo $! > ${pid}
