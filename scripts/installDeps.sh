@@ -15,7 +15,7 @@ NO_INTERNAL=false
 parse_arguments(){
   while [ "$1" != "" ]; do
     case $1 in
-      "--with-nonfree")
+      "--with-nonfree-libs")
         DISABLE_NONFREE=false
         ;;
       "--cleanup")
