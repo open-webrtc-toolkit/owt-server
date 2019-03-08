@@ -5,7 +5,8 @@
         "package": "package.json",
         "files": [
             "../AgentLoader.js",
-            "../erizoJS.js",
+            "../nodeManager.js",
+            "../workingNode.js",
             "participant.js",
             "agent.toml",
             "roomController.js",

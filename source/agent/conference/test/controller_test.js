@@ -13,7 +13,7 @@ describe("MultipleViewController", () => {
     let rpcMock = {
         makeRPC: sinon.stub()
     };
-    let clusterName = "woogeen-cluster";
+    let clusterName = "owt-cluster";
     let rpcClient = "fakeRpcClient";
     let roomName = "TestRoom";
     let roomRpcId = "fakeRpcId";

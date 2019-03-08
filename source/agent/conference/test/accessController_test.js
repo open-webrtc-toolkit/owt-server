@@ -15,7 +15,7 @@ const testParticipantId = '/#gpMeAEuPeMMDT0daAAAA';
 const testRoom = '573eab78111478bb3526421a';
 
 const testAccessControllerSpec = {
-  clusterName: 'woogeen-cluster',
+  clusterName: 'owt-cluster',
   selfRpcId: 'selfRpcId',
   inRoom: testRoom,
   mediaIn: {
@@ -129,7 +129,7 @@ describe('accessController.initiate/accessController.terminate: for publishing',
                                        })
         .then(function(result) {
           expect(result).to.equal('ok');
-          expect(mockrpcReq.getWorkerNode.getCall(0).args).to.deep.equal(['woogeen-cluster', 'webrtc', {room: testRoom, task: session_id}, {isp: 'isp', region: 'region'}]);
+          expect(mockrpcReq.getWorkerNode.getCall(0).args).to.deep.equal(['owt-cluster', 'webrtc', {room: testRoom, task: session_id}, {isp: 'isp', region: 'region'}]);
           expect(mockrpcReq.initiate.getCall(0).args).to.have.lengthOf(5);
           expect(mockrpcReq.initiate.getCall(0).args[0]).to.deep.equal('rpcIdOfAccessNode');
           expect(mockrpcReq.initiate.getCall(0).args[1]).to.equal(session_id);
@@ -200,7 +200,7 @@ describe('accessController.initiate/accessController.terminate: for publishing',
                                        })
         .then(function(result) {
           expect(result).to.equal('ok');
-          expect(mockrpcReq.getWorkerNode.getCall(0).args).to.deep.equal(['woogeen-cluster', 'webrtc', {room: testRoom, task: session_id}, {isp: 'isp', region: 'region'}]);
+          expect(mockrpcReq.getWorkerNode.getCall(0).args).to.deep.equal(['owt-cluster', 'webrtc', {room: testRoom, task: session_id}, {isp: 'isp', region: 'region'}]);
           expect(mockrpcReq.initiate.getCall(0).args).to.have.lengthOf(5);
           expect(mockrpcReq.initiate.getCall(0).args[0]).to.deep.equal('rpcIdOfAccessNode');
           expect(mockrpcReq.initiate.getCall(0).args[1]).to.equal(session_id);
@@ -273,7 +273,7 @@ describe('accessController.initiate/accessController.terminate: for publishing',
                                        })
         .then(function(result) {
           expect(result).to.equal('ok');
-          expect(mockrpcReq.getWorkerNode.getCall(0).args).to.deep.equal(['woogeen-cluster', 'streaming', {room: testRoom, task: session_id}, {isp: 'isp', region: 'region'}]);
+          expect(mockrpcReq.getWorkerNode.getCall(0).args).to.deep.equal(['owt-cluster', 'streaming', {room: testRoom, task: session_id}, {isp: 'isp', region: 'region'}]);
           expect(mockrpcReq.initiate.getCall(0).args).to.have.lengthOf(5);
           expect(mockrpcReq.initiate.getCall(0).args[0]).to.deep.equal('rpcIdOfAccessNode');
           expect(mockrpcReq.initiate.getCall(0).args[1]).to.equal(session_id);
@@ -329,7 +329,7 @@ describe('accessController.initiate/accessController.terminate: for publishing',
                                        })
         .then(function(result) {
           expect(result).to.equal('ok');
-          expect(mockrpcReq.getWorkerNode.getCall(0).args).to.deep.equal(['woogeen-cluster', 'streaming', {room: testRoom, task: session_id}, {isp: 'isp', region: 'region'}]);
+          expect(mockrpcReq.getWorkerNode.getCall(0).args).to.deep.equal(['owt-cluster', 'streaming', {room: testRoom, task: session_id}, {isp: 'isp', region: 'region'}]);
           expect(mockrpcReq.initiate.getCall(0).args).to.have.lengthOf(5);
           expect(mockrpcReq.initiate.getCall(0).args[0]).to.deep.equal('rpcIdOfAccessNode');
           expect(mockrpcReq.initiate.getCall(0).args[1]).to.equal(session_id);
@@ -383,7 +383,7 @@ describe('accessController.initiate/accessController.terminate: for publishing',
                                        })
         .then(function(result) {
           expect(result).to.equal('ok');
-          expect(mockrpcReq.getWorkerNode.getCall(0).args).to.deep.equal(['woogeen-cluster', 'recording', {room: testRoom, task: session_id}, {isp: 'isp', region: 'region'}]);
+          expect(mockrpcReq.getWorkerNode.getCall(0).args).to.deep.equal(['owt-cluster', 'recording', {room: testRoom, task: session_id}, {isp: 'isp', region: 'region'}]);
           expect(mockrpcReq.initiate.getCall(0).args).to.have.lengthOf(5);
           expect(mockrpcReq.initiate.getCall(0).args[0]).to.deep.equal('rpcIdOfAccessNode');
           expect(mockrpcReq.initiate.getCall(0).args[1]).to.equal(session_id);

@@ -19,7 +19,7 @@ reconnection_timeout = 60 #default: 60
 
 
 [cluster]
-name = "woogeen-cluster"
+name = "owt-cluster"
 
 #The number of times to retry joining if the first try fails.
 join_retry = 60 #default: 60

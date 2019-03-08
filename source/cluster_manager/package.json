@@ -1,5 +1,5 @@
 {
-  "name": "WooGeen-MCU-Cluster-Manager",
+  "name": "OWT-MCU-Cluster-Manager",
   "version":"4.1.0",
   "dependencies": {
     "amqp": "*",

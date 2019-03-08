@@ -9,7 +9,7 @@ var Getopt = require('node-getopt');
 var toml = require('toml');
 
 var logger = require('./logger').logger;
-var log = logger.getLogger('ErizoJS');
+var log = logger.getLogger('WorkingNode');
 
 var cxxLogger;
 try {
@@ -101,21 +101,17 @@ for (var prop in opt.options) {
 
 var rpc = require('./amqp_client')();
 
-function init_env() {
-    if (process.argv[3] === 'video') {
-        global.config.video.codecs = require('./videoCapability');
-    }
-};
-
 var controller;
 function init_controller() {
     log.info('pid:', process.pid);
     log.info('Connecting to rabbitMQ server...');
     rpc.connect(global.config.rabbit, function () {
         rpc.asRpcClient(function(rpcClient) {
-            var purpose = process.argv[3];
             var rpcID = process.argv[2];
-            var clusterIP = process.argv[5];
+            var parentID = process.argv[3];
+            var nodeConfig = JSON.parse(process.argv[4]);
+            var purpose = nodeConfig.purpose;
+            var clusterIP = nodeConfig.clusterIP;
 
             switch (purpose) {
             case 'conference':
@@ -125,6 +121,7 @@ function init_controller() {
                 controller = require('./audio')(rpcClient);
                 break;
             case 'video':
+                global.config.video.codecs = require('./videoCapability');
                 controller = require('./video')(rpcClient, clusterIP);
                 break;
             case 'webrtc':
@@ -145,10 +142,9 @@ function init_controller() {
                 return;
             }
 
-            var argv4=JSON.parse(process.argv[4]);
-            controller.networkInterfaces = Array.isArray(argv4) ? argv4 : [];
-            controller.clusterIP = process.argv[5];
-            controller.agentID = process.argv[6];
+            controller.networkInterfaces = Array.isArray(nodeConfig.webrtc.network_interface) ? nodeConfig.webrtc.network_interface : [];
+            controller.clusterIP = clusterIP;
+            controller.agentID = parentID;
             controller.networkInterfaces.forEach((i) => {
                 if (i.ip_address) {
                   i.private_ip_match_pattern = new RegExp(i.ip_address, 'g');
@@ -156,9 +152,6 @@ function init_controller() {
             });
 
             var rpcAPI = (controller.rpcAPI || controller);
-            rpcAPI.keepAlive = function (callback) {
-                callback('callback', true);
-            };
 
             rpc.asRpcServer(rpcID, rpcAPI, function(rpcServer) {
                 log.info(rpcID + ' as rpc server ready');
@@ -171,6 +164,9 @@ function init_controller() {
                 }, function (monitor) {
                     log.info(rpcID + ' as monitor ready');
                     process.send('READY');
+                    setInterval(() => {
+                      process.send('IMOK');
+                    }, 1000);
                 }, function(reason) {
                     process.send('ERROR');
                     log.error(reason);
@@ -221,6 +217,5 @@ process.on('SIGUSR2', function() {
 });
 
 (function main() {
-    init_env();
     init_controller();
 })();

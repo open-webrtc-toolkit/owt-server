@@ -13,10 +13,11 @@
     "ClusterWorker": "INFO",
     "LoadCollector": "INFO",
     "AmqpClient": "INFO",
-    "ErizoJS": "INFO",
+    "WorkingJS": "INFO",
+    "NodeManager": "INFO",
     "LayoutProcessor": "INFO",
     "VideoNode": "INFO",
-    "ErizoAgent": "INFO",
+    "WorkingAgent": "INFO",
     "Connections": "INFO",
     "InternalConnectionFactory": "INFO"
   }

@@ -1,5 +1,5 @@
 {
-  "name": "WooGeen-MCU-Management-API",
+  "name": "OWT-MCU-Management-API",
   "version":"4.1.0",
   "dependencies": {
     "amqp": "*",
