@@ -8,7 +8,7 @@ CURRENT_DIR=`pwd`
 
 LIB_DIR=$BUILD_DIR/libdeps
 PREFIX_DIR=$LIB_DIR/build/
-DISABLE_NONFREE=false
+DISABLE_NONFREE=true
 CLEANUP=false
 NIGHTLY=false
 NO_INTERNAL=false
@@ -16,7 +16,7 @@ NO_INTERNAL=false
 parse_arguments(){
   while [ "$1" != "" ]; do
     case $1 in
-      "--disable-nonfree")
+      "--with-nonfree")
         DISABLE_NONFREE=true
         ;;
       "--cleanup")

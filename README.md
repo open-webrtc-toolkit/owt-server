@@ -12,13 +12,29 @@ The media server for OWT provides an efficient video conference and streaming se
 
 ## How to install develop dependency
 
+In the repository root, use one of following commands to install dependency.
 - Interactive mode: `scripts/installDeps.sh`
 - Non-interactive mode: `scripts/installDepsUnattended.sh`
+In interactive mode, you need type "yes" to continue installation several times and in non-interactive, the installation continues automatically.
 
 ## How to build release package
-1. Build native components: `scripts/build.js -t all --check`
+
+### Requirements
+The media server can be built on following platforms:
+1. Ubuntu 18.04 (16.04)
+2. CentOS 7.6 (7.4)
+
+### Instructions
+In the root of the repository:
+1. Build native components: `scripts/build.js -t all --check`.
 2. Pack built components and js files: `scripts/pack.js -t all --install-module --sample-path ${webrtc-javascript-sdk-sample-conference-dist}`.
-3. For other build & pack options, run the scripts above with "--help".
+The ${webrtc-javascript-sdk-sample-conference-dist} is built from owt-javascript-sdk, see https://github.com/open-webrtc-toolkit/owt-client-javascript for details. If "--archive ${name}" option is appended to the pack command, a "Release-${name}.tgz" file will be generated in root folder. For other options, run the scripts with "--help" option.
+
+## Quic Start
+In the repository root, run following commands to start media server on single machine:
+1. `./bin/init-all.sh --deps`
+2. `./bin/start-all.sh`
+3. Open http://localhost:3001 or https://localhost:3004 to visit the javscript conference sample. Due to the test certificate, you may need click "load unsafe script" on http, or click "proceed to localhost:3004/localhost:8080" on https.
 
 ## Where to find API documents
 See "doc/servermd/Server.md" and "doc/servermd/RESTAPI.md".
