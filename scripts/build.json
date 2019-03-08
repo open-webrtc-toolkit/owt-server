@@ -32,6 +32,13 @@
             "video-transcoder-msdk"
         ]
     },
+    "all" : {
+        "include" : [
+            "mcu",
+            "video-mixer-msdk",
+            "video-transcoder-msdk"
+        ]
+    },
     "video-mixer-sw" : {
         "path" : "source/agent/video/videoMixer/videoMixer_sw",
         "gyp" : "binding.sw.gyp"
