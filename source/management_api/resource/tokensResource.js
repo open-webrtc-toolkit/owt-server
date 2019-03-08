@@ -30,7 +30,7 @@
 
 var dataAccess = require('../data_access');
 var crypto = require('crypto');
-var cloudHandler = require('../cloudHandler');
+var requestHandler = require('../requestHandler');
 var logger = require('./../logger').logger;
 var e = require('../errors');
 
@@ -94,7 +94,7 @@ var generateToken = function (currentRoom, authData, origin, callback) {
     // Values to be filled from the erizoController
     token.secure = false;
 
-    cloudHandler.schedulePortal (token.code, origin, function (ec) {
+    requestHandler.schedulePortal (token.code, origin, function (ec) {
         if (ec === 'timeout') {
             callback('error');
             return;
@@ -133,7 +133,7 @@ exports.create = function (req, res, next) {
             return next(new e.BadRequestError('Name or role not valid'));
         }
         if (tokenS === 'error') {
-            log.info('CloudHandler does not respond');
+            log.info('RequestHandler does not respond');
             return next(new e.CloudError('Failed to get portal'));
         }
         log.debug('Created token for room ', req.params.room, 'and service ', authData.service._id);
