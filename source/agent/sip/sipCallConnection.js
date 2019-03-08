@@ -3,14 +3,13 @@
 // SPDX-License-Identifier: Apache-2.0
 
 'use strict';
-require = require('module')._load('./AgentLoader');
-var SipGateway = require('./sipIn/build/Release/sipIn');
+var SipGateway = require('../sipIn/build/Release/sipIn');
 var AudioFrameConstructor = SipGateway.AudioFrameConstructor;
 var VideoFrameConstructor = SipGateway.VideoFrameConstructor;
 var AudioFramePacketizer = SipGateway.AudioFramePacketizer;
 var VideoFramePacketizer = SipGateway.VideoFramePacketizer;
 var path = require('path');
-var logger = require('./logger').logger;
+var logger = require('../logger').logger;
 var log = logger.getLogger('SipCallConnection');
 exports.SipCallConnection = function (spec, onMediaUpdate) {
     var that = {},

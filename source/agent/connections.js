@@ -4,8 +4,7 @@
 
 'use strict';
 
-require = require('module')._load('./AgentLoader');
-var logger = require('./logger').logger;
+var logger = require('../logger').logger;
 // Logger
 var log = logger.getLogger('Connections');
 

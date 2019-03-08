@@ -1,26 +1,15 @@
 {
-    "name": "audio-agent",
-    "dest": "audio_agent",
-    "node": {
-        "bin": "woogeen_audio",
-        "entry": "../workingNode.js",
-        "libpath": "audio",
-        "libfiles": [
-            "index.js",
-            "../connections.js",
-            "../InternalConnectionFactory.js"
-        ]
-    },
+    "name": "sip-agent",
+    "dest": "sip_agent",
     "common": {
         "package": "../package.json",
         "files": [
-            "../AgentLoader.js",
-            "../nodeManager.js",
             "agent.toml",
             "log4js_configuration.json",
-            "compile_ffmpeg_with_libfdkaac.sh",
             "install_deps.sh",
             "../index.js",
+            "../nodeManager.js",
+            "../workingNode.js",
             "../log4cxx.properties",
             "../../common/amqp_client.js",
             "../../common/clusterWorker.js",
@@ -28,18 +17,22 @@
             "../../common/logger.js",
             "../../common/makeRPC.js",
             "../../common/rpcChannel.js"
-        ]
+        ],
+        "folders": {
+            "sip": [
+                "index.js",
+                "sipCallConnection.js",
+                "../connections.js",
+                "../InternalConnectionFactory.js"
+            ]
+        }
     },
     "natives": {
         "libdist": "lib",
         "addons": [
             {
-                "folder": "audioMixer",
-                "name": "audioMixer"
-            },
-            {
-                "folder": "../addons/mediaFrameMulticaster",
-                "name": "mediaFrameMulticaster"
+                "folder": "sipIn",
+                "name": "sipIn"
             },
             {
                 "folder": "../addons/internalIO",
@@ -51,5 +44,5 @@
             }
         ]
     },
-    "start": "node . -U audio"
+    "start": "node . -U sip"
 }

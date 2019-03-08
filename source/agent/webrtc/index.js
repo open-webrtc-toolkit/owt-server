@@ -3,18 +3,17 @@
 // SPDX-License-Identifier: Apache-2.0
 
 'use strict';
-require = require('module')._load('./AgentLoader');
 var path = require('path');
 
 var WrtcConnection = require('./wrtcConnection');
 var Connections = require('./connections');
 var InternalConnectionFactory = require('./InternalConnectionFactory');
-var logger = require('./logger').logger;
+var logger = require('../logger').logger;
 
 // Logger
 var log = logger.getLogger('WebrtcNode');
 
-var addon = require('./webrtcLib/build/Release/webrtc');
+var addon = require('../webrtcLib/build/Release/webrtc');
 
 var threadPool = new addon.ThreadPool(global.config.webrtc.num_workers || 24);
 threadPool.start();
