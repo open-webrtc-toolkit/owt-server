@@ -272,33 +272,6 @@ install_libsrtp2(){
   fi
 }
 
-install_oovoosdk(){
-  mkdir -p $PREFIX_DIR/lib
-  if [[ "$OS" =~ .*ubuntu.* ]]
-  then
-    cp -av $ROOT/third_party/liboovoosdk-ubuntu.so $PREFIX_DIR/lib/liboovoosdk.so
-  elif [[ "$OS" =~ .*centos.* ]]
-  then
-    cp -av $ROOT/third_party/liboovoosdk-el.so $PREFIX_DIR/lib/liboovoosdk.so
-  fi
-}
-
-install_tcmalloc(){
-  if [ -d $LIB_DIR ]; then
-    cd $LIB_DIR
-    wget -c https://github.com/gperftools/gperftools/releases/download/gperftools-2.1/gperftools-2.1.tar.gz
-    tar -zxf gperftools-2.1.tar.gz
-    cd gperftools-2.1
-    ./configure --prefix=$PREFIX_DIR --disable-cpu-profiler --disable-heap-profiler --disable-heap-checker --disable-debugalloc
-    make -s V=0
-    make install
-    cd $CURRENT_DIR
-  else
-    mkdir -p $LIB_DIR
-    install_tcmalloc
-  fi
-}
-
 install_node() {
   local NODE_VERSION="v8.15.0"
   echo -e "\x1b[32mInstalling nvm...\x1b[0m"
