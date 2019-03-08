@@ -29,7 +29,7 @@
 'use strict';
 var dataAccess = require('../data_access');
 var logger = require('./../logger').logger;
-var cloudHandler = require('../cloudHandler');
+var requestHandler = require('../requestHandler');
 var e = require('../errors');
 
 // Logger
@@ -60,7 +60,7 @@ exports.createRoom = function (req, res, next) {
             // Notify SIP portal if SIP room created
             if (result && result.sip) {
                 log.info('Notify SIP Portal on create Room');
-                cloudHandler.notifySipPortal('create', result, function(){});
+                requestHandler.notifySipPortal('create', result, function(){});
             }
         } else {
             log.info('Room creation failed', err ? err.message : options);
