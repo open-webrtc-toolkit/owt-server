@@ -1,5 +1,5 @@
 {
-  "name": "WooGeen-MCU-Portal",
+  "name": "OWT-MCU-Portal",
   "version":"4.1.0",
   "dependencies": {
     "amqp": "*",

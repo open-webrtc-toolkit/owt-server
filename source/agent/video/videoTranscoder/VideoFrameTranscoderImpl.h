@@ -31,22 +31,22 @@
 
 namespace mcu {
 
-class VideoFrameTranscoderImpl : public VideoFrameTranscoder, public woogeen_base::FrameSource, public woogeen_base::FrameDestination {
+class VideoFrameTranscoderImpl : public VideoFrameTranscoder, public owt_base::FrameSource, public owt_base::FrameDestination {
 public:
     VideoFrameTranscoderImpl();
     ~VideoFrameTranscoderImpl();
 
-    bool setInput(int input, woogeen_base::FrameFormat, woogeen_base::FrameSource*);
+    bool setInput(int input, owt_base::FrameFormat, owt_base::FrameSource*);
     void unsetInput(int input);
 
     bool addOutput(int output,
-            woogeen_base::FrameFormat,
-            const woogeen_base::VideoCodecProfile profile,
-            const woogeen_base::VideoSize&,
+            owt_base::FrameFormat,
+            const owt_base::VideoCodecProfile profile,
+            const owt_base::VideoSize&,
             const unsigned int framerateFPS,
             const unsigned int bitrateKbps,
             const unsigned int keyFrameIntervalSeconds,
-            woogeen_base::FrameDestination*);
+            owt_base::FrameDestination*);
     void removeOutput(int output);
 
     void requestKeyFrame(int output);
@@ -54,17 +54,17 @@ public:
     void drawText(const std::string& textSpec);
     void clearText();
 
-    void onFrame(const woogeen_base::Frame& frame) {deliverFrame(frame);}
+    void onFrame(const owt_base::Frame& frame) {deliverFrame(frame);}
 
 private:
     struct Input {
-        woogeen_base::FrameSource* source;
-        boost::shared_ptr<woogeen_base::VideoFrameDecoder> decoder;
+        owt_base::FrameSource* source;
+        boost::shared_ptr<owt_base::VideoFrameDecoder> decoder;
     };
 
     struct Output {
-        boost::shared_ptr<woogeen_base::VideoFrameProcesser> processer;
-        boost::shared_ptr<woogeen_base::VideoFrameEncoder> encoder;
+        boost::shared_ptr<owt_base::VideoFrameProcesser> processer;
+        boost::shared_ptr<owt_base::VideoFrameEncoder> encoder;
         int streamId;
     };
 
@@ -102,7 +102,7 @@ VideoFrameTranscoderImpl::~VideoFrameTranscoderImpl()
     }
 }
 
-inline bool VideoFrameTranscoderImpl::setInput(int input, woogeen_base::FrameFormat format, woogeen_base::FrameSource* source)
+inline bool VideoFrameTranscoderImpl::setInput(int input, owt_base::FrameFormat format, owt_base::FrameSource* source)
 {
     assert(source);
 
@@ -111,18 +111,18 @@ inline bool VideoFrameTranscoderImpl::setInput(int input, woogeen_base::FrameFor
     if (it != m_inputs.end())
         return false;
 
-    boost::shared_ptr<woogeen_base::VideoFrameDecoder> decoder;
+    boost::shared_ptr<owt_base::VideoFrameDecoder> decoder;
 
 #ifdef ENABLE_MSDK
-    if (!decoder && woogeen_base::MsdkFrameDecoder::supportFormat(format))
-        decoder.reset(new woogeen_base::MsdkFrameDecoder());
+    if (!decoder && owt_base::MsdkFrameDecoder::supportFormat(format))
+        decoder.reset(new owt_base::MsdkFrameDecoder());
 #endif
 
-    if (!decoder && woogeen_base::VCMFrameDecoder::supportFormat(format))
-        decoder.reset(new woogeen_base::VCMFrameDecoder(format));
+    if (!decoder && owt_base::VCMFrameDecoder::supportFormat(format))
+        decoder.reset(new owt_base::VCMFrameDecoder(format));
 
-    if (!decoder && woogeen_base::FFmpegFrameDecoder::supportFormat(format))
-        decoder.reset(new woogeen_base::FFmpegFrameDecoder());
+    if (!decoder && owt_base::FFmpegFrameDecoder::supportFormat(format))
+        decoder.reset(new owt_base::FFmpegFrameDecoder());
 
     if (!decoder)
         return false;
@@ -151,32 +151,32 @@ inline void VideoFrameTranscoderImpl::unsetInput(int input)
 }
 
 inline bool VideoFrameTranscoderImpl::addOutput(int output,
-                                           woogeen_base::FrameFormat format,
-                                           const woogeen_base::VideoCodecProfile profile,
-                                           const woogeen_base::VideoSize& rootSize,
+                                           owt_base::FrameFormat format,
+                                           const owt_base::VideoCodecProfile profile,
+                                           const owt_base::VideoSize& rootSize,
                                            const unsigned int framerateFPS,
                                            const unsigned int bitrateKbps,
                                            const unsigned int keyFrameIntervalSeconds,
-                                           woogeen_base::FrameDestination* dest)
+                                           owt_base::FrameDestination* dest)
 {
-    boost::shared_ptr<woogeen_base::VideoFrameEncoder> encoder;
-    boost::shared_ptr<woogeen_base::VideoFrameProcesser> processer;
+    boost::shared_ptr<owt_base::VideoFrameEncoder> encoder;
+    boost::shared_ptr<owt_base::VideoFrameProcesser> processer;
     boost::upgrade_lock<boost::shared_mutex> lock(m_outputMutex);
     int32_t streamId = -1;
 
 #ifdef ENABLE_MSDK
-    if (!encoder && woogeen_base::MsdkFrameEncoder::supportFormat(format)) {
-        encoder.reset(new woogeen_base::MsdkFrameEncoder(format, profile, false));
+    if (!encoder && owt_base::MsdkFrameEncoder::supportFormat(format)) {
+        encoder.reset(new owt_base::MsdkFrameEncoder(format, profile, false));
     }
 #endif
 
 #if ENABLE_SVT_HEVC_ENCODER
-    if (!encoder && format == woogeen_base::FRAME_FORMAT_H265)
-        encoder.reset(new woogeen_base::SVTHEVCEncoder(format, profile));
+    if (!encoder && format == owt_base::FRAME_FORMAT_H265)
+        encoder.reset(new owt_base::SVTHEVCEncoder(format, profile));
 #endif
 
-    if (!encoder && woogeen_base::VCMFrameEncoder::supportFormat(format))
-        encoder.reset(new woogeen_base::VCMFrameEncoder(format, profile, false));
+    if (!encoder && owt_base::VCMFrameEncoder::supportFormat(format))
+        encoder.reset(new owt_base::VCMFrameEncoder(format, profile, false));
 
     if (!encoder)
         return false;
@@ -186,7 +186,7 @@ inline bool VideoFrameTranscoderImpl::addOutput(int output,
         return false;
 
     if (!processer) {
-        processer.reset(new woogeen_base::FrameProcesser());
+        processer.reset(new owt_base::FrameProcesser());
     }
 
     if (!processer->init(encoder->getInputFormat(), rootSize.width, rootSize.height, framerateFPS))

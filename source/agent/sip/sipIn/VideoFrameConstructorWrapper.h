@@ -13,15 +13,15 @@
 #include <node_object_wrap.h>
 
 /*
- * Wrapper class of woogeen_base::VideoFrameConstructor
+ * Wrapper class of owt_base::VideoFrameConstructor
  */
 class VideoFrameConstructor : public MediaSink,
                               public NodeEventRegistry,
-                              public woogeen_base::VideoInfoListener {
+                              public owt_base::VideoInfoListener {
  public:
   static void Init(v8::Local<v8::Object> exports);
-  woogeen_base::VideoFrameConstructor* me;
-  woogeen_base::FrameSource* src;
+  owt_base::VideoFrameConstructor* me;
+  owt_base::FrameSource* src;
 
   erizo::MediaSink* msink;
  private:
@@ -45,7 +45,7 @@ class VideoFrameConstructor : public MediaSink,
 
   static void addEventListener(const v8::FunctionCallbackInfo<v8::Value>& args);
 
-  // Implement woogeen_base::VideoInfoListener
+  // Implement owt_base::VideoInfoListener
   void onVideoInfo(const std::string& message) override;
 };
 

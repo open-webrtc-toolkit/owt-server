@@ -1,0 +1,36 @@
+{
+    "name": "management-api",
+    "dest": "management_api",
+    "common": {
+        "package": "package.json",
+        "files": [
+            "*.js",
+            "*.sh",
+            "log4js_configuration.json",
+            "management_api.toml",
+            "../common/logger.js",
+            "../common/cipher.js",
+            "../../scripts/release/initcert.js",
+            "../../scripts/detectOS.sh"
+        ],
+        "folders": {
+            "auth": [
+                "auth/*"
+            ],
+            "resource": [
+                "resource/*"
+            ],
+            "rpc": [
+                "rpc/*"
+            ],
+            "cert": [
+                "../../cert/*.pfx",
+                "../../cert/.woogeen.keystore"
+            ],
+            "data_access": [
+                "../data_access/*"
+            ]
+        }
+    },
+    "start": "node api.js"
+}

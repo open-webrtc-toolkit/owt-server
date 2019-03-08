@@ -29,10 +29,10 @@ extern "C" {
 }
 
 namespace mcu {
-using namespace woogeen_base;
+using namespace owt_base;
 using namespace webrtc;
 
-class FfDecoder : public AudioDecoder, public woogeen_base::FrameSource {
+class FfDecoder : public AudioDecoder, public owt_base::FrameSource {
     DECLARE_LOGGER();
 
 public:
@@ -42,7 +42,7 @@ public:
     bool init() override;
     bool getAudioFrame(AudioFrame *audioFrame) override;
 
-    // Implements woogeen_base::FrameDestination
+    // Implements owt_base::FrameDestination
     void onFrame(const Frame& frame) override;
 
 protected:

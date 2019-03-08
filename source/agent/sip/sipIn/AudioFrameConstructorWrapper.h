@@ -11,13 +11,13 @@
 #include <node_object_wrap.h>
 
 /*
- * Wrapper class of woogeen_base::AudioFrameConstructor
+ * Wrapper class of owt_base::AudioFrameConstructor
  */
 class AudioFrameConstructor : public MediaSink {
  public:
   static void Init(v8::Local<v8::Object> exports);
-  woogeen_base::AudioFrameConstructor* me;
-  woogeen_base::FrameSource* src;
+  owt_base::AudioFrameConstructor* me;
+  owt_base::FrameSource* src;
 
  private:
   AudioFrameConstructor();

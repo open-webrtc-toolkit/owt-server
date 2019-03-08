@@ -27,7 +27,7 @@ config.portal.reconnection_ticket_lifetime = config.portal.reconnection_ticket_l
 config.portal.reconnection_timeout = Number.isInteger(config.portal.reconnection_timeout) ? config.portal.reconnection_timeout : 60;
 
 config.cluster = config.cluster || {};
-config.cluster.name = config.cluster.name || 'woogeen-cluster';
+config.cluster.name = config.cluster.name || 'owt-cluster';
 config.cluster.join_retry = config.cluster.join_retry || 60;
 config.cluster.report_load_interval = config.cluster.report_load_interval || 1000;
 config.cluster.max_load = config.cluster.max_laod || 0.85;
@@ -172,7 +172,7 @@ var startServers = function(id, tokenKey) {
   var rpcReq = require('./rpcRequest')(rpcChannel);
 
   portal = require('./portal')({tokenKey: tokenKey,
-                                tokenServer: 'nuve',
+                                tokenServer: 'ManagementApi',
                                 clusterName: config.cluster.name,
                                 selfRpcId: id},
                                 rpcReq);

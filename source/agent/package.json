@@ -1,5 +1,5 @@
 {
-  "name": "WooGeen-MCU-Agent",
+  "name": "OWT-MCU-Agent",
   "version":"4.1.0",
   "dependencies": {
     "amqp": "*",
