@@ -21,20 +21,23 @@ In interactive mode, you need type "yes" to continue installation several times 
 
 ### Requirements
 The media server can be built on following platforms:
-1. Ubuntu 18.04 (16.04)
-2. CentOS 7.6 (7.4)
+1. Ubuntu 18.04
+2. CentOS 7.6
 
 ### Instructions
 In the root of the repository:
 1. Build native components: `scripts/build.js -t all --check`.
 2. Pack built components and js files: `scripts/pack.js -t all --install-module --sample-path ${webrtc-javascript-sdk-sample-conference-dist}`.
-The ${webrtc-javascript-sdk-sample-conference-dist} is built from owt-javascript-sdk, see https://github.com/open-webrtc-toolkit/owt-client-javascript for details. If "--archive ${name}" option is appended to the pack command, a "Release-${name}.tgz" file will be generated in root folder. For other options, run the scripts with "--help" option.
+
+The ${webrtc-javascript-sdk-sample-conference-dist} is built from owt-javascript-sdk, see https://github.com/open-webrtc-toolkit/owt-client-javascript for details.
+
+If "--archive ${name}" option is appended to the pack command, a "Release-${name}.tgz" file will be generated in root folder. For other options, run the scripts with "--help" option.
 
 ## Quic Start
 In the repository root, run following commands to start media server on single machine:
 1. `./bin/init-all.sh --deps`
 2. `./bin/start-all.sh`
-3. Open http://localhost:3001 or https://localhost:3004 to visit the javscript conference sample. Due to the test certificate, you may need click "load unsafe script" on http, or click "proceed to localhost:3004/localhost:8080" on https.
+3. Open https://localhost:3004 to visit the web sample page. Due to the test certificate, you may need confirm this unsafe access.
 
 ## Where to find API documents
 See "doc/servermd/Server.md" and "doc/servermd/RESTAPI.md".
@@ -51,3 +54,5 @@ Use the "Issues" tab on Github.
 
 ## See Also
 http://webrtc.intel.com
+
+

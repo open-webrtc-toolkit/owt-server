@@ -141,7 +141,7 @@ function init_controller() {
                 return;
             }
 
-            controller.networkInterfaces = Array.isArray(nodeConfig.webrtc.network_interface) ? nodeConfig.webrtc.network_interface : [];
+            controller.networkInterfaces = Array.isArray(nodeConfig.webrtc.network_interfaces) ? nodeConfig.webrtc.network_interfaces : [];
             controller.clusterIP = clusterIP;
             controller.agentID = parentID;
             controller.networkInterfaces.forEach((i) => {
