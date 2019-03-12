@@ -39,7 +39,7 @@ global.config.capacity = global.config.capacity || {};
 
 global.config.webrtc = global.config.webrtc || {};
 global.config.webrtc.ip_address = global.config.webrtc.ip_address || '';
-global.config.webrtc.network_interface = global.config.webrtc.network_interface || undefined;
+global.config.webrtc.network_interfaces = global.config.webrtc.network_interfaces || undefined;
 
 global.config.recording = global.config.recording || {};
 global.config.recording.path = global.config.recording.path || '/tmp';
