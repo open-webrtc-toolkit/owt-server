@@ -28,14 +28,24 @@ SVTHEVCEncoder::SVTHEVCEncoder(FrameFormat format, VideoCodecProfile profile, bo
     , m_handle(NULL)
     , m_forceIDR(false)
     , m_frameCount(0)
+    , m_frameEncodedCount(0)
     , m_enableBsDump(false)
     , m_bsDumpfp(NULL)
 {
     memset(&m_encParameters, 0, sizeof(m_encParameters));
+
+    m_srv       = boost::make_shared<boost::asio::io_service>();
+    m_srvWork   = boost::make_shared<boost::asio::io_service::work>(*m_srv);
+    m_thread    = boost::make_shared<boost::thread>(boost::bind(&boost::asio::io_service::run, m_srv));
 }
 
 SVTHEVCEncoder::~SVTHEVCEncoder()
 {
+    m_srvWork.reset();
+    m_srv->stop();
+    m_thread.reset();
+    m_srv.reset();
+
     if (m_encoderReady) {
         EbDeinitEncoder(m_handle);
         EbDeinitHandle(m_handle);
@@ -58,12 +68,12 @@ void SVTHEVCEncoder::initDefaultParameters()
     // Encoding preset
     m_encParameters.encMode                         = 9;
     m_encParameters.tune                            = 1;
-    m_encParameters.latencyMode                     = 0;
+    m_encParameters.latencyMode                     = 1;
 
     // GOP Structure
     m_encParameters.intraPeriodLength               = 255;
     m_encParameters.intraRefreshType                = 2;
-    m_encParameters.hierarchicalLevels              = 3;
+    m_encParameters.hierarchicalLevels              = 0;
 
     m_encParameters.predStructure                   = 0;
     m_encParameters.baseLayerSwitchMode             = 0;
@@ -178,8 +188,12 @@ void SVTHEVCEncoder::updateParameters(uint32_t width, uint32_t height, uint32_t 
     m_encParameters.sourceHeight        = height;
 
     //gop
+#if 0
     uint32_t intraPeriodLength          = keyFrameIntervalSeconds * frameRate;
     m_encParameters.intraPeriodLength   = (intraPeriodLength < 255) ? intraPeriodLength : 255;
+#else
+    m_encParameters.intraPeriodLength   = frameRate >> 1;
+#endif
 
     //framerate
     m_encParameters.frameRate           = frameRate;
@@ -260,6 +274,12 @@ bool SVTHEVCEncoder::initEncoder(uint32_t width, uint32_t height, uint32_t frame
     return true;
 }
 
+bool SVTHEVCEncoder::initEncoderAsync(uint32_t width, uint32_t height, uint32_t frameRate, uint32_t bitrateKbps, uint32_t keyFrameIntervalSeconds)
+{
+    m_srv->post(boost::bind(&SVTHEVCEncoder::InitEncoder, this, width, height, frameRate, bitrateKbps, keyFrameIntervalSeconds));
+    return true;
+}
+
 int32_t SVTHEVCEncoder::generateStream(uint32_t width, uint32_t height, uint32_t frameRate, uint32_t bitrateKbps, uint32_t keyFrameIntervalSeconds, owt_base::FrameDestination* dest)
 {
     boost::unique_lock<boost::shared_mutex> ulock(m_mutex);
@@ -279,11 +299,12 @@ int32_t SVTHEVCEncoder::generateStream(uint32_t width, uint32_t height, uint32_t
     m_keyFrameIntervalSeconds = keyFrameIntervalSeconds;
 
     if (m_width != 0 && m_height != 0) {
-        if (!initEncoder(m_width, m_height, m_frameRate, m_bitrateKbps, m_keyFrameIntervalSeconds))
+        if (!initEncoderAsync(m_width, m_height, m_frameRate, m_bitrateKbps, m_keyFrameIntervalSeconds))
             return -1;
     }
 
     m_frameCount = 0;
+    m_frameEncodedCount = 0;
     m_dest = dest;
 
     return 0;
@@ -294,20 +315,6 @@ void SVTHEVCEncoder::degenerateStream(int32_t streamId)
     boost::unique_lock<boost::shared_mutex> ulock(m_mutex);
 
     ELOG_DEBUG_T("degenerateStream");
-
-    if (m_encoderReady) {
-        EbDeinitEncoder(m_handle);
-        EbDeinitHandle(m_handle);
-
-        deallocateBuffers();
-
-        if (m_bsDumpfp) {
-            fclose(m_bsDumpfp);
-            m_bsDumpfp = NULL;
-        }
-
-        m_encoderReady = false;
-    }
 
     m_dest = NULL;
 }
@@ -344,7 +351,7 @@ void SVTHEVCEncoder::onFrame(const Frame& frame)
         if (m_bitrateKbps == 0)
             m_bitrateKbps = calcBitrate(m_width, m_height, m_frameRate);
 
-        if (!initEncoder(m_width, m_height, m_frameRate, m_bitrateKbps, m_keyFrameIntervalSeconds)) {
+        if (!initEncoderAsync(m_width, m_height, m_frameRate, m_bitrateKbps, m_keyFrameIntervalSeconds)) {
             return;
         }
     }
@@ -363,6 +370,7 @@ void SVTHEVCEncoder::onFrame(const Frame& frame)
         return;
     }
 
+    inputBufferHeader->pts = m_frameCount++;
     if (m_forceIDR) {
         inputBufferHeader->sliceType = EB_IDR_PICTURE;
         m_forceIDR = false;
@@ -371,20 +379,29 @@ void SVTHEVCEncoder::onFrame(const Frame& frame)
     }
 
     ELOG_TRACE_T("SendPicture, sliceType(%d)", inputBufferHeader->sliceType);
+
     return_error = EbH265EncSendPicture(m_handle, inputBufferHeader);
     if (return_error != EB_ErrorNone) {
         ELOG_ERROR_T("SendPicture failed, ret 0x%x", return_error);
         return;
     }
 
+    ELOG_TRACE_T("frameCount %d, frameEncodedCount %d", m_frameCount, m_frameEncodedCount);
+
     EB_BUFFERHEADERTYPE *streamBufferHeader = &m_streamBufferPool[0];
 
-    return_error = EbH265GetPacket(m_handle, &streamBufferHeader, false);
-    if (return_error == EB_ErrorMax) {
-        ELOG_ERROR_T("Error while encoding, code 0x%x", streamBufferHeader->nFlags);
-        return;
-    }else if (return_error != EB_NoErrorEmptyQueue) {
-        fillPacketDone(streamBufferHeader);
+    while (true) {
+        return_error = EbH265GetPacket(m_handle, &streamBufferHeader, false);
+        if (return_error == EB_ErrorMax) {
+            ELOG_ERROR_T("Error while encoding, code 0x%x", streamBufferHeader->nFlags);
+            return;
+        } else if (return_error != EB_NoErrorEmptyQueue) {
+            fillPacketDone(streamBufferHeader);
+
+            EbH265ReleaseOutBuffer(&streamBufferHeader);
+        } else {
+            break;
+        }
     }
 }
 
@@ -493,9 +510,8 @@ bool SVTHEVCEncoder::allocateBuffers()
         inputPtr->crStride  = m_encParameters.sourceWidth >> 1;
         inputPtr->cbStride  = m_encParameters.sourceWidth >> 1;
 
-
         m_inputBufferPool[bufferIndex].nAllocLen    = luma8bitSize + chroma8bitSize + chroma8bitSize;
-        m_inputBufferPool[bufferIndex].pAppPrivate  = this;
+        m_inputBufferPool[bufferIndex].pAppPrivate  = NULL;
         m_inputBufferPool[bufferIndex].sliceType    = EB_INVALID_PICTURE;
 
         m_freeInputBuffers.push(&m_inputBufferPool[bufferIndex]);
@@ -577,10 +593,12 @@ void SVTHEVCEncoder::fillPacketDone(EB_BUFFERHEADERTYPE* pBufferHeader)
     outFrame.format     = FRAME_FORMAT_H265;
     outFrame.payload    = pBufferHeader->pBuffer;
     outFrame.length     = pBufferHeader->nFilledLen;
-    outFrame.timeStamp = (m_frameCount++) * 1000 / m_encParameters.frameRate * 90;
+    outFrame.timeStamp = (m_frameEncodedCount++) * 1000 / m_encParameters.frameRate * 90;
     outFrame.additionalInfo.video.width         = m_encParameters.sourceWidth;
     outFrame.additionalInfo.video.height        = m_encParameters.sourceHeight;
     outFrame.additionalInfo.video.isKeyFrame    = (pBufferHeader->sliceType == EB_IDR_PICTURE);
+
+    ELOG_TRACE_T("frameCount %d, frameEncodedCount %d", m_frameCount, m_frameEncodedCount);
 
     ELOG_TRACE_T("deliverFrame, %s, %dx%d(%s), length(%d)",
             getFormatStr(outFrame.format),
