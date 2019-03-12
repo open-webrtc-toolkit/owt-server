@@ -26,8 +26,11 @@ if (global.config.webrtc.use_nicer) {
   ioThreadPool.start();
 }
 
-module.exports = function (rpcClient) {
-    var that = {};
+module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
+    var that = {
+      agentID: parentRpcId,
+      clusterIP: clusterWorkerIP
+    };
     var connections = new Connections;
     var internalConnFactory = new InternalConnectionFactory;
 
@@ -47,7 +50,7 @@ module.exports = function (rpcClient) {
             direction: direction,
             media: options.media,
             formatPreference: options.formatPreference,
-            network_interfaces: that.networkInterfaces
+            network_interfaces: global.config.webrtc.network_interfaces
         }, function (status) {
             notifyStatus(options.controller, connectionId, direction, status);
         }, function (mediaUpdate) {

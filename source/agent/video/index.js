@@ -1158,18 +1158,21 @@ function VTranscoder(rpcClient, clusterIP) {
     return that;
 };
 
-module.exports = function (rpcClient, clusterIP) {
-    var that = {},
+module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
+    var that = {
+      agentID: parentRpcId,
+      clusterIP: clusterWorkerIP
+    },
         processor = undefined;
 
     that.init = function (service, config, belongTo, controller, mixView, callback) {
         if (processor === undefined) {
             if (service === 'mixing') {
-                processor = new VMixer(rpcClient, clusterIP);
+                processor = new VMixer(rpcClient, clusterWorkerIP);
                 processor.initialize(config, belongTo, controller, mixView, callback);
                 that.__proto__ = processor;
             } else if (service === 'transcoding') {
-                processor = new VTranscoder(rpcClient, clusterIP);
+                processor = new VTranscoder(rpcClient, clusterWorkerIP);
                 processor.initialize(config.motionFactor, controller, callback);
                 that.__proto__ = processor;
             } else {
