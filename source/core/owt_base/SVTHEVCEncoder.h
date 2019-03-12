@@ -7,10 +7,11 @@
 
 #include <queue>
 
+#include <boost/make_shared.hpp>
 #include <boost/scoped_ptr.hpp>
 #include <boost/shared_ptr.hpp>
+#include <boost/asio.hpp>
 #include <boost/thread.hpp>
-#include <boost/thread/shared_mutex.hpp>
 
 #include "logger.h"
 #include "MediaFramePipeline.h"
@@ -45,7 +46,13 @@ protected:
     bool allocateBuffers();
     void deallocateBuffers();
 
+    static void InitEncoder(SVTHEVCEncoder*This, uint32_t width, uint32_t height, uint32_t frameRate, uint32_t bitrateKbps, uint32_t keyFrameIntervalSeconds)
+    {
+        This->initEncoder(width, height, frameRate, bitrateKbps, keyFrameIntervalSeconds);
+    }
+
     bool initEncoder(uint32_t width, uint32_t height, uint32_t frameRate, uint32_t bitrateKbps, uint32_t keyFrameIntervalSeconds);
+    bool initEncoderAsync(uint32_t width, uint32_t height, uint32_t frameRate, uint32_t bitrateKbps, uint32_t keyFrameIntervalSeconds);
 
     bool convert2BufferHeader(const Frame& frame, EB_BUFFERHEADERTYPE *bufferHeader);
 
@@ -72,8 +79,13 @@ private:
 
     bool m_forceIDR;
     uint32_t m_frameCount;
+    uint32_t m_frameEncodedCount;
 
     boost::shared_mutex m_mutex;
+
+    boost::shared_ptr<boost::asio::io_service> m_srv;
+    boost::shared_ptr<boost::asio::io_service::work> m_srvWork;
+    boost::shared_ptr<boost::thread> m_thread;
 
     bool m_enableBsDump;
     FILE *m_bsDumpfp;
