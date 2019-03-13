@@ -10,7 +10,10 @@
             "install_deps.sh",
             "install_openh264.sh",
             "uninstall_openh264.sh",
+            "configLoader.js",
+            "videoCapability.js",
             "../index.js",
+            "../networkHelper.js",
             "../nodeManager.js",
             "../workingNode.js",
             "../log4cxx.properties",
@@ -20,7 +23,6 @@
             "../../common/logger.js",
             "../../common/makeRPC.js",
             "../../common/rpcChannel.js",
-            "../../common/videoCapability.js",
             "../../../scripts/detectOS.sh",
             "compile_svtHevcEncoder.sh"
         ],

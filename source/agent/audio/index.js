@@ -15,8 +15,11 @@ var logger = require('../logger').logger;
 var log = logger.getLogger('AudioNode');
 var InternalConnectionFactory = require('./InternalConnectionFactory');
 
-module.exports = function (rpcClient) {
-    var that = {},
+module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
+    var that = {
+      agentID: parentRpcId,
+      clusterIP: clusterWorkerIP
+    },
         engine,
         belong_to_room,
         controller,
@@ -281,7 +284,7 @@ module.exports = function (rpcClient) {
     };
 
     that.init = function (service, config, belongToRoom, controller, mixView, callback) {
-        var audioConfig = global.config.audio;
+        var audioConfig = global.config.audio || {};
         log.debug('init, audioConfig:', audioConfig);
 
         if (service === 'mixing') {

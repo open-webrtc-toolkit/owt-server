@@ -2603,8 +2603,11 @@ var Conference = function (rpcClient, selfRpcId) {
 };
 
 
-module.exports = function (rpcClient, selfRpcId) {
-  var that = {};
+module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
+  var that = {
+    agentID: parentRpcId,
+    clusterIP: clusterWorkerIP
+  };
 
   var conference = Conference(rpcClient, selfRpcId);
 
