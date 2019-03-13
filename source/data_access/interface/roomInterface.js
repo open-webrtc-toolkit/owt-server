@@ -82,7 +82,6 @@ const removeNull = (obj) => {
  * Create Room.
  */
 exports.create = function (serviceId, roomOption, callback) {
-  var room = new Room(Default.ROOM_CONFIG);
   var attr;
   for (attr in Default.ROOM_CONFIG) {
     if (!roomOption[attr]) {
