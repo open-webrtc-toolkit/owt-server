@@ -4,7 +4,6 @@
 
 'use strict';
 
-var Fraction = require('fraction.js');
 var logger = require('./logger').logger;
 
 var AccessController = require('./accessController');

@@ -7,6 +7,7 @@ var mongoose = require('mongoose');
 var Fraction = require('fraction.js');
 var Schema = mongoose.Schema;
 var Layout = require('./layoutTemplate');
+var DefaultUtil = require('../defaults');
 
 var ColorRGB = {
   type: Number,
@@ -46,24 +47,29 @@ var Region = {
 var Resolution = {
   width: { type: Number, default: 640 },
   height: { type: Number, default: 480 }
-
 };
+
+var AudioSchema = new Schema({
+  codec: { type: String },
+  sampleRate: { type: Number },
+  channelNum: { type: Number }
+},
+{ _id: false });
+
+var VideoSchema = new Schema({
+  codec: { type: String },
+  profile: { type: String }
+},
+{ _id: false });
 
 var ViewSchema = new Schema({
   label: { type: String, default: 'common' },
   audio: {
-    format: {
-      codec: { type: String, default: 'opus' },
-      sampleRate: { type: Number, default: 48000 },
-      channelNum: { type: Number, default: 2 }
-    },
+    format: { type: AudioSchema, default: DefaultUtil.AUDIO_OUT[0] },
     vad: { type: Boolean, default: true },
   },
   video: {
-    format: {
-      codec: { type: String, default: 'vp8' },
-      profile: { type: String }
-    },
+    format: { type: VideoSchema, default: DefaultUtil.VIDEO_OUT[0] },
     parameters: {
       resolution: Resolution,
       framerate: { type: Number, default: 24 },
