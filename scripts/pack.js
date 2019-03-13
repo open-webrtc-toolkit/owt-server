@@ -52,8 +52,13 @@ if (options.help || Object.keys(options).length === 0) {
 }
 
 var npmInstallOption = '';
+if (process.getuid && process.getuid() === 0) {
+  // Running as root
+  console.log('\x1b[33mWarning: running as root\x1b[0m');
+  npmInstallOption += ' --unsafe-perm';
+}
 if (options.archive) {
-  npmInstallOption = ' --production';
+  npmInstallOption += ' --production';
 }
 
 if (options.encrypt) {
