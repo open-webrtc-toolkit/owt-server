@@ -5,10 +5,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
 'use strict';
-var Fraction = require('fraction.js');
-
-var databaseUrl = 'localhost/owtdb';
-var collections = ['rooms', 'services'];
 
 var databaseUrl = process.env.DB_URL;
 if (!databaseUrl) {
@@ -16,32 +12,45 @@ if (!databaseUrl) {
 }
 
 var db = require('mongojs')(databaseUrl, ['rooms', 'services']);
+var Fraction = require('fraction.js');
+var DefaultUtil = require('./data_access/defaults');
+var Room = require('./data_access/model/roomModel');
 
-function makeFraction(num) {
-  if (typeof num === 'number') return num.toString();
-  if (typeof num.denominator === 'number' && typeof num.numerator === 'number')
-    return makeFraction(num.numerator, num.denominator);
-  return '1';
+function fracString(num) {
+  var frac = Fraction(0);
+  try {
+    if (typeof num.denominator === 'number' && typeof num.numerator === 'number') {
+      frac = Fraction(num.numerator, num.denominator);
+    } else {
+      frac = Fraction(num);
+    }
+  } catch (e) {
+    // use 0 as default
+  }
+  return frac.toFraction();
 }
 
-function translateCustom(custom) {
+function upgradeLayoutCustom(custom) {
   custom.forEach(function (tpl) {
     tpl.region.forEach(function (region) {
       if (typeof region.relativesize === 'number') {
         region.shape = 'rectangle';
         region.area = {
-          left: makeFraction(region.left),
-          top: makeFraction(region.top),
-          width: makeFraction(region.relativesize),
-          height: makeFraction(region.relativesize)
+          left: fracString(region.left),
+          top: fracString(region.top),
+          width: fracString(region.relativesize),
+          height: fracString(region.relativesize)
         };
         delete region.relativesize;
       } else {
+        if (!region.area) {
+          region.area = {};
+        }
         region.area = {
-          left: makeFraction(region.area.left),
-          top: makeFraction(region.area.top),
-          width: makeFraction(region.area.width),
-          height: makeFraction(region.area.height)
+          left: fracString(region.area.left),
+          top: fracString(region.area.top),
+          width: fracString(region.area.width),
+          height: fracString(region.area.height)
         };
       }
     });
@@ -49,7 +58,7 @@ function translateCustom(custom) {
   return custom;
 }
 
-function translateColor(oldColor) {
+function upgradeColor(oldColor) {
   var colorMap = {
     'white': { r: 255, g: 255, b: 255 },
     'black': { r: 0, g: 0, b: 0 }
@@ -63,225 +72,7 @@ function translateColor(oldColor) {
   return oldColor;
 }
 
-function translateOldRoom(oldConfig) {
-  const partial_linear_bitrate = [
-    {size: 0, bitrate: 0},
-    {size: 76800, bitrate: 400},  //320*240, 30fps
-    {size: 307200, bitrate: 800}, //640*480, 30fps
-    {size: 921600, bitrate: 2000},  //1280*720, 30fps
-    {size: 2073600, bitrate: 4000}, //1920*1080, 30fps
-    {size: 8294400, bitrate: 16000} //3840*2160, 30fps
-  ];
-
-  const standardBitrate = (width, height, framerate) => {
-    let bitrate = -1;
-    let prev = 0;
-    let next = 0;
-    let portion = 0.0;
-    let def = width * height * framerate / 30;
-
-    // find the partial linear section and calculate bitrate
-    for (var i = 0; i < partial_linear_bitrate.length - 1; i++) {
-      prev = partial_linear_bitrate[i].size;
-      next = partial_linear_bitrate[i+1].size;
-      if (def > prev && def <= next) {
-        portion = (def - prev) / (next - prev);
-        bitrate = partial_linear_bitrate[i].bitrate + (partial_linear_bitrate[i+1].bitrate - partial_linear_bitrate[i].bitrate) * portion;
-        break;
-      }
-    }
-
-    // set default bitrate for over large resolution
-    if (-1 == bitrate) {
-      bitrate = 16000;
-    }
-
-    return bitrate;
-  }
-
-  const calcDefaultBitrate = (codec, resolution, framerate, motionFactor) => {
-    let codec_factor = 1.0;
-    switch (codec) {
-      case 'h264':
-        codec_factor = 1.0;
-        break;
-      case 'vp8':
-        codec_factor = 1.0;
-        break;
-      case 'vp9':
-        codec_factor = 0.8;//FIXME: Theoretically it should be 0.5, not appliable before encoder is improved.
-        break;
-      case 'h265':
-        codec_factor = 0.9;//FIXME: Theoretically it should be 0.5, not appliable before encoder is improved.
-        break;
-      default:
-        break;
-    }
-    return standardBitrate(resolution.width, resolution.height, framerate) * codec_factor * motionFactor;
-  };
-
-  var config = {
-    _id: oldConfig._id,
-    name: oldConfig.name,
-    inputLimit: oldConfig.publishLimit,
-    participantLimit: oldConfig.userLimit,
-    roles: [
-      {
-        role: 'admin', // TO work with 3.4
-        publish: { audio: true, video: true },
-        subscribe: { audio: true, video: true }
-      },
-      {
-        role: 'presenter',
-        publish: { audio: true, video: true },
-        subscribe: { audio: true, video: true }
-      },
-      {
-        role: 'viewer',
-        publish: {audio: false, video: false },
-        subscribe: {audio: true, video: true }
-      },
-      {
-        role: 'audio_only_presenter',
-        publish: {audio: true, video: false },
-        subscribe: {audio: true, video: false }
-      },
-      {
-        role: 'video_only_viewer',
-        publish: {audio: false, video: false },
-        subscribe: {audio: false, video: true }
-      },
-      {
-        role: 'sip',
-        publish: { audio: true, video: true },
-        subscribe: { audio: true, video: true }
-      }
-    ],
-    views: [],
-    mediaIn: {
-      audio: [{
-          codec: 'opus',
-          sampleRate: 48000,
-          channelNum: 2
-        }, {
-          codec: 'pcmu'
-        }, {
-          codec: 'pcma'
-        }, {
-          codec: 'isac',
-          sampleRate: 16000
-        }, {
-          codec: 'isac',
-          sampleRate: 32000
-        }, {
-          codec: 'ilbc'
-        }, {
-          codec: 'g722',
-          sampleRate: 16000,
-          channelNum: 1
-        }, /*{
-          codec: 'g722',
-          sampleRate: 16000,
-          channelNum: 2
-        },*/ {
-          codec: 'aac'
-        }, {
-          codec: 'ac3'
-        }, {
-          codec: 'nellymoser'
-        }
-      ],
-      video: [{
-          codec: 'h264'
-        }, {
-          codec: 'vp8'
-        }, {
-          codec: 'h265'
-        }, {
-          codec: 'vp9'
-        }
-      ]
-    },
-    mediaOut: {
-      audio: [{
-          codec: 'opus',
-          sampleRate: 48000,
-          channelNum: 2
-        }, {
-          codec: 'pcmu'
-        }, {
-          codec: 'pcma'
-        }, {
-          codec: 'isac',
-          sampleRate: 16000
-        }, {
-          codec: 'isac',
-          sampleRate: 32000
-        }, {
-          codec: 'ilbc'
-        }, {
-          codec: 'g722',
-          sampleRate: 16000,
-          channelNum: 1
-        }, /*{
-          codec: 'g722',
-          sampleRate: 16000,
-          channelNum: 2
-        },*/ {
-          codec: 'aac',
-          sampleRate: 48000,
-          channelNum: 2
-        }, {
-          codec: 'ac3'
-        }, {
-          codec: 'nellymoser'
-        }
-      ],
-      video: {
-        format: [{
-            codec: 'h264',
-            /*
-            profile: 'constrained-baseline'
-          }, {
-            codec: 'h264',
-            profile: 'high'
-            */
-          }, {
-            codec: 'vp8'
-          }, {
-            codec: 'h265'
-          }, {
-            codec: 'vp9'
-          }
-        ],
-        parameters: {
-          resolution: ['x3/4', 'x2/3', 'x1/2', 'x1/3', 'x1/4', 'hd1080p', 'hd720p', 'svga', 'vga', 'cif'/*, 'xvga', 'hvga', 'cif', 'sif', 'qcif'*/],
-          framerate: [6, 12, 15, 24, 30, 48, 60],
-          bitrate: ['x0.8', 'x0.6', 'x0.4', 'x0.2'],
-          keyFrameInterval: [100, 30, 5, 2, 1]
-        }
-      }
-    },
-    transcoding: {
-      audio: true,
-      video: {
-        format: true,
-        //parameters: false
-        parameters: {
-          resolution: true,
-          framerate: true,
-          bitrate: true,
-          keyFrameInterval: true
-        }
-      }
-    },
-    notifying: {
-      participantActivities: true,
-      streamChange: true
-    },
-    sip: !!oldConfig.sip ? oldConfig.sip : undefined
-  };
-
+function upgradeResolution(oldResolution) {
   //translate view definition.
   var resolutionName2Value = {
     'cif': {width: 352, height: 288},
@@ -303,102 +94,107 @@ function translateOldRoom(oldConfig) {
     'r720x1280': {width: 720, height: 1280},
     'r1080x1920': {width: 1080, height: 1920},
   };
+  return resolutionName2Value[oldResolution] || {width: 640, height: 480};
+}
 
-  var qualityLevel2Factor = {
-    'best_quality': 1.4,
-    'better_quality': 1.2,
-    'standard': 1.0,
-    'better_speed': 0.8,
-    'best_speed': 0.6
-  };
-  function getResolution(old_resolution) {
-     return resolutionName2Value[old_resolution] || {width: 640, height: 480};
-  }
 
-  function calcBaseBitrate(codec, old_resolution, framerate, motionFactor, old_quality_level) {
-    var standard_bitrate = calcDefaultBitrate(codec, getResolution(old_resolution), framerate, motionFactor);
-    var mul_factor = qualityLevel2Factor[old_quality_level] || 1.0;
-    return standard_bitrate * mul_factor;
-  }
-
+function upgradeRoom(oldConfig) {
+  var config = (new Room(DefaultUtil.ROOM_CONFIG)).toObject();
+  config._id = oldConfig._id;
+  config.name = oldConfig.name;
+  config.inputLimit = oldConfig.publishLimit;
+  config.participantLimit = oldConfig.userLimit;
+  // TO work with 3.4
+  config.roles.push({
+    role: 'admin',
+    publish: { audio: true, video: true },
+    subscribe: { audio: true, video: true }
+  });
+  config.sip = oldConfig.sip ? oldConfig.sip : config.sip;
   if (oldConfig.mediaMixing && !oldConfig.views) {
     oldConfig.views = { common: { mediaMixing: oldConfig.mediaMixing }};
   }
 
-  for (var v in oldConfig.views) {
-    var old_view = oldConfig.views[v].mediaMixing;
-    config.views.push({
-      label: v,
-      audio: {
-        format: {
-          codec: 'opus',
-          sampleRate: 48000,
-          channelNum: 2
-        },
-        vad: (!!old_view.video && old_view.video.avCoordinated) ? true : false
-      },
-      video: (!!old_view.video ? {
-        format: {
-          codec: 'h264'
-        },
-        motionFactor: 0.8,
-        parameters: {
-          resolution: getResolution(old_view.video.resolution),
-          framerate: 24,
-          bitrate: calcBaseBitrate('h264', old_view.video.resolution, 24, 0.8, old_view.video.quality_level),
-          keyFrameInterval: 100
-        },
-        maxInput: old_view.video.maxInput,
-        bgColor: translateColor(old_view.video.bkColor),
-        layout: {
-          fitPolicy: old_view.video.crop ? 'crop' : 'letterbox',
-          setRegionEffect: 'insert',
-          templates: {
-            base: old_view.video.layout.base,
-            custom: translateCustom(old_view.video.layout.custom)
-          }
-        }
-      } : undefined)
-    });
+  var oldName, oldMedia, newView;
+  config.views = [];
+  for (oldName in oldConfig.views) {
+    oldMedia = oldConfig.views[oldName].mediaMixing;
+    newView = (new Room.ViewSchema()).toObject();
+    newView.label = oldName;
+    newView.audio.vad = !!(oldMedia.video && oldMedia.video.avCoordinated);
+    newView.video.parameters.resolution = upgradeResolution(oldMedia.video.resolution);
+    newView.video.bgColor = upgradeColor(oldMedia.video.bkColor);
+    newView.video.maxInput = oldMedia.video.maxInput;
+    newView.video.layout.fitPolicy = oldMedia.video.crop ? 'crop' : 'letterbox';
+    newView.video.layout.templates.base = oldMedia.video.layout.base;
+    newView.video.layout.templates.custom = upgradeLayoutCustom(oldMedia.video.layout.custom);
+
+    config.views.push(newView);
   }
 
   return config;
 };
 
-var todo = 10;
-var rCount = 0;
-var sCount = 0;
-
-var finishCallback = null;
-
-function checkClose() {
-  if (rCount === todo && sCount === todo) {
-    console.log('Finish');
-    db.close();
-    if (typeof finishCallback === 'function') {
-      finishCallback();
-    }
-  }
-}
-
-function processRoom(rooms, i) {
+function processRoom(rooms, i, onFinishRoom) {
   if (i >= rooms.length) {
-    rCount++;
-    return checkClose();
+    if (typeof onFinishRoom === 'function')
+      onFinishRoom();
+    return;
   }
 
-  var room = translateOldRoom(rooms[i]);
+  var room = upgradeRoom(rooms[i]);
   db.rooms.save(room, function (err, saved) {
     if (err) {
       console.log('Error in updating room:', room._id, err.message);
     } else {
       console.log('Room:', room._id, 'converted.');
     }
-    processRoom(rooms, i + 1);
+    processRoom(rooms, i + 1, onFinishRoom);
   });
 }
 
-function processServices() {
+function processServices(services, i, onFinishService) {
+  if (i >= services.length) {
+    if (typeof onFinishService === 'function')
+      onFinishService();
+    return;
+  }
+
+  var service = services[i];
+  if (!service.rooms) {
+    service.rooms = [];
+  }
+  var processNext = function() {
+    service.__v = 0;
+    service.rooms = service.rooms.map((room) => (room._id ? room._id : room));
+    db.services.save(service, function (e, saved) {
+      if (e) {
+        console.log('Error in updating service:', service._id, e.message);
+      } else {
+        console.log('Service:', service._id, 'converted.');
+      }
+      processServices(services, i + 1, onFinishService);
+    });
+  };
+
+  if (service.rooms.length > 0) {
+    if (service.rooms[0]._id) {
+      // Not 3.5.2
+      processRoom(service.rooms, 0, processNext);
+    } else {
+      // For 3.5.2
+      db.rooms.find({_id: {$in: service.rooms}}).toArray(function (err, rooms) {
+        if (!err && rooms && rooms.length > 0) {
+            processRoom(rooms, 0, processNext);
+        }
+      });
+    }
+  } else {
+    processNext();
+  }
+}
+
+function processAll(finishCb) {
   db.services.find({}).toArray(function (err, services) {
     console.log('Starting');
     if (err) {
@@ -406,49 +202,11 @@ function processServices() {
       db.close();
       return;
     }
-
-    todo = services.length;
-    var i, service;
-    for (i = 0; i < todo; i++) {
-      service = services[i];
-      if (typeof service.__v === 'number') {
-        // Already New Version
-        sCount++;
-        rCount++;
-        checkClose();
-        continue;
-      }
-      if (service.rooms && service.rooms.length > 0) {
-          if (service.rooms[0]._id) {
-            // Not 3.5.2
-            processRoom(service.rooms, 0);
-          } else {
-            // For 3.5.2
-            db.rooms.find({_id: {$in: service.rooms}}).toArray(function (err, rooms) {
-              if (!err && rooms && rooms.length > 0) {
-                  processRoom(rooms, 0);
-              } else {
-                rCount++;
-              }
-            });
-          }
-      } else {
-          rCount++;
-      }
-
-      service.__v = 0;
-      // Check for 3.5.2 update
-      service.rooms = service.rooms.map((room) => (room._id ? room._id : room));
-      db.services.save(service, function (e, saved) {
-        if (e) {
-          console.log('Error in updating service:', service._id, e.message);
-        } else {
-          console.log('Service:', service._id, 'converted.');
-        }
-        sCount++;
-        checkClose();
-      });
-    }
+    processServices(services, 0, function() {
+      db.close();
+      if (typeof finishCb === 'function')
+        finishCb();
+    });
   });
 }
 
@@ -467,7 +225,10 @@ function main(next) {
 
     answer = answer.toLowerCase();
     if (answer === 'y' || answer === 'yes') {
-      processServices();
+      processAll(function() {
+        console.log('Finish');
+        next();
+      });
     } else {
       process.exit(0);
     }
@@ -478,8 +239,7 @@ function main(next) {
 if (require.main === module) {
     main();
 } else {
-    exports.update = function (cb) {
-      finishCallback = cb;
-      main();
-    };
+  exports.update = function (cb) {
+    main(cb);
+  };
 }

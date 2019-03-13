@@ -4,78 +4,9 @@
 
 'use strict';
 var mongoose = require('mongoose');
+var Default = require('./../defaults');
 var Room = require('./../model/roomModel');
 var Service = require('./../model/serviceModel');
-
-var DEFAULT_AUDIO = [
-  { codec: 'opus', sampleRate: 48000, channelNum: 2 },
-  { codec: 'isac', sampleRate: 16000 },
-  { codec: 'isac', sampleRate: 32000 },
-  { codec: 'g722', sampleRate: 16000, channelNum: 1 },
-  // { codec: 'g722', sampleRate: 16000, channelNum: 2 },
-  { codec: 'pcma' },
-  { codec: 'pcmu' },
-  { codec: 'aac' },
-  { codec: 'ac3' },
-  { codec: 'nellymoser' },
-  { codec: 'ilbc' },
-];
-var DEFAULT_AUDIO_OUT = [
-  { codec: 'opus', sampleRate: 48000, channelNum: 2 },
-  { codec: 'isac', sampleRate: 16000 },
-  { codec: 'isac', sampleRate: 32000 },
-  { codec: 'g722', sampleRate: 16000, channelNum: 1 },
-  // { codec: 'g722', sampleRate: 16000, channelNum: 2 },
-  { codec: 'pcma' },
-  { codec: 'pcmu' },
-  { codec: 'aac', sampleRate: 48000, channelNum: 2 },
-  { codec: 'ac3' },
-  { codec: 'nellymoser' },
-  { codec: 'ilbc' },
-];
-var DEFAULT_VIDEO_IN = [
-  { codec: 'h264' },
-  { codec: 'vp8' },
-  { codec: 'vp9' },
-];
-var DEFAULT_VIDEO_OUT = [
-  { codec: 'h264', profile: 'CB' },
-  { codec: 'vp8' },
-  { codec: 'vp9' },
-];
-var DEFAULT_VIDEO_PARA = {
-  resolution: ['x3/4', 'x2/3', 'x1/2', 'x1/3', 'x1/4', 'hd1080p', 'hd720p', 'svga', 'vga', 'cif'],
-  framerate: [6, 12, 15, 24, 30, 48, 60],
-  bitrate: ['x0.8', 'x0.6', 'x0.4', 'x0.2'],
-  keyFrameInterval: [100, 30, 5, 2, 1]
-};
-var DEFAULT_ROLES = [
-  {
-    role: 'presenter',
-    publish: { audio: true, video: true },
-    subscribe: { audio: true, video: true }
-  },
-  {
-    role: 'viewer',
-    publish: {audio: false, video: false },
-    subscribe: {audio: true, video: true }
-  },
-  {
-    role: 'audio_only_presenter',
-    publish: {audio: true, video: false },
-    subscribe: {audio: true, video: false }
-  },
-  {
-    role: 'video_only_viewer',
-    publish: {audio: false, video: false },
-    subscribe: {audio: false, video: true }
-  },
-  {
-    role: 'sip',
-    publish: { audio: true, video: true },
-    subscribe: { audio: true, video: true }
-  }
-];
 
 function getAudioOnlyLabels(roomOption) {
   var labels = [];
@@ -151,26 +82,12 @@ const removeNull = (obj) => {
  * Create Room.
  */
 exports.create = function (serviceId, roomOption, callback) {
-  if (!roomOption.mediaOut) {
-    roomOption.mediaOut = {
-      audio: DEFAULT_AUDIO_OUT,
-      video: {
-        format: DEFAULT_VIDEO_OUT,
-        parameters: DEFAULT_VIDEO_PARA
-      }
-    };
-  }
-  if (!roomOption.mediaIn) {
-    roomOption.mediaIn = {
-      audio: DEFAULT_AUDIO,
-      video: DEFAULT_VIDEO_IN
-    };
-  }
-  if (!roomOption.views) {
-    roomOption.views = [{}];
-  }
-  if (!roomOption.roles) {
-    roomOption.roles = DEFAULT_ROLES;
+  var room = new Room(Default.ROOM_CONFIG);
+  var attr;
+  for (attr in Default.ROOM_CONFIG) {
+    if (!roomOption[attr]) {
+      roomOption[attr] = Default.ROOM_CONFIG[attr];
+    }
   }
 
   removeNull(roomOption);
