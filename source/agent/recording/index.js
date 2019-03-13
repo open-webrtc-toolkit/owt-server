@@ -20,8 +20,11 @@ var log = logger.getLogger('RecordingNode');
 
 var InternalConnectionFactory = require('./InternalConnectionFactory');
 
-module.exports = function (rpcClient, rpcID) {
-    var that = {};
+module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
+    var that = {
+      agentID: parentRpcId,
+      clusterIP: clusterWorkerIP
+    };
     var connections = new Connections;
     var internalConnFactory = new InternalConnectionFactory;
 
@@ -57,7 +60,7 @@ module.exports = function (rpcClient, rpcID) {
                 log.error('media recording init error:', error);
                 notifyStatus(options.controller, connectionId, 'out', {type: 'failed', reason: error});
             } else {
-                notifyStatus(options.controller, connectionId, 'out', {type: 'ready', info: {host: rpcID.split('@')[1].split('_')[0], file: recording_path}});
+                notifyStatus(options.controller, connectionId, 'out', {type: 'ready', info: {host: selfRpcId.split('@')[1].split('_')[0], file: recording_path}});
             }
         });
         connection.addEventListener('fatal', function (error) {

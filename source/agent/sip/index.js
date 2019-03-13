@@ -220,11 +220,14 @@ function translateProfile (profLevId) {
     return profile;
 }
 
-module.exports = function (rpcC, spec) {
+module.exports = function (rpcC, selfRpcId, parentRpcId, clusterWorkerIP) {
     rpcClient = rpcC;
 
-    var that = {},
-        erizo = {id:spec.id, addr:spec.addr},
+    var that = {
+      agentID: parentRpcId,
+      clusterIP: clusterWorkerIP
+    },
+        erizo = {id:selfRpcId, addr:clusterWorkerIP},
         room_id,
         gateway,
         sip_server,

@@ -20,8 +20,11 @@ var log = logger.getLogger('StreamingNode');
 
 var InternalConnectionFactory = require('./InternalConnectionFactory');
 
-module.exports = function (rpcClient) {
-    var that = {};
+module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
+    var that = {
+      agentID: parentRpcId,
+      clusterIP: clusterWorkerIP
+    };
     var connections = new Connections;
     var internalConnFactory = new InternalConnectionFactory;
 

@@ -6,6 +6,7 @@
         "files": [
             "../nodeManager.js",
             "../workingNode.js",
+            "configLoader.js",
             "participant.js",
             "agent.toml",
             "roomController.js",
@@ -14,6 +15,7 @@
             "conference.js",
             "accessController.js",
             "../index.js",
+            "../networkHelper.js",
             "../../common/amqp_client.js",
             "../../common/clusterWorker.js",
             "../../common/loadCollector.js",
