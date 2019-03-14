@@ -13,7 +13,7 @@
             "../networkHelper.js",
             "../nodeManager.js",
             "../workingNode.js",
-            "../log4cxx.properties",
+            "log4cxx.properties",
             "../../common/amqp_client.js",
             "../../common/clusterWorker.js",
             "../../common/loadCollector.js",

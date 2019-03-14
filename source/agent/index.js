@@ -4,7 +4,6 @@
 
 'use strict';
 var Getopt = require('node-getopt');
-var spawn = require('child_process').spawn;
 var config = require('./configLoader').load();
 
 var logger = require('./logger').logger;
