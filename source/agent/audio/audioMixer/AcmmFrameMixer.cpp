@@ -50,9 +50,9 @@ AcmmFrameMixer::AcmmFrameMixer()
 
 AcmmFrameMixer::~AcmmFrameMixer()
 {
-    boost::unique_lock<boost::shared_mutex> lock(m_mutex);
-
     m_jobTimer->stop();
+
+    boost::unique_lock<boost::shared_mutex> lock(m_mutex);
 
     m_mixerModule->UnRegisterMixedStreamCallback();
 
