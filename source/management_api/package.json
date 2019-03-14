@@ -10,7 +10,7 @@
     "ajv": "^5.2.2",
     "body-parser": "*",
     "mongoose": "^4.13.6",
-    "fraction.js": "*"
+    "fraction.js": "^4.0.12"
   },
   "engine": {
     "node": "8.15.0"

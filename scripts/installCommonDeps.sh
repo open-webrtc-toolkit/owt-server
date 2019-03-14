@@ -283,9 +283,6 @@ install_node() {
   #install node
   [[ -s "${NVM_DIR}/nvm.sh" ]] && . "${NVM_DIR}/nvm.sh"
   echo -e "\x1b[32mInstalling node ${NODE_VERSION}...\x1b[0m"
-  if ! grep -qc 'nvm use' ~/.bash_profile; then
-   echo -e 'nvm use '${NODE_VERSION} >> ~/.bash_profile
-  fi
   nvm install ${NODE_VERSION}
   nvm use ${NODE_VERSION}
 }
