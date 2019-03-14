@@ -6,7 +6,8 @@
     "log4js": "^1.1.1",
     "node-getopt": "*",
     "toml": "*",
-    "mongoose": "^4.13.6"
+    "mongoose": "^4.13.6",
+    "fraction.js": "^4.0.12"
   },
   "devDependencies": {
     "mocha": "^2.2.5",
