@@ -232,7 +232,7 @@ class RoomView extends React.Component {
     this.state = {
       index: 0,
       create: '',
-      layoutArea: ''
+      layoutArea: null
     };
 
     this.handleChange = this.handleChange.bind(this);
@@ -407,41 +407,46 @@ class RoomView extends React.Component {
       })
     );
 
-    const formArea = (path) => e(
-      'div',
-      {className: 'row form-group'},
-      e(
+    const formArea = (path) => {
+      const layoutString = JSON.stringify(
+        _.get(this.props.views[this.state.index], path, []));
+      return e(
         'div',
-        {className: 'col-sm-6'},
-        e('label', {}, 'Layout-Custom'),
+        {className: 'row form-group'},
         e(
-          'textarea',
-          {
-            className: 'form-control',
-            resize: 'vertical',
-            rows: 10,
-            defaultValue: JSON.stringify(_.get(this.props.views[this.state.index], path, [])),
-            onChange: (e) => {
-              this.setState({layoutArea: e.target.value});
-            }
-          }
-        ),
-        e('button',
-          {
-            className: 'btn',
-            onClick: (e) => {
-              try {
-                const layouts = JSON.parse(this.state.layoutArea);
-                this.handleChange(path, layouts);
-              } catch (err) {
-                notify('warning', 'Save Layout', 'Invalid Format');
+          'div',
+          {className: 'col-sm-6'},
+          e('label', {}, 'Layout-Custom'),
+          e(
+            'textarea',
+            {
+              className: 'form-control',
+              resize: 'vertical',
+              rows: 10,
+              value: (this.state.layoutArea === null ?
+                layoutString : this.state.layoutArea),
+              onChange: (e) => {
+                this.setState({layoutArea: e.target.value});
               }
             }
-          },
-          'Save Layout'
+          ),
+          e('button',
+            {
+              className: 'btn',
+              onClick: (e) => {
+                try {
+                  const layouts = JSON.parse(this.state.layoutArea);
+                  this.handleChange(path, layouts);
+                } catch (err) {
+                  notify('warning', 'Save Layout', 'Invalid Format');
+                }
+              }
+            },
+            'Save Layout'
+          )
         )
-      )
-    );
+      );
+    };
 
     return e(
       'div',
@@ -500,7 +505,7 @@ class RoomView extends React.Component {
         value: this.state.index,
         onChange: (e) => {
           const newIndex = parseInt(e.target.value);
-          this.setState({index: newIndex});
+          this.setState({index: newIndex, layoutArea: null});
         },
         className: 'form-control',
         style: {display: 'inline-block'}
@@ -873,6 +878,61 @@ class RoomModal extends React.Component {
     );
   }
 
+  renderNotifying() {
+    const room = this.state.room;
+    const notifyRow = (path) => {
+      const value = _.get(this.state.room.notifying, path, '');
+      return e(
+        'div',
+        {className: 'row form-group'},
+        e('div', {className: 'col-sm-3'}, e('label', {}, path)),
+        e(
+          'div',
+          {className: 'col-sm-3'},
+          e('label',
+            {className: 'checkbox-inline'},
+            e(
+              'input',
+              {
+                type: 'checkbox',
+                value: path,
+                onChange: (e) => {
+                  let newRoom = _.cloneDeep(this.state.room);
+                  if (!newRoom.notifying) {
+                    newRoom.notifying = {
+                      streamChange: true,
+                      participantActivities: true
+                    };
+                  }
+                  newRoom.notifying[path] = e.target.checked;
+                  this.setState({room: newRoom});
+                },
+                checked: value
+              }
+            ),
+            path
+          )
+        ),
+      );
+    };
+
+    return e(
+      'div',
+      {className: 'panel panel-default'},
+      e('div', {className: 'panel-heading'}, 'Notification'),
+      e(
+        'div',
+        {className: 'panel-body'},
+        e(
+          'div',
+          {className: 'container-fluid'},
+          notifyRow('streamChange'),
+          notifyRow('participantActivities'),
+        ),
+      )
+    );
+  }
+
   render() {
     return e(
       'div',
@@ -904,6 +964,7 @@ class RoomModal extends React.Component {
           this.renderMediaIn(),
           this.renderMediaOut(),
           this.renderSip(),
+          this.renderNotifying(),
           e(
             RoomView,
             {
