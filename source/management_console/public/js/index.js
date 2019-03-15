@@ -102,7 +102,7 @@ function a_click(nowList, dom) {
       checkProfile(renderRoom);
       break;
     case ENUMERATE.RUNTIME:
-      title.text("MCU nodes in cluster");
+      title.text("MCU runtime");
       checkProfile(renderCluster);
       break;
   }
