@@ -907,19 +907,17 @@ parameters:
 **Note**:<br>
 
     options={
-        container: string,
-        media: object(MediaSubOptions)       // Refers to object(MediaSubOptions) in 5.5.
+        container: string(ContainerType),
+        media: object(MediaSubOptions)       // Refers to object(MediaSubOptions) in 5.5. And only "pcmu", "pcma", "opus" and "aac" audio codec are supported.
     }
     /*
-     * Use "auto" to generate "container" format automatically.
-     * The "container" with "mkv"/"mp4" should use following codecs,
-     * MP4:
-     * audio codec must be "aac", this requires "lib-fdk-aac"
-     * video codec can be "h264", "h265", or set video to false to only record audio
-     * MKV:
-     * the combination of video and audio codecs not listed in MP4
+     * 1, If "auto" is specified, then the actual container type will be automatically determined by following the below rules.
+     *     1) if audio codec is "aac" (which requires "lib-fdk-aac") and video is disabled or video codec is either "h264" or "h265", then "mp4" container type will be applied.
+     *     2) otherwise, 'mkv' will be applied.
+     * 2, If "mp4" can be specified only if: 1) audio codec is "aac" or audio is disabled, and 2) video codec is either "h264" or "h265" or video is disabled.
+     * 3, "mkv" can always be specified and for all supported audio and video codecs.
      */
-    container={ "auto" | "mkv" | "mp4" }
+    ContainerType={ "auto" | "mkv" | "mp4" }
 
 response body:
 
