@@ -156,13 +156,6 @@ case $yn in
   * ) install_licode;;
 esac
 
-read -p "Installing vainfo util? [No/yes]" yn
-case $yn in
-  [Yy]* ) install_libvautils;;
-  [Nn]* ) ;;
-  * ) ;;
-esac
-
 if [[ "$OS" =~ .*ubuntu.* ]]
 then
     read -p "Installing SVT HEVC Encoder ? [No/yes]" yn

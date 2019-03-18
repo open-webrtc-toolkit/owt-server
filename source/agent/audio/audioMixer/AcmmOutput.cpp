@@ -54,6 +54,8 @@ bool AcmmOutput::addDest(FrameFormat format, FrameDestination* destination)
             case FRAME_FORMAT_AAC:
                 ELOG_WARN_T("FRAME_FORMAT_AAC is deprecated for audio output, using FRAME_FORMAT_AAC_48000_2!");
                 format = FRAME_FORMAT_AAC_48000_2;
+                m_encoder.reset(new FfEncoder(FRAME_FORMAT_AAC_48000_2));
+                break;
             case FRAME_FORMAT_AAC_48000_2:
                 m_encoder.reset(new FfEncoder(FRAME_FORMAT_AAC_48000_2));
                 break;

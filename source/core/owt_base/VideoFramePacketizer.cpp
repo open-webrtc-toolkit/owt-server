@@ -18,13 +18,13 @@ VideoFramePacketizer::VideoFramePacketizer(bool enableRed, bool enableUlpfec, bo
     : m_enabled(true)
     , m_enableDump(false)
     , m_keyFrameArrived(false)
+    , m_selfRequestKeyframe(selfRequestKeyframe)
     , m_frameFormat(FRAME_FORMAT_UNKNOWN)
     , m_frameWidth(0)
     , m_frameHeight(0)
     , m_random(rtc::TimeMicros())
     , m_ssrc(0)
     , m_ssrc_generator(SsrcGenerator::GetSsrcGenerator())
-    , m_selfRequestKeyframe(selfRequestKeyframe)
     , m_sendFrameCount(0)
 {
     video_sink_ = nullptr;
