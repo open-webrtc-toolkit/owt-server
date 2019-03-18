@@ -1,0 +1,26 @@
+{
+  "name": "WooGeen-MCU-Agent",
+  "version":"4.1.0",
+  "dependencies": {
+    "amqp": "*",
+    "log4js": "^1.1.1",
+    "node-getopt": "*",
+    "toml": "*",
+    "sdp-transform": "2.3.0"
+  },
+  "devDependencies": {
+    "node-gyp": "*"
+  },
+  "engine": {
+    "node": "8.15.0"
+  },
+  "bin": "index.js",
+  "pkg": {
+    "assets": [
+      "node_modules*"
+    ],
+    "targets": [
+      "node8"
+    ]
+  }
+}

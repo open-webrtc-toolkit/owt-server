@@ -101,6 +101,23 @@ var videoMatcher = function () {
     };
 };
 
+var analyticsMatcher = function() {
+    this.match = function (preference, workers, candidates) {
+        if (!preference || !preference.algorithm)
+            return candidates;
+
+        var result = candidates.filter(function(cid) {
+            var capacity = workers[cid].info.capacity;
+            return capacity.algorithms.includes(preference.algorithm);
+        });
+
+        if (result.length === 0) {
+            log.warn('No available workers for analytics:', preference.algorithm);
+        }
+        return result;
+    }
+}
+
 var generalMatcher = function () {
     this.match = function (preference, workers, candidates) {
         return candidates;
@@ -127,6 +144,8 @@ exports.create = function (purpose) {
             return new audioMatcher();
         case 'video':
             return new videoMatcher();
+        case 'analytics':
+            return new analyticsMatcher();
         default:
             log.warn('Invalid specified purpose:', purpose, ', apply general-matcher instead.');
             return new generalMatcher();

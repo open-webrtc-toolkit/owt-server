@@ -19,6 +19,9 @@
 #include <FFmpegFrameDecoder.h>
 
 #include <FrameProcesser.h>
+#ifdef BUILD_FOR_ANALYTICS
+#include <FrameAnalyzer.h>
+#endif
 
 #ifdef ENABLE_MSDK
 #include <MsdkFrameDecoder.h>
@@ -39,6 +42,7 @@ public:
     bool setInput(int input, owt_base::FrameFormat, owt_base::FrameSource*);
     void unsetInput(int input);
 
+#ifndef BUILD_FOR_ANALYTICS
     bool addOutput(int output,
             owt_base::FrameFormat,
             const owt_base::VideoCodecProfile profile,
@@ -47,12 +51,25 @@ public:
             const unsigned int bitrateKbps,
             const unsigned int keyFrameIntervalSeconds,
             owt_base::FrameDestination*);
+#else
+    bool addOutput(int output,
+            owt_base::FrameFormat,
+            const owt_base::VideoCodecProfile profile,
+            const owt_base::VideoSize&,
+            const unsigned int framerateFPS,
+            const unsigned int bitrateKbps,
+            const unsigned int keyFrameIntervalSeconds,
+            const std::string& algorithm,
+            const std::string& pluginName,
+            owt_base::FrameDestination*);
+#endif
     void removeOutput(int output);
 
     void requestKeyFrame(int output);
-
+#ifndef BUILD_FOR_ANALYTICS
     void drawText(const std::string& textSpec);
     void clearText();
+#endif
 
     void onFrame(const owt_base::Frame& frame) {deliverFrame(frame);}
 
@@ -64,6 +81,9 @@ private:
 
     struct Output {
         boost::shared_ptr<owt_base::VideoFrameProcesser> processer;
+#ifdef BUILD_FOR_ANALYTICS
+        boost::shared_ptr<owt_base::VideoFrameAnalyzer> analyzer;
+#endif
         boost::shared_ptr<owt_base::VideoFrameEncoder> encoder;
         int streamId;
     };
@@ -85,7 +105,12 @@ VideoFrameTranscoderImpl::~VideoFrameTranscoderImpl()
         boost::unique_lock<boost::shared_mutex> lock(m_outputMutex);
         for (auto it = m_outputs.begin(); it != m_outputs.end(); ++it) {
             this->removeVideoDestination(it->second.processer.get());
+#ifdef BUILD_FOR_ANALYTICS
+            it->second.processer->removeVideoDestination(it->second.analyzer.get());
+            it->second.analyzer->removeVideoDestination(it->second.encoder.get());
+#else
             it->second.processer->removeVideoDestination(it->second.encoder.get());
+#endif
             it->second.encoder->degenerateStream(it->second.streamId);
         }
         m_outputs.clear();
@@ -150,6 +175,7 @@ inline void VideoFrameTranscoderImpl::unsetInput(int input)
     }
 }
 
+#ifndef BUILD_FOR_ANALYTICS
 inline bool VideoFrameTranscoderImpl::addOutput(int output,
                                            owt_base::FrameFormat format,
                                            const owt_base::VideoCodecProfile profile,
@@ -158,9 +184,24 @@ inline bool VideoFrameTranscoderImpl::addOutput(int output,
                                            const unsigned int bitrateKbps,
                                            const unsigned int keyFrameIntervalSeconds,
                                            owt_base::FrameDestination* dest)
+#else
+inline bool VideoFrameTranscoderImpl::addOutput(int output,
+                                           owt_base::FrameFormat format,
+                                           const owt_base::VideoCodecProfile profile,
+                                           const owt_base::VideoSize& rootSize,
+                                           const unsigned int framerateFPS,
+                                           const unsigned int bitrateKbps,
+                                           const unsigned int keyFrameIntervalSeconds,
+                                           const std::string& algorithm,
+                                           const std::string& pluginName,
+                                           owt_base::FrameDestination* dest)
+#endif
 {
     boost::shared_ptr<owt_base::VideoFrameEncoder> encoder;
     boost::shared_ptr<owt_base::VideoFrameProcesser> processer;
+#ifdef BUILD_FOR_ANALYTICS
+    boost::shared_ptr<owt_base::VideoFrameAnalyzer> analyzer;
+#endif
     boost::upgrade_lock<boost::shared_mutex> lock(m_outputMutex);
     int32_t streamId = -1;
 
@@ -193,10 +234,24 @@ inline bool VideoFrameTranscoderImpl::addOutput(int output,
         return false;
 
     this->addVideoDestination(processer.get());
+#ifdef BUILD_FOR_ANALYTICS
+    if (!analyzer) {
+        analyzer.reset(new owt_base::FrameAnalyzer());
+    }
+    if (!analyzer->init(encoder->getInputFormat(), rootSize.width, rootSize.height, framerateFPS, pluginName))
+        return false;
+    processer->addVideoDestination(analyzer.get());
+    analyzer->addVideoDestination(encoder.get());
+#else
     processer->addVideoDestination(encoder.get());
+#endif
 
     boost::upgrade_to_unique_lock<boost::shared_mutex> uniqueLock(lock);
+#ifdef BUILD_FOR_ANALYTICS
+    Output out{.processer = processer, .analyzer = analyzer, .encoder = encoder, .streamId = streamId};
+#else
     Output out{.processer = processer, .encoder = encoder, .streamId = streamId};
+#endif
     m_outputs[output] = out;
     return true;
 }
@@ -209,7 +264,12 @@ inline void VideoFrameTranscoderImpl::removeOutput(int32_t output)
         it->second.encoder->degenerateStream(it->second.streamId);
         if (it->second.encoder->isIdle()) {
             this->removeVideoDestination(it->second.processer.get());
+#ifdef BUILD_FOR_ANALYTICS
+            it->second.processer->removeVideoDestination(it->second.analyzer.get());
+            it->second.analyzer->removeVideoDestination(it->second.encoder.get());
+#else
             it->second.processer->removeVideoDestination(it->second.encoder.get());
+#endif
         }
         boost::upgrade_to_unique_lock<boost::shared_mutex> ulock(lock);
         m_outputs.erase(output);
@@ -224,6 +284,7 @@ inline void VideoFrameTranscoderImpl::requestKeyFrame(int output)
         it->second.encoder->requestKeyFrame(it->second.streamId);
 }
 
+#ifndef BUILD_FOR_ANALYTICS
 inline void VideoFrameTranscoderImpl::drawText(const std::string& textSpec)
 {
     boost::shared_lock<boost::shared_mutex> lock(m_outputMutex);
@@ -237,6 +298,7 @@ inline void VideoFrameTranscoderImpl::clearText()
     for (auto it = m_outputs.begin(); it != m_outputs.end(); ++it)
         it->second.processer->clearText();
 }
+#endif
 
 }
 #endif

@@ -108,6 +108,10 @@ module.exports.create = function(spec, rpcReq, onSessionEstablished, onSessionAb
       if (session.options.type === 'streaming') {
         info.url = status.info
       }
+
+      if (session.options.type === 'analytics') {
+        info.analytics = status.info;
+      }
     }
 
     var session_info = {

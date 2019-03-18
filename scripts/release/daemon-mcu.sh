@@ -169,6 +169,14 @@ case $startStop in
           > "${stdout}" 2>&1 </dev/null &
         echo $! > ${pid}
         ;;
+      analytics-agent )
+        cd ${OWT_HOME}/analytics_agent
+        export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:./lib
+        export PATH=${PATH}:/opt/intel/mediasdk/bin
+        nohup nice -n ${OWT_NICENESS} node . -U analytics\
+          > "${stdout}" 2>&1 </dev/null &
+        echo $! > ${pid}
+        ;;
       management-console )
         cd ${OWT_HOME}/management_console
         nohup nice -n ${OWT_NICENESS} node . \

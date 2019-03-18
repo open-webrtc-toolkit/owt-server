@@ -524,7 +524,10 @@ var Conference = function (rpcClient, selfRpcId) {
                                                        role: 'admin',
                                                        portal: undefined,
                                                        origin: {isp: 'isp', region: 'region'},//FIXME: hard coded.
-                                                       permission: {}
+                                                       permission: {
+                                                        subscribe: {audio: true, video: true},
+                                                        publish: {audio: true, video: true}
+                                                       }
                                                       }, rpcReq);
 
                   accessController = AccessController.create({clusterName: global.config.cluster.name || 'owt-cluster',
@@ -1012,7 +1015,7 @@ var Conference = function (rpcClient, selfRpcId) {
 
   const doUnpublish = (streamId) => {
     if (streams[streamId]) {
-      if (streams[streamId].info.type === 'sip') {
+      if (streams[streamId].info.type === 'sip' || streams[streamId].info.type === 'analytics') {
         return removeStream(streamId);
       } else {
         return accessController.terminate(streamId, 'in', 'Participant terminate');
@@ -1192,6 +1195,16 @@ var Conference = function (rpcClient, selfRpcId) {
 
     if (pubInfo.type === 'sip') {
       return addStream(streamId, pubInfo.locality, pubInfo.media, {owner: participantId, type: 'sip'})
+      .then((result) => {
+        callback('callback', result);
+      })
+      .catch((e) => {
+        callback('callback', 'error', e.message ? e.message : e);
+      });
+    } else if (pubInfo.type === 'analytics') {
+      return addStream(streamId, pubInfo.locality,
+        pubInfo.media,
+        {owner: 'admin', type: 'analytics', analytics: pubInfo.analyticsId})
       .then((result) => {
         callback('callback', result);
       })
@@ -2223,6 +2236,8 @@ var Conference = function (rpcClient, selfRpcId) {
       result.url = subscriptions[subId].info.url;
     } else if (subscriptions[subId].info.type === 'recording') {
       result.storage = subscriptions[subId].info.location;
+    } else if (subscriptions[subId].info.type === 'analytics') {
+      result.analytics = subscriptions[subId].info.analytics;
     }
     return result;
   };
@@ -2250,7 +2265,7 @@ var Conference = function (rpcClient, selfRpcId) {
   that.addServerSideSubscription = function(roomId, subDesc, callback) {
     log.debug('addServerSideSubscription, roomId:', roomId, 'subDesc:', JSON.stringify(subDesc));
 
-    if (subDesc.type === 'streaming' || subDesc.type === 'recording') {
+    if (subDesc.type === 'streaming' || subDesc.type === 'recording' || subDesc.type === 'analytics') {
       var subscription_id = Math.round(Math.random() * 1000000000000000000) + '';
       return initRoom(roomId)
       .then(() => {
@@ -2319,8 +2334,33 @@ var Conference = function (rpcClient, selfRpcId) {
           }
         }
 
+        if (subDesc.type === 'analytics') {
+          if (subDesc.media.audio) {
+            // We don't analyze audio so far
+            delete subDesc.media.audio;
+          }
+
+          if (!subDesc.media.video || !subDesc.media.video.from) {
+            return Promise.reject('Video source not specified for analyzing');
+          }
+          if (!streams[subDesc.media.video.from]) {
+            return Promise.reject('Video source not valid for analyzing');
+          }
+          subDesc.connection = (subDesc.connection || {});
+          subDesc.connection.media = {
+            video: streams[subDesc.media.video.from].media.video.format
+          };
+        }
+
+        // Schedule preference for worker node
+        var accessPreference = Object.assign({}, participants['admin'].getOrigin());
+        if (subDesc.type === 'analytics') {
+          // Schedule analytics agent according to the algorithm
+          accessPreference.algorithm = subDesc.connection.algorithm;
+        }
+
         initiateSubscription(subscription_id, subDesc, {owner: 'admin', type: subDesc.type});
-        return accessController.initiate('admin', subscription_id, 'out', participants['admin'].getOrigin(), subDesc);
+        return accessController.initiate('admin', subscription_id, 'out', accessPreference, subDesc);
       }).then(() => {
         if ((subDesc.media.audio && !streams[subDesc.media.audio.from])
            ||(subDesc.media.video && !streams[subDesc.media.video.from])) {

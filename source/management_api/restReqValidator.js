@@ -225,6 +225,17 @@ const ServerSideSubscriptionRequest = {
       },
       additionalProperties: false,
       required: ['type', 'connection', 'media']
+    },
+    {
+      // Analytics Subscription
+      type: 'object',
+      properties: {
+        'type': { 'const': 'analytics' },
+        'connection': { $ref: '#/definitions/AnalyticsOptions' },
+        'media': { $ref: '#/definitions/MediaSubOptions' },
+      },
+      additionalProperties: false,
+      required: ['type', 'connection', 'media']
     }
   ],
 
@@ -242,6 +253,14 @@ const ServerSideSubscriptionRequest = {
       type: 'object',
       properties: {
         'container': { enum: ['mp4', 'mkv', 'ts', 'auto'] }
+      },
+      additionalProperties: false
+    },
+
+    'AnalyticsOptions': {
+      type: 'object',
+      properties: {
+        'algorithm': { type: 'string' }
       },
       additionalProperties: false
     },

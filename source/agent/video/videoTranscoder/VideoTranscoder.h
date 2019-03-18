@@ -30,6 +30,7 @@ public:
     bool setInput(const std::string& inStreamID, const std::string& codec, owt_base::FrameSource* source);
     void unsetInput(const std::string& inStreamID);
 
+#ifndef BUILD_FOR_ANALYTICS
     bool addOutput(const std::string& outStreamID
             , const std::string& codec
             , const owt_base::VideoCodecProfile profile
@@ -38,11 +39,24 @@ public:
             , const unsigned int bitrateKbps
             , const unsigned int keyFrameIntervalSeconds
             , owt_base::FrameDestination* dest);
+#else
+    bool addOutput(const std::string& outStreamID
+            , const std::string& codec
+            , const owt_base::VideoCodecProfile profile
+            , const std::string& resolution
+            , const unsigned int framerateFPS
+            , const unsigned int bitrateKbps
+            , const unsigned int keyFrameIntervalSeconds
+            , const std::string& algorithm
+            , const std::string& pluginName
+            , owt_base::FrameDestination* dest);
+#endif
     void removeOutput(const std::string& outStreamID);
     void forceKeyFrame(const std::string& outStreamID);
-
+#ifndef BUILD_FOR_ANALYTICS
     void drawText(const std::string& textSpec);
     void clearText();
+#endif
 
 protected:
     int useAFreeInputIndex();

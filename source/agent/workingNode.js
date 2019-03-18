@@ -30,7 +30,13 @@ function init_controller() {
     log.info('Connecting to rabbitMQ server...');
     rpc.connect(global.config.rabbit, function () {
         rpc.asRpcClient(function(rpcClient) {
-            controller = require('./' + purpose)(rpcClient, rpcID, parentID, clusterWorkerIP);
+            if (purpose === 'analytics') {
+                controller = require('./analytics/analytics-api')(
+                    rpcClient,
+                    {clusterIp: clusterWorkerIP, agentId: parentID, rpcId: rpcID});
+            } else {
+                controller = require('./' + purpose)(rpcClient, rpcID, parentID, clusterWorkerIP);
+            }
             var rpcAPI = (controller.rpcAPI || controller);
 
             rpc.asRpcServer(rpcID, rpcAPI, function(rpcServer) {

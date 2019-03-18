@@ -1,0 +1,61 @@
+{
+    "name": "analytics-agent",
+    "dest": "analytics_agent",
+    "common": {
+        "package": "package.json",
+        "files": [
+            "agent.toml",
+            "plugin.cfg",
+            "log4js_configuration.json",
+            "log4cxx.properties",
+            "configLoader.js",
+            "../index.js",
+            "../networkHelper.js",
+            "../nodeManager.js",
+            "../workingNode.js",
+            "../../common/amqp_client.js",
+            "../../common/cipher.js",
+            "../../common/clusterWorker.js",
+            "../../common/loadCollector.js",
+            "../../common/logger.js",
+            "../../common/makeRPC.js",
+            "../../common/rpcChannel.js",
+            "../../../scripts/release/initcert.js",
+            "../../../scripts/detectOS.sh"
+        ],
+        "folders": {
+            "analytics": [
+                "analytics-agent.js",
+                "analytics-api.js",
+                "../base-agent.js",
+                "../connections.js",
+                "../InternalConnectionFactory.js"
+            ],
+            "plugins" : [
+                "../plugins/*"
+            ]
+        }
+    },
+    "natives": {
+        "libdist": "lib",
+        "addons": [
+            {
+                "folder": "../video/videoTranscoder/videoAnalyzer_sw",
+                "name": "videoAnalyzer-sw"
+            },
+            {
+                "folder": "../addons/mediaFrameMulticaster",
+                "name": "mediaFrameMulticaster"
+            },
+            {
+                "folder": "../addons/internalIO",
+                "name": "internalIO"
+            },
+            {
+                "folder": "../addons/logger",
+                "name": "logger"
+            }
+        ]
+    },
+    "start": "node . -U analytics"
+}
