@@ -376,39 +376,6 @@ install_gcc(){
   fi
 }
 
-install_libvautils(){
-  export PKG_CONFIG_PATH=/opt/intel/mediasdk/lib64/pkgconfig/
-
-  local version_str=`pkg-config --variable=libva_version libva`
-  local major=`echo $version_str | sed 's/\([0-9]\+\)\.\([0-9]\+\).*/\1/'`
-  local minor=`echo $version_str | sed 's/\([0-9]\+\)\.\([0-9]\+\).*/\2/'`
-  local version=$[${major:-0}*1000+${minor:-0}]
-
-  echo "Detect libva-"$version_str
-
-  # Dont build before v1.8
-  if [ ${version} -lt  1008 ]
-  then
-    echo "Dont need libva-util"
-    return
-  fi
-
-  local branch=v${major}.${minor}-branch
-  echo "Use libva-util branch: " ${branch}
-
-  pushd ${LIB_DIR}
-  rm libva-utils -rf
-  git clone -b $branch https://github.com/intel/libva-utils.git
-
-  pushd libva-utils
-  ./autogen.sh --prefix=${PREFIX_DIR}
-  make -j4
-  make install
-
-  popd
-  popd
-}
-
 install_svt_hevc(){
     pushd $ROOT/third_party
     rm -rf SVT-HEVC
