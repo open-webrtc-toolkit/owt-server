@@ -108,6 +108,8 @@ The management API uses REST model to accessing different resources. The resourc
 - Streaming-ins
 - Streaming-outs
 - Recordings
+- Sipcalls
+- Analytics
 - Token
 
 ## 5.1 Rooms {#RESTAPIsection5_1}
@@ -521,7 +523,7 @@ Streams model:
     object(ForwardInfo):
     {
         owner: string(ParticipantId),
-        type: "webrtc" | "streaming" | "sip",
+        type: "webrtc" | "streaming" | "sip" | "analytics",
         inViews: [string(ViewLabel)],
         attributes: object(ExternalDefinedObj)
     }
@@ -963,7 +965,7 @@ parameters:
 |  undefined | request body | Request body is null |
 
 response body: response body is **empty**.<br>
-## 5.7 Sip calls {#RESTAPIsection5_7}
+## 5.7 Sipcalls {#RESTAPIsection5_7}
 Description:
 
 Sip call data model:
@@ -1103,8 +1105,83 @@ parameters:
 | {sipCallId} | URL | Sip Call ID|
 |  undefined | request body | Request body is null |
 
+## 5.8 Analytics {#RESTAPIsection5_7}
+Description:
+
+Analytics data model:
+
+    object(Analytics):
+    {
+        id: string(analytic-id),
+        analytics: {
+          algorithm: string(algorithmId)
+        },
+        media: {
+          format: object(VideoFormat),
+          from: string(sourceStreamId)
+        }
+    }
+
+Resources:
+
+- /v1/rooms/{roomId}/analytics
+- /v1/rooms/{roomId}/analytics/{analyticId}
+
+### /v1/rooms/{roomId}/analytics
+#### GET
+Description:<br>
+Get all the ongoing analytics in the specified room.<br>
+
+parameters:
+
+| parameters | type | annotation |
+|:----------|:----|:----------|
+|    {roomId}    | URL |    Room ID    |
+|  undefined | request body | Request body is null |
+response body:
+
+| type | content |
+|:-------------|:-------|
+|  json | All the ongoing analytics in the specified room |
+#### POST
+Description:<br>
+Start an analytic for a stream in the specified room.<br>
+
+parameters:
+
+| parameters | type | annotation |
+|:----------|:----|:----------|
+|    {roomId}    | URL |    Room ID    |
+| options | request body | JSON format with peer URI and input/output media requirement|
+**Note**:<br>
+
+    options={
+        algorithm: string(algorithmId),
+        media: object(MediaSubOptions)       // Refers to object(MediaSubOptions) in 5.5.
+    }
+
+response body:
+
+| type | content |
+|:-------------|:-------|
+|  json | An analytics object in the specified room |
+
+### /v1/rooms/{roomId}/analytics/{analyticId}
+#### DELETE
+Description:<br>
+End the specified analytic in the specified room.<br>
+
+parameters:
+
+| parameters | type | annotation |
+|:----------|:----|:----------|
+|    {roomId}    | URL |    Room ID    |
+| {analyticId} | URL | Analytic ID|
+|  undefined | request body | Request body is null |
+
 response body: response body is **empty**.<br>
-## 5.8 Token {#RESTAPIsection5_8}
+
+## 5.9 Token {#RESTAPIsection5_8}
 Description:<br>
 A token is the ticket for joining the room. The token contains information through which clients can connect to server application. Note that the different rooms may have different network information, so the room must be specified for token resource. The same token cannot be reused if it has been used once. Re-generate token if clients need to connect at the second time.<br>
 
