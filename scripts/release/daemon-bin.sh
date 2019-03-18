@@ -122,28 +122,28 @@ case $startStop in
         ;;
       webrtc-agent )
         cd ${OWT_HOME}/webrtc_agent
-        export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:./lib
+        export LD_LIBRARY_PATH=./lib:${LD_LIBRARY_PATH}
         nohup nice -n ${OWT_NICENESS} ./OWT-MCU-Agent . -U webrtc\
           > "${stdout}" 2>&1 </dev/null &
         echo $! > ${pid}
         ;;
       streaming-agent )
         cd ${OWT_HOME}/streaming_agent
-        export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:./lib
+        export LD_LIBRARY_PATH=./lib:${LD_LIBRARY_PATH}
         nohup nice -n ${OWT_NICENESS} ./OWT-MCU-Agent . -U streaming\
           > "${stdout}" 2>&1 </dev/null &
         echo $! > ${pid}
         ;;
       recording-agent )
         cd ${OWT_HOME}/recording_agent
-        export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:./lib
+        export LD_LIBRARY_PATH=./lib:${LD_LIBRARY_PATH}
         nohup nice -n ${OWT_NICENESS} ./OWT-MCU-Agent . -U recording\
           > "${stdout}" 2>&1 </dev/null &
         echo $! > ${pid}
         ;;
       sip-agent )
         cd ${OWT_HOME}/sip_agent
-        export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:./lib
+        export LD_LIBRARY_PATH=./lib:${LD_LIBRARY_PATH}
         nohup nice -n ${OWT_NICENESS} ./OWT-MCU-Agent . -U sip\
           > "${stdout}" 2>&1 </dev/null &
         echo $! > ${pid}
@@ -156,14 +156,14 @@ case $startStop in
         ;;
       audio-agent )
         cd ${OWT_HOME}/audio_agent
-        export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:./lib
+        export LD_LIBRARY_PATH=./lib:${LD_LIBRARY_PATH}
         nohup nice -n ${OWT_NICENESS} ./OWT-MCU-Agent . -U audio\
           > "${stdout}" 2>&1 </dev/null &
         echo $! > ${pid}
         ;;
       video-agent )
         cd ${OWT_HOME}/video_agent
-        export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:./lib
+        export LD_LIBRARY_PATH=./lib:${LD_LIBRARY_PATH}
         nohup nice -n ${OWT_NICENESS} ./OWT-MCU-Agent . -U video\
           > "${stdout}" 2>&1 </dev/null &
         echo $! > ${pid}
