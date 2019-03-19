@@ -409,7 +409,7 @@ const SipCallAdd = {
     'mediaIn': {
       type: 'object',
       properties: {
-        'audio': {type: 'boolean'},
+        'audio': {'const': true},
         'video': {type: 'boolean'}
       },
       additionalProperties: false,
@@ -425,10 +425,7 @@ const SipCallAdd = {
       type: 'object',
       properties: {
         'audio': {
-          anyOf: [
-            { $ref: '#/definitions/AudioOutOptions'},
-            { 'const': false }
-          ]
+          $ref: '#/definitions/AudioOutOptions',
         },
         'video': {
           anyOf: [
