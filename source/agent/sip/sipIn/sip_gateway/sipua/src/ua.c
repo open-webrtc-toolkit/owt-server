@@ -278,11 +278,12 @@ static void call_event_handler(struct call *call, enum call_event ev,
 		break;
 
 	case CALL_EVENT_CLOSED:
+		ua_printf(ua, "Call closed: %s\n", peeruri);
 		ua_event(ua, UA_EVENT_CALL_CLOSED, call, str);
 		if (call_get_owner(call)) {
 			call_connection_closed(call_get_owner(call));
-			ep_call_closed(ua->owner->ep, peeruri, str);
 		}
+    ep_call_closed(ua->owner->ep, peeruri, str);
 		mem_deref(call);
 
 		resume_call(ua);
