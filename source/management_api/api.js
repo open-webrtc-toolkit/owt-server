@@ -58,6 +58,7 @@ var streamsResource = require('./resource/streamsResource');
 var streamingOutsResource = require('./resource/streamingOutsResource');
 var recordingsResource = require('./resource/recordingsResource');
 var sipcallsResource = require('./resource/sipcallsResource');
+var analyticsResource = require('./resource/analyticsResource');
 
 // parse application/x-www-form-urlencoded
 app.use(bodyParser.urlencoded({ extended: true }))
@@ -135,6 +136,11 @@ app.get('/v1/rooms/:room/sipcalls', sipcallsResource.getList);
 app.post('/v1/rooms/:room/sipcalls', sipcallsResource.add);
 app.patch('/v1/rooms/:room/sipcalls/:id', sipcallsResource.patch);
 app.delete('/v1/rooms/:room/sipcalls/:id', sipcallsResource.delete);
+
+//Analytic management
+app.get('/v1/rooms/:room/analytics', analyticsResource.getList);
+app.post('/v1/rooms/:room/analytics', analyticsResource.add);
+app.delete('/v1/rooms/:room/analytics/:id', analyticsResource.delete);
 
 //Create token.
 app.post('/v1/rooms/:room/tokens', tokensResource.create);

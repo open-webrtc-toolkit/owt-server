@@ -1,0 +1,187 @@
+Todo:
+1. install intel's OpenVino computational vision sdk from https://software.intel.com/en-us/openvino-toolkit
+	Follow installation instructions at https://software.intel.com/en-us/articles/OpenVINO-Install-Linux, make sure you can run "Verify the Installation Using the Demo Scripts"
+	Currently, only Ubuntu operation system is supported. 
+     ***terminal command to setup openvino/opencv environment: source /opt/intel/computer_vision_sdk/bin/setupvars.sh  
+	
+
+2. In order to run the pre-trained Tensorflow model in Intel's Inference Engine for face recognition, a conversion using Model Optimizer is needed:
+	To download the tensorflow model and have some understanding of face recognition, please refer to FaceNet's github page: https://github.com/davidsandberg/facenet
+
+	This is a general view of model optimizer w. TF support https://software.intel.com/en-us/articles/OpenVINO-Using-TensorFlow	
+	For this specific project, run the following commands, and you need to specify the path to tensorflow .pb model 
+		cd /opt/intel/computer_vision_sdk/deployment_tools/model_optimizer
+		python3 ./mo_tf.py --input_model path_to_model/model_name.pb  --freeze_placeholder_with_value "phase_train->False" --reverse_input_channels
+
+	Copy the converted .bin and .xml files to /model directory of *this project*, or you can specify absolute paths to them by modifying the code. 
+                   -----or----- 
+	For your convenience, we have prepared necessary models to be downloaded: https://drive.google.com/drive/folders/1XS1PAZ8XdyhbPVXl2gcKDEt02zVOnsko?usp=sharing
+	
+3. For server plugin, you must change path to your own 
+ i.e:  FaceRecognition.initialize("./model/20180402-114759.xml");    <------
+       vector<pair<string, vector<float> > > read_text(){
+	    cout<< "Reading vectors of saved person"<<endl;
+	    vector<pair<string, vector<float> > > data;
+	    string file="./vectors.txt";     <------
+
+4. This project supports out-of-tree build, given that you have installed the OpenVino toolkit using sudo 
+
+Building : 
+	cd build
+	//under build directory 
+	rm -rf *  (optional, if something bad happened you need to retry the build)
+	cmake ..
+	make
+
+	***Executables & .so are located under build/intel64/Release for Ubuntu OS** 
+
+Description of each program : 
+	preprocess tool: 
+		processes "/raw_photos", and save to "/output_photos", 
+		raw_photos should have sub-directories as following example. Names of pictures do not affect execution, but directory names do matter.
+		-- Jianlin 
+		|----01-08-2018-15-59-13.jpg
+		|----01-08-2018-15-59-20.jpg
+		|----01-08-2018-15-59-19.jpg
+		|----01-08-2018-15-59-18.jpg
+		|----01-08-2018-15-59-14.jpg
+		-- Jay
+		|----Jay_Chou_0001.jpg
+		|----Jay_Chou_0003.jpg
+		|----Jay_Chou_0004.jpg
+		|----Jay_Chou_0002.jpg
+		-- Bush
+		|----George_W_Bush_0003.jpg
+		|----George_W_Bush_0001.jpg
+		|----George_W_Bush_0002.jpg
+
+		proprocess_tool also outputs the features represented by 512-D vectors for each photo and saves to "vectors.txt"
+
+	local_recognizer: 
+		Reads saved pictures from "vectors.txt", reads each frame from a camera, do infer of 
+			face detection/recognition for each frame, and compare with data contained in vectors.txt 
+		You need to provide sets of raw photos and then use preprocess_tool to organize /output_photos 
+
+	Photo_taker:
+		Opens a camera stream if any. 
+		Do not click outside the terminal after you execute the program
+		Press "Esc" to take a photo, which will be saved to  "/camera photos"
+		You can later organize these photos to form your raw_photos, and then use preprocess tool to make them ready for face recognition 
+
+Common work flow:
+	Build the repo. 
+	1. Use photo_taker to take photos, and then manually move photos from /camera_photo to organize photo sets in /raw_photos 
+		                                        ----or----- 
+	   Upload your own photos and build photo sets in /raw_photos
+	2. Use pre_process_tool to crop photos; this will do inference on cropped photos so 512-D vectors are stored in vectors.txt
+		It is recommended to delete all files under /output_photos before running ./preprocess_tool, since the program will output 
+		to this directory in response to photo stored under /raw_photos
+	3. Run programes
+	4. If you want to add more people to be recognized, repeat step 1-2 
+
+Tips:
+	1. Thresholds of FaceRecognitionClass to decide whether a face is "Unknown" or mostly close to a known photo can be changed in public function
+		"recognize()."  A threshold of 0.6 is accurate but relatively hard to achieve, while 0.7 is less demanding, but easier to recognize with allowance of uncertainty
+	2. Clear, frontal photos greatly enhance recognition accuracy
+
+
+Appendix :
+
+Tree of the directory:
+.
+├── build
+├── camera_photos
+│   ├── 01-08-2018-15-42-27.jpg
+│   ├── 01-08-2018-15-42-29.jpg
+│   ├── 01-08-2018-15-42-31.jpg
+│   ├── 01-08-2018-15-42-32.jpg
+│   ├── 01-08-2018-15-42-33.jpg
+│   ├── 01-08-2018-15-59-13.jpg
+│   ├── 01-08-2018-15-59-14.jpg
+│   ├── 01-08-2018-15-59-18.jpg
+│   ├── 01-08-2018-15-59-19.jpg
+│   ├── 01-08-2018-15-59-20.jpg
+│   ├── 01-08-2018-16-02-38.jpg
+│   ├── 01-08-2018-16-02-39.jpg
+│   ├── 02-08-2018-08-46-15.jpg
+│   ├── 02-08-2018-08-46-16.jpg
+│   ├── 02-08-2018-08-46-19.jpg
+│   ├── 02-08-2018-08-46-21.jpg
+│   ├── 02-08-2018-09-36-50.jpg
+│   ├── 02-08-2018-09-36-54.jpg
+│   ├── 02-08-2018-09-38-14.jpg
+│   ├── 02-08-2018-09-38-15.jpg
+│   ├── 02-08-2018-09-38-16.jpg
+│   ├── 02-08-2018-09-38-17.jpg
+│   ├── 02-08-2018-14-08-57.jpg
+│   ├── 02-08-2018-14-08-58.jpg
+│   ├── 03-08-2018-16-29-29.jpg
+│   ├── 03-08-2018-16-29-30.jpg
+│   ├── 03-08-2018-16-29-32.jpg
+│   ├── 03-08-2018-16-29-33.jpg
+│   ├── 03-08-2018-16-30-05.jpg
+│   ├── 03-08-2018-16-30-06.jpg
+│   ├── 09-08-2018-15-15-24.jpg
+│   ├── 09-08-2018-15-15-26.jpg
+│   ├── 09-08-2018-15-15-28.jpg
+│   ├── 09-08-2018-15-52-21.jpg
+│   ├── 09-08-2018-15-52-22.jpg
+│   ├── 09-08-2018-15-52-24.jpg
+│   ├── 09-08-2018-15-52-27.jpg
+│   └── 09-08-2018-15-52-28.jpg
+├── CMakeLists.txt
+├── local_recognizer
+│   ├── backup
+│   ├── CMakeLists.txt
+│   └── main.cpp
+├── local_recognizer_async
+│   ├── CMakeLists.txt
+│   ├── main.cpp
+│   └── thread_func.h
+├── model
+│   ├── 20180402-114759.bin
+│   ├── 20180402-114759.mapping
+│   └── 20180402-114759.xml
+├── output_photos
+├── photo_taker
+│   ├── CMakeLists.txt
+│   └── main.cpp
+├── preprocess_tool
+│   ├── CMakeLists.txt
+│   └── main.cpp
+├── raw_photos
+│   ├── Foo
+│   ├── Foo2
+│   └── WuYangzu
+│       ├── 01-08-2018-16-02-38.jpg
+│       ├── 01-08-2018-16-02-39.jpg
+│       ├── 02-08-2018-08-46-15.jpg
+│       ├── 02-08-2018-08-46-16.jpg
+│       ├── 02-08-2018-14-08-57.jpg
+│       ├── 02-08-2018-14-08-58.jpg
+│       ├── 03-08-2018-16-30-05.jpg
+│       ├── 03-08-2018-16-30-06.jpg
+│       ├── 09-08-2018-15-15-24.jpg
+│       ├── 09-08-2018-15-15-26.jpg
+│       └── 09-08-2018-15-15-28.jpg
+├── Readme
+├── server_plugin
+│   ├── CMakeLists.txt
+│   ├── main.cpp
+│   └── myplugin.h
+├── src
+│   ├── common_ie.hpp
+│   ├── emotion_recognition.cpp
+│   ├── emotion_recognition.h
+│   ├── face_detection.cpp
+│   ├── face_detection.h
+│   ├── face_recognition.cpp
+│   ├── face_recognition.h
+│   ├── person_detection.cpp
+│   └── person_detection.h
+└── vectors.txt
+
+
+
+
+

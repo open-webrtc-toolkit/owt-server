@@ -35,6 +35,7 @@ for (var prop in opt.options) {
                     value === 'sip' ||
                     value === 'streaming' ||
                     value === 'recording' ||
+                    value === 'analytics' ||
                     value === 'audio' ||
                     value === 'video') {
                     myPurpose = value;
@@ -108,7 +109,11 @@ var joinCluster = function (on_ok) {
 };
 
 var init_manager = () => {
-  var reuseNode = !(myPurpose === 'audio' || myPurpose === 'video' || myPurpose === 'conference' || myPurpose === 'sip');
+  var reuseNode = !(myPurpose === 'audio'
+    || myPurpose === 'video'
+    || myPurpose === 'analytics'
+    || myPurpose === 'conference'
+    || myPurpose === 'sip');
   var consumeNodeByRoom = !(myPurpose === 'audio' || myPurpose === 'video');
 
   var spawnOptions = {

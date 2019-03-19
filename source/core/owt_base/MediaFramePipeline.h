@@ -284,6 +284,12 @@ public:
     virtual void clearText() = 0;
 };
 
+class VideoFrameAnalyzer : public FrameSource, public FrameDestination {
+public:
+    virtual ~VideoFrameAnalyzer() { }
+    virtual bool init(FrameFormat format, const uint32_t width, const uint32_t height, const uint32_t frameRate, const std::string& pluginName) = 0;
+};
+
 class VideoFrameEncoder : public FrameDestination {
 public:
     virtual ~VideoFrameEncoder() { }

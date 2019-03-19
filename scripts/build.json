@@ -3,6 +3,7 @@
         "include" : [
             "video-mixer-sw",
             "video-transcoder-sw",
+            "video-analyzer-sw",
             "internal-io",
             "logger",
             "media-frame-multicaster",
@@ -46,6 +47,10 @@
     "video-transcoder-sw": {
         "path" : "source/agent/video/videoTranscoder/videoTranscoder_sw",
         "gyp" : "binding.sw.gyp"
+    },
+    "video-analyzer-sw": {
+        "path" : "source/agent/video/videoTranscoder/videoAnalyzer_sw",
+        "gyp"  : "binding.sw.gyp"
     },
     "video-mixer-msdk" : {
         "path" : "source/agent/video/videoMixer/videoMixer_msdk",

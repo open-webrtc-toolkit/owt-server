@@ -118,6 +118,7 @@ void VideoTranscoder::unsetInput(const std::string& inStreamID)
     }
 }
 
+#ifndef BUILD_FOR_ANALYTICS
 bool VideoTranscoder::addOutput(
     const std::string& outStreamID
     , const std::string& codec
@@ -138,6 +139,30 @@ bool VideoTranscoder::addOutput(
     }
     return false;
 }
+#else
+bool VideoTranscoder::addOutput(
+    const std::string& outStreamID
+    , const std::string& codec
+    , const owt_base::VideoCodecProfile profile
+    , const std::string& resolution
+    , const unsigned int framerateFPS
+    , const unsigned int bitrateKbps
+    , const unsigned int keyFrameIntervalSeconds
+    , const std::string& algorithm
+    , const std::string& pluginName
+    , owt_base::FrameDestination* dest)
+{
+    owt_base::FrameFormat format = getFormat(codec);
+    VideoSize vSize{0, 0};
+    VideoResolutionHelper::getVideoSize(resolution, vSize);
+    if (m_frameTranscoder->addOutput(m_nextOutputIndex, format, profile, vSize, framerateFPS, bitrateKbps, keyFrameIntervalSeconds, algorithm, pluginName, dest)) {
+        boost::unique_lock<boost::shared_mutex> lock(m_outputsMutex);
+        m_outputs[outStreamID] = m_nextOutputIndex++;
+        return true;
+    }
+    return false;
+}
+#endif
 
 void VideoTranscoder::removeOutput(const std::string& outStreamID)
 {
@@ -169,7 +194,7 @@ void VideoTranscoder::forceKeyFrame(const std::string& outStreamID)
         m_frameTranscoder->requestKeyFrame(index);
     }
 }
-
+#ifndef BUILD_FOR_ANALYTICS
 void VideoTranscoder::drawText(const std::string& textSpec)
 {
     m_frameTranscoder->drawText(textSpec);
@@ -179,6 +204,7 @@ void VideoTranscoder::clearText()
 {
     m_frameTranscoder->clearText();
 }
+#endif
 
 void VideoTranscoder::closeAll()
 {
