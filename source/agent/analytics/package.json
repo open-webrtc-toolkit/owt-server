@@ -1,12 +1,11 @@
 {
-  "name": "WooGeen-MCU-Agent",
+  "name": "OWT-MCU-Agent",
   "version":"4.1.0",
   "dependencies": {
     "amqp": "*",
     "log4js": "^1.1.1",
     "node-getopt": "*",
-    "toml": "*",
-    "sdp-transform": "2.3.0"
+    "toml": "*"
   },
   "devDependencies": {
     "node-gyp": "*"
