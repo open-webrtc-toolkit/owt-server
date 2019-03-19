@@ -982,7 +982,7 @@ Sip call data model:
     type={"dial-in" | "dial-out"}
     object(SipOutMedia):
     {
-        audio: object(SipOutAudio) | false,
+        audio: object(SipOutAudio),
         video: object(SipOutVideo) | false
     }
     object(SipOutAudio):
@@ -1031,7 +1031,7 @@ parameters:
     options={
         peerURI: string,
         mediaIn: {
-            audio: boolean(),      // Must be consistent with mediaOut.audio
+            audio: true,           // Audio must be true for sip calls.
             video: boolean()       // Must be consistent with mediaOut.video
         }
         mediaOut: object(SipOutMedia)
