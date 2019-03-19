@@ -26,6 +26,7 @@ init_software()
     ${ROOT}/webrtc_agent/install_deps.sh
     ${ROOT}/video_agent/install_deps.sh
     ${ROOT}/video_agent/init.sh
+    ${ROOT}/analytics_agent/install_deps.sh
   else
     ${ROOT}/bin/init-mongodb.sh
     ${ROOT}/bin/init-rabbitmq.sh
@@ -47,6 +48,7 @@ init_hardware()
     ${ROOT}/webrtc_agent/install_deps.sh
     ${ROOT}/video_agent/install_deps.sh --hardware
     ${ROOT}/video_agent/init.sh --hardware
+    ${ROOT}/analytics_agent/install_deps.sh
   else
     ${ROOT}/bin/init-mongodb.sh
     ${ROOT}/bin/init-rabbitmq.sh

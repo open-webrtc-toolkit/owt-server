@@ -9,6 +9,8 @@
             "log4js_configuration.json",
             "log4cxx.properties",
             "configLoader.js",
+            "../video/install_deps.sh",
+            "../video/install_openh264.sh",
             "../index.js",
             "../networkHelper.js",
             "../nodeManager.js",
