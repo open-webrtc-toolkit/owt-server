@@ -41,7 +41,7 @@ const DEFAULT_VIDEO_OUT = [
   { codec: 'vp9' },
 ];
 const DEFAULT_VIDEO_PARA = {
-  resolution: ['x3/4', 'x2/3', 'x1/2', 'x1/3', 'x1/4', 'hd1080p', 'hd720p', 'svga', 'vga', 'cif'],
+  resolution: ['x3/4', 'x2/3', 'x1/2', 'x1/3', 'x1/4', 'hd1080p', 'hd720p', 'svga', 'vga', 'qvga', 'cif'],
   framerate: [6, 12, 15, 24, 30, 48, 60],
   bitrate: ['x0.8', 'x0.6', 'x0.4', 'x0.2'],
   keyFrameInterval: [100, 30, 5, 2, 1]
