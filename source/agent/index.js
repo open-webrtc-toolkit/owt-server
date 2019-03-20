@@ -114,7 +114,7 @@ var init_manager = () => {
     || myPurpose === 'analytics'
     || myPurpose === 'conference'
     || myPurpose === 'sip');
-  var consumeNodeByRoom = !(myPurpose === 'audio' || myPurpose === 'video');
+  var consumeNodeByRoom = !(myPurpose === 'audio' || myPurpose === 'video' || myPurpose === 'analytics');
 
   var spawnOptions = {
     cmd: 'node',

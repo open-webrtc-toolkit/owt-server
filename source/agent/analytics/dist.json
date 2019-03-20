@@ -22,6 +22,7 @@
             "../../common/logger.js",
             "../../common/makeRPC.js",
             "../../common/rpcChannel.js",
+            "../../common/mediaUtil.js",
             "../../../scripts/release/initcert.js",
             "../../../scripts/detectOS.sh"
         ],

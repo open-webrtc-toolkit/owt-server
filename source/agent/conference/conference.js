@@ -2355,10 +2355,12 @@ var Conference = function (rpcClient, selfRpcId) {
           if (!streams[subDesc.media.video.from]) {
             return Promise.reject('Video source not valid for analyzing');
           }
-          subDesc.connection = (subDesc.connection || {});
-          subDesc.connection.media = {
-            video: streams[subDesc.media.video.from].media.video.format
-          };
+          if (!subDesc.media.video.format) {
+            // Subscribe source format
+            let sourceVideoOption = streams[subDesc.media.video.from].media.video;
+            subDesc.media.video.format = sourceVideoOption.format;
+            subDesc.media.video.parameters = sourceVideoOption.parameters;
+          }
         }
 
         // Schedule preference for worker node
