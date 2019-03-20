@@ -94,7 +94,6 @@ class AnalyticsAgent extends BaseAgent {
     if (!this.inputs[connectionId]) {
       engine = new AddonEngine();
       const videoFormat = options.media.video.format;
-      const videoParameters = options.media.video.parameters;
       const algo = options.connection.algorithm;
       const pluginName = this.algorithms[algo].name;
       this.inputs[connectionId] = {
