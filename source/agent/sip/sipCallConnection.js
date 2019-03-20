@@ -16,7 +16,7 @@ exports.SipCallConnection = function (spec, onMediaUpdate) {
         input = true,
         output = true,
         gateway = spec.gateway,
-        clientID = spec.clientID,
+        peerURI = spec.peerURI,
         audio = spec.audio,
         video = spec.video,
         support_red = spec.red,
@@ -27,7 +27,7 @@ exports.SipCallConnection = function (spec, onMediaUpdate) {
         videoFramePacketizer,
         sip_callConnection;
 
-    sip_callConnection = new SipGateway.SipCallConnection(gateway, clientID);
+    sip_callConnection = new SipGateway.SipCallConnection(gateway, peerURI);
     if (audio) {
         // sip->mcu
         audioFrameConstructor = new AudioFrameConstructor();
@@ -41,7 +41,7 @@ exports.SipCallConnection = function (spec, onMediaUpdate) {
         videoFrameConstructor = new VideoFrameConstructor();
         videoFrameConstructor.bindTransport(sip_callConnection);
         videoFrameConstructor.addEventListener('mediaInfo', function (mediaUpdate) {
-            onMediaUpdate(clientID, 'in', mediaUpdate);
+            onMediaUpdate(peerURI, 'in', mediaUpdate);
         });
 
         videoFramePacketizer = new VideoFramePacketizer(support_red, support_ulpfec);
