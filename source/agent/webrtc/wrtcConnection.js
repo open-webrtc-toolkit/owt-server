@@ -370,8 +370,8 @@ module.exports = function (spec, on_status, on_mediaUpdate) {
                 case CONN_SDP:
                 case CONN_GATHERED:
                     networkInterfaces.forEach((i) => {
-                        if (i.private_ip_match_pattern && i.replaced_ip_address) {
-                            message = message.replace(i.private_ip_match_pattern, i.replaced_ip_address);
+                        if (i.ip_address && i.replaced_ip_address) {
+                            message = message.replace(new RegExp(i.ip_address, 'g'), i.replaced_ip_address);
                         }
                     });
                     audio && (message = determineAudioFmt(message));
@@ -382,8 +382,8 @@ module.exports = function (spec, on_status, on_mediaUpdate) {
 
                 case CONN_CANDIDATE:
                     networkInterfaces.forEach((i) => {
-                        if (i.private_ip_match_pattern && i.replaced_ip_address) {
-                          message = message.replace(i.private_ip_match_pattern, i.replaced_ip_address);
+                        if (i.ip_address && i.replaced_ip_address) {
+                          message = message.replace(new RegExp(i.ip_address, 'g'), i.replaced_ip_address);
                         }
                       });
                     on_status({type: 'candidate', candidate: message});
