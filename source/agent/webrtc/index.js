@@ -26,6 +26,17 @@ if (global.config.webrtc.use_nicer) {
   ioThreadPool.start();
 }
 
+global.config.webrtc.network_interfaces.forEach(item => {
+    let addr = networkHelper.getAddress(item.name);
+    if (!addr) {
+        log.error("Can't get webrtc IP address");
+    }
+    item.ip_address = addr.ip;
+    if (item.replaced_ip_address) {
+        item.private_ip_match_pattern = new RegExp(addr.ip, 'g');
+    }
+});
+
 module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
     var that = {
       agentID: parentRpcId,
