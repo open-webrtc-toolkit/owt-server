@@ -756,7 +756,7 @@ class RoomModal extends React.Component {
 
     const resolutions = [
       'x3/4', 'x2/3', 'x1/2', 'x1/3', 'x1/4',
-      'hd1080p', 'hd720p', 'svga', 'vga', 'cif'
+      'hd1080p', 'hd720p', 'svga', 'vga', 'qvga', 'cif'
     ];
     const resolutionBoxes = resolutions.map((name) => {
       return mediaCheckBox(name, 'mediaOut.video.parameters.resolution');

@@ -50,7 +50,7 @@ var calcResolution = (x, baseResolution) => {
       return {width: 480, height: 320};
     case 'cif':
       return {width: 352, height: 288};
-    case 'sif':
+    case 'qvga':
       return {width: 320, height: 240};
     case 'qcif':
       return {width: 176, height: 144};
