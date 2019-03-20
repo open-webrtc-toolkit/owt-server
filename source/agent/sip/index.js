@@ -459,7 +459,8 @@ module.exports = function (rpcC, selfRpcId, parentRpcId, clusterWorkerIP) {
     };
 
     var notifyMediaUpdate = (peerURI, direction, mediaUpdate) => {
-        var clientId = peerURI.replace(/[^a-z0-9]/gmi, '_');
+        log.debug('notifyMediaUpdate:', peerURI, 'direction:', direction, 'mediaUpdate:', mediaUpdate);
+        var clientId = getClientId(peerURI);
         if (calls[clientId]) {
             if (direction === 'in' && calls[clientId].stream_id) {
                 rpcClient.remoteCast(calls[clientId].conference_controller, 'onMediaUpdate', [calls[clientId].stream_id, direction, JSON.parse(mediaUpdate)]);
@@ -477,7 +478,7 @@ module.exports = function (rpcC, selfRpcId, parentRpcId, clusterWorkerIP) {
         var support_ulpfec = info.video? info.support_ulpfec : false;
 
         if (client_id && calls[client_id]) {
-            calls[client_id].conn = new SipCallConnection({gateway: gateway, clientID: info.peerURI, audio : info.audio, video : info.video,
+            calls[client_id].conn = new SipCallConnection({gateway: gateway, peerURI: info.peerURI, audio : info.audio, video : info.video,
                 red : support_red, ulpfec : support_ulpfec}, notifyMediaUpdate);
             setupCall(client_id, info)
             .catch(function(err) {
