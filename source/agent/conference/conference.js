@@ -562,7 +562,7 @@ var Conference = function (rpcClient, selfRpcId) {
     var exit_delay = 0;
     if (room_id) {
       if (Object.keys(streams).length > 0 || Object.keys(subscriptions).length > 0) {
-        exit_delay = 5000;
+        exit_delay = 1000;
       }
 
       for (var pid in participants) {
@@ -1065,7 +1065,7 @@ var Conference = function (rpcClient, selfRpcId) {
         log.info('Empty room ', room_id, '. Deleting it');
         destroyRoom();
       }
-    }, 6 * 1000);
+    }, 30 * 1000);
   };
 
   const currentInputCount = () => {
