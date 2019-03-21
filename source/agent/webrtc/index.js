@@ -9,7 +9,6 @@ var WrtcConnection = require('./wrtcConnection');
 var Connections = require('./connections');
 var InternalConnectionFactory = require('./InternalConnectionFactory');
 var logger = require('../logger').logger;
-var networkHelper = require('../networkHelper');
 
 // Logger
 var log = logger.getLogger('WebrtcNode');
@@ -26,17 +25,6 @@ if (global.config.webrtc.use_nicer) {
   log.info('Starting ioThreadPool');
   ioThreadPool.start();
 }
-
-global.config.webrtc.network_interfaces.forEach(item => {
-    let addr = networkHelper.getAddress(item.name);
-    if (!addr) {
-        log.error("Can't get webrtc IP address");
-    }
-    item.ip_address = addr.ip;
-    if (item.replaced_ip_address) {
-        item.private_ip_match_pattern = new RegExp(addr.ip, 'g');
-    }
-});
 
 module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
     var that = {

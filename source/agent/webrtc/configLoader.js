@@ -59,6 +59,15 @@ module.exports.load = () => {
     config.webrtc.io_workers = config.webrtc.io_workers || 1;
     config.webrtc.network_interfaces = config.webrtc.network_interfaces || [];
 
+    config.webrtc.network_interfaces.forEach(item => {
+      let addr = networkHelper.getAddress(item.name);
+      if (!addr) {
+        console.error("Can't get webrtc IP address");
+        process.exit(1);
+      }
+      item.ip_address = addr.ip;
+    });
+
     return config;
   } catch (e) {
     console.error('Parsing config error on line ' + e.line + ', column ' + e.column + ': ' + e.message);

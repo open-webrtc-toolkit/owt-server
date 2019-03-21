@@ -370,7 +370,8 @@ module.exports = function (spec, on_status, on_mediaUpdate) {
                 case CONN_SDP:
                 case CONN_GATHERED:
                     networkInterfaces.forEach((i) => {
-                        if (i.private_ip_match_pattern && i.replaced_ip_address) {
+                        if (i.replaced_ip_address) {
+                            i.private_ip_match_pattern = new RegExp(i.ip_address, 'g');
                             message = message.replace(i.private_ip_match_pattern, i.replaced_ip_address);
                         }
                     });
