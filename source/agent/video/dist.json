@@ -23,6 +23,7 @@
             "../../common/logger.js",
             "../../common/makeRPC.js",
             "../../common/rpcChannel.js",
+            "../../common/mediaUtil.js",
             "../../../scripts/detectOS.sh",
             "compile_svtHevcEncoder.sh"
         ],

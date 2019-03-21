@@ -12,6 +12,9 @@ var logger = require('../logger').logger;
 var log = logger.getLogger('VideoNode');
 var InternalConnectionFactory = require('./InternalConnectionFactory');
 var internalConnFactory = new InternalConnectionFactory;
+var mediaUtil = require('../mediaUtil');
+var calcDefaultBitrate = mediaUtil.calcDefaultBitrate;
+var resolution2String = mediaUtil.resolution2String;
 
 const { LayoutProcessor } = require('./layout');
 
@@ -33,91 +36,6 @@ try {
     log.error(e);
     process.exit(-2);
 }
-
-var resolutionValue2Name = {
-    'r352x288': 'cif',
-    'r640x480': 'vga',
-    'r800x600': 'svga',
-    'r1024x768': 'xga',
-    'r640x360': 'r640x360',
-    'r1280x720': 'hd720p',
-    'r320x240': 'sif',
-    'r480x320': 'hvga',
-    'r480x360': 'r480x360',
-    'r176x144': 'qcif',
-    'r192x144': 'r192x144',
-    'r1920x1080': 'hd1080p',
-    'r3840x2160': 'uhd_4k',
-    'r360x360': 'r360x360',
-    'r480x480': 'r480x480',
-    'r720x720': 'r720x720'
-};
-
-var resolution2String = (r) => {
-  var k = 'r' + r.width + 'x' + r.height;
-  return resolutionValue2Name[k] ? resolutionValue2Name[k] : k;
-};
-
-function isResolutionEqual(r1, r2) {
-  return (r1.width === r2.width) && (r1.height === r2.height);
-}
-
-const partial_linear_bitrate = [
-  {size: 0, bitrate: 0},
-  {size: 76800, bitrate: 400},  //320*240, 30fps
-  {size: 307200, bitrate: 800}, //640*480, 30fps
-  {size: 921600, bitrate: 2000},  //1280*720, 30fps
-  {size: 2073600, bitrate: 4000}, //1920*1080, 30fps
-  {size: 8294400, bitrate: 16000}, //3840*2160, 30fps
-  {size: 33177600, bitrate: 64000} //7680*4320, 30fps
-];
-
-const standardBitrate = (width, height, framerate) => {
-  let bitrate = -1;
-  let prev = 0;
-  let next = 0;
-  let portion = 0.0;
-  let def = width * height * framerate / 30;
-
-  // find the partial linear section and calculate bitrate
-  for (var i = 0; i < partial_linear_bitrate.length - 1; i++) {
-    prev = partial_linear_bitrate[i].size;
-    next = partial_linear_bitrate[i+1].size;
-    if (def > prev && def <= next) {
-      portion = (def - prev) / (next - prev);
-      bitrate = partial_linear_bitrate[i].bitrate + (partial_linear_bitrate[i+1].bitrate - partial_linear_bitrate[i].bitrate) * portion;
-      break;
-    }
-  }
-
-  // set default bitrate for over large resolution
-  if (-1 == bitrate) {
-    bitrate = 64000;
-  }
-
-  return bitrate;
-}
-
-const calcDefaultBitrate = (codec, resolution, framerate, motionFactor) => {
-  let codec_factor = 1.0;
-  switch (codec) {
-    case 'h264':
-      codec_factor = 1.0;
-      break;
-    case 'vp8':
-      codec_factor = 1.2;
-      break;
-    case 'vp9':
-      codec_factor = 0.8;//FIXME: Theoretically it should be 0.5, not appliable before encoder is improved.
-      break;
-    case 'h265':
-      codec_factor = 0.9;//FIXME: Theoretically it should be 0.5, not appliable before encoder is improved.
-      break;
-    default:
-      break;
-  }
-  return standardBitrate(resolution.width, resolution.height, framerate) * codec_factor * motionFactor;
-};
 
 const colorMap = {
   'white': { r: 255, g: 255, b: 255 },

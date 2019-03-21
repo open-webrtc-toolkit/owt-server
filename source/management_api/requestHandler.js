@@ -271,7 +271,7 @@ exports.deleteStream = function (roomId, stream, callback) {
 exports.getSubscriptionsInRoom = function (roomId, type, callback) {
   return validateId('Room ID', roomId)
     .then((ok) => {
-      if (type === 'streaming' || type === 'recording' || type === 'webrtc') {
+      if (type === 'streaming' || type === 'recording' || type === 'webrtc' || type === 'analytics') {
         return Promise.resolve('ok');
       } else {
         return Promise.reject('Invalid type');
