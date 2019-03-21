@@ -9,6 +9,7 @@ var WrtcConnection = require('./wrtcConnection');
 var Connections = require('./connections');
 var InternalConnectionFactory = require('./InternalConnectionFactory');
 var logger = require('../logger').logger;
+var networkHelper = require('../networkHelper');
 
 // Logger
 var log = logger.getLogger('WebrtcNode');
