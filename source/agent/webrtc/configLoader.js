@@ -66,9 +66,6 @@ module.exports.load = () => {
         process.exit(1);
       }
       item.ip_address = addr.ip;
-      if (item.replaced_ip_address) {
-        item.private_ip_match_pattern = new RegExp(addr.ip, 'g');
-      }
     });
 
     return config;
