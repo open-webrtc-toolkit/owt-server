@@ -31,7 +31,7 @@ function doUnpublish(rpcClient, conference, user, streamId) {
 }
 
 // clusterConfig = { clusterIp, agentId, rpcId, networkInterfaces }
-module.exports = function (rpcClient, clusterConfig) {
+module.exports = function (rpcClient, rpcId, agentId, clusterIp) {
   // get algorithms from "plugin.cfg"
   var algorithms = {};
   try {
@@ -69,10 +69,9 @@ module.exports = function (rpcClient, clusterConfig) {
 
   const config = {
     // BaseAgent
-    clusterIp: clusterConfig.clusterIp,
-    agentId: clusterConfig.agentId,
-    rpcId: clusterConfig.rpcId,
-    networkInterfaces: clusterConfig.networkInterfaces,
+    clusterIp: clusterIp,
+    agentId: agentId,
+    rpcId: rpcId,
     // AnalyticsAgent
     algorithms,
     onStatus: notifyStatus,
