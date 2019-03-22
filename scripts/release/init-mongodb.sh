@@ -33,15 +33,8 @@ install_deps() {
   if [[ "$OS" =~ .*centos.* ]]
   then
     echo -e "\x1b[32mInstalling dependent components and libraries via yum...\x1b[0m"
-    if [[ "$OS" =~ .*6.* ]] # CentOS 6.x
-    then
-      wget -c http://dl.fedoraproject.org/pub/epel/6/x86_64/epel-release-6-8.noarch.rpm
-      ${SUDO} rpm -Uvh epel-release-6*.rpm
-    elif [[ "$OS" =~ .*7.* ]] # CentOS 7.x
-    then
-      wget -c http://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
-      ${SUDO} rpm -Uvh epel-release-latest-7*.rpm
-    fi
+    wget -c http://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
+    ${SUDO} rpm -Uvh epel-release-latest-7*.rpm
     ${SUDO} sed -i 's/https/http/g' /etc/yum.repos.d/epel.repo
     ${SUDO} yum install mongodb mongodb-server -y
   elif [[ "$OS" =~ .*ubuntu.* ]]

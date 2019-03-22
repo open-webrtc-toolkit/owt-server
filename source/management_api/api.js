@@ -212,7 +212,7 @@ if (cluster.isMaster) {
     if (serverConfig.ssl === true) {
         var cipher = require('./cipher');
         var path = require('path');
-        var keystore = path.resolve(path.dirname(serverConfig.keystorePath), '.woogeen.keystore');
+        var keystore = path.resolve(path.dirname(serverConfig.keystorePath), cipher.kstore);
         cipher.unlock(cipher.k, keystore, function cb (err, passphrase) {
             if (!err) {
                 try {

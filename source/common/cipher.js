@@ -61,7 +61,10 @@ function unlock (password, filename, cb) {
 module.exports = {
   encrypt: encrypt,
   decrypt: decrypt,
+  // Replace k with your key generator
   k: crypto.pbkdf2Sync('woogeen', 'mcu', 4000, 128, 'sha1'),
+  astore: '.owt.authstore',
+  kstore: '.owt.keystore',
   lock: lock,
   unlock: unlock
 };

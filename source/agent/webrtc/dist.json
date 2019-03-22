@@ -21,6 +21,7 @@
             "../../common/makeRPC.js",
             "../../common/rpcChannel.js",
             "../../../scripts/release/initcert.js",
+            "../../../scripts/release/initauth.js",
             "../../../scripts/detectOS.sh"
         ],
         "folders": {
@@ -31,7 +32,7 @@
                 "../InternalConnectionFactory.js"
             ],
             "cert": [
-                "../../../cert/.woogeen.keystore"
+                "../../../cert/.owt.keystore"
             ]
         }
     },
