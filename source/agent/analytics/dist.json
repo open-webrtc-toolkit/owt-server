@@ -31,7 +31,7 @@
         "folders": {
             "analytics": [
                 "analytics-agent.js",
-                "analytics-api.js",
+                "index.js",
                 "../base-agent.js",
                 "../connections.js",
                 "../InternalConnectionFactory.js"
