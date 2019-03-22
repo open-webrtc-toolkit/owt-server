@@ -128,8 +128,8 @@ In order for the MCU server to deliver the best performance on video conferencin
         * soft nproc unlimited
         * hard nofile 163840
         * soft nofile 163840
-        * hard stack 1024
-        * soft stack 1024
+        * hard stack 8192
+        * soft stack 8192
 
    If you only want to target these settings to specific user or group rather than all with "*", please follow the configuration rules of the /etc/security/limits.conf file.
 
@@ -143,6 +143,8 @@ In order for the MCU server to deliver the best performance on video conferencin
 
         * soft nproc unlimited
         * hard nproc unlimited
+        * hard nofile 163840
+        * soft nofile 163840
 
 4. Add or update the following lines in /etc/sysctl.conf:
 
