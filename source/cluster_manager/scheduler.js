@@ -169,10 +169,6 @@ exports.Scheduler = function(spec) {
 
         if (candidates.length < 1) {
             return on_error('No worker matches the preference.');
-        } else if (candidates.length === 1) {
-            var worker = candidates[0];
-            reserveWorkerForTask(task, worker, (reserveTime && reserveTime > 0 ? reserveTime : schedule_reserve_time));
-            return on_ok(worker, workers[worker].info);
         } else {
             strategy.allocate(workers, candidates, function (worker) {
                 reserveWorkerForTask(task, worker, (reserveTime && reserveTime > 0 ? reserveTime : schedule_reserve_time));
