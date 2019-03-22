@@ -15,7 +15,7 @@ enum sipua_cmd_code {
 struct sipua_call_data{
 	bool audio;
 	bool video;
-	const char *calleeURI;
+	char calleeURI[256];
 };
 
 struct sipua_tx_rtpbuf {
