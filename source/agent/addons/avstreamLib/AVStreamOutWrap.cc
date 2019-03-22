@@ -71,7 +71,23 @@ void AVStreamOutWrap::New(const v8::FunctionCallbackInfo<v8::Value>& args)
     std::string url = std::string(*String::Utf8Value(options->Get(String::NewFromUtf8(isolate, "url"))->ToString()));
     int initializeTimeout = options->Get(String::NewFromUtf8(isolate, "initializeTimeout"))->Int32Value();
     if (type.compare("streaming") == 0) {
-        obj->me = new owt_base::LiveStreamOut(url, requireAudio, requireVideo, obj, initializeTimeout);
+        owt_base::LiveStreamOut::StreamingFormat format;
+        if (url.find("rtsp://") == 0)
+            format = owt_base::LiveStreamOut::STREAMING_FORMAT_RTSP;
+        else if (url.find("rtmp://") == 0)
+            format = owt_base::LiveStreamOut::STREAMING_FORMAT_RTMP;
+        else if (url.find(".m3u8") == url.length() - 5)
+            format = owt_base::LiveStreamOut::STREAMING_FORMAT_HLS;
+        else if (url.find(".mpd") == url.length() - 4) {
+            format = owt_base::LiveStreamOut::STREAMING_FORMAT_DASH;
+        } else {
+            isolate->ThrowException(Exception::TypeError(String::NewFromUtf8(isolate, "Unsupported AVStreamOut type")));
+            return;
+        }
+
+        owt_base::LiveStreamOut::StreamingOptions opts(format);
+
+        obj->me = new owt_base::LiveStreamOut(url, requireAudio, requireVideo, obj, initializeTimeout, opts);
     } else if (type.compare("file") == 0) {
         obj->me = new owt_base::MediaFileOut(url, requireAudio, requireVideo, obj, initializeTimeout);
     } else {
