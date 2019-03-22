@@ -3,11 +3,11 @@
 // SPDX-License-Identifier: Apache-2.0
 
 'use strict';
-var woogeenWebrtc = require('../webrtcLib/build/Release/webrtc');
-var AudioFrameConstructor = woogeenWebrtc.AudioFrameConstructor;
-var VideoFrameConstructor = woogeenWebrtc.VideoFrameConstructor;
-var AudioFramePacketizer = woogeenWebrtc.AudioFramePacketizer;
-var VideoFramePacketizer = woogeenWebrtc.VideoFramePacketizer;
+var webrtcAddon = require('../webrtcLib/build/Release/webrtc');
+var AudioFrameConstructor = webrtcAddon.AudioFrameConstructor;
+var VideoFrameConstructor = webrtcAddon.VideoFrameConstructor;
+var AudioFramePacketizer = webrtcAddon.AudioFramePacketizer;
+var VideoFramePacketizer = webrtcAddon.VideoFramePacketizer;
 var path = require('path');
 var logger = require('../logger').logger;
 var cipher = require('../cipher');
@@ -636,7 +636,7 @@ module.exports = function (spec, on_status, on_mediaUpdate) {
         }
     };
 
-    var keystore = path.resolve(path.dirname(global.config.webrtc.keystorePath), '.woogeen.keystore');
+    var keystore = path.resolve(path.dirname(global.config.webrtc.keystorePath), cipher.kstore);
     cipher.unlock(cipher.k, keystore, function cb (err, passphrase) {
         if (!err) {
             // Libnice collects candidates on |ipAddresses| only.

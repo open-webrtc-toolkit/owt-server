@@ -8,6 +8,7 @@ bin=`cd "$bin"; pwd`
 ROOT=`cd "${bin}/.."; pwd`
 
 OWT_UPDATE_DONE=false
+HAVE_AUTH_UPDATE=false
 
 usage()
 {
@@ -58,6 +59,37 @@ init_hardware()
   fi
 }
 
+init_auth()
+{
+  read -t 10 -p "Update RabbitMQ Account? [No/yes]" yn
+  if [[ $? -eq 0 ]]; then
+    case $yn in
+      [Nn]* ) ;;
+      [Yy]* ) HAVE_AUTH_UPDATE=true;;
+      * ) ;;
+    esac
+  fi
+
+  local AUTH_SCRIPT="${ROOT}/cluster_manager/initauth.js"
+  local CIPHER_JS="${ROOT}/cluster_manager/cipher.js"
+  local AUTH_STORE=""
+  if [[ "${HAVE_AUTH_UPDATE}" == "true" ]]; then
+    ${AUTH_SCRIPT}
+    AUTH_STORE=`node -e "console.log(require('${CIPHER_JS}').astore)"`
+    cp ${ROOT}/cluster_manager/${AUTH_STORE} ${ROOT}/portal/
+    cp ${ROOT}/cluster_manager/${AUTH_STORE} ${ROOT}/conference_agent/
+    cp ${ROOT}/cluster_manager/${AUTH_STORE} ${ROOT}/webrtc_agent/
+    cp ${ROOT}/cluster_manager/${AUTH_STORE} ${ROOT}/video_agent/
+    cp ${ROOT}/cluster_manager/${AUTH_STORE} ${ROOT}/audio_agent/
+    cp ${ROOT}/cluster_manager/${AUTH_STORE} ${ROOT}/streaming_agent/
+    cp ${ROOT}/cluster_manager/${AUTH_STORE} ${ROOT}/recording_agent/
+    cp ${ROOT}/cluster_manager/${AUTH_STORE} ${ROOT}/analytics_agent/
+    cp ${ROOT}/cluster_manager/${AUTH_STORE} ${ROOT}/sip_agent/
+    cp ${ROOT}/cluster_manager/${AUTH_STORE} ${ROOT}/sip_portal/
+    cp ${ROOT}/cluster_manager/${AUTH_STORE} ${ROOT}/management_api/
+  fi
+}
+
 INSTALL_DEPS=false
 HARDWARE=false
 
@@ -81,7 +113,9 @@ done
 if ${HARDWARE}; then
   echo "Initializing with hardware msdk"
   init_hardware
+  init_auth
 else
   echo "Initializing..."
   init_software
+  init_auth
 fi

@@ -3,8 +3,10 @@
 // SPDX-License-Identifier: Apache-2.0
 
 'use strict';
+var fs = require('fs');
 var amqp = require('amqp');
 var log = require('./logger').logger.getLogger('AmqpClient');
+var cipher = require('./cipher');
 var TIMEOUT = 2000;
 var REMOVAL_TIMEOUT = 7 * 24 * 3600 * 1000;
 
@@ -31,7 +33,7 @@ var rpcClient = function(bus, conn, on_ready, on_failure) {
     // save its first binding name to avoid lost when reconnecting.
     var queueBindingName;
 
-    declareExchange(conn, 'woogeenRpc', 'direct', true, function (exc_got) {
+    declareExchange(conn, 'owtRpc', 'direct', true, function (exc_got) {
         exc = exc_got;
 
         reply_q = conn.queue('', function (q) {
@@ -116,7 +118,7 @@ var rpcServer = function(bus, conn, id, methods, on_ready, on_failure) {
 
     var exc, request_q;
 
-    declareExchange(conn, 'woogeenRpc', 'direct', true, function (exc_got) {
+    declareExchange(conn, 'owtRpc', 'direct', true, function (exc_got) {
         exc = exc_got;
         var ready = false;
 
@@ -229,7 +231,7 @@ var faultMonitor = function(bus, conn, on_message, on_ready, on_failure) {
 
     var exc, msg_q;
 
-    declareExchange(conn, 'woogeenMonitoring', 'topic', false, function (exc_got) {
+    declareExchange(conn, 'owtMonitoring', 'topic', false, function (exc_got) {
         exc = exc_got;
         var ready = false;
 
@@ -273,7 +275,7 @@ var monitoringTarget = function(bus, conn, on_ready, on_failure) {
 
     var exc;
 
-    declareExchange(conn, 'woogeenMonitoring', 'topic', false, function (exc_got) {
+    declareExchange(conn, 'owtMonitoring', 'topic', false, function (exc_got) {
         exc = exc_got;
         on_ready();
     }, on_failure);
@@ -315,70 +317,86 @@ module.exports = function() {
         monitoring_target = undefined;
     };
 
-    that.connect = function(hostPort, on_ok, on_failure) {
-        log.debug('Connecting to rabbitMQ server:', hostPort);
+    that.connect = function(options, on_ok, on_failure) {
+        log.debug('Connecting to rabbitMQ server:', options);
 
-        /*
-         * `amqp.createConnection([options, [implOptions]])` takes two options
-         * objects as parameters.  The first options object has these defaults:
-         *
-         *     { host: 'localhost'
-         *     , port: 5672
-         *     , login: 'guest'
-         *     , password: 'guest'
-         *     , connectionTimeout: 10000
-         *     , authMechanism: 'AMQPLAIN'
-         *     , vhost: '/'
-         *     , noDelay: true
-         *     , ssl: { enabled : false
-         *            }
-         *     }
-         *
-         * The second options are specific to the node AMQP implementation. It has
-         * the default values:
-         *
-         *     { defaultExchangeName: ''
-         *     , reconnect: true
-         *     , reconnectBackoffStrategy: 'linear'
-         *     , reconnectExponentialLimit: 120000
-         *     , reconnectBackoffTime: 1000
-         *     }
-         */
-        // Note that we use the default option.
-        // So the reconnect is enabled, and reconnect strategy is
-        // 'linear', which means the broken connection will try to
-        // recover after every 'reconnectBackoffTime' which is
-        // 1000ms by default.
-        var conn = amqp.createConnection(hostPort);
-        var connected = false;
-        conn.on('ready', function() {
-            log.info('Connecting to rabbitMQ server OK, hostPort:', hostPort);
-            connection = conn;
+        var setupConnection = function(options) {
+            /*
+             * `amqp.createConnection([options, [implOptions]])` takes two options
+             * objects as parameters.  The first options object has these defaults:
+             *
+             *     { host: 'localhost'
+             *     , port: 5672
+             *     , login: 'guest'
+             *     , password: 'guest'
+             *     , connectionTimeout: 10000
+             *     , authMechanism: 'AMQPLAIN'
+             *     , vhost: '/'
+             *     , noDelay: true
+             *     , ssl: { enabled : false
+             *            }
+             *     }
+             *
+             * The second options are specific to the node AMQP implementation. It has
+             * the default values:
+             *
+             *     { defaultExchangeName: ''
+             *     , reconnect: true
+             *     , reconnectBackoffStrategy: 'linear'
+             *     , reconnectExponentialLimit: 120000
+             *     , reconnectBackoffTime: 1000
+             *     }
+             */
+            // Note that we use the default option.
+            // So the reconnect is enabled, and reconnect strategy is
+            // 'linear', which means the broken connection will try to
+            // recover after every 'reconnectBackoffTime' which is
+            // 1000ms by default.
+            var conn = amqp.createConnection(options);
+            var connected = false;
+            conn.on('ready', function() {
+                log.info('Connecting to rabbitMQ server OK, options:', options);
+                connection = conn;
 
-            // The 'ready' event will be triggered each time
-            // the connection is OK. So just invoke the success
-            // callback once to avoid the duplicate logic when
-            // reconnecting is done.
-            if (!connected) {
-                connected = true;
-                on_ok();
-            }
-        });
+                // The 'ready' event will be triggered each time
+                // the connection is OK. So just invoke the success
+                // callback once to avoid the duplicate logic when
+                // reconnecting is done.
+                if (!connected) {
+                    connected = true;
+                    on_ok();
+                }
+            });
 
-        conn.on('error', function(e) {
-            // The amqp client will try to reconnect by
-            // the default option, so just notify something here.
-            log.info('Connection to rabbitMQ server error', e);
-        });
+            conn.on('error', function(e) {
+                // The amqp client will try to reconnect by
+                // the default option, so just notify something here.
+                log.info('Connection to rabbitMQ server error', e);
+            });
 
-        conn.on('disconnect', function() {
-            if (connection) {
-                close();
-                connection = undefined;
-                log.info('Connection to rabbitMQ server disconnected.');
-                on_failure('amqp connection disconnected');
-            }
-        });
+            conn.on('disconnect', function() {
+                if (connection) {
+                    close();
+                    connection = undefined;
+                    log.info('Connection to rabbitMQ server disconnected.');
+                    on_failure('amqp connection disconnected');
+                }
+            });
+        };
+
+        if (fs.existsSync(cipher.astore)) {
+            cipher.unlock(cipher.k, cipher.astore, function cb (err, authConfig) {
+                if (!err) {
+                    options.login = authConfig.username;
+                    options.password = authConfig.password;
+                    setupConnection(options);
+                } else {
+                    log.error('Failed to get rabbitmq auth:', err);
+                }
+            });
+        } else {
+            setupConnection(options);
+        }
     };
 
     that.disconnect = function() {

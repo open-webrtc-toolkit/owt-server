@@ -11,7 +11,9 @@
             "matcher.js",
             "scheduler.js",
             "strategy.js",
+            "../../scripts/release/initauth.js",
             "../common/amqp_client.js",
+            "../common/cipher.js",
             "../common/logger.js"
         ]
     },

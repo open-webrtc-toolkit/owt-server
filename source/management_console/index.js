@@ -65,7 +65,7 @@ app.use(function (req, res) {
 if (config.console.ssl) {
   var path = require('path');
   var cipher = require('./cipher');
-  var keystore = path.resolve(path.dirname(keystorePath), '.woogeen.keystore');
+  var keystore = path.resolve(path.dirname(keystorePath), cipher.kstore);
   cipher.unlock(cipher.k, keystore, function cb (err, passphrase) {
     if (!err) {
       try {

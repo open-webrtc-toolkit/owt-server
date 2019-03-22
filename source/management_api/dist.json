@@ -10,6 +10,7 @@
             "management_api.toml",
             "../common/logger.js",
             "../common/cipher.js",
+            "../../scripts/release/initauth.js",
             "../../scripts/release/initcert.js",
             "../../scripts/detectOS.sh"
         ],
@@ -25,7 +26,7 @@
             ],
             "cert": [
                 "../../cert/*.pfx",
-                "../../cert/.woogeen.keystore"
+                "../../cert/.owt.keystore"
             ],
             "data_access": [
                 "../data_access/*"

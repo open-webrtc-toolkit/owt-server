@@ -11,7 +11,7 @@ export OWT_HOME=${ROOT}
 LogDir=${OWT_HOME}/logs
 SUDO=""
 if [[ $EUID -ne 0 ]]; then
-   SUDO="sudo -E"
+  SUDO="sudo -E"
 fi
 
 usage() {
@@ -26,29 +26,61 @@ usage() {
   echo
 }
 
+change_account() {
+  read -p "Enter your username for rabbitmq: " rabbituser
+  echo -n Password:
+  read -s rabbitpasswd
+  if [[ ! -z "$rabbitpasswd" && ! -z "$rabbituser" ]]; then
+    ${SUDO} rabbitmqctl add_user ${rabbituser} ${rabbitpasswd}
+    ${SUDO} rabbitmqctl set_user_tags ${rabbituser} administrator
+    ${SUDO} rabbitmqctl set_permissions ${rabbituser} ".*" ".*" ".*"
+    ${SUDO} rabbitmqctl delete_user guest
+    rabbituser=""
+    rabbitpasswd=""
+  else
+    echo
+    echo -e "Failed to add user: empty username or password"
+  fi
+}
+
+init_rabbit() {
+  read -t 10 -p "Diable Default RabbitMQ Account and Create a New One? [Yes/no]" yn
+  case $yn in
+    [Nn]* ) ;;
+    [Yy]* ) change_account;;
+    * ) change_account;;
+  esac
+}
+
 install_deps() {
+  local CHECK_INSTALLED=""
   local OS=`${this}/detectOS.sh | awk '{print tolower($0)}'`
   echo $OS
 
   if [[ "$OS" =~ .*centos.* ]]
   then
-    echo -e "\x1b[32mInstalling dependent components and libraries via yum...\x1b[0m"
-    if [[ "$OS" =~ .*6.* ]] # CentOS 6.x
-    then
-      wget -c http://dl.fedoraproject.org/pub/epel/6/x86_64/epel-release-6-8.noarch.rpm
-      ${SUDO} rpm -Uvh epel-release-6*.rpm
-    elif [[ "$OS" =~ .*7.* ]] # CentOS 7.x
-    then
+    CHECK_INSTALLED=`rpm -qa | grep rabbitmq-server`
+    if [[ -z "$CHECK_INSTALLED" ]]; then
+      echo -e "\x1b[32mInstalling dependent components and libraries via yum...\x1b[0m"
       wget -c http://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
       ${SUDO} rpm -Uvh epel-release-latest-7*.rpm
+      ${SUDO} sed -i 's/https/http/g' /etc/yum.repos.d/epel.repo
+      ${SUDO} yum install rabbitmq-server -y
+      init_rabbit
+    else
+      echo -e "\x1b[32mRabbitmq-server already installed\x1b[0m"
     fi
-    ${SUDO} sed -i 's/https/http/g' /etc/yum.repos.d/epel.repo
-    ${SUDO} yum install rabbitmq-server -y
   elif [[ "$OS" =~ .*ubuntu.* ]]
   then
-    echo -e "\x1b[32mInstalling dependent components and libraries via apt-get...\x1b[0m"
-    ${SUDO} apt-get update
-    ${SUDO} apt-get install rabbitmq-server
+    CHECK_INSTALLED=`dpkg -l | grep -E '^ii' | grep rabbitmq-server`
+    if [[ -z "$CHECK_INSTALLED" ]]; then
+      echo -e "\x1b[32mInstalling dependent components and libraries via apt-get...\x1b[0m"
+      ${SUDO} apt-get update
+      ${SUDO} apt-get install rabbitmq-server -y
+      init_rabbit
+    else
+      echo -e "\x1b[32mRabbitmq-server already installed\x1b[0m"
+    fi
   else
     echo -e "\x1b[32mUnsupported platform...\x1b[0m"
   fi
@@ -96,3 +128,5 @@ done
 ${INSTALL_DEPS} && install_deps
 
 start_up
+
+#${INSTALL_DEPS} && init_rabbit

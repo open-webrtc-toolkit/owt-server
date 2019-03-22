@@ -11,7 +11,7 @@
   });
   var cipher = require('./cipher');
   var dirName = !process.pkg ? __dirname : require('path').dirname(process.execPath);
-  var keystore = require('path').resolve(dirName, 'cert/.woogeen.keystore');
+  var keystore = require('path').resolve(dirName, 'cert/' + cipher.kstore);
   readline.question('Enter passphrase of certificate: ', function (res) {
     readline.close();
     cipher.lock(cipher.k, res, keystore, function cb (err) {

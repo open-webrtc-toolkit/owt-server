@@ -27,8 +27,10 @@
 // This file is borrowed from lynckia/licode with some modifications.
 
 'use strict';
+var fs = require('fs');
 var amqp = require('amqp');
 var log = require('./../logger').logger.getLogger('RPC');
+var cipher = require('../cipher');
 var TIMEOUT = 3000;
 var corrID = 0;
 var map = {};   //{corrID: {fn: callback, to: timeout}}
@@ -36,29 +38,46 @@ var clientQueue;
 var connection;
 var exc;
 
-exports.connect = function (addr) {
-    connection = amqp.createConnection(addr);
-    connection.on('ready', function () {
-        log.info('Connected to rabbitMQ server');
+exports.connect = function (options) {
+    var setupConnection = function(options) {
+        connection = amqp.createConnection(options);
+        connection.on('ready', function () {
+            log.info('Connected to rabbitMQ server');
 
-        //Create a direct exchange
-        exc = connection.exchange('woogeenRpc', {type: 'direct'}, function (exchange) {
-            log.info('Exchange ' + exchange.name + ' is open');
+            //Create a direct exchange
+            exc = connection.exchange('owtRpc', {type: 'direct'}, function (exchange) {
+                log.info('Exchange ' + exchange.name + ' is open');
 
-            //Create the queue for send messages
-            clientQueue = connection.queue('', function (q) {
-                log.info('ClientQueue ' + q.name + ' is open');
-                clientQueue.bind('woogeenRpc', clientQueue.name);
-                clientQueue.subscribe(function (message) {
-                    if (map[message.corrID] !== undefined) {
-                        map[message.corrID].fn[message.type](message.data, message.err);
-                        clearTimeout(map[message.corrID].to);
-                        delete map[message.corrID];
-                    }
+                //Create the queue for send messages
+                clientQueue = connection.queue('', function (q) {
+                    log.info('ClientQueue ' + q.name + ' is open');
+                    clientQueue.bind('owtRpc', clientQueue.name);
+                    clientQueue.subscribe(function (message) {
+                        if (map[message.corrID] !== undefined) {
+                            map[message.corrID].fn[message.type](message.data, message.err);
+                            clearTimeout(map[message.corrID].to);
+                            delete map[message.corrID];
+                        }
+                    });
                 });
             });
         });
-    });
+    };
+
+    if (fs.existsSync(cipher.astore)) {
+        cipher.unlock(cipher.k, cipher.astore, function cb (err, authConfig) {
+            if (!err) {
+                options.login = authConfig.username;
+                options.password = authConfig.password;
+                log.info('login:', options.login, options.password);
+                setupConnection(options);
+            } else {
+                log.error('Failed to get rabbitmq auth:', err);
+            }
+        });
+    } else {
+        setupConnection(options);
+    }
 };
 
 exports.disconnect = function() {

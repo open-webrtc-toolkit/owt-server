@@ -15,6 +15,7 @@
             "../networkHelper.js",
             "../nodeManager.js",
             "../workingNode.js",
+            "../../common/cipher.js",
             "../../common/amqp_client.js",
             "../../common/cipher.js",
             "../../common/clusterWorker.js",
@@ -23,6 +24,7 @@
             "../../common/makeRPC.js",
             "../../common/rpcChannel.js",
             "../../common/mediaUtil.js",
+            "../../../scripts/release/initauth.js",
             "../../../scripts/release/initcert.js",
             "../../../scripts/detectOS.sh"
         ],

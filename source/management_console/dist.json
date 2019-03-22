@@ -12,7 +12,7 @@
         "folders": {
             "cert": [
                 "../../cert/*.pfx",
-                "../../cert/.woogeen.keystore"
+                "../../cert/.owt.keystore"
             ]
         }
     },

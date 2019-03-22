@@ -17,6 +17,7 @@
             "../nodeManager.js",
             "../workingNode.js",
             "log4cxx.properties",
+            "../../common/cipher.js",
             "../../common/amqp_client.js",
             "../../common/clusterWorker.js",
             "../../common/loadCollector.js",
@@ -24,6 +25,7 @@
             "../../common/makeRPC.js",
             "../../common/rpcChannel.js",
             "../../common/mediaUtil.js",
+            "../../../scripts/release/initauth.js",
             "../../../scripts/detectOS.sh",
             "compile_svtHevcEncoder.sh"
         ],

@@ -357,7 +357,7 @@ var SocketIOServer = function(spec, portal, observer) {
   var startSecured = function(port, keystorePath, forceTlsv12) {
     return new Promise(function(resolve, reject) {
       var cipher = require('./cipher');
-      var keystore = path.resolve(path.dirname(keystorePath), '.woogeen.keystore');
+      var keystore = path.resolve(path.dirname(keystorePath), cipher.kstore);
       cipher.unlock(cipher.k, keystore, function(err, passphrase) {
         if (!err) {
           var option = {pfx: require('fs').readFileSync(keystorePath), passphrase: passphrase};
