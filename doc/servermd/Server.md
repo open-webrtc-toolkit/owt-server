@@ -196,7 +196,7 @@ The default ffmpeg library used by MCU server has no libfdk_aac support. If you 
 
 ### 2.3.6 Use your own certificate {#Conferencesection2_3_6}
 
-The default certificate (certificate.pfx) for the MCU is located in the Release-<Version>/<Component>/cert folder. When using HTTPS and/or secure socket.io connection, you should use your own certificate for each server. First, you should edit nuve/nuve.toml, webrtc_agent/agent.toml, portal/portal.toml, management_console/management_console.toml to provide the path of each certificate for each server, under the key keystorePath. See Table 2-4 for details.
+The default certificate (certificate.pfx) for the MCU is located in the Release-<Version>/<Component>/cert folder. When using HTTPS and/or secure socket.io connection, you should use your own certificate for each server. First, you should edit management_api/management_api.toml, webrtc_agent/agent.toml, portal/portal.toml, management_console/management_console.toml to provide the path of each certificate for each server, under the key keystorePath. See Table 2-4 for details.
 
 We use PFX formatted certificates in MCU. See https://nodejs.org/api/tls.html for how to generate a self-signed certificate by openssl utility. We recommend using 2048-bit private key for the certificates. But if you meet DTLS SSL connection error in webrtc-agent, please use 1024-bit instead of 2048-bit private key because of a known network MTU issue.
 
@@ -205,7 +205,7 @@ After editing the configuration file, you should run `./initcert.js` inside each
  **Table 2-4. MCU certificates configuration**
 |  |configuration file|
 |--------|--------|
-| nuve HTTPS | nuve/nuve.toml |
+| management-api HTTPS | management_api/management_api.toml |
 | portal secured Socket.io | portal/portal.toml |
 | DTLS-SRTP | webrtc_agent/agent.toml |
 | management-console HTTPS | management_console/management_console.toml |
@@ -246,7 +246,7 @@ Run the following commands to stop the MCU:
  **Table 2-5. Distributed MCU components**
 Component Name|Deployment Number|Responsibility
 --------|--------|--------
-nuve|1 or many|The entrance of MCU service, keeping the configurations of all rooms, generating and verifying the tokens. Application can implement load balancing strategy across multiple nuve instances
+management-api|1 or many|The entrance of MCU service, keeping the configurations of all rooms, generating and verifying the tokens. Application can implement load balancing strategy across multiple management-api instances
 cluster-manager|1 or many|The manager of all active workers in the cluster, checking their lives, scheduling workers with the specified purposes according to the configured policies. If one has been elected as master, it will provide service; others will be standby
 portal|1 or many|The signaling server, handling service requests from Socket.IO clients
 conference-agent|1 or many|This agent handles room controller logics
@@ -277,34 +277,38 @@ Follow the steps below to set up a MCU cluster:
         bin/init-rabbitmq.sh [--deps]
    > **Note**: You can change the shell scripts to initialize them according to your own requirement. Or choose any other existing MongoDB or RabbitMQ service, like those with cluster support. Make sure MongoDB and RabbitMQ services are started prior to all MCU cluster nodes.
 
-3. Choose machines to run nuve instances. These machines must be visible to clients(such as browsers and mobile apps).
+    If non-default user of rabbitmq-server is used, do as following in each module:
 
-4. Edit the configuration items of nuve in Release-<Version>/nuve/nuve.toml.
+        initauth.js
+
+3. Choose machines to run management-api instances. These machines must be visible to clients(such as browsers and mobile apps).
+
+4. Edit the configuration items of management-api in Release-<Version>/management_api/management_api.toml.
 
     - Make sure the [mongo.dataBaseURL] points to the MongoDB instance.
     - Make sure the [rabbit.port] and [rabbit.host] point to the RabbitMQ server.
 
-5. Initialize and run nuve instance on each machine with following steps.
+5. Initialize and run management-api instance on each machine with following steps.
 
-    1) Initialize MCU manager nuve for the first time execution:
+    1) Initialize MCU manager management-api for the first time execution:
 
         cd Release-<Version>/
-        nuve/init.sh
+        management_api/init.sh
 
     **Note**: If you have installed early version of MCU, the stored data will not be compatible with 4.0 version. Pay attention to the warning and choose option to update your MCU data in mongodb.
 
-    2) Run MCU manager nuve and the sample application with following commands:
+    2) Run MCU manager management-api and the sample application with following commands:
 
         cd Release-<Version>/
-        bin/daemon.sh start nuve
+        bin/daemon.sh start management-api
 
-6. Choose any nuve instance machine to run the sample application server for quick MCU service validation.
+6. Choose any management-api instance machine to run the sample application server for quick MCU service validation.
 
         cd Release-<Version>/
         bin/daemon.sh start app
    > **Note**: You can also deploy the sample application server on separated machine, follow instructions at Release-<Version>/extras/basic_example/README.md
 
-7. Choose machines to run cluster-managers. These machines do not need to be visible to clients, but should be visible to nuve and all workers.
+7. Choose machines to run cluster-managers. These machines do not need to be visible to clients, but should be visible to management-api and all workers.
 8. Edit the configurations of cluster-manager in Release-<Version>/cluster_manager/cluster_manager.toml.
 
     - Make sure the [rabbit.port] and [rabbit.host] point to the RabbitMQ server.
@@ -423,12 +427,12 @@ If you want to map each VCA node to different Ethernet interface, IP forwarding 
 ### 2.3.11 Stop the MCU cluster {#Conferencesection2_3_11}
 
 To stop the MCU cluster, follow these steps:
-1. Run the following commands on each nuve node to stop nuve instances:
+1. Run the following commands on each management-api node to stop management-api instances:
 
         cd Release-<Version>/
-        bin/daemon.sh stop nuve
+        bin/daemon.sh stop management-api
 
-    If sample application server also runs with specific nuve instance, run the following command to stop it.
+    If sample application server also runs with specific management-api instance, run the following command to stop it.
 
         bin/daemon.sh stop app
 
@@ -449,7 +453,7 @@ Intel CS for WebRTC MCU server provides built-in fault tolerance / resilience su
  **Table 2-6. MCU cluster components’ fault tolerance / resilience**
 Component Name|Server Reaction|Client Awareness
 --------|--------|--------
-nuve|Multiple nuve instances provide stateless services at the same time. If application implements node failure detection and rescheduling strategy, when one node fails, other nodes should take over when the further requests are assigned to any of them.|Nuve RESTful request fail
+management-api|Multiple management-api instances provide stateless services at the same time. If application implements node failure detection and rescheduling strategy, when one node fails, other nodes should take over when the further requests are assigned to any of them.|Nuve RESTful request fail
 cluster-manager|Auto elect another cluster-manager node as master and provide service.|Transparent
 portal|All signaling connections on this portal will be disconnected, all actions through this portal will be dropped. Client needs to re-login the session.|server-disconnected event
 conference-agent/node|All sessions impacted will be destroyed and all their participants will be forced disconnected and all actions will be dropped. Client needs to re-login the session.|server-disconnected event
@@ -469,7 +473,7 @@ Configuration Item|Location|Usage
 webrtc.network_interfaces | webrtc_agent/agent.toml | The network interfaces of webrtc-agent that clients in public network can connect to
 webrtc.minport | webrtc_agent/agent.toml | The webrtc port range lowerbound for clients to connect through UDP
 webrtc.maxport | webrtc_agent/agent.toml | The webrtc port range upperbound for clients to connect through UDP
-nuve.port | nuve/nuve.toml | The port of nuve should be accessible in public network through TCP
+management-api.port | management_api/management_api.toml | The port of management-api should be accessible in public network through TCP
 portal.hostname, portal.ip_address | portal/portal.toml | The hostname and IP address of portal for public access; hostname first if it is not empty.
 portal.port | portal/portal.toml | The port of portal for public access through TCP
 
@@ -518,7 +522,7 @@ The following instructions are provided only as recommendations regarding securi
 
     Use the proper Node.js version as outlined in the [Dependencies](#Conferencesection2_3_1) section.
 
-3. Failed to start MCU server, and receive the following error message: "Creating superservice in localhost/nuvedb SuperService ID: Sat Feb 7 19:10:32.456 TypeError: Cannot read property '_id' of null SuperService KEY: Sat Feb  7 19:10:32.479 TypeError: Cannot read property 'key' of null"
+3. Failed to start MCU server, and receive the following error message: "Creating superservice in localhost/management-apidb SuperService ID: Sat Feb 7 19:10:32.456 TypeError: Cannot read property '_id' of null SuperService KEY: Sat Feb  7 19:10:32.479 TypeError: Cannot read property 'key' of null"
 
     **Resolution**:
 
@@ -540,17 +544,17 @@ Once you have launched MCU servers, you can then access the console via a browse
 
 After inputting your service-id and service-key in the dialog prompt, choose 'remember me' and click 'save changes' to save your session. If you want to switch to another service, click the ‘profile' button on the upper-right corner to get in this dialog prompt and do the similar procedure again. If you want to log out the management console, click the red ‘clear cookie' button in the dialog prompt.
 
-If you have not launched MCU servers, you should launch the nuve server before accessing the management console:
+If you have not launched MCU servers, you should launch the management-api server before accessing the management console:
 
     cd Release-<Version>/
-    bin/daemon.sh start nuve
+    bin/daemon.sh start management-api
     bin/daemon.sh start management-console
 
 ## 3.3 Source Code {#Conferencesection3_3}
 The source code of the management console is in Release-<Version>/management_console/public/.
 ## 3.4 Service Management {#Conferencesection3_4}
 Only super service user can access service management, in the 'overview' tab to create or delete services. The service is the instance that owns rooms and has the ability to manage them. 
-> **Note**: Super service cannot be deleted, it can be configured in nuve/nuve.toml.
+> **Note**: Super service cannot be deleted, it can be configured in management_api/management_api.toml.
 
 ## 3.5 Room Management {#Conferencesection3_5}
 Any service user can do room management inside the service, including creating, deleting or modifying rooms.
