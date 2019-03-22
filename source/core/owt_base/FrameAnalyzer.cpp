@@ -177,7 +177,7 @@ void FrameAnalyzer::OnPluginFrame(std::unique_ptr<owt::analytics::AnalyticsBuffe
     memcpy(i420Buffer->MutableDataY(), pluginFrame->buffer, width * height);
     memcpy(i420Buffer->MutableDataU(), pluginFrame->buffer + width * height, width * height / 4);
     memcpy(i420Buffer->MutableDataV(), pluginFrame->buffer + width * height * 5 / 4, width * height / 4);
-    SendFrame(i420Buffer, 0); 
+    SendFrame(i420Buffer, kMsToRtpTimestamp * m_clock->TimeInMilliseconds()); 
     return;
 }
 
@@ -204,7 +204,7 @@ void FrameAnalyzer::SendFrame(rtc::scoped_refptr<webrtc::I420Buffer> i420Buffer,
 
 void FrameAnalyzer::onTimeout()
 {
-    uint32_t timeStamp = kMsToRtpTimestamp * m_clock->TimeInMilliseconds();;
+    uint32_t timeStamp = kMsToRtpTimestamp * m_clock->TimeInMilliseconds();
 
     if (m_format == FRAME_FORMAT_I420) {
         rtc::scoped_refptr<webrtc::I420Buffer> i420Buffer;
