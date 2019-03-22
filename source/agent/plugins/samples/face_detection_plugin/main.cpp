@@ -1,60 +1,23 @@
-/*
- * Copyright 2018 Intel Corporation All Rights Reserved. 
- * 
- * The source code contained or described herein and all documents related to the 
- * source code ("Material") are owned by Intel Corporation or its suppliers or 
- * licensors. Title to the Material remains with Intel Corporation or its suppliers 
- * and licensors. The Material contains trade secrets and proprietary and 
- * confidential information of Intel or its suppliers and licensors. The Material 
- * is protected by worldwide copyright and trade secret laws and treaty provisions. 
- * No part of the Material may be used, copied, reproduced, modified, published, 
- * uploaded, posted, transmitted, distributed, or disclosed in any way without 
- * Intel's prior express written permission.
- * 
- * No license under any patent, copyright, trade secret or other intellectual 
- * property right is granted to or conferred upon you by disclosure or delivery of 
- * the Materials, either expressly, by implication, inducement, estoppel or 
- * otherwise. Any license under such intellectual property rights must be express 
- * and approved by Intel in writing.
- */
+// Copyright (C) <2019> Intel Corporation
+//
+// SPDX-License-Identifier: Apache-2.0
 
-#include <iostream>
-#include <string.h>
-#include "myplugin.h"
-//#include <gflags/gflags.h>
-#include <functional>
 #include <fstream>
-#include <random>
-#include <memory>
-#include <chrono>
-#include <vector>
-#include <utility>
-#include <algorithm>
-#include <iterator>
 #include <map>
-#include <inference_engine.hpp>
-
-//#include <samples/common.hpp>
-//#include <samples/slog.hpp>
-#include <common.hpp>
-#include <slog.hpp>
-#include "interactive_face_detection.hpp"
-#include "mkldnn/mkldnn_extension_ptr.hpp"
-#include <ext_list.hpp>
-#include <opencv2/opencv.hpp>
-#include "opencv2/imgproc/imgproc.hpp"
-#include "opencv2/imgcodecs.hpp"
-#include "opencv2/highgui/highgui.hpp"
-
-#include "plugin.h"
+#include <memory>
+#include <mutex>
+#include <iostream>
+#include <iterator>
 #include <thread>
-#include <mutex>      
-#include <ctime>
+#include "opencv2/imgproc/imgproc.hpp"
+
+#include "detectionconfig.h"
+#include "myplugin.h"
 
 using namespace InferenceEngine;
 
+// Globals
 std::mutex mtx;
-
 FaceDetectionClass FaceDetection;
 std::map<std::string, InferenceEngine:: InferencePlugin> pluginsForDevices;
 std::string device_for_faceDetection;
@@ -62,7 +25,7 @@ std::string path_to_faceDetection_model;
 std::vector<std::pair<std::string, std::string>> cmdOptions;
 cv::Mat mGlob(1280,720,CV_8UC3);
 Result Glob_result;
-volatile bool need_process=false;
+volatile bool need_process =false;
 
 BaseDetection::BaseDetection(std::string commandLineFlag, std::string topoName, int maxBatch)
       : commandLineFlag(commandLineFlag), topoName(topoName), maxBatch(maxBatch) {}
@@ -77,15 +40,6 @@ bool BaseDetection::enabled() const  {
       }
       return _enabled;
 }
-
-void BaseDetection::printPerformanceCounts() {
-      if (!enabled()) {
-          return;
-      }
-      std::cout << "Performance counts for " << topoName << std::endl << std::endl;
-      ::printPerformanceCounts(request->GetPerformanceCounts(), std::cout, false);
-}
-
 
 void FaceDetectionClass::submitRequest(){
     if (!enquedFrames) return;
@@ -207,7 +161,7 @@ InferenceEngine::CNNNetwork FaceDetectionClass::read() {
     _output->setPrecision(Precision::FP32);
     _output->setLayout(Layout::NCHW);
     input = inputInfo.begin()->first;
-    std::cout<<"finished reading network"<<std::endl;
+    std::cout << "finished reading network" << std::endl;
     return netReader.getNetwork();
 }
 
@@ -216,7 +170,7 @@ void Load::into(InferenceEngine::InferencePlugin & plg) const {
     if (detector.enabled()) {
         detector.net = plg.LoadNetwork(detector.read(), {});
         detector.plugin = &plg;
-        std::cout<<"successfully ran loaded into"<<std::endl;
+        std::cout << "Successfully loaded inference plugin" << std::endl;
     }
 }
 
@@ -238,47 +192,32 @@ void threading_class::threading_func(){
           continue;
       }
 
-      std::cout << "Loading plugin " << deviceName << std::endl;
-      /**need to provide the absolute path to the trained model**/
-/*
-      InferencePlugin plugin = PluginDispatcher\
-        ({"/opt/intel/computer_vision_sdk/deployment_tools/inference_engine/lib/ubuntu_16.04/intel64", ""})\
-        .getPluginByDevice(deviceName);
-*/
+      std::cout << "Loading inference plugin " << deviceName << std::endl;
       InferencePlugin plugin = PluginDispatcher({""}).getPluginByDevice(deviceName);
 
-      /** Print plugin version **/
-      printPluginVersion(plugin, std::cout);
-
       /** Load extensions for the CPU plugin **/
-#if 0 
-      if ((deviceName.find(device_for_faceDetection) != std::string::npos)) {
-          plugin.AddExtension(std::make_shared<Extensions::Cpu::CpuExtensions>());
+      if ((deviceName.find(device_for_faceDetection) != std::string::npos) && deviceName == "CPU") {
+          plugin.AddExtension(InferenceEngine::make_so_pointer<InferenceEngine::IExtension>(""));
       } 
-#endif
       pluginsForDevices[deviceName] = plugin;
     }
-    Load(FaceDetection).into(pluginsForDevices["GPU"]);
+    Load(FaceDetection).into(pluginsForDevices[device_for_faceDetection]);
 
     std::cout<<"creating new thread for inferecne async"<<std::endl;
     while (true){
         if (need_process){
-          //else std::cout<<"need proc"<<std::endl;
           mtx.lock();
-          cv::Mat mInput=mGlob.clone();
+          cv::Mat mInput = mGlob.clone();
           mtx.unlock();
           FaceDetection.enqueue(mInput);
           FaceDetection.submitRequest();
           FaceDetection.wait();
           FaceDetection.fetchResults(); 
           mtx.lock();
-          if (FaceDetection.results.size()>0){
-              Glob_result=FaceDetection.results.front();
+          if (FaceDetection.results.size() > 0){
+              Glob_result = FaceDetection.results.front();
               need_process = false;
           }   
-          else {
-              std::cout<<"ugg no results in child thread!!!"<<std::endl;
-          }
           mtx.unlock();
         }
     }
@@ -297,15 +236,13 @@ void MyPlugin::load_init()
 
 
 rvaStatus MyPlugin::PluginInit(std::unordered_map<std::string, std::string> params) {
-      std::cout << "In face detection plugin init." << std::endl;
       std::cout << "InferenceEngine version: " << InferenceEngine::GetInferenceEngineVersion() << std::endl;
-      /**initialize the plugin**/
+      // Initialize the plugin
       device_for_faceDetection = "GPU";
       path_to_faceDetection_model = FaceDetection.commandLineFlag;
       cmdOptions = { {device_for_faceDetection, path_to_faceDetection_model} }; 
       threading_class t_c;
       t_c.make_thread();
-      std::cout<<"successfully ran loaded plugin"<<std::endl;
 
       return RVA_ERR_OK;
 }
@@ -315,7 +252,7 @@ rvaStatus MyPlugin::PluginClose() {
 }
 
 rvaStatus MyPlugin::ProcessFrameAsync(std::unique_ptr<owt::analytics::AnalyticsBuffer> buffer) {
-    // fetch data from the frame and do face detection using the inference engine plugin
+    // Fetch data from the frame and do face detection using the inference engine plugin
     // after update, send it back to analytics server.
     if (!buffer->buffer) {
         return RVA_ERR_OK;
@@ -326,18 +263,19 @@ rvaStatus MyPlugin::ProcessFrameAsync(std::unique_ptr<owt::analytics::AnalyticsB
         cv::Mat mYUV(buffer->height + buffer->height/2, buffer->width, CV_8UC1, buffer->buffer );
         cv::Mat mBGR(buffer->height, buffer->width, CV_8UC3);
         cv::cvtColor(mYUV,mBGR,cv::COLOR_YUV2BGR_I420);
-        //--------------Update the mat for inference, and fetch the latest result  ------------------
+        // Update the mat for inference, and fetch the latest result
         mtx.lock(); 
-          if (mBGR.cols>0 && mBGR.rows>0){
-              mGlob=mBGR.clone();
-              need_process= true;
+          if (mBGR.cols > 0 && mBGR.rows > 0){
+              mGlob = mBGR.clone();
+              need_process = true;
+          } else {
+              std::cout << "one mBGR is not qualified for inference" << std::endl;
           }
-          else std::cout<<"one mBGR is not qualified for inference"<<std::endl;
         mtx.unlock(); 
 
         std::ostringstream out;
         out.str("Face Detection Results");
-        //-----------------------Draw the detection results-----------------------------------
+        // Draw the detection results
         mtx.lock();
         if (Glob_result.confidence>0.65){
             cv::putText(mBGR,
@@ -346,15 +284,15 @@ rvaStatus MyPlugin::ProcessFrameAsync(std::unique_ptr<owt::analytics::AnalyticsB
                 cv::FONT_HERSHEY_COMPLEX_SMALL,
                 1.3,
                 cv::Scalar(0, 0, 255));
-            cv::rectangle(mBGR, Glob_result.location, cv::Scalar(255,0,0), 1);
+            cv::rectangle(mBGR, Glob_result.location, cv::Scalar(255, 0, 0), 1);
         }  
         mtx.unlock();
         cv::cvtColor(mBGR,mYUV,cv::COLOR_BGR2YUV_I420);     
         //------------------------return the frame with 
         buffer->buffer=mYUV.data;
         clock_t end = clock();      
-        //std::cout<<"time frame="<<double(end - begin) / CLOCKS_PER_SEC<<std::endl;
     }
+
     if (frame_callback) {
         frame_callback->OnPluginFrame(std::move(buffer));
     }

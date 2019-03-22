@@ -1,52 +1,31 @@
-/*
-// Copyright (c) 2018 Intel Corporation
+// Copyright (C) <2019> Intel Corporation
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//      http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-*/
-
-/*
-// brief This tutorial replaces OpenCV DNN with IE
-*/
+// SPDX-License-Identifier: Apache-2.0
 
 #include <string>
 #include <chrono>
 #include <cmath>
 #include <inference_engine.hpp>
-#include <cpp/ie_plugin_cpp.hpp>
 
 #include <opencv2/opencv.hpp>
-#include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
-#include <opencv2/video/video.hpp>
-
-#include <ext_list.hpp>
-
-#include <iomanip>
-
 #include "person_detection.h"
+
 using namespace std;
 using namespace cv;
 using namespace InferenceEngine::details;
 using namespace InferenceEngine;
 
-
 PersonDetectionClass::~PersonDetectionClass(){
-    delete [] output_frames;
+    if (output_frames != nullptr) {
+        delete [] output_frames;
+        output_frames = nullptr;
+    }
 }
 
 int PersonDetectionClass::initialize(std::string modelfile){
     InferenceEngine::PluginDispatcher dispatcher({""});
-    //InferencePlugin plugin(dispatcher.getPluginByDevice("CPU")); 
+
     plugin=dispatcher.getPluginByDevice("GPU"); 
  
     try {

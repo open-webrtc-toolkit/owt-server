@@ -1,66 +1,39 @@
-/*
- * Copyright 2017 Intel Corporation All Rights Reserved. 
- * 
- * The source code contained or described herein and all documents related to the 
- * source code ("Material") are owned by Intel Corporation or its suppliers or 
- * licensors. Title to the Material remains with Intel Corporation or its suppliers 
- * and licensors. The Material contains trade secrets and proprietary and 
- * confidential information of Intel or its suppliers and licensors. The Material 
- * is protected by worldwide copyright and trade secret laws and treaty provisions. 
- * No part of the Material may be used, copied, reproduced, modified, published, 
- * uploaded, posted, transmitted, distributed, or disclosed in any way without 
- * Intel's prior express written permission.
- * 
- * No license under any patent, copyright, trade secret or other intellectual 
- * property right is granted to or conferred upon you by disclosure or delivery of 
- * the Materials, either expressly, by implication, inducement, estoppel or 
- * otherwise. Any license under such intellectual property rights must be express 
- * and approved by Intel in writing.
- */
+// Copyright (C) <2019> Intel Corporation
+//
+// SPDX-License-Identifier: Apache-2.0
 
 #include <iostream>
-#include <string.h>
-#include "myplugin.h"
-#include <functional>
 #include <fstream>
-#include <random>
 #include <memory>
-#include <chrono>
 #include <vector>
-#include <utility>
-#include <algorithm>
 #include <iterator>
 #include <map>
-#include <inference_engine.hpp>
+#include <thread>
+#include <mutex>
 
-#include <common.hpp>
-#include <slog.hpp>
-#include "mkldnn/mkldnn_extension_ptr.hpp"
-#include <ext_list.hpp>
+#include <inference_engine.hpp>
 #include <opencv2/opencv.hpp>
 #include "opencv2/imgproc/imgproc.hpp"
-#include "opencv2/imgcodecs.hpp"
-#include "opencv2/highgui/highgui.hpp"
+#include "opencv2/imgproc/imgproc_c.h"
 
-#include "plugin.h"
-#include "face_detection.cpp"
-#include "face_recognition.cpp"
-#include "person_detection.cpp"
+#include "face_detection.h"
+#include "face_recognition.h"
+#include "person_detection.h"
 
-#include <thread>
-#include <mutex>      
-#include <ctime>
+#include "pluginconfig.h"
+#include "myplugin.h"
 
 using namespace InferenceEngine;
 using namespace cv;
 using namespace std;
 using namespace InferenceEngine::details;
+
 std::vector<std::pair<std::string, std::vector<float> > > data;
 std::mutex mtx;
 FaceDetectionClass FaceDetection;
 FaceRecognitionClass FaceRecognition;
 PersonDetectionClass PersonDetection;
-cv::Mat mGlob(620,480,CV_8UC3);
+cv::Mat mGlob(1280,720,CV_8UC3);
 vector<recog_result> global_recog_results;
 volatile bool need_process=false;
 
@@ -76,9 +49,7 @@ Mat get_cropped(Mat input, Rect rectangle , int crop_size , int style){
     int adjusted= max_crop_size * 3 / 2;
 
     std::vector<int> good_to_crop;
-    good_to_crop.push_back(adjusted / 2);
-    good_to_crop.push_back(input.size().height - center_y);
-    good_to_crop.push_back(input.size().width - center_x);
+    good_to_crop.push_back(adjusted / 2); good_to_crop.push_back(input.size().height - center_y); good_to_crop.push_back(input.size().width - center_x);
     good_to_crop.push_back(center_x);
     good_to_crop.push_back(center_y);
 
@@ -97,7 +68,7 @@ Mat get_cropped(Mat input, Rect rectangle , int crop_size , int style){
 vector<pair<string, vector<float> > > read_text(){
     cout<< "Reading vectors of saved person"<<endl;
     vector<pair<string, vector<float> > > data;
-    string file="/home/webrtc/plugin/samples/face_recognition_plugin/vectors.txt";
+    string file="./vectors.txt";
     string line;
     std::ifstream infile(file);
     int count;
@@ -114,7 +85,7 @@ vector<pair<string, vector<float> > > read_text(){
         for (int i = 0; i < count; ++i)
         {
             vec.clear();
-            for (int j = 0; j < 512; ++j)
+            for (int j = 0; j < 256; ++j)
             {
                 getline(infile , line);
                 value=strtof(line.c_str(),0);
@@ -129,7 +100,7 @@ vector<pair<string, vector<float> > > read_text(){
 float calculate_dist(std::vector<float> v1, std::vector<float> v2, int len){
     float sum=0.0;
     float subtract=0.0;
-    for (int i = 0; i < 512; ++i)
+    for (int i = 0; i < 256; ++i)
     {
         subtract=v1[i]-v2[i];
         sum=sum+abs(subtract*subtract);
@@ -142,7 +113,7 @@ pair<float , string> recognize(vector<pair<string, vector<float> > > *data , vec
     float min_value=3.0;
     string best_match="Unknown";
     for (auto entry : *(data)){
-        dist=calculate_dist(target , entry.second , 512);
+        dist=calculate_dist(target , entry.second , 256);
         if (dist < min_value){
             min_value=dist;
             best_match=entry.first;
@@ -309,7 +280,7 @@ vector<Rect> get_final_faces(){
     int side_num = (int)sqrt(boundary_face_results.size())+1;
     int side_len = boundary_face_frame.cols / side_num ;
     int index=0;
-    vector <pair<Rect, Rect>> links;  //keeps track of mapping from original frame to boundary_face_frame
+    vector <pair<Rect, Rect>> links; // keeps track of mapping from original frame to boundary_face_frame
     links.clear();
     vector <Rect> boundary_frame_squares; //collection of all nxn squares in the boundary_face_frame
     for (int i = 0; i < side_num; ++i)
@@ -328,7 +299,7 @@ vector<Rect> get_final_faces(){
             resize(src,src, Size(side_len,side_len));
             src.copyTo(distROI);
 
-            //first : original  second: square on boundary_frame
+            // first : original  second: square on boundary_frame
             links.push_back(pair<Rect,Rect>(src_rect,dist_rect));
             index++;
         }
@@ -340,9 +311,8 @@ vector<Rect> get_final_faces(){
     FaceDetection.fetchResults();
 
     for (auto result : FaceDetection.results){
-            //cout << r.confidence <<endl;   
         if (result.confidence>0.3) {
-            //put result back to original frame
+            // Put result back to original frame
             for (auto link : links){
                 Rect boundary_square = link.second;
                 Rect frame_square = link.first ;
@@ -352,7 +322,6 @@ vector<Rect> get_final_faces(){
                     (boundary_square.y <= r.y) &&
                     (boundary_square.y+boundary_square.height >= r.y+r.height))
                 {
-                    //rectangle(boundary_face_frame, r, Scalar(160,16,163));
 
                     float ratio_wdith= frame_square.width / (float)boundary_square.width;
                     float ratio_height = frame_square.height / (float)boundary_square.height;
@@ -386,7 +355,6 @@ void threading_class::threading_func(){
             PersonDetection_rect.clear();
             for (int i = 0; i < v.size(); i=i+7)
             {
-                //cout<< i <<endl;
                 confidence= v[i+2];
                 x=frame.cols*v[i+3];
                 y=frame.rows*v[i+4];
@@ -423,32 +391,30 @@ void threading_class::threading_func(){
                 }
                 //int overflow/bad output handeling
                 if ( (abs(rect.x) > 10000 || abs(rect.y) > 10000 || abs(rect.height) > 10000 || abs(rect.width) > 10000) )
-                        continue;
+                    continue;
                 
-                //cout << rect.x << "-"<<rect.y << "-"<<rect.width <<" -"<<rect.height<< endl;
                 a_person = frame(rect);
                 FaceDetection.enqueue(a_person);
                 FaceDetection.submitRequest();
                 FaceDetection.wait();
                 FaceDetection.fetchResults();
-                //cout<< FaceDetection.results.size() <<endl;
 
                 //among all face detection results, do face recog. 
                 for (auto r : FaceDetection.results){
-                    //cout << r.confidence <<endl;
                     if (r.confidence>0.2) {
                         std::vector<float> output_vector;
                         pair<float, string> compare_result;
                         //--------------for this frame, output the charactiristic vector ------------------            
-                        Mat cropped=get_cropped(a_person, r.location, 160 , 2);
+                        Mat cropped=get_cropped(a_person, r.location, 128 , 2);
                         FaceRecognition.load_frame(cropped);
                         output_vector= FaceRecognition.do_infer();
                         //-------------compare with the dataset, return the most possible person if any---
                         compare_result=recognize(&data , output_vector, 0.6);
 
                         if (compare_result.second!="Unknown")   {
-                            //The output position of facedetection is related to a_person's local corrdinate, 
-                                //so need to conver to global
+                            // The output position of facedetection is related
+                            // to a_person's local corrdinate,
+                            // so need to conver to global
                             recog_result a_result;
                             a_result.name=compare_result.second;
                             a_result.value=compare_result.first;
@@ -475,8 +441,9 @@ MyPlugin::MyPlugin(){}
 
 
 rvaStatus MyPlugin::PluginInit(std::unordered_map<std::string, std::string> params) {
-    FaceRecognition.initialize("./model/20180402-114759.xml");
-    FaceDetection.initialize();
+    FaceDetection.initialize(face_detection_model_full_path_fp32, "GPU");
+    FaceRecognition.initialize(face_recognition_model_full_path_fp32, "GPU");
+
     PersonDetection.initialize("/opt/intel/computer_vision_sdk/deployment_tools/intel_models/face-person-detection-retail-0002/FP32/face-person-detection-retail-0002.xml");
     data=read_text();
     cout<< "Making new thread for processing"<<endl;
@@ -490,61 +457,50 @@ rvaStatus MyPlugin::PluginClose() {
     return RVA_ERR_OK;
 }
 
-rvaStatus MyPlugin::ProcessFrameAsync(std::unique_ptr<ics::analytics::AnalyticsBuffer> buffer) {
+rvaStatus MyPlugin::ProcessFrameAsync(std::unique_ptr<owt::analytics::AnalyticsBuffer> buffer) {
     // fetch data from the frame and do face detection using the inference engine plugin
     // after update, send it back to analytics server.
     if (!buffer->buffer) {
         return RVA_ERR_OK;
     }
-    if (buffer->width >=320 && buffer->height >=240) {   
-        clock_t begin = clock();
-        
+    if (buffer->width >= 320 && buffer->height >= 240) {
+
         cv::Mat mYUV(buffer->height + buffer->height/2, buffer->width, CV_8UC1, buffer->buffer );
         cv::Mat mBGR(buffer->height, buffer->width, CV_8UC3);
         cv::cvtColor(mYUV,mBGR,cv::COLOR_YUV2BGR_I420);
         //--------------Update the mat for inference, and fetch the latest result  ------------------
-        mtx.lock(); 
+        mtx.lock();
         if (mBGR.cols>0 && mBGR.rows>0){
             mGlob=mBGR.clone();
             need_process= true;
-        } 
+        }
         else std::cout<<"one mBGR is not qualified for inference"<<std::endl;
-        mtx.unlock(); 
+        mtx.unlock();
 
         //-----------------------Draw the detection results-----------------------------------
         mtx.lock();
         for(auto result : global_recog_results){
             Rect background_rect(result.face_rect.x,
-                    min(result.face_rect.y  + result.face_rect.height*2, mBGR.rows-50),
-                    200,60
-            );
-            rectangle(mBGR, background_rect, Scalar(216,206,199),-2);
-            rectangle(mBGR, background_rect, Scalar(216,206,199),-2);
-            
-            putText(mBGR, 
-                        result.name , 
-                        cv::Point2f(background_rect.x,background_rect.y+background_rect.height/2), 
-                        FONT_HERSHEY_COMPLEX_SMALL, 1, cvScalar(198,76,0), 1, CV_AA); 
-            /*
-            putText(mBGR, 
-                        "Value : " + to_string(result.value) , 
-                        cv::Point2f(result.body_rect.x, result.body_rect.y ), 
-                        FONT_HERSHEY_COMPLEX_SMALL, 0.8, cvScalar(73,255,167), 1, CV_AA); */
+                    min(result.face_rect.y  + result.face_rect.height * 2, mBGR.rows - 50),
+                    200, 60);
+            rectangle(mBGR, background_rect, Scalar(216, 206, 199), -2);
+            rectangle(mBGR, background_rect, Scalar(216, 206, 199), -2);
+            putText(mBGR,
+                    result.name ,
+                    cv::Point2f(background_rect.x,background_rect.y+background_rect.height / 2),
+                    FONT_HERSHEY_COMPLEX_SMALL, 1, cv::Scalar(198, 76, 0), 1, CV_AA);
         }
         mtx.unlock();
-        cv::cvtColor(mBGR,mYUV,cv::COLOR_BGR2YUV_I420);     
-        //------------------------return the frame with 
+        cv::cvtColor(mBGR,mYUV,cv::COLOR_BGR2YUV_I420);
+
         buffer->buffer=mYUV.data;
-        clock_t end = clock(); 
-        //optional command for you to print out time for each frame     
-        //std::cout<<"time frame="<<double(end - begin) / CLOCKS_PER_SEC<<std::endl;
     }
     if (frame_callback) {
         frame_callback->OnPluginFrame(std::move(buffer));
     }
     return RVA_ERR_OK;
-} 
+}
 
-// Declare the plugin 
+// Declare the plugin
 DECLARE_PLUGIN(MyPlugin)
 
