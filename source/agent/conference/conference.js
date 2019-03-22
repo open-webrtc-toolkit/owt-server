@@ -398,9 +398,9 @@ var Conference = function (rpcClient, selfRpcId) {
             room_config.internalConnProtocol = global.config.internal.protocol;
 
             if (room_config.participantLimit === 0) {
-              log.error('Room', roomID, 'disabled');
+              log.error('Room', roomId, 'disabled');
               is_initializing = false;
-              return Promise.reject('Room' + roomID + 'disabled');
+              return Promise.reject('Room' + roomId + 'disabled');
             }
 
             return new Promise(function(resolve, reject) {
