@@ -1,36 +1,26 @@
+// Copyright (C) <2019> Intel Corporation
+//
+// SPDX-License-Identifier: Apache-2.0
 
-#include "face_detection.h"
 #include <iostream>
-#include <sys/types.h>
-#include <dirent.h>
-#include <string.h>
-#include <functional>
 #include <fstream>
 #include <memory>
 #include <vector>
-#include <utility>
-#include <algorithm>
 #include <iterator>
 #include <map>
-#include <inference_engine.hpp>
+#include <thread>
 
-#include <common_ie.hpp>
-//#include <slog.hpp>
-#include "mkldnn/mkldnn_extension_ptr.hpp"
-#include <ext_list.hpp>
+#include <inference_engine.hpp>
 #include <opencv2/opencv.hpp>
 #include "opencv2/imgproc/imgproc.hpp"
 #include "opencv2/imgcodecs.hpp"
-#include "opencv2/highgui/highgui.hpp"
-#include <sys/stat.h>
-#include <thread>
+
+#include "face_detection.h"
 
 using namespace InferenceEngine;
 using namespace cv;
 using namespace std;
 using namespace InferenceEngine::details;
-
-
 
 BaseDetection::BaseDetection(std::string commandLineFlag, std::string topoName, int maxBatch)
       : commandLineFlag(commandLineFlag), topoName(topoName), maxBatch(maxBatch) {}
@@ -39,83 +29,43 @@ bool BaseDetection::enabled() const  {
       if (!enablingChecked) {
           _enabled = !commandLineFlag.empty();
           if (!_enabled) {
-              std::cout << topoName << " DISABLED" << std::endl;
+              cout << topoName << " DISABLED" << endl;
           }
           enablingChecked = true;
       }
       return _enabled;
 }
 
-void BaseDetection::printPerformanceCounts() {
-      if (!enabled()) {
-          return;
-      }
-      std::cout << "Performance counts for " << topoName << std::endl << std::endl;
-      ::printPerformanceCounts(request->GetPerformanceCounts(), std::cout, false);
-}
-
-void FaceDetectionClass::initialize(){
-    cout<<endl<<"==============Initialize face_detection network============"<<endl;
-    std::map<std::string, InferenceEngine:: InferencePlugin> pluginsForDevices;
+void FaceDetectionClass::initialize(const std::string& model_xml_path, const std::string& device_name) {
+    cout << "Initializing face_detection network..." << endl;
+    std::map<std::string, InferenceEngine::InferencePlugin> pluginsForDevices;
     std::string device_for_faceDetection;
     std::string path_to_faceDetection_model;
-    std::vector<std::pair<std::string, std::string>> cmdOptions;
 
-    bool using_hddl = false;
+    device_for_faceDetection = device_name;
+    path_to_faceDetection_model = model_xml_path;
 
-#if 0
-    {
-        const char *env_hddl = "ANALYTICS_HDDL";
-        char *p = NULL;
-
-        p = getenv(env_hddl);
-        if (p) {
-            printf("%s: %s\n", env_hddl, p);
-
-            if (atoi(p) > 0)
-                using_hddl = true;
-        } else {
-            printf("%s: %s\n", env_hddl, "NOT_SET");
-        }
-    }
-#endif
-
-    if (using_hddl) {
-        device_for_faceDetection="HDDL";
-        path_to_faceDetection_model = "/opt/intel/computer_vision_sdk/deployment_tools/intel_models/face-detection-retail-0004/FP16/face-detection-retail-0004.xml";
-    } else {
-        device_for_faceDetection="GPU";
-        path_to_faceDetection_model = "/opt/intel/computer_vision_sdk/deployment_tools/intel_models/face-detection-retail-0004/FP32/face-detection-retail-0004.xml";
-    }
-
-    printf("FaceDetection plugin: %s\n", device_for_faceDetection.c_str());
-    printf("FaceDetection modle: %s\n", path_to_faceDetection_model.c_str());
+    cout << "FaceDetection plugin:" << device_for_faceDetection << endl;
+    cout << "FaceDetection modle:" << path_to_faceDetection_model << endl;
 
     auto deviceName = device_for_faceDetection;
     auto networkName = path_to_faceDetection_model;
 
-    //need to provide the absolute path to the trained model*
-    InferencePlugin buffer_plugin = PluginDispatcher\
-      ({""}).getPluginByDevice(deviceName);
-    //InferencePlugin buffer_plugin = PluginDispatcher({"./lib/", ""}).getPluginByDevice(deviceName);
+    // Need to provide the absolute path to the trained model*
+    InferencePlugin infer_plugin = PluginDispatcher({""}).getPluginByDevice(deviceName);
 
-    //Print plugin version /
-    printPluginVersion(buffer_plugin, std::cout);
+    // Load extensions for the CPU plugin
+    if (deviceName == "CPU") {
+        infer_plugin.AddExtension(InferenceEngine::make_so_pointer<InferenceEngine::IExtension>(""));
+    }
 
-    ///Load extensions for the CPU plugin
-#if 0 
-    //if ((deviceName.find(device_for_faceDetection) != std::string::npos)) {
-        buffer_plugin.AddExtension(std::make_shared<Extensions::Cpu::CpuExtensions>());
-    //}
-#endif
-    pluginsForDevices[deviceName] = buffer_plugin;
+    pluginsForDevices[deviceName] = infer_plugin;
 
-    //Load(FaceDetection).into(plugin);
-    this->net= buffer_plugin.LoadNetwork(this->read(), {});
-    this->plugin= &buffer_plugin;
-    std::cout<<"==============successfully loaded face_detection plugin==========="<<std::endl<<endl;;
-
+    this->net = infer_plugin.LoadNetwork(this->read(), {});
+    this->plugin = &infer_plugin;
+    cout << "Successfully loaded face_detection plugin." << endl;
 }
+
 void FaceDetectionClass::submitRequest(){
     if (!enquedFrames) return;
     enquedFrames = 0;
@@ -165,28 +115,27 @@ void FaceDetectionClass::fetchResults() {
 }
 
 InferenceEngine::CNNNetwork FaceDetectionClass::read() {
-    std::cout << "Loading network files for Face Detection" << std::endl;
+    cout << "Loading network files for Face Detection" << endl;
     InferenceEngine::CNNNetReader netReader;
-    /** Read network model **/
+    // Read network model
     netReader.ReadNetwork(commandLineFlag);
-    /** Set batch size to 1 **/
-    std::cout << "Batch size is set to  "<< maxBatch << std::endl;
+    // Set batch size to 1
+    cout << "Batch size is set to  "<< maxBatch << endl;
     netReader.getNetwork().setBatchSize(maxBatch);
-    /** Extract model name and load it's weights **/
+    // Extract model name and load it's weights
     std::string binFileName = fileNameNoExt(commandLineFlag) + ".bin";
     netReader.ReadWeights(binFileName);
-    /** Read labels (if any)**/
+    // Read labels (if any)
     std::string labelFileName = fileNameNoExt(commandLineFlag) + ".labels";
 
     std::ifstream inputFile(labelFileName);
     std::copy(std::istream_iterator<std::string>(inputFile),
               std::istream_iterator<std::string>(),
               std::back_inserter(labels));
-    // -----------------------------------------------------------------------------------------------------
 
     /** SSD-based network should have one input and one output **/
     // ---------------------------Check inputs ------------------------------------------------------
-    std::cout << "Checking Face Detection inputs" << std::endl;
+    cout << "Checking Face Detection inputs" << endl;
     InferenceEngine::InputsDataMap inputInfo(netReader.getNetwork().getInputsInfo());
     if (inputInfo.size() != 1) {
         throw std::logic_error("Face Detection network should have only one input");
@@ -194,10 +143,9 @@ InferenceEngine::CNNNetwork FaceDetectionClass::read() {
     auto& inputInfoFirst = inputInfo.begin()->second;
     inputInfoFirst->setPrecision(Precision::U8);
     inputInfoFirst->getInputData()->setLayout(Layout::NCHW);
-    // -----------------------------------------------------------------------------------------------------
 
     // ---------------------------Check outputs ------------------------------------------------------
-    std::cout << "Checking Face Detection outputs" << std::endl;
+    cout << "Checking Face Detection outputs" << endl;
     InferenceEngine::OutputsDataMap outputInfo(netReader.getNetwork().getOutputsInfo());
     if (outputInfo.size() != 1) {
         throw std::logic_error("Face Detection network should have only one output");
@@ -236,7 +184,7 @@ InferenceEngine::CNNNetwork FaceDetectionClass::read() {
     _output->setPrecision(Precision::FP32);
     _output->setLayout(Layout::NCHW);
     input = inputInfo.begin()->first;
-    std::cout<<"finished reading network"<<std::endl;
+    cout <<"finished reading network" << endl;
     return netReader.getNetwork();
 }
 

@@ -1,36 +1,24 @@
-/*
- * Copyright 2018 Intel Corporation All Rights Reserved. 
- * 
- * The source code contained or described herein and all documents related to the 
- * source code ("Material") are owned by Intel Corporation or its suppliers or 
- * licensors. Title to the Material remains with Intel Corporation or its suppliers 
- * and licensors. The Material contains trade secrets and proprietary and 
- * confidential information of Intel or its suppliers and licensors. The Material 
- * is protected by worldwide copyright and trade secret laws and treaty provisions. 
- * No part of the Material may be used, copied, reproduced, modified, published, 
- * uploaded, posted, transmitted, distributed, or disclosed in any way without 
- * Intel's prior express written permission.
- * 
- * No license under any patent, copyright, trade secret or other intellectual 
- * property right is granted to or conferred upon you by disclosure or delivery of 
- * the Materials, either expressly, by implication, inducement, estoppel or 
- * otherwise. Any license under such intellectual property rights must be express 
- * and approved by Intel in writing.
- */
+// Copyright (C) <2019> Intel Corporation
+//
+// SPDX-License-Identifier: Apache-2.0
+
 #ifndef MYPLUGIN_H
 #define MYPLUGIN_H
-#include "plugin.h"
-#include <iostream>
+
 #include <string.h>
 #include <functional>
 #include <vector>
 #include <utility>
+#include <unordered_map>
 #include <map>
+
 #include <inference_engine.hpp>
-#include "interactive_face_detection.hpp"
 #include <opencv2/opencv.hpp>
 
-#if 0 
+#include "detectionconfig.h"
+#include "plugin.h"
+
+// Copied from oVINO sample
 template <typename T>
 void matU8ToBlob(const cv::Mat& orig_image, InferenceEngine::Blob::Ptr& blob, float scaleFactor = 1.0, int batchIndex = 0) {
     InferenceEngine::SizeVector blobSize = blob.get()->dims();
@@ -55,7 +43,18 @@ void matU8ToBlob(const cv::Mat& orig_image, InferenceEngine::Blob::Ptr& blob, fl
         }
     }
 }
-#endif
+
+static std::string fileNameNoExt(const std::string &filepath) {
+    auto pos = filepath.rfind('.');
+    if (pos == std::string::npos) return filepath;
+    return filepath.substr(0, pos);
+}
+
+inline std::string fileExt(const std::string& filename) {
+    auto pos = filename.rfind('.');
+    if (pos == std::string::npos) return "";
+    return filename.substr(pos + 1);
+}
 
 class threading_class
 {
@@ -63,9 +62,8 @@ class threading_class
       threading_class();
       void make_thread();
   private:
-      void threading_func(); /* { std::cout << "Hello\n"; }*/
+      void threading_func();
 };
-
 
 struct BaseDetection {
   InferenceEngine::ExecutableNetwork net;
@@ -97,9 +95,6 @@ struct BaseDetection {
   mutable bool _enabled = false;
 
   bool enabled() const ;
-
-  void printPerformanceCounts();
-
 };
 
 struct Result {
@@ -127,12 +122,8 @@ struct FaceDetectionClass : BaseDetection {
 
     void enqueue(const cv::Mat &frame);
 
-
     explicit FaceDetectionClass() : 
-      BaseDetection("/opt/intel/computer_vision_sdk/deployment_tools/intel_models/face-detection-retail-0004/FP32/face-detection-retail-0004.xml"\
-      ,"Face Detection"
-      , 1) {}
-
+      BaseDetection(model_full_path_fp32,"Face Detection" , 1) {}
 
     InferenceEngine::CNNNetwork read() override;
 
