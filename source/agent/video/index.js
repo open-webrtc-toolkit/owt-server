@@ -15,6 +15,7 @@ var internalConnFactory = new InternalConnectionFactory;
 var mediaUtil = require('../mediaUtil');
 var calcDefaultBitrate = mediaUtil.calcDefaultBitrate;
 var resolution2String = mediaUtil.resolution2String;
+var isResolutionEqual = mediaUtil.isResolutionEqual;
 
 const { LayoutProcessor } = require('./layout');
 
