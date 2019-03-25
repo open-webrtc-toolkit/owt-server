@@ -2641,7 +2641,8 @@ var Conference = function (rpcClient, selfRpcId) {
       dropParticipants(message.id);
     } else if (message.purpose === 'webrtc' ||
                message.purpose === 'recording' ||
-               message.purpose === 'streaming') {
+               message.purpose === 'streaming' ||
+               message.purpose === 'analytics') {
       accessController && accessController.onFaultDetected(message.type, message.id);
     } else if (message.purpose === 'audio' ||
                message.purpose === 'video') {
