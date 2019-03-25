@@ -71,6 +71,12 @@ const resolution2String = (r) => {
   return resolutionValue2Name[k] ? resolutionValue2Name[k] : k;
 };
 
+const isResolutionEqual = (r1, r2) => {
+  return r1.width && r1.height && r2.width && r2.height
+    && (r1.width === r2.width)
+    && (r1.height === r2.height);
+};
+
 /*
  *@param {object} videoOption -The video part of Object(MediaSubOptions)
 */
@@ -98,6 +104,7 @@ const getVideoParameterForAddon = (videoOption) => {
 
 module.exports = {
   resolution2String,
+  isResolutionEqual,
   calcDefaultBitrate,
   getVideoParameterForAddon,
 }
