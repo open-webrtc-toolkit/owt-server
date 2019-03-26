@@ -13,6 +13,7 @@
 
 #include <opencv2/opencv.hpp>
 #include <inference_engine.hpp>
+#include "ie_common.h"
 
 /**
 * @brief Base class of config for network
