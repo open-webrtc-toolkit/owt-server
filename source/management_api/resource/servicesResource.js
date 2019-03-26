@@ -83,7 +83,7 @@ exports.represent = function (req, res, next) {
     var authData = req.authData || {};
 
     if (!doInit(authData.service)) {
-        log.info('Service ', authData.service, ' not authorized for this action');
+        log.info('Service ', authData.service._id, ' not authorized for this action');
         return next(new e.AccessError('Permission denied'));
     }
 
