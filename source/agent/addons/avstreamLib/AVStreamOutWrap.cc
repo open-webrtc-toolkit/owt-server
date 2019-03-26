@@ -71,14 +71,18 @@ void AVStreamOutWrap::New(const v8::FunctionCallbackInfo<v8::Value>& args)
     std::string url = std::string(*String::Utf8Value(options->Get(String::NewFromUtf8(isolate, "url"))->ToString()));
     int initializeTimeout = options->Get(String::NewFromUtf8(isolate, "initializeTimeout"))->Int32Value();
     if (type.compare("streaming") == 0) {
+        Local<Object> connection = options->Get(String::NewFromUtf8(isolate, "connection"))->ToObject();
+        std::string protocol = std::string(*String::Utf8Value(connection->Get(String::NewFromUtf8(isolate, "protocol"))->ToString()));
+        std::string url = std::string(*String::Utf8Value(connection->Get(String::NewFromUtf8(isolate, "url"))->ToString()));
+
         owt_base::LiveStreamOut::StreamingFormat format;
-        if (url.find("rtsp://") == 0)
+        if (protocol.compare("rtsp") == 0) {
             format = owt_base::LiveStreamOut::STREAMING_FORMAT_RTSP;
-        else if (url.find("rtmp://") == 0)
+        } else if (protocol.compare("rtmp") == 0) {
             format = owt_base::LiveStreamOut::STREAMING_FORMAT_RTMP;
-        else if (url.find(".m3u8") == url.length() - 5)
+        } else if (protocol.compare("hls") == 0) {
             format = owt_base::LiveStreamOut::STREAMING_FORMAT_HLS;
-        else if (url.find(".mpd") == url.length() - 4) {
+        } else if (protocol.compare("dash") == 0) {
             format = owt_base::LiveStreamOut::STREAMING_FORMAT_DASH;
         } else {
             isolate->ThrowException(Exception::TypeError(String::NewFromUtf8(isolate, "Unsupported AVStreamOut type")));
@@ -86,6 +90,18 @@ void AVStreamOutWrap::New(const v8::FunctionCallbackInfo<v8::Value>& args)
         }
 
         owt_base::LiveStreamOut::StreamingOptions opts(format);
+
+        if (protocol.compare("hls") == 0) {
+            Local<Object> parameters = connection->Get(String::NewFromUtf8(isolate, "parameters"))->ToObject();
+            //opts.method = std::string(*String::Utf8Value(parameters->Get(String::NewFromUtf8(isolate, "method"))->ToString()));
+            opts.hls_time = parameters->Get(String::NewFromUtf8(isolate, "hlsTime"))->Int32Value();
+            opts.hls_list_size = parameters->Get(String::NewFromUtf8(isolate, "hlsListSize"))->Int32Value();
+        } else if (protocol.compare("dash") == 0) {
+            Local<Object> parameters = connection->Get(String::NewFromUtf8(isolate, "parameters"))->ToObject();
+            //opts.method = std::string(*String::Utf8Value(parameters->Get(String::NewFromUtf8(isolate, "method"))->ToString()));
+            opts.dash_seg_duration = parameters->Get(String::NewFromUtf8(isolate, "dashSegDuration"))->Int32Value();
+            opts.dash_window_size = parameters->Get(String::NewFromUtf8(isolate, "dashWindowSize"))->Int32Value();
+        }
 
         obj->me = new owt_base::LiveStreamOut(url, requireAudio, requireVideo, obj, initializeTimeout, opts);
     } else if (type.compare("file") == 0) {

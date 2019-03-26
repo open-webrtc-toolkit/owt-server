@@ -243,10 +243,32 @@ const ServerSideSubscriptionRequest = {
     'StreamingOutConnectionOptions': {
       type: 'object',
       properties: {
-        'url': { type: 'string' }
+        'protocol': {enum: ['rtmp', 'rtsp', 'hls', 'dash']},
+        'url': { type: 'string' },
+        'parameters': {anyOf: [
+          {
+            type: 'object',
+            properties: {
+              'method': {enum: ['PUT', 'POST']},
+              'hlsTime': {type: 'number'},
+              'hlsListSize': {type: 'number'}
+            },
+            additionalProperties: false,
+            required: ['method', 'hlsTime', 'hlsListSize']
+          },{
+            type: 'object',
+            properties: {
+              'method': {enum: ['PUT', 'POST']},
+              'dashSegDuration': {type: 'number'},
+              'dashWindowSize': {type: 'number'}
+            },
+            additionalProperties: false,
+            required: ['method', 'dashSegDuration', 'dashWindowSize']
+          }
+        ]}
       },
       additionalProperties: false,
-      required: ['url']
+      required: ['protocol', 'url']
     },
 
     'RecordingStorageOptions': {
