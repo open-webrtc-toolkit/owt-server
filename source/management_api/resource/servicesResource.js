@@ -54,7 +54,10 @@ exports.create = function (req, res, next) {
         log.info('Service ', authData.service._id, ' not authorized for this action');
         return next(new e.AccessError('Permission denied'));
     }
-    var service = req.body;
+    var service = {
+        name: req.body.name,
+        key: req.body.key
+    };
 
     // Check the request body as service
     if (typeof service.name !== 'string' || typeof service.key !== 'string') {
