@@ -355,6 +355,7 @@ module.exports = function() {
             var conn = amqp.createConnection(options);
             var connected = false;
             conn.on('ready', function() {
+                delete options.password;
                 log.info('Connecting to rabbitMQ server OK, options:', options);
                 connection = conn;
 
