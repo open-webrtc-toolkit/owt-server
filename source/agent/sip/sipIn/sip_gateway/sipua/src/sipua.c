@@ -55,7 +55,7 @@ static int construct_uag(struct uag **uagp, void *ep, const char *sip_server, co
 	int err;
 	char account_str[512]={0};
 
-    sprintf(account_str, "%.100s <sip:%.100s:%.100s@%.100s>\n", disp_name, user_name, password, sip_server);
+    sprintf(account_str, "%.128s <sip:%.128s:%.64s@%.128s>\n", disp_name, user_name, password, sip_server);
 
 	err = uag_alloc(uagp, "Intel Integrated SIPUA", ep, sipua_trans_udp ? true : false, sipua_trans_tcp ? true : false, sipua_trans_tls ? true : false, sipua_prefer_ipv6 ? true : false);
 	if (err){
