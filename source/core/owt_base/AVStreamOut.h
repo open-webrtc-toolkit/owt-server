@@ -33,6 +33,7 @@ class MediaFrame {
 public:
     MediaFrame(const owt_base::Frame& frame, int64_t timeStamp = 0)
         : m_timeStamp(timeStamp)
+        , m_duration(0)
     {
         m_frame = frame;
         if (frame.length > 0) {
@@ -65,6 +66,7 @@ public:
     }
 
     int64_t m_timeStamp;
+    int64_t m_duration;
     owt_base::Frame m_frame;
 };
 
@@ -86,8 +88,40 @@ public:
         if (!m_valid)
             return;
 
+        boost::shared_ptr<MediaFrame> lastFrame;
+
         boost::shared_ptr<MediaFrame> mediaFrame(new MediaFrame(frame, currentTimeMs() - m_startTimeOffset));
-        m_queue.push(mediaFrame);
+        if (isAudioFrame(frame)) {
+            if (!m_lastAudioFrame) {
+                m_lastAudioFrame = mediaFrame;
+                return;
+            }
+
+            m_lastAudioFrame->m_duration = mediaFrame->m_timeStamp - m_lastAudioFrame->m_timeStamp;
+            if (m_lastAudioFrame->m_duration <= 0) {
+                m_lastAudioFrame->m_duration = 1;
+                mediaFrame->m_timeStamp = m_lastAudioFrame->m_timeStamp + 1;
+            }
+
+            lastFrame = m_lastAudioFrame;
+            m_lastAudioFrame = mediaFrame;
+        } else {
+            if (!m_lastVideoFrame) {
+                m_lastVideoFrame = mediaFrame;
+                return;
+            }
+
+            m_lastVideoFrame->m_duration = mediaFrame->m_timeStamp - m_lastVideoFrame->m_timeStamp;
+            if (m_lastVideoFrame->m_duration <= 0) {
+                m_lastVideoFrame->m_duration = 1;
+                mediaFrame->m_timeStamp = m_lastVideoFrame->m_timeStamp + 1;
+            }
+
+            lastFrame = m_lastVideoFrame;
+            m_lastVideoFrame = mediaFrame;
+        }
+
+        m_queue.push(lastFrame);
         if (m_queue.size() == 1)
             m_cond.notify_one();
     }
@@ -123,6 +157,9 @@ private:
     std::queue<boost::shared_ptr<MediaFrame>> m_queue;
     boost::mutex m_mutex;
     boost::condition_variable m_cond;
+
+    boost::shared_ptr<MediaFrame> m_lastAudioFrame;
+    boost::shared_ptr<MediaFrame> m_lastVideoFrame;
 
     bool m_valid;
     int64_t m_startTimeOffset;
@@ -215,8 +252,6 @@ private:
     AVStream *m_videoStream;
 
     int64_t m_lastKeyFrameTimestamp;
-    int64_t m_lastAudioDts;
-    int64_t m_lastVideoDts;
 
     char m_errbuff[500];
 

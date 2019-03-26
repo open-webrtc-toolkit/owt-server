@@ -50,8 +50,6 @@ AVStreamOut::AVStreamOut(const std::string& url, bool hasAudio, bool hasVideo, E
     , m_audioStream(NULL)
     , m_videoStream(NULL)
     , m_lastKeyFrameTimestamp(0)
-    , m_lastAudioDts(AV_NOPTS_VALUE)
-    , m_lastVideoDts(AV_NOPTS_VALUE)
 {
     ELOG_INFO("url %s, audio %d, video %d, timeOut %d", m_url.c_str(), m_hasAudio, m_hasVideo, m_timeOutMs);
 
@@ -469,40 +467,30 @@ bool AVStreamOut::writeFrame(AVStream *stream, boost::shared_ptr<MediaFrame> med
     pkt.size = mediaFrame->m_frame.length;
     pkt.dts = (int64_t)(mediaFrame->m_timeStamp / (av_q2d(stream->time_base) * 1000));
     pkt.pts = pkt.dts;
+    pkt.duration =  (int64_t)(mediaFrame->m_duration / (av_q2d(stream->time_base) * 1000));
     pkt.stream_index = stream->index;
 
     if (isVideoFrame(mediaFrame->m_frame)) {
-        if (mediaFrame->m_frame.additionalInfo.video.isKeyFrame) {
-            pkt.flags |= AV_PKT_FLAG_KEY;
-        }
-
         if (m_lastKeyFrameTimestamp == 0)
             m_lastKeyFrameTimestamp = currentTimeMs();
 
-        if (m_lastKeyFrameTimestamp + getKeyFrameInterval() < currentTimeMs()) {
-            ELOG_DEBUG("Request video key frame");
+        if (mediaFrame->m_frame.additionalInfo.video.isKeyFrame) {
+            pkt.flags |= AV_PKT_FLAG_KEY;
             m_lastKeyFrameTimestamp = currentTimeMs();
-            deliverFeedbackMsg(FeedbackMsg{.type = VIDEO_FEEDBACK, .cmd = REQUEST_KEY_FRAME});
         }
 
-        if (pkt.dts <= m_lastVideoDts) {
-            ELOG_DEBUG("Video timestamp is not incremental");
-            pkt.dts = m_lastVideoDts + 1;
-            pkt.pts = pkt.dts;
+        if (m_lastKeyFrameTimestamp + 1.1 * getKeyFrameInterval() < currentTimeMs()) {
+            ELOG_DEBUG("Request video key frame");
+
+            deliverFeedbackMsg(FeedbackMsg{.type = VIDEO_FEEDBACK, .cmd = REQUEST_KEY_FRAME});
+            m_lastKeyFrameTimestamp = currentTimeMs();
         }
-        m_lastVideoDts = pkt.dts;
-    } else {
-        if (pkt.dts <= m_lastAudioDts) {
-            ELOG_DEBUG("Audio timestamp is not incremental");
-            pkt.dts = m_lastAudioDts + 1;
-            pkt.pts = pkt.dts;
-        }
-        m_lastAudioDts = pkt.dts;
     }
 
-    ELOG_TRACE("Send %s frame, timestamp %ld, size %4d%s"
+    ELOG_TRACE("Send %s frame, timestamp %ld, duration %ld, size %4d%s"
             , isVideoFrame(mediaFrame->m_frame) ? "video" : "audio"
             , pkt.dts
+            , pkt.duration
             , pkt.size
             , (pkt.flags & AV_PKT_FLAG_KEY) ? " - key" : ""
             );
