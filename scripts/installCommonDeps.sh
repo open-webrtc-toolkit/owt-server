@@ -127,7 +127,7 @@ install_libnice014(){
 
 install_openssl(){
   if [ -d $LIB_DIR ]; then
-    local SSL_VERSION="1.0.2q"
+    local SSL_VERSION="1.0.2r"
     cd $LIB_DIR
     rm -f ./build/lib/libssl.*
     rm -f ./build/lib/libcrypto.*
