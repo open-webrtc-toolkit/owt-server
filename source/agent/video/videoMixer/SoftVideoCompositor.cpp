@@ -289,7 +289,7 @@ SoftFrameGenerator::SoftFrameGenerator(
     if (m_parallelNum > 16)
         m_parallelNum = 16;
 
-    ELOG_INFO_T("hardware concurrency %d, parallel composition num %d", nThreads, m_parallelNum);
+    ELOG_DEBUG_T("hardware concurrency %d, parallel composition num %d", nThreads, m_parallelNum);
 
     if (m_parallelNum > 1) {
         m_srv       = boost::make_shared<boost::asio::io_service>();
