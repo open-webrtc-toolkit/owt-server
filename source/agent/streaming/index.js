@@ -52,17 +52,12 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
         var avstream_options = {type: 'streaming',
                                 require_audio: !!options.media.audio,
                                 require_video: !!options.media.video,
-                                audio_codec: 'aac'/*FIXME:hard coded*/,
-                                video_codec: 'h264'/*FIXME: hard coded*/,
-                                video_resolution: 'vga'/*FIXME: hard coded*/,
-                                url: options.connection.url,
+                                connection: options.connection,
                                 initializeTimeout: global.config.avstream.initializeTimeout};
 
-        if (options.connection.url.indexOf('dash://') === 0) {
-            // check the existence of the dash mpd file.
-            var fileName = options.connection.url.substring(7);
+        if (options.connection.protocol === 'dash' || options.connection.protocol === 'hls') {
             var fs = require('fs');
-            if (fs.existsSync(fileName)) {
+            if (fs.existsSync(options.connection.url)) {
                 log.error('avstream-out init error: file existed.');
                 notifyStatus(options.controller, connectionId, 'out', {type: 'failed', reason: 'file existed.'});
                 return;

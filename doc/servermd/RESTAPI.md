@@ -703,7 +703,9 @@ Streaming-outs model:
     {
         id: string(id),
         media: object(OutMedia),
-        url: string(url)
+        protocol: "rtmp" | "rtsp" | "hls" | "dash",
+        url: string(url),
+        parameters: object(HlsParameters) | object(DashParameters) | undefined
     }
     object(OutMedia):
     {
@@ -727,6 +729,16 @@ Streaming-outs model:
          framerate: number(WantedFrameRateFPS),
          bitrate: number(WantedBitrateKbps) | string(WantedBitrateMultiple), // Must be in array of VideoInfo.optional.parameters.bitrate in 5.3, streams data model.
          keyFrameInterval: number(WantedKeyFrameIntervalSecond)
+    }
+    object(HlsParameters):
+    {
+        hlsTime: number(HlsTime) | undefined,
+        hlsListSize: number(HlsListSize) | undefined
+    }
+    object(DashParameters):
+    {
+        dashSegDuration: number(DashSegDuration) | undefined,
+        dashWindowSize: number(DashWindowSize) | undefined
     }
 Resources:
 
@@ -763,7 +775,9 @@ parameters:
 **Note**:
 
     options={
+      protocol: string("rtmp" | "rtsp" | "hls" | "dash"),
       url: url,
+      parameters: object(HlsParameters) | object(DashParameters), // optional, depends on protocol
       media: object(MediaSubOptions)
     }
 
