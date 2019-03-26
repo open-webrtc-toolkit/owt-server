@@ -91,6 +91,10 @@ exports.authenticate = function (req, res, next) {
         params;
 
     var authErr = new e.AuthError('WWW-Authenticate: ' + challengeReq);
+    var randomDelay = Math.round(Math.random() * 1000);
+    var sendErrorResponse = function () {
+        next(authErr);
+    };
 
     if (authHeader !== undefined) {
         params = mauthParser.parseHeader(authHeader);
@@ -100,7 +104,8 @@ exports.authenticate = function (req, res, next) {
             if (err) return next(err);
             if (!serv) {
                 log.info('[Auth] Unknow service:', params.serviceid);
-                return next(authErr);
+                setTimeout(sendErrorResponse, randomDelay);
+                return;
             }
 
             var key = serv.key;
@@ -133,11 +138,11 @@ exports.authenticate = function (req, res, next) {
                 next();
             } else {
                 log.info('[Auth] Wrong credentials');
-                next(authErr);
+                setTimeout(sendErrorResponse, randomDelay);
             }
         });
     } else {
         log.info('[Auth] MAuth header not presented');
-        next(authErr);
+        setTimeout(sendErrorResponse, randomDelay);
     }
 };
