@@ -61,7 +61,7 @@ init_hardware()
 
 init_auth()
 {
-  read -t 10 -p "Update RabbitMQ Account? [No/yes]" yn
+  read -t 10 -p "Update RabbitMQ/MongoDB Account? [No/yes]" yn
   if [[ $? -eq 0 ]]; then
     case $yn in
       [Nn]* ) ;;

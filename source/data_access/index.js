@@ -9,22 +9,45 @@ global.config.mongo = global.config.mongo || {};
 global.config.mongo.dataBaseURL = global.config.mongo.dataBaseURL || 'localhost/owtdb';
 var databaseUrl = global.config.mongo.dataBaseURL;
 
+var fs = require('fs');
+var cipher = require('../cipher');
+
 // Connect to MongoDB
 var connectOption = {
   useMongoClient: true,
   reconnectTries: 60 * 15,
   reconnectInterval: 1000
 };
+
 var mongoose = require('mongoose');
-mongoose.plugin(schema => { schema.options.usePushEach = true });
-mongoose.Promise = Promise;
-mongoose.connect('mongodb://' + databaseUrl, connectOption)
-  .catch(function (err) {
+
+var setupConnection = function () {
+  mongoose.plugin(schema => { schema.options.usePushEach = true });
+  mongoose.Promise = Promise;
+  mongoose.connect('mongodb://' + databaseUrl, connectOption)
+    .catch(function (err) {
+      console.log(err.message);
+    });
+  mongoose.connection.on('error', function(err) {
     console.log(err.message);
   });
-mongoose.connection.on('error', function(err) {
-  console.log(err.message);
-});
+};
+
+if (fs.existsSync(cipher.astore)) {
+  cipher.unlock(cipher.k, cipher.astore, function cb (err, authConfig) {
+    if (!err && authConfig.mongo) {
+      connectOption.user = authConfig.mongo.username;
+      connectOption.pass = authConfig.mongo.password;
+      setupConnection();
+    } else {
+      log.error('Failed to get mongodb auth:', err);
+      setupConnection();
+    }
+  });
+} else {
+  setupConnection();
+}
+
 exports.token = require('./interface/tokenInterface');
 exports.room = require('./interface/roomInterface');
 exports.service = require('./interface/serviceInterface');
