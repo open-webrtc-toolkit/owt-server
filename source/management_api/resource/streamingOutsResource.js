@@ -49,9 +49,9 @@ exports.add = function (req, res, next) {
     };
 
     if (sub_req.connection.protocol === 'hls') {
-      sub_req.connection.parameters = req.body.parameters || {hlsTime: 2, hlsListSize: 5};
+      sub_req.connection.parameters = req.body.parameters || {method: 'PUT', hlsTime: 2, hlsListSize: 5};
     } else if (sub_req.connection.protocol === 'dash') {
-      sub_req.connection.parameters = req.body.parameters || {dashSegDuration: 2, dashWindowSize: 5};
+      sub_req.connection.parameters = req.body.parameters || {method: 'PUT', dashSegDuration: 2, dashWindowSize: 5};
     }
 
     requestHandler.addServerSideSubscription(req.params.room, sub_req, function (result, err) {

@@ -732,11 +732,13 @@ Streaming-outs model:
     }
     object(HlsParameters):
     {
+        method: string('PUT' | 'POST'),
         hlsTime: number(HlsTime) | undefined,
         hlsListSize: number(HlsListSize) | undefined
     }
     object(DashParameters):
     {
+        method: string('PUT' | 'POST'),
         dashSegDuration: number(DashSegDuration) | undefined,
         dashWindowSize: number(DashWindowSize) | undefined
     }

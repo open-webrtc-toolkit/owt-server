@@ -55,7 +55,7 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
                                 connection: options.connection,
                                 initializeTimeout: global.config.avstream.initializeTimeout};
 
-        if (options.connection.protocol === 'dash' || options.connection.protocol === 'hls') {
+        if ((options.connection.protocol === 'dash' || options.connection.protocol === 'hls') && !options.connection.url.startsWith('http')) {
             var fs = require('fs');
             if (fs.existsSync(options.connection.url)) {
                 log.error('avstream-out init error: file existed.');

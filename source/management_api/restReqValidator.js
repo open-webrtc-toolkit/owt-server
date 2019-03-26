@@ -249,19 +249,21 @@ const ServerSideSubscriptionRequest = {
           {
             type: 'object',
             properties: {
+              'method': {enum: ['PUT', 'POST']},
               'hlsTime': {type: 'number'},
               'hlsListSize': {type: 'number'}
             },
             additionalProperties: false,
-            required: ['hlsTime', 'hlsListSize']
+            required: ['method', 'hlsTime', 'hlsListSize']
           },{
             type: 'object',
             properties: {
+              'method': {enum: ['PUT', 'POST']},
               'dashSegDuration': {type: 'number'},
               'dashWindowSize': {type: 'number'}
             },
             additionalProperties: false,
-            required: ['dashSegDuration', 'dashWindowSize']
+            required: ['method', 'dashSegDuration', 'dashWindowSize']
           }
         ]}
       },

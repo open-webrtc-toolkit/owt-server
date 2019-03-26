@@ -93,10 +93,12 @@ void AVStreamOutWrap::New(const v8::FunctionCallbackInfo<v8::Value>& args)
 
         if (protocol.compare("hls") == 0) {
             Local<Object> parameters = connection->Get(String::NewFromUtf8(isolate, "parameters"))->ToObject();
+            //opts.method = std::string(*String::Utf8Value(parameters->Get(String::NewFromUtf8(isolate, "method"))->ToString()));
             opts.hls_time = parameters->Get(String::NewFromUtf8(isolate, "hlsTime"))->Int32Value();
             opts.hls_list_size = parameters->Get(String::NewFromUtf8(isolate, "hlsListSize"))->Int32Value();
         } else if (protocol.compare("dash") == 0) {
             Local<Object> parameters = connection->Get(String::NewFromUtf8(isolate, "parameters"))->ToObject();
+            //opts.method = std::string(*String::Utf8Value(parameters->Get(String::NewFromUtf8(isolate, "method"))->ToString()));
             opts.dash_seg_duration = parameters->Get(String::NewFromUtf8(isolate, "dashSegDuration"))->Int32Value();
             opts.dash_window_size = parameters->Get(String::NewFromUtf8(isolate, "dashWindowSize"))->Int32Value();
         }
