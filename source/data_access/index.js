@@ -35,9 +35,11 @@ var setupConnection = function () {
 
 if (fs.existsSync(cipher.astore)) {
   cipher.unlock(cipher.k, cipher.astore, function cb (err, authConfig) {
-    if (!err && authConfig.mongo) {
-      connectOption.user = authConfig.mongo.username;
-      connectOption.pass = authConfig.mongo.password;
+    if (!err) {
+      if (authConfig.mongo) {
+        connectOption.user = authConfig.mongo.username;
+        connectOption.pass = authConfig.mongo.password;
+      }
       setupConnection();
     } else {
       log.error('Failed to get mongodb auth:', err);
