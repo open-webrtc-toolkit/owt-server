@@ -25,8 +25,8 @@ var sampleServiceFile = path.resolve(dirName, '../extras/basic_example/samplertc
 function prepareDB(next) {
   if (fs.existsSync(cipher.astore)) {
     cipher.unlock(cipher.k, cipher.astore, function cb (err, authConfig) {
-      if (!err && authConfig.mongo) {
-        if (!dbURL.includes('@')) {
+      if (!err) {
+        if (authConfig.mongo && !dbURL.includes('@')) {
           dbURL = authConfig.mongo.username
             + ':' + authConfig.mongo.password
             + '@' + dbURL;

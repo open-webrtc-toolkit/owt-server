@@ -66,12 +66,15 @@ exports.connect = function (options) {
 
     if (fs.existsSync(cipher.astore)) {
         cipher.unlock(cipher.k, cipher.astore, function cb (err, authConfig) {
-            if (!err && authConfig.rabbit) {
-                options.login = authConfig.rabbit.username;
-                options.password = authConfig.rabbit.password;
+            if (!err) {
+                if (authConfig.rabbit) {
+                    options.login = authConfig.rabbit.username;
+                    options.password = authConfig.rabbit.password;
+                }
                 setupConnection(options);
             } else {
                 log.error('Failed to get rabbitmq auth:', err);
+                setupConnection(options);
             }
         });
     } else {
