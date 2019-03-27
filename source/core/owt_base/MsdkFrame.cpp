@@ -400,7 +400,7 @@ bool MsdkFrame::nv12ConvertTo(mfxFrameInfo& pInfo, mfxFrameData& pData, webrtc::
     uint32_t h = getCropH();
 
     if (!m_nv12TBuffer.get()) {
-        m_nv12TBuffer.reset(memalign(16, h * pData.Pitch * 3 / 2));
+        m_nv12TBuffer.reset((uint8_t*) memalign(16, h * pData.Pitch * 3 / 2));
         if (!m_nv12TBuffer.get())
         {
             ELOG_ERROR("memalign failed, %p", m_nv12TBuffer.get());

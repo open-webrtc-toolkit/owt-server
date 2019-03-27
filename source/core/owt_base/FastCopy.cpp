@@ -1,6 +1,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <smmintrin.h>
+#include <boost/shared_ptr.hpp>
 
 void *memcpy_from_uswc_sse4(boost::shared_ptr<uint8_t> dst, void *src, size_t size)
 {
