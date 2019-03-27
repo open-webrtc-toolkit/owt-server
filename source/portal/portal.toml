@@ -32,9 +32,11 @@ max_load = 0.85 #default: 0.85
 
 
 [capacity]
-#The ISP list this portal tends to handle
+#The ISP list this portal is able to handle
+#If the ISP list is set to be non-empty, only the creating token requests with preference.ips being matched with one element of this list will be scheduled to this portal.
 isps = [] #default: [], which means all ISPs.
-#The region list this portal tends to handle
+#The region list this portal prefers to handle
+#If the region list is set to be non-empty, the creating token requests with preference.region being matched with one element of this list will be priorly scheduled to this portal.
 regions = [] #default: [], which means all regions.
 
 
