@@ -22,16 +22,38 @@ exports.getList = function (req, res, next) {
     });
 };
 
+const guessProtocol = (url) => {
+  if (url.startsWith('rtmp://')) {
+    return 'rtmp';
+  } else if (url.startsWith('rtsp://')) {
+    return 'rtsp';
+  } else if (url.endsWith('.m3u8')) {
+    return 'hls';
+  } else if (url.endsWith('.mpd')) {
+    return 'dash';
+  } else {
+    return 'unknown';
+  }
+};
+
 exports.add = function (req, res, next) {
     var sub_req = req.body;
     sub_req.type = 'streaming';
     var sub_req = {
       type: 'streaming',
       connection: {
+        protocol: req.body.protocol || guessProtocol(req.body.url), /*FIXME: req.body.protocol should be mandatorily specified*/
         url: req.body.url
       },
       media: req.body.media
     };
+
+    if (sub_req.connection.protocol === 'hls') {
+      sub_req.connection.parameters = req.body.parameters || {method: 'PUT', hlsTime: 2, hlsListSize: 5};
+    } else if (sub_req.connection.protocol === 'dash') {
+      sub_req.connection.parameters = req.body.parameters || {method: 'PUT', dashSegDuration: 2, dashWindowSize: 5};
+    }
+
     requestHandler.addServerSideSubscription(req.params.room, sub_req, function (result, err) {
         if (result === 'error') {
             return next(err);

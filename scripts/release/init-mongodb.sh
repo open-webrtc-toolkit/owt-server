@@ -14,6 +14,9 @@ if [[ $EUID -ne 0 ]]; then
    SUDO="sudo -E"
 fi
 
+MONGO_INIT_INSTALL=false
+DB_NAME="owtdb"
+
 usage() {
   echo
   echo "Mongodb Start Up Script"
@@ -26,22 +29,59 @@ usage() {
   echo
 }
 
+create_user() {
+  read -p "Enter your username for MongoDB: " mongouser
+  echo -n Password:
+  read -s mongopwd
+  if [[ ! -z "$mongouser" && ! -z "$mongopwd" ]]; then
+    mongo ${DB_NAME} --eval "db.createUser({user:'$mongouser', pwd:'$mongopwd', roles: ['dbOwner']})"
+    mongouser=""
+    mongopwd=""
+  else
+    echo
+    echo -e "Failed to add user: empty username or password"
+  fi
+}
+
+init_mongo() {
+  read -t 10 -p "Create MongoDB Account? [Yes/no]" yn
+  case $yn in
+    [Nn]* ) ;;
+    [Yy]* ) create_user;;
+    * ) create_user;;
+  esac
+}
+
+
 install_deps() {
+  local CHECK_INSTALLED=""
   local OS=`${this}/detectOS.sh | awk '{print tolower($0)}'`
   echo $OS
 
   if [[ "$OS" =~ .*centos.* ]]
   then
-    echo -e "\x1b[32mInstalling dependent components and libraries via yum...\x1b[0m"
-    wget -c http://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
-    ${SUDO} rpm -Uvh epel-release-latest-7*.rpm
-    ${SUDO} sed -i 's/https/http/g' /etc/yum.repos.d/epel.repo
-    ${SUDO} yum install mongodb mongodb-server -y
+    CHECK_INSTALLED=`rpm -qa | grep mongodb-server`
+    if [[ -z "$CHECK_INSTALLED" ]]; then
+      echo -e "\x1b[32mInstalling dependent components and libraries via yum...\x1b[0m"
+      wget -c http://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
+      ${SUDO} rpm -Uvh epel-release-latest-7*.rpm
+      ${SUDO} sed -i 's/https/http/g' /etc/yum.repos.d/epel.repo
+      ${SUDO} yum install mongodb mongodb-server -y
+      MONGO_INIT_INSTALL=true
+    else
+      echo -e "\x1b[mMongoDB already installed\x1b[0m"
+    fi
   elif [[ "$OS" =~ .*ubuntu.* ]]
   then
-    echo -e "\x1b[32mInstalling dependent components and libraries via apt-get...\x1b[0m"
-    ${SUDO} apt-get update
-    ${SUDO} apt-get install mongodb
+    CHECK_INSTALLED=`dpkg -l | grep -E '^ii' | grep mongodb-server`
+    if [[ -z "$CHECK_INSTALLED" ]]; then
+      echo -e "\x1b[32mInstalling dependent components and libraries via apt-get...\x1b[0m"
+      ${SUDO} apt-get update
+      ${SUDO} apt-get install mongodb
+      MONGO_INIT_INSTALL=true
+    else
+      echo -e "\x1b[mMongoDB already installed\x1b[0m"
+    fi
   else
     echo -e "\x1b[32mUnsupported platform...\x1b[0m"
   fi
@@ -92,4 +132,4 @@ done
 
 ${INSTALL_DEPS} && install_deps
 
-install_db
+${MONGO_INIT_INSTALL} && init_mongo

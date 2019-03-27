@@ -15,12 +15,33 @@ var currentVersion = '1.0';
 var fs = require('fs');
 var path = require('path');
 
-var db = require('mongojs')(dbURL, ['services', 'infos', 'rooms']);
+var db;
 var cipher = require('./cipher');
 
 var dirName = !process.pkg ? __dirname : path.dirname(process.execPath);
 var configFile = path.join(dirName, 'management_api.toml');
 var sampleServiceFile = path.resolve(dirName, '../extras/basic_example/samplertcservice.js');
+
+function prepareDB(next) {
+  if (fs.existsSync(cipher.astore)) {
+    cipher.unlock(cipher.k, cipher.astore, function cb (err, authConfig) {
+      if (!err && authConfig.mongo) {
+        if (!dbURL.includes('@')) {
+          dbURL = authConfig.mongo.username
+            + ':' + authConfig.mongo.password
+            + '@' + dbURL;
+        }
+      } else {
+        log.error('Failed to get mongodb auth:', err);
+      }
+      db = require('mongojs')(dbURL, ['services', 'infos', 'rooms']);
+      next();
+    });
+  } else {
+    db = require('mongojs')(dbURL, ['services', 'infos', 'rooms']);
+    next();
+  }
+}
 
 function upgradeH264(next) {
   db.rooms.find({}).toArray(function (err, rooms) {
@@ -187,22 +208,24 @@ function writeSampleFile(sampleServiceId, sampleServiceKey) {
   });
 }
 
-checkVersion(function() {
-  prepareService('superService', function (service) {
-    var superServiceId = service._id+'';
-    var superServiceKey = service.key;
-    console.log('superServiceId:', superServiceId);
-    console.log('superServiceKey:', superServiceKey);
-    writeConfigFile(superServiceId, superServiceKey);
+prepareDB(function() {
+  checkVersion(function() {
+    prepareService('superService', function (service) {
+      var superServiceId = service._id+'';
+      var superServiceKey = service.key;
+      console.log('superServiceId:', superServiceId);
+      console.log('superServiceKey:', superServiceKey);
+      writeConfigFile(superServiceId, superServiceKey);
 
-    prepareService('sampleService', function (service) {
-      var sampleServiceId = service._id+'';
-      var sampleServiceKey = service.key;
-      console.log('sampleServiceId:', sampleServiceId);
-      console.log('sampleServiceKey:', sampleServiceKey);
-      db.close();
+      prepareService('sampleService', function (service) {
+        var sampleServiceId = service._id+'';
+        var sampleServiceKey = service.key;
+        console.log('sampleServiceId:', sampleServiceId);
+        console.log('sampleServiceKey:', sampleServiceKey);
+        db.close();
 
-      writeSampleFile(sampleServiceId, sampleServiceKey);
+        writeSampleFile(sampleServiceId, sampleServiceKey);
+      });
     });
   });
 });
