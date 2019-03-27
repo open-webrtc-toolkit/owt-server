@@ -89,18 +89,24 @@ void AVStreamOutWrap::New(const v8::FunctionCallbackInfo<v8::Value>& args)
             return;
         }
 
-        owt_base::LiveStreamOut::StreamingOptions opts(format);
+        owt_base::LiveStreamOut::StreamingOptions opts;
 
+        opts.format = format;
         if (protocol.compare("hls") == 0) {
             Local<Object> parameters = connection->Get(String::NewFromUtf8(isolate, "parameters"))->ToObject();
-            //opts.method = std::string(*String::Utf8Value(parameters->Get(String::NewFromUtf8(isolate, "method"))->ToString()));
             opts.hls_time = parameters->Get(String::NewFromUtf8(isolate, "hlsTime"))->Int32Value();
             opts.hls_list_size = parameters->Get(String::NewFromUtf8(isolate, "hlsListSize"))->Int32Value();
+
+            strncpy(opts.hls_method, std::string(*String::Utf8Value(parameters->Get(String::NewFromUtf8(isolate, "method"))->ToString())).c_str(), sizeof(opts.hls_method) - 1);
+            opts.hls_method[sizeof(opts.hls_method) - 1] = '\0';
+
         } else if (protocol.compare("dash") == 0) {
             Local<Object> parameters = connection->Get(String::NewFromUtf8(isolate, "parameters"))->ToObject();
-            //opts.method = std::string(*String::Utf8Value(parameters->Get(String::NewFromUtf8(isolate, "method"))->ToString()));
             opts.dash_seg_duration = parameters->Get(String::NewFromUtf8(isolate, "dashSegDuration"))->Int32Value();
             opts.dash_window_size = parameters->Get(String::NewFromUtf8(isolate, "dashWindowSize"))->Int32Value();
+
+            strncpy(opts.dash_method, std::string(*String::Utf8Value(parameters->Get(String::NewFromUtf8(isolate, "method"))->ToString())).c_str(), sizeof(opts.dash_method) - 1);
+            opts.dash_method[sizeof(opts.dash_method) - 1] = '\0';
         }
 
         obj->me = new owt_base::LiveStreamOut(url, requireAudio, requireVideo, obj, initializeTimeout, opts);

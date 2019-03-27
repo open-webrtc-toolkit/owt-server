@@ -27,18 +27,20 @@ LiveStreamOut::LiveStreamOut(const std::string& url, bool hasAudio, bool hasVide
             break;
 
         case STREAMING_FORMAT_HLS:
-            ELOG_DEBUG("format %s, hls_time %d, hls_list_size %d"
+            ELOG_DEBUG("format %s, hls_time %d, hls_list_size %d, hls_method %s"
                     , "hls"
                     , m_options.hls_time
                     , m_options.hls_list_size
+                    , m_options.hls_method
                     );
             break;
 
         case STREAMING_FORMAT_DASH:
-            ELOG_DEBUG("format %s, dash_seg_duration %d, dash_window_size %d"
+            ELOG_DEBUG("format %s, dash_seg_duration %d, dash_window_size %d, dash_method %s"
                     , "dash"
                     , m_options.dash_seg_duration
                     , m_options.dash_window_size
+                    , m_options.dash_method
                     );
             break;
 
@@ -124,6 +126,11 @@ bool LiveStreamOut::getHeaderOpt(std::string& url, AVDictionary **options)
 
         av_dict_set_int(options, "hls_time", m_options.hls_time, 0);
         av_dict_set_int(options, "hls_list_size", m_options.hls_list_size, 0);
+
+        if (url.find("http://") == 0
+                || url.find("https://") == 0) {
+            av_dict_set(options, "method", m_options.hls_method, 0);
+        }
     } else if (m_options.format == STREAMING_FORMAT_DASH) {
         std::string::size_type last_slash = url.rfind('/');
         if(last_slash == std::string::npos) {
@@ -156,7 +163,12 @@ bool LiveStreamOut::getHeaderOpt(std::string& url, AVDictionary **options)
 
         av_dict_set_int(options, "seg_duration", m_options.dash_seg_duration, 0);
         av_dict_set_int(options, "window_size", m_options.dash_window_size, 0);
-        av_dict_set_int(options, "extra_window_size", m_options.dash_window_size * 2, 0);
+        av_dict_set_int(options, "extra_window_size", m_options.dash_window_size, 0);
+
+        if (url.find("http://") == 0
+                || url.find("https://") == 0) {
+            av_dict_set(options, "method", m_options.dash_method, 0);
+        }
     }
 
     return true;

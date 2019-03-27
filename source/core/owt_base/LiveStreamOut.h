@@ -29,34 +29,17 @@ public:
 
         union {
             struct {
-                uint32_t hls_time;
-                uint32_t hls_list_size;
+                uint32_t    hls_time;
+                uint32_t    hls_list_size;
+                char        hls_method[16];
             };
 
             struct {
-                uint32_t dash_seg_duration;
-                uint32_t dash_window_size;
+                uint32_t    dash_seg_duration;
+                uint32_t    dash_window_size;
+                char        dash_method[16];
             };
         };
-
-        StreamingOptions(StreamingFormat f) {
-            format = f;
-
-            switch(format) {
-                case STREAMING_FORMAT_HLS:
-                    hls_time = 2;
-                    hls_list_size = 5;
-                    break;
-
-                case STREAMING_FORMAT_DASH:
-                    dash_seg_duration = 2;
-                    dash_window_size = 5;
-                    break;
-
-                default:
-                    break;
-            }
-        }
     };
 
 public:
