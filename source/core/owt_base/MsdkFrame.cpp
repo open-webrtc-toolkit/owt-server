@@ -18,6 +18,11 @@ struct FreeDelete
     void operator()(void* x) { free(x); }
 };
 
+struct MockDelete
+{
+    void operator()(void* x) { }
+};
+
 DEFINE_LOGGER(MsdkFrame, "owt.MsdkFrame");
 
 MsdkFrame::MsdkFrame(uint32_t width, uint32_t height, boost::shared_ptr<mfxFrameAllocator> allocator)
@@ -410,8 +415,9 @@ bool MsdkFrame::nv12ConvertTo(mfxFrameInfo& pInfo, mfxFrameData& pData, webrtc::
         return false;
     }
 
-    memcpy_from_uswc_sse4(m_nv12TBuffer.get(), pData.Y, h * pData.Pitch);
-    memcpy_from_uswc_sse4(m_nv12TBuffer.get() + h * pData.Pitch, pData.UV, h * pData.Pitch / 2);
+    boost::shared_ptr<uint8_t> uvPos(m_nv12TBuffer.get() + h * pData.Pitch, MockDelete());
+    memcpy_from_uswc_sse4(m_nv12TBuffer, pData.Y, h * pData.Pitch);
+    memcpy_from_uswc_sse4(uvPos, pData.UV, h * pData.Pitch / 2);
 
     //uint32_t dstW, dstH;
     uint32_t dstStrideY, dstStrideU, dstStrideV;
