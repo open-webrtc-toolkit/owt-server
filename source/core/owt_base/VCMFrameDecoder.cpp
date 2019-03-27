@@ -142,15 +142,12 @@ void VCMFrameDecoder::onFrame(const Frame& frame)
 
     if (padding > 0) {
         buffer.reset(new uint8_t[size]);
-        // payload = (uint8_t *)malloc(size);
         if (buffer.get()) {
             memcpy(buffer.get(), frame.payload, length);
             memset(buffer.get() + length, 0, padding);
         } else {
             return;
         }
-    } else {
-        // payload = frame.payload;
     }
 
     payload = buffer.get() ? buffer.get() : frame.payload;
@@ -166,9 +163,6 @@ void VCMFrameDecoder::onFrame(const Frame& frame)
         FeedbackMsg msg {.type = VIDEO_FEEDBACK, .cmd = REQUEST_KEY_FRAME};
         deliverFeedbackMsg(msg);
     }
-
-    // if (padding > 0)
-    //     free(payload);
 }
 
 }
