@@ -18,6 +18,7 @@ cp node_modules/pnotify/dist/pnotify.buttons.css public/vendor/css/
 cp node_modules/pnotify/dist/pnotify.js public/vendor/js/
 cp node_modules/pnotify/dist/pnotify.confirm.js public/vendor/js/
 cp node_modules/pnotify/dist/pnotify.buttons.js public/vendor/js/
+rm -rf node_modules/pnotify/build-tools/
 # react
 cp node_modules/react/umd/react.production.min.js public/vendor/js/
 cp node_modules/react-dom/umd/react-dom.production.min.js public/vendor/js/
