@@ -19,7 +19,7 @@ void *memcpy_from_uswc_sse4(boost::shared_ptr<uint8_t> dst, void *src, size_t si
 
     if ( aligned != 0 ) {
         printf( "Addr is not 16 aligned, do normal copy instead: %p -> %p\n", src, dst.get() );
-        memcpy( dst.get(), src, size );
+        return memcpy( dst.get(), src, size );
     }
 
     pDst = (__m128i *) dst.get();
