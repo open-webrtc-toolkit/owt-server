@@ -4,8 +4,6 @@
 
 #include "VCMFrameDecoder.h"
 
-#include <boost/shared_array.hpp>
-
 #include <webrtc/modules/video_coding/codecs/h264/include/h264.h>
 #include <webrtc/modules/video_coding/codecs/vp8/include/vp8.h>
 #include <webrtc/modules/video_coding/codecs/vp9/include/vp9.h>
@@ -138,22 +136,17 @@ void VCMFrameDecoder::onFrame(const Frame& frame)
     size_t length       = frame.length;
     size_t padding      = EncodedImage::GetBufferPaddingBytes(m_codecInfo.codecType);
     size_t size         = length + padding;
-    boost::shared_array<uint8_t> buffer;
 
     if (padding > 0) {
-        buffer.reset(new uint8_t[size]);
-        // payload = (uint8_t *)malloc(size);
-        if (buffer.get()) {
-            memcpy(buffer.get(), frame.payload, length);
-            memset(buffer.get() + length, 0, padding);
-        } else {
-            return;
+        payload = (uint8_t *)malloc(size);
+        if (payload) {
+            memcpy(payload, frame.payload, length);
+            memset(payload + length, 0, padding);
         }
     } else {
-        // payload = frame.payload;
+        payload = frame.payload;
     }
 
-    payload = buffer.get() ? buffer.get() : frame.payload;
     EncodedImage image(payload, length, size);
     image._frameType = frame.additionalInfo.video.isKeyFrame ? kVideoFrameKey : kVideoFrameDelta;
     image._completeFrame = true;
@@ -167,8 +160,8 @@ void VCMFrameDecoder::onFrame(const Frame& frame)
         deliverFeedbackMsg(msg);
     }
 
-    // if (padding > 0)
-    //     free(payload);
+    if (padding > 0)
+        free(payload);
 }
 
 }
