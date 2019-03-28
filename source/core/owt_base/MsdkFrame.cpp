@@ -13,6 +13,16 @@
 
 namespace owt_base {
 
+struct FreeDelete
+{
+    void operator()(void* x) { free(x); }
+};
+
+struct MockDelete
+{
+    void operator()(void* x) { }
+};
+
 DEFINE_LOGGER(MsdkFrame, "owt.MsdkFrame");
 
 MsdkFrame::MsdkFrame(uint32_t width, uint32_t height, boost::shared_ptr<mfxFrameAllocator> allocator)
@@ -21,7 +31,7 @@ MsdkFrame::MsdkFrame(uint32_t width, uint32_t height, boost::shared_ptr<mfxFrame
     , m_externalAlloc(false)
     , m_mainSession(NULL)
     , m_needSync(false)
-    , m_nv12TBuffer(NULL)
+    , m_nv12TBuffer(nullptr, FreeDelete())
     , m_nv12TBufferSize(0)
 {
     memset(&m_response, 0, sizeof(mfxFrameAllocResponse));
@@ -62,7 +72,7 @@ MsdkFrame::MsdkFrame(mfxFrameInfo &info, mfxMemId &id, boost::shared_ptr<mfxFram
     , m_externalAlloc(true)
     , m_mainSession(NULL)
     , m_needSync(false)
-    , m_nv12TBuffer(NULL)
+    , m_nv12TBuffer(nullptr, FreeDelete())
     , m_nv12TBufferSize(0)
 {
     memset(&m_response, 0, sizeof(mfxFrameAllocResponse));
@@ -95,11 +105,6 @@ MsdkFrame::~MsdkFrame()
             if (sts != MFX_ERR_NONE) {
                 ELOG_ERROR("mfxFrameAllocator Free() failed, ret %d", sts);
             }
-        }
-
-        if (m_nv12TBuffer) {
-            free(m_nv12TBuffer);
-            m_nv12TBuffer = NULL;
         }
     }
 }
@@ -174,9 +179,8 @@ bool MsdkFrame::setCrop(uint32_t cropX, uint32_t cropY, uint32_t cropW, uint32_t
     m_surface.Info.CropW = cropW;
     m_surface.Info.CropH = cropH;
 
-    if (m_nv12TBuffer && m_nv12TBufferSize < cropW * cropH * 3 / 2) {
-        free(m_nv12TBuffer);
-        m_nv12TBuffer = NULL;
+    if (m_nv12TBuffer.get() && m_nv12TBufferSize < cropW * cropH * 3 / 2) {
+        m_nv12TBuffer.reset();
         m_nv12TBufferSize = 0;
     }
 
@@ -395,19 +399,25 @@ bool MsdkFrame::nv12ConvertTo(mfxFrameInfo& pInfo, mfxFrameData& pData, webrtc::
     uint32_t w = getCropW();
     uint32_t h = getCropH();
 
-    if (!m_nv12TBuffer) {
-        m_nv12TBuffer = (uint8_t *)memalign(16, h * pData.Pitch * 3 / 2);
-        if (!m_nv12TBuffer)
+    if (!m_nv12TBuffer.get()) {
+        m_nv12TBuffer.reset((uint8_t*) memalign(16, h * pData.Pitch * 3 / 2));
+        if (!m_nv12TBuffer.get())
         {
-            ELOG_ERROR("memalign failed, %p", m_nv12TBuffer);
+            ELOG_ERROR("memalign failed, %p", m_nv12TBuffer.get());
 
             return false;
         }
         m_nv12TBufferSize = h * pData.Pitch * 3 / 2;
     }
 
+    if (m_nv12TBufferSize < h * pData.Pitch * 3 / 2) {
+        ELOG_ERROR("invalid m_nv12TBufferSize, %d", m_nv12TBufferSize);
+        return false;
+    }
+
+    boost::shared_ptr<uint8_t> uvPos(m_nv12TBuffer.get() + h * pData.Pitch, MockDelete());
     memcpy_from_uswc_sse4(m_nv12TBuffer, pData.Y, h * pData.Pitch);
-    memcpy_from_uswc_sse4(m_nv12TBuffer + h * pData.Pitch, pData.UV, h * pData.Pitch / 2);
+    memcpy_from_uswc_sse4(uvPos, pData.UV, h * pData.Pitch / 2);
 
     //uint32_t dstW, dstH;
     uint32_t dstStrideY, dstStrideU, dstStrideV;
@@ -424,8 +434,8 @@ bool MsdkFrame::nv12ConvertTo(mfxFrameInfo& pInfo, mfxFrameData& pData, webrtc::
     uint8_t *ptrY;
     uint8_t *ptrUV;
 
-    ptrY = m_nv12TBuffer;
-    ptrUV = m_nv12TBuffer + h * pData.Pitch;
+    ptrY = m_nv12TBuffer.get();
+    ptrUV = m_nv12TBuffer.get() + h * pData.Pitch;
 
     uint32_t i, j;
 

@@ -103,7 +103,7 @@ exports.authenticate = function (req, res, next) {
         dataAccess.service.get(params.serviceid, function (err, serv) {
             if (err) return next(err);
             if (!serv) {
-                log.info('[Auth] Unknow service:', params.serviceid);
+                log.info('[Auth] Unknow service:', params.serviceid, req.ip);
                 setTimeout(sendErrorResponse, randomDelay);
                 return;
             }
@@ -137,12 +137,12 @@ exports.authenticate = function (req, res, next) {
                 // If everything in the authentication is valid continue with the request.
                 next();
             } else {
-                log.info('[Auth] Wrong credentials');
+                log.info('[Auth] Wrong credentials', req.ip);
                 setTimeout(sendErrorResponse, randomDelay);
             }
         });
     } else {
-        log.info('[Auth] MAuth header not presented');
+        log.info('[Auth] MAuth header not presented', req.ip);
         setTimeout(sendErrorResponse, randomDelay);
     }
 };

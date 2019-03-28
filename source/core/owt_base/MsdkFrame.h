@@ -87,7 +87,7 @@ private:
     mfxSyncPoint m_syncP;
     bool m_needSync;
 
-    uint8_t *m_nv12TBuffer;
+    boost::shared_ptr<uint8_t> m_nv12TBuffer;
     size_t m_nv12TBufferSize;
 };
 

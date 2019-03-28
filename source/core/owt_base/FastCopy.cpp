@@ -1,8 +1,9 @@
 #include <string.h>
 #include <stdio.h>
 #include <smmintrin.h>
+#include <boost/shared_ptr.hpp>
 
-void *memcpy_from_uswc_sse4(void *dst, void *src, size_t size)
+void *memcpy_from_uswc_sse4(boost::shared_ptr<uint8_t> dst, void *src, size_t size)
 {
     bool aligned;
     size_t remain;
@@ -10,18 +11,18 @@ void *memcpy_from_uswc_sse4(void *dst, void *src, size_t size)
     __m128i x0, x1, x2, x3, x4, x5, x6, x7;
     __m128i *pDst, *pSrc;
 
-    if ( dst == NULL || src == NULL ) {
+    if ( dst.get() == NULL || src == NULL ) {
         return NULL;
     }
 
-    aligned = (((size_t) dst) | ((size_t) src)) & 0x0F;
+    aligned = (((size_t) dst.get()) | ((size_t) src)) & 0x0F;
 
     if ( aligned != 0 ) {
-        printf( "Addr is not 16 aligned, do normal copy instead: %p -> %p\n", src, dst );
-        return memcpy( dst, src, size );
+        printf( "Addr is not 16 aligned, do normal copy instead: %p -> %p\n", src, dst.get() );
+        return memcpy( dst.get(), src, size );
     }
 
-    pDst = (__m128i *) dst;
+    pDst = (__m128i *) dst.get();
     pSrc = (__m128i *) src;
     remain = size & 0x7F;
     round = size >> 7;
@@ -72,6 +73,6 @@ void *memcpy_from_uswc_sse4(void *dst, void *src, size_t size)
         }
     }
 
-    return dst;
+    return dst.get();
 }
 

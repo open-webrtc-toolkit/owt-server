@@ -26,6 +26,7 @@ function getCookie (cname) {
 PNotify.prototype.options.styling = "bootstrap3";
 
 function notify(level, title, message) {
+  'use strict';
   var notice = new PNotify({
     title: title,
     text: message,
