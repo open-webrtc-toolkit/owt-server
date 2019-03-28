@@ -246,6 +246,7 @@ class AnalyticsAgent extends BaseAgent {
       output = this.inputs[connectionId].output;
       this.inputs[connectionId].engine.removeOutput(output);
       this.inputs[connectionId].engine.close();
+      this.inputs[connectionId].close();
     }
     return Promise.resolve();
   }
