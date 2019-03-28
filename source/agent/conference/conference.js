@@ -2358,11 +2358,16 @@ var Conference = function (rpcClient, selfRpcId) {
           if (!streams[subDesc.media.video.from]) {
             return Promise.reject('Video source not valid for analyzing');
           }
+
+          let sourceVideoOption = streams[subDesc.media.video.from].media.video;
           if (!subDesc.media.video.format) {
             // Subscribe source format
-            let sourceVideoOption = streams[subDesc.media.video.from].media.video;
             subDesc.media.video.format = sourceVideoOption.format;
-            subDesc.media.video.parameters = sourceVideoOption.parameters;
+          }
+          if (subDesc.media.video.parameters || sourceVideoOption.parameters) {
+            subDesc.media.video.parameters = Object.assign(
+              sourceVideoOption.parameters || {},
+              subDesc.media.video.parameters || {});
           }
         }
 
