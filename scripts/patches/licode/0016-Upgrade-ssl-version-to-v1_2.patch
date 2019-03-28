@@ -1,0 +1,25 @@
+From 13d7fbf05f98761c1930a6fce6bf7987c5a61625 Mon Sep 17 00:00:00 2001
+From: Chen Li1 <li1.chen@intel.com>
+Date: Thu, 28 Mar 2019 13:14:14 +0800
+Subject: [PATCH] Upgrade ssl version to v1_2
+
+---
+ erizo/src/erizo/dtls/DtlsClient.cpp | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/erizo/src/erizo/dtls/DtlsClient.cpp b/erizo/src/erizo/dtls/DtlsClient.cpp
+index 702daaa..6b92f9a 100644
+--- a/erizo/src/erizo/dtls/DtlsClient.cpp
++++ b/erizo/src/erizo/dtls/DtlsClient.cpp
+@@ -218,7 +218,7 @@ int createCert(const std::string& pAor, int expireDays, int keyLen, X509*& outCe
+ 
+     ELOG_DEBUG("Creating Dtls factory, Openssl v %s", OPENSSL_VERSION_TEXT);
+ 
+-    mContext = SSL_CTX_new(DTLSv1_method());
++    mContext = SSL_CTX_new(DTLSv1_2_method());
+     assert(mContext);
+ 
+     int r = SSL_CTX_use_certificate(mContext, mCert);
+-- 
+2.7.4
+
