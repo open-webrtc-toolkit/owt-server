@@ -35,6 +35,7 @@ config.strategy.streaming = config.strategy.streaming || 'round-robin';
 config.strategy.recording = config.strategy.recording || 'randomly-pick';
 config.strategy.audio = config.strategy.audio || 'most-used';
 config.strategy.video = config.strategy.video || 'least-used';
+config.strategy.analytics = config.strategy.analytics || 'least-used';
 
 config.rabbit = config.rabbit || {};
 config.rabbit.host = config.rabbit.host || 'localhost';
@@ -47,15 +48,7 @@ function startup () {
                     checkAlivePeriod: config.manager.check_alive_interval,
                     checkAliveCount: config.manager.check_alive_count,
                     scheduleKeepTime: config.manager.schedule_reserve_time,
-                    generalStrategy: config.strategy.general,
-                    portalStrategy: config.strategy.portal,
-                    conferenceStrategy: config.strategy.conference,
-                    webrtcStrategy: config.strategy.webrtc,
-                    sipStrategy: config.strategy.sip,
-                    streamingStrategy: config.strategy.streaming,
-                    recordingStrategy: config.strategy.recording,
-                    audioStrategy: config.strategy.audio,
-                    videoStrategy: config.strategy.video
+                    strategy: config.strategy
                    };
 
         amqper.asTopicParticipant(config.manager.name + '.management', function(channel) {
