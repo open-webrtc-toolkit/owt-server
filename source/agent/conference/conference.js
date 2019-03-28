@@ -1069,7 +1069,10 @@ var Conference = function (rpcClient, selfRpcId) {
   };
 
   const currentInputCount = () => {
-    return Object.keys(streams).filter((stream_id) => {return streams[stream_id].type === 'forward';}).length;
+    return Object.keys(streams).filter((stream_id) => {
+      return (streams[stream_id].type === 'forward'
+        && streams[stream_id].info.type !== 'analytics');
+    }).length;
   };
 
   that.join = function(roomId, participantInfo, callback) {
@@ -1177,7 +1180,7 @@ var Conference = function (rpcClient, selfRpcId) {
       return callback('callback', 'error', 'unauthorized');
     }
 
-    if (room_config.inputLimit >= 0 && (room_config.inputLimit <= currentInputCount())) {
+    if (pubInfo.type !== 'analytics' && room_config.inputLimit >= 0 && (room_config.inputLimit <= currentInputCount())) {
       return callback('callback', 'error', 'Too many inputs');
     }
 

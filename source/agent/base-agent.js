@@ -44,7 +44,7 @@ class BaseAgent {
    *@param {string} direction
    */
   destroyInternalConnection(connectionId, direction) {
-    internalConnFactory.destroy(connectionId, direction);
+    this.internalConnFactory.destroy(connectionId, direction);
     return Promise.resolve();
   }
 
