@@ -313,7 +313,7 @@ exports.addServerSideSubscription = function (roomId, subReq, callback) {
         .then((controller) => {
           rpc.callRpc(controller, 'addServerSideSubscription', [roomId, subReq], {callback: function (result, edata) {
             if (result === 'error' || result === 'timeout') {
-              log.debug('RPC fail', result, edata);
+              log.info('RPC fail', result, edata);
               callback('error', new e.CloudError('RPC:addServerSideSubscription failed'));
             } else {
               callback(result);
@@ -350,15 +350,16 @@ exports.controlSubscription = function (roomId, subId, cmds, callback) {
     });
 };
 
-exports.deleteSubscription = function (roomId, subId, callback) {
+exports.deleteSubscription = function (roomId, subId, type, callback) {
   return validateId('Room ID', roomId)
     .then((ok) => {
       return validateId('Subscription ID', subId);
     }).then((ok) => {
       return getRoomController(roomId);
     }).then((controller) => {
-      rpc.callRpc(controller, 'deleteSubscription', [subId], {callback: function (result) {
+      rpc.callRpc(controller, 'deleteSubscription', [subId, type], {callback: function (result, edata) {
         if (result === 'error' || result === 'timeout') {
+          log.info('RPC fail', result, edata);
           callback('error');
         } else {
           callback(result);

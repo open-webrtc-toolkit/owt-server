@@ -294,7 +294,7 @@ var Conference = function (rpcClient, selfRpcId) {
    *     },
    *     info: object(SubscriptionInfo):: {
    *       owner: string(ParticipantId),
-   *       type: 'webrtc' | 'streaming' | 'recording' | 'sip',
+   *       type: 'webrtc' | 'streaming' | 'recording' | 'sip' | 'analytics',
    *       location: {host: string(HostIPorDN), path: string(FileFullPath)} | undefined,
    *       url: string(URLofStreamingOut) | undefined
    *     }
@@ -2508,10 +2508,14 @@ var Conference = function (rpcClient, selfRpcId) {
     });
   };
 
-  that.deleteSubscription = function(subId, callback) {
-    log.debug('deleteSubscription, subId:', subId);
+  that.deleteSubscription = function(subId, type, callback) {
+    log.debug('deleteSubscription, subId:', subId, type);
     if (!accessController || !roomController) {
       return callback('callback', 'error', 'Controllers are not ready');
+    }
+
+    if (subscriptions[subId] && subscriptions[subId].info.type !== type) {
+      return callback('callback', 'error', 'Delete type not match');
     }
 
     return doUnsubscribe(subId)
