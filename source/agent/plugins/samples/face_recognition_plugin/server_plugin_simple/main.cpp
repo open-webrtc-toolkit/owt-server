@@ -202,6 +202,8 @@ void threading_class::threading_func(){
     infer_width = FaceRecognition.get_input_width();
     output_size = FaceRecognition.get_output_size();
 
+    data = read_text();
+
     while (true){
         if (need_process && infer_width != 0){
             mtx.lock();
@@ -281,7 +283,6 @@ MyPlugin::MyPlugin() {}
 rvaStatus MyPlugin::PluginInit(std::unordered_map<std::string, std::string> params) {
     cout << "threshold: " << g_threshold << endl;
 
-    data = read_text();
     threading_class t_c;
     t_c.make_thread();
     return RVA_ERR_OK;
