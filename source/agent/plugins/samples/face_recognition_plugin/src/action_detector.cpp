@@ -5,6 +5,7 @@
 #include "action_detector.h"
 #include <utility>
 #include <vector>
+#include <ext_list.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 
 using namespace InferenceEngine;
@@ -55,7 +56,7 @@ void ActionDetectionClass::initialize(const ActionDetectorConfig& config) {
     InferenceEngine::PluginDispatcher dispatcher({""});
     plugin=dispatcher.getPluginByDevice("GPU"); 
 
-    ///Load extensions for the CPU plugin
+    /// Load extensions for the CPU plugin if you change device to CPU.
 #if 0 
     plugin.AddExtension(std::make_shared<Extensions::Cpu::CpuExtensions>());
 #endif

@@ -4,6 +4,7 @@
 
 #include <string>
 #include <inference_engine.hpp>
+#include <ext_list.hpp>
 #include <opencv2/opencv.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 #include "face_recognition.h"
@@ -65,7 +66,7 @@ int FaceRecognitionClass::initialize(const std::string& model_xml_path, const st
     InferenceEngine::SizeVector inputDims;
 
     if (device == "CPU") {
-        plugin.AddExtension(InferenceEngine::make_so_pointer<InferenceEngine::IExtension>(""));
+        plugin.AddExtension(std::make_shared<Extensions::Cpu::CpuExtensions>());
     }
 
     if (input_info.size() != 1) {
