@@ -294,7 +294,7 @@ var Conference = function (rpcClient, selfRpcId) {
    *     },
    *     info: object(SubscriptionInfo):: {
    *       owner: string(ParticipantId),
-   *       type: 'webrtc' | 'streaming' | 'recording' | 'sip',
+   *       type: 'webrtc' | 'streaming' | 'recording' | 'sip' | 'analytics',
    *       location: {host: string(HostIPorDN), path: string(FileFullPath)} | undefined,
    *       url: string(URLofStreamingOut) | undefined
    *     }
@@ -2358,11 +2358,16 @@ var Conference = function (rpcClient, selfRpcId) {
           if (!streams[subDesc.media.video.from]) {
             return Promise.reject('Video source not valid for analyzing');
           }
+
+          let sourceVideoOption = streams[subDesc.media.video.from].media.video;
           if (!subDesc.media.video.format) {
             // Subscribe source format
-            let sourceVideoOption = streams[subDesc.media.video.from].media.video;
             subDesc.media.video.format = sourceVideoOption.format;
-            subDesc.media.video.parameters = sourceVideoOption.parameters;
+          }
+          if (subDesc.media.video.parameters || sourceVideoOption.parameters) {
+            subDesc.media.video.parameters = Object.assign(
+              sourceVideoOption.parameters || {},
+              subDesc.media.video.parameters || {});
           }
         }
 
@@ -2503,10 +2508,14 @@ var Conference = function (rpcClient, selfRpcId) {
     });
   };
 
-  that.deleteSubscription = function(subId, callback) {
-    log.debug('deleteSubscription, subId:', subId);
+  that.deleteSubscription = function(subId, type, callback) {
+    log.debug('deleteSubscription, subId:', subId, type);
     if (!accessController || !roomController) {
       return callback('callback', 'error', 'Controllers are not ready');
+    }
+
+    if (subscriptions[subId] && subscriptions[subId].info.type !== type) {
+      return callback('callback', 'error', 'Delete type not match');
     }
 
     return doUnsubscribe(subId)

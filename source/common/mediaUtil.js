@@ -91,8 +91,14 @@ const getVideoParameterForAddon = (videoOption) => {
   const resolution = (parameters.resolution || defaultResolution);
   const framerate = (parameters.framerate || defaultFramerate);
   const keyFrameInterval = (parameters.keyFrameInterval || defaultKfi);
-  const bitrate = (parameters.bitrate ||
-    calcDefaultBitrate(format.codec, resolution, framerate, 0.8));
+
+  let bitrate = calcDefaultBitrate(format.codec, resolution, framerate, 0.8);
+  if (typeof parameters.bitrate === 'string') {
+    let bitrateFactor = (Number(parameters.bitrate.replace('x', '')) || 1);
+    bitrate *= bitrateFactor;
+  } else if (typeof parameters.bitrate === 'number') {
+    bitrate = parameters.bitrate;
+  }
 
   return {
     resolution: resolution2String(resolution),

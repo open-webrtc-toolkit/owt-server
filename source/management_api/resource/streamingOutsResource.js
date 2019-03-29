@@ -75,7 +75,7 @@ exports.patch = function (req, res, next) {
 
 exports.delete = function (req, res, next) {
     var sub_id = req.params.id;
-    requestHandler.deleteSubscription(req.params.room, sub_id, function (result) {
+    requestHandler.deleteSubscription(req.params.room, sub_id, 'streaming', function (result) {
         log.debug('result', result);
         if (result === 'error') {
             next(new e.CloudError('Operation failed'));

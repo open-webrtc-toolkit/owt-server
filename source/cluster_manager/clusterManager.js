@@ -31,7 +31,7 @@ var ClusterManager = function (clusterName, selfId, spec) {
     var data_synchronizer;
 
     var createScheduler = function (purpose) {
-        var strategy = spec.hasOwnProperty(purpose + 'Strategy') ? spec[purpose + 'Strategy'] : spec.generalStrategy;
+        var strategy = spec.strategy[purpose] ? spec.strategy[purpose] : spec.strategy.general;
         return new Scheduler({purpose: purpose, strategy: strategy, scheduleReserveTime: spec.scheduleReserveTime});
     };
 

@@ -37,7 +37,7 @@ exports.add = function (req, res, next) {
 
 exports.delete = function (req, res, next) {
     var subId = req.params.id;
-    requestHandler.deleteSubscription(req.params.room, subId, function (result) {
+    requestHandler.deleteSubscription(req.params.room, subId, 'analytics', function (result) {
         log.debug('result', result);
         if (result === 'error') {
             next(new e.CloudError('Operation failed'));
