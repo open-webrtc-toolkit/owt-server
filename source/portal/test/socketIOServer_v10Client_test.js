@@ -204,7 +204,7 @@ describe('Clients connect to socket.io server.', function() {
   it('Connecting to an insecure socket.io server should succeed.', function(done) {
     var server = socketIOServer({port: 3001, ssl: false, reconnectionTicketLifetime: 100, reconnectionTimeout: 300});
 
-    return server.start()
+    server.start()
       .then(function(result) {
         expect(result).to.equal('ok');
 
@@ -224,7 +224,7 @@ describe('Clients connect to socket.io server.', function() {
   it('Connecting to a secured socket.io server should succeed.', function(done) {
     var server = socketIOServer({port: 3005, ssl: true, keystorePath: './cert/certificate.pfx'});
 
-    return server.start()
+    server.start()
       .then(function(result) {
         expect(result).to.equal('ok');
 
@@ -252,7 +252,7 @@ describe('Logining and Relogining.', function() {
   var client;
 
   before('Start the server.', function(done) {
-    return server.start()
+    server.start()
       .then(function(result) {
         expect(result).to.equal('ok');
         done();
@@ -381,7 +381,7 @@ describe('Logining and Relogining.', function() {
     });
 
     // JavaScript client does not support reconnection. So this function should be disabled.
-    it('Do not issue reconnection ticket to JavaScript clients.', function(done){
+    xit('Do not issue reconnection ticket to JavaScript clients.', function(done){
       mockPortal.join = sinon.stub();
       mockServiceObserver.onJoin = sinon.spy();
       mockPortal.join.resolves(JSON.parse(JSON.stringify(presenter_join_result)));
@@ -470,7 +470,7 @@ describe('Logining and Relogining.', function() {
       });
     });
 
-    it('Relogin with correct ticket after logout should fail.', function(done){
+    xit('Relogin with correct ticket after logout should fail.', function(done){
       mockPortal.join = sinon.stub();
       mockPortal.join.resolves(JSON.parse(JSON.stringify(presenter_join_result)));
       mockPortal.leave = sinon.stub();
@@ -651,7 +651,7 @@ describe('Logining and Relogining.', function() {
       done();
     });
 
-    it('Disconnecting after joining should cause participant leaving.', function(done) {
+    xit('Disconnecting after joining should cause participant leaving.', function(done) {
       mockPortal.leave = sinon.stub();
       mockPortal.leave.resolves('ok');
       mockPortal.join = sinon.stub();
@@ -705,7 +705,7 @@ describe('Notifying events to clients.', function() {
   var client;
 
   before('Start the server.', function(done) {
-    return server.start()
+    server.start()
       .then(function(result) {
         expect(result).to.equal('ok');
         done();
@@ -757,7 +757,7 @@ describe('Drop users from sessions.', function() {
   var client;
 
   before('Start the server.', function(done) {
-    return server.start()
+    server.start()
       .then(function(result) {
         expect(result).to.equal('ok');
         done();
@@ -768,7 +768,7 @@ describe('Drop users from sessions.', function() {
     server.stop();
   });
 
-  it('Dropping users after joining should succeed.', function(done) {
+  xit('Dropping users after joining should succeed.', function(done) {
     var client = sioClient.connect(serverUrl, {reconnect: false, secure: false, 'force new connection': true});
 
     client.on('connect', function() {
@@ -787,7 +787,7 @@ describe('Drop users from sessions.', function() {
     });
   });
 
-  it('Dropping all users should cause all users leaving.', function(done) {
+  xit('Dropping all users should cause all users leaving.', function(done) {
     var client = sioClient.connect(serverUrl, {reconnect: false, secure: false, 'force new connection': true});
 
     client.on('connect', function() {
@@ -812,7 +812,7 @@ describe('Responding to clients.', function() {
   var client;
 
   before('Start the server.', function(done) {
-    return server.start()
+    server.start()
       .then(function(result) {
         expect(result).to.equal('ok');
         done();
@@ -848,7 +848,7 @@ describe('Responding to clients.', function() {
     });
   }
 
-  it.skip('Requests before joining should fail', function(done) {
+  xit('Requests before joining should fail', function(done) {
     client.emit('publish', 'options', function(status, id) {
       expect(status).to.equal('error');
       expect(id).to.equal('Illegal request');
@@ -869,7 +869,7 @@ describe('Responding to clients.', function() {
       mockPortal.onSessionSignaling.resolves('ok');
 
       var stream_id = undefined;
-      return joinFirstly()
+      joinFirstly()
         .then(function(result) {
           expect(result).to.equal('ok');
           var pub_req = {
@@ -911,7 +911,7 @@ describe('Responding to clients.', function() {
       mockPortal.publish = sinon.stub();
       mockPortal.publish.rejects('whatever reason');
 
-      return joinFirstly()
+      joinFirstly()
         .then(function(result) {
           expect(result).to.equal('ok');
           var pub_req = {
@@ -940,7 +940,7 @@ describe('Responding to clients.', function() {
       mockPortal.streamControl.resolves('ok');
 
       var stream_id;
-      return joinFirstly()
+      joinFirstly()
         .then(function(result) {
           expect(result).to.equal('ok');
           var pub_req = {
@@ -972,7 +972,7 @@ describe('Responding to clients.', function() {
     it('With invalid pubRequest should fail.', function(done) {
       mockPortal.publish = sinon.stub();
 
-      return joinFirstly()
+      joinFirstly()
         .then(function(result) {
           expect(result).to.equal('ok');
           client.emit('publish', {}, function(status, data) {
@@ -991,7 +991,7 @@ describe('Responding to clients.', function() {
       mockPortal.unpublish = sinon.stub();
       mockPortal.unpublish.resolves('ok');
 
-      return joinFirstly()
+      joinFirstly()
         .then(function(result) {
           expect(result).to.equal('ok');
           client.emit('unpublish', {id: 'previouslyPublishedStreamId'}, function(status, data) {
@@ -1006,7 +1006,7 @@ describe('Responding to clients.', function() {
       mockPortal.unpublish = sinon.stub();
       mockPortal.unpublish.rejects('stream does not exist');
 
-      return joinFirstly()
+      joinFirstly()
         .then(function(result) {
           expect(result).to.equal('ok');
           client.emit('unpublish', {id: 'non-ExistStreamId'}, function(status, data) {
@@ -1021,7 +1021,7 @@ describe('Responding to clients.', function() {
     it('With invalid stream-id should fail.', function(done) {
       mockPortal.unpublish = sinon.stub();
 
-      return joinFirstly()
+      joinFirstly()
         .then(function(result) {
           expect(result).to.equal('ok');
           client.emit('unpublish', {}, function(status, data) {
@@ -1051,7 +1051,7 @@ describe('Responding to clients.', function() {
       mockPortal.streamControl = sinon.stub();
       mockPortal.streamControl.resolves('ok');
 
-      return joinFirstly()
+      joinFirstly()
         .then(function() {
           client.emit('stream-control', {id: 'streamId', operation: 'mix', data: 'view1'}, function(status, data) {
             expect(status).to.equal('ok');
@@ -1070,7 +1070,7 @@ describe('Responding to clients.', function() {
       mockPortal.streamControl = sinon.stub();
       mockPortal.streamControl.rejects('stream does not exist');
 
-      return joinFirstly()
+      joinFirstly()
         .then(function() {
           client.emit('stream-control', {id: 'streamId', operation: 'mix', data: 'view1'}, function(status, data) {
             expect(status).to.equal('error');
@@ -1089,7 +1089,7 @@ describe('Responding to clients.', function() {
       mockPortal.streamControl = sinon.stub();
       mockPortal.streamControl.resolves('ok');
 
-      return joinFirstly()
+      joinFirstly()
         .then(function() {
           client.emit('stream-control', {id: 'streamId', operation: 'play', data: 'av'}, function(status, data) {
             expect(status).to.equal('ok');
@@ -1108,7 +1108,7 @@ describe('Responding to clients.', function() {
       mockPortal.streamControl = sinon.stub();
       mockPortal.streamControl.rejects('stream does not exist');
 
-      return joinFirstly()
+      joinFirstly()
         .then(function() {
           client.emit('stream-control', {id: 'streamId', operation: 'play', data: 'av'}, function(status, data) {
             expect(status).to.equal('error');
@@ -1124,7 +1124,7 @@ describe('Responding to clients.', function() {
     });
 
     it('Getting/setting region should succeed if portal.streamControl succeeds.', function(done) {
-      return joinFirstly()
+      joinFirstly()
         .then(function(result) {
           expect(result).to.equal('ok');
           mockPortal.streamControl = sinon.stub();
@@ -1149,7 +1149,7 @@ describe('Responding to clients.', function() {
       mockPortal.streamControl = sinon.stub();
       mockPortal.streamControl.rejects('some error');
 
-      return joinFirstly()
+      joinFirstly()
         .then(function(result) {
           expect(result).to.equal('ok');
           client.emit('stream-control', {id: 'subStreamId', operation: 'get-region', data: 'common'}, function(status, data) {
@@ -1170,7 +1170,7 @@ describe('Responding to clients.', function() {
     it('With invalid stream-id should fail.', function(done) {
       mockPortal.streamControl = sinon.stub();
 
-      return joinFirstly()
+      joinFirstly()
         .then(function(result) {
           expect(result).to.equal('ok');
           client.emit('stream-control', {operation: 'mix', data: 'common'}, function(status, data) {
@@ -1197,7 +1197,7 @@ describe('Responding to clients.', function() {
     it('With invalid operation or data should fail.', function(done) {
       mockPortal.streamControl = sinon.stub();
 
-      return joinFirstly()
+      joinFirstly()
         .then(function(result) {
           expect(result).to.equal('ok');
           client.emit('stream-control', {id: 'subStreamId', operation: 'set-region', data: {view: 'common', region: 789}}, function(status, data) {
@@ -1216,7 +1216,7 @@ describe('Responding to clients.', function() {
 
   describe('on: subscribe, soac', function() {
     it('Subscription to a webrtc endpoint requesting neither audio nor video should fail.', function(done) {
-      return joinFirstly()
+      joinFirstly()
         .then(function(result) {
           expect(result).to.equal('ok');
           var sub_req = {
@@ -1240,7 +1240,7 @@ describe('Responding to clients.', function() {
       mockPortal.subscribe.resolves('ok');
       mockPortal.onSessionSignaling.resolves('ok');
 
-      return joinFirstly()
+      joinFirstly()
         .then(function(result) {
           expect(result).to.equal('ok');
           var sub_req = {
@@ -1289,7 +1289,7 @@ describe('Responding to clients.', function() {
 
       var subscription_id;
 
-      return joinFirstly()
+      joinFirstly()
         .then(function(result) {
           expect(result).to.equal('ok');
           var sub_req = {
@@ -1322,7 +1322,7 @@ describe('Responding to clients.', function() {
 
       var subscription_id;
 
-      return joinFirstly()
+      joinFirstly()
         .then(function(result) {
           expect(result).to.equal('ok');
           var sub_req = {
@@ -1359,7 +1359,7 @@ describe('Responding to clients.', function() {
     it('With invalid subRequest should fail.', function(done) {
       mockPortal.subscribe = sinon.stub();
 
-      return joinFirstly()
+      joinFirstly()
         .then(function(result) {
           expect(result).to.equal('ok');
           client.emit('subscribe', {}, function(status, data) {
@@ -1378,7 +1378,7 @@ describe('Responding to clients.', function() {
       mockPortal.unsubscribe = sinon.stub();
       mockPortal.unsubscribe.resolves('ok');
 
-      return joinFirstly()
+      joinFirstly()
         .then(function(result) {
           expect(result).to.equal('ok');
           client.emit('unsubscribe', {id: 'subscriptionId'}, function(status, data) {
@@ -1392,7 +1392,7 @@ describe('Responding to clients.', function() {
       mockPortal.unsubscribe = sinon.stub();
       mockPortal.unsubscribe.rejects('some-error');
 
-      return joinFirstly()
+      joinFirstly()
         .then(function(result) {
           expect(result).to.equal('ok');
           client.emit('unsubscribe', {id: 'subscriptionId'}, function(status, data) {
@@ -1406,7 +1406,7 @@ describe('Responding to clients.', function() {
     it('With invalid subscription id should fail.', function(done) {
       mockPortal.unsubscribe = sinon.stub();
 
-      return joinFirstly()
+      joinFirstly()
         .then(function(result) {
           expect(result).to.equal('ok');
           client.emit('unsubscribe', {}, function(status, data) {
@@ -1435,7 +1435,7 @@ describe('Responding to clients.', function() {
     it('Updating subscriptions without specifying a valid subscription id should fail.', function(done) {
       mockPortal.subscriptionControl = sinon.stub();
 
-      return joinFirstly()
+      joinFirstly()
         .then(function(result) {
           expect(result).to.equal('ok');
           client.emit('subscription-control', {}, function(status, data) {
@@ -1463,7 +1463,7 @@ describe('Responding to clients.', function() {
       mockPortal.subscriptionControl = sinon.stub();
       mockPortal.subscriptionControl.resolves('ok');
 
-      return joinFirstly()
+      joinFirstly()
         .then(function(result) {
           expect(result).to.equal('ok');
           var sub_ctrl_req = {
@@ -1509,7 +1509,7 @@ describe('Responding to clients.', function() {
       mockPortal.subscriptionControl = sinon.stub();
       mockPortal.subscriptionControl.rejects('some-error');
 
-      return joinFirstly()
+      joinFirstly()
         .then(function(result) {
           expect(result).to.equal('ok');
           var sub_ctrl_req = {
@@ -1533,7 +1533,7 @@ describe('Responding to clients.', function() {
       mockPortal.subscriptionControl = sinon.stub();
       mockPortal.subscriptionControl.resolves('ok');
 
-      return joinFirstly()
+      joinFirstly()
         .then(function() {
           client.emit('subscription-control', {id: 'subscriptionId', operation: 'play', data: 'av'}, function(status, data) {
             expect(status).to.equal('ok');
@@ -1552,7 +1552,7 @@ describe('Responding to clients.', function() {
       mockPortal.subscriptionControl = sinon.stub();
       mockPortal.subscriptionControl.rejects('subscription does not exist');
 
-      return joinFirstly()
+      joinFirstly()
         .then(function() {
           client.emit('subscription-control', {id: 'subscriptionId', operation: 'play', data: 'av'}, function(status, data) {
             expect(status).to.equal('error');
@@ -1573,7 +1573,7 @@ describe('Responding to clients.', function() {
       mockPortal.text = sinon.stub();
       mockPortal.text.resolves('ok');
 
-      return joinFirstly()
+      joinFirstly()
         .then(function(result) {
           expect(result).to.equal('ok');
           client.emit('text', {to: 'all', message: 'Hi, there!'}, function(status, data) {
@@ -1588,7 +1588,7 @@ describe('Responding to clients.', function() {
       mockPortal.text = sinon.stub();
       mockPortal.text.rejects('some-error');
 
-      return joinFirstly()
+      joinFirstly()
         .then(function(result) {
           expect(result).to.equal('ok');
           client.emit('text', {to: 'all', message: 'Hi, there!'}, function(status, data) {
@@ -1602,7 +1602,7 @@ describe('Responding to clients.', function() {
     it('Should fail if receiver is invalid.', function(done) {
       mockPortal.text = sinon.stub();
 
-      return joinFirstly()
+      joinFirstly()
         .then(function(result) {
           expect(result).to.equal('ok');
           client.emit('text', {to: '', message: 'Hi, there!'}, function(status, data) {
