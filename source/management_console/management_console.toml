@@ -1,7 +1,7 @@
 [console]
 #configuration for the management-console
 keystorePath = "./cert/certificate.pfx"
-ssl = true #default: true
+ssl = true #if use HTTPS
 port = 3300 #default: 3300, port of manage console server
 
 [api]
