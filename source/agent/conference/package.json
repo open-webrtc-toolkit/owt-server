@@ -10,7 +10,7 @@
     "fraction.js": "^4.0.12"
   },
   "devDependencies": {
-    "mocha": "^2.2.5",
+    "mocha": "^6.0.2",
     "chai": "^3.0.0",
     "chai-as-promised": "^5.1.0",
     "sinon": "^1.15.4",
