@@ -401,8 +401,7 @@ bool MsdkFrame::nv12ConvertTo(mfxFrameInfo& pInfo, mfxFrameData& pData, webrtc::
 
     if (!m_nv12TBuffer.get()) {
         m_nv12TBuffer.reset((uint8_t*) memalign(16, h * pData.Pitch * 3 / 2));
-        if (!m_nv12TBuffer.get())
-        {
+        if (!m_nv12TBuffer.get()) {
             ELOG_ERROR("memalign failed, %p", m_nv12TBuffer.get());
 
             return false;
@@ -411,7 +410,7 @@ bool MsdkFrame::nv12ConvertTo(mfxFrameInfo& pInfo, mfxFrameData& pData, webrtc::
     }
 
     if (m_nv12TBufferSize < h * pData.Pitch * 3 / 2) {
-        ELOG_ERROR("invalid m_nv12TBufferSize, %d", m_nv12TBufferSize);
+        ELOG_ERROR("invalid m_nv12TBufferSize, %ld", m_nv12TBufferSize);
         return false;
     }
 
