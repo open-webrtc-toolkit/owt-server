@@ -51,6 +51,7 @@ void FaceDetectionClass::initialize(const std::string& model_xml_path, const std
     auto deviceName = device_for_faceDetection;
     auto networkName = path_to_faceDetection_model;
 
+    commandLineFlag = networkName;
     // Need to provide the absolute path to the trained model*
     InferencePlugin infer_plugin = PluginDispatcher({""}).getPluginByDevice(deviceName);
 

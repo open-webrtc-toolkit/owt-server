@@ -76,7 +76,7 @@ int FaceRecognitionClass::initialize(const std::string& model_xml_path, const st
     for (auto &item : input_info) {
         auto input_data = item.second;
         input_data->setPrecision(Precision::U8);
-        inputDims = input_data->getDims();
+        inputDims = input_data->getTensorDesc().getDims();
     }
 
     infer_width = inputDims[2];
@@ -91,10 +91,10 @@ int FaceRecognitionClass::initialize(const std::string& model_xml_path, const st
     for (auto &item : output_info) {
         auto output_data = item.second;
         output_data->setPrecision(Precision::FP32);
-        outputDims = output_data->getDims();
+        outputDims = output_data->getTensorDesc().getDims();
     }
 
-    const int output_size = outputDims[1];
+    output_size = outputDims[1];
 
     // --------------------------------------------------------------------------
     // Load model into plugin
