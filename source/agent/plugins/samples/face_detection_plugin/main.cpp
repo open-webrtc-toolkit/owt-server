@@ -197,7 +197,7 @@ void threading_class::threading_func(){
 
       /** Load extensions for the CPU plugin **/
       if ((deviceName.find(device_for_faceDetection) != std::string::npos) && deviceName == "CPU") {
-          plugin.AddExtension(InferenceEngine::make_so_pointer<InferenceEngine::IExtension>(""));
+          plugin.AddExtension(std::make_shared<Extensions::Cpu::CpuExtensions>());
       } 
       pluginsForDevices[deviceName] = plugin;
     }

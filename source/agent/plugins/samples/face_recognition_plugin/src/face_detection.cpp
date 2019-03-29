@@ -11,6 +11,7 @@
 #include <thread>
 
 #include <inference_engine.hpp>
+#include <ext_list.hpp>
 #include <opencv2/opencv.hpp>
 #include "opencv2/imgproc/imgproc.hpp"
 #include "opencv2/imgcodecs.hpp"
@@ -57,7 +58,7 @@ void FaceDetectionClass::initialize(const std::string& model_xml_path, const std
 
     // Load extensions for the CPU plugin
     if (deviceName == "CPU") {
-        infer_plugin.AddExtension(InferenceEngine::make_so_pointer<InferenceEngine::IExtension>(""));
+        infer_plugin.AddExtension(std::make_shared<Extensions::Cpu::CpuExtensions>());
     }
 
     pluginsForDevices[deviceName] = infer_plugin;

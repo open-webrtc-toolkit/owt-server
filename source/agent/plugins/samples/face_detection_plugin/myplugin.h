@@ -13,6 +13,7 @@
 #include <map>
 
 #include <inference_engine.hpp>
+#include <ext_list.hpp>
 #include <opencv2/opencv.hpp>
 
 #include "detectionconfig.h"
