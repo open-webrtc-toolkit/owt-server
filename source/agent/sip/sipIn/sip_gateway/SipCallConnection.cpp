@@ -80,6 +80,8 @@ SipCallConnection::SipCallConnection(SipGateway* gateway, const std::string& pee
 
 SipCallConnection::~SipCallConnection()
 {
+    boost::unique_lock<boost::shared_mutex> lock(m_mutex);
+    running = false;
     video_sink_ = NULL;
     audio_sink_ = NULL;
     fb_sink_ = NULL;
@@ -89,7 +91,7 @@ SipCallConnection::~SipCallConnection()
 // sink
 int SipCallConnection::deliverAudioData_(std::shared_ptr<erizo::DataPacket> audio_packet)
 {
-    //boost::shared_lock<boost::shared_mutex> lock(m_mutex);
+    boost::shared_lock<boost::shared_mutex> lock(m_mutex);
     if (running) {
         call_connection_tx_audio(m_sipCall, (uint8_t*)audio_packet->data, (size_t)audio_packet->length);
     }
@@ -99,7 +101,7 @@ int SipCallConnection::deliverAudioData_(std::shared_ptr<erizo::DataPacket> audi
 //sink
 int SipCallConnection::deliverVideoData_(std::shared_ptr<erizo::DataPacket> video_packet)
 {
-    //boost::shared_lock<boost::shared_mutex> lock(m_mutex);
+    boost::shared_lock<boost::shared_mutex> lock(m_mutex);
     if (running) {
       call_connection_tx_video(m_sipCall, (uint8_t*)video_packet->data, (size_t)video_packet->length);
 
@@ -118,7 +120,7 @@ int SipCallConnection::sendFirPacket()
 {
 
     ELOG_DEBUG("sendFirPacket");
-    //boost::shared_lock<boost::shared_mutex> lock(m_mutex);
+    boost::shared_lock<boost::shared_mutex> lock(m_mutex);
     if (running) {
       call_connection_fir(m_sipCall);
     }
@@ -132,7 +134,7 @@ int SipCallConnection::sendPLI() {
 
 int SipCallConnection::deliverFeedback_(std::shared_ptr<erizo::DataPacket> data_packet)
 {
-    //boost::shared_lock<boost::shared_mutex> lock(m_mutex);
+    boost::shared_lock<boost::shared_mutex> lock(m_mutex);
     if (running) {
        call_connection_fir(m_sipCall);
     }
@@ -141,6 +143,7 @@ int SipCallConnection::deliverFeedback_(std::shared_ptr<erizo::DataPacket> data_
 
 void SipCallConnection::onSipAudioData(char* data, int len)
 {
+    boost::shared_lock<boost::shared_mutex> lock(m_mutex);
     if (running) {
         if (audio_sink_ == NULL)
             return;
@@ -149,7 +152,6 @@ void SipCallConnection::onSipAudioData(char* data, int len)
         if (m_audioCodec == "opus")
             head->setPayloadType(OPUS_48000_PT);
        {
-            //boost::shared_lock<boost::shared_mutex> lock(m_mutex);
             audio_sink_->deliverAudioData(std::make_shared<erizo::DataPacket>(0, data, len, erizo::AUDIO_PACKET));
        }
    }
@@ -158,6 +160,7 @@ void SipCallConnection::onSipAudioData(char* data, int len)
 void SipCallConnection::onSipVideoData(char* data, int len)
 {
     //ELOG_DEBUG("SipCallConnection::onSipVideoData");
+    boost::shared_lock<boost::shared_mutex> lock(m_mutex);
     if (running) {
         if (video_sink_ == NULL)
             return;
@@ -169,7 +172,6 @@ void SipCallConnection::onSipVideoData(char* data, int len)
           head->setPayloadType(H264_90000_PT);
         }
         {
-          //boost::shared_lock<boost::shared_mutex> lock(m_mutex);
            video_sink_->deliverVideoData(std::make_shared<erizo::DataPacket>(0, data, len, erizo::VIDEO_PACKET));
         }
     }
@@ -178,6 +180,7 @@ void SipCallConnection::onSipVideoData(char* data, int len)
 void SipCallConnection::onSipFIR()
 {
     ELOG_DEBUG("SipCallConnection::onSipFIR");
+    boost::shared_lock<boost::shared_mutex> lock(m_mutex);
     if (running) {
         if(fb_sink_ == NULL)
             return;
@@ -221,7 +224,7 @@ void SipCallConnection::onSipFIR()
 void SipCallConnection::onConnectionClosed()
 {
     ELOG_DEBUG("Enter onConnectionClosed");
-    //boost::shared_lock<boost::shared_mutex> lock(m_mutex);
+    boost::unique_lock<boost::shared_mutex> lock(m_mutex);
     running = false;
     sequenceNumberFIR_ = 0;
     ELOG_DEBUG("Leave onConnectionClosed");
@@ -233,7 +236,8 @@ void SipCallConnection::refreshVideoStream() {
 }
 
 void SipCallConnection::close() {
-
+    boost::unique_lock<boost::shared_mutex> lock(m_mutex);
+    running = false;
 }
 
 } // end of extern "C"

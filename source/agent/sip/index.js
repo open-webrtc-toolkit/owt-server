@@ -400,7 +400,7 @@ module.exports = function (rpcC, selfRpcId, parentRpcId, clusterWorkerIP) {
           if (calls[client_id]) {
               gateway.hangup(calls[client_id].peerURI);
               teardownCall(client_id);
-              calls[client_id].conn && calls[client_id].conn.close({input: true, output: true});
+              calls[client_id].conn && calls[client_id].conn.close();
               do_leave(calls[client_id].conference_controller, client_id);
               delete calls[client_id];
           }
@@ -554,7 +554,7 @@ module.exports = function (rpcC, selfRpcId, parentRpcId, clusterWorkerIP) {
 
             teardownCall(client_id);
             // recreate a sip call connection
-            calls[client_id].conn && calls[client_id].conn.close({input: true, output: true});
+            calls[client_id].conn && calls[client_id].conn.close();
             calls[client_id].conn = new SipCallConnection({gateway: gateway, clientID: calls[client_id].peerURI, audio : info.audio, video : info.video,
                 red : support_red, ulpfec : support_ulpfec}, notifyMediaUpdate);
             return setupCall(client_id, info);
@@ -582,7 +582,7 @@ module.exports = function (rpcC, selfRpcId, parentRpcId, clusterWorkerIP) {
         log.debug('CallClosed:', client_id);
         if (client_id && calls[client_id]) {
             teardownCall(client_id);
-            calls[client_id].conn && calls[client_id].conn.close({input: true, output: true});
+            calls[client_id].conn && calls[client_id].conn.close();
             do_leave(calls[client_id].conference_controller, client_id);
             delete calls[client_id];
         }
@@ -693,7 +693,7 @@ module.exports = function (rpcC, selfRpcId, parentRpcId, clusterWorkerIP) {
             log.debug('force leaving room ', room_id, ' user: ', client_id);
             gateway.hangup(calls[client_id].peerURI);
             teardownCall(client_id);
-            calls[client_id].conn && calls[client_id].conn.close({input: true, output: true});
+            calls[client_id].conn && calls[client_id].conn.close();
             do_leave(calls[client_id].conference_controller, client_id);
             delete calls[client_id];
         }
@@ -890,7 +890,7 @@ module.exports = function (rpcC, selfRpcId, parentRpcId, clusterWorkerIP) {
         if (calls[clientId]) {
             gateway.hangup(calls[clientId].peerURI);
             teardownCall(clientId);
-            calls[clientId].conn && calls[clientId].conn.close({input: true, output: true});
+            calls[clientId].conn && calls[clientId].conn.close();
             delete calls[clientId];
         }
     };
@@ -956,7 +956,7 @@ module.exports = function (rpcC, selfRpcId, parentRpcId, clusterWorkerIP) {
         if (calls[clientId]) {
             gateway.hangup(calls[clientId].peerURI);
             teardownCall(clientId);
-            calls[clientId].conn && calls[clientId].conn.close({input: true, output: true});
+            calls[clientId].conn && calls[clientId].conn.close();
             delete calls[clientId];
         }
         callback('callback', 'ok');
@@ -981,7 +981,7 @@ module.exports = function (rpcC, selfRpcId, parentRpcId, clusterWorkerIP) {
                     log.error('Fault detected on conference_controller:', message.id, 'of call:', client_id , ', terminate it');
                     gateway.hangup(calls[client_id].peerURI);
                     teardownCall(client_id);
-                    calls[client_id].conn && calls[client_id].conn.close({input: true, output: true});
+                    calls[client_id].conn && calls[client_id].conn.close();
                     delete calls[client_id];
                 }
             }

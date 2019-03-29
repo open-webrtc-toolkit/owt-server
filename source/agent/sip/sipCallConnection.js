@@ -48,48 +48,35 @@ exports.SipCallConnection = function (spec, onMediaUpdate) {
         videoFramePacketizer.bindTransport(sip_callConnection);
     }
 
-    that.close = function (direction) {
+    that.close = function () {
         log.debug('SipCallConnection close');
-        if (direction.output) {
-          //audio && audioFramePacketizer && audioFramePacketizer.close();
-          //video && videoFramePacketizer && videoFramePacketizer.close();
-          output = false;
+        if (audio && audioFramePacketizer) {
+            audioFramePacketizer.unbindTransport();
+            audioFramePacketizer.close();
+            audioFramePacketizer = undefined;
         }
-        // sip_callConnection && sip_callConnection.close();
-        if (direction.input) {
-          //audio && audioFrameConstructor && audioFrameConstructor.close();
-          //video && videoFrameConstructor && videoFrameConstructor.close();
-          input = false;
+
+        if (video && videoFramePacketizer) {
+            videoFramePacketizer.unbindTransport();
+            videoFramePacketizer.close();
+            videoFramePacketizer = undefined;
         }
-        if (!(input || output) ) {
-            if (audio && audioFramePacketizer) {
-                audioFramePacketizer.unbindTransport();
-                audioFramePacketizer.close();
-                audioFramePacketizer = undefined;
-            }
 
-            if (video && videoFramePacketizer) {
-                videoFramePacketizer.unbindTransport();
-                videoFramePacketizer.close();
-                videoFramePacketizer = undefined;
-            }
-
-            if (audio && audioFrameConstructor) {
-                audioFrameConstructor.unbindTransport();
-                audioFrameConstructor.close();
-                audioFrameConstructor = undefined;
-            }
-
-            if (video && videoFrameConstructor) {
-                videoFrameConstructor.unbindTransport();
-                videoFrameConstructor.close();
-                videoFrameConstructor = undefined;
-            }
-
-            sip_callConnection && sip_callConnection.close();
-            sip_callConnection = undefined;
-            log.debug('Completely close');
+        if (audio && audioFrameConstructor) {
+            audioFrameConstructor.unbindTransport();
+            audioFrameConstructor.close();
+            audioFrameConstructor = undefined;
         }
+
+        if (video && videoFrameConstructor) {
+            videoFrameConstructor.unbindTransport();
+            videoFrameConstructor.close();
+            videoFrameConstructor = undefined;
+        }
+
+        sip_callConnection && sip_callConnection.close();
+        sip_callConnection = undefined;
+        log.debug('Completely close');
     };
 
     that.addDestination = function (track, dest) {

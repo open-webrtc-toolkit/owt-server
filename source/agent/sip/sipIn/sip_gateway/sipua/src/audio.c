@@ -840,7 +840,7 @@ void audio_send(struct audio *a, uint8_t *data, size_t len)
 	
 	tx->mb->pos = STREAM_PRESZ;
 	tx->mb->end = STREAM_PRESZ + pl_len;
-	err = stream_send(a->strm, tx->marker, -1, hdr.ts, tx->mb);
+	err = stream_send(a->strm, hdr.m, -1, hdr.ts, tx->mb);
 	if (err){
 		warning("audio_send: stream_send failed.\n");
 		goto out;
