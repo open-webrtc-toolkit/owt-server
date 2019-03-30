@@ -604,8 +604,8 @@ parameters:
         value: "active" | "inactive"
          OR
         op: "replace",
-        path: "/info/layout/[0-9]+/stream",    // "/info/layout/[0-9]+/stream" is a pattern to match the needed path.
-        value: string
+        path: "/info/layout/${regionIndex}/stream",    // ${regionIndex} is an integer represents the index of the region
+        value: string                                  // the new streamID for the region
          OR
         op: 'replace',                         // For mixed stream
         path: '/info/layout',
