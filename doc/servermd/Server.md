@@ -1,11 +1,11 @@
-Open-WebRTC-Toolkit Server User Guide
+Open WebRTC Toolkit Server User Guide
 ----------------------
 
 # 1 Overview {#Conferencesection1}
 ## 1.1 Introduction {#Conferencesection1_1}
-Welcome to the Open-WebRTC-Toolkit Server User Guide. This guide describes how to install and configure the Open-WebRTC-Toolkit Server multipoint control unit (MCU) for multi-party conferences. This guide also explains how to install and launch the Peer Server for peer-to-peer communications.
+Welcome to the Open WebRTC Toolkit Server User Guide. This guide describes how to install and configure the Open WebRTC Toolkit Server multipoint control unit (MCU) for multi-party conferences. This guide also explains how to install and launch the Peer Server for peer-to-peer communications.
 
-Open-WebRTC-Toolkit Server provides an efficient WebRTC-based video conference service that scales a single WebRTC stream out to many endpoints. The following list briefly explains the purpose of each section in this guide:
+Open WebRTC Toolkit Server provides an efficient WebRTC-based video conference service that scales a single WebRTC stream out to many endpoints. The following list briefly explains the purpose of each section in this guide:
 
  - Section 1. Introduction and conventions used in this guide.
  - Section 2. Installing and configuring the MCU.
@@ -92,7 +92,7 @@ For download or installation instructions, please visit https://github.com/Intel
 The external stream output (rtsp/rtmp) feature relies on AAC encoder libfdk_aac support in ffmpeg library, please see [Compile and deploy ffmpeg with libfdk_aac](#Conferencesection2_3_5) section for detailed instructions.
 
  **Table 2-2. Client compatibility**
-Application Name|Google Chrome\* 71|Mozilla Firefox\* 64|Microsoft Edge\* 42.17134.1.0|Safari\* 12.02|Open-WebRTC-Toolkit Client SDK for Android | Open-WebRTC-Toolkit Client SDK for iOS | Open-WebRTC-Toolkit Client SDK for Windows
+Application Name|Google Chrome\* 71|Mozilla Firefox\* 64|Microsoft Edge\* 42.17134.1.0|Safari\* 12.02|Open WebRTC Toolkit Client SDK for Android | Open WebRTC Toolkit Client SDK for iOS | Open WebRTC Toolkit Client SDK for Windows
 --------|--------|--------|--------|--------|--------|--------|--------
 MCU Client|YES|YES|YES|YES|YES|YES|YES
 Management Console|YES|YES|YES|YES|N/A|N/A|N/A
@@ -449,7 +449,7 @@ To stop the MCU cluster, follow these steps:
 
 ### 2.4 MCU cluster’s fault tolerance / resilience {#Conferencesection2_3_12}
 
-Open-WebRTC-Toolkit server provides built-in fault tolerance / resilience support for its key components, as Table 2-6 shows.
+Open WebRTC Toolkit server provides built-in fault tolerance / resilience support for its key components, as Table 2-6 shows.
 
  **Table 2-6. MCU cluster components’ fault tolerance / resilience**
 Component Name|Server Reaction|Client Awareness
@@ -467,7 +467,7 @@ sip-agent/node|All sip participants it carries should be dropped by session node
 
 ## 2.5 MCU configurations for public access {#Conferencesection2_4}
 
-Open-WebRTC-Toolkit server provides the following settings in configuration files to configure the network interfaces for public access.
+Open WebRTC Toolkit server provides the following settings in configuration files to configure the network interfaces for public access.
 
  **Table 2-7. Configuration Items for Public Access**
 Configuration Item|Location|Usage
@@ -760,7 +760,7 @@ Only super service user can access runtime configuration. Current management con
 
 # 4 MCU Sample Application Server User Guide  {#Conferencesection4}
 ## 4.1 Introduction {#Conferencesection4_1}
-The MCU sample application server is a Web application demo that shows how to host audio/video conference services powered by the Open-WebRTC-Toolkit MCU. The sample application server is based on MCU runtime components. Refer to [Section 2](#Conferencesection2) of this guide, for system requirements and launch/stop instructions.
+The MCU sample application server is a Web application demo that shows how to host audio/video conference services powered by the Open WebRTC Toolkit MCU. The sample application server is based on MCU runtime components. Refer to [Section 2](#Conferencesection2) of this guide, for system requirements and launch/stop instructions.
 
 The source code of the sample application is in Release-<Version>/extras/basic_example/.
 
