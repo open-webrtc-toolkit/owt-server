@@ -1,11 +1,11 @@
-Conference Server User Guide
+Open-WebRTC-Toolkit Server User Guide
 ----------------------
 
 # 1 Overview {#Conferencesection1}
 ## 1.1 Introduction {#Conferencesection1_1}
-Welcome to the Conference Server User Guide for the Intel<sup>®</sup> Collaboration Suite for WebRTC (Intel<sup>®</sup> CS for WebRTC). This guide describes how to install and configure the Intel CS for WebRTC multipoint control unit (MCU) for multi-party conferences. This guide also explains how to install and launch the Peer Server for peer-to-peer communications.
+Welcome to the Open-WebRTC-Toolkit Server User Guide. This guide describes how to install and configure the Open-WebRTC-Toolkit Server multipoint control unit (MCU) for multi-party conferences. This guide also explains how to install and launch the Peer Server for peer-to-peer communications.
 
-The Intel CS for WebRTC Conference Server provides an efficient WebRTC-based video conference service that scales a single WebRTC stream out to many endpoints. The following list briefly explains the purpose of each section in this guide:
+Open-WebRTC-Toolkit Server provides an efficient WebRTC-based video conference service that scales a single WebRTC stream out to many endpoints. The following list briefly explains the purpose of each section in this guide:
 
  - Section 1. Introduction and conventions used in this guide.
  - Section 2. Installing and configuring the MCU.
@@ -72,27 +72,27 @@ Table 2-1 describes the system requirements for installing the MCU server. Table
 **Table 2-1. Server requirements**
 Application name|OS version
 -------------|--------------
-MCU server|CentOS* 7.4, Ubuntu 14.04/16.04 LTS
+MCU server|CentOS* 7.6, Ubuntu 18.04/16.04 LTS
 
 The GPU-acceleration can only be enabled on CentOS version.
 
 If you want to set up video conference service with H.264 codec support powered by non GPU-accelerated MCU server, OpenH264 library is required. See [Deploy Cisco OpenH264* Library](#Conferencesection2_3_4) section for more details.
 
-If you want to set up video conference service powered by GPU-accelerated MCU server through Intel® Media Server Studio, please follow the below instructions to install server side SDK on CentOS* 7.4 where the video-agents run.
+If you want to set up video conference service powered by GPU-accelerated MCU server through Intel® Media SDK, please follow the below instructions to install server side SDK on CentOS* 7.6 where the video-agents run.
 
-If you are working on the following platforms with the integrated graphics, please install Intel® Media Server Studio for Linux* 2018 R1.
+If you are working on the following platforms with the integrated graphics, please install Intel® Media SDK.
 
  - Intel® Xeon® E3-1200 v4 Family with C226 chipset
  - Intel® Xeon® E3-1200 and E3-1500 v5 Family with C236 chipset
  - 5th Generation Intel® Core™
  - 6th Generation Intel® Core™
 
-Either Professional Edition or Community Edition is applicable. For download or installation instructions, please visit its website at https://software.intel.com/en-us/intel-media-server-studio.
+For download or installation instructions, please visit https://github.com/Intel-Media-SDK/MediaSDK.
 
 The external stream output (rtsp/rtmp) feature relies on AAC encoder libfdk_aac support in ffmpeg library, please see [Compile and deploy ffmpeg with libfdk_aac](#Conferencesection2_3_5) section for detailed instructions.
 
  **Table 2-2. Client compatibility**
-Application Name|Google Chrome\* 71|Mozilla Firefox\* 64|Microsoft Edge\* 42.17134.1.0|Safari\* 12.02|Intel CS for WebRTC Client SDK for Android | Intel CS for WebRTC Client SDK for iOS | Intel CS for WebRTC Client SDK for Windows
+Application Name|Google Chrome\* 71|Mozilla Firefox\* 64|Microsoft Edge\* 42.17134.1.0|Safari\* 12.02|Open-WebRTC-Toolkit Client SDK for Android | Open-WebRTC-Toolkit Client SDK for iOS | Open-WebRTC-Toolkit Client SDK for Windows
 --------|--------|--------|--------|--------|--------|--------|--------
 MCU Client|YES|YES|YES|YES|YES|YES|YES
 Management Console|YES|YES|YES|YES|N/A|N/A|N/A
@@ -108,7 +108,7 @@ Node modules|Specified|N/A
 MongoDB| 2.6.10 |Website: http://mongodb.org
 System libraries|Latest|N/A
 
-All dependencies, except system libraries and node, are provided with the release package.
+All dependencies, except system libraries, are provided or can be automatically installed with the release package.
 
 All essential system libraries are installed when you install the MCU package using the Ubuntu or CentOS's package management system.
 
@@ -255,6 +255,7 @@ streaming-agent|0 or many|This agent spawning streaming accessing nodes which pu
 recording-agent|0 or many|This agent spawning recording nodes which record the specified audio/video streams to permanent storage facilities
 audio-agent|1 or many|This agent spawning audio processing nodes which perform audio transcoding and mixing
 video-agent|1 or many|This agent spawning video processing nodes which perform video transcoding and mixing
+analytics-agent|0 or many|This agent spawning video analyzing nodes which perform video analytics
 sip-agent|0 or many|This agent spawning sip processing nodes which handle sip connections
 sip-portal|0 or 1|The portal for initializing rooms' sip settings and scheduling sip agents to serve for them
 app|0 or 1|The sample web application for reference, users should use their own application server
@@ -446,9 +447,9 @@ To stop the MCU cluster, follow these steps:
         cd Release-<Version>/
         bin/daemon.sh stop [portal/conference-agent/webrtc-agent/streaming-agent/audio-agent/video-agent/recording-agent/sip-agent/sip-portal]
 
-### 2.3.12 MCU cluster’s fault tolerance / resilience {#Conferencesection2_3_12}
+### 2.4 MCU cluster’s fault tolerance / resilience {#Conferencesection2_3_12}
 
-Intel CS for WebRTC MCU server provides built-in fault tolerance / resilience support for its key components, as Table 2-6 shows.
+Open-WebRTC-Toolkit server provides built-in fault tolerance / resilience support for its key components, as Table 2-6 shows.
 
  **Table 2-6. MCU cluster components’ fault tolerance / resilience**
 Component Name|Server Reaction|Client Awareness
@@ -461,11 +462,12 @@ webrtc-agent/node|All webrtc stream actions assign to this node will be dropped.
 streaming-agent/node|All external stream actions assign to this node will be dropped. Client needs to redo these actions.|stream-failed event
 audio-agent/node|Auto schedule new audio-agent/node resource to recover the session context.|Transparent
 video-agent/node|Auto schedule new video-agent/node resource to recover the session context.|Transparent
+analytics-agent/node|All analytics stream actions assign to this node will be dropped. Client needs to redo these actions.|stream-failed event
 sip-agent/node|All sip participants it carries should be dropped by session nodes.|SIP BYE signaling event
 
-## 2.4 MCU configurations for public access {#Conferencesection2_4}
+## 2.5 MCU configurations for public access {#Conferencesection2_4}
 
-Intel CS for WebRTC MCU server provides the following settings in configuration files to configure the network interfaces for public access.
+Open-WebRTC-Toolkit server provides the following settings in configuration files to configure the network interfaces for public access.
 
  **Table 2-7. Configuration Items for Public Access**
 Configuration Item|Location|Usage
@@ -477,7 +479,7 @@ management-api.port | management_api/management_api.toml | The port of managemen
 portal.hostname, portal.ip_address | portal/portal.toml | The hostname and IP address of portal for public access; hostname first if it is not empty.
 portal.port | portal/portal.toml | The port of portal for public access through TCP
 
-## 2.5 Security Recommendations {#Conferencesection2_5}
+## 2.6 Security Recommendations {#Conferencesection2_5}
 Intel Corporation does not host any conference cluster/service. Instead, the entire suite is provided so you can build your own video conference system and host your own server cluster.
 
 Customers must be familiar with industry standards and best practices for deploying server clusters. Intel Corporation assumes no responsibility for loss caused from potential improper deployment and mismanagement.
@@ -507,7 +509,7 @@ The following instructions are provided only as recommendations regarding securi
 **Figure 2-1. Security Recommendations Picture**
 ![Security Recommendations Picture](./pic/deploy.png)
 
-## 2.6 FAQ {#Conferencesection2_6}
+## 2.7 FAQ {#Conferencesection2_6}
 1. Sudden low volume when connecting Chrome on Windows to MCU
 
     **Resolution**:
@@ -540,7 +542,7 @@ The following instructions are provided only as recommendations regarding securi
 ## 3.1 Introduction {#Conferencesection3_1}
 The MCU Management Console is the frontend console to manage the MCU server. It is built with MCU's server-side APIs and it provides the management interface to MCU administrators.
 ## 3.2 Access {#Conferencesection3_2}
-Once you have launched MCU servers, you can then access the console via a browser at http://XXXX:3300/console/ by default. You will be asked for your the service-id and service-key in order to access the service.
+Once you have launched MCU servers, you can then access the console via a browser at https://XXXX:3300/console/ by default. You will be asked for your the service-id and service-key in order to access the service.
 
 After inputting your service-id and service-key in the dialog prompt, choose 'remember me' and click 'save changes' to save your session. If you want to switch to another service, click the ‘profile' button on the upper-right corner to get in this dialog prompt and do the similar procedure again. If you want to log out the management console, click the red ‘clear cookie' button in the dialog prompt.
 
@@ -758,7 +760,7 @@ Only super service user can access runtime configuration. Current management con
 
 # 4 MCU Sample Application Server User Guide  {#Conferencesection4}
 ## 4.1 Introduction {#Conferencesection4_1}
-The MCU sample application server is a Web application demo that shows how to host audio/video conference services powered by the Intel CS for WebRTC MCU. The sample application server is based on MCU runtime components. Refer to [Section 2](#Conferencesection2) of this guide, for system requirements and launch/stop instructions.
+The MCU sample application server is a Web application demo that shows how to host audio/video conference services powered by the Open-WebRTC-Toolkit MCU. The sample application server is based on MCU runtime components. Refer to [Section 2](#Conferencesection2) of this guide, for system requirements and launch/stop instructions.
 
 The source code of the sample application is in Release-<Version>/extras/basic_example/.
 
@@ -769,7 +771,7 @@ These general steps show how to start a conference:
 
 1. Start up the MCU server components.
 2. Launch your Google Chrome* browser from the client machine.
-3. Connect to the MCU sample application server at: http://XXXXX:3001 or https://XXXXX:3004. Replace XXXXX with the IP address or machine name of the MCU sample application server.
+3. Connect to the MCU sample application server at: https://XXXXX:3004. Replace XXXXX with the IP address or machine name of the MCU sample application server.
 > **Note**: Latest Chrome browser versions from v47 force https access on WebRTC applications. You will get SSL warning page with default certificates, replace them with your own trusted ones.
 4. Start your conference with this default room created by the sample application server.
 
@@ -794,7 +796,7 @@ For example, connect to the MCU sample application server XXXXX with the followi
 
 # 5 Peer Server {#Conferencesection5}
 ## 5.1 Introduction {#Conferencesection5_1}
-The peer server is the default signaling server of the Intel CS for WebRTC. The peer server provides the ability to exchange WebRTC signaling messages over Socket.IO between different clients.
+The peer server is the default signaling server of the Open-WebRTC-Toolkit. The peer server provides the ability to exchange WebRTC signaling messages over Socket.IO between different clients.
 
 **Figure 5-1. Peer Server Framework**
 <img src="./pic/framework.png" alt="Framework" style="width: 600px;">
@@ -805,7 +807,7 @@ The installation requirements for the peer server are listed in Table 5-1 and 5-
 **Table 5-1. Installation requirements**
 Component name | OS version
 ----|-----
-Peer server | Ubuntu 14.04/16.04 LTS, CentOS* 7.3/7.4
+Peer server | Ubuntu 18.04/16.04 LTS, CentOS* 7.6/7.4
 
 > **Note**: The peer server has been fully tested on Ubuntu14.04 LTS,64-bit.
 **Table 5-2. Peer Server Dependencies**
