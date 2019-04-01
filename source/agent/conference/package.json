@@ -1,5 +1,5 @@
 {
-  "name": "OWT-MCU-Conference-Controller",
+  "name": "OWT-Server-Conference-Controller",
   "version":"4.2.0",
   "dependencies": {
     "amqp": "*",
