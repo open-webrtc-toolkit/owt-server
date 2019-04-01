@@ -447,7 +447,7 @@ To stop the OWT server cluster, follow these steps:
         cd Release-<Version>/
         bin/daemon.sh stop [portal/conference-agent/webrtc-agent/streaming-agent/audio-agent/video-agent/recording-agent/sip-agent/sip-portal]
 
-### 2.4 OWT Server cluster’s fault tolerance / resilience {#Conferencesection2_3_12}
+### 2.4 OWT Server cluster’s fault tolerance / resilience {#Conferencesection2_4}
 
 Open WebRTC Toolkit server provides built-in fault tolerance / resilience support for its key components, as Table 2-6 shows.
 
@@ -465,7 +465,7 @@ video-agent/node|Auto schedule new video-agent/node resource to recover the sess
 analytics-agent/node|All analytics stream actions assign to this node will be dropped. Client needs to redo these actions.|stream-failed event
 sip-agent/node|All sip participants it carries should be dropped by session nodes.|SIP BYE signaling event
 
-## 2.5 OWT Server configurations for public access {#Conferencesection2_4}
+## 2.5 OWT Server configurations for public access {#Conferencesection2_5}
 
 Open WebRTC Toolkit server provides the following settings in configuration files to configure the network interfaces for public access.
 
@@ -479,7 +479,7 @@ management-api.port | management_api/management_api.toml | The port of managemen
 portal.hostname, portal.ip_address | portal/portal.toml | The hostname and IP address of portal for public access; hostname first if it is not empty.
 portal.port | portal/portal.toml | The port of portal for public access through TCP
 
-## 2.6 Security Recommendations {#Conferencesection2_5}
+## 2.6 Security Recommendations {#Conferencesection2_6}
 Intel Corporation does not host any conference cluster/service. Instead, the entire suite is provided so you can build your own video conference system and host your own server cluster.
 
 Customers must be familiar with industry standards and best practices for deploying server clusters. Intel Corporation assumes no responsibility for loss caused from potential improper deployment and mismanagement.
@@ -509,7 +509,7 @@ The following instructions are provided only as recommendations regarding securi
 **Figure 2-1. Security Recommendations Picture**
 ![Security Recommendations Picture](./pic/deploy.png)
 
-## 2.7 FAQ {#Conferencesection2_6}
+## 2.7 FAQ {#Conferencesection2_7}
 1. Sudden low volume when connecting Chrome on Windows to OWT server
 
     **Resolution**:
