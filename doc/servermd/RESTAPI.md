@@ -2,7 +2,7 @@ Open WebRTC Toolkit Server Management REST API
 ----------------------
 
 # 1 Introduction {#RESTAPIsection1}
-Open WebRTC Toolkit solution provides a set of REST (Representational State Transfer) API for conference management. Manager clients can be implemented by different programming languages through these APIs.
+Open WebRTC Toolkit solution provides a set of REST (Representational State Transfer) API for conference management. Management clients can be implemented by different programming languages through these APIs.
 # 2 Definitions {#RESTAPIsection2}
 Resource: the kind of data under manipulation<br>
 
@@ -157,7 +157,7 @@ Data Model:<br>
         sampleRate: number,    // "opus/48000/2", "isac/16000/2", "isac/32000/2", "g722/16000/1"
         channelNum: number     // E.g "opus/48000/2", "opus" is codec, 48000 is sampleRate, 2 is channelNum
       },
-      vad: boolean             // whether enable VAD for mixed audio
+      vad: boolean             // whether enable Voice Activity Detection for mixed audio
     }
 
     object(ViewVideo):{
@@ -226,21 +226,21 @@ Data Model:<br>
     }
 
     object(Transcoding): {
-      audio: boolean,                  // allow transcoding format(opus, pcmu, ...) for audio
+      audio: boolean,                  // if allow transcoding format(opus, pcmu, ...) for audio
       video: {
         parameters: {
-          resolution: boolean,         // allow transcoding resolution for video
-          framerate: boolean,          // allow transcoding framerate for video
-          bitrate: boolean,            // allow transcoding bitrate for video
-          keyFrameInterval: boolean    // allow transcoding KFI for video
+          resolution: boolean,         // if allow transcoding resolution for video
+          framerate: boolean,          // if allow transcoding framerate for video
+          bitrate: boolean,            // if allow transcoding bitrate for video
+          keyFrameInterval: boolean    // if allow transcoding KFI for video
         },
-        format: boolean                // allow transcoding format(vp8, h264, ...) for video
+        format: boolean                // if allow transcoding format(vp8, h264, ...) for video
       }
     }
 
     object(Notifying): {
-      participantActivities: boolean,    // enable notification for participantActivities
-      streamChange: boolean              // enable notification for streamChange
+      participantActivities: boolean,    // whether enable notification for participantActivities
+      streamChange: boolean              // whether enable notification for streamChange
     }
 
     object(Sip): {
@@ -1359,3 +1359,33 @@ request body:
 response body:
 
   **Empty**
+
+# 6 Media Constraints {#RESTAPIsection6}
+This section lists the media constraints of formats and parameters which can be passed to management API.
+
+## 6.1 Audio {#RESTAPIsection6_1}
+Audio formats(codec/sampleRate/channelNum):
+- opus/48000/2
+- isac/16000
+- isac/32000
+- g722/16000/1
+- pcma
+- pcmu
+- ac3
+- nellymoser
+- ilbc
+- aac(input)
+- aac/48000/2(output)
+
+## 6.2 Video {#RESTAPIsection6_2}
+Video formats(codec/profile):
+- h264(input)
+- h264/CB(output)
+- h264/B(output)
+- h264/M(output)
+- h264/H(output)
+- vp8
+- vp9
+- h265
+
+Video framerate: [6, 12, 15, 24, 30, 48, 60]

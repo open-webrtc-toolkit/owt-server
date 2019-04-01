@@ -3,7 +3,7 @@ Open WebRTC Toolkit Server User Guide
 
 # 1 Overview {#Conferencesection1}
 ## 1.1 Introduction {#Conferencesection1_1}
-Welcome to the Open WebRTC Toolkit Server User Guide. This guide describes how to install and configure the Open WebRTC Toolkit Server multipoint control unit (MCU) for multi-party conferences. This guide also explains how to install and launch the Peer Server for peer-to-peer communications.
+Welcome to the Open WebRTC Toolkit Server User Guide. This guide describes how to install and configure the Open WebRTC Toolkit Server for multi-party conferences and so on. This guide also explains how to install and launch the Peer Server for peer-to-peer communications.
 
 Open WebRTC Toolkit Server provides an efficient WebRTC-based video conference service that scales a single WebRTC stream out to many endpoints. The following list briefly explains the purpose of each section in this guide:
 
