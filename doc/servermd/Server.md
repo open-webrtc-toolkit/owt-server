@@ -8,12 +8,12 @@ Welcome to the Open WebRTC Toolkit Server User Guide. This guide describes how t
 Open WebRTC Toolkit Server provides an efficient WebRTC-based video conference service that scales a single WebRTC stream out to many endpoints. The following list briefly explains the purpose of each section in this guide:
 
  - Section 1. Introduction and conventions used in this guide.
- - Section 2. Installing and configuring the MCU.
- - Section 3. Brief guide of MCU manangement console.
- - Section 4. Installing the MCU sample application server.
+ - Section 2. Installing and configuring the OWT server.
+ - Section 3. Brief guide of OWT server manangement console.
+ - Section 4. Installing the OWT sample application server.
  - Section 5. Installing and launching the Peer Server.
 
-Installation requirements and dependencies for the MCU, sample application server, and peer server are described in their associated sections.
+Installation requirements and dependencies for the OWT server, sample application server, and peer server are described in their associated sections.
 
 ##1.2 Terminology {#Conferencesection1_2}
 This manual uses the following acronyms and terms:
@@ -57,28 +57,28 @@ For more information, visit the following Web pages:
  - W3C WebRTC Working Group: http://www.w3.org/2011/04/webrtc/
  - WebRTC Open Project: http://www.webrtc.org
 
-# 2 MCU Installation {#Conferencesection2}
+# 2 OWT Server Installation {#Conferencesection2}
 
 ## 2.1 Introduction {#Conferencesection2_1}
 
-This section describes the system requirements for installing the MCU server, and the compatibility with its client.
+This section describes the system requirements for installing the OWT server, and the compatibility with its client.
 
 > **Note**:    Installation requirements for the peer server are described in <a href="#Conferencesection5">section 5</a> of this guide.
 
 ## 2.2 Requirements and compatibility {#Conferencesection2_2}
 
-Table 2-1 describes the system requirements for installing the MCU server. Table 2-2 gives an overview of MCU compatibility with the client.
+Table 2-1 describes the system requirements for installing the OWT server. Table 2-2 gives an overview of OWT server compatibility with the client.
 
 **Table 2-1. Server requirements**
 Application name|OS version
 -------------|--------------
-MCU server|CentOS* 7.6, Ubuntu 18.04/16.04 LTS
+OWT server|CentOS* 7.6, Ubuntu 18.04/16.04 LTS
 
 The GPU-acceleration can only be enabled on CentOS version.
 
-If you want to set up video conference service with H.264 codec support powered by non GPU-accelerated MCU server, OpenH264 library is required. See [Deploy Cisco OpenH264* Library](#Conferencesection2_3_4) section for more details.
+If you want to set up video conference service with H.264 codec support powered by non GPU-accelerated OWT server, OpenH264 library is required. See [Deploy Cisco OpenH264* Library](#Conferencesection2_3_4) section for more details.
 
-If you want to set up video conference service powered by GPU-accelerated MCU server through Intel® Media SDK, please follow the below instructions to install server side SDK on CentOS* 7.6 where the video-agents run.
+If you want to set up video conference service powered by GPU-accelerated OWT server through Intel® Media SDK, please follow the below instructions to install server side SDK on CentOS* 7.6 where the video-agents run.
 
 If you are working on the following platforms with the integrated graphics, please install Intel® Media SDK.
 
@@ -94,13 +94,13 @@ The external stream output (rtsp/rtmp) feature relies on AAC encoder libfdk_aac 
  **Table 2-2. Client compatibility**
 Application Name|Google Chrome\* 73|Mozilla Firefox\* 66|Microsoft Edge\* 44.17763.1.0|Safari\* 12.1|Open WebRTC Toolkit Client SDK for Android | Open WebRTC Toolkit Client SDK for iOS | Open WebRTC Toolkit Client SDK for Windows
 --------|--------|--------|--------|--------|--------|--------|--------
-MCU Client|YES|YES|YES|YES|YES|YES|YES
+OWT Client|YES|YES|YES|YES|YES|YES|YES
 Management Console|YES|YES|YES|YES|N/A|N/A|N/A
 
-## 2.3 Install the MCU server {#Conferencesection2_3}
-This section describes the dependencies and steps for installing the MCU.
+## 2.3 Install the OWT server {#Conferencesection2_3}
+This section describes the dependencies and steps for installing the OWT server.
 ### 2.3.1 Dependencies {#Conferencesection2_3_1}
-**Table 2-3. MCU Dependencies**
+**Table 2-3. OWT Server Dependencies**
 Name|Version|Remarks
 --------|--------|--------
 Node.js |8.15.0|Website: http://nodejs.org/
@@ -110,17 +110,17 @@ System libraries|Latest|N/A
 
 All dependencies, except system libraries, are provided or can be automatically installed with the release package.
 
-All essential system libraries are installed when you install the MCU package using the Ubuntu or CentOS's package management system.
+All essential system libraries are installed when you install the OWT server package using the Ubuntu or CentOS's package management system.
 
-Regarding Node.js*, make sure it's installed in your system prior to installing the MCU. We recommend version 8.11.1. Refer to http://nodejs.org/ for the details and installation.
+Regarding Node.js*, make sure it's installed in your system prior to installing the OWT server. We recommend version 8.15.0. Refer to http://nodejs.org/ for the details and installation.
 
-Before installing the MCU, make sure your login account has sys-admin privileges; i.e. the ability to execute `sudo`.
+Before installing the OWT server, make sure your login account has sys-admin privileges; i.e. the ability to execute `sudo`.
 
-### 2.3.2 Configure the MCU server machine {#Conferencesection2_3_2}
+### 2.3.2 Configure the OWT server machine {#Conferencesection2_3_2}
 
-If you run MCU on CentOS, configure the system firewall well to make sure all ports required by MCU server components are open.
+If you run OWT server on CentOS, configure the system firewall well to make sure all ports required by OWT server components are open.
 
-In order for the MCU server to deliver the best performance on video conferencing, the following system configuration is recommended:
+In order for the OWT server to deliver the best performance on video conferencing, the following system configuration is recommended:
 
 1. Add or update the following lines in /etc/security/limits.conf, in order to set the maximum numbers of open files, running processes and maximum stack size to a large enough number:
 
@@ -139,7 +139,7 @@ In order for the MCU server to deliver the best performance on video conferencin
 
    So that the updated limits.conf takes effect after your next login.
 
-3. If you run MCU on CentOS, add or update the following two lines in /etc/security/limits.d/xx-nproc.conf as well:
+3. If you run OWT server on CentOS, add or update the following two lines in /etc/security/limits.d/xx-nproc.conf as well:
 
         * soft nproc unlimited
         * hard nproc unlimited
@@ -158,11 +158,11 @@ In order for the MCU server to deliver the best performance on video conferencin
         net.ipv4.tcp_wmem=4096 65536 16777216
         net.ipv4.tcp_mem=8388608 8388608 16777216
 
-5. Now run command /sbin/sysctl -p to activate the new configuration, or just restart your MCU machine.
+5. Now run command /sbin/sysctl -p to activate the new configuration, or just restart your OWT server machine.
 
 6. You can run command "ulimit -a" to make sure the new setting in limits.conf is correct as you set.
 
-### 2.3.3 Install the MCU package {#Conferencesection2_3_3}
+### 2.3.3 Install the OWT server package {#Conferencesection2_3_3}
 
 On the server machine, directly unarchive the package file.
 
@@ -170,20 +170,20 @@ On the server machine, directly unarchive the package file.
     tar xf CS_WebRTC_Conference_Server_MCU.v<Version>.tgz
 ~~~~~~
 
-For Ubuntu version MCU, do as following:
+For Ubuntu version OWT server, do as following:
 
 ~~~~~~{.sh}
     tar xf CS_WebRTC_Conference_Server_MCU.v<Version>.Ubuntu.tgz
 ~~~~~~
 
 ### 2.3.4 Deploy Cisco OpenH264* Library {#Conferencesection2_3_4}
-The default H.264 library installed is a pseudo one without any media logic. To enable H.264 support in non GPU-accelerated MCU system, you must deploy the Cisco OpenH264 library. Choose yes to download and enable Cisco Open H264 library during video-agent dependency installation at Release-<Version>/video_agent/install_deps.sh.
+The default H.264 library installed is a pseudo one without any media logic. To enable H.264 support in non GPU-accelerated OWT server system, you must deploy the Cisco OpenH264 library. Choose yes to download and enable Cisco Open H264 library during video-agent dependency installation at Release-<Version>/video_agent/install_deps.sh.
 
 Or you can also use install_openh264.sh or uninstall_openh264.sh scripts under Release-<Version>/video_agent folder to enable or disable Cisco OpenH264 library later.
 
 ### 2.3.5 Compile and deploy ffmpeg with libfdk_aac {#Conferencesection2_3_5}
 
-The default ffmpeg library used by MCU server has no libfdk_aac support. If you want to enable libfdk_aac for external stream output or mp4 format recording, please compile and deploy ffmpeg yourself with following steps:
+The default ffmpeg library used by OWT server has no libfdk_aac support. If you want to enable libfdk_aac for external stream output or mp4 format recording, please compile and deploy ffmpeg yourself with following steps:
 
    > **Note**: The libfdk_aac is designated as "non-free", please make sure you have got proper authority before using it.
 
@@ -196,13 +196,13 @@ The default ffmpeg library used by MCU server has no libfdk_aac support. If you 
 
 ### 2.3.6 Use your own certificate {#Conferencesection2_3_6}
 
-The default certificate (certificate.pfx) for the MCU is located in the Release-<Version>/<Component>/cert folder. When using HTTPS and/or secure socket.io connection, you should use your own certificate for each server. First, you should edit management_api/management_api.toml, webrtc_agent/agent.toml, portal/portal.toml, management_console/management_console.toml to provide the path of each certificate for each server, under the key keystorePath. See Table 2-4 for details.
+The default certificate (certificate.pfx) for the OWT server is located in the Release-<Version>/<Component>/cert folder. When using HTTPS and/or secure socket.io connection, you should use your own certificate for each server. First, you should edit management_api/management_api.toml, webrtc_agent/agent.toml, portal/portal.toml, management_console/management_console.toml to provide the path of each certificate for each server, under the key keystorePath. See Table 2-4 for details.
 
-We use PFX formatted certificates in MCU. See https://nodejs.org/api/tls.html for how to generate a self-signed certificate by openssl utility. We recommend using 2048-bit private key for the certificates. But if you meet DTLS SSL connection error in webrtc-agent, please use 1024-bit instead of 2048-bit private key because of a known network MTU issue.
+We use PFX formatted certificates in OWT server. See https://nodejs.org/api/tls.html for how to generate a self-signed certificate by openssl utility. We recommend using 2048-bit private key for the certificates. But if you meet DTLS SSL connection error in webrtc-agent, please use 1024-bit instead of 2048-bit private key because of a known network MTU issue.
 
 After editing the configuration file, you should run `./initcert.js` inside each component to input your passphrases for the certificates, which would then store them in an encrypted file. Be aware that you should have node binary in your shell's $PATH to run the JS script.
 
- **Table 2-4. MCU certificates configuration**
+ **Table 2-4. OWT server certificates configuration**
 |  |configuration file|
 |--------|--------|
 | management-api HTTPS | management_api/management_api.toml |
@@ -210,43 +210,43 @@ After editing the configuration file, you should run `./initcert.js` inside each
 | DTLS-SRTP | webrtc_agent/agent.toml |
 | management-console HTTPS | management_console/management_console.toml |
 
-For MCU sample application's certificate configuration, please follow the instruction file 'README.md' located at Release-<Version>/extras/basic_example/.
+For OWT sample application's certificate configuration, please follow the instruction file 'README.md' located at Release-<Version>/extras/basic_example/.
 
-### 2.3.7 Launch the MCU server as single node {#Conferencesection2_3_7}
-To launch the MCU server on one machine, follow steps below:
+### 2.3.7 Launch the OWT server as single node {#Conferencesection2_3_7}
+To launch the OWT server on one machine, follow steps below:
 
-1. Initialize the MCU package for the first time execution.
+1. Initialize the OWT package for the first time execution.
 
-    For general MCU Server installation, use following command:
+    For general OWT Server installation, use following command:
 
         bin/init-all.sh [--deps]
 
     If you want to enable GPU-acceleration through Intel Media Server Studio, use following command:
 
         bin/init-all.sh [--deps] --hardware
-   > **Note**: If you have already installed the required system libraries, then --deps is not required. If you have installed early version of MCU, the stored data will not be compatible with 4.1 version. Pay attention to the warning and choose option to update your MCU data in mongodb.
+   > **Note**: If you have already installed the required system libraries, then --deps is not required. If you have installed early version of OWT server, the stored data will not be compatible with 4.1 version. Pay attention to the warning and choose option to update your OWT data in mongodb.
 
-2. Run the following commands to start the MCU:
+2. Run the following commands to start the OWT server:
 
         cd Release-<Version>/
         bin/start-all.sh
-   > **Note**: If you want to run start-all in a combined command like "ssh remote-host MCU-installed-path/bin/start-all", the environment $DISPLAY needs to be explicitly specified as "export DISPLAY=:0.0".
+   > **Note**: If you want to run start-all in a combined command like "ssh remote-host OWT-server-installed-path/bin/start-all", the environment $DISPLAY needs to be explicitly specified as "export DISPLAY=:0.0".
 
-3. To verify whether the server has started successfully, launch your browser and connect to the MCU server at https://XXXXX:3004. Replace XXXXX with the IP address or machine name of your MCU server.
+3. To verify whether the server has started successfully, launch your browser and connect to the OWT server at https://XXXXX:3004. Replace XXXXX with the IP address or machine name of your OWT server.
 
 > **Note**: The procedures in this guide use the default room in the sample.
 
-### 2.3.8 Stop the MCU server {#Conferencesection2_3_8}
-Run the following commands to stop the MCU:
+### 2.3.8 Stop the OWT server {#Conferencesection2_3_8}
+Run the following commands to stop the OWT server:
 
     cd Release-<Version>/
     bin/stop-all.sh
 
-### 2.3.9 Set up the MCU cluster {#Conferencesection2_3_9}
- **Table 2-5. Distributed MCU components**
+### 2.3.9 Set up the OWT server cluster {#Conferencesection2_3_9}
+ **Table 2-5. Distributed OWT server components**
 Component Name|Deployment Number|Responsibility
 --------|--------|--------
-management-api|1 or many|The entrance of MCU service, keeping the configurations of all rooms, generating and verifying the tokens. Application can implement load balancing strategy across multiple management-api instances
+management-api|1 or many|The entrance of OWT service, keeping the configurations of all rooms, generating and verifying the tokens. Application can implement load balancing strategy across multiple management-api instances
 cluster-manager|1 or many|The manager of all active workers in the cluster, checking their lives, scheduling workers with the specified purposes according to the configured policies. If one has been elected as master, it will provide service; others will be standby
 portal|1 or many|The signaling server, handling service requests from Socket.IO clients
 conference-agent|1 or many|This agent handles room controller logics
@@ -261,9 +261,9 @@ sip-portal|0 or 1|The portal for initializing rooms' sip settings and scheduling
 app|0 or 1|The sample web application for reference, users should use their own application server
 management-console|0 or 1|The console for conference management
 
-Follow the steps below to set up a MCU cluster:
+Follow the steps below to set up a OWT server cluster:
 
-1. Make sure you have installed the MCU package on each machine before launching the cluster which has been described in section [Install the MCU package](#Conferencesection2_3_3).
+1. Make sure you have installed the OWT server package on each machine before launching the cluster which has been described in section [Install the OWT server package](#Conferencesection2_3_3).
 
 2. Choose machines to initialize MongoDB and RabbitMQ servers.
 
@@ -276,7 +276,7 @@ Follow the steps below to set up a MCU cluster:
 
         cd Release-<Version>/
         bin/init-rabbitmq.sh [--deps]
-   > **Note**: You can change the shell scripts to initialize them according to your own requirement. Or choose any other existing MongoDB or RabbitMQ service, like those with cluster support. Make sure MongoDB and RabbitMQ services are started prior to all MCU cluster nodes.
+   > **Note**: You can change the shell scripts to initialize them according to your own requirement. Or choose any other existing MongoDB or RabbitMQ service, like those with cluster support. Make sure MongoDB and RabbitMQ services are started prior to all OWT server cluster nodes.
 
     If non-default user of rabbitmq-server is used, do as following in each module:
 
@@ -291,19 +291,19 @@ Follow the steps below to set up a MCU cluster:
 
 5. Initialize and run management-api instance on each machine with following steps.
 
-    1) Initialize MCU manager management-api for the first time execution:
+    1) Initialize OWT server manager management-api for the first time execution:
 
         cd Release-<Version>/
         management_api/init.sh
 
-    **Note**: If you have installed early version of MCU, the stored data will not be compatible with 4.0 version. Pay attention to the warning and choose option to update your MCU data in mongodb.
+    **Note**: If you have installed early version of OWT server, the stored data will not be compatible with 4.0 version. Pay attention to the warning and choose option to update your OWT server data in mongodb.
 
-    2) Run MCU manager management-api and the sample application with following commands:
+    2) Run OWT server manager management-api and the sample application with following commands:
 
         cd Release-<Version>/
         bin/daemon.sh start management-api
 
-6. Choose any management-api instance machine to run the sample application server for quick MCU service validation.
+6. Choose any management-api instance machine to run the sample application server for quick OWT service validation.
 
         cd Release-<Version>/
         bin/daemon.sh start app
@@ -363,7 +363,7 @@ Follow the steps below to set up a MCU cluster:
         cd Release-<Version>/
         bin/daemon.sh start [conference-agent/webrtc-agent/streaming-agent/audio-agent/video-agent/recording-agent/sip-agent]
 
-16. Repeat step 13 to 15 to launch as many MCU agent worker machines as you need.
+16. Repeat step 13 to 15 to launch as many OWT server agent worker machines as you need.
 
 17. Choose one worker machine to run sip-portal if sip-agent workers are deployed:
 
@@ -425,9 +425,9 @@ If you want to map each VCA node to different Ethernet interface, IP forwarding 
             systemctl stop firewalld
             systemctl disable firewalld
 
-### 2.3.11 Stop the MCU cluster {#Conferencesection2_3_11}
+### 2.3.11 Stop the OWT server cluster {#Conferencesection2_3_11}
 
-To stop the MCU cluster, follow these steps:
+To stop the OWT server cluster, follow these steps:
 1. Run the following commands on each management-api node to stop management-api instances:
 
         cd Release-<Version>/
@@ -447,11 +447,11 @@ To stop the MCU cluster, follow these steps:
         cd Release-<Version>/
         bin/daemon.sh stop [portal/conference-agent/webrtc-agent/streaming-agent/audio-agent/video-agent/recording-agent/sip-agent/sip-portal]
 
-### 2.4 MCU cluster’s fault tolerance / resilience {#Conferencesection2_3_12}
+### 2.4 OWT Server cluster’s fault tolerance / resilience {#Conferencesection2_3_12}
 
 Open WebRTC Toolkit server provides built-in fault tolerance / resilience support for its key components, as Table 2-6 shows.
 
- **Table 2-6. MCU cluster components’ fault tolerance / resilience**
+ **Table 2-6. OWT Server cluster components’ fault tolerance / resilience**
 Component Name|Server Reaction|Client Awareness
 --------|--------|--------
 management-api|Multiple management-api instances provide stateless services at the same time. If application implements node failure detection and rescheduling strategy, when one node fails, other nodes should take over when the further requests are assigned to any of them.|Nuve RESTful request fail
@@ -465,7 +465,7 @@ video-agent/node|Auto schedule new video-agent/node resource to recover the sess
 analytics-agent/node|All analytics stream actions assign to this node will be dropped. Client needs to redo these actions.|stream-failed event
 sip-agent/node|All sip participants it carries should be dropped by session nodes.|SIP BYE signaling event
 
-## 2.5 MCU configurations for public access {#Conferencesection2_4}
+## 2.5 OWT Server configurations for public access {#Conferencesection2_4}
 
 Open WebRTC Toolkit server provides the following settings in configuration files to configure the network interfaces for public access.
 
@@ -486,67 +486,67 @@ Customers must be familiar with industry standards and best practices for deploy
 
 The following instructions are provided only as recommendations regarding security best practices and by no means are they fully complete:
 
-1. For the key pair access on MCU server, make sure only people with high enough privilege can have the clearance.
-2. Regular system state audits or system change auto-detection. For example, MCU server system changes notification mechanism by third-party tool.
+1. For the key pair access on OWT server, make sure only people with high enough privilege can have the clearance.
+2. Regular system state audits or system change auto-detection. For example, OWT server system changes notification mechanism by third-party tool.
 3. Establish policy of file based operation history for the tracking purpose.
-4. Establish policy disallowing saving credentials for remote system access on MCU server.
+4. Establish policy disallowing saving credentials for remote system access on OWT server.
 5. Use a policy for account revocation when appropriate and regular password expire.
-6. Use only per user account credentials, not account groups on MCU server.
-7. Automated virus scans using approved software on MCU server.
+6. Use only per user account credentials, not account groups on OWT server.
+7. Automated virus scans using approved software on OWT server.
 8. Establish policy designed to ensure only allowed use of the server for external connections.
-9. MCU server should install only approved software and required components, and verify default features status. For example, only enable what are needed.
-10. Use a firewall and close any ports not specifically used on MCU server.
-11. Run a vulnerability scan regularly for checking software updates against trusted databases, and monitor publically communicated findings and patch MCU system immediately.
+9. OWT server should install only approved software and required components, and verify default features status. For example, only enable what are needed.
+10. Use a firewall and close any ports not specifically used on OWT server.
+11. Run a vulnerability scan regularly for checking software updates against trusted databases, and monitor publically communicated findings and patch OWT system immediately.
 12. Configure appropriate connection attempt timeouts and automated IP filtering, in order to do the rejection of unauthenticated requests.
-13. If all possible, use or develop an automated health monitoring component of server service availability on MCU server.
+13. If all possible, use or develop an automated health monitoring component of server service availability on OWT server.
 14. Use a log analyzer solution to help detect attack attempts.
 15. During server development, avoid processing of unexpected headers or query string variables, and only read those defined for the API and limit overall message size.
-16. Avoid excessive error specificity and verbose details that reveal how the MCU server works.
+16. Avoid excessive error specificity and verbose details that reveal how the OWT server works.
 17. During server and client development, suggest running some kind of security development lifecycle/process and conduct internal and external security testing and static code analysis with tools by trusted roles.
 18. If all possible, backup all the log data to a dedicated log server with protection.
-19. Deploy MCU cluster(Managers + Workers) inside Demilitarized Zone(DMZ) area, utilize external firewall A to protect them against possible attacks, e.g. DoS attack; Deploy Mongo DB and RabbitMQ behind DMZ, configure internal firewall B to make sure only cluster machines can connect to RabbitMQ server and access to MongoDB data resources.
+19. Deploy OWT cluster(Managers + Workers) inside Demilitarized Zone(DMZ) area, utilize external firewall A to protect them against possible attacks, e.g. DoS attack; Deploy Mongo DB and RabbitMQ behind DMZ, configure internal firewall B to make sure only cluster machines can connect to RabbitMQ server and access to MongoDB data resources.
 
 **Figure 2-1. Security Recommendations Picture**
 ![Security Recommendations Picture](./pic/deploy.png)
 
 ## 2.7 FAQ {#Conferencesection2_6}
-1. Sudden low volume when connecting Chrome on Windows to MCU
+1. Sudden low volume when connecting Chrome on Windows to OWT server
 
     **Resolution**:
 
-    Both the Chrome browser and Windows system itself can reduce the volume during a connection to the MCU server. To resolve this issue, disable the following Communications feature found in the Sound Settings using the Windows Control Panel.
+    Both the Chrome browser and Windows system itself can reduce the volume during a connection to the OWT server. To resolve this issue, disable the following Communications feature found in the Sound Settings using the Windows Control Panel.
 
     **Figure 2-2. Sound Settings**
     ![Sound Settings](./pic/soundsettings.png)
-2. Failed to start MCU server, and receive the following error message: "child_process.js:948; throw errnoException(process._errno, 'spawn'); Error: spawn EMFILE"
+2. Failed to start OWT server, and receive the following error message: "child_process.js:948; throw errnoException(process._errno, 'spawn'); Error: spawn EMFILE"
 
     **Resolution**:
 
     Use the proper Node.js version as outlined in the [Dependencies](#Conferencesection2_3_1) section.
 
-3. Failed to start MCU server, and receive the following error message: "Creating superservice in localhost/management-apidb SuperService ID: Sat Feb 7 19:10:32.456 TypeError: Cannot read property '_id' of null SuperService KEY: Sat Feb  7 19:10:32.479 TypeError: Cannot read property 'key' of null"
+3. Failed to start OWT server, and receive the following error message: "Creating superservice in localhost/management-apidb SuperService ID: Sat Feb 7 19:10:32.456 TypeError: Cannot read property '_id' of null SuperService KEY: Sat Feb  7 19:10:32.479 TypeError: Cannot read property 'key' of null"
 
     **Resolution**:
 
     Use the proper MongoDB version as outlined in the [Dependencies](#Conferencesection2_3_1) section.
-4. Run into network port conflicts on MCU, and probably some error message like "net::ERR_CONNECTION_TIMED_OUT" or "ERROR: server connection failed: connection_error"
+4. Run into network port conflicts on OWT server, and probably some error message like "net::ERR_CONNECTION_TIMED_OUT" or "ERROR: server connection failed: connection_error"
 
     **Resolution**:
 
-    In the MCU server, the following default ports have been assigned for MCU usage: 5672 (configurable), 8080 (configurable), 3000 (configurable), 3300 (configurable). Make sure they are always available for MCU. Also, in order to configure the two configurable ports above to a value smaller than the 1024 limitation, use the following command to enable it:
+    In the OWT server, the following default ports have been assigned for server usage: 5672 (configurable), 8080 (configurable), 3000 (configurable), 3300 (configurable). Make sure they are always available for OWT server. Also, in order to configure the two configurable ports above to a value smaller than the 1024 limitation, use the following command to enable it:
 
         sudo setcap cap_net_bind_service=+ep $(which node)
 
-    If you are still not able to bypass the 1024 port limitation, remember to put the **MCU library path into /etc/ld.so.conf.d**.
-# 3 MCU Management Console Brief Guide {#Conferencesection3}
+    If you are still not able to bypass the 1024 port limitation, remember to put the **OWT server library path into /etc/ld.so.conf.d**.
+# 3 OWT Server Management Console Brief Guide {#Conferencesection3}
 ## 3.1 Introduction {#Conferencesection3_1}
-The MCU Management Console is the frontend console to manage the MCU server. It is built with MCU's server-side APIs and it provides the management interface to MCU administrators.
+The OWT Server Management Console is the frontend console to manage the OWT server. It is built with OWT's server-side APIs and it provides the management interface to OWT administrators.
 ## 3.2 Access {#Conferencesection3_2}
-Once you have launched MCU servers, you can then access the console via a browser at https://XXXX:3300/console/ by default. You will be asked for your the service-id and service-key in order to access the service.
+Once you have launched OWT servers, you can then access the console via a browser at https://XXXX:3300/console/ by default. You will be asked for your the service-id and service-key in order to access the service.
 
 After inputting your service-id and service-key in the dialog prompt, choose 'remember me' and click 'save changes' to save your session. If you want to switch to another service, click the ‘profile' button on the upper-right corner to get in this dialog prompt and do the similar procedure again. If you want to log out the management console, click the red ‘clear cookie' button in the dialog prompt.
 
-If you have not launched MCU servers, you should launch the management-api server before accessing the management console:
+If you have not launched OWT servers, you should launch the management-api server before accessing the management console:
 
     cd Release-<Version>/
     bin/daemon.sh start management-api
@@ -614,7 +614,7 @@ h265 | video
 vp8 | video
 vp9 | video
 
-> **Note**: When video format is "h264", for decoding, either software or hardware version MCU supports all profiles. For encoding, software version MCU with openh264 supports constrained-baseline profile and hardware version supports profiles including constrained-baseline, baseline, main, high.
+> **Note**: When video format is "h264", for decoding, either software or hardware version OWT server supports all profiles. For encoding, software version OWT server with openh264 supports constrained-baseline profile and hardware version supports profiles including constrained-baseline, baseline, main, high.
 
  **Table 3-3 Default bitrate for typical resolutions (30fps)**
 |Resolution|Default bitrate(kbps)|
@@ -636,7 +636,7 @@ If framerate or resolution is specified in the subscription without bitrate, def
 > **Note**: If base layout is set to 'void', user must input customized layout for the room, otherwise the video layout would be treated as invalid. Read 3.5.1 for details of customized layout. maxInput indicates the maximum number of video frame inputs for the video layout definition.
 
 ### 3.5.1 Customized video layout {#Conferencesection3_5_1}
-The MCU server supports the mixed video layout configuration which is similar as RFC5707 Media Server Markup Language (MSML).
+The OWT server supports the mixed video layout configuration which is similar as RFC5707 Media Server Markup Language (MSML).
 A valid customized video layout should be an array of video layout definition.
 The following example shows the details:
 
@@ -735,7 +735,7 @@ The size of a region is specified relative to the size of the root mixed stream 
 Regions are located on the root window based on the value of the position attributes "top" and "left".  These attributes define the position of the top left corner of the region as an offset from the top left corner of the root mixed stream, which is a percent of the vertical or horizontal dimension of the root mixed stream.
 
 ### 3.5.2 Enable SIP connectivity {#Conferencesection3_5_2}
-The MCU server supports connection from SIP clients. Before setting up SIP connectivity for rooms, make sure SIP server (like Kamailio) and related SIP user accounts are available. The SIP settings can be enabled through SDK or management console. On the console page, find the room that needs interaction with SIP clients and click the related "Room Detail" field. Then find the SIP setting fields in sub-section "sip".
+The OWT server supports connection from SIP clients. Before setting up SIP connectivity for rooms, make sure SIP server (like Kamailio) and related SIP user accounts are available. The SIP settings can be enabled through SDK or management console. On the console page, find the room that needs interaction with SIP clients and click the related "Room Detail" field. Then find the SIP setting fields in sub-section "sip".
 
 The meaning of each field is listed below:
 
@@ -756,41 +756,41 @@ All workers including portals, conference-agents, webrtc-agents, streaming-agent
 For portal and webrtc-agent workers, the "isp" and "region" preferences can be specified in portal and webrtc-agent configurations. Pass the preferred "isp" and "region" when creating a token, then cluster-manager will only schedule the corresponding worker nodes to the client requests that match "isp" and "region" preferences. The portal and webrtc-agent will serve all the isp and region if corresponding configuration items under "capacity" are set to empty lists. If no preferences are specified for clients when creating token, then only those portal and webrtc-agent with empty isp and region setting will serve them.
 
 ## 3.7 Runtime Configuration {#Conferencesection3_7}
-Only super service user can access runtime configuration. Current management console implementation just provides the MCU cluster runtime configuration viewer.
+Only super service user can access runtime configuration. Current management console implementation just provides the OWT server cluster runtime configuration viewer.
 
-# 4 MCU Sample Application Server User Guide  {#Conferencesection4}
+# 4 OWT Sample Application Server User Guide  {#Conferencesection4}
 ## 4.1 Introduction {#Conferencesection4_1}
-The MCU sample application server is a Web application demo that shows how to host audio/video conference services powered by the Open WebRTC Toolkit MCU. The sample application server is based on MCU runtime components. Refer to [Section 2](#Conferencesection2) of this guide, for system requirements and launch/stop instructions.
+The OWT sample application server is a Web application demo that shows how to host audio/video conference services powered by the Open WebRTC Toolkit. The sample application server is based on OWT runtime components. Refer to [Section 2](#Conferencesection2) of this guide, for system requirements and launch/stop instructions.
 
 The source code of the sample application is in Release-<Version>/extras/basic_example/.
 
 This section explains how to start a conference and then connect to a conference using different qualifiers, such as a specific video resolution.
 
-## 4.2 Start a Conference through the MCU Sample Application Server {#Conferencesection4_2}
+## 4.2 Start a Conference through the OWT Sample Application Server {#Conferencesection4_2}
 These general steps show how to start a conference:
 
-1. Start up the MCU server components.
+1. Start up the OWT server components.
 2. Launch your Google Chrome* browser from the client machine.
-3. Connect to the MCU sample application server at: https://XXXXX:3004. Replace XXXXX with the IP address or machine name of the MCU sample application server.
+3. Connect to the OWT sample application server at: https://XXXXX:3004. Replace XXXXX with the IP address or machine name of the OWT sample application server.
 > **Note**: Latest Chrome browser versions from v47 force https access on WebRTC applications. You will get SSL warning page with default certificates, replace them with your own trusted ones.
 4. Start your conference with this default room created by the sample application server.
 
-### 4.2.1 Connect to an MCU conference with specific room {#Conferencesection4_2_1}
+### 4.2.1 Connect to an OWT server conference with specific room {#Conferencesection4_2_1}
 You can connect to a particular conference room. To do this, simply specify your room ID via a query string in your URL: room.
-For example, connect to the MCU sample application server XXXXX with the following URL:
+For example, connect to the OWT sample application server XXXXX with the following URL:
 
         https://XXXXX:3004/?room=some_particular_room_id
-This will direct the conference connection to the MCU room with the ID some_particular_room_id.
-### 4.2.2 Connect to an MCU conference to subscribe forward streams {#Conferencesection4_2_2}
-Since MCU room can now produce both forward streams and mixed stream at the same time, including the screen sharing stream, the client is able to subscribe specified stream(s) by a query string in your URL: forward. The default value for the key word is false.
+This will direct the conference connection to the room with the ID some_particular_room_id.
+### 4.2.2 Connect to an OWT server conference to subscribe forward streams {#Conferencesection4_2_2}
+Since OWT conference room can now produce both forward streams and mixed stream at the same time, including the screen sharing stream, the client is able to subscribe specified stream(s) by a query string in your URL: forward. The default value for the key word is false.
 
-For example, to subscribe forward stream instead of mixed stream from MCU, connect to the MCU sample application server XXXXX with the following URL:
+For example, to subscribe forward stream instead of mixed stream from OWT server, connect to the OWT sample application server XXXXX with the following URL:
 
         https://XXXXX:3004/?forward=true
 
-### 4.2.3 Connect to an MCU conference with an RTSP input {#Conferencesection4_2_3}
-The MCU conference supports external stream input from devices that support RTSP protocol, like IP Camera.
-For example, connect to the MCU sample application server XXXXX with the following URL:
+### 4.2.3 Connect to an OWT conference with an RTSP input {#Conferencesection4_2_3}
+The OWT conference supports external stream input from devices that support RTSP protocol, like IP Camera.
+For example, connect to the OWT sample application server XXXXX with the following URL:
 
         https://XXXXX:3004/?url=rtsp_stream_url
 
@@ -816,7 +816,7 @@ Name | Version | Remarks
 Node.js | 8.15.0 | Website: http://nodejs.org/
 Node modules | Specified | N/A
 
-Regarding Node.js*, make sure it's installed in your system prior to installing the Peer Server. We recommend version 8.11.1. Refer to http://nodejs.org/ for installation details.
+Regarding Node.js*, make sure it's installed in your system prior to installing the Peer Server. We recommend version 8.15.0. Refer to http://nodejs.org/ for installation details.
 ## 5.3 Installation {#Conferencesection5_3}
 On the server machine, unpack the peer server release package, and install node modules
 
@@ -838,12 +838,12 @@ Run the **kill** command directly from the terminal to stop the peer server.
 
 # 6 Media Aanalytics {#Conferencesection6}
 ## 6.1 Introduction {#Conferencesection6_1}
-MCU provides media analytics functionality via REST API. The media analytics plugins allows you performing analytics on any stream in MCU, generating new streams and/or emitting events during analytics. The proposed usage scenario for real-time media analytics includes but is not limited to movement/object detection in surveillance and remote health care, customer/audience analyzing in retail and remote education, etc.
+OWT server provides media analytics functionality via REST API. The media analytics plugins allows you performing analytics on any stream in OWT server, generating new streams and/or emitting events during analytics. The proposed usage scenario for real-time media analytics includes but is not limited to movement/object detection in surveillance and remote health care, customer/audience analyzing in retail and remote education, etc.
 
 For usage of media analytics REST API, refer to the REST API document.
 
 ## 6.2 Building Existing Plugins {#Conferencesection6_2}
-A few sample plugins are shipped with MCU. After you build and install MCU, the source of those analytics plugins will be placed under analytics_agent/plugins/ directory.
+A few sample plugins are shipped with OWT server. After you build and install OWT server, the source of those analytics plugins will be placed under analytics_agent/plugins/ directory.
 
 Before you build those plugins, you need to install Intel Distribution of OpenVINO 2018 R5 from [https://software.intel.com/en-us/openvino-toolkit/](https://software.intel.com/en-us/openvino-toolkit/). After installation, make sure you go to /opt/intel/computer_vision_sdk/install_dependencies/ directory, and run:
     sudo -E ./install_NEO_OCL_driver.sh
@@ -856,7 +856,7 @@ To build the plugins, simply go to analytics_agent/plugins/sample directory, and
 Copy files under build/intel64/Release/lib/ to analytics_agent/lib/ directory, or to the libpath as specified in agent.toml in analytics_agent.
 
 ## 6.3 Using Pre-built Plugins {#Conferencesection6_3}
-The Server provides 4 plugins as source code which can be built by your own. To verify them, make sure you run ```source /opt/intel/computer_vision_sdk/bin/setupvars.sh``` before starting up MCU.
+The Server provides 4 plugins as source code which can be built by your own. To verify them, make sure you run ```source /opt/intel/computer_vision_sdk/bin/setupvars.sh``` before starting up OWT server.
 
 ### 6.3.1 Face Detection Plugin {#Conferencesection6_3_1}
 Identified by GUID b849f44bee074b08bf3e627f3fc927c. This plugin provides the capability of finding faces in current analyzed stream and annotates it with a rectangle boarder on the face.
@@ -877,7 +877,7 @@ The Media Analytics Server package provides analytics plugin sdk under “plugin
 ### 6.4.1 Create Plugin {#Conferencesection6_4_1}
 Your plugin class implementation must inherit from rvaPlugin interface as defined in plugins/include/plugin.h. Following the plugin class implementation, it is required to include the DECLARE_PLUGIN(ClassName) macro to export your plugin implementation.
 ### 6.4.2 Deploy Your Plugin {#Conferencesection6_4_2}
-To deploy a plugin to MCU Server, you will need to generate a new GUID for your plugin. After that, copy your plugin .so file to analytics_agent/lib, or the libpath as specified by agent.toml of analtyics agent. Also you need to add an entry into the plugin.cfg file under analytics_agent with the GUID you generated, for example:
+To deploy a plugin to OWT Server, you will need to generate a new GUID for your plugin. After that, copy your plugin .so file to analytics_agent/lib, or the libpath as specified by agent.toml of analtyics agent. Also you need to add an entry into the plugin.cfg file under analytics_agent with the GUID you generated, for example:
 	[c842f499aa093c27cf1e328f2fc987c7]
 	description = 'my own plugin'
 	pluginversion = 1
@@ -887,6 +887,6 @@ To deploy a plugin to MCU Server, you will need to generate a new GUID for your 
 	configpath = 'pluginlibs/' # relative to analytics agent directory
 	messaging = true       # set to false if your plugin does not send notification
 	inputfourcc = 'I420'   # must be I420 for current version
-	outputfourcc = 'I420'  # set to "" if your plugin will not republish analyzed stream to MCU.
+	outputfourcc = 'I420'  # set to "" if your plugin will not republish analyzed stream to OWT server.
 
-Restart analytics agent and your plugin will be added to MCU.
+Restart analytics agent and your plugin will be added to OWT server.
