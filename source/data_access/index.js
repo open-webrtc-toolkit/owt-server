@@ -20,10 +20,10 @@ var connectOption = {
 };
 
 var mongoose = require('mongoose');
+mongoose.plugin(schema => { schema.options.usePushEach = true });
+mongoose.Promise = Promise;
 
 var setupConnection = function () {
-  mongoose.plugin(schema => { schema.options.usePushEach = true });
-  mongoose.Promise = Promise;
   mongoose.connect('mongodb://' + databaseUrl, connectOption)
     .catch(function (err) {
       console.log(err.message);

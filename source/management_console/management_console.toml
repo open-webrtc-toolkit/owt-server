@@ -1,10 +1,10 @@
 [console]
 #configuration for the management-console
 keystorePath = "./cert/certificate.pfx"
-ssl = false #default: false
+ssl = true #if use HTTPS
 port = 3300 #default: 3300, port of manage console server
 
 [api]
 #configuration of management-api server
-secure = false #default: false, if server certificate is verified, set it to true.
-host = "http://localhost:3000" #default "http://localhost:3000", specify "http" or "https" server here.
+#secure = true #if server certificate is verified, set it to true.
+host = "https://localhost:3000" #default "http://localhost:3000", specify "http" or "https" server here.
