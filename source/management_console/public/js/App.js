@@ -933,6 +933,61 @@ class RoomModal extends React.Component {
     );
   }
 
+  renderTranscoding() {
+    const room = this.state.room;
+    const transcodingRow = (path, name) => {
+      const value = _.get(this.state.room.transcoding, path, false);
+      return e(
+        'div',
+        {className: 'row form-group'},
+        e('div', {className: 'col-sm-3'}, e('label', {}, name)),
+        e(
+          'div',
+          {className: 'col-sm-3'},
+          e('label',
+            {className: 'checkbox-inline'},
+            e(
+              'input',
+              {
+                type: 'checkbox',
+                value: name,
+                onChange: (e) => {
+                  let newRoom = _.cloneDeep(this.state.room);
+                  if (!newRoom.transcoding) {
+                    newRoom.transcoding = {};
+                  }
+                  _.set(newRoom.transcoding, path, e.target.checked);
+                  this.setState({room: newRoom});
+                },
+                checked: value
+              }
+            ),
+          )
+        ),
+      );
+    };
+
+    return e(
+      'div',
+      {className: 'panel panel-default'},
+      e('div', {className: 'panel-heading'}, 'Transcoding'),
+      e(
+        'div',
+        {className: 'panel-body'},
+        e(
+          'div',
+          {className: 'container-fluid'},
+          transcodingRow('audio', 'Audio Format'),
+          transcodingRow('video.format', 'Video Format'),
+          transcodingRow('video.parameters.resolution', 'Video Resolution'),
+          transcodingRow('video.parameters.framerate', 'Video Framerate'),
+          transcodingRow('video.parameters.bitrate', 'Video Bitrate'),
+          transcodingRow('video.parameters.keyFrameInterval', 'Video KeyFrameInterval'),
+        ),
+      )
+    );
+  }
+
   render() {
     return e(
       'div',
@@ -964,6 +1019,7 @@ class RoomModal extends React.Component {
           this.renderMediaIn(),
           this.renderMediaOut(),
           this.renderSip(),
+          this.renderTranscoding(),
           this.renderNotifying(),
           e(
             RoomView,
