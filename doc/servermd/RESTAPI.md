@@ -1,4 +1,4 @@
-Open WebRTC Toolkit Server Management REST API
+Open WebRTC Toolkit Server Management REST API Guide
 ----------------------
 
 # 1 Introduction {#RESTAPIsection1}
