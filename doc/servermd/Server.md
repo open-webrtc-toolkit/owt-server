@@ -78,6 +78,8 @@ The GPU-acceleration can only be enabled on CentOS version.
 
 If you want to set up video conference service with H.264 codec support powered by non GPU-accelerated OWT server, OpenH264 library is required. See [Deploy Cisco OpenH264* Library](#Conferencesection2_3_4) section for more details.
 
+If you want to set up video conference service with SVT-HEVC Encoder on Ubuntu 18.04/16.04 LTS(not supported on CentOS). See [Deploy SVT-HEVC Encoder Library](#Conferencesection2_3_6) section for more details.
+
 If you want to set up video conference service powered by GPU-accelerated OWT server through Intel® Media SDK, please follow the below instructions to install server side SDK on CentOS* 7.6 where the video-agents run.
 
 If you are working on the following platforms with the integrated graphics, please install Intel® Media SDK.
@@ -89,7 +91,7 @@ If you are working on the following platforms with the integrated graphics, plea
 
 For download or installation instructions, please visit https://github.com/Intel-Media-SDK/MediaSDK.
 
-The external stream output (rtsp/rtmp) feature relies on AAC encoder libfdk_aac support in ffmpeg library, please see [Compile and deploy ffmpeg with libfdk_aac](#Conferencesection2_3_5) section for detailed instructions.
+The external stream output and mp4 format recording rely on AAC encoder libfdk_aac support in ffmpeg library, please see [Compile and deploy ffmpeg with libfdk_aac](#Conferencesection2_3_5) section for detailed instructions.
 
  **Table 2-2. Client compatibility**
 Application Name|Google Chrome\* 73|Mozilla Firefox\* 66|Microsoft Edge\* 44.17763.1.0|Safari\* 12.1|Open WebRTC Toolkit Client SDK for Android | Open WebRTC Toolkit Client SDK for iOS | Open WebRTC Toolkit Client SDK for Windows
@@ -167,7 +169,7 @@ In order for the OWT server to deliver the best performance on video conferencin
 On the server machine, directly unarchive the package file.
 
 ~~~~~~{.sh}
-    tar xf CS_WebRTC_Conference_Server_MCU.v<Version>.tgz
+    tar xf CS_WebRTC_Conference_Server_MCU.v<Version>.CentOS.tgz
 ~~~~~~
 
 For Ubuntu version OWT server, do as following:
@@ -194,7 +196,16 @@ The default ffmpeg library used by OWT server has no libfdk_aac support. If you 
 
 2. Copy all output libraries under ffmpeg_libfdkaac_lib folder to Release-<Version>/audio_agent/lib to replace the existing ones.
 
-### 2.3.6 Use your own certificate {#Conferencesection2_3_6}
+### 2.3.6 Deploy SVT-HEVC Encoder Library {#Conferencesection2_3_6}
+The default SVT-HEVC Encoder library installed is a pseudo one without any media logic. If you want to enable SVT-HEVC Encoder, please compile and deploy the library yourself with following steps:
+
+1. Go to Release-<Version>/video_agent folder, compile ffmpeg with SVT-HEVC Encoder library with below command:
+
+        compile_svtHevcEncoder.sh
+
+2. Copy the built library(libSvtHevcEnc.so.1) to Release-<Version>/video_agent/lib to replace the existing ones.
+
+### 2.3.7 Use your own certificate {#Conferencesection2_3_7}
 
 The default certificate (certificate.pfx) for the OWT server is located in the Release-<Version>/<Component>/cert folder. When using HTTPS and/or secure socket.io connection, you should use your own certificate for each server. First, you should edit management_api/management_api.toml, webrtc_agent/agent.toml, portal/portal.toml, management_console/management_console.toml to provide the path of each certificate for each server, under the key keystorePath. See Table 2-4 for details.
 
@@ -212,7 +223,7 @@ After editing the configuration file, you should run `./initcert.js` inside each
 
 For OWT sample application's certificate configuration, please follow the instruction file 'README.md' located at Release-<Version>/extras/basic_example/.
 
-### 2.3.7 Launch the OWT server as single node {#Conferencesection2_3_7}
+### 2.3.8 Launch the OWT server as single node {#Conferencesection2_3_8}
 To launch the OWT server on one machine, follow steps below:
 
 1. Initialize the OWT package for the first time execution.
@@ -236,13 +247,13 @@ To launch the OWT server on one machine, follow steps below:
 
 > **Note**: The procedures in this guide use the default room in the sample.
 
-### 2.3.8 Stop the OWT server {#Conferencesection2_3_8}
+### 2.3.9 Stop the OWT server {#Conferencesection2_3_9}
 Run the following commands to stop the OWT server:
 
     cd Release-<Version>/
     bin/stop-all.sh
 
-### 2.3.9 Set up the OWT server cluster {#Conferencesection2_3_9}
+### 2.3.10 Set up the OWT server cluster {#Conferencesection2_3_10}
  **Table 2-5. Distributed OWT server components**
 Component Name|Deployment Number|Responsibility
 --------|--------|--------
@@ -278,7 +289,7 @@ Follow the steps below to set up a OWT server cluster:
         bin/init-rabbitmq.sh [--deps]
    > **Note**: You can change the shell scripts to initialize them according to your own requirement. Or choose any other existing MongoDB or RabbitMQ service, like those with cluster support. Make sure MongoDB and RabbitMQ services are started prior to all OWT server cluster nodes.
 
-    If non-default user of rabbitmq-server is used, do as following in each module:
+    If non-default user of rabbitmq-server or mongodb-server is used, do as following in each module:
 
         initauth.js
 
@@ -350,7 +361,7 @@ Follow the steps below to set up a OWT server cluster:
        For each agent, follow these steps:
 
             cd Release-<Version>/
-            [video_agent/audio_agent/webrtc_agent/recording_agent/streaming_agent/sip_agent]/install_deps.sh
+            [video_agent/audio_agent/webrtc_agent/recording_agent/streaming_agent/sip_agent/analytics_agent]/install_deps.sh
 
        If you want to enable GPU-acceleration for video-agent through Media Server Studio, follow these steps:
 
@@ -375,7 +386,7 @@ Follow the steps below to set up a OWT server cluster:
         cd Release-<Version>/
         bin/daemon.sh start management-console
 
-### 2.3.10 Configure VCA nodes as seperated machines to run video-agent {#Conferencesection2_3_10}
+### 2.3.11 Configure VCA nodes as seperated machines to run video-agent {#Conferencesection2_3_11}
 To setup VCA nodes as separate machines, two approaches are provided. One is the network bridging provided by VCA software stack. The other is IP forwarding rules setting through iptables.
 
 VCA built-in software stack provides network bridging support. Follow section 8 - Configuring nodes for bridged mode operation in VCA_SoftwareUserGuide_1_3.pdf. In this approach, all network traffic will go through one Ethernet interface.
@@ -425,7 +436,7 @@ If you want to map each VCA node to different Ethernet interface, IP forwarding 
             systemctl stop firewalld
             systemctl disable firewalld
 
-### 2.3.11 Stop the OWT server cluster {#Conferencesection2_3_11}
+### 2.3.12 Stop the OWT server cluster {#Conferencesection2_3_12}
 
 To stop the OWT server cluster, follow these steps:
 1. Run the following commands on each management-api node to stop management-api instances:
@@ -460,6 +471,7 @@ portal|All signaling connections on this portal will be disconnected, all action
 conference-agent/node|All sessions impacted will be destroyed and all their participants will be forced disconnected and all actions will be dropped. Client needs to re-login the session.|server-disconnected event
 webrtc-agent/node|All webrtc stream actions assign to this node will be dropped. Client needs to redo these actions.|stream-failed event
 streaming-agent/node|All external stream actions assign to this node will be dropped. Client needs to redo these actions.|stream-failed event
+recording-agent/node|All recording stream actions assign to this node will be dropped. Client needs to redo these actions.|stream-failed event
 audio-agent/node|Auto schedule new audio-agent/node resource to recover the session context.|Transparent
 video-agent/node|Auto schedule new video-agent/node resource to recover the session context.|Transparent
 analytics-agent/node|All analytics stream actions assign to this node will be dropped. Client needs to redo these actions.|stream-failed event
@@ -788,12 +800,6 @@ For example, to subscribe forward stream instead of mixed stream from OWT server
 
         https://XXXXX:3004/?forward=true
 
-### 4.2.3 Connect to an OWT conference with an RTSP input {#Conferencesection4_2_3}
-The OWT conference supports external stream input from devices that support RTSP protocol, like IP Camera.
-For example, connect to the OWT sample application server XXXXX with the following URL:
-
-        https://XXXXX:3004/?url=rtsp_stream_url
-
 # 5 Peer Server {#Conferencesection5}
 ## 5.1 Introduction {#Conferencesection5_1}
 The peer server is the default signaling server of the Open-WebRTC-Toolkit. The peer server provides the ability to exchange WebRTC signaling messages over Socket.IO between different clients.
@@ -860,9 +866,9 @@ Copy all files under build/intel64/Release/lib/ to analytics_agent/lib/ director
 The Server provides 4 plugins as source code which can be built by your own. To verify them, make sure you run ```source /opt/intel/computer_vision_sdk/bin/setupvars.sh``` before starting up OWT server.
 
 ### 6.1.3.1 Face Detection Plugin {#Conferencesection6_1_3_1}
-Identified by GUID b849f44bee074b08bf3e627f3fc927c. This plugin provides the capability of finding faces in current analyzed stream and annotates it with a rectangle boarder on the face.
+Identified by GUID b849f44bee074b08bf3e627f3fc92c7. This plugin provides the capability of finding faces in current analyzed stream and annotates it with a rectangle boarder on the face.
 ### 6.1.3.2 Face Recognition Plugin {#Conferencesection6_1_3_2}
-Identified by GUID 3f932ff2a80341faa0a73ebb3bcfb85d. This plugin provides the capability of identifying people's name in current stream and annotates them with a rectangle on the face, and also list the name and the confidence of the recoginition result.
+Identified by GUID 3f932ff2a80341faa0a73ebb3bcfb85d. This plugin provides the capability of identifying people's name in current stream and annotates them with a rectangle on the face, and also list the name and the confidence of the recognition result.
 To add new people for recognition, here are the steps:
 1. Take at least 3 pictures of one person and place them under the raw_photos directory with sub-directory name that identifies that person's name(no space in the directory name). The raw_photos should be under the same directory with the pre-process tool.
 2. Run the pre-process tool to process the raw photos (which is also built when you build the samples). Append the path of libcpu_extension.so you built to LD_LIBRARY_PATH before you run the tool. Put the output vectors.txt under analytics_agent direcotry of OWT server.
