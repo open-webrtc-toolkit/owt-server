@@ -255,7 +255,7 @@ streaming-agent|0 or many|This agent spawning streaming accessing nodes which pu
 recording-agent|0 or many|This agent spawning recording nodes which record the specified audio/video streams to permanent storage facilities
 audio-agent|1 or many|This agent spawning audio processing nodes which perform audio transcoding and mixing
 video-agent|1 or many|This agent spawning video processing nodes which perform video transcoding and mixing
-analytics-agent|0 or many|This agent spawning video analyzing nodes which perform video analytics
+analytics-agent|0 or many|This agent spawning media analyzing nodes which perform media analytics
 sip-agent|0 or many|This agent spawning sip processing nodes which handle sip connections
 sip-portal|0 or 1|The portal for initializing rooms' sip settings and scheduling sip agents to serve for them
 app|0 or 1|The sample web application for reference, users should use their own application server
@@ -836,13 +836,14 @@ Run the following commands to launch the peer server:
 ## 5.6 Stop the peer server {#Conferencesection5_6}
 Run the **kill** command directly from the terminal to stop the peer server.
 
-# 6 Media Aanalytics {#Conferencesection6}
-## 6.1 Introduction {#Conferencesection6_1}
+# 6 Appendix {#Conferencesection6}
+# 6.1 Media Analytics {#Conferencesection6_1}
+## 6.1.1 Introduction {#Conferencesection6_1_1}
 OWT server provides media analytics functionality via REST API. The media analytics plugins allows you performing analytics on any stream in OWT server, generating new streams and/or emitting events during analytics. The proposed usage scenario for real-time media analytics includes but is not limited to movement/object detection in surveillance and remote health care, customer/audience analyzing in retail and remote education, etc.
 
 For usage of media analytics REST API, refer to the REST API document.
 
-## 6.2 Building Existing Plugins {#Conferencesection6_2}
+## 6.1.2 Building Existing Plugins {#Conferencesection6_1_2}
 A few sample plugins are shipped with OWT server. After you build and install OWT server, the source of those analytics plugins will be placed under analytics_agent/plugins/ directory.
 
 Before you build those plugins, you need to install Intel Distribution of OpenVINO 2018 R5 from [https://software.intel.com/en-us/openvino-toolkit/](https://software.intel.com/en-us/openvino-toolkit/). After installation, make sure you go to /opt/intel/computer_vision_sdk/install_dependencies/ directory, and run:
@@ -853,31 +854,30 @@ Intel Distribution of OpenVINO 2018 R5 will require Intel Core 6th to 8th Genera
 To build the plugins, simply go to analytics_agent/plugins/sample directory, and run:
     ./build_samples.sh
 
-Copy files under build/intel64/Release/lib/ to analytics_agent/lib/ directory, or to the libpath as specified in agent.toml in analytics_agent.
+Copy all files under build/intel64/Release/lib/ to analytics_agent/lib/ directory, or to the libpath as specified in agent.toml in analytics_agent.
 
-## 6.3 Using Pre-built Plugins {#Conferencesection6_3}
+## 6.1.3 Using Pre-built Plugins {#Conferencesection6_1_3}
 The Server provides 4 plugins as source code which can be built by your own. To verify them, make sure you run ```source /opt/intel/computer_vision_sdk/bin/setupvars.sh``` before starting up OWT server.
 
-### 6.3.1 Face Detection Plugin {#Conferencesection6_3_1}
+### 6.1.3.1 Face Detection Plugin {#Conferencesection6_1_3_1}
 Identified by GUID b849f44bee074b08bf3e627f3fc927c. This plugin provides the capability of finding faces in current analyzed stream and annotates it with a rectangle boarder on the face.
-### 6.3.2 Face Recognition Plugin {#Conferencesection6_3_2}
-Identified by GUID 3f932ff2a80341faa0a73ebb3bcfb85d. This plugin provides the capability of identifing the people's name in current stream and annotates them with a rectangle on the face, and also list the name and the confidence of the recoginition result.
+### 6.1.3.2 Face Recognition Plugin {#Conferencesection6_1_3_2}
+Identified by GUID 3f932ff2a80341faa0a73ebb3bcfb85d. This plugin provides the capability of identifying people's name in current stream and annotates them with a rectangle on the face, and also list the name and the confidence of the recoginition result.
 To add new people for recognition, here are the steps:
-1. Take at least 3 pictures of one person and place them under the raw_photos directory with sub-directory name that identifies that person's name(no space in the directory name).
-2. Run the pre-process tool to process the raw photos. Put the output vectors.txt under analytics_agent direcotry.
-### 6.3.3 Body Face Style Recognition Plugin {#Conferencesection6_3_3}
-Identified by GUID 7e399f65545b482194d6f6ae1d46df05. This plugin provides the capability of recognizing the body and face of a person and annotates accordingly.
-The procedure of adding new people for recognition is the same as face recognition plugin.
-### 6.3.4 Dummy Plugin {#Conferencesection6_3_4}
+1. Take at least 3 pictures of one person and place them under the raw_photos directory with sub-directory name that identifies that person's name(no space in the directory name). The raw_photos should be under the same directory with the pre-process tool.
+2. Run the pre-process tool to process the raw photos (which is also built when you build the samples). Append the path of libcpu_extension.so you built to LD_LIBRARY_PATH before you run the tool. Put the output vectors.txt under analytics_agent direcotry of OWT server.
+### 6.1.3.3 Smart Class Room Plugin {#Conferencesection6_1_3_3}
+Identified by GUID 10c213f3d55249718d3bd44712488502. This plugin provides the capability of recognizing the gestures in the stream and annotates the gestures accordingly.
+### 6.1.3.4 Dummy Plugin {#Conferencesection6_1_3_4}
 Identified by GUID dc51138a8284436f873418a21ba8cfa7. This plugin simply modifies part of the stream to demonstrate the working process of plugins.
 
-## 6.4 Create and Deploy Your Own Analytics Plugin {#Conferencesection6_4}
-The Media Analytics Server package provides analytics plugin sdk under “plugin” directory. Refer to the plugin.h for more detailed API description.
+## 6.1.4 Create and Deploy Your Own Media Analytics Plugin {#Conferencesection6_1_4}
+OWT server allows you creating your own media analytics plugins and deploy them to OWT server. Refer to the analytics_agent/plugins/include/plugin.h for more detailed API interface that each media analytics plugin needs to implement.
 
-### 6.4.1 Create Plugin {#Conferencesection6_4_1}
-Your plugin class implementation must inherit from rvaPlugin interface as defined in plugins/include/plugin.h. Following the plugin class implementation, it is required to include the DECLARE_PLUGIN(ClassName) macro to export your plugin implementation.
-### 6.4.2 Deploy Your Plugin {#Conferencesection6_4_2}
-To deploy a plugin to OWT Server, you will need to generate a new GUID for your plugin. After that, copy your plugin .so file to analytics_agent/lib, or the libpath as specified by agent.toml of analtyics agent. Also you need to add an entry into the plugin.cfg file under analytics_agent with the GUID you generated, for example:
+### 6.1.4.1 Create Plugin {#Conferencesection6_1_4_1}
+Your plugin class implementation must inherit from rvaPlugin interface as defined in analytics_agent/plugins/include/plugin.h. Besides the plugin class implementation, it is required to include the DECLARE_PLUGIN(ClassName) macro to export your plugin implementation.
+### 6.1.4.2 Deploy Your Plugin {#Conferencesection6_1_4_2}
+To deploy a plugin to OWT Server, you will need to generate a new GUID for your plugin. After that, copy your plugin .so files to analytics_agent/lib, or to the libpath as specified by agent.toml of analtyics agent. Also you need to add an entry into the plugin.cfg file under analytics_agent with the GUID you generated, for example:
 	[c842f499aa093c27cf1e328f2fc987c7]
 	description = 'my own plugin'
 	pluginversion = 1
