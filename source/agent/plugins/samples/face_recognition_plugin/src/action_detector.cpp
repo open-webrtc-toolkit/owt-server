@@ -112,10 +112,15 @@ void ActionDetectionClass::fetchResults() {
     const cv::Mat main_conf_out(ieSizeToVector(request->GetBlob(config_.detection_conf_blob_name)->getTensorDesc().getDims()),
                                 CV_32F, request->GetBlob(config_.detection_conf_blob_name)->buffer());
 
-    const cv::Mat add_conf_out(ieSizeToVector(request->GetBlob(config_.action_conf_blob_name)->getTensorDesc().getDims()),
-                               CV_32F, request->GetBlob(config_.action_conf_blob_name)->buffer());
+    std::vector<cv::Mat> add_conf_out;
+    for (int i = 0; i < config_.num_anchors; ++i) {
+        const auto blob_name = config_.action_conf_blob_name_prefix + std::to_string(i + 1);
+        add_conf_out.emplace_back(ieSizeToVector(request->GetBlob(blob_name)->getTensorDesc().getDims()),
+                                  CV_32F, request->GetBlob(blob_name)->buffer());
+    }
+
     /** Parse detections **/
-    GetDetections(loc_out, main_conf_out, add_conf_out, priorbox_out,
+    GetDetections(loc_out, main_conf_out, priorbox_out, add_conf_out,
                   cv::Size(width_, height_), &results);
 }
 
@@ -164,17 +169,22 @@ cv::Rect ActionDetectionClass::ConvertToRect(
 }
 
 void ActionDetectionClass::GetDetections(
-        const cv::Mat& loc, const cv::Mat& main_conf, const cv::Mat& add_conf,
-        const cv::Mat& priorbox, const cv::Size& frame_size,
-        DetectedActions* detections) const {
+        const cv::Mat& loc, const cv::Mat& main_conf,
+        const cv::Mat& priorbox, const std::vector<cv::Mat>& add_conf,
+        const cv::Size& frame_size, DetectedActions* detections) const {
     /** num_candidates = H*W*NUM_SSD_ANCHORS **/
     const int num_candidates = priorbox.size[2] / SSD_PRIORBOX_RECORD_SIZE;
 
     /** Prepare input data buffers **/
     const float* loc_data = reinterpret_cast<float*>(loc.data);
     const float* det_conf_data = reinterpret_cast<float*>(main_conf.data);
-    const float* action_conf_data = reinterpret_cast<float*>(add_conf.data);
     const float* prior_data = reinterpret_cast<float*>(priorbox.data);
+
+    const int num_anchors = add_conf.size();
+    std::vector<float*> action_conf_data(num_anchors);
+    for (int i = 0; i < num_anchors; ++i) {
+        action_conf_data[i] = reinterpret_cast<float*>(add_conf[i].data);
+    }
 
     /** Variable to store all detection candidates**/
     DetectedActions valid_detections;
@@ -191,12 +201,14 @@ void ActionDetectionClass::GetDetections(
         }
 
         /** Estimate the action label **/
-        const int action_conf_start_idx = p * config_.num_action_classes;
+        const int achor_id = p % num_anchors;
+        const float* anchor_conf_data = action_conf_data[achor_id];
+        const int action_conf_start_idx = p / num_anchors * config_.num_action_classes;
         int action_label = 0;
-        float action_conf = action_conf_data[action_conf_start_idx];
+        float action_conf = anchor_conf_data[action_conf_start_idx];
         for (int c = 1; c < config_.num_action_classes; ++c) {
-            if (action_conf_data[action_conf_start_idx + c] > action_conf) {
-                action_conf = action_conf_data[action_conf_start_idx + c];
+            if (anchor_conf_data[action_conf_start_idx + c] > action_conf) {
+                action_conf = anchor_conf_data[action_conf_start_idx + c];
                 action_label = c;
             }
         }
