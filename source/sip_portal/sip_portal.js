@@ -47,7 +47,7 @@ var api = {
 	//define rpc calls to receive sip info change from management-api
     handleSipUpdate : function(update) {
         // Argument update: {type: (create|update|delete), room_id:room-id, sipInfo:updated-sipInfo}
-        log.debug("on handleSipUpdate, update:", update);
+        log.debug("on handleSipUpdate, update:", update.type, update.room_id);
         var room_id = update.room_id;
         var sipInfo = update.sip;
         // Update the room sip info

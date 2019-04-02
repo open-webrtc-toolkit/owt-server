@@ -8,6 +8,7 @@ var Fraction = require('fraction.js');
 var Schema = mongoose.Schema;
 var Layout = require('./layoutTemplate');
 var DefaultUtil = require('../defaults');
+var cipher = require('../../cipher');
 
 var ColorRGB = {
   type: Number,
@@ -144,13 +145,27 @@ var RoomSchema = new Schema({
   sip: {
     sipServer: String,
     username: String,
-    password: String
+    password: {
+      type: String,
+      set: (v) => {
+        return cipher.encrypt(cipher.k, v);
+      },
+      get: (v) => {
+        let ret = '';
+        try {
+          ret = cipher.decrypt(cipher.k, v);
+        } catch (e) {}
+        return ret;
+      }
+    }
   },
   notifying: {
     participantActivities: { type: Boolean, default: true },
     streamChange: { type: Boolean, default: true }
   }
 });
+
+RoomSchema.set('toObject', { getters: true });
 
 RoomSchema.statics.ViewSchema = mongoose.model('View', ViewSchema);
 

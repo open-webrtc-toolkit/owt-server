@@ -843,7 +843,7 @@ class RoomModal extends React.Component {
           {className: 'col-sm-3'},
           e('input',
             {
-              type: 'text',
+              type: (path === 'password') ? 'password' : 'text',
               value,
               className: 'form-control',
               onChange: (e) => {
