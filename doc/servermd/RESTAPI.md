@@ -1,8 +1,8 @@
-MCU Management REST API
+Open WebRTC Toolkit Server Management REST API
 ----------------------
 
 # 1 Introduction {#RESTAPIsection1}
-Intel WebRTC solution provides a set of REST (Representational State Transfer) API for conference management. Manager clients can be implemented by different programming languages through these APIs.
+Open WebRTC Toolkit solution provides a set of REST (Representational State Transfer) API for conference management. Management clients can be implemented by different programming languages through these APIs.
 # 2 Definitions {#RESTAPIsection2}
 Resource: the kind of data under manipulation<br>
 
@@ -121,225 +121,234 @@ Data Model:<br>
     object(Room):
     {
       _id: string,
-      name: string,
-      participantLimit: number,                    // -1 means no limit
-      inputLimit: number,
-      roles: [ object(Role) ],
-      views: [ object(View) ],
-      mediaIn: object(MediaIn),
-      mediaOut: object(MediaOut),
-      transcoding: object(Transcoding),
-      notifying: object(Notifying),
-      sip: object(Sip)
+      name: string,                        // name of the room
+      participantLimit: number,            // -1 means no limit
+      inputLimit: number,                  // the limit for input stream
+      roles: [ object(Role) ],             // role definition
+      views: [ object(View) ],             // view definition, represents a mixed stream, empty list means no mixing
+      mediaIn: object(MediaIn),            // the input media constraints allowed for processing
+      mediaOut: object(MediaOut),          // the output media constraints
+      transcoding: object(Transcoding),    // the transcoding control
+      notifying: object(Notifying),        // notification control
+      sip: object(Sip)                     // SIP configuration
     }
+
     object(Role): {
-      role: string,
+      role: string,        // name of the role
       publish: {
-        video: boolean,
-        audio: boolean
+        video: boolean,    // whether the role can publish video
+        audio: boolean     // whether the role can publish audio
       },
       subscribe: {
-        video: boolean,
-        audio: boolean
+        video: boolean,    // whether the role can subscribe video
+        audio: boolean     // whether the role can subscribe audio
       }
     }
+
     object(View): {
       label: string,
-      audio: object(ViewAudio),
-      video: object(ViewVideo) | false
+      audio: object(ViewAudio),           // audio setting for the view
+      video: object(ViewVideo) | false    // video setting for the view
     }
+
     object(ViewAudio): {
-      format: {                                   // object(AudioFormat)
-        codec: string,                            // "opus", "pcmu", "pcma", "aac", "ac3", "nellymoser"
-        sampleRate: number,                       // "opus/48000/2", "isac/16000/2", "isac/32000/2", "g722/16000/1"
-        channelNum: number                        // E.g "opus/48000/2", "opus" is codec, 48000 is sampleRate, 2 is channelNum
+      format: {                // object(AudioFormat)
+        codec: string,         // "opus", "pcmu", "pcma", "aac", "ac3", "nellymoser"
+        sampleRate: number,    // "opus/48000/2", "isac/16000/2", "isac/32000/2", "g722/16000/1"
+        channelNum: number     // E.g "opus/48000/2", "opus" is codec, 48000 is sampleRate, 2 is channelNum
       },
-      vad: boolean
+      vad: boolean             // whether enable Voice Activity Detection for mixed audio
     }
+
     object(ViewVideo):{
       format: {                                   // object(VideoFormat)
         codec: string,                            // "h264", "vp8", "h265", "vp9"
         profile: string                           // For "h264" output only, CB", "B", "M", "H"
       },
       parameters: {
-        resolution: object(Resolution),
+        resolution: object(Resolution),           // valid resolutions see [media constraints](#6-Media-Constraints)
         framerate: number,                        // valid values in [6, 12, 15, 24, 30, 48, 60]
         bitrate: number,                          // Kbps
         keyFrameInterval: number,                 // valid values in [100, 30, 5, 2, 1]
       },
-      maxInput: number,                           // positive integer
+      maxInput: number,                           // input limit for the view, positive integer
       bgColor: {
         r: 0 ~ 255,
         g: 0 ~ 255,
         b: 0 ~ 255
       },
-      motionFactor: number,                       // float
-      keepActiveInputPrimary: boolean,
+      motionFactor: number,                       // float, affact the bitrate
+      keepActiveInputPrimary: boolean,            // keep active audio's related video in primary region in the view
       layout: {
         fitPolicy: string,                        // "letterbox" or "crop".
         templates: {
-          base: string,                           // valid values ["fluid", "lecture", "void"].
-          custom: [
-            { region: [ object(Region) ] },
-            { region: [ object(Region) ] }
+          base: string,                           // template base, valid values ["fluid", "lecture", "void"].
+          custom: [                               // user customized layout applied on base
+            { region: [ object(Region) ] },       // a region list of length K represents a K-region-layout
+            { region: [ object(Region) ] }        // detail of Region refer to the object(Region)
           ]
          }
       }
     }
+
     object(Resolution): {
-      width: number,
-      height: number
+      width: number,    // resolution width
+      height: number    // resolution height
     }
+
     object(Region): {
       id: string,
-      shape: string,
+      shape: string,      // "rectangle"
       area: {
-        left: number,
-        top: number,
-        width: number,
-        height: number
+        left: number,     // the left corner ratio of the region, [0, 1]
+        top: number,      // the top corner ratio of the region, [0, 1]
+        width: number,    // the width ratio of the region, [0, 1]
+        height: number    // the height ratio of the region, [0, 1]
       }
     }
+
     object(MediaIn): {
-      audio: [ object(AudioFormat) ]，              // Refers to the AudioFormat above.
-      video: [ object(VideoFormat) ]                // Refers to the VideoFormat above.
+      audio: [ object(AudioFormat) ]，    // Refers to the AudioFormat above.
+      video: [ object(VideoFormat) ]      // Refers to the VideoFormat above.
     }
+
     object(MediaOut): {
-      audio: [ object(AudioFormat) ],               // Refers to the AudioFormat above.
+      audio: [ object(AudioFormat) ],       // Refers to the AudioFormat above.
       video: {
-        format: [ object(VideoFormat) ],            // Refers to the VideoFormat above.
+        format: [ object(VideoFormat) ],    // Refers to the VideoFormat above.
         parameters: {
-          resolution: [ string ],                   // Array of resolution.E.g. ["x3/4", "x2/3", ... "cif"]
-          framerate: [ number ],                    // Array of framerate.E.g. [5, 15, 24, 30, 48, 60]
-          bitrate: [ number ],                      // Array of bitrate.E.g. [500, 1000, ... ]
-          keyFrameInterval: [ number ]              // Array of keyFrameInterval.E.g. [100, 30, 5, 2, 1]
+          resolution: [ string ],           // Array of resolution.E.g. ["x3/4", "x2/3", ... "cif"]
+          framerate: [ number ],            // Array of framerate.E.g. [5, 15, 24, 30, 48, 60]
+          bitrate: [ number ],              // Array of bitrate.E.g. [500, 1000, ... ]
+          keyFrameInterval: [ number ]      // Array of keyFrameInterval.E.g. [100, 30, 5, 2, 1]
         }
       }
     }
+
     object(Transcoding): {
-      audio: boolean,
+      audio: boolean,                  // if allow transcoding format(opus, pcmu, ...) for audio
       video: {
         parameters: {
-          resolution: boolean,
-          framerate: boolean,
-          bitrate: boolean,
-          keyFrameInterval: boolean
+          resolution: boolean,         // if allow transcoding resolution for video
+          framerate: boolean,          // if allow transcoding framerate for video
+          bitrate: boolean,            // if allow transcoding bitrate for video
+          keyFrameInterval: boolean    // if allow transcoding KFI for video
         },
-        format: boolean
+        format: boolean                // if allow transcoding format(vp8, h264, ...) for video
       }
     }
+
     object(Notifying): {
-      participantActivities: boolean,
-      streamChange: boolean
+      participantActivities: boolean,    // whether enable notification for participantActivities
+      streamChange: boolean              // whether enable notification for streamChange
     }
+
     object(Sip): {
-      sipServer: string,
-      username: string,
-      password: string
+      sipServer: string,    // host or IP address for the SIP server
+      username: string,     // username of SIP account
+      password: string      // password of SIP account
     }
 Resources:<br>
 
 - /v1/rooms/
 - /v1/rooms/{roomId}
 
-### /v1/rooms
-#### POST
+### Create Room {#RESTAPIsection5_1_1}
+**POST ${host}/v1/rooms**
+
 Description:<br>
-This function can create a room.<br>
+This request can create a room.<br>
 
-parameters:
+request body:
 
-| parameters |   type   | annotation |
-| :----------|:------|:------------------|
-| RoomConfig | request body | Configuration used to create room |
+| type | content |
+|:-------------|:-------|
+|      json     |  object(RoomConfig) |
 
-This is for *RoomConfig*:
-
-    object(RoomConfig):
+    object(RoomConfig):          // Configuration used to create room
     {
-        name:name, // Required
-        options: object(Room)  // Refers to room data model listed above. Optional
+        name:name,               // Name of the room, required
+        options: object(Room)    // Subset of the object(Room) definition above, optional.
     }
 response body:
 
 | type | content |
 |:-------------|:-------|
-|      json     |  A room data model represents the room created |
-#### GET
+|      json     |  object(Room) |
+
+### List Rooms {#RESTAPIsection5_1_2}
+**GET ${host}/v1/rooms**
+
 Description:<br>
 List the rooms in your service.<br>
 
-parameters:
+request body:
 
-| parameters | type | annotation |
-|:----------|:----|:----------|
-|    null    | null |    null    |
+    *(Empty)*
 
 response body:
 
 | type | content |
 |:-------------|:-------|
-|      json     | List of room data |
-
-Here is an example of json data:
-
-    [room0, room1, ...]
-**Note**: Elements in list are of room data model.<br>
+|      json     | [ object(Room) ] |
 
 Pagination<br>
 
-Requests that return multiple rooms will not be paginated by default. To avoid too much data of one call, you can set a custom page size with the ?per_page parameter.You can also specify further pages with the ?page parameter.<br>
+Requests that return multiple rooms will not be paginated by default. To avoid too much data of one call, you can set a custom page size with the ?per_page parameter. You can also specify further pages with the ?page parameter.<br>
 
 GET "https://sample.api/rooms?page=2&per_page=10"<br>
 
-Note that page numbering is 1-based and that omitting the ?page parameter will return the first page.
+Note that page numbering is 1-based and that only omitting the ?page parameter will return the first page.
 
-### /v1/rooms/{roomId}
-#### GET
+### Get Room {#RESTAPIsection5_1_3}
+**GET ${host}/v1/rooms/{roomId}**
+
 Description:<br>
 Get information on the specified room.<br>
 
-parameters:
+request body:
 
-| parameters | type | annotation |
-|:----------|:----|:----------|
-|    {roomId}    | URL |    Room ID    |
-| undefined | request body | Request body is null |
+    *(Empty)*
+
 response body:
 
 | type | content |
 |:-------------|:-------|
-|      json     | The required room data model |
-#### DELETE
+|      json     | object(Room) |
+
+### Delete Room {#RESTAPIsection5_1_4}
+**DELETE ${host}/v1/rooms/{roomId}**
+
 Description:<br>
 Delete the specified room.<br>
 
-parameters:
+request body:
 
-| parameters | type | annotation |
-|:----------|:----|:----------|
-|    {roomId}    | URL |    Room ID to be deleted   |
-| undefined | request body| Request body is null |
+    *(Empty)*
 
-response body: response body is **empty**.
-#### PUT
+response body:
+
+    *(Empty)*
+
+### Update Room {#RESTAPIsection5_1_5}
+**PUT ${host}/v1/rooms/{roomId}**
+
 Description:<br>
 Update a room's configuration entirely.<br>
 
-parameters:
+request body:
 
-| parameters | type | annotation |
-|:----------|:----|:----------|
-|    {roomId}    | URL |    Room ID    |
-|  options or {}  | request body | Room configuration|
+| type | content |
+|:-------------|:-------|
+|      json     |  object(RoomConfig) |
 
-**Note**: *options* is same as *object(Options)* in 5.1, /v1/rooms/POST.<br>
+**Note**: *RoomConfig* is same as *object(RoomConfig)* in "Create Room".<br>
 
 response body:
 
 | type | content |
 |:-------------|:-------|
-|      json     | The updated room data model |
+|      json     |  object(Room) |
 
 ## 5.2 Participants {#RESTAPIsection5_2}
 Description:
@@ -369,91 +378,84 @@ Resources:
 - /v1/rooms/{roomId}/participants
 - /v1/rooms/{roomId}/participants/{participantId}
 
-### /v1/rooms/{roomId}/participants
-#### GET
+### List Participants {#RESTAPIsection5_2_1}
+**GET ${host}/v1/rooms/{roomId}/participants**
+
 Description:<br>
 List participants currently in the specified room.<br>
 
-parameters:
+request body:
 
-| parameters | type | annotation |
-|:----------|:----|:----------|
-|    {roomId}    | URL |    Room ID    |
-| undefined  | request body | Request body is null |
+    *(Empty)*
+
 response body:
 
 | type | content |
 |:-------------|:-------|
-|      json     | All participants in the specified room |
-### /v1/rooms/{roomId}/participants/{participantId}
-#### GET
+|      json     |  [ object(ParticipantDeatil) ] |
+
+### Get Participant {#RESTAPIsection5_2_2}
+**GET ${host}/v1/rooms/{roomId}/participants/{participantId}**
+
 Description:<br>
 Get a participant's information from the specified room.<br>
 
-parameters:
+request body:
 
-| parameters | type | annotation |
-|:----------|:----|:----------|
-|    {roomId}    | URL |    Room ID    |
-| {participantId} | URL | Participant ID|
-|  undefined | request body | Request body is null |
+    *(Empty)*
+
 response body:
 
 | type | content |
 |:-------------|:-------|
-|      json     | The detail information of the specified participant |
-#### PATCH
+|      json     |  object(ParticipantDeatil) |
+
+### Update Participant {#RESTAPIsection5_2_3}
+**PATCH ${host}/v1/rooms/{roomId}/participants/{participantId}**
+
 Description:<br>
 Update the permission of a participant in the specified room.<br>
 
-parameters:
+request body:
 
-| parameters | type | annotation |
-|:----------|:----|:----------|
-|    {roomId}    | URL |    Room ID    |
-| {participantId}| URL | Participant ID|
-| items| request body | Permission item list to be updated|
+| type | content |
+|:-------------|:-------|
+|      json     |  [ object(PermissionUpdate) ] |
 
-**Note**: This is the definition of *items*.<br>
+**Note**: This is the definition of *PermissionUpdate*.<br>
 
-    items=[
-        object(PermissionUpdate)
-    ]
     object(PermissionUpdate):
     {
         op: "replace",
 
         // There are 2 kinds of path and value. Choose one of them.
-
         path: "/permission/[publish|subscribe]",
-        value: object(Value)
+        value: { audio: boolean, video: boolean }
           OR
         path: "/permission/[publish|subscribe]/[video|audio]",
         value: boolean
     }
-    object(Value):
-    {
-        audio: boolean,
-        video: boolean
-    }
+
 response body:
 
 | type | content |
 |:-------------|:-------|
-|      json     | The updated permission information of the specified participant |
-#### DELETE
+|      json     |  object(ParticipantDeatil) |
+
+### Drop Participant {#RESTAPIsection5_2_4}
+**DELETE ${host}/v1/rooms/{roomId}/participants/{participantId}**
+
 Description:<br>
 Drop a participant from a room.<br>
 
-parameters:
+request body:
 
-| parameters | type | annotation |
-|:----------|:----|:----------|
-|    {roomId}    | URL |    Room ID    |
-| {participantId} | URL | Participant ID|
-|  undefined | request body | Request body is null |
+    *(Empty)*
 
-response body: response body is **empty**.<br>
+response body:
+
+    *(Empty)*
+
 ## 5.3 Streams {#RESTAPIsection5_3}
 Description:
 
@@ -503,7 +505,7 @@ Streams model:
             resolution: [object(Resolution)],
             framerate: [number(FramerateFPS)],
             bitrate: [number(Kbps)] | [string("x" + Multiple)],
-            keyFrameRate: [number(Seconds)]
+            keyFrameInterval: [number(Seconds)]
           }
         }
       }
@@ -540,105 +542,111 @@ Resources:
 - /v1/rooms/{roomId}/streams
 - /v1/rooms/{roomId}/streams/{streamId}
 
-### /v1/rooms/{roomId}/streams
-#### GET
+### List Streams {#RESTAPIsection5_3_1}
+**GET ${host}/v1/rooms/{roomId}/streams**
+
 Description:<br>
 List streams in the specified room.<br>
 
-parameters:
+request body:
 
-| parameters | type | annotation |
-|:----------|:----|:----------|
-|    {roomId}    | URL |    Room ID    |
-| undefined | request body | Request body is null |
+  **Empty**
 
 response body:
 
 | type | content |
 |:-------------|:-------|
-|      json     | All streams in the specified room |
-### /v1/rooms/{roomId}/streams/{streamId}
-#### GET
+|      json     | [ Object(StreamInfo) ] |
+
+### Get Stream {#RESTAPIsection5_3_2}
+**GET ${host}/v1/rooms/{roomId}/streams/{streamId}**
+
 Description:<br>
 Get a stream's information from the specified room.<br>
 
-parameters:
+request body:
 
-| parameters | type | annotation |
-|:----------|:----|:----------|
-|    {roomId}    | URL |    Room ID    |
-|    {streamId}  | URL |   Stream ID   |
-| undefined | request body | Request body is null |
+  **Empty**
+
 response body:
 
 | type | content |
 |:-------------|:-------|
-|      json     | A stream's information in the specified room |
-#### PATCH
+|      json     | object(StreamInfo) |
+
+### Update Stream {#RESTAPIsection5_3_3}
+**PATCH ${host}/v1/rooms/{roomId}/streams/{streamId}**
+
 Description:<br>
 Update a stream's given attributes in the specified room.<br>
 
-parameters:
+request body:
 
-| parameters | type | annotation |
-|:----------|:----|:----------|
-|    {roomId}    | URL |    Room ID    |
-|    {streamId}  | URL |   Stream ID   |
-|    items   | request body | An array with attributes to be updated|
+| type | content |
+|:-------------|:-------|
+|      json     | [ object(StreamUpdate) ] |
 
-**Note**: Here is a definition of *items*.<br>
+**Note**: Here is a definition of *StreamUpdate*.<br>
 
-    items=[
-        object(StreamInfoUpdate)
-    ]
-    object(StreamInfoUpdate):
+    // There are 4 kinds of StreamUpdate,
+    // object(MixUpdate), object(StatusUpdate), for forward stream,
+    // object(RegionUpdate), object(LayoutUpdate), for mixed stream,
+    // choose one of them.
+    object(MixUpdate):
     {
-        // There are 4 kinds of op, path, value. Choose one of them.
-
         op: "add" | "remove",
         path: "/info/inViews",
-        value: string
-         OR
+        value: string(viewLabel)
+    }
+    object(StatusUpdate):
+    {
         op: "replace",
         path: "/media/audio/status" | "/media/video/status",
         value: "active" | "inactive"
-         OR
+    }
+    object(RegionUpdate):
         op: "replace",
-        path: "/info/layout/[0-9]+/stream",    // "/info/layout/[0-9]+/stream" is a pattern to match the needed path.
-        value: string
-         OR
-        op: 'replace',                         // For mixed stream
+        path: "/info/layout/${regionIndex}/stream",    // ${regionIndex} is an integer represents the index of the region
+        value: string(streamID)                        // the new streamID for the region
+    }
+    object(LayoutUpdate):
+    {
+        op: 'replace',
         path: '/info/layout',
         value: [
             object(StreamRegion):
             {
                 stream: string,
                 region: object(Region)
-            } ||
-            object(EmptyRegion):               // Empty regions can ONLY appear at the very last consecutive positions.
+            } |
+            object(EmptyRegion):          // empty regions can ONLY appear at the very last consecutive positions.
             {
                 region: object(Region)
             }
         ]
     }
+
 response body:
 
 | type | content |
 |:-------------|:-------|
-|      json     | A stream's updated information in the specified room |
-#### DELETE
+|      json     | Object(StreamInfo) |
+
+
+### Drop Stream {#RESTAPIsection5_3_4}
+**DELETE ${host}/v1/rooms/{roomId}/streams/{streamId}**
+
 Description:<br>
 Delete the specified stream from the specified room.<br>
 
-parameters:
+request body:
 
-| parameters | type | annotation |
-|:----------|:----|:----------|
-|    {roomId}    | URL |    Room ID    |
-|    {streamId}  | URL |   Stream ID   |
-| undefined | request body | Request body is null |
+  **Empty**
 
-response body: response body is **empty**.<br>
+response body:
+
+  **Empty**
+
 ## 5.4 Streaming-ins {#RESTAPIsection5_4}
 Description:
 
@@ -649,25 +657,25 @@ Resources:
 - /v1/rooms/{roomId}/streaming-ins
 - /v1/rooms/{roomId}/streaming-ins/{streamId}
 
-### /v1/rooms/{roomId}/streaming-ins
-#### POST
+### Start Streaming-in {#RESTAPIsection5_4_1}
+**POST ${host}/v1/rooms/{roomId}/streaming-ins**
+
 Description:<br>
 Add an external RTSP/RTMP stream to the specified room.<br>
 
-parameters:
+request body:
 
-| parameters | type | annotation |
-|:----------|:----|:----------|
-|    {roomId}    | URL |    Room ID    |
-| pub_req | request body | JSON format data with connection and media |
+| type | content |
+|:-------------|:-------|
+|  json | object(StreamingInRequest) |
 
-**Note**:
+**Note**: Here is a definition of *StreamingInRequest*.<br>
 
     Object(StreamingInRequest) {
         connection: {
-          url: url,                            // string, e.g. "rtsp://...."
+          url: string(url),                    // string, e.g. "rtsp://...."
           transportProtocol: "udp" | "tcp",    // "tcp" by default.
-          bufferSize: number                   // The buffer size in bytes in case "udp" is specified, 8192 by default.
+          bufferSize: number(bytes)            // The buffer size in bytes in case "udp" is specified, 8192 by default.
         },
         media: {
           audio: "auto" | true | false,
@@ -679,21 +687,22 @@ response body:
 
 | type | content |
 |:-------------|:-------|
-|  json | The detail information of the external RTSP/RTMP stream |
-### /v1/rooms/{roomId}/streaming-ins/{streamId}
-#### DELETE
+|  json | object(StreamInfo) |
+
+### Stop Streaming-in {#RESTAPIsection5_4_2}
+**DELETE ${host}/v1/rooms/{roomId}/streaming-ins/{streamId}**
+
 Description:<br>
 Stop the specified external streaming-in in the specified room.<br>
 
-parameters:
+request body:
 
-| parameters | type | annotation |
-|:----------|:----|:----------|
-|    {roomId}    | URL |    Room ID    |
-|    {streamId}  | URL |   Stream ID   |
-|   undefined | request body | Request body is null |
+  **Empty**
 
-response body: response body is **empty**.<br>
+response body:
+
+  **Empty**
+
 ## 5.5 Streaming-outs {#RESTAPIsection5_5}
 Description:
 
@@ -732,13 +741,13 @@ Streaming-outs model:
     }
     object(HlsParameters):
     {
-        method: string('PUT' | 'POST'),
+        method: "PUT" | "POST",
         hlsTime: number(HlsTime) | undefined,
         hlsListSize: number(HlsListSize) | undefined
     }
     object(DashParameters):
     {
-        method: string('PUT' | 'POST'),
+        method: "PUT" | "POST",
         dashSegDuration: number(DashSegDuration) | undefined,
         dashWindowSize: number(DashWindowSize) | undefined
     }
@@ -747,38 +756,40 @@ Resources:
 - /v1/rooms/{roomId}/streaming-outs
 - /v1/rooms/{roomId}/streaming-outs/{streamOutId}
 
-### /v1/rooms/{roomId}/streaming-outs
-#### GET
+### List Streaming-outs {#RESTAPIsection5_5_1}
+**GET ${host}/v1/rooms/{roomId}/streaming-outs**
+
 Description:<br>
 Get all the ongoing streaming-outs in the specified room.<br>
 
-parameters:
+request body:
 
-| parameters | type | annotation |
-|:----------|:----|:----------|
-|    {roomId}    | URL |    Room ID    |
-|  undefined | request body | Request body is null |
+  **Empty**
+
 response body:
 
 | type | content |
 |:-------------|:-------|
-|  json | All the ongoing streaming-outs in the specified room |
-#### POST
+|  json | [ object(StreamingOut) ] |
+
+### Start Streaming-outs {#RESTAPIsection5_5_2}
+**POST ${host}/v1/rooms/{roomId}/streaming-outs**
+
 Description:<br>
 Start a streaming-out to the specified room.<br>
 
-parameters:
+request body:
 
-| parameters | type | annotation |
-|:----------|:----|:----------|
-|    {roomId}    | URL |    Room ID    |
-| options | request body | JSON format with url and media |
+| type | content |
+|:-------------|:-------|
+|  json | object(StreamingOutRequest) |
 
-**Note**:
+**Note**: Here is a definition of *StreamingOutRequest*.<br>
 
-    options={
-      protocol: string("rtmp" | "rtsp" | "hls" | "dash"),
-      url: url,
+    object(StreamingOutRequest):
+    {
+      protocol: "rtmp" | "rtsp" | "hls" | "dash",
+      url: string(url),
       parameters: object(HlsParameters) | object(DashParameters), // optional, depends on protocol
       media: object(MediaSubOptions)
     }
@@ -812,25 +823,22 @@ response body:
 
 | type | content |
 |:-------------|:-------|
-|  json | The started streaming-out |
-### /v1/rooms/{roomId}/streaming-outs/{streaming-outId}
-#### PATCH
+|  json | object(StreamingOut) |
+
+### Update Streaming-out {#RESTAPIsection5_5_3}
+**PATCH ${host}/v1/rooms/{roomId}/streaming-outs/{streaming-outId}**
+
 Description:<br>
 Update a streaming-out's given attributes in the specified room.<br>
 
 parameters:
 
-| parameters | type | annotation |
-|:----------|:----|:----------|
-|    {roomId}    | URL |    Room ID    |
-| {streaming-outId} | URL | Streaming-out ID|
-| items | request body | An array with attributes to be updated|
+| type | content |
+|:-------------|:-------|
+|  json | [ object(SubscriptionControlInfo) ] |
 
-**Note**: Here is the definition of *items*.<br>
+**Note**: Here is the definition of *SubscriptionControlInfo*.<br>
 
-    items=[
-        object(SubscriptionControlInfo)
-    ]
     object(SubscriptionControlInfo):
     {
         // There are 6 kinds of op, path and value. Choose one of them.
@@ -855,24 +863,27 @@ parameters:
         path: "/media/video/parameters/keyFrameInterval",
         value: 1 | 2 | 5 | 30 | 100
     }
+
 response body:
 
 | type | content |
 |:-------------|:-------|
-|  json | A updated streaming-out's attributes |
-#### DELETE
+|  json | object(StreamingOut) |
+
+### Stop Streaming-out {#RESTAPIsection5_5_4}
+**DELETE ${host}/v1/rooms/{roomId}/streaming-outs/{streaming-outId}**
+
 Description:<br>
 Stop the specified streaming-out in the specified room.<br>
 
-parameters:
+request body:
 
-| parameters | type | annotation |
-|:----------|:----|:----------|
-|    {roomId}    | URL |    Room ID    |
-| {streaming-outId} | URL | Streaming-out ID|
-| undefined | request body | Request body is null |
+  **Empty**
 
-response body: response body is **empty**.<br>
+response body:
+
+  **Empty**
+
 ## 5.6 Recordings {#RESTAPIsection5_6}
 Description:
 
@@ -896,35 +907,38 @@ Resources:
 - /v1/rooms/{roomId}/recordings
 - /v1/rooms/{roomId}/recordings/{recordingId}
 
-### /v1/rooms/{roomId}/recordings
-#### GET
+### List Recordings {#RESTAPIsection5_6_1}
+**GET ${host}/v1/rooms/{roomId}/recordings**
+
 Description:<br>
 Get all the ongoing recordings in the specified room.<br>
 
-parameters:
+request body:
 
-| parameters | type | annotation |
-|:----------|:----|:----------|
-|    {roomId}    | URL |    Room ID    |
-|  undefined | request body | Request body is null |
+  **Empty**
+
 response body:
 
 | type | content |
 |:-------------|:-------|
-|  json | All the ongoing recordings in the specified room |
-#### POST
+|  json | [ object(Recordings) ] |
+
+### Start Recordings {#RESTAPIsection5_6_2}
+**POST ${host}/v1/rooms/{roomId}/recordings**
+
 Description:<br>
 Start a recording in the specified room.<br>
 
-parameters:
+request body:
 
-| parameters | type | annotation |
-|:----------|:----|:----------|
-|    {roomId}    | URL |    Room ID    |
-| options | request body | JSON format with container and media |
-**Note**:<br>
+| type | content |
+|:-------------|:-------|
+|  json | object(RecordingRequest) |
 
-    options={
+**Note**: Here is the definition of *RecordingRequest*.<br>
+
+    object(RecordingRequest):
+    {
         container: string(ContainerType),
         media: object(MediaSubOptions)       // Refers to object(MediaSubOptions) in 5.5. And only "pcmu", "pcma", "opus" and "aac" audio codec are supported.
     }
@@ -941,44 +955,42 @@ response body:
 
 | type | content |
 |:-------------|:-------|
-|  json | A recording in the specified room |
-### /v1/rooms/{roomId}/recordings/{recordingId}
-#### PATCH
+|  json | object(Recordings) |
+
+### Update Recording {#RESTAPIsection5_6_3}
+**PATCH ${host}/v1/rooms/{roomId}/recordings/{recordingId}**
+
 Description:<br>
 Update a recording's given attributes in the specified room.<br>
 
-parameters:
+request body:
 
-| parameters | type | annotation |
-|:----------|:----|:----------|
-|    {roomId}    | URL |    Room ID    |
-|   {recordingId} | URL | Recording ID|
-| items | request body  | An array with attributes to be updated|
+| type | content |
+|:-------------|:-------|
+|  json | [ object(SubscriptionControlInfo) ] |
 
-**Note**:<br>
-
-    items=[
-        object(SubscriptionControlInfo)       // Refers to object(SubscriptionControlInfo) in 5.5.
-    ]
+**Note**: object(SubscriptionControlInfo) is the same object in 5.5<br>
 
 response body:
 
 | type | content |
 |:-------------|:-------|
-|  json | A updated recording's attributes in the specified room |
-#### DELETE
+|  json | object(Recordings) |
+
+### Stop Recording {#RESTAPIsection5_6_4}
+**DELETE ${host}/v1/rooms/{roomId}/recordings/{recordingId}**
+
 Description:<br>
 Stop the specified recording in the specified room.<br>
 
-parameters:
+request body:
 
-| parameters | type | annotation |
-|:----------|:----|:----------|
-|    {roomId}    | URL |    Room ID    |
-| {recordingId} | URL | Recording ID|
-|  undefined | request body | Request body is null |
+  **Empty**
 
-response body: response body is **empty**.<br>
+response body:
+
+  **Empty**
+
 ## 5.7 Sipcalls {#RESTAPIsection5_7}
 Description:
 
@@ -987,7 +999,7 @@ Sip call data model:
     object(SipCall):
     {
         id: string(id),
-        type: string(type),
+        type: "dial-in" | "dial-out"
         peer: string(peerURI),
         input: object(StreamInfo),
         output: {
@@ -995,7 +1007,6 @@ Sip call data model:
           media: object(SipOutMedia)
         }
     }
-    type={"dial-in" | "dial-out"}
     object(SipOutMedia):
     {
         audio: object(SipOutAudio),
@@ -1016,66 +1027,66 @@ Resources:
 - /v1/rooms/{roomId}/sipcalls
 - /v1/rooms/{roomId}/sipcalls/{sipCallId}
 
-### /v1/rooms/{roomId}/sipcalls
-#### GET
+### Get SIP Call {#RESTAPIsection5_7_1}
+**GET ${host}/v1/rooms/{roomId}/sipcalls**
+
 Description:<br>
 Get all the ongoing sip calls in the specified room.<br>
 
-parameters:
+request body:
 
-| parameters | type | annotation |
-|:----------|:----|:----------|
-|    {roomId}    | URL |    Room ID    |
-|  undefined | request body | Request body is null |
+  **Empty**
+
 response body:
 
 | type | content |
 |:-------------|:-------|
-|  json | All the ongoing sip calls in the specified room |
-#### POST
+|  json | object(SipCall) |
+
+### New SIP Call {#RESTAPIsection5_7_2}
+**POST ${host}/v1/rooms/{roomId}/sipcalls**
+
 Description:<br>
 Make a 'dial-out' typed sip call in the specified room.<br>
 
-parameters:
+request body:
 
-| parameters | type | annotation |
-|:----------|:----|:----------|
-|    {roomId}    | URL |    Room ID    |
-| options | request body | JSON format with peer URI and input/output media requirement|
+| type | content |
+|:-------------|:-------|
+|  json | object(SipCallRequest) |
+
 **Note**:<br>
 
-    options={
+    object(SipCallRequest):
+    {
         peerURI: string,
         mediaIn: {
             audio: true,           // Audio must be true for sip calls.
-            video: boolean()       // Must be consistent with mediaOut.video
+            video: boolean         // Must be consistent with mediaOut.video
         }
-        mediaOut: object(SipOutMedia)
+        mediaOut: object(SipOutMedia) 
     }
 
 response body:
 
 | type | content |
 |:-------------|:-------|
-|  json | A SipCall record in the specified room |
-### /v1/rooms/{roomId}/sipcalls/{sipCallId}
-#### PATCH
+|  json | object(SipCall) |
+
+### Update SIP call {#RESTAPIsection5_7_3}
+**PATCH ${host}/v1/rooms/{roomId}/sipcalls/{sipCallId}**
+
 Description:<br>
 Update a sip calls specified output attributes in the specified room.<br>
 
-parameters:
+request body:
 
-| parameters | type | annotation |
-|:----------|:----|:----------|
-|    {roomId}    | URL |    Room ID    |
-| {sipCallId} | URL | Sip Call ID|
-| items | request body | An array with attributes to be updated|
+| type | content |
+|:-------------|:-------|
+|  json | [ object(MediaOutControlInfo) ] |
 
-**Note**: Here is the definition of *items*.<br>
+**Note**: Here is the definition of *MediaOutControlInfo*.<br>
 
-    items=[
-        object(MediaOutControlInfo)
-    ]
     object(MediaOutControlInfo):
     {
         // There are 6 kinds of op, path and value. Choose one of them.
@@ -1102,24 +1113,28 @@ parameters:
         path: "/output/media/video/parameters/keyFrameInterval",
         value: 1 | 2 | 5 | 30 | 100
     }
+
 response body:
 
 | type | content |
 |:-------------|:-------|
-|  json | A updated SipCall data |
-#### DELETE
+|  json | object(SipCall) |
+
+### Delete SIP Call {#RESTAPIsection5_7_4}
+**DELETE ${host}/v1/rooms/{roomId}/sipcalls/{sipCallId}**
+
 Description:<br>
 End the specified sip call in the specified room.<br>
 
-parameters:
+request body:
 
-| parameters | type | annotation |
-|:----------|:----|:----------|
-|    {roomId}    | URL |    Room ID    |
-| {sipCallId} | URL | Sip Call ID|
-|  undefined | request body | Request body is null |
+  **Empty**
 
-## 5.8 Analytics {#RESTAPIsection5_7}
+response body:
+
+  **Empty**
+
+## 5.8 Analytics {#RESTAPIsection5_8}
 Description:
 
 Analytics data model:
@@ -1141,35 +1156,38 @@ Resources:
 - /v1/rooms/{roomId}/analytics
 - /v1/rooms/{roomId}/analytics/{analyticId}
 
-### /v1/rooms/{roomId}/analytics
-#### GET
+### List Analytics {#RESTAPIsection5_8_1}
+**GET ${host}/v1/rooms/{roomId}/analytics**
+
 Description:<br>
 Get all the ongoing analytics in the specified room.<br>
 
-parameters:
+request body:
 
-| parameters | type | annotation |
-|:----------|:----|:----------|
-|    {roomId}    | URL |    Room ID    |
-|  undefined | request body | Request body is null |
+  **Empty**
+
 response body:
 
 | type | content |
 |:-------------|:-------|
-|  json | All the ongoing analytics in the specified room |
-#### POST
+|  json | [ object(Analytics) ] |
+
+### Start Analytics {#RESTAPIsection5_8_2}
+**POST ${host}/v1/rooms/{roomId}/analytics**
+
 Description:<br>
-Start an analytic for a stream in the specified room.<br>
+Start an analytics for a stream in the specified room.<br>
 
-parameters:
+request body:
 
-| parameters | type | annotation |
-|:----------|:----|:----------|
-|    {roomId}    | URL |    Room ID    |
-| options | request body | JSON format with peer URI and input/output media requirement|
+| type | content |
+|:-------------|:-------|
+|  json | object(AnalyticsRequest) |
+
 **Note**:<br>
 
-    options={
+    object(AnalyticsRequest):
+    {
         algorithm: string(algorithmId),
         media: object(MediaSubOptions)       // Refers to object(MediaSubOptions) in 5.5.
     }
@@ -1178,24 +1196,23 @@ response body:
 
 | type | content |
 |:-------------|:-------|
-|  json | An analytics object in the specified room |
+|  json | object(Analytics) |
 
-### /v1/rooms/{roomId}/analytics/{analyticId}
-#### DELETE
+### Stop Analytics {#RESTAPIsection5_8_3}
+**DELETE ${host}/v1/rooms/{roomId}/analytics/{analyticId}**
+
 Description:<br>
 End the specified analytic in the specified room.<br>
 
-parameters:
+request body:
 
-| parameters | type | annotation |
-|:----------|:----|:----------|
-|    {roomId}    | URL |    Room ID    |
-| {analyticId} | URL | Analytic ID|
-|  undefined | request body | Request body is null |
+  **Empty**
 
-response body: response body is **empty**.<br>
+response body:
 
-## 5.9 Token {#RESTAPIsection5_8}
+  **Empty**
+
+## 5.9 Token {#RESTAPIsection5_9}
 Description:<br>
 A token is the ticket for joining the room. The token contains information through which clients can connect to server application. Note that the different rooms may have different network information, so the room must be specified for token resource. The same token cannot be reused if it has been used once. Re-generate token if clients need to connect at the second time.<br>
 
@@ -1218,31 +1235,40 @@ Resources:
 
 - /v1/rooms/{roomId}/tokens
 
-### /v1/rooms/{roomId}/tokens
-#### POST
+### Create Token {#RESTAPIsection5_9_1}
+**POST ${host}/v1/rooms/{roomId}/tokens**
+
 Description:<br>
 Create a new token when a new participant access a room needs to be added.<br>
 
-parameters:
+request body:
 
-| parameters | type | annotation |
-|:----------|:----|:----------|
-|    {roomId}    | URL |    Room ID    |
-| {preference_body} | request body | JSON format with preference, user and role |
+| type | content |
+|:-------------|:-------|
+|  json | object(TokenRequest) |
+
 **Note**:
 
-    preference_body={
+    object(TokenRequest):
+    {
         preference: object(Preference),     // Preference of this token would be used to connect through, refers to Data Model.
-        user: string,           // Participant's user ID
+        user: string,           // Participant's user defined ID
         role: string            // Participant's role
     }
+
+request body:
+
+| type | content |
+|:-------------|:-------|
+|  json | object(TokenRequest) |
+
 response body:
 
 | type | content |
 |:-------------|:-------|
-|  json | A token created for a new participant |
+|  text | A token string |
 
-## 5.9 Service {#RESTAPIsection5_9}
+## 5.10 Service {#RESTAPIsection5_10}
 Description:<br>
 The service represents the host of a set of rooms. Each service has its own identifier. The service ID and key are required to generate authentication header for HTTP requests. Note that there is one super service whose ID can be specified by toml file. The service resource can only be manipulated under super service authentication while other resouces require corresponding host service's authentication. (This API may change in later versions)
 
@@ -1262,77 +1288,104 @@ Resources:
 - /services
 - /services/{serviceId}
 
-### /services
-#### GET
+### List Services {#RESTAPIsection5_10_1}
+**GET ${host}/services**
+
 Description:<br>
 Get all the services.<br>
 
-parameters:
+request body:
 
-| parameters | type | annotation |
-|:----------|:----|:----------|
-|    null    | null |    null    |
+  **Empty**
 
 response body:
 
 | type | content |
 |:-------------|:-------|
-|      json     | List of service data |
+|  json | [ object(Service) ] |
 
-Here is an example of json data:
+### Create Service {#RESTAPIsection5_10_2}
+**POST ${host}/services**
 
-    [service0, service1, ...]
-**Note**: Elements in list are of service data model.<br>
-
-#### POST
 Description:<br>
-This function can create a service.<br>
+This request can create a service.<br>
 
-parameters:
+request body:
 
-| parameters |   type   | annotation |
-| :----------|:------|:------------------|
-| ServiceConfig | request body | Configuration used to create service |
+| type | content |
+|:-------------|:-------|
+|  json | object(ServiceConfig) |
 
-This is for *ServiceConfig*:
+**Note**: Here is a definition of *ServiceConfig*.<br>
 
     object(ServiceConfig):
     {
         name: string,   // Name of the service to create
         key: string     // Key of the service to create
     }
+
 response body:
 
 | type | content |
 |:-------------|:-------|
-|      json     |  A service data model represents the service created |
+|  json | object(Service) |
 
-### /services/{serviceId}
-#### GET
+### Get Service {#RESTAPIsection5_10_3}
+**GET ${host}/services/{serviceId}**
+
 Description:<br>
 Get information on the specified service.<br>
 
-parameters:
+request body:
 
-| parameters | type | annotation |
-|:----------|:----|:----------|
-|    {serviceId}    | URL |    Room ID    |
-| undefined | request body | Request body is null |
+  **Empty**
+
 response body:
 
 | type | content |
 |:-------------|:-------|
-|      json     | The required service data model |
+|  json | object(Service) |
 
-#### DELETE
+### Delete Service
+**DELETE ${host}/services/{serviceId}**
+
 Description:<br>
 Delete the specified service.<br>
 
-parameters:
+request body:
 
-| parameters | type | annotation |
-|:----------|:----|:----------|
-|    {serviceId}    | URL |    Room ID to be deleted   |
-| undefined | request body| Request body is null |
+  **Empty**
 
-response body: response body is **empty**.
+response body:
+
+  **Empty**
+
+# 6 Media Constraints {#RESTAPIsection6}
+This section lists the media constraints of formats and parameters which can be passed to management API.
+
+## 6.1 Audio {#RESTAPIsection6_1}
+Audio formats(codec/sampleRate/channelNum):
+- opus/48000/2
+- isac/16000
+- isac/32000
+- g722/16000/1
+- pcma
+- pcmu
+- ac3
+- nellymoser
+- ilbc
+- aac(input)
+- aac/48000/2(output)
+
+## 6.2 Video {#RESTAPIsection6_2}
+Video formats(codec/profile):
+- h264(input)
+- h264/CB(output)
+- h264/B(output)
+- h264/M(output)
+- h264/H(output)
+- vp8
+- vp9
+- h265
+
+Video framerate: [6, 12, 15, 24, 30, 48, 60]

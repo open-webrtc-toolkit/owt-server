@@ -1,5 +1,5 @@
 {
-  "name": "OWT-MCU-Agent",
+  "name": "OWT-Server-Agent",
   "version":"4.2.0",
   "dependencies": {
     "amqp": "*",
