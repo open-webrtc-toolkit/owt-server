@@ -800,6 +800,12 @@ For example, to subscribe forward stream instead of mixed stream from OWT server
 
         https://XXXXX:3004/?forward=true
 
+### 4.2.3 Connect to an OWT conference with an RTSP input {#Conferencesection4_2_3}
+The OWT conference supports external stream input from devices that support RTSP protocol, like IP Camera.
+For example, connect to the OWT sample application server XXXXX with the following URL:
+
+        https://XXXXX:3004/?url=rtsp_stream_url
+
 # 5 Peer Server {#Conferencesection5}
 ## 5.1 Introduction {#Conferencesection5_1}
 The peer server is the default signaling server of the Open-WebRTC-Toolkit. The peer server provides the ability to exchange WebRTC signaling messages over Socket.IO between different clients.
@@ -843,7 +849,7 @@ Run the following commands to launch the peer server:
 Run the **kill** command directly from the terminal to stop the peer server.
 
 # 6 Appendix {#Conferencesection6}
-## 6.1 Media Analytics {#Conferencesection6_1}
+## 6.1 Media Analytics in OWT Server {#Conferencesection6_1}
 ### 6.1.1 Introduction {#Conferencesection6_1_1}
 OWT server provides media analytics functionality via REST API. The media analytics plugins allows you performing analytics on any stream in OWT server, generating new streams and/or emitting events during analytics. The proposed usage scenario for real-time media analytics includes but is not limited to movement/object detection in surveillance and remote health care, customer/audience analyzing in retail and remote education, etc.
 
