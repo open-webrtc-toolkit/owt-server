@@ -33,38 +33,56 @@ std::mutex mtx;
 FaceDetectionClass FaceDetection;
 FaceRecognitionClass FaceRecognition;
 PersonDetectionClass PersonDetection;
-cv::Mat mGlob(1280,720,CV_8UC3);
+cv::Mat mGlob(1280,720, CV_8UC3);
 vector<recog_result> global_recog_results;
+float g_threshold = 0.45;
+int infer_width = 0;
+int infer_height = 0;
+int output_size = 0;
 volatile bool need_process=false;
+
+float ComputeReidDistance(const cv::Mat& descr1, const cv::Mat& descr2) {
+    float xy = descr1.dot(descr2);
+    float xx = descr1.dot(descr1);
+    float yy = descr2.dot(descr2);
+    float norm = sqrt(xx * yy) + 1e-6;
+    return 1.0f - xy / norm;
+}
 
 /**returns: the cropped square image of crop_size having same center of rectangle**/
 /**style=0 : original face detection results with largest possible square
    style>0 : larger square resized **/
 Mat get_cropped(Mat input, Rect rectangle , int crop_size , int style){
-    int center_x= rectangle.x + rectangle.width/2;
-    int center_y= rectangle.y + rectangle.height/2;
+    int center_x= rectangle.x + rectangle.width / 2;
+    int center_y= rectangle.y + rectangle.height / 2;
 
     int max_crop_size= min(rectangle.width , rectangle.height);
 
     int adjusted= max_crop_size * 3 / 2;
 
     std::vector<int> good_to_crop;
-    good_to_crop.push_back(adjusted / 2); good_to_crop.push_back(input.size().height - center_y); good_to_crop.push_back(input.size().width - center_x);
+    good_to_crop.push_back(adjusted / 2);
+    good_to_crop.push_back(input.size().height - center_y);
+    good_to_crop.push_back(input.size().width - center_x);
     good_to_crop.push_back(center_x);
     good_to_crop.push_back(center_y);
 
     int final_crop= * (min_element(good_to_crop.begin(), good_to_crop.end()));
-  
-    Rect pre (center_x - max_crop_size /2, center_y - max_crop_size /2 , max_crop_size , max_crop_size  );
-    Rect pre2 (center_x - final_crop, center_y - final_crop , final_crop *2  , final_crop *2  );
+
+    Rect pre (center_x - max_crop_size /2, center_y - max_crop_size / 2 , max_crop_size , max_crop_size  );
+    Rect pre2 (center_x - final_crop, center_y - final_crop , final_crop * 2  , final_crop * 2  );
     Mat r;
-    if (style==0)   r = input (pre);
-    else  r = input (pre2);
+    if (style==0) {
+        r = input (pre);
+    } else {
+        r = input (pre2);
+    }
 
     resize(r,r,Size(crop_size,crop_size));
     return r;
 }
 
+// Read the vector saved by pre-process tool
 vector<pair<string, vector<float> > > read_text(){
     cout<< "Reading vectors of saved person"<<endl;
     vector<pair<string, vector<float> > > data;
@@ -81,14 +99,14 @@ vector<pair<string, vector<float> > > read_text(){
         cout<< name ;
         getline(infile , line);
         count= atoi(line.c_str());
-        cout<<" : " << count <<endl;
+        cout << " : " << count <<endl;
         for (int i = 0; i < count; ++i)
         {
             vec.clear();
-            for (int j = 0; j < 256; ++j)
+            for (int j = 0; j < output_size; ++j)
             {
                 getline(infile , line);
-                value=strtof(line.c_str(),0);
+                value = strtof(line.c_str(),0);
                 vec.push_back(value);
             }
             data.push_back ( pair< string,vector<float> > (name, vec) );
@@ -97,115 +115,123 @@ vector<pair<string, vector<float> > > read_text(){
     return data;
 }
 
-float calculate_dist(std::vector<float> v1, std::vector<float> v2, int len){
-    float sum=0.0;
-    float subtract=0.0;
-    for (int i = 0; i < 256; ++i)
-    {
-        subtract=v1[i]-v2[i];
-        sum=sum+abs(subtract*subtract);
-    }
-    return sqrt(sum);
-}
+pair<float , string> recognize(vector<pair<string, vector<float> > > *data , vector <float> target){
+    float dist = 0;
+    float min_value = 100;
+    string best_match = "Unknown";
 
-pair<float , string> recognize(vector<pair<string, vector<float> > > *data , vector <float> target, float threshold){
-    float dist=3.0;
-    float min_value=3.0;
-    string best_match="Unknown";
-    for (auto entry : *(data)){
-        dist=calculate_dist(target , entry.second , 256);
-        if (dist < min_value){
-            min_value=dist;
-            best_match=entry.first;
-        } 
+    if (output_size == 0 || target.size() != output_size) {
+        cout << "Invalid feature vec size:" << target.size() << ", required:" << output_size << endl;
+        return pair<float, string> (0, best_match);
     }
-    if (min_value > threshold) best_match= "Unknown";
+
+    cv::Mat target_vec(static_cast<int>(target.size()), 1, CV_32F);
+    for(unsigned int i = 0; i < target.size(); i++) {
+        target_vec.at<float>(i) = target[i];
+    }
+
+    for (auto entry : *(data)){
+        cv::Mat entry_vec(static_cast<int>(target.size()), 1, CV_32F);
+        for(unsigned int i = 0; i < target.size(); i++) {
+            entry_vec.at<float>(i) = entry.second[i];
+        }
+
+        dist = ComputeReidDistance(target_vec, entry_vec);
+        if (dist < min_value){
+            min_value = dist;
+            best_match = entry.first;
+        }
+    }
+    if (min_value >= g_threshold)
+        best_match = "Unknown";
+
     return pair<float, string> (min_value, best_match);
 }
 
-//given: facedetection results that crosses sub-frame boundaries 
-//returns: boundary-corssing rectangles from input after enlarged to max. square, then 9x 
+//given: facedetection results that crosses sub-frame boundaries
+//returns: boundary-corssing rectangles from input after enlarged to max. square, then 9x
 vector<Rect> get_boundary_face_results(vector<Rect> *final_faces,vector<Rect> pre_results , int sub_width, int sub_height, int frame_width,int frame_height){
     vector<Rect> enlarged_face_results;
     vector<Rect> need_redo;
-    //deliminate bounds 
+    //deliminate bounds
     vector<int> horizontal_bound, vertical_bound;
     int x = sub_width;
     int y = sub_height;
     while (x < frame_width)
-    {  
+    {
         horizontal_bound.push_back(x);
-        x+=sub_width;
+        x += sub_width;
     }
     while (y < frame_height){
         vertical_bound.push_back(y);
-        y+=sub_height;
+        y += sub_height;
     }
     //find the smallest square that emcompasses the rect, and then enlarge 9x
     //disregard out-of bound
     for (auto rr:pre_results){
         Rect r(rr.x, rr.y, rr.width, rr.height);
         if (r.width > r.height){
-            r.height = r.width; 
+            r.height = r.width;
         }
-        else (r.width=r.height);
+        else (r.width = r.height);
         //enlarge 3 times
-        r.x=r.x - r.width;
+        r.x = r.x - r.width;
         r.y = r.y - r.height ;
         r.width = r.width * 3;
         r.height = r.height *3 ;
-        if (r.x<0) r.x = 0;
-        if (r.y<0) r.y =0;
+        if (r.x < 0) r.x = 0;
+        if (r.y < 0) r.y =0;
         if (r.x + r.width > frame_width) {
             r.width = frame_width - r.x ;
-        } 
+        }
         if (r.y + r.height > frame_height) {
             r.height = frame_height - r.y;
         }
         //now r is 9x as large
         //enlarged_face_results.push_back(r);
-        bool cross_boundary=false;
+        bool cross_boundary = false;
         for (auto x_lim : horizontal_bound){
-            if  ((r.x < x_lim) && (x_lim <r.x+r.width)){
-                cross_boundary=true;
+            if  ((r.x < x_lim) && (x_lim < r.x + r.width)){
+                cross_boundary = true;
             }
         }
 
         for(auto y_lim : vertical_bound){
-            if  ((r.y < y_lim) && (y_lim<r.y+r.height)){
-                cross_boundary=true;
-            } 
+            if  ((r.y < y_lim) && (y_lim < r.y + r.height)){
+                cross_boundary = true;
+            }
         }
         if (cross_boundary){
             need_redo.push_back(r);
         }
         else{
-            bool problem = false; 
-            
-            if (rr.x+rr.width>frame_width){
-                rr.width=frame_width-rr.x;
-                problem=true;
-            } 
+            bool problem = false;
+
+            if (rr.x+rr.width > frame_width){
+                rr.width = frame_width - rr.x;
+                problem = true;
+            }
             if (rr.y+rr.height> frame_height){
-                rr.height=frame_height-rr.y;
-                problem=true;
-            } 
+                rr.height = frame_height - rr.y;
+                problem = true;
+            }
             if (rr.x < 0){
-                problem=true;    
-                rr.x=0;
-            } 
+                problem = true;
+                rr.x = 0;
+            }
             if (rr.y < 0) {
-                rr.y=0;
-                problem=true;
-            } 
-            if (problem) {cout<<"problem in pre"<<endl;}
+                rr.y = 0;
+                problem = true;
+            }
+            if (problem) {
+                cout << "problem in pre" << endl;
+            }
             (*final_faces).push_back(rr);
         }
     }
     return need_redo;
 }
 
-   
 threading_class::threading_class(){}
 
 void threading_class::make_thread(){
@@ -217,7 +243,7 @@ void threading_class::make_thread(){
 vector<Rect> get_final_faces(){
     Mat frame;
     mtx.lock();
-    frame=mGlob.clone();
+    frame = mGlob.clone();
     mtx.unlock();
     //split incoming glob frame into smaller subs
     int sub_width;
@@ -226,8 +252,8 @@ vector<Rect> get_final_faces(){
     vector<cv::Rect> sub_frame_rects;
     vector<Rect> final_faces; //collection of faces ready for recognition
     final_faces.clear();
-    int num_x =2 ;
-    int num_y =2 ;
+    int num_x = 2 ;
+    int num_y = 2 ;
     for (int i = 0; i < num_x; ++i)
     {
         for (int j = 0; j < num_y; ++j)
@@ -236,21 +262,21 @@ vector<Rect> get_final_faces(){
             sub_height = frame.rows /num_y;
             sub_x = i * sub_width;
             sub_y = j * sub_height;
-            if (i==num_x -1){
-                sub_width = frame.cols - (num_x -1)*sub_width;
+            if (i == num_x - 1){
+                sub_width = frame.cols - (num_x - 1) * sub_width;
             }
-            if (j==num_y -1){
-                sub_height= frame.rows - (num_y -1)*sub_height;
+            if (j == num_y - 1){
+                sub_height = frame.rows - (num_y -1) * sub_height;
             }
             sub_frame_rects.push_back(Rect(sub_x ,sub_y, sub_width, sub_height));
         }
     }
 
 
-    //for each sub_frame do facedetection, upon fetching results, check faces 
-    //near boudary, redo facedetection for these faces, and then for all 
+    //for each sub_frame do facedetection, upon fetching results, check faces
+    //near boudary, redo facedetection for these faces, and then for all
         //detected faces, do face recognition
-    Mat sub_frame; 
+    Mat sub_frame;
     vector <Rect> detected_faces , boundary_face_results;
     boundary_face_results.clear();
     for (auto rect : sub_frame_rects){
@@ -260,26 +286,26 @@ vector<Rect> get_final_faces(){
         FaceDetection.wait();
         FaceDetection.fetchResults();
 
-        for (auto r : FaceDetection.results){                    
-            if (r.confidence>0.3) {
+        for (auto r : FaceDetection.results){
+            if (r.confidence > 0.3) {
                 detected_faces.push_back(Rect(r.location.x+rect.x , r.location.y + rect.y, r.location.width , r.location.height));
             }
         }
     }
-    //some faces are at boundaries of each sub_frame, so need to count them in. 
-    boundary_face_results=get_boundary_face_results(&final_faces, detected_faces , frame.cols/num_x, frame.rows/num_y,frame.cols, frame.rows);
+    //some faces are at boundaries of each sub_frame, so need to count them in.
+    boundary_face_results = get_boundary_face_results(&final_faces, detected_faces , frame.cols/num_x, frame.rows/num_y,frame.cols, frame.rows);
     //for boundary faces, copy to a bigger mat, and do a face detection for them
-    //in the boundary face restuls, form a good mat with all boundary faces, and then do facedetection once more. 
+    //in the boundary face restuls, form a good mat with all boundary faces, and then do facedetection once more.
     //creata 300*300 square
     Mat boundary_face_frame = frame.clone();
     //white out the square
-    boundary_face_frame= Scalar(255,255,255);
+    boundary_face_frame = Scalar(255,255,255);
     resize(boundary_face_frame,boundary_face_frame,Size(300,300));
 
     //split into equal squares to store boundary faces
     int side_num = (int)sqrt(boundary_face_results.size())+1;
     int side_len = boundary_face_frame.cols / side_num ;
-    int index=0;
+    int index = 0;
     vector <pair<Rect, Rect>> links; // keeps track of mapping from original frame to boundary_face_frame
     links.clear();
     vector <Rect> boundary_frame_squares; //collection of all nxn squares in the boundary_face_frame
@@ -287,15 +313,15 @@ vector<Rect> get_final_faces(){
     {
         for (int j = 0; j < side_num; ++j)
         {
-            if (index==boundary_face_results.size())break;
-            Rect src_rect= boundary_face_results[index];
-            Rect dist_rect=Rect(i*side_len, 
-                    j*side_len, 
-                    side_len, 
+            if (index == boundary_face_results.size())break;
+            Rect src_rect = boundary_face_results[index];
+            Rect dist_rect = Rect(i*side_len,
+                    j*side_len,
+                    side_len,
                     side_len);
             boundary_frame_squares.push_back(dist_rect);
-            Mat src=frame(src_rect).clone();
-            Mat distROI=boundary_face_frame(dist_rect);
+            Mat src = frame(src_rect).clone();
+            Mat distROI = boundary_face_frame(dist_rect);
             resize(src,src, Size(side_len,side_len));
             src.copyTo(distROI);
 
@@ -316,8 +342,8 @@ vector<Rect> get_final_faces(){
             for (auto link : links){
                 Rect boundary_square = link.second;
                 Rect frame_square = link.first ;
-                Rect r=result.location;
-                if ( (boundary_square.x <= r.x) && 
+                Rect r = result.location;
+                if ( (boundary_square.x <= r.x) &&
                     (boundary_square.x+boundary_square.width >= r.x+r.width) &&
                     (boundary_square.y <= r.y) &&
                     (boundary_square.y+boundary_square.height >= r.y+r.height))
@@ -328,18 +354,23 @@ vector<Rect> get_final_faces(){
                     Rect actual_place;
                     actual_place.x = frame_square.x + (r.x - boundary_square.x)*ratio_wdith;
                     actual_place.y = frame_square.y + (r.y - boundary_square.y)*ratio_height;
-                    actual_place.width= r.width * ratio_wdith;
-                    actual_place.height =r.height * ratio_height ;
+                    actual_place.width = r.width * ratio_wdith;
+                    actual_place.height = r.height * ratio_height ;
                     final_faces.push_back(actual_place);
-                }    
-            } 
+                }
+            }
         }
     }
     return final_faces;
 }
 //------------calling function for the new thread-------------------
 void threading_class::threading_func(){
-    std::cout<<"creating new thread for inferecne async"<<std::endl;
+    FaceDetection.initialize(face_detection_model_full_path_fp32, "GPU");
+    FaceRecognition.initialize(face_recognition_model_full_path_fp32, "GPU");
+
+    PersonDetection.initialize("/opt/intel/computer_vision_sdk/deployment_tools/intel_models/face-person-detection-retail-0002/FP32/face-person-detection-retail-0002.xml");
+    data=read_text();
+
     while (true){
         if (need_process){
             mtx.lock();
@@ -367,19 +398,19 @@ void threading_class::threading_func(){
                 }
             }
             //end of persondetection
-            
+
             Mat a_person;
             vector<Mat> persons;
             vector<Rect> FaceDetection_rect;
-                
+
             vector<recog_result> local_recog_results;
             local_recog_results.clear();
-            //cout<<"begining for loop"<<endl;
+
             for (auto rect: PersonDetection_rect) {
                 //cases when the output from persondetection is not good for cropping out the person
                 if ((rect.width + rect.x) > frame.cols) {
                     rect.width = frame.cols- abs(rect.x);
-                }  
+                }
                 if ((rect.height  + rect.y) > frame.rows) {
                     rect.height = frame.rows- abs(rect.y);
                 }
@@ -392,35 +423,34 @@ void threading_class::threading_func(){
                 //int overflow/bad output handeling
                 if ( (abs(rect.x) > 10000 || abs(rect.y) > 10000 || abs(rect.height) > 10000 || abs(rect.width) > 10000) )
                     continue;
-                
                 a_person = frame(rect);
                 FaceDetection.enqueue(a_person);
                 FaceDetection.submitRequest();
                 FaceDetection.wait();
                 FaceDetection.fetchResults();
 
-                //among all face detection results, do face recog. 
+                //among all face detection results, do face recog.
                 for (auto r : FaceDetection.results){
-                    if (r.confidence>0.2) {
+                    if (r.confidence > 0.2) {
                         std::vector<float> output_vector;
                         pair<float, string> compare_result;
-                        //--------------for this frame, output the charactiristic vector ------------------            
-                        Mat cropped=get_cropped(a_person, r.location, 128 , 2);
+                        //--------------for this frame, output the charactiristic vector ------------------
+                        Mat cropped = get_cropped(a_person, r.location, 128 , 2);
                         FaceRecognition.load_frame(cropped);
                         output_vector= FaceRecognition.do_infer();
                         //-------------compare with the dataset, return the most possible person if any---
-                        compare_result=recognize(&data , output_vector, 0.6);
+                        compare_result = recognize(&data , output_vector);
 
-                        if (compare_result.second!="Unknown")   {
+                        if (compare_result.second != "Unknown")   {
                             // The output position of facedetection is related
                             // to a_person's local corrdinate,
                             // so need to conver to global
                             recog_result a_result;
-                            a_result.name=compare_result.second;
-                            a_result.value=compare_result.first;
-                            a_result.face_rect=Rect(r.location.x+rect.x, r.location.y+rect.y,
+                            a_result.name = compare_result.second;
+                            a_result.value = compare_result.first;
+                            a_result.face_rect = Rect(r.location.x+rect.x, r.location.y+rect.y,
                                                     r.location.width,r.location.height);
-                            a_result.body_rect=rect;
+                            a_result.body_rect = rect;
                             local_recog_results.push_back(a_result);
                         }
                     }
@@ -431,7 +461,7 @@ void threading_class::threading_func(){
             global_recog_results.clear();
             for (auto result : local_recog_results){
                 global_recog_results.push_back(result);
-            }   
+            }
             mtx.unlock();
         }
     }
@@ -441,15 +471,8 @@ MyPlugin::MyPlugin(){}
 
 
 rvaStatus MyPlugin::PluginInit(std::unordered_map<std::string, std::string> params) {
-    FaceDetection.initialize(face_detection_model_full_path_fp32, "GPU");
-    FaceRecognition.initialize(face_recognition_model_full_path_fp32, "GPU");
-
-    PersonDetection.initialize("/opt/intel/computer_vision_sdk/deployment_tools/intel_models/face-person-detection-retail-0002/FP32/face-person-detection-retail-0002.xml");
-    data=read_text();
-    cout<< "Making new thread for processing"<<endl;
     threading_class t_c;
     t_c.make_thread();
-    cout<< "Successfully made new thread "<<endl;
     return RVA_ERR_OK;
 }
 
@@ -458,23 +481,24 @@ rvaStatus MyPlugin::PluginClose() {
 }
 
 rvaStatus MyPlugin::ProcessFrameAsync(std::unique_ptr<owt::analytics::AnalyticsBuffer> buffer) {
-    // fetch data from the frame and do face detection using the inference engine plugin
+    // Fetch data from the frame and do face detection using the inference engine plugin
     // after update, send it back to analytics server.
     if (!buffer->buffer) {
         return RVA_ERR_OK;
     }
     if (buffer->width >= 320 && buffer->height >= 240) {
 
-        cv::Mat mYUV(buffer->height + buffer->height/2, buffer->width, CV_8UC1, buffer->buffer );
+        cv::Mat mYUV(buffer->height + buffer->height / 2, buffer->width, CV_8UC1, buffer->buffer );
         cv::Mat mBGR(buffer->height, buffer->width, CV_8UC3);
         cv::cvtColor(mYUV,mBGR,cv::COLOR_YUV2BGR_I420);
         //--------------Update the mat for inference, and fetch the latest result  ------------------
         mtx.lock();
-        if (mBGR.cols>0 && mBGR.rows>0){
-            mGlob=mBGR.clone();
+        if (mBGR.cols > 0 && mBGR.rows > 0){
+            mGlob = mBGR.clone();
             need_process= true;
+        } else {
+            std::cout << "one mBGR is not qualified for inference" <<std::endl;
         }
-        else std::cout<<"one mBGR is not qualified for inference"<<std::endl;
         mtx.unlock();
 
         //-----------------------Draw the detection results-----------------------------------

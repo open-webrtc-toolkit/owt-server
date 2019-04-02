@@ -57,8 +57,8 @@ float ComputeReidDistance(const cv::Mat& descr1, const cv::Mat& descr2) {
 }
 
 Mat get_cropped(Mat input, Rect rectangle , int crop_size , int style){
-    int center_x = rectangle.x + rectangle.width/2;
-    int center_y = rectangle.y + rectangle.height/2;
+    int center_x = rectangle.x + rectangle.width / 2;
+    int center_y = rectangle.y + rectangle.height / 2;
 
     int max_crop_size = min(rectangle.width , rectangle.height);
 
@@ -87,7 +87,7 @@ Mat get_cropped(Mat input, Rect rectangle , int crop_size , int style){
     return r;
 }
 
-// Returns: data[]   person - 256D vector pair
+// Read the vector saved by pre-process tool
 vector<pair<string, vector<float> > > read_text(){
     cout << "Reading vectors of saved person" << endl;
     vector<pair<string, vector<float> > > data;
