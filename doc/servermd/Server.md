@@ -199,11 +199,11 @@ The default ffmpeg library used by OWT server has no libfdk_aac support. If you 
 ### 2.3.6 Deploy SVT-HEVC Encoder Library {#Conferencesection2_3_6}
 The default SVT-HEVC Encoder library installed is a pseudo one without any media logic. If you want to enable SVT-HEVC Encoder, please compile and deploy the library yourself with following steps:
 
-1. Go to Release-<Version>/video_agent folder, compile ffmpeg with SVT-HEVC Encoder library with below command:
+1. Go to Release-<Version>/video_agent folder, compile SVT-HEVC Encoder library with below command:
 
         compile_svtHevcEncoder.sh
 
-2. Copy the built library(libSvtHevcEnc.so.1) to Release-<Version>/video_agent/lib to replace the existing ones.
+2. Copy the built library(libSvtHevcEnc.so.1) to Release-<Version>/video_agent/lib to replace the existing one.
 
 ### 2.3.7 Use your own certificate {#Conferencesection2_3_7}
 
