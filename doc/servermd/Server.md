@@ -1,4 +1,4 @@
-Open WebRTC Toolkit Server User Guide
+Open WebRTC Toolkit(OWT) Server User Guide
 ----------------------
 
 # 1 Overview {#Conferencesection1}
@@ -72,22 +72,23 @@ Table 2-1 describes the system requirements for installing the OWT server. Table
 **Table 2-1. Server requirements**
 Application name|OS version
 -------------|--------------
-OWT server|CentOS* 7.6, Ubuntu 18.04/16.04 LTS
+OWT server|CentOS* 7.6, Ubuntu 18.04 LTS
 
-The GPU-acceleration can only be enabled on CentOS version.
+The GPU-acceleration can only be enabled on kernel 4.14 or later (4.19 or later is recommended).
 
 If you want to set up video conference service with H.264 codec support powered by non GPU-accelerated OWT server, OpenH264 library is required. See [Deploy Cisco OpenH264* Library](#Conferencesection2_3_4) section for more details.
 
-If you want to set up video conference service with SVT-HEVC Encoder on Ubuntu 18.04/16.04 LTS(not supported on CentOS). See [Deploy SVT-HEVC Encoder Library](#Conferencesection2_3_6) section for more details.
+If you want to set up video conference service with SVT-HEVC Encoder on Ubuntu 18.04 LTS. See [Deploy SVT-HEVC Encoder Library](#Conferencesection2_3_6) section for more details.
 
 If you want to set up video conference service powered by GPU-accelerated OWT server through Intel® Media SDK, please follow the below instructions to install server side SDK on CentOS* 7.6 where the video-agents run.
 
-If you are working on the following platforms with the integrated graphics, please install Intel® Media SDK.
+If you are working on the following platforms with the integrated graphics, please install Intel® Media SDK. The current release is fully tested on MediaSDK 2018 Q4(https://github.com/Intel-Media-SDK/MediaSDK/releases/tag/intel-mediasdk-18.4.0).
 
  - Intel® Xeon® E3-1200 v4 Family with C226 chipset
  - Intel® Xeon® E3-1200 and E3-1500 v5 Family with C236 chipset
- - 5th Generation Intel® Core™
- - 6th Generation Intel® Core™
+ - 5th Generation Intel® CoreTM
+ - 6th Generation Intel® CoreTM
+ - 7th Generation Intel® CoreTM
 
 For download or installation instructions, please visit https://github.com/Intel-Media-SDK/MediaSDK.
 
@@ -179,7 +180,7 @@ For Ubuntu version OWT server, do as following:
 ~~~~~~
 
 ### 2.3.4 Deploy Cisco OpenH264* Library {#Conferencesection2_3_4}
-The default H.264 library installed is a pseudo one without any media logic. To enable H.264 support in non GPU-accelerated OWT server system, you must deploy the Cisco OpenH264 library. Choose yes to download and enable Cisco Open H264 library during video-agent dependency installation at Release-<Version>/video_agent/install_deps.sh.
+The default H.264 library installed is a pseudo one without any media logic. To enable H.264 support in non GPU-accelerated OWT server system, you must deploy the Cisco OpenH264 library. Choose yes to download and enable Cisco Open H264 library during video-agent dependency installation at Release-<Version>/[video_agent/analytics_agent]/install_deps.sh.
 
 Or you can also use install_openh264.sh or uninstall_openh264.sh scripts under Release-<Version>/video_agent folder to enable or disable Cisco OpenH264 library later.
 
@@ -372,7 +373,7 @@ Follow the steps below to set up a OWT server cluster:
     2) Run the following commands to launch agent worker:
 
         cd Release-<Version>/
-        bin/daemon.sh start [conference-agent/webrtc-agent/streaming-agent/audio-agent/video-agent/recording-agent/sip-agent]
+        bin/daemon.sh start [conference-agent/webrtc-agent/streaming-agent/audio-agent/video-agent/analytics-agent/recording-agent/sip-agent]
 
 16. Repeat step 13 to 15 to launch as many OWT server agent worker machines as you need.
 
@@ -389,7 +390,7 @@ Follow the steps below to set up a OWT server cluster:
 ### 2.3.11 Configure VCA nodes as seperated machines to run video-agent {#Conferencesection2_3_11}
 To setup VCA nodes as separate machines, two approaches are provided. One is the network bridging provided by VCA software stack. The other is IP forwarding rules setting through iptables.
 
-VCA built-in software stack provides network bridging support. Follow section 8 - Configuring nodes for bridged mode operation in VCA_SoftwareUserGuide_1_3.pdf. In this approach, all network traffic will go through one Ethernet interface.
+VCA built-in software stack provides network bridging support. Follow section 4.4.1 - Configuring nodes for bridged mode operation in VCA_SoftwareUserGuide.pdf. In this approach, all network traffic will go through one Ethernet interface.
 
 If you want to map each VCA node to different Ethernet interface, IP forwarding can be one alternative to achieve this goal. Follow these steps:
 1. Make sure one VCA card is correctly installed and VCA nodes successfully boot up.
@@ -456,7 +457,7 @@ To stop the OWT server cluster, follow these steps:
 3. Run the following commands on worker machines to stop cluster workers:
 
         cd Release-<Version>/
-        bin/daemon.sh stop [portal/conference-agent/webrtc-agent/streaming-agent/audio-agent/video-agent/recording-agent/sip-agent/sip-portal]
+        bin/daemon.sh stop [portal/conference-agent/webrtc-agent/streaming-agent/audio-agent/video-agent/recording-agent/analytics-agent/sip-agent/sip-portal]
 
 ### 2.4 OWT Server cluster’s fault tolerance / resilience {#Conferencesection2_4}
 
@@ -819,7 +820,7 @@ The installation requirements for the peer server are listed in Table 5-1 and 5-
 **Table 5-1. Installation requirements**
 Component name | OS version
 ----|-----
-Peer server | Ubuntu 18.04/16.04 LTS, CentOS* 7.6/7.4
+Peer server | Ubuntu 18.04 LTS, CentOS* 7.6/7.4
 
 > **Note**: The peer server has been fully tested on Ubuntu14.04 LTS,64-bit.
 **Table 5-2. Peer Server Dependencies**
