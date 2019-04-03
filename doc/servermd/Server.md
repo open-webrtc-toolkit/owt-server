@@ -180,7 +180,7 @@ For Ubuntu version OWT server, do as following:
 ~~~~~~
 
 ### 2.3.4 Deploy Cisco OpenH264* Library {#Conferencesection2_3_4}
-The default H.264 library installed is a pseudo one without any media logic. To enable H.264 support in non GPU-accelerated OWT server system, you must deploy the Cisco OpenH264 library. Choose yes to download and enable Cisco Open H264 library during video-agent dependency installation at Release-<Version>/video_agent/install_deps.sh.
+The default H.264 library installed is a pseudo one without any media logic. To enable H.264 support in non GPU-accelerated OWT server system, you must deploy the Cisco OpenH264 library. Choose yes to download and enable Cisco Open H264 library during video-agent dependency installation at Release-<Version>/[video_agent/analytics_agent]/install_deps.sh.
 
 Or you can also use install_openh264.sh or uninstall_openh264.sh scripts under Release-<Version>/video_agent folder to enable or disable Cisco OpenH264 library later.
 
@@ -373,7 +373,7 @@ Follow the steps below to set up a OWT server cluster:
     2) Run the following commands to launch agent worker:
 
         cd Release-<Version>/
-        bin/daemon.sh start [conference-agent/webrtc-agent/streaming-agent/audio-agent/video-agent/recording-agent/sip-agent]
+        bin/daemon.sh start [conference-agent/webrtc-agent/streaming-agent/audio-agent/video-agent/analytics-agent/recording-agent/sip-agent]
 
 16. Repeat step 13 to 15 to launch as many OWT server agent worker machines as you need.
 
@@ -390,7 +390,7 @@ Follow the steps below to set up a OWT server cluster:
 ### 2.3.11 Configure VCA nodes as seperated machines to run video-agent {#Conferencesection2_3_11}
 To setup VCA nodes as separate machines, two approaches are provided. One is the network bridging provided by VCA software stack. The other is IP forwarding rules setting through iptables.
 
-VCA built-in software stack provides network bridging support. Follow section 8 - Configuring nodes for bridged mode operation in VCA_SoftwareUserGuide_1_3.pdf. In this approach, all network traffic will go through one Ethernet interface.
+VCA built-in software stack provides network bridging support. Follow section 4.4.1 - Configuring nodes for bridged mode operation in VCA_SoftwareUserGuide.pdf. In this approach, all network traffic will go through one Ethernet interface.
 
 If you want to map each VCA node to different Ethernet interface, IP forwarding can be one alternative to achieve this goal. Follow these steps:
 1. Make sure one VCA card is correctly installed and VCA nodes successfully boot up.
@@ -457,7 +457,7 @@ To stop the OWT server cluster, follow these steps:
 3. Run the following commands on worker machines to stop cluster workers:
 
         cd Release-<Version>/
-        bin/daemon.sh stop [portal/conference-agent/webrtc-agent/streaming-agent/audio-agent/video-agent/recording-agent/sip-agent/sip-portal]
+        bin/daemon.sh stop [portal/conference-agent/webrtc-agent/streaming-agent/audio-agent/video-agent/recording-agent/analytics-agent/sip-agent/sip-portal]
 
 ### 2.4 OWT Server cluster’s fault tolerance / resilience {#Conferencesection2_4}
 
