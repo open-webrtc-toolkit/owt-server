@@ -72,22 +72,23 @@ Table 2-1 describes the system requirements for installing the OWT server. Table
 **Table 2-1. Server requirements**
 Application name|OS version
 -------------|--------------
-OWT server|CentOS* 7.6, Ubuntu 18.04/16.04 LTS
+OWT server|CentOS* 7.6, Ubuntu 18.04 LTS
 
-The GPU-acceleration can only be enabled on CentOS version.
+The GPU-acceleration can only be enabled on kernel 4.14 or later (4.19 or later is recommended).
 
 If you want to set up video conference service with H.264 codec support powered by non GPU-accelerated OWT server, OpenH264 library is required. See [Deploy Cisco OpenH264* Library](#Conferencesection2_3_4) section for more details.
 
-If you want to set up video conference service with SVT-HEVC Encoder on Ubuntu 18.04/16.04 LTS(not supported on CentOS). See [Deploy SVT-HEVC Encoder Library](#Conferencesection2_3_6) section for more details.
+If you want to set up video conference service with SVT-HEVC Encoder on Ubuntu 18.04 LTS. See [Deploy SVT-HEVC Encoder Library](#Conferencesection2_3_6) section for more details.
 
 If you want to set up video conference service powered by GPU-accelerated OWT server through Intel® Media SDK, please follow the below instructions to install server side SDK on CentOS* 7.6 where the video-agents run.
 
-If you are working on the following platforms with the integrated graphics, please install Intel® Media SDK.
+If you are working on the following platforms with the integrated graphics, please install Intel® Media SDK. The current release is fully tested on MediaSDK 2018 Q4(https://github.com/Intel-Media-SDK/MediaSDK/releases/tag/intel-mediasdk-18.4.0).
 
  - Intel® Xeon® E3-1200 v4 Family with C226 chipset
  - Intel® Xeon® E3-1200 and E3-1500 v5 Family with C236 chipset
- - 5th Generation Intel® Core™
- - 6th Generation Intel® Core™
+ - 5th Generation Intel® CoreTM
+ - 6th Generation Intel® CoreTM
+ - 7th Generation Intel® CoreTM
 
 For download or installation instructions, please visit https://github.com/Intel-Media-SDK/MediaSDK.
 
@@ -819,7 +820,7 @@ The installation requirements for the peer server are listed in Table 5-1 and 5-
 **Table 5-1. Installation requirements**
 Component name | OS version
 ----|-----
-Peer server | Ubuntu 18.04/16.04 LTS, CentOS* 7.6/7.4
+Peer server | Ubuntu 18.04 LTS, CentOS* 7.6/7.4
 
 > **Note**: The peer server has been fully tested on Ubuntu14.04 LTS,64-bit.
 **Table 5-2. Peer Server Dependencies**
