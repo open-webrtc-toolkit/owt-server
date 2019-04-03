@@ -340,7 +340,7 @@ request body:
 
 | type | content |
 |:-------------|:-------|
-|      json     |  object(RoomConfig) |
+|      json     |  object(RoomConfig.options) || {} |
 
 **Note**: *RoomConfig* is same as *object(RoomConfig)* in "Create Room".<br>
 
