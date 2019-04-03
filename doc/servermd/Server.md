@@ -1,4 +1,4 @@
-Open WebRTC Toolkit Server User Guide
+Open WebRTC Toolkit(OWT) Server User Guide
 ----------------------
 
 # 1 Overview {#Conferencesection1}
