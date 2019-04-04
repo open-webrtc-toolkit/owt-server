@@ -459,7 +459,7 @@ To stop the OWT server cluster, follow these steps:
         cd Release-<Version>/
         bin/daemon.sh stop [portal/conference-agent/webrtc-agent/streaming-agent/audio-agent/video-agent/recording-agent/analytics-agent/sip-agent/sip-portal]
 
-4. Run the following commands on cluster manager machine to stop the management-console:
+4. Run the following commands on management-console machine to stop the management-console:
 
         cd Release-<Version>/
         bin/daemon.sh stop management-console
