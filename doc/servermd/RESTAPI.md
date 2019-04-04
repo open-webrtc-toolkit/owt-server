@@ -324,11 +324,11 @@ Delete the specified room.<br>
 
 request body:
 
-    **Empty**
+  **Empty**
 
 response body:
 
-    **Empty**
+  **Empty**
 
 ### Update Room {#RESTAPIsection5_1_5}
 **PUT ${host}/v1/rooms/{roomId}**
