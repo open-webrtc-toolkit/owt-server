@@ -80,7 +80,7 @@ If you want to set up video conference service with H.264 codec support powered 
 
 If you want to set up video conference service with SVT-HEVC Encoder on Ubuntu 18.04 LTS. See [Deploy SVT-HEVC Encoder Library](#Conferencesection2_3_6) section for more details.
 
-If you want to set up video conference service powered by GPU-accelerated OWT server through Intel® Media SDK, please follow the below instructions to install server side SDK on CentOS* 7.6 where the video-agents run.
+If you want to set up video conference service powered by GPU-accelerated OWT server through Intel® Media SDK, please follow the below instructions to install server side SDK where the video-agents run.
 
 If you are working on the following platforms with the integrated graphics, please install Intel® Media SDK. The current release is fully tested on MediaSDK 2018 Q4(https://github.com/Intel-Media-SDK/MediaSDK/releases/tag/intel-mediasdk-18.4.0).
 
@@ -458,6 +458,11 @@ To stop the OWT server cluster, follow these steps:
 
         cd Release-<Version>/
         bin/daemon.sh stop [portal/conference-agent/webrtc-agent/streaming-agent/audio-agent/video-agent/recording-agent/analytics-agent/sip-agent/sip-portal]
+
+4. Run the following commands on management-console machine to stop the management-console:
+
+        cd Release-<Version>/
+        bin/daemon.sh stop management-console
 
 ### 2.4 OWT Server cluster’s fault tolerance / resilience {#Conferencesection2_4}
 
