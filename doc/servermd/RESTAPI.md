@@ -284,7 +284,7 @@ List the rooms in your service.<br>
 
 request body:
 
-    *(Empty)*
+    **Empty**
 
 response body:
 
@@ -308,7 +308,7 @@ Get information on the specified room.<br>
 
 request body:
 
-    *(Empty)*
+    **Empty**
 
 response body:
 
@@ -324,11 +324,11 @@ Delete the specified room.<br>
 
 request body:
 
-    *(Empty)*
+    **Empty**
 
 response body:
 
-    *(Empty)*
+    **Empty**
 
 ### Update Room {#RESTAPIsection5_1_5}
 **PUT ${host}/v1/rooms/{roomId}**
@@ -386,7 +386,7 @@ List participants currently in the specified room.<br>
 
 request body:
 
-    *(Empty)*
+    **Empty**
 
 response body:
 
@@ -402,7 +402,7 @@ Get a participant's information from the specified room.<br>
 
 request body:
 
-    *(Empty)*
+    **Empty**
 
 response body:
 
@@ -450,11 +450,11 @@ Drop a participant from a room.<br>
 
 request body:
 
-    *(Empty)*
+    **Empty**
 
 response body:
 
-    *(Empty)*
+    **Empty**
 
 ## 5.3 Streams {#RESTAPIsection5_3}
 Description:

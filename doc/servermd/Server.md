@@ -466,7 +466,7 @@ Open WebRTC Toolkit server provides built-in fault tolerance / resilience suppor
  **Table 2-6. OWT Server cluster components’ fault tolerance / resilience**
 Component Name|Server Reaction|Client Awareness
 --------|--------|--------
-management-api|Multiple management-api instances provide stateless services at the same time. If application implements node failure detection and rescheduling strategy, when one node fails, other nodes should take over when the further requests are assigned to any of them.|Nuve RESTful request fail
+management-api|Multiple management-api instances provide stateless services at the same time. If application implements node failure detection and rescheduling strategy, when one node fails, other nodes should take over when the further requests are assigned to any of them.|Management-API RESTful request fail
 cluster-manager|Auto elect another cluster-manager node as master and provide service.|Transparent
 portal|All signaling connections on this portal will be disconnected, all actions through this portal will be dropped. Client needs to re-login the session.|server-disconnected event
 conference-agent/node|All sessions impacted will be destroyed and all their participants will be forced disconnected and all actions will be dropped. Client needs to re-login the session.|server-disconnected event
