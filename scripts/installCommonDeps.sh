@@ -221,7 +221,7 @@ install_webrtc(){
   mkdir $ROOT/third_party/webrtc
 
   pushd ${ROOT}/third_party/webrtc
-  git clone -b 59-server https://github.com/open-webrtc-toolkit/owt-deps-webrtc.git src
+  git clone -b v4.2 https://github.com/open-webrtc-toolkit/owt-deps-webrtc.git src
   ./src/tools-woogeen/install.sh
   ./src/tools-woogeen/build.sh
   popd
