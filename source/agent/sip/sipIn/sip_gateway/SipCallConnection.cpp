@@ -22,25 +22,31 @@ extern void call_connection_fir(void *call);
 
 void call_connection_rx_audio(void* owner, uint8_t* data, size_t len)
 {
-    sip_gateway::SipCallConnection* obj = static_cast<sip_gateway::SipCallConnection*>(owner);
-    obj->onSipAudioData(reinterpret_cast<char*>(data), static_cast<int>(len));
+    if (owner != NULL) {
+        sip_gateway::SipCallConnection* obj = static_cast<sip_gateway::SipCallConnection*>(owner);
+        obj->onSipAudioData(reinterpret_cast<char*>(data), static_cast<int>(len));
+    }
 }
 
 void call_connection_rx_video(void* owner, uint8_t* data, size_t len)
 {
-    sip_gateway::SipCallConnection* obj = static_cast<sip_gateway::SipCallConnection*>(owner);
-    obj->onSipVideoData(reinterpret_cast<char*>(data), static_cast<int>(len));
+    if (owner != NULL) {
+        sip_gateway::SipCallConnection* obj = static_cast<sip_gateway::SipCallConnection*>(owner);
+        obj->onSipVideoData(reinterpret_cast<char*>(data), static_cast<int>(len));
+    }
 }
 
 void call_connection_rx_fir(void* owner)
 {
-    sip_gateway::SipCallConnection* obj = static_cast<sip_gateway::SipCallConnection*>(owner);
-    obj->onSipFIR();
+    if (owner != NULL) {
+        sip_gateway::SipCallConnection* obj = static_cast<sip_gateway::SipCallConnection*>(owner);
+        obj->onSipFIR();
+    }
 }
 
 void call_connection_closed(void* owner) {
-    sip_gateway::SipCallConnection* obj = static_cast<sip_gateway::SipCallConnection*>(owner);
-    if (obj != NULL) {
+    if (owner != NULL) {
+       sip_gateway::SipCallConnection* obj = static_cast<sip_gateway::SipCallConnection*>(owner);
        obj->onConnectionClosed();
     }
 }
