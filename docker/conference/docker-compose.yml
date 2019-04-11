@@ -1,0 +1,26 @@
+version: '2'
+services:
+
+  owt-server:
+    build:
+      context: ../
+      dockerfile: Dockerfile
+      args:
+        - http_proxy
+        - https_proxy
+    image: owt-server
+  owt-server-conference:
+    build:
+      context: .
+      dockerfile: Dockerfile-conference
+      args:
+        - http_proxy
+        - https_proxy
+    image: owt-server-conference
+    network_mode: host
+    ports:
+      - "3004:3004"
+    command: sh -c "service mongodb start && service rabbitmq-server start \
+                    && cd /owt-server/dist/bin && ./init-all.sh && ./start-all.sh && sleep infinity"
+    depends_on:
+      - owt-server
