@@ -151,6 +151,8 @@ var RoomSchema = new Schema({
         return cipher.encrypt(cipher.k, v);
       },
       get: (v) => {
+        if (!v)
+          return v;
         let ret = '';
         try {
           ret = cipher.decrypt(cipher.k, v);
