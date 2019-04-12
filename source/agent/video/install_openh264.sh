@@ -26,7 +26,7 @@ download_openh264(){
 
 enable_openh264() {
   [ -f ${this}/lib/dummyopenh264.so ] || mv ${this}/lib/${SONAME} ${this}/lib/dummyopenh264.so
-  mv ${RELNAME} ${this}/lib/${SONAME} && \
+  mkdir -p lib && mv ${RELNAME} ${this}/lib/${SONAME} && \
   echo "OpenH264 install finished."
 }
 
