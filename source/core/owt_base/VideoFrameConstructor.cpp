@@ -8,7 +8,7 @@
 #include <rtputils.h>
 #include <webrtc/common_types.h>
 #include <webrtc/modules/video_coding/timing.h>
-#include "webrtc/modules/remote_bitrate_estimator/remote_bitrate_estimator_single_stream.h"
+#include <webrtc/modules/remote_bitrate_estimator/remote_bitrate_estimator_single_stream.h>
 
 using namespace webrtc;
 
@@ -47,6 +47,7 @@ VideoFrameConstructor::~VideoFrameConstructor()
     if (m_taskRunner) {
         m_taskRunner->DeRegisterModule(m_rtpRtcp.get());
         m_taskRunner->DeRegisterModule(m_video_receiver.get());;
+        m_taskRunner->DeRegisterModule(m_remoteBitrateEstimator.get());
     }
     m_taskRunner->Stop();
     boost::unique_lock<boost::shared_mutex> lock(m_rtpRtcpMutex);
@@ -57,13 +58,11 @@ bool VideoFrameConstructor::init()
     // TODO: move to new jitter buffer implemetation(not ready yet).
     m_video_receiver.reset(new webrtc::vcm::VideoReceiver(Clock::GetRealTimeClock(), nullptr, nullptr, new VCMTiming(Clock::GetRealTimeClock(), nullptr), nullptr, nullptr));
 
-    // FIXME: Now we just provide a DummyRemoteBitrateObserver to satisfy the requirement of our components.
-    // We need to investigate whether this is necessary or not in our case, so that we can decide whether to
-    // provide a real RemoteBitrateObserver.
-    //m_remoteBitrateObserver.reset(new DummyRemoteBitrateObserver());
+    m_packetRouter.reset(new PacketRouter());
     m_remoteBitrateObserver.reset(new VieRemb(Clock::GetRealTimeClock()));
-    m_remoteBitrateEstimator.reset(new RemoteBitrateEstimatorSingleStream(m_remoteBitrateObserver.get(), Clock::GetRealTimeClock()));
+    m_remoteBitrateEstimator.reset(new RemoteEstimatorProxy(Clock::GetRealTimeClock(), m_packetRouter.get()));
     m_videoReceiver.reset(new ViEReceiver(m_video_receiver.get(), m_remoteBitrateEstimator.get(), this));
+    m_videoReceiver->SetReceiveTransportSequenceNumberStatus(true, 5);
 
     RtpRtcp::Configuration configuration;
     configuration.audio = false;  // Video.
@@ -75,9 +74,10 @@ bool VideoFrameConstructor::init()
     // Since currently our MCU only claims FIR support in SDP, we choose FirRtcp for now.
     m_rtpRtcp->SetKeyFrameRequestMethod(kKeyFrameReqFirRtcp);
     m_rtpRtcp->RegisterSendRtpHeaderExtension(RTPExtensionType::kRtpExtensionTransportSequenceNumber, 5);
-    m_rtpRtcp->SetREMBStatus(true);
+    m_rtpRtcp->SetREMBStatus(false);
     m_videoReceiver->SetRtpRtcpModule(m_rtpRtcp.get());
     m_remoteBitrateObserver->AddRembSender(m_rtpRtcp.get());
+    m_packetRouter->AddReceiveRtpModule(m_rtpRtcp.get());
 
     // Register codec.
     VideoCodec video_codec;
@@ -131,6 +131,7 @@ bool VideoFrameConstructor::init()
     m_video_receiver->RegisterFrameTypeCallback(this);
     m_video_receiver->RegisterReceiveCallback(this);
 
+    m_taskRunner->RegisterModule(m_remoteBitrateEstimator.get());
     m_taskRunner->RegisterModule(m_video_receiver.get());
     m_taskRunner->RegisterModule(m_rtpRtcp.get());
     m_videoReceiver->StartReceive();
