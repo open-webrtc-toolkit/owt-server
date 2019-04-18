@@ -5,6 +5,7 @@
 
 // building script
 const fs = require('fs');
+const os = require('os');
 const path = require('path');
 const { chdir, cwd } = process;
 const { execSync } = require('child_process');
@@ -95,10 +96,11 @@ function constructBuildEnv() {
 }
 
 // Common build commands
+var cpuCount = os.cpus().length;
 logLevel = options.verbose ? 'verbose' : 'error';
-rebuildArgs = ['node-gyp', 'rebuild', '-j 8', '--loglevel=' + logLevel];
+rebuildArgs = ['node-gyp', 'rebuild', `-j ${cpuCount}`, '--loglevel=' + logLevel];
 configureArgs = ['node-gyp', 'configure', '--loglevel=' + logLevel];
-buildArgs = ['node-gyp', 'build', '-j 8', '--loglevel=' + logLevel];
+buildArgs = ['node-gyp', 'build', `-j ${cpuCount}`, '--loglevel=' + logLevel];
 
 if (options.debug) {
   rebuildArgs.push('--debug');
