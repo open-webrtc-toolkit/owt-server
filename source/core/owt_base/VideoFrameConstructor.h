@@ -19,7 +19,9 @@
 
 #include <JobTimer.h>
 #include <webrtc/modules/remote_bitrate_estimator/include/remote_bitrate_estimator.h>
+#include <webrtc/modules/remote_bitrate_estimator/remote_estimator_proxy.h>
 #include <webrtc/modules/rtp_rtcp/include/rtp_rtcp.h>
+#include <webrtc/modules/pacing/packet_router.h>
 #include <webrtc/modules/video_coding/include/video_codec_interface.h>
 #include <webrtc/modules/video_coding/include/video_coding.h>
 #include <webrtc/modules/video_coding/include/video_coding_defines.h>
@@ -117,6 +119,7 @@ private:
     boost::scoped_ptr<webrtc::RemoteBitrateEstimator> m_remoteBitrateEstimator;
     boost::scoped_ptr<webrtc::ViEReceiver> m_videoReceiver;
     boost::scoped_ptr<webrtc::RtpRtcp> m_rtpRtcp;
+    boost::scoped_ptr<webrtc::PacketRouter> m_packetRouter;
     boost::shared_mutex m_rtpRtcpMutex;
     boost::shared_ptr<WebRTCTransport<erizoExtra::VIDEO>> m_videoTransport;
 

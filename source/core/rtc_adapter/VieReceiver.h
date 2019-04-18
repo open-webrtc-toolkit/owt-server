@@ -71,6 +71,7 @@ class ViEReceiver : public RtpData {
 
   bool SetReceiveTimestampOffsetStatus(bool enable, int id);
   bool SetReceiveAbsoluteSendTimeStatus(bool enable, int id);
+  bool SetReceiveTransportSequenceNumberStatus(bool enable, int id);
 
   void StartReceive();
   void StopReceive();

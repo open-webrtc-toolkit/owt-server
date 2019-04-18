@@ -20,6 +20,7 @@
 #include "webrtc/modules/rtp_rtcp/include/rtp_payload_registry.h"
 #include "webrtc/modules/rtp_rtcp/include/rtp_receiver.h"
 #include "webrtc/modules/rtp_rtcp/include/rtp_rtcp.h"
+#include "webrtc/modules/rtp_rtcp/include/rtp_rtcp_defines.h"
 #include "webrtc/modules/video_coding/include/video_coding.h"
 #include "webrtc/modules/video_coding/video_coding_impl.h"
 #include "webrtc/system_wrappers/include/metrics.h"
@@ -149,6 +150,16 @@ void ViEReceiver::RegisterSimulcastRtpRtcpModules(
     rtp_rtcp_simulcast_.insert(rtp_rtcp_simulcast_.begin(),
                                rtp_modules.begin(),
                                rtp_modules.end());
+  }
+}
+
+bool ViEReceiver::SetReceiveTransportSequenceNumberStatus(bool enable, int id) {
+  if (enable) {
+    return rtp_header_parser_->RegisterRtpHeaderExtension(
+        kRtpExtensionTransportSequenceNumber, id);
+  } else {
+    return rtp_header_parser_->DeregisterRtpHeaderExtension(
+        kRtpExtensionTransportSequenceNumber);
   }
 }
 
