@@ -2345,14 +2345,12 @@ var Conference = function (rpcClient, selfRpcId) {
             // We don't analyze audio so far
             delete subDesc.media.audio;
           }
-
           if (!subDesc.media.video || !subDesc.media.video.from) {
             return Promise.reject('Video source not specified for analyzing');
           }
           if (!streams[subDesc.media.video.from]) {
             return Promise.reject('Video source not valid for analyzing');
           }
-
           let sourceVideoOption = streams[subDesc.media.video.from].media.video;
           if (!subDesc.media.video.format) {
             // Subscribe source format
@@ -2360,9 +2358,16 @@ var Conference = function (rpcClient, selfRpcId) {
           }
           if (subDesc.media.video.parameters || sourceVideoOption.parameters) {
             subDesc.media.video.parameters = Object.assign(
-              sourceVideoOption.parameters || {},
+              {}, sourceVideoOption.parameters || {},
               subDesc.media.video.parameters || {});
           }
+          // Put output settings in connection.video to avoid external transcoding
+          subDesc.connection.video = {
+            format: subDesc.media.video.format,
+            parameters: subDesc.media.video.parameters
+          };
+          subDesc.media.video.format = sourceVideoOption.format;
+          delete subDesc.media.video.parameters;
         }
 
         // Schedule preference for worker node

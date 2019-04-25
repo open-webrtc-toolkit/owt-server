@@ -93,10 +93,13 @@ class AnalyticsAgent extends BaseAgent {
     var engine;
     if (!this.inputs[connectionId]) {
       engine = new AddonEngine();
-      const videoFormat = options.media.video.format;
+      const inputFormat = options.media.video.format;
+      const videoFormat = options.connection.video.format;
+      const videoParameters = options.connection.video.parameters;
       const algo = options.connection.algorithm;
       const pluginName = this.algorithms[algo].name;
       this.inputs[connectionId] = {
+        inputFormat,
         videoFormat,
         algo,
         pluginName,
@@ -115,7 +118,7 @@ class AnalyticsAgent extends BaseAgent {
         log.info('new stream added', newStreamId);
         const streamInfo = {
           type: 'analytics',
-          media: {video: videoFormat},
+          media: {video: Object.assign({}, videoFormat, videoParameters)},
           analyticsId: connectionId,
           locality: {agent:this.agentId, node:this.rpcId},
         };
@@ -131,9 +134,10 @@ class AnalyticsAgent extends BaseAgent {
             }
             codec = codec.toLowerCase();
             const {resolution, framerate, keyFrameInterval, bitrate}
-              = getVideoParameterForAddon(options.media.video);
+              = getVideoParameterForAddon(options.connection.video);
             engine.addOutput(newStreamId, codec, resolution, framerate, bitrate, keyFrameInterval,
               algo, pluginName, this.outputs[newStreamId]);
+            streamInfo.media.video.bitrate = bitrate;
             this.onStreamGenerated(options.controller, newStreamId, streamInfo);
           }
         } else {
@@ -171,7 +175,7 @@ class AnalyticsAgent extends BaseAgent {
       if (iConn && iConn.direction === 'in' && !iConn.videoTo) {
         this.inputs[connectionId].videoFrom = videoFrom;
         iConn.videoTo = connectionId;
-        let codec = this.inputs[connectionId].videoFormat.codec;
+        let codec = this.inputs[connectionId].inputFormat.codec;
         codec = codec.toLowerCase();
         this.inputs[connectionId].engine.setInput(videoFrom, codec, iConn.connection);
         return Promise.resolve();
