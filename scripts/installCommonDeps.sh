@@ -245,6 +245,16 @@ install_licode(){
   popd >/dev/null
 }
 
+install_quic(){
+  rm $ROOT/third_party/quic-lib -rf
+  mkdir $ROOT/third_party/quic-lib
+
+  pushd ${ROOT}/third_party/quic-lib
+  wget https://github.com/open-webrtc-toolkit/owt-deps-quic/releases/download/v0.1/dist.tgz
+  tar xzf dist.tgz
+  popd
+}
+
 install_nicer(){
   local COMMIT="24d88e95e18d7948f5892d04589acce3cc9a5880"
   pushd ${ROOT}/third_party >/dev/null

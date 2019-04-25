@@ -13,10 +13,15 @@ var logger = require('../logger').logger;
 // Logger
 var log = logger.getLogger('InternalConnectionFactory');
 
+var quicIO = require('../quicIO/build/Release/quicIO.node');
+
+var cf = 'leaf_cert.pem';
+var kf = 'leaf_cert.pkcs8';
+
 // Wrapper object for sctp-connection and tcp/udp-connection
 function InConnection(prot, minport, maxport) {
     var conn = null;
-    var protocol = "sctp";
+    var protocol = "quic";
 
     switch (prot) {
         case 'tcp':
@@ -24,9 +29,13 @@ function InConnection(prot, minport, maxport) {
             protocol = prot;
             conn = new InternalIn(prot, minport, maxport);
             break;
+        case 'quic':
+            conn = new quicIO.in(cf, kf);
+            break;
         default:
             prot = "sctp";
             conn = new SctpIn();
+            break;
     }
 
     // Connect to another connection's listening address
@@ -52,16 +61,18 @@ function InConnection(prot, minport, maxport) {
 function OutConnection(prot, minport, maxport) {
     var that = {};
     var conn = null;
-    var protocol = "sctp";
+    var protocol = "quic";
 
     switch (prot) {
         case 'tcp':
         case 'udp':
+        case 'quic':
             protocol = prot;
             break;
         default:
             protocol = "sctp";
             conn = new SctpOut();
+            break;
     }
 
     // Get the listening port info
@@ -77,6 +88,8 @@ function OutConnection(prot, minport, maxport) {
     that.connect = function(connectOpt) {
         if (protocol === "sctp") {
             conn.connect(connectOpt.ip, connectOpt.port.udp, connectOpt.port.sctp);
+        } else if (protocol === 'quic') {
+            conn = new quicIO.out(connectOpt.ip, connectOpt.port);
         } else {
             conn = new InternalOut(protocol, connectOpt.ip, connectOpt.port);
         }
