@@ -102,8 +102,6 @@ QuicOut::QuicOut(const std::string& dest_ip, unsigned int dest_port)
         : client_(RQuicFactory::createQuicClient()) {
     client_->setListener(this);
     client_->start(dest_ip.c_str(), dest_port);
-    client_->send("abcdefghijk", 5);
-    client_->send("hello\nhello\n", 5);
 }
 
 QuicOut::~QuicOut() {
