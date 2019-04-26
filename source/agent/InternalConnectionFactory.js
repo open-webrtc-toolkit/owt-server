@@ -13,7 +13,12 @@ var logger = require('../logger').logger;
 // Logger
 var log = logger.getLogger('InternalConnectionFactory');
 
-var quicIO = require('../quicIO/build/Release/quicIO.node');
+var quicIO;
+try {
+    quicIO = require('../quicIO/build/Release/quicIO.node');
+} catch (e) {
+    log.info('QUIC is not enabled for internal IO');
+}
 
 var cf = 'leaf_cert.pem';
 var kf = 'leaf_cert.pkcs8';
