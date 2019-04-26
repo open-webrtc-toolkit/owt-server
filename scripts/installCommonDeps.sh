@@ -25,6 +25,10 @@ install_fdkaac(){
   local SRC="fdk-aac-${VERSION}.tar.gz"
   local SRC_URL="http://sourceforge.net/projects/opencore-amr/files/fdk-aac/${SRC}/download"
   local SRC_MD5SUM="13c04c5f4f13f4c7414c95d7fcdea50f"
+
+  local LIST_LIBS=`ls ${PREFIX_DIR}/lib/libfdk* 2>/dev/null`
+  $INCR_INSTALL && [[ ! -z $LIST_LIBS ]] && echo "fdkaac already installed." && return 0
+
   mkdir -p ${LIB_DIR}
   pushd ${LIB_DIR}
   [[ ! -s ${SRC} ]] && wget -c ${SRC_URL} -O ${SRC}
@@ -47,6 +51,10 @@ install_ffmpeg(){
   local SRC="${DIR}.tar.bz2"
   local SRC_URL="http://ffmpeg.org/releases/${SRC}"
   local SRC_MD5SUM="4a64e3cb3915a3bf71b8b60795904800"
+
+  local LIST_LIBS=`ls ${PREFIX_DIR}/lib/libav* 2>/dev/null`
+  $INCR_INSTALL && [[ ! -z $LIST_LIBS ]] && echo "ffmpeg already installed." && return 0
+
   mkdir -p ${LIB_DIR}
   pushd ${LIB_DIR}
   [[ ! -s ${SRC} ]] && wget -c ${SRC_URL}
@@ -68,6 +76,10 @@ install_ffmpeg(){
 
 install_zlib() {
   local VERSION="1.2.11"
+
+  local LIST_LIBS=`ls ${PREFIX_DIR}/lib/libz* 2>/dev/null`
+  $INCR_INSTALL && [[ ! -z $LIST_LIBS ]] && echo "zlib already installed." && return 0
+
   if [ -d $LIB_DIR ]; then
     pushd $LIB_DIR >/dev/null
     rm -rf zlib-*
@@ -87,6 +99,9 @@ install_zlib() {
 
 #libnice depends on zlib
 install_libnice0114(){
+  local LIST_LIBS=`ls ${PREFIX_DIR}/lib/libnice* 2>/dev/null`
+  $INCR_INSTALL && [[ ! -z $LIST_LIBS ]] && echo "libnice already installed." && return 0
+
   if [ -d $LIB_DIR ]; then
     cd $LIB_DIR
     rm -f ./build/lib/libnice.*
@@ -106,6 +121,9 @@ install_libnice0114(){
 
 #libnice depends on zlib
 install_libnice014(){
+  local LIST_LIBS=`ls ${PREFIX_DIR}/lib/libnice* 2>/dev/null`
+  $INCR_INSTALL && [[ ! -z $LIST_LIBS ]] && echo "libnice already installed." && return 0
+
   if [ -d $LIB_DIR ]; then
     cd $LIB_DIR
     rm -f ./build/lib/libnice.*
@@ -126,6 +144,9 @@ install_libnice014(){
 }
 
 install_openssl(){
+  local LIST_LIBS=`ls ${PREFIX_DIR}/lib/libssl* 2>/dev/null`
+  $INCR_INSTALL && [[ ! -z $LIST_LIBS ]] && echo "openssl already installed." && return 0
+
   if [ -d $LIB_DIR ]; then
     local SSL_VERSION="1.0.2r"
     cd $LIB_DIR
@@ -148,6 +169,9 @@ install_openssl(){
 }
 
 install_openh264(){
+  local LIST_LIBS=`ls ${ROOT}/third_party/openh264/libopenh264* 2>/dev/null`
+  $INCR_INSTALL && [[ ! -z $LIST_LIBS ]] && echo "openh264 already installed." && return 0
+
   MAJOR=1
   MINOR=7
   SOVER=4
@@ -186,6 +210,9 @@ install_openh264(){
 }
 
 install_libexpat() {
+  local LIST_LIBS=`ls ${PREFIX_DIR}/lib/libexpat* 2>/dev/null`
+  $INCR_INSTALL && [[ ! -z $LIST_LIBS ]] && echo "libexpat already installed." && return 0
+
   if [ -d $LIB_DIR ]; then
     local VERSION="2.2.6"
     local DURL="https://github.com/libexpat/libexpat/releases/download/R_2_2_6/expat-${VERSION}.tar.bz2"
@@ -206,6 +233,9 @@ install_libexpat() {
 }
 
 install_webrtc(){
+  $INCR_INSTALL &&  [[ -s $ROOT/third_party/webrtc/libwebrtc.a ]] && \
+  echo "libwebrtc already installed." && return 0
+
   export GIT_SSL_NO_VERIFY=1
   local GIT_ACCOUNT="lab_webrtctest"
   local OWT_GIT_URL=`git config --get remote.origin.url`
@@ -228,6 +258,8 @@ install_webrtc(){
 }
 
 install_licode(){
+  $INCR_INSTALL && [[ -d ${ROOT}/third_party/licode ]] && echo "licode already installed." && return 0
+
   local COMMIT="4c92ddb42ad8bd2eab4dfb39bbb49f985b454fc9" #pre-v5.1
   local LINK_PATH="$ROOT/source/agent/webrtc/webrtcLib"
   pushd ${ROOT}/third_party >/dev/null
@@ -235,6 +267,12 @@ install_licode(){
   git clone https://github.com/lynckia/licode.git
   pushd licode >/dev/null
   git reset --hard $COMMIT
+
+  local GIT_EMAIL=`git config --get user.email`
+  local GIT_USER=`git config --get user.name`
+  [[ -z $GIT_EMAIL ]] && git config --global user.email "you@example.com"
+  [[ -z $GIT_USER ]] && git config --global user.name "Your Name"
+
   # APPLY PATCH
   git am $PATHNAME/patches/licode/*.patch
   # Cherry-pick upstream fix - Use OpenSSL API for DTLS retransmissions (#1145)
@@ -259,6 +297,9 @@ install_nicer(){
 }
 
 install_libsrtp2(){
+  local LIST_LIBS=`ls ${PREFIX_DIR}/lib/libsrtp2* 2>/dev/null`
+  $INCR_INSTALL && [[ ! -z $LIST_LIBS ]] && echo "libsrtp2 already installed." && return 0
+
   if [ -d $LIB_DIR ]; then
     cd $LIB_DIR
     curl -o libsrtp-2.1.0.tar.gz https://codeload.github.com/cisco/libsrtp/tar.gz/v2.1.0
@@ -278,6 +319,9 @@ install_node() {
   echo -e "\x1b[32mInstalling nvm...\x1b[0m"
   NVM_DIR="${HOME}/.nvm"
 
+  $INCR_INSTALL && [[ -s "${NVM_DIR}/nvm.sh" ]] && \
+  echo "node already installed." && return 0
+
   #install nvm
   bash "${PATHNAME}/install_nvm.sh"
   #install node
@@ -288,6 +332,12 @@ install_node() {
 }
 
 install_node_tools() {
+  if [ "${INCR_INSTALL}" == "true" ]; then
+    npm list -g node-gyp > /dev/null 2>&1
+    [ $? -eq 0 ] && echo "node tools already installed." && return 0
+  fi
+
+  check_proxy
   npm install -g --loglevel error node-gyp grunt-cli underscore jsdoc
   pushd ${ROOT} >/dev/null
   npm install nan@2.11.1
@@ -299,6 +349,9 @@ install_node_tools() {
 
 # libre depends on openssl
 install_libre() {
+  local LIST_LIBS=`ls ${ROOT}/third_party/re/libre* 2>/dev/null`
+  $INCR_INSTALL && [[ ! -z $LIST_LIBS ]] && echo "libre already installed." && return 0
+
   pushd ${ROOT}/third_party >/dev/null
   rm -rf re
   git clone https://github.com/creytiv/re.git
@@ -310,6 +363,9 @@ install_libre() {
 }
 
 install_usrsctp() {
+  local LIST_LIBS=`ls ${ROOT}/third_party/usrsctp/usrsctplib/.libs/libusrsctp** 2>/dev/null`
+  $INCR_INSTALL && [[ ! -z $LIST_LIBS ]] && echo "usrsctp already installed." && return 0
+
   local TP_DIR="${ROOT}/third_party"
   if [ -d $TP_DIR ]; then
     local USRSCTP_VERSION="30d7f1bd0b58499e1e1f2415e84d76d951665dc8"
