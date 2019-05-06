@@ -583,6 +583,10 @@ module.exports = function (spec, on_status, on_mediaUpdate) {
                 return;
             } else if (video && track === 'video' && videoFrameConstructor) {
                 videoFrameConstructor.addDestination(dest);
+                if (dest instanceof VideoFramePacketizer) {
+                    dest.enable(false);
+                    dest.enable(true);
+                }
                 return;
             }
 
