@@ -49,6 +49,7 @@ public:
 
     // Implements FrameDestination.
     void onFrame(const Frame&);
+    void onVideoSourceChanged() override;
 
     // Implements erizo::MediaSource.
     int sendFirPacket();
