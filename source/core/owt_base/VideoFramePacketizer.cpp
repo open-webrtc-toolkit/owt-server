@@ -26,6 +26,8 @@ VideoFramePacketizer::VideoFramePacketizer(bool enableRed, bool enableUlpfec, bo
     , m_ssrc(0)
     , m_ssrc_generator(SsrcGenerator::GetSsrcGenerator())
     , m_sendFrameCount(0)
+    , m_clock(nullptr)
+    , m_timeStampOffset(0)
 {
     video_sink_ = nullptr;
     m_ssrc = m_ssrc_generator->CreateSsrc();
@@ -71,6 +73,7 @@ void VideoFramePacketizer::enable(bool enabled)
         deliverFeedbackMsg(feedback);
         m_keyFrameArrived = false;
         m_sendFrameCount = 0;
+        m_timeStampOffset = 0;
     }
 }
 
@@ -272,6 +275,9 @@ void VideoFramePacketizer::onFrame(const Frame& frame)
             deliverFeedbackMsg(feedback);
             return;
         } else {
+            // Recalculate timestamp offset
+            const uint32_t kMsToRtpTimestamp = 90;
+            m_timeStampOffset = kMsToRtpTimestamp * m_clock->TimeInMilliseconds() - frame.timeStamp;
             m_keyFrameArrived = true;
         }
     }
@@ -291,6 +297,9 @@ void VideoFramePacketizer::onFrame(const Frame& frame)
         }
     }
 
+    // Recalculate timestamp for stream substitution
+    uint32_t timeStamp = frame.timeStamp + m_timeStampOffset;//kMsToRtpTimestamp * m_clock->TimeInMilliseconds();
+
     webrtc::RTPVideoHeader h;
     memset(&h, 0, sizeof(webrtc::RTPVideoHeader));
     uint32_t transport_frame_id_out = 0;
@@ -308,13 +317,13 @@ void VideoFramePacketizer::onFrame(const Frame& frame)
         h.codec = webrtc::kRtpVideoVp8;
         h.codecHeader.VP8.InitRTPVideoHeaderVP8();
         boost::shared_lock<boost::shared_mutex> lock(m_rtpRtcpMutex);
-        m_rtpRtcp->SendOutgoingData(webrtc::kVideoFrameKey, VP8_90000_PT, frame.timeStamp, frame.timeStamp / 90, frame.payload, frame.length, nullptr, &h, &transport_frame_id_out);
+        m_rtpRtcp->SendOutgoingData(webrtc::kVideoFrameKey, VP8_90000_PT, timeStamp, timeStamp / 90, frame.payload, frame.length, nullptr, &h, &transport_frame_id_out);
     } else if (frame.format == FRAME_FORMAT_VP9) {
         h.codec = webrtc::kRtpVideoVp9;
         h.codecHeader.VP9.InitRTPVideoHeaderVP9();
         h.codecHeader.VP9.inter_pic_predicted = !frame.additionalInfo.video.isKeyFrame;
         boost::shared_lock<boost::shared_mutex> lock(m_rtpRtcpMutex);
-        m_rtpRtcp->SendOutgoingData(webrtc::kVideoFrameKey, VP9_90000_PT, frame.timeStamp, frame.timeStamp / 90, frame.payload, frame.length, nullptr, &h, &transport_frame_id_out);
+        m_rtpRtcp->SendOutgoingData(webrtc::kVideoFrameKey, VP9_90000_PT, timeStamp, timeStamp / 90, frame.payload, frame.length, nullptr, &h, &transport_frame_id_out);
     } else if (frame.format == FRAME_FORMAT_H264 || frame.format == FRAME_FORMAT_H265) {
         int frame_length = frame.length;
         if (m_enableDump) {
@@ -355,11 +364,16 @@ void VideoFramePacketizer::onFrame(const Frame& frame)
 
         boost::shared_lock<boost::shared_mutex> lock(m_rtpRtcpMutex);
         if (frame.format == FRAME_FORMAT_H264) {
-          m_rtpRtcp->SendOutgoingData(webrtc::kVideoFrameKey, H264_90000_PT, frame.timeStamp, frame.timeStamp / 90, frame.payload, frame_length, &frag_info, &h, &transport_frame_id_out);
+          m_rtpRtcp->SendOutgoingData(webrtc::kVideoFrameKey, H264_90000_PT, timeStamp, timeStamp / 90, frame.payload, frame_length, &frag_info, &h, &transport_frame_id_out);
         } else {
-          m_rtpRtcp->SendOutgoingData(webrtc::kVideoFrameKey, H265_90000_PT, frame.timeStamp, frame.timeStamp / 90, frame.payload, frame_length, &frag_info, &h, &transport_frame_id_out);
+          m_rtpRtcp->SendOutgoingData(webrtc::kVideoFrameKey, H265_90000_PT, timeStamp, timeStamp / 90, frame.payload, frame_length, &frag_info, &h, &transport_frame_id_out);
         }
     }
+}
+
+void VideoFramePacketizer::onVideoSourceChanged()
+{
+    m_keyFrameArrived = false;
 }
 
 int VideoFramePacketizer::sendFirPacket()
@@ -372,6 +386,7 @@ int VideoFramePacketizer::sendFirPacket()
 bool VideoFramePacketizer::init(bool enableRed, bool enableUlpfec, bool enableTransportcc)
 {
     using namespace webrtc;
+    m_clock = Clock::GetRealTimeClock();
     m_retransmissionRateLimiter.reset(new webrtc::RateLimiter(Clock::GetRealTimeClock(), 1000));
     m_bitrateController.reset(webrtc::BitrateController::CreateBitrateController(Clock::GetRealTimeClock(), this, &m_rtcEventLog));
     m_bandwidthObserver.reset(m_bitrateController->CreateRtcpBandwidthObserver());

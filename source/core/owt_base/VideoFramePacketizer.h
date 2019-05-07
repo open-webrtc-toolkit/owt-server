@@ -49,6 +49,7 @@ public:
 
     // Implements FrameDestination.
     void onFrame(const Frame&);
+    void onVideoSourceChanged() override;
 
     // Implements erizo::MediaSource.
     int sendFirPacket();
@@ -97,6 +98,9 @@ private:
     boost::shared_mutex m_transport_mutex;
 
     uint16_t m_sendFrameCount;
+    const webrtc::Clock *m_clock;
+    int64_t m_timeStampOffset;
+
     ///// NEW INTERFACE ///////////
     int deliverFeedback_(std::shared_ptr<erizo::DataPacket> data_packet);
     int sendPLI();
