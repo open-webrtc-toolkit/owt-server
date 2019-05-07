@@ -117,7 +117,6 @@ module.exports = function (spec, on_status, on_mediaUpdate) {
         videoFrameConstructor,
         videoFramePacketizer,
         final_prf,
-        videoOutState = true,
         wrtc;
 
     var isReserve = function (line, reserved) {
@@ -452,7 +451,6 @@ module.exports = function (spec, on_status, on_mediaUpdate) {
             // hardcoding here
             videoFramePacketizer = new VideoFramePacketizer(true, true);
             videoFramePacketizer.bindTransport(wrtc);
-            videoOutState = true;
             //video.resolution && wrtc.setSendResolution(video.resolution);
         }
     };
@@ -564,7 +562,6 @@ module.exports = function (spec, on_status, on_mediaUpdate) {
                 videoFrameConstructor.enable(action === 'on');
             } else if (dir === 'out' && videoFramePacketizer) {
                 videoFramePacketizer.enable(action === 'on');
-                videoOutState = (action === 'on');
             } else {
                 on_error('Ambiguous video direction.');
                 return;
@@ -617,11 +614,6 @@ module.exports = function (spec, on_status, on_mediaUpdate) {
         }
 
         if (video && track === 'video') {
-            // Temporary code for stream substitution
-            if (videoOutState) {
-                videoFramePacketizer.enable(false);
-                videoFramePacketizer.enable(true);
-            }
             return videoFramePacketizer;
         }
 

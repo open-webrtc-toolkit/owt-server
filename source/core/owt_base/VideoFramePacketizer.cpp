@@ -371,6 +371,11 @@ void VideoFramePacketizer::onFrame(const Frame& frame)
     }
 }
 
+void VideoFramePacketizer::onVideoSourceChanged()
+{
+    m_keyFrameArrived = false;
+}
+
 int VideoFramePacketizer::sendFirPacket()
 {
     FeedbackMsg feedback = {.type = VIDEO_FEEDBACK, .cmd = REQUEST_KEY_FRAME};
