@@ -350,6 +350,20 @@ module.exports = function (spec, on_status, on_mediaUpdate) {
         return transform.write(res);
     };
 
+    var filterTransportCC = function (sdp) {
+        if (direction !== 'out') {
+            // Not for subscribe
+            return sdp;
+        }
+        var res = transform.parse(sdp);
+        res.media.forEach((mediaInfo) => {
+            if (mediaInfo.rtcpFb) {
+                mediaInfo.rtcpFb = mediaInfo.rtcpFb.filter((fb)=>(fb.type !== 'transport-cc'));
+            }
+        });
+        return transform.write(res);
+    };
+
     var CONN_INITIAL = 101, CONN_STARTED = 102, CONN_GATHERED = 103, CONN_READY = 104, CONN_FINISHED = 105, CONN_CANDIDATE = 201, CONN_SDP = 202, CONN_FAILED = 500;
     /*
      * Given a WebRtcConnection waits for the state CANDIDATES_GATHERED for set remote SDP.
@@ -376,6 +390,7 @@ module.exports = function (spec, on_status, on_mediaUpdate) {
                     });
                     audio && (message = determineAudioFmt(message));
                     video && (message = determineVideoFmt(message));
+                    message = filterTransportCC(message);
                     log.debug('Answer SDP', message);
                     on_status({type: 'answer', sdp: message});
                     break;
