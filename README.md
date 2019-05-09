@@ -33,7 +33,7 @@ The ${webrtc-javascript-sdk-sample-conference-dist} is built from owt-javascript
 
 If "--archive ${name}" option is appended to the pack command, a "Release-${name}.tgz" file will be generated in root folder. For other options, run the scripts with "--help" option.
 
-## Quic Start
+## Quick Start
 In the repository root, run following commands to start media server on single machine:
 1. `./bin/init-all.sh --deps`
 2. `./bin/start-all.sh`
