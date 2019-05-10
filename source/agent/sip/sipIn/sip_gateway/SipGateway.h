@@ -61,6 +61,7 @@ public:
     bool accept(const std::string& peer);
     void reject(const std::string& peer);
     void helpSetCallOwner(void *call, void *owner) const;
+    void resetCallOwner(void *call) const;
 
     void setEventRegistry(EventRegistry*);
     const CallInfo* getCallInfoByPeerURI(const std::string& peer);

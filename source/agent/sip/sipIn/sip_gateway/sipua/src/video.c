@@ -433,6 +433,7 @@ static void stream_recv_handler(const struct rtp_header *hdr,
 {
 	struct video *v = arg;
 	int err;
+        void* call_owner = (v->call ? call_get_owner(v->call) : NULL);
 
 	if (!mb)
 		return;
@@ -445,9 +446,9 @@ static void stream_recv_handler(const struct rtp_header *hdr,
 	}
 
 	mb->pos = 0;
-    if (mbuf_get_left(mb) && v->call) {
+    if (mbuf_get_left(mb) && v->call && call_owner) {
         ++v->vrx.rx_counter;
-        call_connection_rx_video(call_get_owner(v->call), mbuf_buf(mb), mbuf_get_left(mb));
+        call_connection_rx_video(call_owner, mbuf_buf(mb), mbuf_get_left(mb));
     }
 }
 
@@ -455,7 +456,7 @@ static void stream_recv_handler(const struct rtp_header *hdr,
 static void rtcp_handler(struct rtcp_msg *msg, void *arg)
 {
 	struct video *v = arg;
-	void *owner = call_get_owner(v->call);
+	void *owner = (v->call ? call_get_owner(v->call) : NULL);
 	if (!owner)
 		return;
 

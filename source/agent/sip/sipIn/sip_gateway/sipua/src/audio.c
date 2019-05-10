@@ -442,7 +442,7 @@ static void stream_recv_handler(const struct rtp_header *hdr,
 {
 	struct audio *a = arg;
 	struct aurx *rx = &a->rx;
-    void *owner = 0;
+    void *owner = (a->call ? call_get_owner(a->call) : NULL);
 
 
 	/* Telephone event? */
@@ -476,7 +476,6 @@ static void stream_recv_handler(const struct rtp_header *hdr,
     /***  Do NOT decode the stream data here, but send to transcoder ***/
     // (void)aurx_stream_decode(&a->rx, mb);
     mb->pos = 0;
-    owner = call_get_owner(a->call);
     if (mbuf_get_left(mb) && owner) {
         ++a->rx.rx_counter;
         call_connection_rx_audio(owner, mbuf_buf(mb), mbuf_get_left(mb));

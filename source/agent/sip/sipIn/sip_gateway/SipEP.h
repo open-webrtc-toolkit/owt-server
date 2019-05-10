@@ -46,11 +46,13 @@ public:
     bool accept(const std::string& peer);
     void reject(const std::string& peer);
     void helpSetCallOwner(void *call, void* owner);
+    void resetCallOwner(void *call);
 
     void onRegisterResult(bool successful);
     void onPeerRinging(const std::string &peer);
     void onCallEstablished(const std::string& peer, void *call, const char *audioDir, const char *videoDir);
     void onCallClosed(const std::string& peer, const std::string& reason);
+    void onCallLoss(const std::string& peer, const std::string& reason);
     void onCallUpdated(const std::string& peer, const char *audioDir, const char *videoDir);
     bool onSipIncomingCall(bool requireAudio, bool requireVideo, const std::string& callerIdentity);
     void onSipAudioFmt(const std::string& peer, const std::string& codecName, unsigned int sampleRate);
