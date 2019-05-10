@@ -429,6 +429,14 @@ var updateRecording = function (room, id, updateOptions, ok_cb, err_cb) {
     send('PATCH', '/rooms/' + room + '/recordings/' + id, updateOptions, ok_cb, err_cb);
 };
 
+var startAnalyzing = function (room, options, ok_cb, err_cb) {
+    send('POST', '/rooms/' + room + '/analytics', options, ok_cb, err_cb);
+};
+
+var stopAnalyzing = function (room, id, ok_cb, err_cb) {
+    send('DELETE', '/rooms/' + room + '/analytics/' + id, undefined, ok_cb, err_cb);
+};
+
 var listStreamingOuts = function (room, ok_cb, err_cb) {
     send('GET', '/rooms/' + room + '/streaming-outs/', undefined, ok_cb, err_cb);
 };
@@ -477,6 +485,8 @@ function getRestfulParmas() {
         regionId = $('#regionid').val(),
         container = $('#container').val(),
         streamingOutId = $('#streamingoutid').val();
+        algorithm = $('#algorithm').val(),
+        analyticsId = $('#analyticsid').val(),
     sipcalld = $('#sipcallslist').val();
     peerURI = $('#peerURI').val();
     return {
@@ -493,6 +503,8 @@ function getRestfulParmas() {
         recorderId,
         regionId,
         streamingOutId,
+        algorithm,
+        analyticsId,
         audioActive,
         videoActive,
         container,
@@ -1259,12 +1271,87 @@ function restStopRecording() {
         roomId,
         recorderId
     } = getRestfulParmas();
-    stopRecording(roomId, recorderId, (resp) => {
+    stopAnalyzing(roomId, recorderId, (resp) => {
         console.log(`stop recording ${recorderId} success: `, resp);
     }, err => {
         console.log('stop recording failed: ', err);
     })
 }
+
+function restStartAnalyzing() {
+    let {
+        roomId,
+        audioFrom,
+        videoFrom,
+        algorithm,
+    } = getRestfulParmas();
+    let {
+        videoCodec,
+        audioCodec,
+        bitrate,
+        resolution,
+        frameRate,
+        kfi,
+    } = getSubOptions();
+    let options = {
+        media: {
+            audio: false,
+            video: false,
+        },
+        algorithm: algorithm,
+    }
+    if (audioFrom) {
+        options.media.audio = {
+            from: audioFrom,
+        }
+        if (audioCodec) {
+            options.media.audio.format = {
+                codec: audioCodec.name,
+                sampleRate: audioCodec.clockRate,
+                channelNum: audioCodec.channelCount,
+            }
+        }
+    }
+    if (videoFrom) {
+        options.media.video = {
+            from: videoFrom,
+        }
+        if (videoCodec) {
+            options.media.video.format = {
+                codec: videoCodec.name,
+                profile: videoCodec.profile,
+            }
+        }
+        if (bitrate || resolution || frameRate || kfi) {
+            options.media.video.parameters = {
+                bitrate: bitrate ? 'x' + bitrate : undefined,
+                resolution,
+                framerate: frameRate,
+                keyFrameInterval: kfi,
+            }
+        }
+    }
+    startAnalyzing(roomId, options, (resp) => {
+        resp = JSON.parse(resp);
+        console.log(`start analyzing ${audioFrom}, ${videoFrom} success: `, resp);
+        $('#analyticsid').val(resp.id);
+    }, err => {
+        console.log('start analytics failed: ', err);
+    })
+}
+
+function restStopAnalyzing() {
+    let {
+        roomId,
+        analyticsId
+    } = getRestfulParmas();
+    stopAnalyzing(roomId, analyticsId, (resp) => {
+        console.log(`stop analytics ${analyticsId} success: `, resp);
+    }, err => {
+        console.log('stop analytics failed: ', err);
+    })
+}
+
 function transCodec() {
     let {
         roomId,
@@ -1870,21 +1957,7 @@ function publish() {
         console.log('publish local stream failed: ', err);
     })
 }
-function unpublish_publish() {
-    let count = parseInt($('#cycleCounts').val()) || 20;
-    let intervals_tmp = parseInt($('#intervals').val()) || 200;
-    let inter = setInterval(() => {
-        if (count === 0) {
-            clearInterval(inter);
-        }
-        count--;
-        publicationTmp.stop().then(() => {
-            publish();
-        }, (err) => {
-            console.log('publication stop failed', err);
-        });
-    }, intervals_tmp);
-}
+
 function addOption(select, optionsArr) {
     select.children('option:not(:first)').remove();
     optionsArr.forEach((item) => {
@@ -1995,6 +2068,8 @@ function subscribe() {
             console.log('subscribe failed: ', err);
         })
 }
+
+
 
 function sendMessage() {
     let message = $('#sendcontent').val();
@@ -2286,28 +2361,211 @@ function lotOfUserJoin(count = 100, leave) {
         }, 200);
     }
 }
+//pub_unpub
+function pub_unpub() {
+    let count = parseInt($('#cycleCounts').val()) || 20;
+    let intervals_tmp = parseInt($('#intervals').val()) || 200;
+    let localStream = localStreams.get($('#localstreamid').val() || 'camera');
+    let audioCodecName = $('#audiocodec').val();
+    let videoCodecName = $('#videocodec').val();
+    let videoMaxBitrate = $('#videomaxbitrate').val();
+    let audioMaxBitrate = $('#audiomaxbitrate').val();
+    let {
+        audioCodec,
+        videoCodec
+    } = getAudioAndVideoCodec(audioCodecName, videoCodecName);
 
-//publication mute/unmute
-function pub_mute_unmute(timeout = 1000, count = 20) {
-    let [publicationArr, trackKind] = getPublicationParams();
-    console.log('mute_unmute: ', getPublicationParams());
-    if (publicationArr.length === 0 || publicationArr[0] === undefined) throw new Error("there are no publications");
-    let itv = setInterval(function () {
-        publicationArr.forEach((publication) => {
-            publication.unmute(trackKind)
-                .then(() => {
-                    console.log(`${publication.id} unmute ${trackKind} success`)
-                    publication.mute(trackKind);
-                }, err => {
-                    console.log(`${publication.id} unmute failed: `, err);
+    let audio = false, video = false;
+    if (audioCodec.name || audioMaxBitrate) {
+        audio = [{
+            codec: audioCodec,
+            maxBitrate: parseInt(audioMaxBitrate),
+        }]
+    }
+    if (videoCodec.name || videoMaxBitrate) {
+        video = [{
+            codec: videoCodec,
+            maxBitrate: parseInt(videoMaxBitrate),
+        }]
+    }
+    let options = {
+        audio: audio,
+        video: video,
+    };
+    let stream = localStreams.get(localStream.source.video || localStream.source.audio);
+    var m = 0;
+    let inter = setInterval(() => {
+        client.publish(stream, options).then((publication) => {
+            publications.set(publication.id, publication);
+            console.log(`get publication ${publication.id}`);
+            publicationTmp = publication;
+            m++;
+            console.log("Pub Success counts", m)
+            publicationTmp.stop();
+            console.log("Pub.stop Success counts", m)
+        }, (err) => {
+            console.log('publish local stream failed: ', err);
+        })
+        count--;
+        if (count === 0) {
+            clearInterval(inter);
+        }
+    }, intervals_tmp);
+}
+//sub_unsub
+function sub_unsub() {
+    let count = parseInt($('#cycleCounts').val()) || 20;
+    let intervals_tmp = parseInt($('#intervals').val()) || 200;
+    let {
+        remoteStreamId,
+        trackKind,
+        videoCodec,
+        audioCodec,
+        bitrate,
+        resolution,
+        frameRate,
+        kfi,
+    } = getSubOptions();
+    let audio, video, subOptions;
+    if (trackKind === 'audio') {
+        video = false;
+    } else {
+        video = {
+            codecs: [{ name: 'xxx' }, videoCodec],
+            resolution: resolution,
+            frameRate: frameRate,
+            bitrateMultiplier: bitrate,
+            keyFrameInterval: kfi,
+        }
+    }
+
+    if (trackKind === 'video') {
+        audio = false;
+    } else {
+        audio = {
+            codecs: [audioCodec]
+        }
+    }
+    subOptions = {
+        audio: audio,
+        video: video,
+    }
+    var m = 0;
+    let inter = setInterval(() => {
+        client.subscribe(remoteStreamMap.get(remoteStreamId), subOptions)
+            .then((subscription) => {
+                subscription.originId = remoteStreamId;
+                subscriptions.set(subscription.id, subscription);
+                displayStream(remoteStreamMap.get(remoteStreamId));
+                m++;
+                console.log("Sub Success counts", m, subscription.id)
+                subscription.stop();
+                console.log("Sub.stop Success counts", m)
+            }, err => {
+                console.log('subscribe failed: ', err);
+            })
+        count--;
+        if (count === 0) {
+            clearInterval(inter);
+        }
+    }, intervals_tmp);
+}
+//mix_unmix
+function mix_unmix() {
+    let count = parseInt($('#cycleCounts').val()) || 20;
+    let intervals_tmp = parseInt($('#intervals').val()) || 200;
+    let {
+        roomId,
+        forwardStreamId,
+        view
+    } = getRestfulParmas();
+    var m = 0;
+    let inter = setInterval(() => {
+        mixStream(roomId, forwardStreamId, view, (resp) => {
+            m++;
+            resp = JSON.parse(resp);
+            console.log(`mix stream ${forwardStreamId} to ${view} success: `, resp, m);
+            unmixStream(roomId, forwardStreamId, view, (resp) => {
+                resp = JSON.parse(resp);
+                console.log(`UNmix stream ${forwardStreamId} to ${view} success: `, resp, m);
+            }, err => {
+                console.log(`UNmix stream ${forwardStreamId} to ${view} failed: `, err);
+            },
+                err => {
+                    console.log(`mix stream ${forwardStreamId} to ${view} failed: `, err);
                 })
         })
         count--;
-        if (count < 0) {
-            clearInterval(itv);
+        if (count === 0) {
+            clearInterval(inter);
         }
-    }, timeout);
+    }, intervals_tmp);
 }
+//pubmute_unmute
+function pubmute_unmute() {
+    let count = parseInt($('#cycleCounts').val()) || 20;
+    let intervals_tmp = parseInt($('#intervals').val()) || 200;
+    var m = 0;
+    let inter = setInterval(() => {
+        let [publicationArr, trackKind] = getPublicationParams();
+        publicationArr.forEach((publication) => {
+            publication.mute(trackKind)
+                .then(() => {
+                    m++;
+                    console.log("pubmute_mute", m)
+                    console.log(`${publication.id} mute ${trackKind} success`)
+                    publicationArr.forEach((publication) => {
+                        publication.unmute(trackKind)
+                            .then(() => {
+                                console.log("unmute", m)
+                                console.log(`${publication.id} unmute ${trackKind} success`)
+                            }, err => {
+                                console.log(`${publication.id} unmute failed: `, err);
+                            })
+                    })
+                }, err => {
+                    console.log(`${publication.id} mute failed: `, err);
+                })
+        });
+        count--;
+        if (count === 0) {
+            clearInterval(inter);
+        }
+    }, intervals_tmp);
+}
+//submute_unmute
+function submute_unmute() {
+    let count = parseInt($('#cycleCounts').val()) || 20;
+    let intervals_tmp = parseInt($('#intervals').val()) || 200;
+    let [subscriptionArr, trackKind] = getSubcriptionParams();
+    var m = 0;
+    let inter = setInterval(() => {
+        subscriptionArr.forEach(subscription => {
+            subscription.mute(trackKind)
+                .then(() => {
+                    console.log(`${subscription.id} mute ${trackKind} success`)
+                    m++;
+                    console.log("submute_mute", m)
+                    subscriptionArr.forEach(subscription => {
+                        subscription.unmute(trackKind)
+                            .then(() => {
+                                console.log("unmute", m)
+                                console.log(`${subscription.id} unmute ${trackKind} success`)
+                            }, err => {
+                                console.log(`${subscription.id} unmute failed: `, err);
+                            })
+                    })
+                }, err => {
+                    console.log(`${subscription.id} mute failed: `, err);
+                })
+        })
+        count--;
+        if (count === 0) {
+            clearInterval(inter);
+        }
+    }, intervals_tmp);
+}
+
 
 window.onload = function () {
     navigator.mediaDevices.enumerateDevices()

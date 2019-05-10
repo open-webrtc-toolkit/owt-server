@@ -12,6 +12,7 @@ DISABLE_NONFREE=true
 CLEANUP=false
 NIGHTLY=false
 NO_INTERNAL=false
+INCR_INSTALL=false
 
 parse_arguments(){
   while [ "$1" != "" ]; do
@@ -27,6 +28,9 @@ parse_arguments(){
         ;;
       "--no-internal")
         NO_INTERNAL=true
+        ;;
+      "--incremental")
+        INCR_INSTALL=true
         ;;
     esac
     shift
@@ -59,8 +63,6 @@ then
 fi
 
 install_node
-
-check_proxy
 
 if [ "$NIGHTLY" != "true" ]; then
 
