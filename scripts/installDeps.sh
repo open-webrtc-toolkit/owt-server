@@ -142,11 +142,11 @@ case $yn in
   * ) install_libsrtp2;;
 esac
 
-read -p "Installing nicer? [No/yes]" yn
+read -p "Installing quic-lib? [Yes/no]" yn
 case $yn in
-  [Yy]* ) install_nicer;;
+  [Yy]* ) install_quic;;
   [Nn]* ) ;;
-  * ) ;;
+  * ) install_quic;;
 esac
 
 read -p "Installing licode? [Yes/no]" yn

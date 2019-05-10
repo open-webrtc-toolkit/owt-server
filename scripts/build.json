@@ -10,7 +10,8 @@
             "audio",
             "webrtc",
             "avstream",
-            "sip"
+            "sip",
+            "quicIO"
         ]
     },
     "mcu-msdk" : {
@@ -37,8 +38,7 @@
         "include" : [
             "mcu",
             "video-mixer-msdk",
-            "video-transcoder-msdk",
-            "quicIO"
+            "video-transcoder-msdk"
         ]
     },
     "video-mixer-sw" : {

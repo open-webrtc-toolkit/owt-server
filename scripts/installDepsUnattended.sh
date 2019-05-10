@@ -88,6 +88,8 @@ if [ "$NIGHTLY" != "true" ]; then
 
   install_libsrtp2
 
+  install_quic
+
   install_licode
 
   if [[ "$OS" =~ .*ubuntu.* ]]
