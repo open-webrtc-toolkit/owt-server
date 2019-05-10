@@ -315,7 +315,12 @@ void sipua_set_call_owner(struct sipua_entity *sipua, void *call, void *callowne
 	data = mem_zalloc(sizeof(struct sipua_call_connect), NULL);
 	data->call = call;
 	data->owner = callowner;
-	mqueue_push(sipua->mq, SIPUA_CALL_CONNECT, data);
+
+        if (callowner) {
+	    mqueue_push(sipua->mq, SIPUA_CALL_CONNECT, data);
+        } else {
+	    mqueue_push(sipua->mq, SIPUA_CALL_DISCONNECT, data);
+        }
 	return;
 }
 

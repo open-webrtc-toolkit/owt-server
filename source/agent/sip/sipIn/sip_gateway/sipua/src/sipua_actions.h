@@ -9,7 +9,8 @@ enum sipua_cmd_code {
 	SIPUA_ANSWER,
 	SIPUA_TX_AUD,
 	SIPUA_TX_VID,
-        SIPUA_CALL_CONNECT
+    SIPUA_CALL_CONNECT,
+    SIPUA_CALL_DISCONNECT
 };
 
 struct sipua_call_data{

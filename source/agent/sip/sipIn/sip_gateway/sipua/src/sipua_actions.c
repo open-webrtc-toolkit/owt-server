@@ -47,6 +47,15 @@ static void sipua_do_call_connect(void *data, void *arg)
 	return;
 }
 
+static void sipua_do_call_disconnect(void *data, void *arg)
+{
+	struct sipua_call_connect *connect = (struct sipua_call_connect *)data;
+        (void)arg;
+        call_set_owner((struct call*)(connect->call), NULL);
+	mem_deref(connect);
+	return;
+}
+
 static void sipua_do_tx_audio(void *data, void *arg)
 {
 	struct sipua_tx_rtpbuf *tx_aud = (struct sipua_tx_rtpbuf *)data;
@@ -97,6 +106,9 @@ void sipua_cmd_handler(int id, void *data, void *arg)
 		    break;
                 case SIPUA_CALL_CONNECT:
                     sipua_do_call_connect(data, arg);
+                    break;
+                case SIPUA_CALL_DISCONNECT:
+                    sipua_do_call_disconnect(data, arg);
                     break;
 		default:
 		    printf("\n Unknown cmd code");
