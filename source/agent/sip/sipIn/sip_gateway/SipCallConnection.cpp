@@ -46,8 +46,8 @@ void call_connection_rx_fir(void* owner)
 
 void call_connection_closed(void* owner) {
     if (owner != NULL) {
-       sip_gateway::SipCallConnection* obj = static_cast<sip_gateway::SipCallConnection*>(owner);
-       obj->onConnectionClosed();
+        sip_gateway::SipCallConnection* obj = static_cast<sip_gateway::SipCallConnection*>(owner);
+        obj->onConnectionClosed();
     }
 }
 
@@ -87,6 +87,7 @@ SipCallConnection::SipCallConnection(SipGateway* gateway, const std::string& pee
 SipCallConnection::~SipCallConnection()
 {
     boost::unique_lock<boost::shared_mutex> lock(m_mutex);
+    m_gateway->resetCallOwner(m_sipCall);
     running = false;
     video_sink_ = NULL;
     audio_sink_ = NULL;
@@ -244,6 +245,7 @@ void SipCallConnection::refreshVideoStream() {
 void SipCallConnection::close() {
     boost::unique_lock<boost::shared_mutex> lock(m_mutex);
     running = false;
+    m_gateway->resetCallOwner(m_sipCall);
 }
 
 } // end of extern "C"

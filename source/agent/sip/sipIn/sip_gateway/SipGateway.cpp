@@ -77,6 +77,11 @@ void SipGateway::helpSetCallOwner(void *call, void *owner) const
 {
     m_sipEP->helpSetCallOwner(call, owner);
 }
+
+void SipGateway::resetCallOwner(void *call) const
+{
+    m_sipEP->resetCallOwner(call);
+}
 // The sipua thread
 void SipGateway::onRegisterResult(bool successful)
 {
