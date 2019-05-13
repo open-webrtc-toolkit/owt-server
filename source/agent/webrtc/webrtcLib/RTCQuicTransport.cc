@@ -227,23 +227,28 @@ NAN_METHOD(RTCQuicTransport::stop)
 
 NAUV_WORK_CB(RTCQuicTransport::onStreamCallback)
 {
+    ELOG_DEBUG("RTCQuicTransport::onStreamCallback")
     Nan::HandleScope scope;
     RTCQuicTransport* obj = reinterpret_cast<RTCQuicTransport*>(async->data);
     if (!obj || obj->m_streamsToBeNotified.empty())
         return;
     std::lock_guard<std::mutex> lock(obj->m_streamQueueMutex);
     while (!obj->m_streamsToBeNotified.empty()) {
-        ELOG_DEBUG("RTCQuicTransport::onStreamCallback");
+        ELOG_DEBUG("RTCQuicTransport::onStreamCallback1");
         v8::Local<v8::Object> stream = QuicStream::newInstance(obj->m_streamsToBeNotified.front());
         Nan::MaybeLocal<v8::Value> onEvent = Nan::Get(obj->handle(), Nan::New<v8::String>("onbidirectionalstream").ToLocalChecked());
         if (!onEvent.IsEmpty()) {
+            ELOG_DEBUG("onEvent is not empty.")
             v8::Local<v8::Value> onEventLocal = onEvent.ToLocalChecked();
             if (onEventLocal->IsFunction()) {
+                ELOG_DEBUG("onEventLocal is function.");
                 v8::Local<v8::Function> eventCallback = onEventLocal.As<Function>();
                 Nan::AsyncResource* resource = new Nan::AsyncResource(Nan::New<v8::String>("EventCallback").ToLocalChecked());
                 Local<Value> args[] = { stream };
                 resource->runInAsyncScope(Nan::GetCurrentContext()->Global(), eventCallback, 1, args);
             }
+        } else {
+            ELOG_DEBUG("onEvent is empty");
         }
         obj->m_streamsToBeNotified.pop();
     }
@@ -292,6 +297,8 @@ std::unique_ptr<P2PQuicTransport> RTCQuicTransport::createP2PQuicTransport(RTCIc
 
 void RTCQuicTransport::OnStream(P2PQuicStream* stream)
 {
+    assert(stream);
+    ELOG_DEBUG("RTCQuicTransport::OnStream");
     {
         std::lock_guard<std::mutex> lock(m_streamQueueMutex);
         m_streamsToBeNotified.push(stream);

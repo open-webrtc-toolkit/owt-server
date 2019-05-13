@@ -29,8 +29,19 @@ class P2PQuicStream : public quic::QuartcStream::Delegate {
     DECLARE_LOGGER();
 
 public:
+    // Some of these APIs are borrowed from third_party/blink/renderer/modules/peerconnection/adapters/quic_stream_proxy.h.
+    class Delegate {
+    public:
+        // Called when the remote side resets the stream.
+        virtual void OnRemoteReset() {}
+        // Called when the remote side receives data and/or the finish bit.
+        virtual void OnDataReceived(std::vector<uint8_t> data, bool fin) {}
+        // Called when data written with WriteData() has been consumed by QUIC.
+        virtual void OnWriteDataConsumed(uint32_t amount) {}
+    };
     explicit P2PQuicStream(quic::QuartcStream* stream);
     virtual ~P2PQuicStream(){};
+    void SetDelegate(Delegate* delegate);
 
 protected:
     // Implements quic::QuartcStream::Delegate.
@@ -40,6 +51,9 @@ protected:
 
 private:
     quic::QuartcStream* m_quartcStream;
+    Delegate* m_delegate;
+    std::queue<std::vector<uint8_t>> m_receivedBuffer;
+    bool m_finReceived;
 };
 
 // Some ideas of this class are borrowed from

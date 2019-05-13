@@ -16,7 +16,7 @@
 // Node.js addon of BidirectionalStream.
 // https://w3c.github.io/webrtc-quic/webtransport.html#bidirectional-stream*
 // Name it as QuicStream since it is a QUIC implementation of BidirectionalStream.
-class QuicStream : public Nan::ObjectWrap {
+class QuicStream : public Nan::ObjectWrap, P2PQuicStream::Delegate {
     DECLARE_LOGGER();
 
 public:
@@ -24,13 +24,20 @@ public:
 
     static v8::Local<v8::Object> newInstance(P2PQuicStream* p2pQuicStream);
 
+protected:
+    virtual void OnDataReceived(std::vector<uint8_t> data, bool fin) override;
+
 private:
     explicit QuicStream(P2PQuicStream* p2pQuicStream);
     static NAN_METHOD(newInstance);
     static NAN_METHOD(write);
+    static NAUV_WORK_CB(onDataCallback);
 
     static Nan::Persistent<v8::Function> s_constructor;
     P2PQuicStream* m_p2pQuicStream;
+    uv_async_t m_asyncOnData;
+    std::mutex m_dataQueueMutex;
+    std::queue<std::vector<uint8_t>> m_dataToBeNotified;
 };
 
 #endif // WEBRTC_QUICSTREAM_H_

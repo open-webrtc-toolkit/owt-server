@@ -26,15 +26,23 @@ static const size_t s_hostnameLength = 32;
 
 P2PQuicStream::P2PQuicStream(quic::QuartcStream* stream)
     : m_quartcStream(stream)
+    , m_delegate(nullptr)
+    , m_finReceived(false)
 {
     stream->SetDelegate(this);
 }
 
-size_t P2PQuicStream::OnReceived(quic::QuartcStream* stream, iovec* iov, size_t iov_length, bool fin){
-        ELOG_DEBUG("OnReceived");
-    size_t bytes_consumed=0;
+size_t P2PQuicStream::OnReceived(quic::QuartcStream* stream, iovec* iov, size_t iov_length, bool fin)
+{
+    ELOG_DEBUG("OnReceived, iov length: %d.", iov_length);
+    size_t bytes_consumed = 0;
     for (size_t i = 0; i < iov_length; ++i) {
-      bytes_consumed += iov[i].iov_len;
+        ELOG_DEBUG("Length of a single iov: %d", iov[i].iov_len);
+        std::vector<uint8_t> receivedData(static_cast<const uint8_t*>(iov[i].iov_base), static_cast<const uint8_t*>(iov[i].iov_base + iov[i].iov_len));
+        if (m_delegate) {
+            m_delegate->OnDataReceived(receivedData, i == iov_length - 1 ? fin : false);
+        }
+        bytes_consumed += iov[i].iov_len;
     }
     return bytes_consumed;
 }
@@ -47,6 +55,11 @@ void P2PQuicStream::OnClose(quic::QuartcStream* stream)
 void P2PQuicStream::OnBufferChanged(quic::QuartcStream* stream)
 {
     ELOG_DEBUG("OnBufferChanged");
+}
+
+void P2PQuicStream::SetDelegate(Delegate* delegate)
+{
+    m_delegate = delegate;
 }
 
 P2PQuicTransport::P2PQuicTransport(
@@ -125,12 +138,13 @@ void P2PQuicTransport::OnConnectionWritable()
 
 void P2PQuicTransport::OnIncomingStream(quic::QuartcStream* stream)
 {
+    CHECK(stream);
     ELOG_DEBUG("P2PQuicTransport::OnIncomingStream");
     std::unique_ptr<P2PQuicStream> p2pQuicStream = std::make_unique<P2PQuicStream>(stream);
+    auto p2pQuicStreamPointer = p2pQuicStream.get();
     m_streams.push_back(std::move(p2pQuicStream));
     if (m_delegate) {
-        return;
-        //m_delegate->OnStream(stream);
+        m_delegate->OnStream(p2pQuicStreamPointer);
     }
 }
 

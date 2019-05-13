@@ -21,7 +21,10 @@ QuicStream::QuicStream(P2PQuicStream* p2pQuicStream)
     : m_p2pQuicStream(p2pQuicStream)
 {
     ELOG_DEBUG("QuicStream::QuicStream");
-    //quartcStream->SetDelegate(this);
+    if(!p2pQuicStream){
+        ELOG_DEBUG("P2PQuicStream is nullptr.");
+    }
+    p2pQuicStream->SetDelegate(this);
 }
 
 NAN_MODULE_INIT(QuicStream::Init)
@@ -42,14 +45,43 @@ NAN_METHOD(QuicStream::newInstance)
     if (info.Length() != 1 || !info[0]->IsExternal()) {
         return Nan::ThrowError("Must be called internally.");
     }
-    P2PQuicStream* p2pQuicStream(static_cast<P2PQuicStream*>(info[0].As<v8::External>()->Value()));
+    P2PQuicStream* p2pQuicStream = static_cast<P2PQuicStream*>(info[0].As<v8::External>()->Value());
+    assert(p2pQuicStream);
     QuicStream* obj = new QuicStream(p2pQuicStream);
+    uv_async_init(uv_default_loop(), &obj->m_asyncOnData, &QuicStream::onDataCallback);
     obj->Wrap(info.This());
     info.GetReturnValue().Set(info.This());
 }
 
-NAN_METHOD(QuicStream::write){
+NAN_METHOD(QuicStream::write)
+{
     ELOG_DEBUG("write");
+}
+
+NAUV_WORK_CB(QuicStream::onDataCallback)
+{
+    ELOG_DEBUG("ondatacallback");
+    Nan::HandleScope scope;
+    QuicStream* obj = reinterpret_cast<QuicStream*>(async->data);
+    if (!obj || obj->m_dataToBeNotified.empty()) {
+        return;
+    }
+    std::lock_guard<std::mutex> lock(obj->m_dataQueueMutex);
+    while (!obj->m_dataToBeNotified.empty()) {
+        v8::MaybeLocal<v8::Object> data = Nan::CopyBuffer((char*)(obj->m_dataToBeNotified.front().data()), obj->m_dataToBeNotified.front().size());
+        Nan::MaybeLocal<v8::Value> onEvent = Nan::Get(obj->handle(), Nan::New<v8::String>("ondata").ToLocalChecked());
+        if (!onEvent.IsEmpty()) {
+            v8::Local<v8::Value> onEventLocal = onEvent.ToLocalChecked();
+            if (onEventLocal->IsFunction()) {
+                ELOG_DEBUG("onEventLocal is function.");
+                v8::Local<v8::Function> eventCallback = onEventLocal.As<Function>();
+                Nan::AsyncResource* resource = new Nan::AsyncResource(Nan::New<v8::String>("EventCallback").ToLocalChecked());
+                Local<Value> args[] = { data.ToLocalChecked() };
+                resource->runInAsyncScope(Nan::GetCurrentContext()->Global(), eventCallback, 1, args);
+            }
+        }
+        obj->m_dataToBeNotified.pop();
+    }
 }
 
 v8::Local<v8::Object> QuicStream::newInstance(P2PQuicStream* p2pQuicStream)
@@ -60,4 +92,16 @@ v8::Local<v8::Object> QuicStream::newInstance(P2PQuicStream* p2pQuicStream)
     v8::Local<v8::Function> cons = Nan::New<v8::Function>(s_constructor);
     v8::Local<v8::Object> instance = cons->NewInstance(argc, argv);
     return scope.Escape(instance);
+}
+
+void QuicStream::OnDataReceived(std::vector<uint8_t> data, bool fin)
+{
+    // TODO: fin is ignored.
+    ELOG_DEBUG("QuicStream::OnDataReceived");
+    {
+        std::lock_guard<std::mutex> lock(m_dataQueueMutex);
+        m_dataToBeNotified.push(data);
+    }
+    m_asyncOnData.data = this;
+    uv_async_send(&m_asyncOnData);
 }
