@@ -139,6 +139,13 @@ case $yn in
   * ) install_libsrtp2;;
 esac
 
+read -p "Installing quic-lib? [Yes/no]" yn
+case $yn in
+  [Yy]* ) install_quic;;
+  [Nn]* ) ;;
+  * ) install_quic;;
+esac
+
 read -p "Installing licode? [Yes/no]" yn
 case $yn in
   [Yy]* ) install_licode;;

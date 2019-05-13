@@ -10,7 +10,8 @@
             "audio",
             "webrtc",
             "avstream",
-            "sip"
+            "sip",
+            "quicIO"
         ]
     },
     "mcu-msdk" : {
@@ -81,5 +82,9 @@
     },
     "logger" : {
         "path" : "source/agent/addons/logger"
+    }
+    ,
+    "quicIO" : {
+        "path" : "source/agent/addons/quicIO"
     }
 }
