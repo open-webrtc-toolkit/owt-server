@@ -42,6 +42,7 @@ public:
     explicit P2PQuicStream(quic::QuartcStream* stream);
     virtual ~P2PQuicStream(){};
     void SetDelegate(Delegate* delegate);
+    void WriteOrBufferData(quic::QuicStringPiece data, bool fin);
 
 protected:
     // Implements quic::QuartcStream::Delegate.

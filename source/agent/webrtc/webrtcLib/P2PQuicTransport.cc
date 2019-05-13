@@ -62,6 +62,10 @@ void P2PQuicStream::SetDelegate(Delegate* delegate)
     m_delegate = delegate;
 }
 
+void P2PQuicStream::WriteOrBufferData(quic::QuicStringPiece data, bool fin){
+    m_quartcStream->WriteOrBufferData(data, fin, nullptr);
+}
+
 P2PQuicTransport::P2PQuicTransport(
     std::unique_ptr<quic::QuicConnection> connection,
     const quic::QuicConfig& config,

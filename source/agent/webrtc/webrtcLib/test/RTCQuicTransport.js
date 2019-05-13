@@ -69,7 +69,15 @@ describe('Test RTCQuicTransport.', () => {
     setTimeout(()=>{done();},1000);
   });
 
+  // This case is intended to be tested with https://github.com/jianjunz/owt-client-javascript/blob/quicsample/src/samples/conference/public/quic.html.
   it('Create an RTCQuicTransport and listen.', (done)=>{
+    quicTransport.onbidirectionalstream=(stream)=>{
+      console.log('onbidirectionalstream '+stream);
+      stream.ondata=(data)=>{
+        console.log('OnData: '+data[0]+' '+data[1]);
+        stream.write({data:new Uint8Array([42])});
+      };
+    };
     iceTransport.gather();
     const localParameters = iceTransport.getLocalParameters();
     const requestOptions = {
@@ -120,7 +128,11 @@ describe('Test RTCQuicTransport.', () => {
           });
           iceTransport.addRemoteCandidate(candidate);
         }
-        console.log('Key: ' + keyBinary[0]+' '+keyBinary[1]);
+        let keyString='Key:';
+        for (let i = 0; i < keyBinary.length; i++) {
+          keyString = keyString.concat(' ' + keyBinary[i]);
+        }
+        console.log(keyString);
         quicTransport.listen(keyBinary);
       });
     });
