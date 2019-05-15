@@ -24,8 +24,9 @@ DEFINE_LOGGER(P2PQuicTransport, "P2PQuicTransport");
 
 static const size_t s_hostnameLength = 32;
 
-P2PQuicStream::P2PQuicStream(quic::QuartcStream* stream)
+P2PQuicStream::P2PQuicStream(quic::QuartcStream* stream, base::TaskRunner* runner)
     : m_quartcStream(stream)
+    , m_runner(runner)
     , m_delegate(nullptr)
     , m_finReceived(false)
 {
@@ -63,7 +64,8 @@ void P2PQuicStream::SetDelegate(Delegate* delegate)
 }
 
 void P2PQuicStream::WriteOrBufferData(quic::QuicStringPiece data, bool fin){
-    m_quartcStream->WriteOrBufferData(data, fin, nullptr);
+    m_runner->PostTask(FROM_HERE, base::BindOnce(&quic::QuartcStream::WriteOrBufferData, base::Unretained(m_quartcStream), data, fin, nullptr));
+    //m_quartcStream->WriteOrBufferData(data, fin, nullptr);
 }
 
 P2PQuicTransport::P2PQuicTransport(
@@ -72,13 +74,15 @@ P2PQuicTransport::P2PQuicTransport(
     quic::QuicClock* clock,
     std::shared_ptr<quic::QuartcPacketWriter> packetWriter,
     std::shared_ptr<quic::QuicCryptoServerConfig> cryptoServerConfig,
-    quic::QuicCompressedCertsCache* const compressedCertsCache)
+    quic::QuicCompressedCertsCache* const compressedCertsCache,
+    base::TaskRunner* runner)
     : quic::QuartcServerSession(std::move(connection), nullptr, config, quic::CurrentSupportedVersions(), clock, cryptoServerConfig.get(), compressedCertsCache, new quic::QuartcCryptoServerStreamHelper())
 {
     quic::QuartcServerSession::SetDelegate(this);
     m_writer = packetWriter;
     m_cryptoServerConfig = cryptoServerConfig;
     m_delegate = nullptr;
+    m_runner=runner;
 }
 
 std::unique_ptr<P2PQuicTransport> P2PQuicTransport::create(const quic::QuartcSessionConfig& quartcSessionConfig,
@@ -88,14 +92,15 @@ std::unique_ptr<P2PQuicTransport> P2PQuicTransport::create(const quic::QuartcSes
     std::shared_ptr<quic::QuicAlarmFactory> alarmFactory,
     std::shared_ptr<quic::QuicConnectionHelperInterface> helper,
     std::shared_ptr<quic::QuicCryptoServerConfig> cryptoServerConfig,
-    quic::QuicCompressedCertsCache* const compressedCertsCache)
+    quic::QuicCompressedCertsCache* const compressedCertsCache,
+    base::TaskRunner* runner)
 {
     ELOG_DEBUG("Create quic::QuartcPacketWriter.");
     auto writer = std::make_shared<quic::QuartcPacketWriter>(transport.get(), quartcSessionConfig.max_packet_size);
     quic::QuicConfig quicConfig = quic::CreateQuicConfig(quartcSessionConfig);
     ELOG_DEBUG("Create QUIC connection.");
     std::unique_ptr<quic::QuicConnection> quicConnection = createQuicConnection(perspective, writer, alarmFactory, helper);
-    return std::make_unique<P2PQuicTransport>(std::move(quicConnection), quicConfig, clock, writer, cryptoServerConfig, compressedCertsCache);
+    return std::make_unique<P2PQuicTransport>(std::move(quicConnection), quicConfig, clock, writer, cryptoServerConfig, compressedCertsCache, runner);
 }
 std::unique_ptr<quic::QuicConnection> P2PQuicTransport::createQuicConnection(quic::Perspective perspective,
         std::shared_ptr<quic::QuartcPacketWriter> writer,
@@ -144,7 +149,7 @@ void P2PQuicTransport::OnIncomingStream(quic::QuartcStream* stream)
 {
     CHECK(stream);
     ELOG_DEBUG("P2PQuicTransport::OnIncomingStream");
-    std::unique_ptr<P2PQuicStream> p2pQuicStream = std::make_unique<P2PQuicStream>(stream);
+    std::unique_ptr<P2PQuicStream> p2pQuicStream = std::make_unique<P2PQuicStream>(stream, m_runner);
     auto p2pQuicStreamPointer = p2pQuicStream.get();
     m_streams.push_back(std::move(p2pQuicStream));
     if (m_delegate) {

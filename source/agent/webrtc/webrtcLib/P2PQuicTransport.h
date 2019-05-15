@@ -39,7 +39,7 @@ public:
         // Called when data written with WriteData() has been consumed by QUIC.
         virtual void OnWriteDataConsumed(uint32_t amount) {}
     };
-    explicit P2PQuicStream(quic::QuartcStream* stream);
+    explicit P2PQuicStream(quic::QuartcStream* stream, base::TaskRunner* runner);
     virtual ~P2PQuicStream(){};
     void SetDelegate(Delegate* delegate);
     void WriteOrBufferData(quic::QuicStringPiece data, bool fin);
@@ -52,6 +52,7 @@ protected:
 
 private:
     quic::QuartcStream* m_quartcStream;
+    base::TaskRunner* m_runner;
     Delegate* m_delegate;
     std::queue<std::vector<uint8_t>> m_receivedBuffer;
     bool m_finReceived;
@@ -77,7 +78,8 @@ public:
         std::shared_ptr<quic::QuicAlarmFactory> alarmFactory,
         std::shared_ptr<quic::QuicConnectionHelperInterface> helper,
         std::shared_ptr<quic::QuicCryptoServerConfig> cryptoServerConfig,
-        quic::QuicCompressedCertsCache* const compressedCertsCache);
+        quic::QuicCompressedCertsCache* const compressedCertsCache,
+        base::TaskRunner* runner);
     virtual std::vector<rtc::scoped_refptr<rtc::RTCCertificate>> getCertificates() const;
     virtual void start(std::unique_ptr<RTCQuicParameters> remoteParameters);
     //virtual void listen(const std::string& remoteKey);
@@ -91,7 +93,8 @@ public:
         quic::QuicClock* clock,
         std::shared_ptr<quic::QuartcPacketWriter> packetWriter,
         std::shared_ptr<quic::QuicCryptoServerConfig> cryptoServerConfig,
-        quic::QuicCompressedCertsCache* const compressedCertsCache);
+        quic::QuicCompressedCertsCache* const compressedCertsCache,
+        base::TaskRunner* runner);
     ~P2PQuicTransport();
 
 protected:
@@ -116,6 +119,7 @@ private:
     std::shared_ptr<quic::QuicCryptoServerConfig> m_cryptoServerConfig;
     Delegate* m_delegate;
     std::vector<std::unique_ptr<P2PQuicStream>> m_streams;
+    base::TaskRunner* m_runner;
 };
 
 #endif

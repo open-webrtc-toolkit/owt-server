@@ -50,14 +50,16 @@ private:
     explicit RTCQuicTransport();
     ~RTCQuicTransport();
     std::shared_ptr<quic::QuicCryptoServerConfig> createServerCryptoConfig();
-    std::unique_ptr<P2PQuicTransport> createP2PQuicTransport(RTCIceTransport* iceTransport, std::shared_ptr<quic::QuicCryptoServerConfig> serverCryptoConfig);
+    void createAndStartP2PQuicTransport(RTCIceTransport* iceTransport, std::shared_ptr<quic::QuicCryptoServerConfig> serverCryptoConfig, base::TaskRunner* runner);
+    std::unique_ptr<P2PQuicTransport> createP2PQuicTransport(RTCIceTransport* iceTransport, std::shared_ptr<quic::QuicCryptoServerConfig> serverCryptoConfig, base::TaskRunner* runner);
 
     static NAUV_WORK_CB(onStreamCallback);
 
     static Nan::Persistent<v8::Function> s_constructor;
 
     RTCIceTransport* m_iceTransport;
-    scoped_refptr<base::SequencedTaskRunner> m_taskRunner;
+    std::unique_ptr<base::Thread> m_ioThread;
+    scoped_refptr<base::SequencedTaskRunner> m_ioTaskRunner;
     std::shared_ptr<quic::QuicAlarmFactory> m_alarmFactory;
     std::shared_ptr<quic::QuicConnectionHelperInterface> m_helper;
     std::shared_ptr<quic::QuicCompressedCertsCache> m_compressedCertsCache;

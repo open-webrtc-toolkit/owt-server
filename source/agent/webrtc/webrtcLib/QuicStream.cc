@@ -79,6 +79,7 @@ NAUV_WORK_CB(QuicStream::onDataCallback)
     }
     std::lock_guard<std::mutex> lock(obj->m_dataQueueMutex);
     while (!obj->m_dataToBeNotified.empty()) {
+        ELOG_DEBUG("Is object? ", obj->handle()->IsCallable());
         v8::MaybeLocal<v8::Object> data = Nan::CopyBuffer((char*)(obj->m_dataToBeNotified.front().data()), obj->m_dataToBeNotified.front().size());
         Nan::MaybeLocal<v8::Value> onEvent = Nan::Get(obj->handle(), Nan::New<v8::String>("ondata").ToLocalChecked());
         if (!onEvent.IsEmpty()) {

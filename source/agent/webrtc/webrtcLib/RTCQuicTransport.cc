@@ -11,6 +11,7 @@
 #include "base/task/post_task.h"
 #include "base/task/task_scheduler/task_scheduler.h"
 #include "base/threading/thread_task_runner_handle.h"
+#include "base/threading/thread.h"
 #include "net/quic/quic_chromium_alarm_factory.h"
 #include "net/third_party/quiche/src/quic/core/tls_server_handshaker.h"
 #include "net/third_party/quiche/src/quic/quartc/quartc_connection_helper.h"
@@ -40,11 +41,12 @@ RTCQuicTransport::RTCQuicTransport()
 {
     ELOG_DEBUG("RTCQuicTransport ctor.");
     m_helper = std::make_shared<quic::QuartcConnectionHelper>(quic::QuicChromiumClock::GetInstance());
-    m_taskRunner = base::CreateSequencedTaskRunnerWithTraits({ base::MayBlock() });
-    m_alarmFactory = std::make_shared<net::QuicChromiumAlarmFactory>(m_taskRunner.get(), quic::QuicChromiumClock::GetInstance());
+    m_ioThread=std::make_unique<base::Thread>("QuicThread.");
+    m_ioThread->Start();
     m_compressedCertsCache = std::make_shared<quic::QuicCompressedCertsCache>(quic::QuicCompressedCertsCache::kQuicCompressedCertsCacheSize);
     ELOG_DEBUG("End of RTCQuicTransport ctor.");
 }
+
 RTCQuicTransport::~RTCQuicTransport()
 {
 }
@@ -183,10 +185,9 @@ NAN_METHOD(RTCQuicTransport::listen)
     char* keyBuffer = node::Buffer::Data(info[0]);
     size_t keyLength = node::Buffer::Length(info[0]);
     auto cryptoServerConfig = obj->createServerCryptoConfig();
-    std::string keyString = std::string(keyBuffer,keyLength);
+    std::string keyString = std::string(keyBuffer, keyLength);
     cryptoServerConfig->set_pre_shared_key(keyString);
-    obj->m_transport = obj->createP2PQuicTransport(obj->m_iceTransport, cryptoServerConfig);
-    obj->m_transport->start(nullptr);
+    obj->m_ioThread->task_runner()->PostTask(FROM_HERE, base::BindOnce(&RTCQuicTransport::createAndStartP2PQuicTransport, base::Unretained(obj), obj->m_iceTransport, cryptoServerConfig, base::Unretained(obj->m_ioThread->task_runner().get())));
     ELOG_DEBUG("After create P2P Quic transport.");
 }
 
@@ -281,15 +282,22 @@ std::shared_ptr<quic::QuicCryptoServerConfig> RTCQuicTransport::createServerCryp
     return config;
 }
 
-std::unique_ptr<P2PQuicTransport> RTCQuicTransport::createP2PQuicTransport(RTCIceTransport* iceTransport, std::shared_ptr<quic::QuicCryptoServerConfig> serverCryptoConfig)
+void RTCQuicTransport::createAndStartP2PQuicTransport(RTCIceTransport* iceTransport, std::shared_ptr<quic::QuicCryptoServerConfig> serverCryptoConfig, base::TaskRunner* runner)
+{
+    m_transport = createP2PQuicTransport(iceTransport, serverCryptoConfig, runner);
+    m_transport->start(nullptr);
+}
+
+std::unique_ptr<P2PQuicTransport> RTCQuicTransport::createP2PQuicTransport(RTCIceTransport* iceTransport, std::shared_ptr<quic::QuicCryptoServerConfig> serverCryptoConfig, base::TaskRunner* runner)
 {
     ELOG_DEBUG("Create P2PQuicPacketTransportIceAdapter.");
     //P2PQuicPacketTransportIceAdapter* adapter=new P2PQuicPacketTransportIceAdapter(iceTransport->iceConnection());
-    m_quicPacketTransport = std::make_shared<P2PQuicPacketTransportIceAdapter>(P2PQuicPacketTransportIceAdapter(iceTransport->iceConnection()));
+    m_quicPacketTransport = std::make_shared<P2PQuicPacketTransportIceAdapter>(P2PQuicPacketTransportIceAdapter(iceTransport->iceConnection(), runner));
     ELOG_DEBUG("Create QuartcSessionConfig.");
     auto quartcSessionConfig = quic::QuartcSessionConfig();
     ELOG_DEBUG("P2PQuicTransport::create.");
-    auto p2pQuicTransport = P2PQuicTransport::create(quartcSessionConfig, quic::Perspective::IS_SERVER, m_quicPacketTransport, quic::QuicChromiumClock::GetInstance(), m_alarmFactory, m_helper, serverCryptoConfig, m_compressedCertsCache.get());
+    m_alarmFactory = std::make_shared<net::QuicChromiumAlarmFactory>(m_ioThread->task_runner().get(), quic::QuicChromiumClock::GetInstance());
+    auto p2pQuicTransport = P2PQuicTransport::create(quartcSessionConfig, quic::Perspective::IS_SERVER, m_quicPacketTransport, quic::QuicChromiumClock::GetInstance(), m_alarmFactory, m_helper, serverCryptoConfig, m_compressedCertsCache.get(), runner);
     m_quicPacketTransport->SetDelegate(p2pQuicTransport.get());
     p2pQuicTransport->SetDelegate(this);
     return p2pQuicTransport;
