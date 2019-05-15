@@ -357,7 +357,6 @@ function getAddonLibs(addonPath) {
   env['LD_LIBRARY_PATH'] = (env['LD_LIBRARY_PATH'] || '');
   env['LD_LIBRARY_PATH'] = path.join(depsDir, 'lib') +
     ':' + path.join(rootDir, 'third_party/openh264') +
-    ':' + path.join(rootDir, 'third_party/re') +
     ':' + path.join(rootDir, 'third_party/quic-lib/dist/lib') +
     ':' + env['LD_LIBRARY_PATH'];
 
