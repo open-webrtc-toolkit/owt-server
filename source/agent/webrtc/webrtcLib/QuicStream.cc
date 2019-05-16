@@ -77,9 +77,12 @@ NAUV_WORK_CB(QuicStream::onDataCallback)
     if (!obj || obj->m_dataToBeNotified.empty()) {
         return;
     }
+    v8::Isolate *isolate = v8::Isolate::GetCurrent();
+    v8::EscapableHandleScope escapableScope(isolate);
+    Nan::MaybeLocal<v8::Value> onEvent1=escapableScope.Escape(obj->handle()->Get(isolate->GetCurrentContext(), Nan::New<v8::String>("ondata").ToLocalChecked()).FromMaybe(v8::Local<v8::Value>()));
     std::lock_guard<std::mutex> lock(obj->m_dataQueueMutex);
     while (!obj->m_dataToBeNotified.empty()) {
-        ELOG_DEBUG("Is object? ", obj->handle()->IsCallable());
+        ELOG_DEBUG("copy");
         v8::MaybeLocal<v8::Object> data = Nan::CopyBuffer((char*)(obj->m_dataToBeNotified.front().data()), obj->m_dataToBeNotified.front().size());
         Nan::MaybeLocal<v8::Value> onEvent = Nan::Get(obj->handle(), Nan::New<v8::String>("ondata").ToLocalChecked());
         if (!onEvent.IsEmpty()) {

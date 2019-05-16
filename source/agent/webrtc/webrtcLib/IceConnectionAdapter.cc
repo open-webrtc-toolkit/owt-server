@@ -45,6 +45,6 @@ void IceConnectionAdapter::updateIceState(erizo::IceState state, erizo::IceConne
 
 int IceConnectionAdapter::sendPacket(const char* data, int length)
 {
-    ELOG_DEBUG("IceConnectionAdapter::sendPacket");
+    ELOG_DEBUG("IceConnectionAdapter::sendPacket length: %d", length);
     return m_iceConnection->sendData(1, data, length);
 }

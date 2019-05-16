@@ -37,19 +37,19 @@ void P2PQuicPacketTransportIceAdapter::SetDelegate(quic::QuartcPacketTransport::
     m_transportDelegate = delegate;
 }
 
-void P2PQuicPacketTransportIceAdapter::doReadPacket(IceConnectionAdapter* packetTransport, const char* buffer, size_t bufferLength, const int64_t packetTime, int flag){
+void P2PQuicPacketTransportIceAdapter::doReadPacket(IceConnectionAdapter* packetTransport, std::unique_ptr<char[]> buffer, size_t bufferLength, const int64_t packetTime, int flag){
     if (!m_transportDelegate) {
         return;
     }
-    m_transportDelegate->OnTransportReceived(buffer, bufferLength);
+    m_transportDelegate->OnTransportReceived(buffer.get(), bufferLength);
 }
 
 void P2PQuicPacketTransportIceAdapter::onReadPacket(IceConnectionAdapter* packetTransport, const char* buffer, size_t bufferLength, const int64_t packetTime, int flag)
 {
     ELOG_DEBUG("P2PQuicPacketTransportIceAdapter::onReadPacket");
-    void* bufferCopied = malloc(bufferLength);
-    memcpy(bufferCopied, buffer, bufferLength);
-    m_runner->PostTask(FROM_HERE, base::BindOnce(&P2PQuicPacketTransportIceAdapter::doReadPacket, base::Unretained(this), packetTransport, (const char*)bufferCopied, bufferLength, packetTime, flag));
+    std::unique_ptr<char[]> bufferCopied=std::make_unique<char[]>(bufferLength);
+    memcpy(bufferCopied.get(), buffer, bufferLength);
+    m_runner->PostTask(FROM_HERE, base::BindOnce(&P2PQuicPacketTransportIceAdapter::doReadPacket, base::Unretained(this), packetTransport, std::move(bufferCopied), bufferLength, packetTime, flag));
 }
 
 void P2PQuicPacketTransportIceAdapter::onReadyToSend(IceConnectionAdapter* packetTransport)

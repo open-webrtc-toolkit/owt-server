@@ -28,7 +28,7 @@ public:
 private:
     void onReadPacket(IceConnectionAdapter* packetTransport, const char* buffer, size_t bufferLength, const int64_t packetTime, int flag);
     void onReadyToSend(IceConnectionAdapter* packetTransport);
-    void doReadPacket(IceConnectionAdapter* packetTransport, const char* buffer, size_t bufferLength, const int64_t packetTime, int flag);
+    void doReadPacket(IceConnectionAdapter* packetTransport, std::unique_ptr<char[]> buffer, size_t bufferLength, const int64_t packetTime, int flag);
     std::shared_ptr<IceConnectionAdapter> m_iceConnection;
     quic::QuartcPacketTransport::Delegate* m_transportDelegate;
     base::TaskRunner* m_runner;
