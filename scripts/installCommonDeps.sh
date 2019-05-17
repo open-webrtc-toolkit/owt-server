@@ -359,31 +359,36 @@ install_node_tools() {
 
 # libre depends on openssl
 install_libre() {
-  local LIST_LIBS=`ls ${ROOT}/third_party/re/libre* 2>/dev/null`
+  local LIST_LIBS=`ls ${PREFIX_DIR}/lib/libre* 2>/dev/null`
   $INCR_INSTALL && [[ ! -z $LIST_LIBS ]] && echo "libre already installed." && return 0
 
-  pushd ${ROOT}/third_party >/dev/null
-  rm -rf re
-  git clone https://github.com/creytiv/re.git
-  pushd re >/dev/null
-  git checkout v0.4.16
-  make SYSROOT_ALT=${PREFIX_DIR} RELEASE=1
-  popd >/dev/null
-  popd >/dev/null
+  if [ -d $LIB_DIR ]; then
+    pushd ${LIB_DIR} >/dev/null
+    rm -rf re
+    git clone https://github.com/creytiv/re.git
+    pushd re >/dev/null
+    git checkout v0.4.16
+    make SYSROOT_ALT=${PREFIX_DIR} RELEASE=1
+    make install PREFIX=${PREFIX_DIR}
+    popd >/dev/null
+    popd >/dev/null
+  else
+    mkdir -p $LIB_DIR
+    install_libre
+  fi
 }
 
 install_usrsctp() {
-  local LIST_LIBS=`ls ${ROOT}/third_party/usrsctp/usrsctplib/.libs/libusrsctp** 2>/dev/null`
+  local LIST_LIBS=`ls ${PREFIX_DIR}/lib/libusrsctp* 2>/dev/null`
   $INCR_INSTALL && [[ ! -z $LIST_LIBS ]] && echo "usrsctp already installed." && return 0
 
-  local TP_DIR="${ROOT}/third_party"
-  if [ -d $TP_DIR ]; then
+  if [ -d $LIB_DIR ]; then
     local USRSCTP_VERSION="30d7f1bd0b58499e1e1f2415e84d76d951665dc8"
     local USRSCTP_FILE="${USRSCTP_VERSION}.tar.gz"
     local USRSCTP_EXTRACT="usrsctp-${USRSCTP_VERSION}"
     local USRSCTP_URL="https://github.com/sctplab/usrsctp/archive/${USRSCTP_FILE}"
 
-    cd $TP_DIR
+    cd $LIB_DIR
     rm -rf usrsctp
     wget -c ${USRSCTP_URL}
     tar -zxvf ${USRSCTP_FILE}
@@ -392,10 +397,10 @@ install_usrsctp() {
 
     cd usrsctp
     ./bootstrap
-    ./configure
-    make
+    ./configure --prefix=$PREFIX_DIR 
+    make && make install
   else
-    mkdir -p $TP_DIR
+    mkdir -p $LIB_DIR
     install_usrsctp
   fi
 }

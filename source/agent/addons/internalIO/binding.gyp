@@ -16,14 +16,14 @@
     'include_dirs': [
       '$(CORE_HOME)/common',
       '$(CORE_HOME)/owt_base',
-      '$(CORE_HOME)/../../third_party/usrsctp/usrsctplib'
+      '$(CORE_HOME)/../../build/libdeps/build/include'
     ],
     'libraries': [
       '-lboost_system',
       '-lboost_thread',
       '-llog4cxx',
-      '-L$(CORE_HOME)/../../third_party/usrsctp/usrsctplib/.libs', '-lusrsctp',
-      '-Wl,-rpath,$(CORE_HOME)/../../third_party/usrsctp/usrsctplib/.libs',
+      '-L$(CORE_HOME)/../../build/libdeps/build/lib',
+      '-lusrsctp'
     ],
     # 'INET', 'INET6' flags must be added for usrsctp lib, otherwise the arguments of receive callback would shift
     'cflags_cc': ['-DINET', '-DINET6'],
