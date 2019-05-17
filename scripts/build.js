@@ -94,7 +94,7 @@ function constructBuildEnv() {
   }
 
   if (options.features && options.features.includes('quic')) {
-    env['GYP_DEFINES'] += [' oms_enable_quic=1'];
+    env['GYP_DEFINES'] += [' owt_enable_quic=1'];
   }
 
   console.log(env['PKG_CONFIG_PATH']);

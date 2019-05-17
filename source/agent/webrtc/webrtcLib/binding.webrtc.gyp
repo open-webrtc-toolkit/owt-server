@@ -94,57 +94,5 @@
           'cflags_cc!' : ['-fno-rtti']
       }],
     ]
-  }, {
-    'target_name': 'webrtc-quic',
-    'sources':[
-      'addon.cc',
-      'RTCIceTransport.cc',
-      'RTCIceCandidate.cc',
-      'RTCQuicTransport.cc',
-      'RTCQuicTransportBase.cc',
-      'RTCCertificate.cc',
-      'erizo/src/erizo/LibNiceConnection.cpp',
-      'erizo/src/erizo/IceConnection.cpp',
-      'erizo/src/erizo/lib/LibNiceInterfaceImpl.cpp',
-    ],
-    'defines':[
-      'OMS_ENABLE_QUIC=1',
-    ],
-    'cflags_cc': ['-DWEBRTC_POSIX', '-DWEBRTC_LINUX', '-DLINUX', '-DNOLINUXIF', '-DNO_REG_RPC=1', '-DHAVE_VFPRINTF=1', '-DRETSIGTYPE=void', '-DNEW_STDIO', '-DHAVE_STRDUP=1', '-DHAVE_STRLCPY=1', '-DHAVE_LIBM=1', '-DHAVE_SYS_TIME_H=1', '-DTIME_WITH_SYS_TIME_H=1'],
-    'include_dirs': [
-      "<!(node -e \"require('nan')\")",
-      'conn_handler',
-      'erizo/src/erizo',
-      'erizo/src/erizo/lib',
-      'erizo/src/erizo/thread',
-      'erizo/src/erizo/stats',
-      '../../../core/common',
-      '../../../../build/libdeps/build/include',
-      '<!@(pkg-config glib-2.0 --cflags-only-I | sed s/-I//g)',
-      '$(CHROMIUM_HOME)',
-      '$(CHROMIUM_HOME)/third_party/webrtc',
-      '$(CHROMIUM_HOME)/third_party/abseil-cpp',
-    ],
-    'ldflags': [
-      '-Wl,-rpath,$(CHROMIUM_HOME)/out/Debug',
-      '-L$(CORE_HOME)/../../build/libdeps/build/lib',
-      '-L$(CHROMIUM_HOME)/out/Debug',
-      '-L$(CHROMIUM_HOME)/out/Debug/obj/third_party/webrtc/rtc_base',
-      '-L$(CHROMIUM_HOME)/out/static',
-    ],
-    'libraries': [
-      '-lsrtp2',
-      '-lssl',
-      '-ldl',
-      '-lcrypto',
-      '-llog4cxx',
-      '-lboost_thread',
-      '-lboost_system',
-      '-lnice',
-      #'-lmedia_webrtc',
-      '-lnet',
-      '-lrtc_base',
-      '-lwebrtc_deps', # Other WebRTC symbols built without Chromium.
-    ],
   }]
 }

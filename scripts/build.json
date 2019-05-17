@@ -97,7 +97,7 @@
         "gyp": "binding.webrtc.gyp"
     },
     "webrtc-quic" : {
-        "path" : "source/agent/webrtc/webrtcLib",
+        "path" : "source/agent/webrtc/quic",
         "gyp": "binding.quic.gyp"
     },
     "sip" : {
