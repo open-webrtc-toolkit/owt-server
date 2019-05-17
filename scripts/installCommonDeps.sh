@@ -300,12 +300,13 @@ install_node_tools() {
 
 # libre depends on openssl
 install_libre() {
-  pushd ${ROOT}/third_party >/dev/null
+  pushd ${LIB_DIR} >/dev/null
   rm -rf re
   git clone https://github.com/creytiv/re.git
   pushd re >/dev/null
   git checkout v0.4.16
   make SYSROOT_ALT=${PREFIX_DIR} RELEASE=1
+  make install PREFIX=${PREFIX_DIR}
   popd >/dev/null
   popd >/dev/null
 }
@@ -318,7 +319,7 @@ install_usrsctp() {
     local USRSCTP_EXTRACT="usrsctp-${USRSCTP_VERSION}"
     local USRSCTP_URL="https://github.com/sctplab/usrsctp/archive/${USRSCTP_FILE}"
 
-    cd $TP_DIR
+    cd $LIB_DIR
     rm -rf usrsctp
     wget -c ${USRSCTP_URL}
     tar -zxvf ${USRSCTP_FILE}
@@ -327,10 +328,10 @@ install_usrsctp() {
 
     cd usrsctp
     ./bootstrap
-    ./configure
-    make
+    ./configure --prefix=$PREFIX_DIR 
+    make && make install
   else
-    mkdir -p $TP_DIR
+    mkdir -p $LIB_DIR
     install_usrsctp
   fi
 }
