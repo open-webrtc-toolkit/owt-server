@@ -1,7 +1,7 @@
 #include <pthread.h>
 #include <string.h>
 #include <unistd.h>
-#include <re.h>
+#include <re/re.h>
 #include <sipua.h>
 #include <baresip.h>
 #include "core.h"
@@ -11,7 +11,7 @@
 
 #define DEBUG_MODULE "sipua"
 #define DEBUG_LEVEL 7
-#include <re_dbg.h>
+#include <re/re_dbg.h>
 
 
 struct sipua_entity {         /* sip ua entity */

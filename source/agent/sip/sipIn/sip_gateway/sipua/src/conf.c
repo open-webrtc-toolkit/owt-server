@@ -13,14 +13,14 @@
 #ifdef HAVE_IO_H
 #include <io.h>
 #endif
-#include <re.h>
+#include <re/re.h>
 #include <baresip.h>
 #include "core.h"
 
 
 #define DEBUG_MODULE ""
 #define DEBUG_LEVEL 0
-#include <re_dbg.h>
+#include <re/re_dbg.h>
 
 
 #ifdef WIN32

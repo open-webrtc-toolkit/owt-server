@@ -4,7 +4,7 @@
  * Copyright (C) 2010 Creytiv.com
  */
 
-#include <re.h>
+#include <re/re.h>
 #include <baresip.h>
 
 

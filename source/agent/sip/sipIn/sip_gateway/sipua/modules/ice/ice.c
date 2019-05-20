@@ -7,7 +7,7 @@
 #include <CoreFoundation/CoreFoundation.h>
 #include <SystemConfiguration/SCNetworkReachability.h>
 #endif
-#include <re.h>
+#include <re/re.h>
 #include <baresip.h>
 
 
