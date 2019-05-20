@@ -17,6 +17,10 @@ LIBRE_VERSION := 0.4.16
 PROJECT	  := sipua
 VERSION   := 0.0.1
 
+ifeq ("$(wildcard $(RE_HOME))","")
+    RE_HOME = /usr
+endif
+
 ifndef LIBRE_MK
 LIBRE_MK  := $(shell [ -f $(RE_HOME)/share/re/re.mk ] && \
 	echo "$(RE_HOME)/share/re/re.mk")
