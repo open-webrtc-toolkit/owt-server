@@ -35,6 +35,12 @@
                 "../connections.js",
                 "../InternalConnectionFactory.js"
             ],
+            "quic": [
+                "quic.js",
+                "quicConnection.js",
+                "../connections.js",
+                "../InternalConnectionFactory.js"
+            ],
             "cert": [
                 "../../../cert/.owt.keystore"
             ]

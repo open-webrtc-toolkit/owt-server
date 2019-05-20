@@ -35,7 +35,6 @@ for (var prop in opt.options) {
                     value === 'sip' ||
                     value === 'streaming' ||
                     value === 'recording' ||
-                    value === 'analytics' ||
                     value === 'audio' ||
                     value === 'video') {
                     myPurpose = value;
@@ -109,17 +108,18 @@ var joinCluster = function (on_ok) {
 };
 
 var init_manager = () => {
-  var reuseNode = !(myPurpose === 'audio'
-    || myPurpose === 'video'
-    || myPurpose === 'analytics'
-    || myPurpose === 'conference'
-    || myPurpose === 'sip');
-  var consumeNodeByRoom = !(myPurpose === 'audio' || myPurpose === 'video' || myPurpose === 'analytics');
+  var reuseNode = !(myPurpose === 'audio' || myPurpose === 'video' || myPurpose === 'conference' || myPurpose === 'sip');
+  var consumeNodeByRoom = !(myPurpose === 'audio' || myPurpose === 'video');
 
   var spawnOptions = {
     cmd: 'node',
     config: Object.assign({}, config)
   };
+
+  // WebRTC-QUIC module links BoringSSL. We start it by a node without OpenSSL.
+  if (myPurpose === 'webrtc1') {
+    spawnOptions.cmd = '/mnt/downloads/quic-ok/webrtc_agent/snode';
+  }
 
   spawnOptions.config.purpose = myPurpose;
 

@@ -25,6 +25,10 @@ function init_controller() {
     var purpose = nodeConfig.purpose;
     var clusterWorkerIP = nodeConfig.cluster.worker.ip;
 
+    if (purpose === 'webrtc') {
+      purpose = 'quic/quic.js';
+    }
+
     global.config = nodeConfig;
 
     log.info('Connecting to rabbitMQ server...');

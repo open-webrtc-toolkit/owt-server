@@ -1,8 +1,10 @@
+// Copyright (C) <2019> Intel Corporation
+//
+// SPDX-License-Identifier: Apache-2.0
+
 /*global require*/
 'use strict';
-require = require('module')._load('./AgentLoader');
-const webrtc = require('./webrtcLib/build/Release/webrtc');
-const logger = require('./logger').logger;
+const logger = require('../logger').logger;
 const log = logger.getLogger('QuicConnection');
 
 module.exports = class QuicConnection {

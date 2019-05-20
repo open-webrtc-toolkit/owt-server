@@ -66,6 +66,7 @@ const PublicationRequest = {
       type: 'object',
       properties: {
         'media': { $ref: '#/definitions/WebRTCMediaOptions' },
+        'data': {type: 'boolean' },
         'attributes': { type: 'object' }
       },
       additionalProperties: false,
@@ -168,6 +169,7 @@ const SubscriptionRequest = {
       type: 'object',
       properties: {
         'media': { $ref: '#/definitions/MediaSubOptions' },
+        'data' : { type: 'boolean' },
         'transport': { $ref: '#/definitions/TransportOptions' },
       },
       additionalProperties: false,

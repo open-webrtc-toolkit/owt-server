@@ -63,7 +63,7 @@ module.exports = function (spec, spawnOptions, onNodeAbnormallyQuit, onTaskAdded
       var err = fs.openSync('../logs/' + id + '.log', 'a');
 
       var spawnArgs = [id, spec.parentId, JSON.stringify(spawnOptions.config)];
-      (spawnOptions.cmd === 'node') && (spawnArgs.unshift('./workingNode'));
+      (spawnOptions.cmd === 'node' || spawnOptions.cmd === '/mnt/downloads/quic-ok/webrtc_agent/snode') && (spawnArgs.unshift('./workingNode'));
       var child = spawn(spawnOptions.cmd, spawnArgs, {
         detached: true,
         stdio: [ 'ignore', out, err, 'ipc' ]

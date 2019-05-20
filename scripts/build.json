@@ -49,6 +49,20 @@
             "webrtc-frame"
         ]
     },
+    "mcu-quic": {
+        "include":[
+            "video-mixer-sw",
+            "video-transcoder-sw",
+            "video-analyzer-sw",
+            "internal-io",
+            "logger",
+            "media-frame-multicaster",
+            "audio",
+            "webrtc-quic",
+            "avstream",
+            "sip"
+        ]
+    },
     "video-mixer-sw" : {
         "path" : "source/agent/video/videoMixer/videoMixer_sw",
         "gyp" : "binding.sw.gyp"
