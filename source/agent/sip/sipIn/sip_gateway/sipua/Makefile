@@ -17,21 +17,22 @@ LIBRE_VERSION := 0.4.16
 PROJECT	  := sipua
 VERSION   := 0.0.1
 
-ifeq ("$(wildcard $(RE_HOME))","")
-    RE_HOME = /usr
+ifeq ($(wildcard $(RE_HOME)/include/re),)
+	LIBRE_DIR := /usr
+else
+	LIBRE_DIR := $(RE_HOME)
 endif
 
 ifndef LIBRE_MK
-LIBRE_MK  := $(shell [ -f $(RE_HOME)/share/re/re.mk ] && \
-	echo "$(RE_HOME)/share/re/re.mk")
+LIBRE_MK  := $(shell [ -f $(LIBRE_DIR)/share/re/re.mk ] && \
+	echo "$(LIBRE_DIR)/share/re/re.mk")
 endif
 
 include $(LIBRE_MK)
 include mk/modules.mk
 
-LIBRE_INC :=$(RE_HOME)/include/
-LIBRE_SO  :=$(RE_HOME)/lib/
-
+LIBRE_INC :=$(LIBRE_DIR)/include/
+LIBRE_SO  :=$(LIBRE_DIR)/lib/
 
 CFLAGS    += -I. -Iinclude -I$(LIBRE_INC) -I$(SYSROOT)/include
 CXXFLAGS  += -I. -Iinclude -I$(LIBRE_INC)
