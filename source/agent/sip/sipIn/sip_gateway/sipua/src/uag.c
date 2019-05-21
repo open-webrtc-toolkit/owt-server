@@ -4,14 +4,14 @@
  * Copyright (C) 2010 Creytiv.com
  */
 #include <string.h>
-#include <re.h>
+#include <re/re.h>
 #include <baresip.h>
 #include "core.h"
 
 
 #define DEBUG_MODULE "uag"
 #define DEBUG_LEVEL 5
-#include <re_dbg.h>
+#include <re/re_dbg.h>
 
 #define MAX_CALLS 10
 extern int ua_call_alloc(struct call **callp, struct ua *ua,

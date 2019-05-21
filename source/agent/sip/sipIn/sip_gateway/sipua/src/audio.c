@@ -14,7 +14,7 @@
 #ifdef HAVE_PTHREAD
 #include <pthread.h>
 #endif
-#include <re.h>
+#include <re/re.h>
 #include <baresip.h>
 #include "core.h"
 
