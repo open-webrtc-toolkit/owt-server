@@ -88,6 +88,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 install_deps
+${this}/install_ffmpeg.sh
 
 if ${HARDWARE_DEPS} ; then
   enable_intel_gpu_top

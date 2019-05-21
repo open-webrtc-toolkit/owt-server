@@ -50,6 +50,7 @@ install_deps() {
 install_all() {
   ${OWT_UPDATE_DONE} || do_update
   install_deps
+  ${this}/install_ffmpeg.sh
 }
 
 shopt -s extglob
