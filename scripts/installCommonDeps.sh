@@ -306,7 +306,7 @@ install_libre() {
   pushd re >/dev/null
   git checkout v0.4.16
   make SYSROOT_ALT=${PREFIX_DIR} RELEASE=1
-  make install PREFIX=${PREFIX_DIR}
+  make install SYSROOT_ALT=${PREFIX_DIR} RELEASE=1 PREFIX=${PREFIX_DIR}
   popd >/dev/null
   popd >/dev/null
 }
