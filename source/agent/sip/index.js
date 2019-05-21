@@ -555,7 +555,7 @@ module.exports = function (rpcC, selfRpcId, parentRpcId, clusterWorkerIP) {
             teardownCall(client_id);
             // recreate a sip call connection
             calls[client_id].conn && calls[client_id].conn.close();
-            calls[client_id].conn = new SipCallConnection({gateway: gateway, clientID: calls[client_id].peerURI, audio : info.audio, video : info.video,
+            calls[client_id].conn = new SipCallConnection({gateway: gateway, peerURI: calls[client_id].peerURI, audio : info.audio, video : info.video,
                 red : support_red, ulpfec : support_ulpfec}, notifyMediaUpdate);
             return setupCall(client_id, info);
         })
