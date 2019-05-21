@@ -10,8 +10,7 @@
             "audio",
             "webrtc",
             "avstream",
-            "sip",
-            "quicIO"
+            "sip"
         ]
     },
     "mcu-msdk" : {
