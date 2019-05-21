@@ -553,21 +553,7 @@ var Conference = function (rpcClient, selfRpcId) {
   };
 
   var destroyRoom = function() {
-    var exit_delay = 0;
-    if (room_id) {
-      if (Object.keys(streams).length > 0 || Object.keys(subscriptions).length > 0) {
-        exit_delay = 1000;
-      }
-
-      for (var pid in participants) {
-        if (pid !== 'admin') {
-          accessController && accessController.participantLeave(pid);
-          removeParticipant(pid);
-        }
-      }
-      accessController && accessController.participantLeave('admin');
-      removeParticipant('admin');
-
+    const doClean = () => {
       accessController && accessController.destroy();
       accessController = undefined;
       roomController && roomController.destroy();
@@ -576,8 +562,21 @@ var Conference = function (rpcClient, selfRpcId) {
       streams = {};
       participants = {};
       room_id = undefined;
+    };
+
+    var pl = [];
+    for (var pid in participants) {
+      if (pid !== 'admin' && accessController) {
+        pl.push(accessController.participantLeave(pid));
+      }
     }
-    setTimeout(() => {process.exit();}, exit_delay);
+    accessController && pl.push(accessController.participantLeave('admin'));
+
+    return Promise.all(pl)
+      .then(() => {
+        doClean();
+        process.exit();
+      });
   };
 
   const sendMsgTo = function(to, msg, data) {
@@ -1031,31 +1030,35 @@ var Conference = function (rpcClient, selfRpcId) {
     }
   };
 
-  const selfClean = () => {
-    setTimeout(function() {
-      var hasNonAdminParticipant = false,
-        hasPublication = false,
-        hasSubscription = false;
+  const roomIsIdle = () => {
+    var hasNonAdminParticipant = false,
+      hasPublication = false,
+      hasSubscription = false;
 
-      for (let k in participants) {
-        if (k !== 'admin') {
-          hasNonAdminParticipant = true;
+    for (let k in participants) {
+      if (k !== 'admin') {
+        hasNonAdminParticipant = true;
+        break;
+      }
+    };
+
+    if (!hasNonAdminParticipant) {
+      for (let st in streams) {
+        if (streams[st].type === 'forward') {
+          hasPublication = true;
           break;
         }
-      };
-
-      if (!hasNonAdminParticipant) {
-        for (let st in streams) {
-          if (streams[st].type === 'forward') {
-            hasPublication = true;
-            break;
-          }
-        }
       }
+    }
 
-      hasSubscription = (Object.keys(subscriptions).length > 0);
+    hasSubscription = (Object.keys(subscriptions).length > 0);
 
-      if (!hasNonAdminParticipant && !hasPublication && !hasSubscription) {
+    return (!hasNonAdminParticipant && !hasPublication && !hasSubscription);
+  };
+
+  const selfClean = () => {
+    setTimeout(function() {
+      if (roomIsIdle()) {
         log.info('Empty room ', room_id, '. Deleting it');
         destroyRoom();
       }
@@ -2551,12 +2554,25 @@ var Conference = function (rpcClient, selfRpcId) {
 
   that.getSipCalls = function(callback) {
     var result = [];
+    log.debug('getSipCalls: ' , participants );
     for (var pid in participants) {
       if (participants[pid].getInfo().role === 'sip') {
         result.push(getSipCallInfo(pid));
       }
     }
     callback('callback', result);
+  };
+
+  that.getSipCall = function(participantId, callback) {
+    if (participants[participantId]) {
+      if (participants[participantId].getInfo().role === 'sip') {
+        callback('callback', getSipCallInfo(participantId));
+      } else {
+        callback('callback', 'error', 'Not a sip call');
+      }
+    } else {
+      callback('callback', 'error', 'Sip call does NOT exist');
+    }
   };
 
   that.makeSipCall = function(roomId, options, callback) {
@@ -2712,6 +2728,7 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
     controlSubscription: conference.controlSubscription,
     deleteSubscription: conference.deleteSubscription,
     getSipCalls: conference.getSipCalls,
+    getSipCall: conference.getSipCall,
     makeSipCall: conference.makeSipCall,
     controlSipCall: conference.controlSipCall,
     endSipCall: conference.endSipCall,
