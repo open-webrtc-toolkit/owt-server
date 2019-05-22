@@ -21,6 +21,7 @@
             "../../common/logger.js",
             "../../common/makeRPC.js",
             "../../common/rpcChannel.js",
+            "../../../scripts/release/install_ffmpeg.sh",
             "../../../scripts/release/initauth.js"
         ],
         "folders": {

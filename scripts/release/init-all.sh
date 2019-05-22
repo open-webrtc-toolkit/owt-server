@@ -15,6 +15,14 @@ usage()
   echo "Usage: [--deps] [--hardware] (Default: without deps and hardware)"
 }
 
+copy_video_libs()
+{
+  cp ${ROOT}/video_agent/lib/* ${ROOT}/analytics_agent/lib/
+  cp ${ROOT}/video_agent/lib/* ${ROOT}/audio_agent/lib/
+  cp ${ROOT}/video_agent/lib/* ${ROOT}/recording_agent/lib/
+  cp ${ROOT}/video_agent/lib/* ${ROOT}/streaming_agent/lib/
+}
+
 init_software()
 {
   if ${INSTALL_DEPS}; then
@@ -27,7 +35,7 @@ init_software()
     ${ROOT}/webrtc_agent/install_deps.sh
     ${ROOT}/video_agent/install_deps.sh
     ${ROOT}/video_agent/init.sh
-    ${ROOT}/analytics_agent/install_deps.sh
+    copy_video_libs
   else
     ${ROOT}/bin/init-mongodb.sh
     ${ROOT}/bin/init-rabbitmq.sh
@@ -49,7 +57,7 @@ init_hardware()
     ${ROOT}/webrtc_agent/install_deps.sh
     ${ROOT}/video_agent/install_deps.sh --hardware
     ${ROOT}/video_agent/init.sh --hardware
-    ${ROOT}/analytics_agent/install_deps.sh
+    copy_video_libs
   else
     ${ROOT}/bin/init-mongodb.sh
     ${ROOT}/bin/init-rabbitmq.sh

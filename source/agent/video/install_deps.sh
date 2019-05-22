@@ -40,7 +40,7 @@ install_deps() {
   then
     echo -e "\x1b[32mInstalling dependent components and libraries via yum...\x1b[0m"
     ${OWT_UPDATE_DONE} || ${SUDO} yum update
-    ${SUDO} yum install wget
+    ${SUDO} yum install wget -y
     if [[ "$OS" =~ .*6.* ]] # CentOS 6.x
     then
       wget -c http://dl.fedoraproject.org/pub/epel/6/x86_64/epel-release-6-8.noarch.rpm
@@ -57,9 +57,9 @@ install_deps() {
   elif [[ "$OS" =~ .*ubuntu.* ]]
   then
     echo -e "\x1b[32mInstalling dependent components and libraries via apt-get...\x1b[0m"
-    ${OWT_UPDATE_DONE} || ${SUDO} apt-get update
-    ${SUDO} apt-get install libboost-system-dev libboost-thread-dev liblog4cxx-dev wget bzip2
-    ${SUDO} apt-get install intel-gpu-tools
+    ${OWT_UPDATE_DONE} || ${SUDO} apt-get update -y
+    ${SUDO} apt-get install libboost-system-dev libboost-thread-dev liblog4cxx-dev wget bzip2 -y
+    ${SUDO} apt-get install intel-gpu-tools -y
   else
     echo -e "\x1b[32mUnsupported platform...\x1b[0m"
   fi
@@ -88,6 +88,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 install_deps
+${this}/install_ffmpeg.sh
 
 if ${HARDWARE_DEPS} ; then
   enable_intel_gpu_top
