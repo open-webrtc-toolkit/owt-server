@@ -25,11 +25,11 @@ do_update() {
   if [[ "$OS" =~ .*centos.* ]]
   then
     echo -e "\x1b[32mRun yum update...\x1b[0m"
-    ${SUDO} yum update
+    ${SUDO} yum update -y
   elif [[ "$OS" =~ .*ubuntu.* ]]
   then
     echo -e "\x1b[32mRun apt-get update...\x1b[0m"
-    ${SUDO} apt-get update
+    ${SUDO} apt-get update -y
   else
     echo -e "\x1b[32mUnsupported platform...\x1b[0m"
   fi
@@ -39,11 +39,11 @@ install_deps() {
   if [[ "$OS" =~ .*centos.* ]]
   then
     echo -e "\x1b[32mInstalling deps via yum install...\x1b[0m"
-    ${SUDO} yum install boost-system boost-thread log4cxx
+    ${SUDO} yum install boost-system boost-thread log4cxx -y
   elif [[ "$OS" =~ .*ubuntu.* ]]
   then
     echo -e "\x1b[32mInstalling deps via apt-get install...\x1b[0m"
-    ${SUDO} apt-get install libboost-system-dev libboost-thread-dev liblog4cxx-dev
+    ${SUDO} apt-get install libboost-system-dev libboost-thread-dev liblog4cxx-dev -y
   fi
 }
 

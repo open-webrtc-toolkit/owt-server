@@ -407,13 +407,16 @@ function isLibAllowed(libSrc) {
     'libnice',
     'libSvtHevcEnc',
     'libusrsctp',
-    'libav',
-    'libsw',
     'libopenh264',
     'libre',
     'sipLib',
     'librawquic'
   ];
+  if (!options['archive']) {
+    whiteList.push('libav');
+    whiteList.push('libsw');
+  }
+
   const libName = path.basename(libSrc);
 
   var found = false;

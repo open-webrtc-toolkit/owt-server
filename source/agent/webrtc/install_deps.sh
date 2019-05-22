@@ -25,11 +25,11 @@ do_update() {
   if [[ "$OS" =~ .*centos.* ]]
   then
     echo -e "\x1b[32mRun yum update...\x1b[0m"
-    ${SUDO} yum update
+    ${SUDO} yum update -y
   elif [[ "$OS" =~ .*ubuntu.* ]]
   then
     echo -e "\x1b[32mRun apt-get update...\x1b[0m"
-    ${SUDO} apt-get update
+    ${SUDO} apt-get update -y
   else
     echo -e "\x1b[32mUnsupported platform...\x1b[0m"
   fi
@@ -39,11 +39,11 @@ install_glib() {
   if [[ "$OS" =~ .*centos.* ]]
   then
     echo -e "\x1b[32mInstalling GLib2.0 via yum install...\x1b[0m"
-    ${SUDO} yum install boost-system boost-thread log4cxx glib2
+    ${SUDO} yum install boost-system boost-thread log4cxx glib2 -y
   elif [[ "$OS" =~ .*ubuntu.* ]]
   then
     echo -e "\x1b[32mInstalling GLib2.0 via apt-get install...\x1b[0m"
-    ${SUDO} apt-get install libboost-system-dev libboost-thread-dev liblog4cxx-dev libglib2.0-0
+    ${SUDO} apt-get install libboost-system-dev libboost-thread-dev liblog4cxx-dev libglib2.0-0 -y
   fi
 }
 
