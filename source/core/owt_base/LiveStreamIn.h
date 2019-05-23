@@ -15,6 +15,7 @@
 
 extern "C" {
 #include <libavformat/avformat.h>
+#include<libavutil/intreadwrite.h>
 }
 
 #include <fstream>
@@ -219,6 +220,10 @@ private:
     int64_t m_timstampOffset;
     int64_t m_lastTimstamp;
 
+    bool m_enableVideoExtradata;
+    uint8_t *m_sps_pps_buffer;
+    int m_sps_pps_buffer_length;
+
     char m_errbuff[500];
     char *ff_err2str(int errRet);
 
@@ -235,9 +240,9 @@ private:
     void receiveLoop();
 
     void checkVideoBitstream(AVStream *st, const AVPacket *pkt);
+    bool parse_avcC(AVPacket *pkt);
     bool filterVBS(AVStream *st, AVPacket *pkt);
-    void filterSEI(AVPacket *pkt);
-    int  getNextNaluPosition(uint8_t *buffer, int buffer_size, bool &is_sei);
+    bool filterPS(AVStream *st, AVPacket *pkt);
 };
 
 }

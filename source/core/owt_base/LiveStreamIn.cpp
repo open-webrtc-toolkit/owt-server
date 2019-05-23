@@ -9,18 +9,7 @@
 #include <sstream>
 #include <sys/time.h>
 
-#define RB24(x)                           \
-    ((((const uint8_t*)(x))[0] << 16) |         \
-     (((const uint8_t*)(x))[1] <<  8) |         \
-     ((const uint8_t*)(x))[2])
-
-#define RB32(x)                                \
-    (((uint32_t)((const uint8_t*)(x))[0] << 24) |    \
-     (((const uint8_t*)(x))[1] << 16) |    \
-     (((const uint8_t*)(x))[2] <<  8) |    \
-     ((const uint8_t*)(x))[3])
-
-#define MAX_NALS_PER_FRAME 128
+#include "MediaUtilities.h"
 
 static inline int64_t timeRescale(uint32_t time, AVRational in, AVRational out)
 {
@@ -34,6 +23,44 @@ static inline void notifyAsyncEvent(EventRegistry* handle, const std::string& ev
 }
 
 namespace owt_base {
+
+static int filterNALs(uint8_t *data, int size, const std::vector<int> &remove_types, const std::vector<int> &pass_types)
+{
+    int remove_nals_size = 0;
+
+    int nalu_found_length = 0;
+    uint8_t* buffer_start = data;
+    int buffer_length = size;
+    int nalu_start_offset = 0;
+    int nalu_end_offset = 0;
+    int sc_len = 0;
+    int nalu_type;
+
+    if (remove_types.size() > 0 && pass_types.size() > 0)
+        return -1;
+
+    while (buffer_length > 0) {
+        nalu_found_length = findNALU(buffer_start, buffer_length, &nalu_start_offset, &nalu_end_offset, &sc_len);
+        if (nalu_found_length < 0) {
+            /* Error, should never happen */
+            break;
+        }
+
+        nalu_type = buffer_start[nalu_start_offset] & 0x1F;
+        if ((remove_types.size() > 0 && find(remove_types.begin(), remove_types.end(), nalu_type) != remove_types.end())
+                || (pass_types.size() > 0 && find(pass_types.begin(), pass_types.end(), nalu_type) == pass_types.end())) {
+            memmove(buffer_start, buffer_start + nalu_start_offset + nalu_found_length, buffer_length - nalu_start_offset - nalu_found_length);
+            buffer_length -= nalu_start_offset + nalu_found_length;
+
+            remove_nals_size += nalu_start_offset + nalu_found_length;
+            continue;
+        }
+
+        buffer_start += (nalu_start_offset + nalu_found_length);
+        buffer_length -= (nalu_start_offset + nalu_found_length);
+    }
+    return size - remove_nals_size;
+}
 
 FramePacket::FramePacket (AVPacket *packet)
     : m_packet(NULL)
@@ -397,6 +424,9 @@ LiveStreamIn::LiveStreamIn(const Options& options, EventRegistry* handle)
     , m_isFileInput(false)
     , m_timstampOffset(0)
     , m_lastTimstamp(0)
+    , m_enableVideoExtradata(false)
+    , m_sps_pps_buffer(NULL)
+    , m_sps_pps_buffer_length(0)
 {
     ELOG_INFO_T("url: %s, audio: %s, video: %s, transport: %s, bufferSize: %d"
             , m_url.c_str(), m_enableAudio.c_str(), m_enableVideo.c_str(), options.transport.c_str(), options.bufferSize);
@@ -463,18 +493,30 @@ LiveStreamIn::~LiveStreamIn()
         m_audioJitterBuffer.reset();
     }
 
-    if (m_context) {
-        avformat_free_context(m_context);
-        m_context = NULL;
-    }
-    if (m_timeoutHandler) {
-        delete m_timeoutHandler;
-        m_timeoutHandler = nullptr;
-    }
-    av_dict_free(&m_options);
+    m_needCheckVBS = true;
+    m_needApplyVBSF = false;
     if (m_vbsf) {
         av_bsf_free(&m_vbsf);
         m_vbsf = NULL;
+    }
+
+    m_enableVideoExtradata = false;
+    if (m_sps_pps_buffer) {
+        free(m_sps_pps_buffer);
+        m_sps_pps_buffer = NULL;
+        m_sps_pps_buffer_length = 0;
+    }
+
+    if (m_context) {
+        avformat_close_input(&m_context);
+        avformat_free_context(m_context);
+        m_context = NULL;
+    }
+
+    av_dict_free(&m_options);
+    if (m_timeoutHandler) {
+        delete m_timeoutHandler;
+        m_timeoutHandler = nullptr;
     }
 
     ELOG_DEBUG_T("Closed");
@@ -703,6 +745,13 @@ bool LiveStreamIn::connect()
         m_audioJitterBuffer->start();
     }
 
+    if (!strcmp(m_context->iformat->name, "flv")
+            && m_videoStreamIndex != -1
+            && m_context->streams[m_videoStreamIndex]->codecpar->codec_id == AV_CODEC_ID_H264) {
+        m_enableVideoExtradata = true;
+        ELOG_INFO_T("Enable video extradata");
+    }
+
     return true;
 }
 
@@ -716,15 +765,33 @@ bool LiveStreamIn::reconnect()
         m_videoJitterBuffer->drain();
         m_videoJitterBuffer->stop();
     }
+
     if (m_audioJitterBuffer) {
         m_audioJitterBuffer->drain();
         m_audioJitterBuffer->stop();
     }
 
+    m_needCheckVBS = true;
+    m_needApplyVBSF = false;
+    if (m_vbsf) {
+        av_bsf_free(&m_vbsf);
+        m_vbsf = NULL;
+    }
+
+    m_enableVideoExtradata = false;
+    if (m_sps_pps_buffer) {
+        free(m_sps_pps_buffer);
+        m_sps_pps_buffer = NULL;
+        m_sps_pps_buffer_length = 0;
+    }
+
+    if (m_context) {
+        avformat_close_input(&m_context);
+        avformat_free_context(m_context);
+        m_context = NULL;
+    }
+
     m_timeoutHandler->reset(10000);
-    avformat_close_input(&m_context);
-    avformat_free_context(m_context);
-    m_context = NULL;
 
     m_context = avformat_alloc_context();
     m_context->interrupt_callback = {&TimeoutHandler::checkInterrupt, m_timeoutHandler};
@@ -784,6 +851,13 @@ bool LiveStreamIn::reconnect()
         m_videoJitterBuffer->start();
     if (m_audioJitterBuffer)
         m_audioJitterBuffer->start();
+
+    if (!strcmp(m_context->iformat->name, "flv")
+            && m_videoStreamIndex != -1
+            && m_context->streams[m_videoStreamIndex]->codecpar->codec_id == AV_CODEC_ID_H264) {
+        m_enableVideoExtradata = true;
+        ELOG_INFO_T("Enable video extradata");
+    }
 
     return true;
 }
@@ -853,9 +927,8 @@ void LiveStreamIn::receiveLoop()
                     , m_avPacket.dts, m_avPacket.size);
 
             if (filterVBS(video_st, &m_avPacket)) {
-                // filtering SEI will cause SW h.264 decoder failing to decode, though it partially reslove
-                // issues on decoding forward stream in Chrome58
-                // filterSEI(&m_avPacket);
+                filterPS(video_st, &m_avPacket);
+
                 if (m_videoJitterBuffer)
                     m_videoJitterBuffer->insert(m_avPacket);
                 else
@@ -893,12 +966,12 @@ void LiveStreamIn::checkVideoBitstream(AVStream *st, const AVPacket *pkt)
     m_needApplyVBSF = false;
     switch(st->codecpar->codec_id) {
         case AV_CODEC_ID_H264:
-            if (pkt->size < 5 || RB32(pkt->data) == 0x0000001 || RB24(pkt->data) == 0x000001)
+            if (pkt->size < 5 || AV_RB32(pkt->data) == 0x0000001 || AV_RB24(pkt->data) == 0x000001)
                 break;
             filter_name = "h264_mp4toannexb";
             break;
         case AV_CODEC_ID_HEVC:
-            if (pkt->size < 5 || RB32(pkt->data) == 0x0000001 || RB24(pkt->data) == 0x000001)
+            if (pkt->size < 5 || AV_RB32(pkt->data) == 0x0000001 || AV_RB24(pkt->data) == 0x000001)
                 break;
             filter_name = "hevc_mp4toannexb";
             break;
@@ -945,60 +1018,6 @@ exit:
     ELOG_DEBUG_T("%s video bitstream filter", m_needApplyVBSF ? "Apply" : "Not apply");
 }
 
-void LiveStreamIn::filterSEI(AVPacket *pkt) {
-    // After the annex-b bitstream is generated, remove SEI NALs from the stream
-    // as chrome-58 does not accept pic-timing-sei.
-    if (pkt == nullptr)
-         return;
-    uint8_t *origin_pkt_data = reinterpret_cast<uint8_t*>(pkt->data);
-    int origin_pkt_length = pkt->size;
-    uint8_t *head = origin_pkt_data;
-
-    std::vector<int> nal_offset;
-    std::vector<bool> nal_type_is_sei;
-    std::vector<int> nal_size;
-    bool is_sei = false, has_sei = false;
-
-    int sc_positions_length = 0;
-    int sc_position = 0;
-    while (sc_positions_length < MAX_NALS_PER_FRAME) {
-         int nalu_position = getNextNaluPosition(origin_pkt_data + sc_position,
-              origin_pkt_length - sc_position, is_sei);
-         if (nalu_position < 0) {
-             break;
-         }
-         sc_position += nalu_position;
-         nal_offset.push_back(sc_position); //include start code.
-         sc_position += 4;
-         sc_positions_length++;
-         if (is_sei) {
-             has_sei = true;
-             nal_type_is_sei.push_back(true);
-         } else {
-             nal_type_is_sei.push_back(false);
-         }
-    }
-    if (sc_positions_length == 0 || !has_sei)
-        return;
-    // Calculate size of each NALs
-    for (unsigned int count = 0; count < nal_offset.size(); count++) {
-       if (count + 1 == nal_offset.size()) {
-           nal_size.push_back(origin_pkt_length - nal_offset[count]);
-       } else {
-           nal_size.push_back(nal_offset[count+1] - nal_offset[count]);
-       }
-    }
-    // remove in place the SEI NALs
-    int new_size = 0;
-    for (unsigned int i = 0; i < nal_offset.size(); i++) {
-       if (!nal_type_is_sei[i]) {
-           memmove(head + new_size, head + nal_offset[i], nal_size[i]);
-           new_size += nal_size[i];
-       }
-    }
-    av_shrink_packet(pkt, new_size);
-}
-
 bool LiveStreamIn::filterVBS(AVStream *st, AVPacket *pkt) {
     int ret;
 
@@ -1041,37 +1060,140 @@ bool LiveStreamIn::filterVBS(AVStream *st, AVPacket *pkt) {
     return true;
 }
 
-// Returns the offset of next NALU(including SC) from provided buffer.
-int LiveStreamIn::getNextNaluPosition(uint8_t *buffer, int buffer_size, bool &is_sei) {
-    if (buffer_size < 4) {
-        return -1;
+bool LiveStreamIn::parse_avcC(AVPacket *pkt) {
+    uint8_t *data;
+    int size;
+
+    data = av_packet_get_side_data(&m_avPacket, AV_PKT_DATA_NEW_EXTRADATA, &size);
+    if(data == NULL)
+        return true;
+
+    if (data[0] == 1) { //AVCDecoderConfigurationRecord
+        int nals_size = 0;
+
+        if (m_sps_pps_buffer) {
+            free(m_sps_pps_buffer);
+            m_sps_pps_buffer = NULL;
+            m_sps_pps_buffer_length = 0;
+        }
+
+        int nals_buf_length = 128;
+        uint8_t *nals_buf = (uint8_t *)malloc(nals_buf_length);
+
+        int i, cnt, nalsize;
+        const uint8_t *p = data;
+
+        if (size < 7) {
+            ELOG_ERROR_T("avcC %d too short", size);
+
+            free(nals_buf);
+            return false;
+        }
+
+        // Decode sps from avcC
+        cnt = *(p + 5) & 0x1f; // Number of sps
+        p  += 6;
+        for (i = 0; i < cnt; i++) {
+            nalsize = AV_RB16(p) + 2;
+            if (nalsize > size - (p - data)) {
+                ELOG_ERROR_T("avcC %d invalid sps size", nalsize);
+
+                free(nals_buf);
+                return false;
+            }
+
+            p += 2;
+            nalsize -= 2;
+
+            if (nalsize + 4 >= nals_buf_length - nals_size) {
+                ELOG_DEBUG_T("enlarge avcC nals buf %d", nalsize + 4);
+
+                nals_buf_length += nalsize + 4;
+                nals_buf = (uint8_t *)realloc(nals_buf, nals_buf_length);
+            }
+
+            nals_buf[nals_size] = 0;
+            nals_buf[nals_size + 1] = 0;
+            nals_buf[nals_size + 2] = 0;
+            nals_buf[nals_size + 3] = 1;
+            memcpy(nals_buf + nals_size + 4, p, nalsize);
+            nals_size += nalsize + 4;
+
+            p += nalsize;
+        }
+
+        // Decode pps from avcC
+        cnt = *(p++); // Number of pps
+        for (i = 0; i < cnt; i++) {
+            nalsize = AV_RB16(p) + 2;
+            if (nalsize > size - (p - data)) {
+                ELOG_ERROR_T("avcC %d invalid pps size", nalsize);
+
+                free(nals_buf);
+                return false;
+            }
+
+            p += 2;
+            nalsize -= 2;
+
+            if (nalsize + 4 >= nals_buf_length - nals_size) {
+                ELOG_DEBUG_T("enlarge avcC nals buf %d", nalsize + 4);
+
+                nals_buf_length += nalsize + 4;
+                nals_buf = (uint8_t *)realloc(nals_buf, nals_buf_length);
+            }
+
+            nals_buf[nals_size] = 0;
+            nals_buf[nals_size + 1] = 0;
+            nals_buf[nals_size + 2] = 0;
+            nals_buf[nals_size + 3] = 1;
+            memcpy(nals_buf + nals_size + 4, p, nalsize);
+            nals_size += nalsize + 4;
+
+            p += nalsize;
+        }
+
+        if (nals_size > 0) {
+            ELOG_DEBUG_T("New video extradata");
+
+            m_sps_pps_buffer_length = nals_size;
+            m_sps_pps_buffer = (uint8_t *)malloc(m_sps_pps_buffer_length);
+            memcpy(m_sps_pps_buffer, nals_buf , m_sps_pps_buffer_length);
+        }
+
+        free(nals_buf);
+    } else {
+        ELOG_WARN_T("Unsupported video extradata\n");
     }
-    is_sei = false;
-    uint8_t *head = buffer;
-    uint8_t *end = buffer + buffer_size - 4;
-    while (head < end) {
-        if (head[0]) {
-            head++;
-            continue;
+
+    return true;
+}
+
+bool LiveStreamIn::filterPS(AVStream *st, AVPacket *pkt) {
+    if (!m_enableVideoExtradata)
+        return true;
+
+    parse_avcC(pkt);
+    if (m_sps_pps_buffer && m_sps_pps_buffer_length > 0) {
+        int size;
+
+        std::vector<int> sps_pps, pass_types;
+        sps_pps.push_back(7);
+        sps_pps.push_back(8);
+
+        size = filterNALs(pkt->data, pkt->size, sps_pps, pass_types);
+        if (size != pkt->size) {
+            ELOG_TRACE_T("Rewrite sps/pps\n");
+
+            av_shrink_packet(pkt, size);
+
+            av_grow_packet(pkt, m_sps_pps_buffer_length);
+            memmove(pkt->data + m_sps_pps_buffer_length, pkt->data, pkt->size - m_sps_pps_buffer_length);
+            memcpy(pkt->data, m_sps_pps_buffer, m_sps_pps_buffer_length);
         }
-        if (head[1]) {
-            head +=2;
-            continue;
-        }
-        if (head[2]) {
-            head +=3;
-            continue;
-        }
-        if (head[3] != 0x01) {
-            head++;
-            continue;
-        }
-        if ((head[4] & 0x1F) == 6) {
-            is_sei = true;
-        }
-        return static_cast<int>(head - buffer);
     }
-    return -1;
+
+    return true;
 }
 
 void LiveStreamIn::onSyncTimeChanged(JitterBuffer *jitterBuffer, int64_t syncTimestamp)
