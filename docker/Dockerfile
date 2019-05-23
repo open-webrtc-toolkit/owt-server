@@ -9,10 +9,10 @@ ENV DEBIAN_FRONTEND=noninteractive
 ENV MEDIA_SDK_VER=18.4.0
 
 # Update the system
-RUN apt update
+RUN apt-get update
 
 # Install utils
-RUN apt install -y ca-certificates git lsb-release mongodb nodejs npm sudo wget
+RUN apt-get install -y ca-certificates git lsb-release mongodb nodejs npm sudo wget
 
 RUN npm install -g grunt-cli node-gyp
 
