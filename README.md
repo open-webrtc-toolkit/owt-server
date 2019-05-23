@@ -1,3 +1,14 @@
+## Warning
+
+This branch is an experimental implemention of QUIC. APIs are not stable. Do not use it in production environments.
+
+There are some known issues:
+
+- Conflicts between OpenSSL and BoringSSL.
+- A QUIC transport only has one stream. Stream multiplexing will be enabled after server-client protocol changes.
+
+---------------------
+
 ## Open WebRTC Toolkit Media Server
 
 The media server for OWT provides an efficient video conference and streaming service that is based on WebRTC. It scales a single WebRTC stream out to many endpoints. At the same time, it enables media analytics capabilities for media streams. It features:

@@ -117,7 +117,7 @@ var init_manager = () => {
   };
 
   // WebRTC-QUIC module links BoringSSL. We start it by a node without OpenSSL.
-  if (myPurpose === 'webrtc1') {
+  if (myPurpose === 'webrtc') {
     spawnOptions.cmd = '/mnt/downloads/quic-ok/webrtc_agent/snode';
   }
 

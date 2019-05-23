@@ -3,22 +3,21 @@
 // SPDX-License-Identifier: Apache-2.0
 
 'use strict';
-var path = require('path');
-var Connections = require('./connections');
-var InternalConnectionFactory = require('./InternalConnectionFactory');
-var logger = require('../logger').logger;
+const path = require('path');
+const Connections = require('./connections');
+const InternalConnectionFactory = require('./InternalConnectionFactory');
+const logger = require('../logger').logger;
 const QuicConnection = require('./quicConnection');
+const log = logger.getLogger('WebrtcQuicNode');
+const addon = require('../quic/build/Release/webrtc-quic');
 
-// Logger
-var log = logger.getLogger('WebrtcQuicNode');
+log.info('WebRTC QUIC node.')
 
-var addon = require('../quic/build/Release/webrtc-quic');
-
-var threadPool = new addon.ThreadPool(global.config.webrtc.num_workers || 24);
+const threadPool = new addon.ThreadPool(global.config.webrtc.num_workers || 24);
 threadPool.start();
 
 // We don't use Nicer connection now
-var ioThreadPool = new addon.IOThreadPool(global.config.webrtc.io_workers || 1);
+const ioThreadPool = new addon.IOThreadPool(global.config.webrtc.io_workers || 1);
 
 if (global.config.webrtc.use_nicer) {
   log.info('Starting ioThreadPool');
@@ -37,8 +36,12 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
         rpcClient.remoteCast(controller, 'onSessionProgress', [sessionId, direction, status]);
     };
 
-    var notifyMediaUpdate = (controller, sessionId, direction, mediaUpdate) => {
-        rpcClient.remoteCast(controller, 'onMediaUpdate', [sessionId, direction, JSON.parse(mediaUpdate)]);
+    const createQuicConnection = function (connectionId, direction, options) {
+        var connection = new QuicConnection(connectionId, function (status) {
+            notifyStatus(options.controller, connectionId, direction, status);
+        });
+
+        return connection;
     };
 
     var onSuccess = function (callback) {
@@ -83,8 +86,10 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
                 if (conn)
                     conn.connect(options);
                 break;
-            case 'webrtc':
-                conn = createWebRTCConnection(connectionId, 'in', options, callback);
+            case 'webrtc':  // We'll eventually change connection type to quic-p2p for P2P QUIC connections. Using webrtc for now because of adding a new type may involve much effort.
+            case 'quic-p2p':
+                log.debug("New QUIC connection.");
+                conn = createQuicConnection(connectionId, 'in', options);
                 break;
             default:
                 log.error('Connection type invalid:' + connectionType);
@@ -163,7 +168,7 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
         log.debug('onSessionSignaling, connection id:', connectionId, 'msg:', msg);
         var conn = connections.getConnection(connectionId);
         if (conn) {
-            if (conn.type === 'webrtc') { //NOTE: Only webrtc connection supports signaling.
+            if (conn.type === 'quic-p2p' || conn.type === 'webrtc') { //NOTE: Only webrtc connection supports signaling.
                 conn.connection.onSignalling(msg);
                 callback('callback', 'ok');
             } else {
@@ -179,7 +184,7 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
         log.debug('mediaOnOff, connection id:', connectionId, 'track:', track, 'direction:', direction, 'action:', action);
         var conn = connections.getConnection(connectionId);
         if (conn) {
-            if (conn.type === 'webrtc') {//NOTE: Only webrtc connection supports media-on-off
+            if (conn.type === 'quic-p2p') {//NOTE: Only webrtc connection supports media-on-off
                 conn.connection.onTrackControl(track,
                                                 direction,
                                                 action,
@@ -195,25 +200,6 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
             }
         } else {
           log.info('Connection does NOT exist:' + connectionId);
-          callback('callback', 'error', 'Connection does NOT exist:' + connectionId);
-        }
-    };
-
-    that.setVideoBitrate = function (connectionId, bitrate, callback) {
-        log.debug('setVideoBitrate, connection id:', connectionId, 'bitrate:', bitrate);
-        var conn = connections.getConnection(connectionId);
-        if (conn && conn.direction === 'in') {
-            if (conn.type === 'webrtc') {//NOTE: Only webrtc connection supports setting video bitrate.
-                conn.connection.setVideoBitrate(bitrate, function () {
-                  callback('callback', 'ok');
-                }, function (err_reason) {
-                    log.info('set video bitrate failed:', err_reason);
-                    callback('callback', 'error', err_reason);
-                });
-            } else {
-                callback('callback', 'error', 'setVideoBitrate on non-webrtc connection');
-            }
-        } else {
           callback('callback', 'error', 'Connection does NOT exist:' + connectionId);
         }
     };

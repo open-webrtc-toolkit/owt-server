@@ -22,6 +22,8 @@
     "SdpInfo": "INFO",
     "WorkingAgent": "INFO",
     "Connections": "INFO",
-    "InternalConnectionFactory": "INFO"
+    "InternalConnectionFactory": "INFO",
+    "QuicConnection": "DEBUG",
+    "WebrtcQuicNode": "DEBUG"
   }
 }

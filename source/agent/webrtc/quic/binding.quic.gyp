@@ -52,6 +52,7 @@
       '-L$(CHROMIUM_HOME)/out/gcc',
       '-L$(CHROMIUM_HOME)/out/gcc/obj/third_party/webrtc/rtc_base',
       '-L$(CHROMIUM_HOME)/out/gcc/obj/net',
+      #'-L$(CHROMIUM_HOME)/out/gcc/obj/third_party/boringssl',
     ],
     'cflags_cc!': [
       '-std=gnu++0x',

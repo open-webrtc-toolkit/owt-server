@@ -65,9 +65,19 @@ const PublicationRequest = {
     { // Webrtc Publication
       type: 'object',
       properties: {
-        'media': { $ref: '#/definitions/WebRTCMediaOptions' },
-        'data': {type: 'boolean' },
-        'attributes': { type: 'object' }
+        'media': {
+          anyOf: [{
+            $ref: '#/definitions/WebRTCMediaOptions'
+          }, {
+            'const': null
+          }]
+        },
+        'data': {
+          type: 'boolean'
+        },
+        'attributes': {
+          type: 'object'
+        }
       },
       additionalProperties: false,
       required: ['media']

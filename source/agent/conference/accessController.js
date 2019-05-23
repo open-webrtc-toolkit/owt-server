@@ -151,7 +151,7 @@ module.exports.create = function(spec, rpcReq, on_session_established, on_sessio
       onReady(sessionId, status);
     } else if (status.type === 'failed') {
       onFailed(sessionId, status.reason);
-    } else if (status.type === 'offer' || status.type === 'answer' || status.type === 'candidate' || status.type === 'ice-parameters') {
+    } else if (status.type === 'offer' || status.type === 'answer' || status.type === 'candidate' || status.type === 'quic-p2p-server-parameters') {
       onSignaling(sessionId, status);
     } else {
       log.error('Irrispective status:' + status.type);
@@ -203,6 +203,7 @@ module.exports.create = function(spec, rpcReq, on_session_established, on_sessio
                            state: 'initialized'};
 
     var locality;
+    log.debug('session type: '+sessionOptions.type);
     return rpcReq.getWorkerNode(cluster_name, sessionOptions.type, {room: in_room, task: sessionId}, origin)
       .then(function(accessLocality) {
         locality = accessLocality;

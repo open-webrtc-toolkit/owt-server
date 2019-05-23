@@ -6,6 +6,7 @@
 'use strict';
 const logger = require('../logger').logger;
 const log = logger.getLogger('QuicConnection');
+const addon = require('./build/Release/webrtc-quic');
 
 module.exports = class QuicConnection {
   constructor(id, sendCallback) {
@@ -14,7 +15,8 @@ module.exports = class QuicConnection {
       writable: false,
       value: id
     });
-    this._iceTransport = new webrtc.RTCIceTransport();
+    this._iceTransport = new addon.RTCIceTransport();
+    this._quicTransport = new addon.RTCQuicTransport(this._iceTransport);
     this._send = sendCallback;
     this._isFirstCandidate = true;
 
@@ -34,18 +36,19 @@ module.exports = class QuicConnection {
   onSignalling(message) {
     log.debug('On signaling message to QUIC connection: ' + JSON.stringify(message));
     switch (message.type) {
-      case 'ice-parameters':
+      case 'quic-p2p-client-parameters':
         log.debug('Setting remote ICE parameters.');
         // Move gather() to constructor could speed up ICE gathering. But candidates may be sent to client side before the ack of publish/subscribe.
         this._iceTransport.gather();
         this._iceTransport.start({
-          usernameFragment: message.parameters.usernameFragment,
-          password: message.parameters.password
+          usernameFragment: message.iceParameters.usernameFragment,
+          password: message.iceParameters.password
         });
+        this._quicTransport.listen(Buffer.from(message.quicKey));
         break;
       case 'candidate':
         log.debug('Setting remote candidate.');
-        this._iceTransport.addRemoteCandidate(new webrtc.RTCIceCandidate({
+        this._iceTransport.addRemoteCandidate(new addon.RTCIceCandidate({
           sdpMid: message.candidate.sdpMid,
           sdpMLineIndex: message.candidate.sdpMLineIndex,
           candidate: message.candidate.candidate,
@@ -59,9 +62,10 @@ module.exports = class QuicConnection {
   }
 
   _sendIceParameters() {
+    log.info('Send ICE parameters.');
     this._send({
-      type: 'ice-parameters',
-      parameters: this._iceTransport.getLocalParameters()
+      type: 'quic-p2p-server-parameters',
+      iceParameters: this._iceTransport.getLocalParameters()
     });
   }
 };

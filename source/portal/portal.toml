@@ -4,7 +4,7 @@ hostname = "" #default: ""
 ip_address = "" #default: ""
 # Port that the socket.io server listens at.
 port = 8080 #default: 8080
-ssl = true #default: true
+ssl = false #default: true
 force_tls_v12 = false #default: false, tls1 and tls1.1 will not be allowed if set to true
 #The network inferface the socket.io will be bound to in case portal.ip_address (the 'ip_address' item above) is not specified or equal to "".
 # networkInterface = "eth1"

@@ -16,6 +16,8 @@ var log = logger.getLogger('WebrtcNode');
 
 var addon = require('../rtcConn/build/Release/rtcConn.node');
 
+log.info('WebRTC node.');
+
 var threadPool = new addon.ThreadPool(global.config.webrtc.num_workers || 24);
 threadPool.start();
 
