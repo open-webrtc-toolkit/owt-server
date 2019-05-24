@@ -33,9 +33,11 @@ class BaseAgent {
    *@param {object} internalOpt { ip: string(), minport: number(), maxport: number() }
    */
   createInternalConnection(connectionId, direction, internalOpt) {
+    internalOpt.minport = global.config.internal.minport;
+    internalOpt.maxport = global.config.internal.maxport;
     const portInfo = this.internalConnFactory.create(connectionId, direction, internalOpt);
     // Create internal connection always success
-    return Promise.resolve({ip: this.clusterIp, port: portInfo});
+    return Promise.resolve({ip: global.config.internal.ip_address, port: portInfo});
   }
 
   /**

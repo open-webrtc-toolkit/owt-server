@@ -706,7 +706,7 @@ module.exports = function (rpcC, selfRpcId, parentRpcId, clusterWorkerIP) {
         internalOpt.minport = global.config.internal.minport;
         internalOpt.maxport = global.config.internal.maxport;
         var portInfo = internalConnFactory.create(connectionId, direction, internalOpt);
-        callback('callback', {ip: that.clusterIP, port: portInfo});
+        callback('callback', {ip: global.config.internal.ip_address, port: portInfo});
     };
 
     that.destroyInternalConnection = function (connectionId, direction, callback) {
