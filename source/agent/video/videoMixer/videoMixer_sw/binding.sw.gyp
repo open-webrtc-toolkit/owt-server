@@ -53,6 +53,9 @@
             'sources': [
                 '../../../../core/owt_base/SVTHEVCEncoder.cpp',
             ],
+            'libraries': [
+                '-L$(CORE_HOME)/../../build/libdeps/build/lib', '-lSvtHevcEnc',
+            ],
         }]
     ],
 
