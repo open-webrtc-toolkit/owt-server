@@ -448,21 +448,18 @@ install_gcc(){
 }
 
 install_svt_hevc(){
-    pushd $ROOT/third_party
+    pushd $ROOT/third_party >/dev/null
     rm -rf SVT-HEVC
     git clone https://github.com/intel/SVT-HEVC.git
 
-    pushd SVT-HEVC
+    pushd SVT-HEVC >/dev/null
     git checkout v1.3.0
 
-    pushd Build
-    pushd linux
-    chmod +x build.sh
-    ./build.sh debug
-    popd
-    popd
-    cp -v ./Bin/Debug/libSvtHevcEnc.so.1 ./
-    ln -s -v libSvtHevcEnc.so.1 libSvtHevcEnc.so
+    mkdir build
+    pushd build >/dev/null
+    cmake -DCMAKE_INSTALL_PREFIX=${PREFIX_DIR} ..
+    make && make install
+    popd >/dev/null
 
     # pseudo lib
     echo \
@@ -470,9 +467,8 @@ install_svt_hevc(){
         > pseudo-svtHevcEnc.cpp
     gcc pseudo-svtHevcEnc.cpp -fPIC -shared -o pseudo-svtHevcEnc.so
 
-    popd
-
-    popd
+    popd >/dev/null
+    popd >/dev/null
 }
 
 cleanup_common(){
