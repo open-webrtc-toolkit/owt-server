@@ -19,6 +19,7 @@ module.exports = class QuicConnection {
     this._quicTransport = new addon.RTCQuicTransport(this._iceTransport);
     this._send = sendCallback;
     this._isFirstCandidate = true;
+    this._quicStream = null;
 
     this._iceTransport.onicecandidate = (event) => {
       if (this._isFirstCandidate) {
@@ -30,11 +31,28 @@ module.exports = class QuicConnection {
         candidate: event.candidate
       });
     };
+    this._quicTransport.onbidirectionalstream = (stream) => {
+      this._quicStream = stream;
+      stream.ondata = data => {
+        if (typeof this.ondata === 'function') {
+          this.ondata.apply(this, [data]);
+        }
+      }
+    }
     log.debug('Construct a QuicConnection.');
   };
 
+  write(data) {
+    if (this._quicStream) {
+      this._quicStream.write({data: data});
+    } else {
+      log.error('Stream is not created.');
+    }
+  }
+
   onSignalling(message) {
-    log.debug('On signaling message to QUIC connection: ' + JSON.stringify(message));
+    log.debug('On signaling message to QUIC connection: ' + JSON.stringify(
+      message));
     switch (message.type) {
       case 'quic-p2p-client-parameters':
         log.debug('Setting remote ICE parameters.');
@@ -45,6 +63,11 @@ module.exports = class QuicConnection {
           password: message.iceParameters.password
         });
         this._quicTransport.listen(Buffer.from(message.quicKey));
+        this._send({
+          type: 'ready',
+          audio: false,
+          video: false
+        });
         break;
       case 'candidate':
         log.debug('Setting remote candidate.');
@@ -59,6 +82,10 @@ module.exports = class QuicConnection {
         log.warn('Unrecognized message type: ' + message.type);
         return;
     }
+  }
+
+  close(){
+    log.error('Not implemented.');
   }
 
   _sendIceParameters() {

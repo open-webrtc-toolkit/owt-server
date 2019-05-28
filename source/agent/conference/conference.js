@@ -253,7 +253,8 @@ var Conference = function (rpcClient, selfRpcId) {
           });
         });
     } else if (direction === 'out') {
-      return addSubscription(sessionId, sessionInfo.locality, sessionInfo.media, sessionInfo.info
+      log.info('Data info: '+sessionInfo.data);
+      return addSubscription(sessionId, sessionInfo.locality, sessionInfo.media, sessionInfo.info, sessionInfo.data
         ).then(() => {
           if (sessionInfo.info && sessionInfo.info.type !== 'webrtc') {
             if (sessionInfo.info.location) {
@@ -695,6 +696,7 @@ var Conference = function (rpcClient, selfRpcId) {
   };
 
   const initiateSubscription = (id, subSpec, info) => {
+    log.debug('initiateSubscription subSepc: '+JSON.stringify(subSpec)+', info: '+JSON.stringify(info));
     if (subscriptions[id]) {
       return Promise.reject('Subscription already exists');
     }
@@ -709,16 +711,16 @@ var Conference = function (rpcClient, selfRpcId) {
     return Promise.resolve('ok');
   };
 
-  const addSubscription = (id, locality, mediaSpec, info) => {
+  const addSubscription = (id, locality, mediaSpec, info, dataSpec) => {
     if (!participants[info.owner]) {
       return Promise.reject('Participant early left');
     }
-    const subscription = new Subscription(id, mediaSpec, locality, info);
+    const subscription = new Subscription(id, mediaSpec, dataSpec, locality, info);
     const pending = subscriptions[id];
     if (pending) {
       if (pending.isInConnecting) {
         // Assign pending parameters settings
-        const tmp = new Subscription(id, pending.media, locality, info);
+        const tmp = new Subscription(id, pending.media, dataSpec, locality, info);
         subscription.media.tracks.forEach(t1 => {
           const mappedTrack = tmp.media.tracks
             .find(t2 => (t1.type === t2.type && t1.mid === t2.mid));
@@ -741,6 +743,8 @@ var Conference = function (rpcClient, selfRpcId) {
     const subArgs = subscription.toRoomCtrlSubArgs();
     const subs = subArgs.map(subArg => new Promise((resolve, reject) => {
       if (roomController) {
+        // data is not a part of media, but the |media| here is passed to roomController.subscribe as |subInfo|. Original authors may think subscription only have media data. Consider to rename |media| to subInfo.
+        subArg.media.data = subArg.data;
         roomController.subscribe(
           subArg.owner, subArg.id, subArg.locality, subArg.media, subArg.type,
           isAudioPubPermitted, resolve, reject);

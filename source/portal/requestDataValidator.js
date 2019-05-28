@@ -69,7 +69,7 @@ const PublicationRequest = {
           anyOf: [{
             $ref: '#/definitions/WebRTCMediaOptions'
           }, {
-            'const': null
+            'const': false
           }]
         },
         'data': {
@@ -178,8 +178,13 @@ const SubscriptionRequest = {
     { // Webrtc Subscription
       type: 'object',
       properties: {
-        'media': { $ref: '#/definitions/MediaSubOptions' },
-        'data' : { type: 'boolean' },
+        'media': { anyOf: [ { $ref: '#/definitions/MediaSubOptions' }, {'const': false}]},
+        'data': {
+          anyOf: [
+            { $ref: '#/definitions/DataSubOptions'},
+            { 'const': false }
+          ]
+        },
         'transport': { $ref: '#/definitions/TransportOptions' },
       },
       additionalProperties: false,
@@ -202,7 +207,7 @@ const SubscriptionRequest = {
             { $ref: '#/definitions/VideoSubOptions'},
             { 'const': false }
           ]
-        }
+        },
       },
       additionalProperties: false,
       required: ['audio', 'video']
@@ -225,6 +230,15 @@ const SubscriptionRequest = {
         'format': { $ref: '#/definitions/VideoFormat' },
         'parameters': { $ref: '#/definitions/VideoParametersSpecification' },
         'simulcastRid': { type: 'string' }
+      },
+      additionalProperties: false,
+      required: ['from']
+    },
+
+    'DataSubOptions': {
+      type: 'object',
+      properties: {
+        'from': { type: 'string' },
       },
       additionalProperties: false,
       required: ['from']

@@ -58,7 +58,7 @@ module.exports.create = function(spec, rpcReq, on_session_established, on_sessio
     var session = sessions[sessionId];
 
     if (session.options.type === 'webrtc') {
-      if (!!session.options.media.audio && !audio) {
+      if (session.options.media && !!session.options.media.audio && !audio) {
         var owner = session.owner, direction = session.direction;
         terminateSession(sessionId).catch((whatever) => {});
         on_session_aborted(owner, sessionId, direction, 'No proper audio codec');
@@ -66,7 +66,7 @@ module.exports.create = function(spec, rpcReq, on_session_established, on_sessio
         return;
       }
 
-      if (!!session.options.media.video && !video) {
+      if (session.options.media && !!session.options.media.video && !video) {
         var owner = session.owner, direction = session.direction;
         terminateSession(sessionId).catch((whatever) => {});
         on_session_aborted(owner, sessionId, direction, 'No proper video codec');
@@ -77,25 +77,26 @@ module.exports.create = function(spec, rpcReq, on_session_established, on_sessio
 
     session.state = 'connected';
     var media = {}, info = {type: session.options.type, owner: session.owner};
+    let data = false;
 
     if (session.direction === 'in') {
-      session.options.media.audio && (media.audio = (!!audio ? (audio || {}) : false));
+      session.options.media && session.options.media.audio && (media.audio = (!!audio ? (audio || {}) : false));
       media.audio && session.options.media.audio && session.options.media.audio.source && (media.audio.source = session.options.media.audio.source);
-      session.options.media.video && (media.video = (!!video ? (video || {}) : false));
-      media.video && session.options.media.video && session.options.media.video.source && (media.video.source = session.options.media.video.source);
-      media.video && session.options.media.video && session.options.media.video.parameters && session.options.media.video.parameters.resolution && (media.video.resolution = session.options.media.video.parameters.resolution);
-      media.video && session.options.media.video && session.options.media.video.parameters && session.options.media.video.parameters.framerate && (media.video.framerate = session.options.media.video.parameters.framerate);
+      session.options.media && session.options.media.video && (media.video = (!!video ? (video || {}) : false));
+      media.video && session.options.media && session.options.media.video && session.options.media.video.source && (media.video.source = session.options.media.video.source);
+      media.video && session.options.media && session.options.media.video && session.options.media.video.parameters && session.options.media.video.parameters.resolution && (media.video.resolution = session.options.media.video.parameters.resolution);
+      media.video && session.options.media && session.options.media.video && session.options.media.video.parameters && session.options.media.video.parameters.framerate && (media.video.framerate = session.options.media.video.parameters.framerate);
 
       simulcast && simulcast.video && (media.video.simulcast = true);
       session.options.attributes && (info.attributes = session.options.attributes);
     } else {
-      if (session.options.media.audio) {
+      if (session.options.media && session.options.media.audio) {
         media.audio = {from: session.options.media.audio.from};
         session.options.media.audio.format && (media.audio.format = session.options.media.audio.format);
         (session.options.type === 'webrtc') && (media.audio.format = audio);
       }
 
-      if (session.options.media.video) {
+      if (session.options.media && session.options.media.video) {
         media.video = {from: session.options.media.video.from};
         session.options.media.video.format && (media.video.format = session.options.media.video.format);
         (session.options.type === 'webrtc') && (media.video.format = video);
@@ -114,12 +115,19 @@ module.exports.create = function(spec, rpcReq, on_session_established, on_sessio
       if (session.options.type === 'analytics') {
         info.analytics = status.info;
       }
+
+      if (session.options.type === 'quic-p2p') {
+        log.info('Session options: '+JSON.stringify(session.options));
+        data = {from: session.options.data.from};
+        // TODO: Setting media to null.
+      }
     }
 
     var session_info = {
       locality: session.locality,
       media: media,
-      info: info
+      info: info,
+      data: data
     };
 
     on_session_established(session.owner, sessionId, session.direction, session_info);
@@ -223,6 +231,7 @@ module.exports.create = function(spec, rpcReq, on_session_established, on_sessio
         sessionOptions.connection && (options.connection = sessionOptions.connection);
         sessionOptions.media && (options.media = sessionOptions.media);
         sessionOptions.transport && (options.transport = sessionOptions.transport);
+        sessionOptions.data && (options.data = sessionOptions.data);
         formatPreference && (options.formatPreference = formatPreference);
         return rpcReq.initiate(locality.node,
                                sessionId,

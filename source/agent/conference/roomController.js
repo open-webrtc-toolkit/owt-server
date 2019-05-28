@@ -1659,6 +1659,8 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                             finaly_error(error_reason);
                         });
                     }, finaly_error);
+                } else if (subInfo.data) {
+                    log.debug('Require data of stream: ' + subInfo.data.from);
                 } else {
                     log.debug('No audio or video is required.');
                     finaly_error('No audio or video is required.');

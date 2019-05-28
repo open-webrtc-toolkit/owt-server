@@ -31,6 +31,7 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
     };
     var connections = new Connections;
     var internalConnFactory = new InternalConnectionFactory;
+    const pubSubMap = new Map();  // Key is publication, value is an array of subscription array
 
     var notifyStatus = (controller, sessionId, direction, status) => {
         rpcClient.remoteCast(controller, 'onSessionProgress', [sessionId, direction, status]);
@@ -86,10 +87,21 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
                 if (conn)
                     conn.connect(options);
                 break;
-            case 'webrtc':  // We'll eventually change connection type to quic-p2p for P2P QUIC connections. Using webrtc for now because of adding a new type may involve much effort.
             case 'quic-p2p':
                 log.debug("New QUIC connection.");
                 conn = createQuicConnection(connectionId, 'in', options);
+                pubSubMap.set(connectionId, []);
+                // Forward data from publication to subscriptions.
+                conn.ondata=(data)=>{
+                    log.debug('conn.ondata');
+                    if(pubSubMap.has(connectionId)){
+                        log.debug('pubSubMap has connectionID.');
+                        for(const sub of pubSubMap.get(connectionId)){
+                            log.debug('Writing data.'+data);
+                            sub.write(data);
+                        }
+                    }
+                }
                 break;
             default:
                 log.error('Connection type invalid:' + connectionType);
@@ -118,6 +130,9 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
 
     that.subscribe = function (connectionId, connectionType, options, callback) {
         log.debug('subscribe, connectionId:', connectionId, 'connectionType:', connectionType, 'options:', options);
+        if(!options.data){
+            log.error('Subscription request does not include data field.');
+        }
         if (connections.getConnection(connectionId)) {
             return callback('callback', {type: 'failed', reason: 'Connection already exists:'+connectionId});
         }
@@ -128,6 +143,16 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
                 conn = internalConnFactory.fetch(connectionId, 'out');
                 if (conn)
                     conn.connect(options);//FIXME: May FAIL here!!!!!
+                break;
+            case 'webrtc':
+            case 'quic-p2p':
+                log.debug("New QUIC connection.");
+                conn = createQuicConnection(connectionId, 'out', options);
+                if(!pubSubMap.has(options.data.from)){
+                    return callback('callback', {type: 'failed', reason: 'Invalid data source.'});
+                }
+                log.debug('Add subscription to '+options.data.from);
+                pubSubMap.get(options.data.from).push(conn);
                 break;
             default:
                 log.error('Connection type invalid:' + connectionType);
@@ -154,9 +179,20 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
         }, onError(callback));
     };
 
-    that.linkup = function (connectionId, audioFrom, videoFrom, callback) {
-        log.debug('linkup, connectionId:', connectionId, 'audioFrom:', audioFrom, 'videoFrom:', videoFrom);
-        connections.linkupConnection(connectionId, audioFrom, videoFrom).then(onSuccess(callback), onError(callback));
+    that.linkup = function (connectionId, audioFrom, dataFrom, callback) {
+        // Rename |videoFrom| to |dataFrom| for data stream. |audioFrom| is always undefined here.
+        // Consider to add |dataFrom|.
+        log.debug('linkup, connectionId:', connectionId, 'dataFrom:', dataFrom);
+        const publicationConn=connections.getConnection(dataFrom);
+        const subscriptionConn=connections.getConnection(connectionId);
+        if(!publicationConn||!subscriptionConn){
+            log.error('Invalid subscription request.');
+            return;
+        }
+        if (!pubSubMap.has(publicationConn)) {
+            pubSubMap.set(publicationConn, []);
+        }
+        pubSubMap.get(publicationConn).push(subscriptionConn);
     };
 
     that.cutoff = function (connectionId, callback) {
@@ -212,7 +248,7 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
             connections.removeConnection(connectionId);
             if (conn && conn.type === 'internal') {
                 internalConnFactory.destroy(connectionId, conn.direction);
-            } else if (conn) {
+            } else if (conn && conn.connection) {
                 conn.connection.close();
             }
         }
