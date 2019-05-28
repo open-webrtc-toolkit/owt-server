@@ -129,12 +129,13 @@ exports.list = function (serviceId, options, callback) {
     }
   }
 
-  Service.findById(serviceId).populate(popOption).lean().exec(function (err, service) {
+  Service.findById(serviceId).populate(popOption).exec(function (err, service) {
     if (err) {
       callback(err);
       return;
     }
-    callback(null, service.rooms);
+    // Current mongoose version has problem with lean getters
+    callback(null, service.rooms.map((room) => room.toObject()));
   });
 };
 
