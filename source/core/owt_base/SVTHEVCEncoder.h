@@ -16,7 +16,7 @@
 #include "logger.h"
 #include "MediaFramePipeline.h"
 
-#include "EbApi.h"
+#include "svt-hevc/EbApi.h"
 
 namespace owt_base {
 
