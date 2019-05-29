@@ -23,7 +23,7 @@ or https://software.intel.com/en-us/media-client-solutions-support.
 #include <list>
 #include <string.h>
 #include <functional>
-#include "mfxvideo.h"
+#include "mfx/mfxvideo.h"
 
 struct mfxAllocatorParams
 {
