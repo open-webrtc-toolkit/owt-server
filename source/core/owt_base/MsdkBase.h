@@ -10,10 +10,10 @@
 #include <boost/thread/shared_mutex.hpp>
 #include <logger.h>
 
-#include <mfxdefs.h>
-#include <mfxvideo++.h>
-#include <mfxplugin++.h>
-#include <mfxvp8.h>
+#include <mfx/mfxdefs.h>
+#include <mfx/mfxvideo++.h>
+#include <mfx/mfxplugin++.h>
+#include <mfx/mfxvp8.h>
 
 #ifndef MFX_VERSION
 #define MFX_VERSION (MFX_VERSION_MAJOR * 1000 + MFX_VERSION_MINOR)

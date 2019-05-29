@@ -13,7 +13,7 @@
 
 #include <webrtc/api/video/i420_buffer.h>
 
-#include <mfxvideo++.h>
+#include <mfx/mfxvideo++.h>
 
 #include "logger.h"
 #include "MediaFramePipeline.h"
