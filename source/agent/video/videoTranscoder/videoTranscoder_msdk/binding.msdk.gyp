@@ -42,7 +42,6 @@
                       '$(CORE_HOME)/../../third_party/mediasdk/samples/sample_common/include',
                       '$(CORE_HOME)/../../build/libdeps/build/include',
                       '/opt/intel/mediasdk/include',
-                      '/opt/intel/mediasdk/include/mfx',
     ],
     'libraries': [
       '-lboost_thread',
