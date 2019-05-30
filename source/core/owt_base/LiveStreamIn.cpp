@@ -550,6 +550,8 @@ bool LiveStreamIn::connect()
 
     ELOG_DEBUG_T("Finding stream info");
     m_timeoutHandler->reset(10000);
+    m_context->fps_probe_size = 0;
+    m_context->max_ts_probe = 0;
     res = avformat_find_stream_info(m_context, nullptr);
     if (res < 0) {
         ELOG_ERROR_T("Error finding stream info %s", ff_err2str(res));
@@ -807,6 +809,8 @@ bool LiveStreamIn::reconnect()
 
     ELOG_DEBUG_T("Finding stream info");
     m_timeoutHandler->reset(10000);
+    m_context->fps_probe_size = 0;
+    m_context->max_ts_probe = 0;
     res = avformat_find_stream_info(m_context, nullptr);
     if (res < 0) {
         ELOG_ERROR_T("Error find stream info %s", ff_err2str(res));
