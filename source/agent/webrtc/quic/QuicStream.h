@@ -12,11 +12,12 @@
 #include "net/third_party/quiche/src/quic/core/quic_session.h"
 #include "net/third_party/quiche/src/quic/quartc/quartc_stream.h"
 #include "P2PQuicTransport.h"
+#include "../../addons/common/MediaFramePipelineWrapper.h"
 
 // Node.js addon of BidirectionalStream.
 // https://w3c.github.io/webrtc-quic/webtransport.html#bidirectional-stream*
 // Name it as QuicStream since it is a QUIC implementation of BidirectionalStream.
-class QuicStream : public Nan::ObjectWrap, P2PQuicStream::Delegate {
+class QuicStream : public Nan::ObjectWrap, P2PQuicStream::Delegate, owt_base::FrameSource {
     DECLARE_LOGGER();
 
 public:

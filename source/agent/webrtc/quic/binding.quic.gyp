@@ -36,6 +36,7 @@
       '../../../../third_party/licode/erizo/src/erizo/thread',
       '../../../../third_party/licode/erizo/src/erizo/stats',
       '../../../core/common',
+      '../../../core/owt_base',
       '../../../../build/libdeps/build/include',
       '<!@(pkg-config glib-2.0 --cflags-only-I | sed s/-I//g)',
       '$(CHROMIUM_HOME)',
