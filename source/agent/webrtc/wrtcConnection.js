@@ -322,6 +322,13 @@ module.exports = function (spec, on_status, on_mediaUpdate) {
                                     }
                                 }
                             } else {
+                                if (global.config.webrtc.h264_profile_selection === 'highest-priority') {
+                                    if (selectedPayload < 0) {
+                                        tmpProfile = prf;
+                                        selectedPayload = fmtp.payload;
+                                    }
+                                    break;
+                                }
                                 if (h264ProfileOrder.indexOf(tmpProfile) < h264ProfileOrder.indexOf(prf)) {
                                     tmpProfile = prf;
                                     selectedPayload = fmtp.payload;
