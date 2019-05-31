@@ -94,10 +94,7 @@ if [ "$NIGHTLY" != "true" ]; then
 
   install_licode
 
-  if [[ "$OS" =~ .*ubuntu.* ]]
-  then
-      install_svt_hevc
-  fi
+  install_svt_hevc
 
 fi
 

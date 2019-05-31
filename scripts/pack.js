@@ -338,7 +338,7 @@ function packAddon(target) {
           execSync(`cp -av ${vasrc} ${vadist}`);
         }
       }
-      if (osType.includes('ubuntu') && options['archive'] && !options['no-pseudo']) {
+      if (options['archive'] && !options['no-pseudo']) {
         let libSvtHevcEnc = path.join(libDist, 'libSvtHevcEnc.so.1');
         let dummySvtHevcEnc = path.join(rootDir, 'third_party/SVT-HEVC/pseudo-svtHevcEnc.so');
         execSync(`cp -av ${dummySvtHevcEnc} ${libSvtHevcEnc}`);
