@@ -57,8 +57,8 @@ keystorePath = "./cert/certificate.pfx"
 #note, this won't work with all versions of libnice. With 0 all the available ports are used
 
 # The webrtc port range
-maxport = 0 #default: 0
 minport = 0 #default: 0
+maxport = 0 #default: 0
 
 #STUN server IP address and port to be used by the server.
 #if "" is used, the address is discovered locally
