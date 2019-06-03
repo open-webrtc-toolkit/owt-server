@@ -62,7 +62,7 @@ bool VideoFrameConstructor::init()
     m_remoteBitrateObserver.reset(new VieRemb(Clock::GetRealTimeClock()));
     m_remoteBitrateEstimator.reset(new RemoteEstimatorProxy(Clock::GetRealTimeClock(), m_packetRouter.get()));
     m_videoReceiver.reset(new ViEReceiver(m_video_receiver.get(), m_remoteBitrateEstimator.get(), this));
-    m_videoReceiver->SetReceiveTransportSequenceNumberStatus(true, 2);
+    m_videoReceiver->SetReceiveTransportSequenceNumberStatus(true, 5);
 
     RtpRtcp::Configuration configuration;
     configuration.audio = false;  // Video.
@@ -73,7 +73,7 @@ bool VideoFrameConstructor::init()
     m_rtpRtcp->SetRTCPStatus(webrtc::RtcpMode::kCompound);
     // Since currently our MCU only claims FIR support in SDP, we choose FirRtcp for now.
     m_rtpRtcp->SetKeyFrameRequestMethod(kKeyFrameReqFirRtcp);
-    m_rtpRtcp->RegisterSendRtpHeaderExtension(RTPExtensionType::kRtpExtensionTransportSequenceNumber, 2);
+    m_rtpRtcp->RegisterSendRtpHeaderExtension(RTPExtensionType::kRtpExtensionTransportSequenceNumber, 5);
     m_rtpRtcp->SetREMBStatus(false);
     m_videoReceiver->SetRtpRtcpModule(m_rtpRtcp.get());
     m_remoteBitrateObserver->AddRembSender(m_rtpRtcp.get());
