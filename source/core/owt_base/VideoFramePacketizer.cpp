@@ -411,7 +411,7 @@ bool VideoFramePacketizer::init(bool enableRed, bool enableUlpfec, bool enableTr
     int ulpfec_pl_type = enableUlpfec? ULP_90000_PT : -1;
     m_rtpRtcp->SetUlpfecConfig(red_pl_type, ulpfec_pl_type);
     if (enableTransportcc)
-        m_rtpRtcp->RegisterSendRtpHeaderExtension(RTPExtensionType::kRtpExtensionTransportSequenceNumber, 5);
+        m_rtpRtcp->RegisterSendRtpHeaderExtension(RTPExtensionType::kRtpExtensionTransportSequenceNumber, 2);
     m_rtpRtcp->SetREMBStatus(true);
 
     // Enable NACK.
