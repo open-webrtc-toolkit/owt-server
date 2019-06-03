@@ -198,6 +198,11 @@ inline bool isVideoFrame(const Frame& frame) {
           || frame.format == FRAME_FORMAT_H265;
 }
 
+inline bool isDataFrame(const Frame& frame)
+{
+    return frame.format == FRAME_FORMAT_DATA;
+}
+
 enum FeedbackType {
     VIDEO_FEEDBACK,
     AUDIO_FEEDBACK

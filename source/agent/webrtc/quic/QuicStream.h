@@ -7,6 +7,7 @@
 #ifndef WEBRTC_QUICSTREAM_H_
 #define WEBRTC_QUICSTREAM_H_
 
+#include <vector>
 #include <logger.h>
 #include <nan.h>
 #include "net/third_party/quiche/src/quic/core/quic_session.h"
@@ -17,7 +18,7 @@
 // Node.js addon of BidirectionalStream.
 // https://w3c.github.io/webrtc-quic/webtransport.html#bidirectional-stream*
 // Name it as QuicStream since it is a QUIC implementation of BidirectionalStream.
-class QuicStream : public Nan::ObjectWrap, P2PQuicStream::Delegate, owt_base::FrameSource {
+class QuicStream : public Nan::ObjectWrap, P2PQuicStream::Delegate, owt_base::FrameSource, owt_base::FrameDestination {
     DECLARE_LOGGER();
 
 public:
@@ -26,7 +27,10 @@ public:
     static v8::Local<v8::Object> newInstance(P2PQuicStream* p2pQuicStream);
 
 protected:
+    // Implements P2PQuicStream::Delegate.
     virtual void OnDataReceived(std::vector<uint8_t> data, bool fin) override;
+    // Implements FrameDestination.
+    virtual void onFrame(const owt_base::Frame& frame) override;
 
 private:
     explicit QuicStream(P2PQuicStream* p2pQuicStream);

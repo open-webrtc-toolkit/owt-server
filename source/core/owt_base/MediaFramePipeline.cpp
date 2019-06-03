@@ -48,7 +48,7 @@ void FrameSource::addVideoDestination(FrameDestination* dest)
 void FrameSource::addDataDestination(FrameDestination* dest)
 {
     boost::unique_lock<boost::shared_mutex> lock(m_data_dests_mutex);
-    m_data_dests_mutex.push_back(dest);
+    m_data_dests.push_back(dest);
     lock.unlock();
     dest->setDataSource(this);
 }
@@ -72,7 +72,7 @@ void FrameSource::removeVideoDestination(FrameDestination* dest)
 void FrameSource::removeDataDestination(FrameDestination* dest)
 {
     boost::unique_lock<boost::shared_mutex> lock(m_data_dests_mutex);
-    m_data_dests_mutex.remove(dest);
+    m_data_dests.remove(dest);
     lock.unlock();
     dest->unsetDataSource();
 }
@@ -89,7 +89,12 @@ void FrameSource::deliverFrame(const Frame& frame)
         for (auto it = m_video_dests.begin(); it != m_video_dests.end(); ++it) {
             (*it)->onFrame(frame);
         }
-    } else {
+    } else if (isDataFrame(frame)) {
+        boost::shared_lock<boost::shared_mutex> lock(m_video_dests_mutex);
+        for (auto it = m_data_dests.begin(); it != m_data_dests.end(); ++it) {
+            (*it)->onFrame(frame);
+        }
+    }else {
         //TODO: log error here.
     }
 }

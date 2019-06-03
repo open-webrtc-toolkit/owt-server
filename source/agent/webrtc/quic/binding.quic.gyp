@@ -22,6 +22,8 @@
       '../../../../third_party/licode/erizo/src/erizo/thread/Scheduler.cpp',
       '../../../../third_party/licode/erizo/src/erizo/thread/ThreadPool.cpp',
       '../../../../third_party/licode/erizo/src/erizo/thread/Worker.cpp',
+      '../../../core/owt_base/MediaFramePipeline.cpp',
+      '../../../core/owt_base/MediaFrameMulticaster.cpp',
     ],
     'defines':[
       'OWT_ENABLE_QUIC=1',

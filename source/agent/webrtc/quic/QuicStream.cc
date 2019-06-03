@@ -119,4 +119,17 @@ void QuicStream::OnDataReceived(std::vector<uint8_t> data, bool fin)
     }
     m_asyncOnData.data = this;
     uv_async_send(&m_asyncOnData);
+    // Delivery data in C++ level.
+    // TODO: Check if it has sink.
+    owt_base::Frame frame;
+    memset(&frame, 0, sizeof(frame));
+    frame.format = owt_base::FrameFormat::FRAME_FORMAT_DATA;
+    frame.payload = data.data();
+    frame.length = data.size();
+    deliverFrame(frame);
+}
+
+void QuicStream::onFrame(const owt_base::Frame& frame)
+{
+    m_p2pQuicStream->WriteOrBufferData(quic::QuicStringPiece((const char*)frame.payload, frame.length), false);
 }
