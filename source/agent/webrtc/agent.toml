@@ -68,5 +68,3 @@ stunserver = "" #default: ""
 #ThreadPool worker numbers for peer connection
 num_workers = 24 #default: 24
 
-#Use first acceptable profile in offer when publish
-first_profile = false
