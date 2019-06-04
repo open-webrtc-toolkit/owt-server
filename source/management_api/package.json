@@ -1,6 +1,6 @@
 {
   "name": "OWT-MCU-Management-API",
-  "version":"4.2.0",
+  "version":"4.2.1",
   "dependencies": {
     "amqp": "*",
     "log4js": "^1.1.1",
