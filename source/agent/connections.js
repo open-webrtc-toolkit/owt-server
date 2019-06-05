@@ -69,6 +69,30 @@ module.exports = function Connections () {
         }
     };
 
+    // |type| could be 'audio', 'video' or 'data'.
+    const linkup = function (destinationConnectionId, sourceConnectionId, type) {
+        const fieldName = type + 'From';
+        if (!destinationConnectionId || !connections[destinationConnectionId]) {
+            log.error('Subscription does not exist:' + destinationConnectionId);
+            return Promise.reject('Subscription does not exist:' + destinationConnectionId);
+        }
+        if (!sourceConnectionId || !connections[sourceConnectionId]) {
+            log.error(type + ' stream does not exist:' + sourceConnectionId);
+            return Promise.reject({ type: 'failed', reason: type + ' stream does not exist:' + sourceConnectionId });
+        }
+        const destinationConnection = connections[destinationConnectionId];
+        const receiver = destinationConnection.connection.receiver(type);
+        // Don't know why checking |receiver| here. Just moved from |linkupConnection|. It's better to let |connection| checks its receiver and destinations.
+        if (receiver) {
+            log.debug('Before adddestination. receiver: '+JSON.stringify(receiver));
+            connections[sourceConnectionId].connection.addDestination(type, receiver);
+            connections[destinationConnectionId][fieldName] = sourceConnectionId;
+        } else {
+            return Promise.reject({ type: 'failed', reason: 'Destination connection(' + type + ') is not ready' });
+        }
+        return Promise.resolve('ok');
+    }
+
     that.addConnection =  function (connectionId, connectionType, connectionController, conn, direction) {
         log.debug('Add connection:', connectionId, connectionType, connectionController);
         if (connections[connectionId]) {
@@ -106,46 +130,16 @@ module.exports = function Connections () {
     };
 
 
-    that.linkupConnection = function (connectionId, audioFrom, videoFrom) {
-        log.debug('linkup, connectionId:', connectionId, ', audioFrom:', audioFrom, ', videoFrom:', videoFrom);
-        if (!connectionId || !connections[connectionId]) {
-            log.error('Subscription does not exist:' + connectionId);
-            return Promise.reject('Subscription does not exist:' + connectionId);
-        }
-
-        if (audioFrom && connections[audioFrom] === undefined) {
-            log.error('Audio stream does not exist:' + audioFrom);
-            return Promise.reject({type: 'failed', reason: 'Audio stream does not exist:' + audioFrom});
-        }
-
-        if (videoFrom && connections[videoFrom] === undefined) {
-            log.error('Video stream does not exist:' + videoFrom);
-            return Promise.reject({type: 'failed', reason: 'Video stream does not exist:' + videoFrom});
-        }
-
-        var conn = connections[connectionId];
-
-        if (audioFrom) {
-            var dest = conn.connection.receiver('audio');
-            if (dest) {
-                connections[audioFrom].connection.addDestination('audio', dest);
-                connections[connectionId].audioFrom = audioFrom;
-            } else {
-                return Promise.reject({type: 'failed', reason: 'Destination connection(audio) is not ready'});
+    that.linkupConnection = function (connectionId, audioFrom, videoFrom, dataFrom) {
+        log.debug('linkup, connectionId:', connectionId, ', audioFrom:', audioFrom, ', videoFrom:', videoFrom, ', dataFrom: ', dataFrom);
+        const linkupPromises = [];
+        const sourceMap = new Map([['audio', audioFrom], ['video', videoFrom], ['data', dataFrom]]);
+        for (const [type, sourceConnectionId] of sourceMap) {
+            if (sourceConnectionId) {
+                linkupPromises.push(linkup(connectionId, sourceConnectionId, type));
             }
         }
-
-        if (videoFrom) {
-            var dest = conn.connection.receiver('video');
-            if (dest) {
-                connections[videoFrom].connection.addDestination('video', dest);
-                connections[connectionId].videoFrom = videoFrom;
-            } else {
-                return Promise.reject({type: 'failed', reason: 'Destination connection(video) is not ready'});
-            }
-        }
-
-        return Promise.resolve('ok');
+        return Promise.all(linkupPromises);
     };
 
     that.cutoffConnection = function (connectionId) {

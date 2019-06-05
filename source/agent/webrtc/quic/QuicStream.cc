@@ -25,6 +25,7 @@ QuicStream::QuicStream(P2PQuicStream* p2pQuicStream)
         ELOG_DEBUG("P2PQuicStream is nullptr.");
     }
     p2pQuicStream->SetDelegate(this);
+    m_deliveryDataToCppSink=true;
 }
 
 NAN_MODULE_INIT(QuicStream::Init)
@@ -34,6 +35,7 @@ NAN_MODULE_INIT(QuicStream::Init)
     Local<ObjectTemplate> instanceTpl = tpl->InstanceTemplate();
     instanceTpl->SetInternalFieldCount(1);
     Nan::SetPrototypeMethod(tpl, "write", write);
+    Nan::SetPrototypeMethod(tpl, "addDestination", addDestination);
     s_constructor.Reset(tpl->GetFunction());
 }
 
@@ -67,6 +69,16 @@ NAN_METHOD(QuicStream::write)
     size_t dataLength = node::Buffer::Length(parametersData);
     bool finished = Nan::Get(quicStreamWriteParameters, Nan::New("finished").ToLocalChecked()).ToLocalChecked()->ToBoolean()->BooleanValue();
     obj->m_p2pQuicStream->WriteOrBufferData(quic::QuicStringPiece(data, dataLength), finished);
+}
+
+NAN_METHOD(QuicStream::addDestination){
+    ELOG_DEBUG("QuicStream::addDestination.");
+    QuicStream* obj = Nan::ObjectWrap::Unwrap<QuicStream>(info.Holder());
+    ELOG_DEBUG("obj");
+    owt_base::FrameDestination* dest = Nan::ObjectWrap::Unwrap<QuicStream>(info[0]->ToObject());
+    ELOG_DEBUG("dest");
+    obj->addDataDestination(dest);
+    ELOG_DEBUG("addDataDestination.");
 }
 
 NAUV_WORK_CB(QuicStream::onDataCallback)
@@ -127,9 +139,11 @@ void QuicStream::OnDataReceived(std::vector<uint8_t> data, bool fin)
     frame.payload = data.data();
     frame.length = data.size();
     deliverFrame(frame);
+    ELOG_DEBUG("QuicStream deliverFrame.");
 }
 
 void QuicStream::onFrame(const owt_base::Frame& frame)
 {
+    ELOG_DEBUG("QuicStream::onFrame.");
     m_p2pQuicStream->WriteOrBufferData(quic::QuicStringPiece((const char*)frame.payload, frame.length), false);
 }

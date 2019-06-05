@@ -92,6 +92,7 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
                 conn = createQuicConnection(connectionId, 'in', options);
                 pubSubMap.set(connectionId, []);
                 // Forward data from publication to subscriptions.
+                /*
                 conn.ondata=(data)=>{
                     log.debug('conn.ondata');
                     if(pubSubMap.has(connectionId)){
@@ -101,7 +102,7 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
                             sub.write(data);
                         }
                     }
-                }
+                }*/
                 break;
             default:
                 log.error('Connection type invalid:' + connectionType);
@@ -179,7 +180,10 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
         }, onError(callback));
     };
 
-    that.linkup = function (connectionId, audioFrom, dataFrom, callback) {
+    that.linkup = function (connectionId, audioFrom, videoFrom, dataFrom, callback) {
+        log.debug('linkup.');
+        connections.linkupConnection(connectionId, audioFrom, videoFrom, dataFrom).then(onSuccess(callback), onError(callback));
+        return;
         // Rename |videoFrom| to |dataFrom| for data stream. |audioFrom| is always undefined here.
         // Consider to add |dataFrom|.
         log.debug('linkup, connectionId:', connectionId, 'dataFrom:', dataFrom);

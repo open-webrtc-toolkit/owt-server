@@ -20,6 +20,8 @@ module.exports = class QuicConnection {
     this._send = sendCallback;
     this._isFirstCandidate = true;
     this._quicStream = null;
+    this._source = null;  // Notify |_source| when a outbound stream is created. Assuming mutiplexing is not enabled, so there is only one outbound stream.
+    this._destination = null;
 
     this._iceTransport.onicecandidate = (event) => {
       if (this._isFirstCandidate) {
@@ -32,11 +34,20 @@ module.exports = class QuicConnection {
       });
     };
     this._quicTransport.onbidirectionalstream = (stream) => {
+      log.debug('quicTransport onbidirectionalstream. '+ JSON.stringify(stream));
       this._quicStream = stream;
+      if (this._destination) {
+        const dest = this._destination;
+        this._destination = null;
+        this.addDestination(dest);
+      }
       stream.ondata = data => {
         if (typeof this.ondata === 'function') {
           this.ondata.apply(this, [data]);
         }
+      }
+      if (typeof this.onbidirectionalstream === 'function') {
+        this.onbidirectionalstream.apply(this, [stream]);
       }
     }
     log.debug('Construct a QuicConnection.');
@@ -84,8 +95,37 @@ module.exports = class QuicConnection {
     }
   }
 
-  close(){
+  close() {
     log.error('Not implemented.');
+  }
+
+  receiver() {
+    return this;
+  }
+
+  // Assumimg mutiplexing is not enabled.
+  // This implemention looks ugly, and it needs to be refined in the future. The main reason is stream may not ready when this method is called.
+  addDestination(track, dest) {
+    // connections.js calls this API syn
+    log.debug('addDestination.');
+    // Ignore |track| because this connection is a data channel.
+    if (this._quicStream) {
+      log.debug('Quic stream add Destination ' + JSON.stringify(dest));
+      if(dest._quicStream){
+        this._quicStream.addDestination(dest._quicStream);
+      }
+    } else {
+      this._destination = dest;
+      log.debug('this._quicStream is null.');
+    }
+    dest.onbidirectionalstream = (stream) => {
+      log.debug('dest.onbidirectionalstream');
+      this.addDestination(track, dest);
+    };
+  }
+
+  addSource(source) {
+    this._source = source;
   }
 
   _sendIceParameters() {

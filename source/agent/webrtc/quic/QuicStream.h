@@ -38,11 +38,15 @@ private:
     static NAN_METHOD(write);
     static NAUV_WORK_CB(onDataCallback);
 
+    // JavaScript API for |owt_base::FrameSource|.
+    static NAN_METHOD(addDestination);
+
     static Nan::Persistent<v8::Function> s_constructor;
     P2PQuicStream* m_p2pQuicStream;
     uv_async_t m_asyncOnData;
     std::mutex m_dataQueueMutex;
     std::queue<std::vector<uint8_t>> m_dataToBeNotified;
+    bool m_deliveryDataToCppSink;
 };
 
 #endif // WEBRTC_QUICSTREAM_H_

@@ -1519,7 +1519,8 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                 on_error(error_reason);
             };
 
-            var finally_ok = function (audioStream, videoStream) {
+            // |*Stream| seems to be stream ID.
+            var finally_ok = function (audioStream, videoStream, dataStream) {
                 return function () {
                     if (terminals[terminal_id] &&
                         (!audioStream || streams[audioStream]) &&
@@ -1545,6 +1546,11 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                         if (subInfo.video && (subInfo.video.from !== videoStream)) {
                             forceKeyFrame(videoStream);
                         }
+                    } else if(dataStream){
+                        streams[dataStream].data.subscribers = streams[dataStream].data.subscribers || [];
+                        streams[dataStream].data.subscribers.push(terminal_id);
+                        terminals(terminal_id).subscribed[subscriptionId].data = dataStream;
+                        on_ok('ok');
                     } else {
                         audioStream && recycleTemporaryAudio(audioStream);
                         videoStream && recycleTemporaryVideo(videoStream);
@@ -1661,6 +1667,15 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                     }, finaly_error);
                 } else if (subInfo.data) {
                     log.debug('Require data of stream: ' + subInfo.data.from);
+                    makeRPC(
+                        rpcClient,
+                        terminals[terminal_id].locality.node,
+                        'linkup',
+                        [subscriptionId, undefined, undefined, subInfo.data.from],
+                        finally_ok(undefined, undefined, subInfo.data.from),
+                        function (reason) {
+                            finaly_error(reason);
+                        });
                 } else {
                     log.debug('No audio or video is required.');
                     finaly_error('No audio or video is required.');

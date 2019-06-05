@@ -115,6 +115,11 @@ void FrameDestination::setVideoSource(FrameSource* src)
     onVideoSourceChanged();
 }
 
+void FrameDestination::setDataSource(FrameSource* src){
+        boost::unique_lock<boost::shared_mutex> lock(m_data_src_mutex);
+    m_data_src = src;
+}
+
 void FrameDestination::unsetAudioSource()
 {
     boost::unique_lock<boost::shared_mutex> lock(m_audio_src_mutex);
@@ -125,6 +130,12 @@ void FrameDestination::unsetVideoSource()
 {
     boost::unique_lock<boost::shared_mutex> lock(m_video_src_mutex);
     m_video_src = nullptr;
+}
+
+void FrameDestination::unsetDataSource()
+{
+    boost::unique_lock<boost::shared_mutex> lock(m_data_src_mutex);
+    m_data_src = nullptr;
 }
 
 void FrameDestination::deliverFeedbackMsg(const FeedbackMsg& msg) {
