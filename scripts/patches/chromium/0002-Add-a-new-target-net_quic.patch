@@ -1,0 +1,59 @@
+From d239033ed8f01803ac0c1d00b51e62d6e50bc450 Mon Sep 17 00:00:00 2001
+From: Jianjun Zhu <jianjun.zhu@intel.com>
+Date: Mon, 13 May 2019 12:26:33 +0800
+Subject: [PATCH] Add a new target net_quic.
+
+---
+ net/BUILD.gn | 32 ++++++++++++++++++++++++++++++++
+ 1 file changed, 32 insertions(+)
+
+diff --git a/net/BUILD.gn b/net/BUILD.gn
+index f2b371dbf226..86d0ac78eb4f 100644
+--- a/net/BUILD.gn
++++ b/net/BUILD.gn
+@@ -2236,6 +2236,7 @@ source_set("net_export_header") {
+ source_set("net_deps") {
+   visibility = [
+     ":net",
++    ":net_quic",
+     "//net/dns",
+     "//net/dns:dns_client",
+     "//net/dns:host_resolver",
+@@ -6585,3 +6586,34 @@ fuzzer_test("net_qpack_round_trip_fuzzer") {
+   ]
+   seed_corpus = "third_party/quiche/src/quic/core/qpack/fuzzer/qpack_round_trip_fuzzer_corpus/"
+ }
++
++component("net_quic") {
++  deps = [
++    ":net",
++    ":net_deps",
++    ":simple_quic_tools",
++  ]
++  sources = [
++    "third_party/quiche/src/quic/quartc/counting_packet_filter.h",
++    "third_party/quiche/src/quic/quartc/quartc_connection_helper.cc",
++    "third_party/quiche/src/quic/quartc/quartc_connection_helper.h",
++    "third_party/quiche/src/quic/quartc/quartc_crypto_helpers.cc",
++    "third_party/quiche/src/quic/quartc/quartc_crypto_helpers.h",
++    "third_party/quiche/src/quic/quartc/quartc_dispatcher.cc",
++    "third_party/quiche/src/quic/quartc/quartc_dispatcher.h",
++    "third_party/quiche/src/quic/quartc/quartc_endpoint.cc",
++    "third_party/quiche/src/quic/quartc/quartc_endpoint.h",
++    "third_party/quiche/src/quic/quartc/quartc_factory.cc",
++    "third_party/quiche/src/quic/quartc/quartc_factory.h",
++    "third_party/quiche/src/quic/quartc/quartc_fakes.h",
++    "third_party/quiche/src/quic/quartc/quartc_interval_counter.h",
++    "third_party/quiche/src/quic/quartc/quartc_packet_writer.cc",
++    "third_party/quiche/src/quic/quartc/quartc_packet_writer.h",
++    "third_party/quiche/src/quic/quartc/quartc_session.cc",
++    "third_party/quiche/src/quic/quartc/quartc_session.h",
++    "third_party/quiche/src/quic/quartc/quartc_stream.cc",
++    "third_party/quiche/src/quic/quartc/quartc_stream.h",
++  ]
++  configs -= [ "//build/config/gcc:symbol_visibility_hidden" ]
++  configs += [ "//build/config/gcc:symbol_visibility_default" ]
++}
+-- 
+2.17.1
+

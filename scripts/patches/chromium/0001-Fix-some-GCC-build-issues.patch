@@ -1,0 +1,98 @@
+From 44003376f1ff768e22dff2e51316b436b317f76c Mon Sep 17 00:00:00 2001
+From: Jianjun Zhu <jianjun.zhu@intel.com>
+Date: Tue, 26 Feb 2019 12:17:15 +0800
+Subject: [PATCH] Fix some GCC build issues.
+
+---
+ build/config/compiler/BUILD.gn              | 6 ++++++
+ components/viz/common/gl_helper.cc          | 2 +-
+ third_party/abseil-cpp/BUILD.gn             | 1 +
+ third_party/dav1d/BUILD.gn                  | 2 +-
+ ui/base/clipboard/clipboard_format_type.h   | 2 +-
+ ui/gfx/ipc/buffer_types/gfx_param_traits.cc | 2 +-
+ 6 files changed, 11 insertions(+), 4 deletions(-)
+
+diff --git a/build/config/compiler/BUILD.gn b/build/config/compiler/BUILD.gn
+index e8ab0b58bd34..18012b8bbbf6 100644
+--- a/build/config/compiler/BUILD.gn
++++ b/build/config/compiler/BUILD.gn
+@@ -1464,6 +1464,12 @@ config("default_warnings") {
+       # comments
+       # https://gcc.gnu.org/bugzilla/show_bug.cgi?id=61638
+       cflags += [ "-Wno-comments" ]
++
++      cflags += [ "-Wno-return-type" ]
++      cflags += [ "-Wno-dangling-else" ]
++      cflags += [ "-Wno-int-in-bool-context" ]
++      cflags += [ "-Wno-attributes" ]
++      cflags_cc += [ "-Wno-invalid-offsetof" ]
+     }
+   }
+ 
+diff --git a/components/viz/common/gl_helper.cc b/components/viz/common/gl_helper.cc
+index cbd11c70fcb9..09b1814e4e79 100644
+--- a/components/viz/common/gl_helper.cc
++++ b/components/viz/common/gl_helper.cc
+@@ -477,7 +477,7 @@ void GLHelper::CopyTextureToImpl::CancelRequests() {
+ }
+ 
+ bool GLHelper::CopyTextureToImpl::IsBGRAReadbackSupported() {
+-  if (bgra_support_ == BGRA_PREFERENCE_UNKNOWN) {
++  if ((int)bgra_support_ == (int)BGRA_PREFERENCE_UNKNOWN) {
+     bgra_support_ = BGRA_NOT_SUPPORTED;
+     if (auto* extensions = gl_->GetString(GL_EXTENSIONS)) {
+       const std::string extensions_string =
+diff --git a/third_party/abseil-cpp/BUILD.gn b/third_party/abseil-cpp/BUILD.gn
+index 253a602e2f16..9a82b67920a2 100644
+--- a/third_party/abseil-cpp/BUILD.gn
++++ b/third_party/abseil-cpp/BUILD.gn
+@@ -41,6 +41,7 @@ config("absl_default_cflags_cc") {
+       "-Wobjc-literal-conversion",
+       "-Wno-sign-conversion",
+       "-Wstring-conversion",
++"-Wno-noexcept-type",
+     ]
+     if (!is_nacl && !use_xcode_clang) {
+       cflags_cc += [ "-Wbitfield-enum-conversion" ]
+diff --git a/third_party/dav1d/BUILD.gn b/third_party/dav1d/BUILD.gn
+index 6275d19714b3..9b7e6540da56 100644
+--- a/third_party/dav1d/BUILD.gn
++++ b/third_party/dav1d/BUILD.gn
+@@ -25,7 +25,7 @@ if (is_win) {
+ # the stack alignment, so we must use the platform's default alignment in those
+ # cases; https://crbug.com/928743.
+ if (current_cpu == "x86" || current_cpu == "x64") {
+-  if (use_thin_lto || is_win) {
++  if (use_thin_lto || is_win || !is_clang) {
+     needs_stack_alignment = false
+     # The defaults are stack_alignment=4 for x86 and stack_alignment=16 for x64.
+   } else {
+diff --git a/ui/base/clipboard/clipboard_format_type.h b/ui/base/clipboard/clipboard_format_type.h
+index eb5b91ff29fa..99d011cde76e 100644
+--- a/ui/base/clipboard/clipboard_format_type.h
++++ b/ui/base/clipboard/clipboard_format_type.h
+@@ -86,7 +86,7 @@ struct COMPONENT_EXPORT(BASE_CLIPBOARD_TYPES) ClipboardFormatType {
+ 
+  private:
+   friend class base::NoDestructor<ClipboardFormatType>;
+-  friend struct ClipboardFormatType;
++  //friend struct ClipboardFormatType;
+ 
+   // Platform-specific glue used internally by the ClipboardFormatType struct.
+   // Each platform should define,at least one of each of the following:
+diff --git a/ui/gfx/ipc/buffer_types/gfx_param_traits.cc b/ui/gfx/ipc/buffer_types/gfx_param_traits.cc
+index 483342692bb2..99f36c1029af 100644
+--- a/ui/gfx/ipc/buffer_types/gfx_param_traits.cc
++++ b/ui/gfx/ipc/buffer_types/gfx_param_traits.cc
+@@ -30,7 +30,7 @@ bool ParamTraits<gfx::BufferUsageAndFormat>::Read(
+ void ParamTraits<gfx::BufferUsageAndFormat>::Log(
+     const gfx::BufferUsageAndFormat& p,
+     std::string* l) {
+-  l->append(base::StringPrintf("(%d, %d)", p.usage, p.format));
++  l->append(base::StringPrintf("(%d, %d)", (int)p.usage, (int)p.format));
+ }
+ 
+ }  // namespace IPC
+-- 
+2.17.1
+
