@@ -1,10 +1,10 @@
-# Steps to run OWT server with QUIC enabled.
+# Steps to run OWT server with QUIC enabled
 
 ## Build and Run
 
 ### Build Chromium
 1. Get Chromium code. QUIC implementation depends on [QUICHE](https://quiche.googlesource.com/quiche.git). Please download the entire Chromium code according to [Chromium Linux build instruction](https://chromium.googlesource.com/chromium/src/+/master/docs/linux_build_instructions.md). The version we are using is 35a38537d3dfbc276f813c9201c674ae241ff4ae.
-1. Apply [patches](../../scripts/patches) to Chromium. If you don't want to build Chromium with GCC, the first patch may not neccessary. But other depencies are built by GCC, I'm not sure if there would be any issue during link stage.
+1. Apply [patches](../../scripts/patches) to Chromium. If you don't want to build Chromium with GCC, the first patch may not neccessary. Or you could add a GN
 1. Build target net_quic. `ninja -C <dir> net_quic`.
 
 ### Build OWT server
@@ -12,6 +12,7 @@
 It basically follows the steps in [README.md](../../README.md#how-to-build-release-package). The change we made is to replace webrtc agent with a webrtc-quic agent.
 
 1. Install dependencies `scripts/installDeps.sh`.
+1. Set environment variable `CHROMIUM_HOME` to the root of your Chromium's `src` folder. If your `net_quic` was not generated in `out\gcc`, please replace `$(CHROMIUM_HOME)/out/gcc` with your output directory in `source/agent/webrtc/quic/binding.quic.gyp`.
 1. Build conference server with the scripts [here](../../scripts/build.js), `scripts/build.js -t mcu`. If you just want to build the QUIC module, please run `scripts/build.js -t webrtc-quic`. You may use this command after making some changes to quic module. Please build webrtc-quic without OpenSSL, see section OpenSSL and BoringSSL below.
 1. Generate server package by `scripts/pack.js -f --sample-path <Path to JavaScript package>`.
 
