@@ -153,15 +153,12 @@ case $yn in
   * ) install_licode;;
 esac
 
-if [[ "$OS" =~ .*ubuntu.* ]]
-then
-    read -p "Installing SVT HEVC Encoder ? [No/yes]" yn
-    case $yn in
-      [Yy]* ) install_svt_hevc;;
-      [Nn]* ) ;;
-      * ) ;;
-    esac
-fi
+read -p "Installing SVT HEVC Encoder ? [No/yes]" yn
+case $yn in
+  [Yy]* ) install_svt_hevc;;
+  [Nn]* ) ;;
+  * ) ;;
+esac
 
 ${NO_INTERNAL} || (pause "Installing webrtc library... [press Enter]" && install_webrtc)
 
