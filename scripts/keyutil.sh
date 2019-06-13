@@ -13,8 +13,8 @@ fi
 
 selfsignPEM() {
   ${OPENSSL_BIN} req -x509 -newkey rsa:2048 -keyout ${OUT_DIR}/key.pem -out ${OUT_DIR}/cert.pem \
-  -subj "/C=CN/ST=Shanghai/L=Shanghai/O=Intel/OU=WebRTC/CN=webrtc.intel.com" \
-  -days 90
+  -subj "/C=CN/ST=Shanghai/L=Shanghai/O=owt-demo/OU=owt/CN=owt-demo.localhost" \
+  -days 145
 }
 
 mergePEM() {
