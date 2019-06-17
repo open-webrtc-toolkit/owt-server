@@ -68,8 +68,9 @@
       '-lboost_system',
       '-lnice',
       '-lbase',
+      '-lnet',
       '-lnet_quic',
-      '-lrtc_base_complete',
+      #'-lrtc_base',
       '-lboringssl',
     ],
     'include_dirs!':[

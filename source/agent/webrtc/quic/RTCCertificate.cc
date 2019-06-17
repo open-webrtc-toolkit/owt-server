@@ -34,7 +34,7 @@ NAN_MODULE_INIT(RTCCertificate::Init)
     s_constructor.Reset(tpl->GetFunction());
     Nan::Set(target, Nan::New("RTCCertificate").ToLocalChecked(), Nan::GetFunction(tpl).ToLocalChecked());
 
-    rtc::InitializeSSL();
+    //rtc::InitializeSSL();
     ELOG_DEBUG("Initialized SSL.");
 }
 
