@@ -39,7 +39,7 @@ module.exports = class QuicConnection {
       if (this._destination) {
         const dest = this._destination;
         this._destination = null;
-        this.addDestination(dest);
+        this.addDestination(undefined, dest);
       }
       stream.ondata = data => {
         if (typeof this.ondata === 'function') {
@@ -113,6 +113,7 @@ module.exports = class QuicConnection {
       log.debug('Quic stream add Destination ' + JSON.stringify(dest));
       if(dest._quicStream){
         this._quicStream.addDestination(dest._quicStream);
+        log.debug('Added destination.');
       }
     } else {
       this._destination = dest;
@@ -120,7 +121,7 @@ module.exports = class QuicConnection {
     }
     dest.onbidirectionalstream = (stream) => {
       log.debug('dest.onbidirectionalstream');
-      this.addDestination(track, dest);
+      this.addDestination(undefined, dest);
     };
   }
 
