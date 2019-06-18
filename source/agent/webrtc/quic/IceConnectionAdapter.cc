@@ -5,7 +5,6 @@
  */
 
 #include "IceConnectionAdapter.h"
-#include "third_party/webrtc/rtc_base/time_utils.h"
 
 DEFINE_LOGGER(IceConnectionAdapter, "IceConnectionAdapter");
 
@@ -19,7 +18,7 @@ IceConnectionAdapter::IceConnectionAdapter(erizo::IceConnection* iceConnection)
 void IceConnectionAdapter::onPacketReceived(erizo::packetPtr packet)
 {
     ELOG_DEBUG("IceConnectionAdapter::onPacketReceived");
-    signalReadPacket(this, packet->data, packet->length, rtc::TimeMicros(), 0);
+    signalReadPacket(this, packet->data, packet->length, 0/* TODO: use correct time */, 0);
     if (m_originListener) {
         m_originListener->onPacketReceived(packet);
     }

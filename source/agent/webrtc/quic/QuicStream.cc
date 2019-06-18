@@ -136,14 +136,15 @@ void QuicStream::OnDataReceived(std::vector<uint8_t> data, bool fin)
     owt_base::Frame frame;
     memset(&frame, 0, sizeof(frame));
     frame.format = owt_base::FrameFormat::FRAME_FORMAT_DATA;
-    frame.payload = data.data();
+    // TODO: Potential memory leak here. Just make it work at this time.
+    frame.payload = (uint8_t*)malloc(sizeof(uint8_t) * data.size());
     frame.length = data.size();
+    std::copy(data.begin(), data.end(), frame.payload);
     deliverFrame(frame);
-    ELOG_DEBUG("QuicStream deliverFrame.");
 }
 
 void QuicStream::onFrame(const owt_base::Frame& frame)
 {
-    ELOG_DEBUG("QuicStream::onFrame.");
-    m_p2pQuicStream->WriteOrBufferData(quic::QuicStringPiece((const char*)frame.payload, frame.length), false);
+    auto quicStringPiece = quic::QuicStringPiece(reinterpret_cast<char*>(frame.payload), frame.length);
+    m_p2pQuicStream->WriteOrBufferData(quicStringPiece, false);
 }
