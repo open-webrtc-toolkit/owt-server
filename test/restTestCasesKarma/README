@@ -1,0 +1,5 @@
+1，Configure VIM scripts/config.js= scripts/authorization, run authorization.sh script to get authorization value, and configure other parameters in config.js without changing sipname
+2, In the upper directory of this folder, place an MCU and start it and rename it dist
+3,Enter the folder and run NPM install
+4，Close the SSL in postal. toml in MCU to false
+5, npm test Running scripts
