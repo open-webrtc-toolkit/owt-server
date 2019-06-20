@@ -68,6 +68,15 @@ void P2PQuicStream::WriteOrBufferData(quic::QuicStringPiece data, bool fin){
     //m_quartcStream->WriteOrBufferData(data, fin, nullptr);
 }
 
+void P2PQuicStream::WriteOrBufferData(std::vector<uint8_t> data, bool fin)
+{
+    m_runner->PostTask(FROM_HERE, base::BindOnce(&P2PQuicStream::WriteOrBufferDataOnCurrentThread, base::Unretained(this), data, fin));
+}
+
+void P2PQuicStream::WriteOrBufferDataOnCurrentThread(std::vector<uint8_t> data, bool fin){
+    m_quartcStream->WriteOrBufferData(quic::QuicStringPiece(reinterpret_cast<char*>(data.data()), data.size()), fin, nullptr);
+}
+
 P2PQuicTransport::P2PQuicTransport(
     std::unique_ptr<quic::QuicConnection> connection,
     const quic::QuicConfig& config,

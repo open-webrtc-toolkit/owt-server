@@ -43,6 +43,7 @@ public:
     virtual ~P2PQuicStream(){};
     void SetDelegate(Delegate* delegate);
     void WriteOrBufferData(quic::QuicStringPiece data, bool fin);
+    void WriteOrBufferData(std::vector<uint8_t> data, bool fin);
 
 protected:
     // Implements quic::QuartcStream::Delegate.
@@ -51,6 +52,7 @@ protected:
     virtual void OnBufferChanged(quic::QuartcStream* stream) override;
 
 private:
+    void WriteOrBufferDataOnCurrentThread(std::vector<uint8_t> data, bool fin);
     quic::QuartcStream* m_quartcStream;
     base::TaskRunner* m_runner;
     Delegate* m_delegate;
