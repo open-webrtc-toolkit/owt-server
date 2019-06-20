@@ -300,12 +300,13 @@ install_node_tools() {
 
 # libre depends on openssl
 install_libre() {
-  pushd ${ROOT}/third_party >/dev/null
+  pushd ${LIB_DIR} >/dev/null
   rm -rf re
   git clone https://github.com/creytiv/re.git
   pushd re >/dev/null
   git checkout v0.4.16
   make SYSROOT_ALT=${PREFIX_DIR} RELEASE=1
+  make install SYSROOT_ALT=${PREFIX_DIR} RELEASE=1 PREFIX=${PREFIX_DIR}
   popd >/dev/null
   popd >/dev/null
 }
@@ -318,7 +319,7 @@ install_usrsctp() {
     local USRSCTP_EXTRACT="usrsctp-${USRSCTP_VERSION}"
     local USRSCTP_URL="https://github.com/sctplab/usrsctp/archive/${USRSCTP_FILE}"
 
-    cd $TP_DIR
+    cd $LIB_DIR
     rm -rf usrsctp
     wget -c ${USRSCTP_URL}
     tar -zxvf ${USRSCTP_FILE}
@@ -327,10 +328,10 @@ install_usrsctp() {
 
     cd usrsctp
     ./bootstrap
-    ./configure
-    make
+    ./configure --prefix=$PREFIX_DIR 
+    make && make install
   else
-    mkdir -p $TP_DIR
+    mkdir -p $LIB_DIR
     install_usrsctp
   fi
 }
@@ -378,21 +379,18 @@ install_gcc(){
 }
 
 install_svt_hevc(){
-    pushd $ROOT/third_party
+    pushd $ROOT/third_party >/dev/null
     rm -rf SVT-HEVC
     git clone https://github.com/intel/SVT-HEVC.git
 
-    pushd SVT-HEVC
+    pushd SVT-HEVC >/dev/null
     git checkout v1.3.0
 
-    pushd Build
-    pushd linux
-    chmod +x build.sh
-    ./build.sh debug
-    popd
-    popd
-    cp -v ./Bin/Debug/libSvtHevcEnc.so.1 ./
-    ln -s -v libSvtHevcEnc.so.1 libSvtHevcEnc.so
+    mkdir build
+    pushd build >/dev/null
+    cmake -DCMAKE_INSTALL_PREFIX=${PREFIX_DIR} ..
+    make && make install
+    popd >/dev/null
 
     # pseudo lib
     echo \
@@ -400,9 +398,8 @@ install_svt_hevc(){
         > pseudo-svtHevcEnc.cpp
     gcc pseudo-svtHevcEnc.cpp -fPIC -shared -o pseudo-svtHevcEnc.so
 
-    popd
-
-    popd
+    popd >/dev/null
+    popd >/dev/null
 }
 
 cleanup_common(){

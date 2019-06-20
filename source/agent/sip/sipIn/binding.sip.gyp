@@ -35,8 +35,8 @@
       '-lboost_thread',
       '-lboost_system',
       # Add following arguments to help ldd find libraries during packing
-      '-L$(CORE_HOME)/../../third_party/re', '-lre',
-      '-Wl,-rpath,$(CORE_HOME)/../../third_party/re',
+      '-L$(CORE_HOME)/../../build/libdeps/build/lib',
+      '-lre',
       '-Wl,-rpath,<!(pwd)/build/$(BUILDTYPE)',
     ],
     'conditions': [
@@ -70,12 +70,11 @@
         '$(CORE_HOME)/common',
         '../../../../third_party/licode/erizo/src/erizo',
         '$(CORE_HOME)/../../build/libdeps/build/include',
-        '$(CORE_HOME)/../../third_party/re/include',
     ],
     'libraries': [
         '-L<!(pwd)/sip_gateway/sipua', '-lsipua',
         '-L$(CORE_HOME)/../../build/libdeps/build/lib',
-        '-L$(CORE_HOME)/../../third_party/re', '-lre',
+        '-lre',
         '-llog4cxx',
         '-lboost_thread',
         '-lboost_system',
@@ -103,7 +102,7 @@
         'outputs': [
           '<!(pwd)/sip_gateway/sipua/libsipua.a'
         ],
-        'action': ['eval', 'cd <!(pwd)/sip_gateway/sipua && make clean && make'],
+        'action': ['eval', 'cd <!(pwd)/sip_gateway/sipua && make clean && make RE_HOME=$(CORE_HOME)/../../build/libdeps/build'],
       }
     ]
   },

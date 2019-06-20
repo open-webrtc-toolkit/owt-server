@@ -5,13 +5,13 @@
  */
 #include <string.h>
 #include <time.h>
-#include <re.h>
+#include <re/re.h>
 #include <baresip.h>
 #include "core.h"
 
 #define DEBUG_MODULE "stream"
 #define DEBUG_LEVEL 5
-#include <re_dbg.h>
+#include <re/re_dbg.h>
  
 
 enum {

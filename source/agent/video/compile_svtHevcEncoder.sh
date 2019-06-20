@@ -56,15 +56,13 @@ install_svt_hevc(){
     pushd SVT-HEVC
     git checkout v1.3.0
 
-    pushd Build
-    pushd linux
-    chmod +x build.sh
-    ./build.sh debug
-    popd
-    popd
+    mkdir build
+    pushd build >/dev/null
+    cmake .. && make
+    popd >/dev/null
 
     popd
-    cp -v ./SVT-HEVC/Bin/Debug/libSvtHevcEnc.so.1 ./
+    cp -v ./SVT-HEVC/Bin/Release/libSvtHevcEnc.so.1 ./
 
     popd
 }

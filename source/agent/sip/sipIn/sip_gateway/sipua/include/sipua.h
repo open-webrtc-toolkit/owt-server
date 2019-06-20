@@ -1,7 +1,7 @@
 #ifndef SIP_UA_H_
 #define SIP_UA_H_
 
-#include <re_types.h>
+#include <re/re_types.h>
 
 #ifdef __cplusplus
 extern "C" {

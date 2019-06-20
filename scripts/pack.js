@@ -25,6 +25,7 @@ optParser.addOption('a', 'archive', 'string', 'Specify archive name (Eg. pack.js
 optParser.addOption('n', 'node-module-path', 'string', 'Specify shared-node-module directory');
 optParser.addOption('c', 'copy-module-path', 'string', 'Specify copy node modules directory');
 optParser.addOption('b', 'binary', 'boolean', 'Pack binary');
+optParser.addOption('np', 'no-pseudo', 'boolean', 'Whether use pseudo library');
 optParser.addOption('h', 'help', 'boolean', 'Show help');
 
 const options = optParser.parseArgs(process.argv);
@@ -323,7 +324,7 @@ function packAddon(target) {
     .then((libsOk) => {
       // Replace openh264 if needed
       let libOpenh264 = path.join(libDist, 'libopenh264.so.4');
-      if (options['archive'] && fs.existsSync(libOpenh264)) {
+      if (options['archive'] && fs.existsSync(libOpenh264) && !options['no-pseudo']) {
         let dummyOpenh264 = path.join(rootDir, 'third_party/openh264/pseudo-openh264.so');
         execSync(`cp -av ${dummyOpenh264} ${libOpenh264}`);
       }
@@ -337,7 +338,7 @@ function packAddon(target) {
           execSync(`cp -av ${vasrc} ${vadist}`);
         }
       }
-      if (osType.includes('ubuntu')) {
+      if (osType.includes('ubuntu') && options['archive'] && !options['no-pseudo']) {
         let libSvtHevcEnc = path.join(libDist, 'libSvtHevcEnc.so.1');
         let dummySvtHevcEnc = path.join(rootDir, 'third_party/SVT-HEVC/pseudo-svtHevcEnc.so');
         execSync(`cp -av ${dummySvtHevcEnc} ${libSvtHevcEnc}`);
@@ -357,13 +358,7 @@ function getAddonLibs(addonPath) {
   env['LD_LIBRARY_PATH'] = (env['LD_LIBRARY_PATH'] || '');
   env['LD_LIBRARY_PATH'] = path.join(depsDir, 'lib') +
     ':' + path.join(rootDir, 'third_party/openh264') +
-    ':' + path.join(rootDir, 'third_party/re') +
     ':' + env['LD_LIBRARY_PATH'];
-
-    if (osType.includes('ubuntu')) {
-        env['LD_LIBRARY_PATH'] = ':' + path.join(rootDir, 'third_party/SVT-HEVC') +
-            ':' + env['LD_LIBRARY_PATH'];
-    }
 
   return exec(`ldd ${addonPath} | grep '=>' | awk '{print $3}' | sort | uniq | grep -v "^("`, { env })
     .then((stdout, stderr) => {
