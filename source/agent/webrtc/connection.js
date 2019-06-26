@@ -1,0 +1,277 @@
+/*global require, exports*/
+'use strict';
+const { EventEmitter } = require('events');
+const path = require('path');
+
+const addon = require('../webrtcLib/build/Release/webrtc');
+
+const cipher = require('../cipher');
+const logger = require('../logger').logger;
+logger.objectToLog = JSON.stringify;
+const log = logger.getLogger('wConnection');
+
+const CONN_INITIAL        = 101;
+const CONN_STARTED        = 102;
+const CONN_GATHERED       = 103;
+const CONN_READY          = 104;
+const CONN_FINISHED       = 105;
+const CONN_CANDIDATE      = 201;
+const CONN_SDP            = 202;
+const CONN_SDP_PROCESSED  = 203;
+const CONN_FAILED         = 500;
+const WARN_BAD_CONNECTION = 502;
+
+const mediaConfig = require('./mediaConfig');
+
+class Connection extends EventEmitter {
+  constructor (id, threadPool, ioThreadPool, options = {}) {
+    super();
+    log.info(`message: Connection, id: ${id}`);
+    this.id = id;
+    this.threadPool = threadPool;
+    this.ioThreadPool = ioThreadPool;
+    this.mediaConfiguration = 'default';
+    this.mediaStreams = new Map();
+    this.wrtc = this._createWrtc();
+    this.initialized = false;
+    this.options = options;
+    this.trickleIce = options.trickleIce || false;
+    this.metadata = this.options.metadata || {};
+    this.isProcessingRemoteSdp = false;
+    this.ready = false;
+  }
+
+  _getMediaConfiguration(mediaConfiguration = 'default') {
+    if (mediaConfig && mediaConfig.default) {
+        return JSON.stringify(mediaConfig.default);
+    } else {
+      log.warn(
+        'message: Bad media config file. You need to specify a default codecConfiguration.'
+      );
+      return JSON.stringify({});
+    }
+  }
+
+  _createWrtc() {
+    var wrtc = new addon.WebRtcConnection(
+      this.threadPool, this.ioThreadPool, this.id,
+      global.config.webrtc.stunserver,
+      global.config.webrtc.stunport,
+      global.config.webrtc.minport,
+      global.config.webrtc.maxport,
+      this.trickleIce,
+      this._getMediaConfiguration(this.mediaConfiguration),
+      false,
+      '', // turnserver,
+      '', // turnport,
+      '', //turnusername,
+      '', //turnpass,
+      '' //networkinterface
+    );
+
+    return wrtc;
+  }
+
+  _createMediaStream(id, options = {}, isPublisher = true) {
+    log.debug(`message: _createMediaStream, connectionId: ${this.id}, ` +
+              `mediaStreamId: ${id}, isPublisher: ${isPublisher}`);
+    const mediaStream = new addon.MediaStream(this.threadPool, this.wrtc, id,
+      options.label, this._getMediaConfiguration(this.mediaConfiguration), isPublisher);
+    mediaStream.id = id;
+    mediaStream.label = options.label;
+    if (options.metadata) {
+      // mediaStream.metadata = options.metadata;
+      // mediaStream.setMetadata(JSON.stringify(options.metadata));
+    }
+    mediaStream.onMediaStreamEvent((type, message) => {
+      this._onMediaStreamEvent(type, message, mediaStream.id);
+    });
+    return mediaStream;
+  }
+
+  _onMediaStreamEvent(type, message, mediaStreamId) {
+    let streamEvent = {
+      type: type,
+      mediaStreamId: mediaStreamId,
+      message: message,
+    };
+    this.emit('media_stream_event', streamEvent);
+  }
+
+  _maybeSendAnswer(evt, streamId, forceOffer = false) {
+    if (this.isProcessingRemoteSdp) {
+      return;
+    }
+    if (!this.alreadyGathered && !this.trickleIce) {
+      return;
+    }
+    if (!this.latestSdp) {
+      return;
+    }
+    // this.wrtc.localDescription = new SessionDescription(this.wrtc.getLocalDescription());
+    // const sdp = this.wrtc.localDescription.getSdp(this.sessionVersion++);
+    // let message = sdp.toString();
+    // message = message.replace(this.options.privateRegexp, this.options.publicIP);
+
+    const info = {type: this.options.createOffer || forceOffer ? 'offer' : 'answer', sdp: this.latestSdp};
+    log.debug(`message: _maybeSendAnswer sending event, type: ${info.type}, streamId: ${streamId}`);
+    this.emit('status_event', info, evt, streamId);
+  }
+
+  init(streamId) {
+    if (this.initialized) {
+      return false;
+    }
+    const firstStreamId = streamId;
+    this.initialized = true;
+    log.debug(`message: Init Connection, connectionId: ${this.id} `+
+              `${logger.objectToLog(this.options)}`);
+    this.sessionVersion = 0;
+
+    this.wrtc.init((newStatus, mess, streamId) => {
+      log.info('message: WebRtcConnection status update, ' +
+               'id: ' + this.id + ', status: ' + newStatus +
+                ', ' + logger.objectToLog(this.metadata) + mess);
+      switch(newStatus) {
+        case CONN_INITIAL:
+          this.emit('status_event', {type: 'started'}, newStatus);
+          break;
+
+        case CONN_SDP_PROCESSED:
+          this.isProcessingRemoteSdp = false;
+          // this.latestSdp = mess;
+          // this._maybeSendAnswer(newStatus, streamId);
+          break;
+
+        case CONN_SDP:
+          this.latestSdp = mess;
+          this._maybeSendAnswer(newStatus, streamId);
+          break;
+
+        case CONN_GATHERED:
+          this.alreadyGathered = true;
+          this.latestSdp = mess;
+          this._maybeSendAnswer(newStatus, firstStreamId);
+          break;
+
+        case CONN_CANDIDATE:
+          mess = mess.replace(this.options.privateRegexp, this.options.publicIP);
+          this.emit('status_event', {type: 'candidate', candidate: mess}, newStatus);
+          break;
+
+        case CONN_FAILED:
+          log.warn('message: failed the ICE process, ' + 'code: ' + WARN_BAD_CONNECTION +
+                   ', id: ' + this.id);
+          this.emit('status_event', {type: 'failed', sdp: mess}, newStatus);
+          break;
+
+        case CONN_READY:
+          log.debug('message: connection ready, ' + 'id: ' + this.id +
+                    ', ' + 'status: ' + newStatus + ' ' + mess + ',' + streamId);
+          if (!this.ready) {
+            this.ready = true;
+            this.emit('status_event', {type: 'ready'}, newStatus);
+          } else if (mess && streamId) {
+            log.debug('message: simulcast, rid: ' + streamId + mess);
+
+            const ssrc = parseInt(mess);
+            if (ssrc > 0) {
+              if (this.simulcastInfo) {
+                log.debug('@', JSON.stringify(this.simulcastInfo));
+                const index = this.simulcastInfo.findIndex((val) => {
+                  return (val[0] && val[0].scid === streamId);
+                });
+
+                if (index === 0) {
+                  // first RID stream
+                  this.wrtc.setVideoSsrcList(this.id, [ssrc]);
+                  this.wrtc.setRemoteSdp(this.latestSdp, this.id);
+                } else if (index > 0) {
+                  // create stream
+                  this.addMediaStream(streamId, {label: streamId}, true);
+                  this.wrtc.setVideoSsrcList(streamId, [ssrc]);
+                  this.wrtc.setRemoteSdp(this.latestSdp, streamId);
+                }
+              }
+              this.emit('status_event', {type: 'rid', rid: streamId, ssrc}, newStatus);
+            }
+          }
+          break;
+      }
+    });
+    if (this.options.createOffer) {
+      log.debug('message: create offer requested, id:', this.id);
+      const audioEnabled = this.options.createOffer.audio;
+      const videoEnabled = this.options.createOffer.video;
+      const bundle = this.options.createOffer.bundle;
+      this.wrtc.createOffer(videoEnabled, audioEnabled, bundle);
+    }
+    this.emit('status_event', {type: 'initializing'});
+    return true;
+  }
+
+  addMediaStream(id, options, isPublisher) {
+    log.info(`message: addMediaStream, connectionId: ${this.id}, mediaStreamId: ${id}`);
+    if (this.mediaStreams.get(id) === undefined) {
+      const mediaStream = this._createMediaStream(id, options, isPublisher);
+      this.wrtc.addMediaStream(mediaStream);
+      this.mediaStreams.set(id, mediaStream);
+    }
+  }
+
+  removeMediaStream(id) {
+    if (this.mediaStreams.get(id) !== undefined) {
+      this.wrtc.removeMediaStream(id);
+      this.mediaStreams.get(id).close();
+      this.mediaStreams.delete(id);
+      log.debug(`removed mediaStreamId ${id}, remaining size ${this.getNumMediaStreams()}`);
+      this._maybeSendAnswer(CONN_SDP, id, true);
+    } else {
+      log.error(`message: Trying to remove mediaStream not found, id: ${id}`);
+    }
+  }
+
+  setRemoteSdp(sdp, streamId) {
+    this.wrtc.setRemoteSdp(sdp, this.id);
+  }
+
+  setSimulcastInfo(simulcastInfo) {
+    this.simulcastInfo = simulcastInfo;
+  }
+
+  setRemoteSsrc(audioSsrc, videoSsrcList, label) {
+    // this.isProcessingRemoteSdp = true;
+    // this.remoteDescription = new SessionDescription(sdp, this.mediaConfiguration);
+    // this.wrtc.setRemoteDescription(this.remoteDescription.connectionDescription, streamId);
+    this.wrtc.setAudioSsrc(label, audioSsrc);
+    this.wrtc.setVideoSsrcList(label, videoSsrcList);
+  }
+
+  addRemoteCandidate(candidate) {
+    this.wrtc.addRemoteCandidate(candidate.sdpMid, candidate.sdpMLineIndex, candidate.candidate);
+  }
+
+  getMediaStream(id) {
+    return this.mediaStreams.get(id);
+  }
+
+  getNumMediaStreams() {
+    return this.mediaStreams.size;
+  }
+
+  close() {
+    log.info(`message: Closing connection ${this.id}`);
+    log.info(`message: WebRtcConnection status update, id: ${this.id}, status: ${CONN_FINISHED}, ` +
+            `${logger.objectToLog(this.metadata)}`);
+    this.mediaStreams.forEach((mediaStream, id) => {
+      log.debug(`message: Closing mediaStream, connectionId : ${this.id}, `+
+        `mediaStreamId: ${id}`);
+      mediaStream.close();
+    });
+    this.wrtc.close();
+    delete this.mediaStreams;
+    delete this.wrtc;
+  }
+
+}
+exports.Connection = Connection;

@@ -28,6 +28,9 @@
             "webrtc": [
                 "index.js",
                 "wrtcConnection.js",
+                "connection.js",
+                "sdp.js",
+                "mediaConfig.js",
                 "../connections.js",
                 "../InternalConnectionFactory.js"
             ],

@@ -3,10 +3,11 @@
 #endif
 
 #include "WebRtcConnection.h"
+#include "MediaStream.h"
 
 #include <future>  // NOLINT
 
-// #include "lib/json.hpp"
+#include <json.hpp>
 #include "IOThreadPool.h"
 #include "ThreadPool.h"
 
@@ -17,29 +18,11 @@ using v8::Local;
 using v8::Persistent;
 using v8::Exception;
 using v8::Value;
-// using json = nlohmann::json;
+using json = nlohmann::json;
 
-StatCallWorker::StatCallWorker(Nan::Callback *callback, std::weak_ptr<erizo::WebRtcConnection> weak_connection)
-    : Nan::AsyncWorker{callback}, weak_connection_{weak_connection}, stat_{""} {
-}
-
-void StatCallWorker::Execute() {
-  std::promise<std::string> stat_promise;
-  std::future<std::string> stat_future = stat_promise.get_future();
-  if (auto connection = weak_connection_.lock()) {
-    connection->getJSONStats([&stat_promise] (std::string stats) {
-      stat_promise.set_value(stats);
-    });
-  }
-  stat_future.wait();
-  stat_ = stat_future.get();
-}
-
-void StatCallWorker::HandleOKCallback() {
-  Local<Value> argv[] = {
-    Nan::New<v8::String>(stat_).ToLocalChecked()
-  };
-  callback->Call(1, argv);
+std::string getString(v8::Local<v8::Value> value) {
+  v8::String::Utf8Value value_str(Nan::To<v8::String>(value).ToLocalChecked()); \
+  return std::string(*value_str);
 }
 
 Nan::Persistent<Function> WebRtcConnection::constructor;
@@ -49,7 +32,6 @@ WebRtcConnection::WebRtcConnection() {
 
 WebRtcConnection::~WebRtcConnection() {
   if (me.get() != nullptr) {
-    me->setWebRtcConnectionStatsListener(NULL);
     me->setWebRtcConnectionEventListener(NULL);
   }
 }
@@ -68,21 +50,15 @@ NAN_MODULE_INIT(WebRtcConnection::Init) {
   Nan::SetPrototypeMethod(tpl, "addRemoteCandidate", addRemoteCandidate);
   Nan::SetPrototypeMethod(tpl, "removeRemoteCandidate", removeRemoteCandidate);
   Nan::SetPrototypeMethod(tpl, "getLocalSdp", getLocalSdp);
-  Nan::SetPrototypeMethod(tpl, "setAudioReceiver", setAudioReceiver);
-  Nan::SetPrototypeMethod(tpl, "setVideoReceiver", setVideoReceiver);
   Nan::SetPrototypeMethod(tpl, "getCurrentState", getCurrentState);
-  Nan::SetPrototypeMethod(tpl, "getStats", getStats);
-  Nan::SetPrototypeMethod(tpl, "getPeriodicStats", getPeriodicStats);
-  Nan::SetPrototypeMethod(tpl, "generatePLIPacket", generatePLIPacket);
-  Nan::SetPrototypeMethod(tpl, "setFeedbackReports", setFeedbackReports);
   Nan::SetPrototypeMethod(tpl, "createOffer", createOffer);
-  Nan::SetPrototypeMethod(tpl, "setSlideShowMode", setSlideShowMode);
-  Nan::SetPrototypeMethod(tpl, "muteStream", muteStream);
-  Nan::SetPrototypeMethod(tpl, "setQualityLayer", setQualityLayer);
-  Nan::SetPrototypeMethod(tpl, "setVideoConstraints", setVideoConstraints);
-  Nan::SetPrototypeMethod(tpl, "setMetadata", setMetadata);
-  Nan::SetPrototypeMethod(tpl, "enableHandler", enableHandler);
-  Nan::SetPrototypeMethod(tpl, "disableHandler", disableHandler);
+  Nan::SetPrototypeMethod(tpl, "addMediaStream", addMediaStream);
+  Nan::SetPrototypeMethod(tpl, "removeMediaStream", removeMediaStream);
+
+  Nan::SetPrototypeMethod(tpl, "setAudioSsrc", setAudioSsrc);
+  Nan::SetPrototypeMethod(tpl, "getAudioSsrcMap", getAudioSsrcMap);
+  Nan::SetPrototypeMethod(tpl, "setVideoSsrcList", setVideoSsrcList);
+  Nan::SetPrototypeMethod(tpl, "getVideoSsrcMap", getVideoSsrcMap);
 
   constructor.Reset(tpl->GetFunction());
   Nan::Set(target, Nan::New("WebRtcConnection").ToLocalChecked(), Nan::GetFunction(tpl).ToLocalChecked());
@@ -109,229 +85,71 @@ NAN_METHOD(WebRtcConnection::New) {
     v8::String::Utf8Value json_param(Nan::To<v8::String>(info[8]).ToLocalChecked());
     bool use_nicer = (info[9]->ToBoolean())->BooleanValue();
     std::string media_config_string = std::string(*json_param);
-    // json media_config = json::parse(media_config_string);
+    json media_config = json::parse(media_config_string);
     std::vector<erizo::RtpMap> rtp_mappings;
 
-    // VP8
-    {
-      erizo::RtpMap rtp_map;
-      rtp_map.payload_type = 100;
-      rtp_map.encoding_name = "VP8";
-      rtp_map.media_type = erizo::VIDEO_TYPE;
-      rtp_map.clock_rate = 90000;
-      rtp_map.channels = 1;
-      rtp_map.feedback_types.push_back("ccm fir");
-      rtp_map.feedback_types.push_back("transport-cc");
-      rtp_map.feedback_types.push_back("nack");
-      rtp_map.feedback_types.push_back("goog-remb");
-      rtp_mappings.push_back(rtp_map);
+    if (media_config.find("rtpMappings") != media_config.end()) {
+      json rtp_map_json = media_config["rtpMappings"];
+      for (json::iterator it = rtp_map_json.begin(); it != rtp_map_json.end(); ++it) {
+        erizo::RtpMap rtp_map;
+        if (it.value()["payloadType"].is_number()) {
+          rtp_map.payload_type = it.value()["payloadType"];
+        } else {
+          continue;
+        }
+        if (it.value()["encodingName"].is_string()) {
+          rtp_map.encoding_name = it.value()["encodingName"];
+        } else {
+          continue;
+        }
+        if (it.value()["mediaType"].is_string()) {
+          if (it.value()["mediaType"] == "video") {
+            rtp_map.media_type = erizo::VIDEO_TYPE;
+          } else if (it.value()["mediaType"] == "audio") {
+            rtp_map.media_type = erizo::AUDIO_TYPE;
+          } else {
+            continue;
+          }
+        } else {
+          continue;
+        }
+        if (it.value()["clockRate"].is_number()) {
+          rtp_map.clock_rate = it.value()["clockRate"];
+        }
+        if (rtp_map.media_type == erizo::AUDIO_TYPE) {
+          if (it.value()["channels"].is_number()) {
+            rtp_map.channels = it.value()["channels"];
+          }
+        }
+        if (it.value()["formatParameters"].is_object()) {
+          json format_params_json = it.value()["formatParameters"];
+          for (json::iterator params_it = format_params_json.begin();
+              params_it != format_params_json.end(); ++params_it) {
+            std::string value = params_it.value();
+            std::string key = params_it.key();
+            rtp_map.format_parameters.insert(rtp_map.format_parameters.begin(),
+                std::pair<std::string, std::string> (key, value));
+          }
+        }
+        if (it.value()["feedbackTypes"].is_array()) {
+          json feedback_types_json = it.value()["feedbackTypes"];
+          for (json::iterator feedback_it = feedback_types_json.begin();
+              feedback_it != feedback_types_json.end(); ++feedback_it) {
+              rtp_map.feedback_types.push_back(*feedback_it);
+          }
+        }
+        rtp_mappings.push_back(rtp_map);
+      }
     }
-    // VP9
-    {
-      erizo::RtpMap rtp_map;
-      rtp_map.payload_type = 101;
-      rtp_map.encoding_name = "VP9";
-      rtp_map.media_type = erizo::VIDEO_TYPE;
-      rtp_map.clock_rate = 90000;
-      rtp_map.channels = 1;
-      rtp_map.feedback_types.push_back("ccm fir");
-      rtp_map.feedback_types.push_back("transport-cc");
-      rtp_map.feedback_types.push_back("nack");
-      rtp_map.feedback_types.push_back("goog-remb");
-      rtp_mappings.push_back(rtp_map);
-    }
-    // H264
-    {
-      erizo::RtpMap rtp_map;
-      rtp_map.payload_type = 127;
-      rtp_map.encoding_name = "H264";
-      rtp_map.media_type = erizo::VIDEO_TYPE;
-      rtp_map.clock_rate = 90000;
-      rtp_map.channels = 1;
-      rtp_map.feedback_types.push_back("ccm fir");
-      rtp_map.feedback_types.push_back("transport-cc");
-      rtp_map.feedback_types.push_back("nack");
-      rtp_map.feedback_types.push_back("goog-remb");
-      rtp_mappings.push_back(rtp_map);
-    }
-    // H265
-    {
-      erizo::RtpMap rtp_map;
-      rtp_map.payload_type = 121;
-      rtp_map.encoding_name = "H265";
-      rtp_map.media_type = erizo::VIDEO_TYPE;
-      rtp_map.clock_rate = 90000;
-      rtp_map.channels = 1;
-      rtp_map.feedback_types.push_back("ccm fir");
-      rtp_map.feedback_types.push_back("transport-cc");
-      rtp_map.feedback_types.push_back("nack");
-      rtp_map.feedback_types.push_back("goog-remb");
-      rtp_mappings.push_back(rtp_map);
-    }
-    // RED
-    {
-      erizo::RtpMap rtp_map;
-      rtp_map.payload_type = 116;
-      rtp_map.encoding_name = "red";
-      rtp_map.media_type = erizo::VIDEO_TYPE;
-      rtp_map.clock_rate = 90000;
-      rtp_map.channels = 1;
-      rtp_mappings.push_back(rtp_map);
-    }
-    // opus
-    {
-      erizo::RtpMap rtp_map;
-      rtp_map.payload_type = 120;
-      rtp_map.encoding_name = "opus";
-      rtp_map.media_type = erizo::AUDIO_TYPE;
-      rtp_map.clock_rate = 48000;
-      rtp_map.channels = 2;
-      rtp_mappings.push_back(rtp_map);
-    }
-    // pcmu
-    {
-      erizo::RtpMap rtp_map;
-      rtp_map.payload_type = 0;
-      rtp_map.encoding_name = "PCMU";
-      rtp_map.media_type = erizo::AUDIO_TYPE;
-      rtp_map.clock_rate = 8000;
-      rtp_map.channels = 1;
-      rtp_mappings.push_back(rtp_map);
-    }
-    // pcma
-    {
-      erizo::RtpMap rtp_map;
-      rtp_map.payload_type = 8;
-      rtp_map.encoding_name = "PCMA";
-      rtp_map.media_type = erizo::AUDIO_TYPE;
-      rtp_map.clock_rate = 8000;
-      rtp_map.channels = 1;
-      rtp_mappings.push_back(rtp_map);
-    }
-    // ISAC_16000
-    {
-      erizo::RtpMap rtp_map;
-      rtp_map.payload_type = 103;
-      rtp_map.encoding_name = "ISAC";
-      rtp_map.media_type = erizo::AUDIO_TYPE;
-      rtp_map.clock_rate = 16000;
-      rtp_map.channels = 1;
-      rtp_mappings.push_back(rtp_map);
-    }
-    // ISAC_32000
-    {
-      erizo::RtpMap rtp_map;
-      rtp_map.payload_type = 104;
-      rtp_map.encoding_name = "ISAC";
-      rtp_map.media_type = erizo::AUDIO_TYPE;
-      rtp_map.clock_rate = 32000;
-      rtp_map.channels = 1;
-      rtp_mappings.push_back(rtp_map);
-    }
-    // ILBC
-    {
-      erizo::RtpMap rtp_map;
-      rtp_map.payload_type = 102;
-      rtp_map.encoding_name = "ILBC";
-      rtp_map.media_type = erizo::AUDIO_TYPE;
-      rtp_map.clock_rate = 8000;
-      rtp_map.channels = 1;
-      rtp_mappings.push_back(rtp_map);
-    }
-    // G722 1
-    {
-      erizo::RtpMap rtp_map;
-      rtp_map.payload_type = 9;
-      rtp_map.encoding_name = "G722";
-      rtp_map.media_type = erizo::AUDIO_TYPE;
-      rtp_map.clock_rate = 8000;
-      rtp_map.channels = 1;
-      rtp_mappings.push_back(rtp_map);
-    }
-    // FIXME: G722 with different channel not work well in erizo/src/erizo/SdpInfo.cpp
-    // // G722 2
-    // {
-    //   erizo::RtpMap rtp_map;
-    //   rtp_map.payload_type = 119;
-    //   rtp_map.encoding_name = "G722";
-    //   rtp_map.media_type = erizo::AUDIO_TYPE;
-    //   rtp_map.clock_rate = 8000;
-    //   rtp_map.channels = 2;
-    //   rtp_mappings.push_back(rtp_map);
-    // }
 
     std::vector<erizo::ExtMap> ext_mappings;
     unsigned int value = 0;
-    ext_mappings.push_back({value++, "urn:ietf:params:rtp-hdrext:ssrc-audio-level"});
-    ext_mappings.push_back({value++, "urn:ietf:params:rtp-hdrext:toffset"});
-    ext_mappings.push_back({value++, "http://www.webrtc.org/experiments/rtp-hdrext/abs-send-time"});
-    // TODO: add this line back when CVO is supported by video engine
-    //ext_mappings.push_back({value++, "urn:3gpp:video-orientation"});
-    value++;
-    ext_mappings.push_back({value++, "http://www.ietf.org/id/draft-holmer-rmcat-transport-wide-cc-extensions-01"});
-
-    // if (media_config.find("rtpMappings") != media_config.end()) {
-    //   json rtp_map_json = media_config["rtpMappings"];
-    //   for (json::iterator it = rtp_map_json.begin(); it != rtp_map_json.end(); ++it) {
-    //     erizo::RtpMap rtp_map;
-    //     if (it.value()["payloadType"].is_number()) {
-    //       rtp_map.payload_type = it.value()["payloadType"];
-    //     } else {
-    //       continue;
-    //     }
-    //     if (it.value()["encodingName"].is_string()) {
-    //       rtp_map.encoding_name = it.value()["encodingName"];
-    //     } else {
-    //       continue;
-    //     }
-    //     if (it.value()["mediaType"].is_string()) {
-    //       if (it.value()["mediaType"] == "video") {
-    //         rtp_map.media_type = erizo::VIDEO_TYPE;
-    //       } else if (it.value()["mediaType"] == "audio") {
-    //         rtp_map.media_type = erizo::AUDIO_TYPE;
-    //       } else {
-    //         continue;
-    //       }
-    //     } else {
-    //       continue;
-    //     }
-    //     if (it.value()["clockRate"].is_number()) {
-    //       rtp_map.clock_rate = it.value()["clockRate"];
-    //     }
-    //     if (rtp_map.media_type == erizo::AUDIO_TYPE) {
-    //       if (it.value()["channels"].is_number()) {
-    //         rtp_map.channels = it.value()["channels"];
-    //       }
-    //     }
-    //     if (it.value()["formatParameters"].is_object()) {
-    //       json format_params_json = it.value()["formatParameters"];
-    //       for (json::iterator params_it = format_params_json.begin();
-    //           params_it != format_params_json.end(); ++params_it) {
-    //         std::string value = params_it.value();
-    //         std::string key = params_it.key();
-    //         rtp_map.format_parameters.insert(rtp_map.format_parameters.begin(),
-    //             std::pair<std::string, std::string> (key, value));
-    //       }
-    //     }
-    //     if (it.value()["feedbackTypes"].is_array()) {
-    //       json feedback_types_json = it.value()["feedbackTypes"];
-    //       for (json::iterator feedback_it = feedback_types_json.begin();
-    //           feedback_it != feedback_types_json.end(); ++feedback_it) {
-    //           rtp_map.feedback_types.push_back(*feedback_it);
-    //       }
-    //     }
-    //     rtp_mappings.push_back(rtp_map);
-    //   }
-    // }
-
-    // std::vector<erizo::ExtMap> ext_mappings;
-    // unsigned int value = 0;
-    // if (media_config.find("extMappings") != media_config.end()) {
-      // json ext_map_json = media_config["extMappings"];
-      // for (json::iterator ext_map_it = ext_map_json.begin(); ext_map_it != ext_map_json.end(); ++ext_map_it) {
-      //   ext_mappings.push_back({value++, *ext_map_it});
-      // }
-    // }
+    if (media_config.find("extMappings") != media_config.end()) {
+      json ext_map_json = media_config["extMappings"];
+      for (json::iterator ext_map_it = ext_map_json.begin(); ext_map_it != ext_map_json.end(); ++ext_map_it) {
+        ext_mappings.push_back({value++, *ext_map_it});
+      }
+    }
 
     erizo::IceConfig iceConfig;
     if (info.Length() == 16) {
@@ -375,9 +193,8 @@ NAN_METHOD(WebRtcConnection::New) {
     WebRtcConnection* obj = new WebRtcConnection();
     obj->me = std::make_shared<erizo::WebRtcConnection>(worker, io_worker, wrtcId, iceConfig,
                                                         rtp_mappings, ext_mappings, obj);
-    obj->msink = obj->me.get();
+
     uv_async_init(uv_default_loop(), &obj->async_, &WebRtcConnection::eventsCallback);
-    uv_async_init(uv_default_loop(), &obj->asyncStats_, &WebRtcConnection::statsCallback);
     obj->Wrap(info.This());
     info.GetReturnValue().Set(info.This());
   } else {
@@ -385,14 +202,14 @@ NAN_METHOD(WebRtcConnection::New) {
   }
 }
 
-std::future<void> stopAsync(std::shared_ptr<erizo::WebRtcConnection> connection) {
+std::future<void> stopAsync(const std::shared_ptr<erizo::MediaStream> media_stream) {
   auto promise = std::make_shared<std::promise<void>>();
-  if (connection) {
-    connection->getWorker()->task([promise, connection] {
-      connection->getFeedbackSource()->setFeedbackSink(nullptr);
-      connection->setVideoSink(nullptr);
-      connection->setAudioSink(nullptr);
-      connection->setEventSink(nullptr);
+  if (media_stream) {
+    media_stream->getWorker()->task([promise, media_stream] {
+      media_stream->getFeedbackSource()->setFeedbackSink(nullptr);
+      media_stream->setVideoSink(nullptr);
+      media_stream->setAudioSink(nullptr);
+      media_stream->setEventSink(nullptr);
       promise->set_value();
     });
   } else {
@@ -404,13 +221,14 @@ std::future<void> stopAsync(std::shared_ptr<erizo::WebRtcConnection> connection)
 NAN_METHOD(WebRtcConnection::stop) {
   WebRtcConnection* obj = Nan::ObjectWrap::Unwrap<WebRtcConnection>(info.Holder());
 
-  std::future<void> future = stopAsync(obj->me);
-  future.wait();
+  obj->me->forEachMediaStream([] (const std::shared_ptr<erizo::MediaStream> &media_stream) {
+    std::future<void> future = stopAsync(media_stream);
+    future.wait();
+  });
 }
 
 NAN_METHOD(WebRtcConnection::close) {
   WebRtcConnection* obj = Nan::ObjectWrap::Unwrap<WebRtcConnection>(info.Holder());
-  obj->me->setWebRtcConnectionStatsListener(NULL);
   obj->me->setWebRtcConnectionEventListener(NULL);
   obj->me->close();
   obj->me.reset();
@@ -448,65 +266,20 @@ NAN_METHOD(WebRtcConnection::createOffer) {
   info.GetReturnValue().Set(Nan::New(r));
 }
 
-NAN_METHOD(WebRtcConnection::setSlideShowMode) {
-  WebRtcConnection* obj = Nan::ObjectWrap::Unwrap<WebRtcConnection>(info.Holder());
-  std::shared_ptr<erizo::WebRtcConnection> me = obj->me;
-
-  bool v = info[0]->BooleanValue();
-  me->setSlideShowMode(v);
-  info.GetReturnValue().Set(Nan::New(v));
-}
-
-NAN_METHOD(WebRtcConnection::muteStream) {
-  WebRtcConnection* obj = Nan::ObjectWrap::Unwrap<WebRtcConnection>(info.Holder());
-  std::shared_ptr<erizo::WebRtcConnection> me = obj->me;
-
-  bool mute_video = info[0]->BooleanValue();
-  bool mute_audio = info[1]->BooleanValue();
-  me->muteStream(mute_video, mute_audio);
-}
-
-NAN_METHOD(WebRtcConnection::setVideoConstraints) {
-  WebRtcConnection* obj = Nan::ObjectWrap::Unwrap<WebRtcConnection>(info.Holder());
-  std::shared_ptr<erizo::WebRtcConnection> me = obj->me;
-  int max_video_width = info[0]->IntegerValue();
-  int max_video_height = info[1]->IntegerValue();
-  int max_video_frame_rate = info[2]->IntegerValue();
-  me->setVideoConstraints(max_video_width, max_video_height, max_video_frame_rate);
-}
-
-NAN_METHOD(WebRtcConnection::setMetadata) {
-  WebRtcConnection* obj = Nan::ObjectWrap::Unwrap<WebRtcConnection>(info.Holder());
-  std::shared_ptr<erizo::WebRtcConnection> me = obj->me;
-
-  v8::String::Utf8Value json_param(Nan::To<v8::String>(info[0]).ToLocalChecked());
-  std::string metadata_string = std::string(*json_param);
-  // json metadata_json = json::parse(metadata_string);
-  std::map<std::string, std::string> metadata;
-  // for (json::iterator item = metadata_json.begin(); item != metadata_json.end(); ++item) {
-  //   std::string value = item.value().dump();
-  //   if (item.value().is_object()) {
-  //     value = "[object]";
-  //   }
-  //   if (item.value().is_string()) {
-  //     value = item.value();
-  //   }
-  //   metadata[item.key()] = value;
-  // }
-
-  me->setMetadata(metadata);
-
-  info.GetReturnValue().Set(Nan::New(true));
-}
-
 NAN_METHOD(WebRtcConnection::setRemoteSdp) {
   WebRtcConnection* obj = Nan::ObjectWrap::Unwrap<WebRtcConnection>(info.Holder());
   std::shared_ptr<erizo::WebRtcConnection> me = obj->me;
+  if (!me) {
+    return;
+  }
 
   v8::String::Utf8Value param(Nan::To<v8::String>(info[0]).ToLocalChecked());
   std::string sdp = std::string(*param);
 
-  bool r = me->setRemoteSdp(sdp);
+  v8::String::Utf8Value stream_id_param(Nan::To<v8::String>(info[1]).ToLocalChecked());
+  std::string stream_id = std::string(*stream_id_param);
+
+  bool r = me->setRemoteSdp(sdp, stream_id);
 
   info.GetReturnValue().Set(Nan::New(r));
 }
@@ -540,9 +313,98 @@ NAN_METHOD(WebRtcConnection::removeRemoteCandidate) {
   v8::String::Utf8Value param2(Nan::To<v8::String>(info[2]).ToLocalChecked());
   std::string sdp = std::string(*param2);
 
-  bool r = me->removeRemoteCandidate(mid, sdpMLine, sdp);
-
+  // bool r = me->removeRemoteCandidate(mid, sdpMLine, sdp);
+  bool r = true;
   info.GetReturnValue().Set(Nan::New(r));
+}
+
+NAN_METHOD(WebRtcConnection::addMediaStream) {
+  WebRtcConnection* obj = Nan::ObjectWrap::Unwrap<WebRtcConnection>(info.Holder());
+  std::shared_ptr<erizo::WebRtcConnection> me = obj->me;
+  if (!me) {
+    return;
+  }
+
+  MediaStream* param = Nan::ObjectWrap::Unwrap<MediaStream>(Nan::To<v8::Object>(info[0]).ToLocalChecked());
+  auto wr = std::shared_ptr<erizo::MediaStream>(param->me);
+
+  me->addMediaStream(wr);
+}
+
+NAN_METHOD(WebRtcConnection::removeMediaStream) {
+  WebRtcConnection* obj = Nan::ObjectWrap::Unwrap<WebRtcConnection>(info.Holder());
+  std::shared_ptr<erizo::WebRtcConnection> me = obj->me;
+  if (!me) {
+    return;
+  }
+
+  v8::String::Utf8Value param(Nan::To<v8::String>(info[0]).ToLocalChecked());
+  std::string streamId = std::string(*param);
+  me->removeMediaStream(streamId);
+}
+
+NAN_METHOD(WebRtcConnection::setAudioSsrc) {
+  WebRtcConnection* obj = Nan::ObjectWrap::Unwrap<WebRtcConnection>(info.Holder());
+  std::shared_ptr<erizo::WebRtcConnection> me = obj->me;
+  if (!me) {
+    return;
+  }
+
+  std::string stream_id = getString(info[0]);
+  me->getLocalSdpInfo()->audio_ssrc_map[stream_id] = info[1]->IntegerValue();
+}
+
+NAN_METHOD(WebRtcConnection::getAudioSsrcMap) {
+  WebRtcConnection* obj = Nan::ObjectWrap::Unwrap<WebRtcConnection>(info.Holder());
+  std::shared_ptr<erizo::WebRtcConnection> me = obj->me;
+  if (!me) {
+    return;
+  }
+
+  Local<v8::Object> audio_ssrc_map = Nan::New<v8::Object>();
+  for (auto const& audio_ssrcs : me->getLocalSdpInfo()->audio_ssrc_map) {
+    audio_ssrc_map->Set(Nan::New(audio_ssrcs.first.c_str()).ToLocalChecked(),
+                        Nan::New(audio_ssrcs.second));
+  }
+  info.GetReturnValue().Set(audio_ssrc_map);
+}
+
+NAN_METHOD(WebRtcConnection::setVideoSsrcList) {
+  WebRtcConnection* obj = Nan::ObjectWrap::Unwrap<WebRtcConnection>(info.Holder());
+  std::shared_ptr<erizo::WebRtcConnection> me = obj->me;
+  if (!me) {
+    return;
+  }
+
+  std::string stream_id = getString(info[0]);
+  v8::Local<v8::Array> video_ssrc_array = v8::Local<v8::Array>::Cast(info[1]);
+  std::vector<uint32_t> video_ssrc_list;
+
+  for (unsigned int i = 0; i < video_ssrc_array->Length(); i++) {
+    v8::Handle<v8::Value> val = video_ssrc_array->Get(i);
+    unsigned int numVal = val->IntegerValue();
+    video_ssrc_list.push_back(numVal);
+  }
+  me->getLocalSdpInfo()->video_ssrc_map[stream_id] = video_ssrc_list;
+}
+
+NAN_METHOD(WebRtcConnection::getVideoSsrcMap) {
+  WebRtcConnection* obj = Nan::ObjectWrap::Unwrap<WebRtcConnection>(info.Holder());
+  std::shared_ptr<erizo::WebRtcConnection> me = obj->me;
+  if (!me) {
+    return;
+  }
+
+  Local<v8::Object> video_ssrc_map = Nan::New<v8::Object>();
+  for (auto const& video_ssrcs : me->getLocalSdpInfo()->video_ssrc_map) {
+    v8::Local<v8::Array> array = Nan::New<v8::Array>(video_ssrcs.second.size());
+    uint index = 0;
+    for (uint32_t ssrc : video_ssrcs.second) {
+      Nan::Set(array, index++, Nan::New(ssrc));
+    }
+    video_ssrc_map->Set(Nan::New(video_ssrcs.first.c_str()).ToLocalChecked(), array);
+  }
+  info.GetReturnValue().Set(video_ssrc_map);
 }
 
 NAN_METHOD(WebRtcConnection::getLocalSdp) {
@@ -554,45 +416,6 @@ NAN_METHOD(WebRtcConnection::getLocalSdp) {
   info.GetReturnValue().Set(Nan::New(sdp.c_str()).ToLocalChecked());
 }
 
-
-NAN_METHOD(WebRtcConnection::setAudioReceiver) {
-  WebRtcConnection* obj = Nan::ObjectWrap::Unwrap<WebRtcConnection>(info.Holder());
-  std::shared_ptr<erizo::WebRtcConnection> me = obj->me;
-
-  if (info.Length() == 1) {
-
-
-  MediaSink* param = Nan::ObjectWrap::Unwrap<MediaSink>(Nan::To<v8::Object>(info[0]).ToLocalChecked());
-  erizo::MediaSink *mr = param->msink;
-
-  me->setAudioSink(mr);
-  me->setEventSink(mr);
-
-  } else {
-    MediaSource* param = Nan::ObjectWrap::Unwrap<MediaSource>(Nan::To<v8::Object>(info[0]).ToLocalChecked());
-    erizo::MediaSource *mr = param->msource;
-
-    erizo::FeedbackSource* fbsource = me->getFeedbackSource();
-    erizo::FeedbackSink* fbsink = reinterpret_cast<erizo::FeedbackSink*>(mr);
-
-    if (fbsource != nullptr) {
-      fbsource->setFeedbackSink(fbsink);
-    }
-  }
-}
-
-NAN_METHOD(WebRtcConnection::setVideoReceiver) {
-  WebRtcConnection* obj = Nan::ObjectWrap::Unwrap<WebRtcConnection>(info.Holder());
-  std::shared_ptr<erizo::WebRtcConnection> me = obj->me;
-
-  MediaSink* param = Nan::ObjectWrap::Unwrap<MediaSink>(Nan::To<v8::Object>(info[0]).ToLocalChecked());
-  erizo::MediaSink *mr = param->msink;
-
-  me->setVideoSink(mr);
-  me->setEventSink(mr);
-}
-
-
 NAN_METHOD(WebRtcConnection::getCurrentState) {
   WebRtcConnection* obj = Nan::ObjectWrap::Unwrap<WebRtcConnection>(info.Holder());
   std::shared_ptr<erizo::WebRtcConnection> me = obj->me;
@@ -602,98 +425,13 @@ NAN_METHOD(WebRtcConnection::getCurrentState) {
   info.GetReturnValue().Set(Nan::New(state));
 }
 
-NAN_METHOD(WebRtcConnection::getStats) {
-  WebRtcConnection* obj = Nan::ObjectWrap::Unwrap<WebRtcConnection>(info.Holder());
-  if (!obj->me || info.Length() != 1) {
-    return;
-  }
-  Nan::Callback *callback = new Nan::Callback(info[0].As<Function>());
-  AsyncQueueWorker(new StatCallWorker(callback, obj->me));
-}
-
-NAN_METHOD(WebRtcConnection::getPeriodicStats) {
-  WebRtcConnection* obj = Nan::ObjectWrap::Unwrap<WebRtcConnection>(info.Holder());
-  if (obj->me == nullptr || info.Length() != 1) {
-    return;
-  }
-  obj->me->setWebRtcConnectionStatsListener(obj);
-  obj->hasCallback_ = true;
-  obj->statsCallback_ = new Nan::Callback(info[0].As<Function>());
-}
-
-NAN_METHOD(WebRtcConnection::generatePLIPacket) {
-  WebRtcConnection* obj = Nan::ObjectWrap::Unwrap<WebRtcConnection>(info.Holder());
-
-  if (obj->me == NULL) {
-    return;
-  }
-
-  std::shared_ptr<erizo::WebRtcConnection> me = obj->me;
-  me->sendPLI();
-  return;
-}
-
-NAN_METHOD(WebRtcConnection::enableHandler) {
-  WebRtcConnection* obj = Nan::ObjectWrap::Unwrap<WebRtcConnection>(info.Holder());
-  std::shared_ptr<erizo::WebRtcConnection> me = obj->me;
-
-  v8::String::Utf8Value param(Nan::To<v8::String>(info[0]).ToLocalChecked());
-  std::string name = std::string(*param);
-
-  me->enableHandler(name);
-  return;
-}
-
-NAN_METHOD(WebRtcConnection::disableHandler) {
-  WebRtcConnection* obj = Nan::ObjectWrap::Unwrap<WebRtcConnection>(info.Holder());
-  std::shared_ptr<erizo::WebRtcConnection> me = obj->me;
-
-  v8::String::Utf8Value param(Nan::To<v8::String>(info[0]).ToLocalChecked());
-  std::string name = std::string(*param);
-
-  me->disableHandler(name);
-  return;
-}
-
-NAN_METHOD(WebRtcConnection::setQualityLayer) {
-  WebRtcConnection* obj = Nan::ObjectWrap::Unwrap<WebRtcConnection>(info.Holder());
-  std::shared_ptr<erizo::WebRtcConnection> me = obj->me;
-
-  int spatial_layer = info[0]->IntegerValue();
-  int temporal_layer = info[1]->IntegerValue();
-
-  me->setQualityLayer(spatial_layer, temporal_layer);
-
-  return;
-}
-
-NAN_METHOD(WebRtcConnection::setFeedbackReports) {
-  WebRtcConnection* obj = Nan::ObjectWrap::Unwrap<WebRtcConnection>(info.Holder());
-  std::shared_ptr<erizo::WebRtcConnection> me = obj->me;
-
-  bool v = info[0]->BooleanValue();
-  int fbreps = info[1]->IntegerValue();  // From bps to Kbps
-  me->setFeedbackReports(v, fbreps);
-}
-
 // Async methods
-
-void WebRtcConnection::notifyEvent(erizo::WebRTCEvent event, const std::string& message) {
+void WebRtcConnection::notifyEvent(erizo::WebRTCEvent event, const std::string& message, const std::string& stream_id) {
   boost::mutex::scoped_lock lock(mutex);
   this->eventSts.push(event);
-  this->eventMsgs.push(message);
+  this->eventMsgs.emplace(message, stream_id);
   async_.data = this;
   uv_async_send(&async_);
-}
-
-void WebRtcConnection::notifyStats(const std::string& message) {
-  if (!this->hasCallback_) {
-    return;
-  }
-  boost::mutex::scoped_lock lock(mutex);
-  this->statsMsgs.push(message);
-  asyncStats_.data = this;
-  uv_async_send(&asyncStats_);
 }
 
 NAUV_WORK_CB(WebRtcConnection::eventsCallback) {
@@ -703,24 +441,13 @@ NAUV_WORK_CB(WebRtcConnection::eventsCallback) {
     return;
   boost::mutex::scoped_lock lock(obj->mutex);
   while (!obj->eventSts.empty()) {
-    Local<Value> args[] = {Nan::New(obj->eventSts.front()), Nan::New(obj->eventMsgs.front().c_str()).ToLocalChecked()};
-    Nan::MakeCallback(Nan::GetCurrentContext()->Global(), obj->eventCallback_->GetFunction(), 2, args);
+    Local<Value> args[] = {
+      Nan::New(obj->eventSts.front()),
+      Nan::New(obj->eventMsgs.front().first.c_str()).ToLocalChecked(),
+      Nan::New(obj->eventMsgs.front().second.c_str()).ToLocalChecked()
+    };
+    Nan::MakeCallback(Nan::GetCurrentContext()->Global(), obj->eventCallback_->GetFunction(), 3, args);
     obj->eventMsgs.pop();
     obj->eventSts.pop();
-  }
-}
-
-NAUV_WORK_CB(WebRtcConnection::statsCallback) {
-  Nan::HandleScope scope;
-  WebRtcConnection* obj = reinterpret_cast<WebRtcConnection*>(async->data);
-  if (!obj || obj->me == NULL)
-    return;
-  boost::mutex::scoped_lock lock(obj->mutex);
-  if (obj->hasCallback_) {
-    while (!obj->statsMsgs.empty()) {
-      Local<Value> args[] = {Nan::New(obj->statsMsgs.front().c_str()).ToLocalChecked()};
-      Nan::MakeCallback(Nan::GetCurrentContext()->Global(), obj->statsCallback_->GetFunction(), 1, args);
-      obj->statsMsgs.pop();
-    }
   }
 }
