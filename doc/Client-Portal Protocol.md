@@ -198,8 +198,12 @@ This a format for client reconnects.
               {
                status: "active" | "inactive" | undefined,
                source: "camera" | "screen-cast" | "raw-file" | "encoded-file" | undefined,
-               format: object(VideoFormat),
+               format: object(VideoFormat) | undefined,
                parameters: object(VideoParameters) | undefined,
+               constraints: [{ /* for simulcast streams */
+                 format: object(VideoFormat),
+                 parameters: object(VideoParameters)
+               }] | undefined
                optional:
                  {
                   format: [object(VideoFormat)] | undefined,
