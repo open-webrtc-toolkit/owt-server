@@ -160,6 +160,14 @@ case $yn in
   * ) ;;
 esac
 
+read -p "Installing json.hpp? [Yes/no]" yn
+case $yn in
+  [Yy]* ) install_json_hpp;;
+  [Nn]* ) ;;
+  * ) install_json_hpp;;
+esac
+
+
 ${NO_INTERNAL} || (pause "Installing webrtc library... [press Enter]" && install_webrtc)
 
 if [ "$CLEANUP" = "true" ]; then

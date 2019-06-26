@@ -96,6 +96,8 @@ if [ "$NIGHTLY" != "true" ]; then
 
   install_svt_hevc
 
+  install_json_hpp
+
 fi
 
 ${NO_INTERNAL} || install_webrtc

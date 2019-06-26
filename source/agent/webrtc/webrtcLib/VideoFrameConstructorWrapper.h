@@ -10,6 +10,7 @@
 #include <VideoFrameConstructor.h>
 #include <WebRtcConnection.h>
 #include "WebRtcConnection.h"
+#include "MediaStream.h"
 #include <node.h>
 #include <node_object_wrap.h>
 #include <nan.h>

@@ -447,6 +447,20 @@ install_gcc(){
   fi
 }
 
+install_json_hpp() {
+  if [ -d $LIB_DIR ]; then
+    local DOWNLOAD_JSON_LINK="https://github.com/nlohmann/json/releases/download/v3.6.1/json.hpp"
+    pushd $LIB_DIR >/dev/null
+    wget -c ${DOWNLOAD_JSON_LINK}
+    mkdir -p ${PREFIX_DIR}/include
+    mv json.hpp ${PREFIX_DIR}/include/
+    popd
+  else
+    mkdir -p $LIB_DIR
+    install_json_hpp
+  fi
+}
+
 install_svt_hevc(){
     pushd $ROOT/third_party >/dev/null
     rm -rf SVT-HEVC
