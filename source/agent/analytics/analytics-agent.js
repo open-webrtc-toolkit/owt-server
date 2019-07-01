@@ -115,7 +115,7 @@ class AnalyticsAgent extends BaseAgent {
       if (this.algorithms[algo].outputfourcc === 'I420') {
         // generated a new stream
         //const newStreamId = Math.random() * 1000000000000000000 + '';
-        const newStreamId = 'A0A0'+options.media.video.from;
+        const newStreamId = algo + options.media.video.from;
         log.info('new stream added', newStreamId);
         const streamInfo = {
           type: 'analytics',

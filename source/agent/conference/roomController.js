@@ -1296,18 +1296,19 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
             old_st.video.subscribers.forEach(function (t_id) {
                 if (terminals[t_id]) {
                     for (var sub_id in terminals[t_id].subscribed) {
-                        if (terminals[t_id].subscribed[sub_id].video === old_st.id) {
+                        if (terminals[t_id].subscribed[sub_id].video === streamId) {
                             makeRPC(
                                 rpcClient,
                                 terminals[t_id].locality.node,
                                 'linkup',
                                 [sub_id, undefined, streamId],
                                 function () {
+                                    log.debug('resumed sub_id:', sub_id, 'for streamId:', streamId);
                                     streams[streamId].video.subscribers = streams[streamId].video.subscribers || [];
                                     streams[streamId].video.subscribers.push(t_id);
                                     terminals[t_id].subscribed[sub_id].video = streamId;
                                 }, function (reason) {
-                                    log.warn('Failed in resuming video subscription. reason:', reason);
+                                    log.warn('Failed in resuming video subscription:', sub_id, 'reason:', reason);
                                 });
                         }
                     }
@@ -1316,7 +1317,6 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
         })
         .then(function () {
             log.debug('Rebuild stream and its subscriptions ok.');
-            forceKeyFrame(streamId);
             on_ok('ok');
         })
         .catch(function (err) {
