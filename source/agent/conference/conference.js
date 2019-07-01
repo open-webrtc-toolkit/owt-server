@@ -802,6 +802,8 @@ var Conference = function (rpcClient, selfRpcId) {
       return Promise.reject('Video format unacceptable');
     }
 
+    var isReadded = !!streams[id];
+
     return new Promise((resolve, reject) => {
       roomController && roomController.publish(info.owner, id, locality, media, info.type, function() {
         if (participants[info.owner]) {
@@ -813,9 +815,11 @@ var Conference = function (rpcClient, selfRpcId) {
           };
           st.info.inViews = [];
           streams[id] = st;
-          setTimeout(() => {
-            room_config.notifying.streamChange && sendMsg('room', 'all', 'stream', {id: id, status: 'add', data: st});
-          }, 10);
+          if (!isReadded) {
+            setTimeout(() => {
+              room_config.notifying.streamChange && sendMsg('room', 'all', 'stream', {id: id, status: 'add', data: st});
+            }, 10);
+          }
           resolve('ok');
         } else {
           roomController && roomController.unpublish(info.owner, id);
@@ -1181,7 +1185,7 @@ var Conference = function (rpcClient, selfRpcId) {
       return callback('callback', 'error', 'Too many inputs');
     }
 
-    if (streams[streamId]) {
+    if (streams[streamId] && (pubInfo.type !== 'analytics')) {
       return callback('callback', 'error', 'Stream exists');
     }
 
