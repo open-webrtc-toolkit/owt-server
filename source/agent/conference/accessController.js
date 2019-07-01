@@ -196,6 +196,8 @@ module.exports.create = function(spec, rpcReq, onSessionEstablished, onSessionAb
     sessions[sessionId] = {owner: participantId,
                            direction: direction,
                            options: sessionOptions,
+                           origin: origin,
+                           preference: formatPreference,
                            state: 'initialized'};
 
     var locality;
@@ -276,6 +278,60 @@ module.exports.create = function(spec, rpcReq, onSessionEstablished, onSessionAb
     return rpcReq.mediaOnOff(session.locality.node, sessionId, track, session.direction, onOff);
   };
 
+  const rebuildAnalyticsSubscriber = sessionId => {
+    log.debug('rebuildAnalyticsSubscriber, sessionId:', sessionId);
+
+    let session = sessions[sessionId];
+    session.state = 'initialized';
+
+    var locality;
+    return rpcReq.getWorkerNode(cluster_name, session.options.type, {room: in_room, task: sessionId}, session.origin)
+      .then(function(accessLocality) {
+        locality = accessLocality;
+        log.debug('getWorkerNode ok, participantId:', session.owner, 'sessionId:', sessionId, 'locality:', locality);
+        if (sessions[sessionId] === undefined) {
+          log.debug('Session has been aborted, sessionId:', sessionId);
+          rpcReq.recycleWorkerNode(locality.agent, locality.node, {room: in_room, task: sessionId})
+            .catch(function(reason) {
+              log.debug('AccessNode not recycled', locality);
+            });
+          return Promise.reject('Session has been aborted');
+        }
+        session.locality = locality;
+        var options = {
+          controller: self_rpc_id
+        };
+        session.options.connection && (options.connection = session.options.connection);
+        session.options.media && (options.media = session.options.media);
+        session.preference && (options.formatPreference = session.preference);
+        return rpcReq.initiate(locality.node,
+                               sessionId,
+                               session.options.type,
+                               session.direction,
+                               options);
+      })
+      .then(function() {
+        log.debug('Initiate ok, participantId:', session.owner, 'sessionId:', sessionId);
+        if (sessions[sessionId] === undefined) {
+          log.debug('Session has been aborted, sessionId:', sessionId);
+          rpcReq.terminate(locality.node, sessionId, session.direction)
+            .catch(function(reason) {
+              log.debug('Terminate fail:', reason);
+            });
+          rpcReq.recycleWorkerNode(locality.agent, locality.node, {room: in_room, task: sessionId})
+            .catch(function(reason) {
+              log.debug('AccessNode not recycled', locality);
+            });
+          return Promise.reject('Session has been aborted');
+        }
+        sessions[sessionId].state = 'connecting';
+        return 'ok';
+      }, (e) => {
+        delete sessions[sessionId];
+        return Promise.reject(e.message ? e.message : e);
+      });
+  };
+
   that.onFaultDetected = function (faultType, faultId) {
     for (var session_id in sessions) {
       var locality = sessions[session_id].locality;
@@ -284,8 +340,13 @@ module.exports.create = function(spec, rpcReq, onSessionEstablished, onSessionAb
             direction = sessions[session_id].direction;
 
         log.info('Fault detected on node:', locality);
-        terminateSession(session_id).catch((whatever) => {});
         on_session_aborted(owner, session_id, direction, 'Access node exited unexpectedly');
+
+        if (sessions[session_id].options.type === 'analytics') {
+          rebuildAnalyticsSubscriber(session_id);
+        } else {
+          terminateSession(session_id).catch((whatever) => {});
+        }
       }
     }
     return Promise.resolve('ok');

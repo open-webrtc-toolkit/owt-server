@@ -135,11 +135,11 @@ module.exports = function (rpcClient, rpcId, agentId, clusterIp) {
         .then(rpcSuccess(callback))
         .catch(rpcError(callback));
     },
-    close: function(callback) {
-      agent.cleanup()
-        .then(rpcSuccess(callback))
-        .catch(rpcError(callback));
-    },
+    //close: function(callback) {
+    //  agent.cleanup()
+    //    .then(rpcSuccess(callback))
+    //    .catch(rpcError(callback));
+    //},
     onFaultDetected: function (message) {
       if (message.purpose === 'conference') {
         agent.cleanup();
