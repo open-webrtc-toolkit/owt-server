@@ -200,8 +200,10 @@ module.exports = function (spec, on_status, on_mediaUpdate) {
                     video_fmt = videoFormat;
                     log.debug('offer after processing:', msg.sdp);
                     if (direction === 'in') {
-                        log.warn('####',getAudioSsrc(sdp), getVideoSsrcList(sdp));
-                        wrtc.setRemoteSsrc(getAudioSsrc(sdp), getVideoSsrcList(sdp), 'kkk');
+                        const aSsrc = getAudioSsrc(sdp);
+                        const vSsrc = getVideoSsrcList(sdp);
+                        log.debug('SDP ssrc:',aSsrc, vSsrc);
+                        wrtc.setRemoteSsrc(aSsrc, vSsrc, '');
                         wrtc.setSimulcastInfo(getSimulcastInfo(sdp));
                     }
                     wrtc.setRemoteSdp(msg.sdp);
@@ -222,20 +224,8 @@ module.exports = function (spec, on_status, on_mediaUpdate) {
         if (wrtc) {
             processSignalling();
         } else {
-            var count = 0,
-                interval = setInterval(function() {
-                    if (wrtc) {
-                        processSignalling();
-                        clearInterval(interval);
-                    } else {
-                        if (count > 200) {
-                            log.info('wrtc has not got ready in 10s, will drop a ignalling, type:', msg.type);
-                            clearInterval(interval);
-                        } else {
-                            count = count + 1;
-                        }
-                    }
-                }, 50);
+            // should not reach here
+            log.error('wrtc is not ready');
         }
     };
 
@@ -344,7 +334,7 @@ module.exports = function (spec, on_status, on_mediaUpdate) {
       }
     });
     wrtc = createWrtc(wrtcId, threadPool, ioThreadPool, 'rtp_media_config', ipAddresses);
-    wrtc.addMediaStream(wrtc.id, {label: wrtc.id}, direction === 'in');
+    wrtc.addMediaStream(wrtc.id, {label: ''}, direction === 'in');
     stream = wrtc.getMediaStream(wrtc.id);
     log.info('after add stream:', wrtc.id);
 
