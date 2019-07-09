@@ -1,0 +1,160 @@
+From b4c091058e69402b42e2e5953d3d44b6c6779af2 Mon Sep 17 00:00:00 2001
+From: Chen Li1 <li1.chen@intel.com>
+Date: Tue, 9 Jul 2019 14:55:32 +0800
+Subject: [PATCH 7/7] Enable continuous gathering with removed candidates
+
+---
+ erizo/src/erizo/IceConnection.cpp     |  5 ++++
+ erizo/src/erizo/IceConnection.h       |  2 ++
+ erizo/src/erizo/LibNiceConnection.cpp |  7 ++++++
+ erizo/src/erizo/LibNiceConnection.h   |  2 ++
+ erizo/src/erizo/Transport.h           |  3 +++
+ erizo/src/erizo/WebRtcConnection.cpp  | 43 +++++++++++++++++++++++++++++++++++
+ erizo/src/erizo/WebRtcConnection.h    |  7 ++++++
+ 7 files changed, 69 insertions(+)
+
+diff --git a/erizo/src/erizo/IceConnection.cpp b/erizo/src/erizo/IceConnection.cpp
+index 51822e5..c82cd39 100644
+--- a/erizo/src/erizo/IceConnection.cpp
++++ b/erizo/src/erizo/IceConnection.cpp
+@@ -87,4 +87,9 @@ void IceConnection::updateIceState(IceState state) {
+   }
+ }
+ 
++bool IceConnection::removeRemoteCandidates() {
++  ELOG_WARN("removeRemoteCandidates NOT implemented");
++  return true;
++}
++
+ }  // namespace erizo
+diff --git a/erizo/src/erizo/IceConnection.h b/erizo/src/erizo/IceConnection.h
+index 59a7d66..f239984 100644
+--- a/erizo/src/erizo/IceConnection.h
++++ b/erizo/src/erizo/IceConnection.h
+@@ -114,6 +114,8 @@ class IceConnection : public LogContext {
+   virtual const std::string& getLocalUsername() const;
+   virtual const std::string& getLocalPassword() const;
+ 
++  virtual bool removeRemoteCandidates();
++
+  private:
+   virtual std::string iceStateToString(IceState state) const;
+ 
+diff --git a/erizo/src/erizo/LibNiceConnection.cpp b/erizo/src/erizo/LibNiceConnection.cpp
+index 82886b4..2f1d3cc 100644
+--- a/erizo/src/erizo/LibNiceConnection.cpp
++++ b/erizo/src/erizo/LibNiceConnection.cpp
+@@ -475,4 +475,11 @@ void LibNiceConnection::setReceivedLastCandidate(bool hasReceived) {
+ LibNiceConnection* LibNiceConnection::create(const IceConfig& ice_config) {
+   return new LibNiceConnection(boost::shared_ptr<LibNiceInterface>(new LibNiceInterfaceImpl()), ice_config);
+ }
++
++bool LibNiceConnection::removeRemoteCandidates() {
++  ELOG_DEBUG("remove remote candidates");
++  nice_agent_remove_remote_candidates(agent_, (guint) 1, 1, NULL);
++  return true;
++}
++
+ } /* namespace erizo */
+diff --git a/erizo/src/erizo/LibNiceConnection.h b/erizo/src/erizo/LibNiceConnection.h
+index 0023de0..19f62fa 100644
+--- a/erizo/src/erizo/LibNiceConnection.h
++++ b/erizo/src/erizo/LibNiceConnection.h
+@@ -60,6 +60,8 @@ class LibNiceConnection : public IceConnection {
+   void setReceivedLastCandidate(bool hasReceived) override;
+   void close() override;
+ 
++  bool removeRemoteCandidates() override;
++
+   static LibNiceConnection* create(const IceConfig& ice_config);
+ 
+  private:
+diff --git a/erizo/src/erizo/Transport.h b/erizo/src/erizo/Transport.h
+index 6ce9d8a..6f9743a 100644
+--- a/erizo/src/erizo/Transport.h
++++ b/erizo/src/erizo/Transport.h
+@@ -73,6 +73,9 @@ class Transport : public std::enable_shared_from_this<Transport>, public IceConn
+   bool setRemoteCandidates(const std::vector<CandidateInfo> &candidates, bool isBundle) {
+     return ice_->setRemoteCandidates(candidates, isBundle);
+   }
++  bool removeRemoteCandidates() {
++    return ice_->removeRemoteCandidates();
++  }
+ 
+   void onPacketReceived(packetPtr packet) {
+     std::weak_ptr<Transport> weak_transport = Transport::shared_from_this();
+diff --git a/erizo/src/erizo/WebRtcConnection.cpp b/erizo/src/erizo/WebRtcConnection.cpp
+index 47ac5a9..453fb19 100644
+--- a/erizo/src/erizo/WebRtcConnection.cpp
++++ b/erizo/src/erizo/WebRtcConnection.cpp
+@@ -433,6 +433,49 @@ bool WebRtcConnection::addRemoteCandidate(const std::string &mid, int mLineIndex
+   return res;
+ }
+ 
++bool WebRtcConnection::removeRemoteCandidate(const std::string &mid, int mLineIndex, const std::string &sdp) {
++  // TODO(pedro) Check type of transport.
++  ELOG_DEBUG("%s message: Removing remote Candidate, candidate: %s, mid: %s, sdpMLine: %d",
++              toLog(), sdp.c_str(), mid.c_str(), mLineIndex);
++  if (video_transport_ == nullptr && audio_transport_ == nullptr) {
++    ELOG_WARN("%s message: removeRemoteCandidate on NULL transport", toLog());
++    return false;
++  }
++
++  if (mLineIndex == -1) {
++    // End of removed candidates, retriger checks for candidates remained in remote_sdp_
++    if (video_transport_) {
++      video_transport_->removeRemoteCandidates();
++      video_transport_->setRemoteCandidates(remote_sdp_->getCandidateInfos(), bundle_);
++    }
++    if (audio_transport_) {
++      audio_transport_->removeRemoteCandidates();
++      audio_transport_->setRemoteCandidates(remote_sdp_->getCandidateInfos(), bundle_);
++    }
++  } else {
++    // Remove candidate in remote_sdp_, do not care about mediaType
++    SdpInfo tempSdp(rtp_mappings_);
++    if (tempSdp.initWithSdp(sdp, "whatever")) {
++      std::vector<CandidateInfo>& rcands = remote_sdp_->getCandidateInfos();
++      auto isRemovedCand = [&tempSdp](CandidateInfo& cand) -> bool {
++        for (uint8_t it = 0; it < tempSdp.getCandidateInfos().size(); it++) {
++          CandidateInfo& tempCand = tempSdp.getCandidateInfos()[it];
++          if (tempCand.componentId == cand.componentId &&
++              tempCand.netProtocol == cand.netProtocol &&
++              tempCand.hostAddress == cand.hostAddress &&
++              tempCand.hostPort == cand.hostPort &&
++              tempCand.hostType == cand.hostType) {
++            return true;
++          }
++        }
++        return false;
++      };
++      rcands.erase(std::remove_if(rcands.begin(), rcands.end(), isRemovedCand), rcands.end());
++    }
++  }
++  return true;
++}
++
+ std::string WebRtcConnection::getLocalSdp() {
+   ELOG_DEBUG("%s message: Getting Local Sdp", toLog());
+   if (video_transport_ != nullptr && getCurrentState() != CONN_READY) {
+diff --git a/erizo/src/erizo/WebRtcConnection.h b/erizo/src/erizo/WebRtcConnection.h
+index 4da0552..56e0bbb 100644
+--- a/erizo/src/erizo/WebRtcConnection.h
++++ b/erizo/src/erizo/WebRtcConnection.h
+@@ -98,6 +98,13 @@ class WebRtcConnection: public TransportListener, public LogContext,
+    */
+   bool addRemoteCandidate(const std::string &mid, int mLineIndex, const std::string &sdp);
+   /**
++   * Remove remote candidate (from remote peer).
++   * @param sdp The candidate in SDP format.
++   * @return true if the SDP was received correctly.
++   */
++  bool removeRemoteCandidate(const std::string &mid, int mLineIndex, const std::string &sdp);
++
++  /**
+    * Obtains the local SDP.
+    * @return The SDP as a SdpInfo.
+    */
+-- 
+2.7.4
+

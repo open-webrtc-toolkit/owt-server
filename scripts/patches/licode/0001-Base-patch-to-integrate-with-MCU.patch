@@ -1,33 +1,46 @@
-From b09c321a43ebeca585be09f98ce166bc5f7863bf Mon Sep 17 00:00:00 2001
+From 2cec11d111c4618d1627bcb2b55986cfd4c4fc6d Mon Sep 17 00:00:00 2001
 From: Chen Li1 <li1.chen@intel.com>
 Date: Wed, 7 Feb 2018 13:53:01 +0800
-Subject: [PATCH 1/5] Base patch to integrate with MCU
+Subject: [PATCH 1/7] Base patch to integrate with MCU
 
 ---
+ erizo/src/erizo/DtlsTransport.cpp                  |  5 +-
+ erizo/src/erizo/MediaStream.cpp                    | 83 +++++++++++-----------
  erizo/src/erizo/SdpInfo.cpp                        |  2 +-
- erizo/src/erizo/WebRtcConnection.cpp               | 66 +++++++++++-----------
+ erizo/src/erizo/WebRtcConnection.cpp               | 45 ++++++------
  erizo/src/erizo/rtp/RtpHeaders.h                   |  2 +-
  .../rtp/SenderBandwidthEstimantionHandler.cpp      |  2 +
- 4 files changed, 38 insertions(+), 34 deletions(-)
+ erizo/src/erizo/thread/IOWorker.cpp                |  4 ++
+ 7 files changed, 78 insertions(+), 65 deletions(-)
 
-diff --git a/erizo/src/erizo/SdpInfo.cpp b/erizo/src/erizo/SdpInfo.cpp
-index dfeb2be..d218b35 100644
---- a/erizo/src/erizo/SdpInfo.cpp
-+++ b/erizo/src/erizo/SdpInfo.cpp
-@@ -21,7 +21,7 @@ namespace erizo {
-   DEFINE_LOGGER(SdpInfo, "SdpInfo");
+diff --git a/erizo/src/erizo/DtlsTransport.cpp b/erizo/src/erizo/DtlsTransport.cpp
+index a725dc7..a11533a 100644
+--- a/erizo/src/erizo/DtlsTransport.cpp
++++ b/erizo/src/erizo/DtlsTransport.cpp
+@@ -11,7 +11,7 @@
+ #include "./SrtpChannel.h"
+ #include "rtp/RtpHeaders.h"
+ #include "./LibNiceConnection.h"
+-#include "./NicerConnection.h"
++// #include "./NicerConnection.h"
  
- 
--  static const char *SDP_IDENTIFIER = "LicodeMCU";
-+  static const char *SDP_IDENTIFIER = "IntelWebRTCMCU";
-   static const char *cand = "a=candidate:";
-   static const char *crypto = "a=crypto:";
-   static const char *group = "a=group:";
-diff --git a/erizo/src/erizo/WebRtcConnection.cpp b/erizo/src/erizo/WebRtcConnection.cpp
-index 2482a4c..b793cb3 100644
---- a/erizo/src/erizo/WebRtcConnection.cpp
-+++ b/erizo/src/erizo/WebRtcConnection.cpp
-@@ -16,24 +16,25 @@
+ using erizo::TimeoutChecker;
+ using erizo::DtlsTransport;
+@@ -108,7 +108,8 @@ DtlsTransport::DtlsTransport(MediaType med, const std::string &transport_name, c
+     iceConfig_.username = username;
+     iceConfig_.password = password;
+     if (iceConfig_.use_nicer) {
+-      ice_ = NicerConnection::create(io_worker_, iceConfig_);
++      // ice_ = NicerConnection::create(io_worker_, this, iceConfig_);
++      ice_.reset(LibNiceConnection::create(iceConfig_));
+     } else {
+       ice_.reset(LibNiceConnection::create(iceConfig_));
+     }
+diff --git a/erizo/src/erizo/MediaStream.cpp b/erizo/src/erizo/MediaStream.cpp
+index 6023e47..a78b057 100644
+--- a/erizo/src/erizo/MediaStream.cpp
++++ b/erizo/src/erizo/MediaStream.cpp
+@@ -19,25 +19,26 @@
  #include "rtp/RtpVP8Parser.h"
  #include "rtp/RtcpAggregator.h"
  #include "rtp/RtcpForwarder.h"
@@ -65,54 +78,187 @@ index 2482a4c..b793cb3 100644
 +// #include "rtp/PliPacerHandler.h"
 +// #include "rtp/RtpPaddingGeneratorHandler.h"
  #include "rtp/RtpUtils.h"
+-#include "rtp/PacketCodecParser.h"
++// #include "rtp/PacketCodecParser.h"
 +#include "WoogeenHandler.h"
  
  namespace erizo {
- DEFINE_LOGGER(WebRtcConnection, "WebRtcConnection");
-@@ -277,24 +278,25 @@ void WebRtcConnection::initializePipeline() {
+ DEFINE_LOGGER(MediaStream, "MediaStream");
+@@ -156,12 +157,6 @@ bool MediaStream::setRemoteSdp(std::shared_ptr<SdpInfo> sdp) {
+     this->rtcp_processor_->setMaxVideoBW(remote_sdp_->videoBandwidth*1000);
+   }
+ 
+-  if (pipeline_initialized_ && pipeline_) {
+-    pipeline_->notifyUpdate();
+-    return true;
+-  }
+-
+-  bundle_ = remote_sdp_->isBundle;
+   auto video_ssrc_list_it = remote_sdp_->video_ssrc_map.find(getLabel());
+   if (video_ssrc_list_it != remote_sdp_->video_ssrc_map.end()) {
+     setVideoSourceSSRCList(video_ssrc_list_it->second);
+@@ -183,6 +178,13 @@ bool MediaStream::setRemoteSdp(std::shared_ptr<SdpInfo> sdp) {
+     setAudioSourceSSRC(kDefaultAudioSinkSSRC);
+   }
+ 
++  if (pipeline_initialized_ && pipeline_) {
++    pipeline_->notifyUpdate();
++    return true;
++  }
++
++  bundle_ = remote_sdp_->isBundle;
++
+   audio_enabled_ = remote_sdp_->hasAudio;
+   video_enabled_ = remote_sdp_->hasVideo;
+ 
+@@ -344,25 +346,26 @@ void MediaStream::initializePipeline() {
    pipeline_->addService(packet_buffer_);
  
-   pipeline_->addFront(PacketReader(this));
+   pipeline_->addFront(std::make_shared<PacketReader>(this));
 +  pipeline_->addFront(WoogeenHandler(this));
  
--  pipeline_->addFront(LayerDetectorHandler());
-+  // pipeline_->addFront(LayerDetectorHandler());
-   pipeline_->addFront(RtcpProcessorHandler());
--  pipeline_->addFront(FecReceiverHandler());
--  pipeline_->addFront(LayerBitrateCalculationHandler());
--  pipeline_->addFront(QualityFilterHandler());
--  pipeline_->addFront(IncomingStatsHandler());
--  pipeline_->addFront(RtpTrackMuteHandler());
--  pipeline_->addFront(RtpSlideShowHandler());
--  pipeline_->addFront(RtpPaddingGeneratorHandler());
--  pipeline_->addFront(PliPacerHandler());
--  pipeline_->addFront(BandwidthEstimationHandler());
--  pipeline_->addFront(RtpPaddingRemovalHandler());
--  pipeline_->addFront(RtcpFeedbackGenerationHandler());
--  pipeline_->addFront(RtpRetransmissionHandler());
--  pipeline_->addFront(SRPacketHandler());
--  pipeline_->addFront(SenderBandwidthEstimationHandler());
--  pipeline_->addFront(OutgoingStatsHandler());
-+  // pipeline_->addFront(FecReceiverHandler());
-+  // pipeline_->addFront(LayerBitrateCalculationHandler());
-+  // pipeline_->addFront(QualityFilterHandler());
-+  // pipeline_->addFront(IncomingStatsHandler());
-+  // pipeline_->addFront(RtpTrackMuteHandler());
-+  // pipeline_->addFront(RtpSlideShowHandler());
-+  // pipeline_->addFront(RtpPaddingGeneratorHandler());
-+  // pipeline_->addFront(PliPacerHandler());
-+  // pipeline_->addFront(BandwidthEstimationHandler());
-+  // pipeline_->addFront(RtpPaddingRemovalHandler());
-+  // pipeline_->addFront(RtcpFeedbackGenerationHandler());
-+  // pipeline_->addFront(RtpRetransmissionHandler());
-+  // pipeline_->addFront(SRPacketHandler());
-+  // pipeline_->addFront(SenderBandwidthEstimationHandler());
-+  // pipeline_->addFront(OutgoingStatsHandler());
+   pipeline_->addFront(std::make_shared<RtcpProcessorHandler>());
+-  pipeline_->addFront(std::make_shared<FecReceiverHandler>());
+-  pipeline_->addFront(std::make_shared<LayerBitrateCalculationHandler>());
+-  pipeline_->addFront(std::make_shared<QualityFilterHandler>());
+-  pipeline_->addFront(std::make_shared<IncomingStatsHandler>());
+-  pipeline_->addFront(std::make_shared<RtpTrackMuteHandler>());
+-  pipeline_->addFront(std::make_shared<RtpSlideShowHandler>());
+-  pipeline_->addFront(std::make_shared<RtpPaddingGeneratorHandler>());
+-  pipeline_->addFront(std::make_shared<PliPacerHandler>());
+-  pipeline_->addFront(std::make_shared<BandwidthEstimationHandler>());
+-  pipeline_->addFront(std::make_shared<RtpPaddingRemovalHandler>());
+-  pipeline_->addFront(std::make_shared<RtcpFeedbackGenerationHandler>());
+-  pipeline_->addFront(std::make_shared<RtpRetransmissionHandler>());
+-  pipeline_->addFront(std::make_shared<SRPacketHandler>());
+-  pipeline_->addFront(std::make_shared<SenderBandwidthEstimationHandler>());
+-  pipeline_->addFront(std::make_shared<LayerDetectorHandler>());
+-  pipeline_->addFront(std::make_shared<OutgoingStatsHandler>());
+-  pipeline_->addFront(std::make_shared<PacketCodecParser>());
++  // pipeline_->addFront(std::make_shared<FecReceiverHandler>());
++  // pipeline_->addFront(std::make_shared<LayerBitrateCalculationHandler>());
++  // pipeline_->addFront(std::make_shared<QualityFilterHandler>());
++  // pipeline_->addFront(std::make_shared<IncomingStatsHandler>());
++  // pipeline_->addFront(std::make_shared<RtpTrackMuteHandler>());
++  // pipeline_->addFront(std::make_shared<RtpSlideShowHandler>());
++  // pipeline_->addFront(std::make_shared<RtpPaddingGeneratorHandler>());
++  // pipeline_->addFront(std::make_shared<PliPacerHandler>());
++  // pipeline_->addFront(std::make_shared<BandwidthEstimationHandler>());
++  // pipeline_->addFront(std::make_shared<RtpPaddingRemovalHandler>());
++  // pipeline_->addFront(std::make_shared<RtcpFeedbackGenerationHandler>());
++  // pipeline_->addFront(std::make_shared<RtpRetransmissionHandler>());
++  // pipeline_->addFront(std::make_shared<SRPacketHandler>());
++  // pipeline_->addFront(std::make_shared<SenderBandwidthEstimationHandler>());
++  // pipeline_->addFront(std::make_shared<LayerDetectorHandler>());
++  // pipeline_->addFront(std::make_shared<OutgoingStatsHandler>());
++  // pipeline_->addFront(std::make_shared<PacketCodecParser>());
  
-   pipeline_->addFront(PacketWriter(this));
+   pipeline_->addFront(std::make_shared<PacketWriter>(this));
    pipeline_->finalize();
+diff --git a/erizo/src/erizo/SdpInfo.cpp b/erizo/src/erizo/SdpInfo.cpp
+index 25f9224..0e62821 100644
+--- a/erizo/src/erizo/SdpInfo.cpp
++++ b/erizo/src/erizo/SdpInfo.cpp
+@@ -22,7 +22,7 @@ namespace erizo {
+   DEFINE_LOGGER(SdpInfo, "SdpInfo");
+ 
+ 
+-  static const char *SDP_IDENTIFIER = "LicodeMCU";
++  static const char *SDP_IDENTIFIER = "IntelWebRTCMCU";
+   static const char *cand = "a=candidate:";
+   static const char *crypto = "a=crypto:";
+   static const char *group = "a=group:";
+diff --git a/erizo/src/erizo/WebRtcConnection.cpp b/erizo/src/erizo/WebRtcConnection.cpp
+index e493842..47ac5a9 100644
+--- a/erizo/src/erizo/WebRtcConnection.cpp
++++ b/erizo/src/erizo/WebRtcConnection.cpp
+@@ -13,29 +13,29 @@
+ #include "MediaStream.h"
+ #include "DtlsTransport.h"
+ #include "SdpInfo.h"
+-#include "bandwidth/MaxVideoBWDistributor.h"
+-#include "bandwidth/TargetVideoBWDistributor.h"
++// #include "bandwidth/MaxVideoBWDistributor.h"
++// #include "bandwidth/TargetVideoBWDistributor.h"
+ #include "rtp/RtpHeaders.h"
+ #include "rtp/RtpVP8Parser.h"
+ #include "rtp/RtcpAggregator.h"
+ #include "rtp/RtcpForwarder.h"
+-#include "rtp/RtpSlideShowHandler.h"
+-#include "rtp/RtpTrackMuteHandler.h"
+-#include "rtp/BandwidthEstimationHandler.h"
+-#include "rtp/FecReceiverHandler.h"
++// #include "rtp/RtpSlideShowHandler.h"
++// #include "rtp/RtpTrackMuteHandler.h"
++// #include "rtp/BandwidthEstimationHandler.h"
++// #include "rtp/FecReceiverHandler.h"
+ #include "rtp/RtcpProcessorHandler.h"
+-#include "rtp/RtpRetransmissionHandler.h"
+-#include "rtp/RtcpFeedbackGenerationHandler.h"
+-#include "rtp/RtpPaddingRemovalHandler.h"
+-#include "rtp/StatsHandler.h"
+-#include "rtp/SRPacketHandler.h"
+-#include "rtp/SenderBandwidthEstimationHandler.h"
+-#include "rtp/LayerDetectorHandler.h"
+-#include "rtp/LayerBitrateCalculationHandler.h"
+-#include "rtp/QualityFilterHandler.h"
+-#include "rtp/QualityManager.h"
+-#include "rtp/PliPacerHandler.h"
+-#include "rtp/RtpPaddingGeneratorHandler.h"
++// #include "rtp/RtpRetransmissionHandler.h"
++// #include "rtp/RtcpFeedbackGenerationHandler.h"
++// #include "rtp/RtpPaddingRemovalHandler.h"
++// #include "rtp/StatsHandler.h"
++// #include "rtp/SRPacketHandler.h"
++// #include "rtp/SenderBandwidthEstimationHandler.h"
++// #include "rtp/LayerDetectorHandler.h"
++// #include "rtp/LayerBitrateCalculationHandler.h"
++// #include "rtp/QualityFilterHandler.h"
++// #include "rtp/QualityManager.h"
++// #include "rtp/PliPacerHandler.h"
++// #include "rtp/RtpPaddingGeneratorHandler.h"
+ #include "rtp/RtpUtils.h"
+ 
+ namespace erizo {
+@@ -54,7 +54,7 @@ WebRtcConnection::WebRtcConnection(std::shared_ptr<Worker> worker, std::shared_p
+   ELOG_INFO("%s message: constructor, stunserver: %s, stunPort: %d, minPort: %d, maxPort: %d",
+       toLog(), ice_config.stun_server.c_str(), ice_config.stun_port, ice_config.min_port, ice_config.max_port);
+   stats_ = std::make_shared<Stats>();
+-  distributor_ = std::unique_ptr<BandwidthDistributionAlgorithm>(new TargetVideoBWDistributor());
++  // distributor_ = std::unique_ptr<BandwidthDistributionAlgorithm>(new TargetVideoBWDistributor());
+   global_state_ = CONN_INITIAL;
+ 
+   trickle_enabled_ = ice_config_.should_trickle;
+@@ -306,6 +306,10 @@ void WebRtcConnection::onRemoteSdpsSetToMediaStreams(std::string stream_id) {
+ 
+ bool WebRtcConnection::processRemoteSdp(std::string stream_id) {
+   ELOG_DEBUG("%s message: processing remote SDP", toLog());
++  // update remote_sdp_'s ssrc map
++  remote_sdp_->audio_ssrc_map = local_sdp_->audio_ssrc_map;
++  remote_sdp_->video_ssrc_map = local_sdp_->video_ssrc_map;
++
+   if (first_remote_sdp_processed_) {
+     setRemoteSdpsToMediaStreams(stream_id);
+     return true;
+@@ -378,7 +382,6 @@ bool WebRtcConnection::processRemoteSdp(std::string stream_id) {
+   return true;
+ }
+ 
+-
+ bool WebRtcConnection::addRemoteCandidate(const std::string &mid, int mLineIndex, const std::string &sdp) {
+   // TODO(pedro) Check type of transport.
+   ELOG_DEBUG("%s message: Adding remote Candidate, candidate: %s, mid: %s, sdpMLine: %d",
+@@ -494,7 +497,7 @@ void WebRtcConnection::onREMBFromTransport(RtcpHeader *chead, Transport *transpo
+     });
+   }
+ 
+-  distributor_->distribute(chead->getREMBBitRate(), chead->getSSRC(), streams, transport);
++  // distributor_->distribute(chead->getREMBBitRate(), chead->getSSRC(), streams, transport);
+ }
+ 
+ void WebRtcConnection::onRtcpFromTransport(std::shared_ptr<DataPacket> packet, Transport *transport) {
 diff --git a/erizo/src/erizo/rtp/RtpHeaders.h b/erizo/src/erizo/rtp/RtpHeaders.h
-index 60d0e25..664cd28 100644
+index 8fbfc74..e0b5ab8 100644
 --- a/erizo/src/erizo/rtp/RtpHeaders.h
 +++ b/erizo/src/erizo/rtp/RtpHeaders.h
 @@ -30,7 +30,7 @@ namespace erizo {
@@ -125,7 +271,7 @@ index 60d0e25..664cd28 100644
  #define CN_8000_PT          13  // CN Audio Codec
  #define CN_16000_PT         105  // CN Audio Codec
 diff --git a/erizo/src/erizo/rtp/SenderBandwidthEstimantionHandler.cpp b/erizo/src/erizo/rtp/SenderBandwidthEstimantionHandler.cpp
-index f77311d..56ec587 100644
+index 8525a16..b2b0d64 100644
 --- a/erizo/src/erizo/rtp/SenderBandwidthEstimantionHandler.cpp
 +++ b/erizo/src/erizo/rtp/SenderBandwidthEstimantionHandler.cpp
 @@ -1,3 +1,4 @@
@@ -138,6 +284,39 @@ index f77311d..56ec587 100644
  }
  }  // namespace erizo
 +*/
+diff --git a/erizo/src/erizo/thread/IOWorker.cpp b/erizo/src/erizo/thread/IOWorker.cpp
+index 62b28dc..05dceef 100644
+--- a/erizo/src/erizo/thread/IOWorker.cpp
++++ b/erizo/src/erizo/thread/IOWorker.cpp
+@@ -1,10 +1,12 @@
+ #include "thread/IOWorker.h"
+ 
++/*
+ extern "C" {
+ #include <r_errors.h>
+ #include <async_wait.h>
+ #include <async_timer.h>
+ }
++*/
+ 
+ #include <chrono>  // NOLINT
+ 
+@@ -23,6 +25,7 @@ void IOWorker::start() {
+ }
+ 
+ void IOWorker::start(std::shared_ptr<std::promise<void>> start_promise) {
++  /*
+   if (started_.exchange(true)) {
+     return;
+   }
+@@ -49,6 +52,7 @@ void IOWorker::start(std::shared_ptr<std::promise<void>> start_promise) {
+       }
+     }
+   }));
++  */
+ }
+ 
+ void IOWorker::task(Task f) {
 -- 
-1.9.1
+2.7.4
 

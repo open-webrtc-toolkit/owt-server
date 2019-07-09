@@ -1,7 +1,7 @@
-From 6428e5af0bf1a0266d857bb823344b5d2ad05253 Mon Sep 17 00:00:00 2001
+From 81afcdbd5e2bbc2836acc417983a2f8cfa17b157 Mon Sep 17 00:00:00 2001
 From: Chen Li1 <li1.chen@intel.com>
 Date: Wed, 7 Feb 2018 13:59:52 +0800
-Subject: [PATCH 3/7] Add generation in candidate
+Subject: [PATCH 3/5] Add generation in candidate
 
 ---
  erizo/src/erizo/SdpInfo.cpp | 25 +++++++++++++++++++++++--
@@ -9,7 +9,7 @@ Subject: [PATCH 3/7] Add generation in candidate
  2 files changed, 25 insertions(+), 3 deletions(-)
 
 diff --git a/erizo/src/erizo/SdpInfo.cpp b/erizo/src/erizo/SdpInfo.cpp
-index 0e62821..83795cc 100644
+index d218b35..c864503 100644
 --- a/erizo/src/erizo/SdpInfo.cpp
 +++ b/erizo/src/erizo/SdpInfo.cpp
 @@ -77,7 +77,7 @@ namespace erizo {
@@ -33,7 +33,7 @@ index 0e62821..83795cc 100644
      return sdp.str();
    }
  
-@@ -1109,6 +1112,24 @@ namespace erizo {
+@@ -1126,6 +1129,24 @@ namespace erizo {
        ELOG_DEBUG("Parsing raddr srlfx or relay %s, %u \n", cand.rAddress.c_str(), cand.rPort);
      }
      cand.sdp = line;
@@ -59,10 +59,10 @@ index 0e62821..83795cc 100644
      return true;
    }
 diff --git a/erizo/src/erizo/SdpInfo.h b/erizo/src/erizo/SdpInfo.h
-index 674f4fc..7ebb3dc 100644
+index 61bab33..236e721 100644
 --- a/erizo/src/erizo/SdpInfo.h
 +++ b/erizo/src/erizo/SdpInfo.h
-@@ -81,7 +81,7 @@ class CryptoInfo {
+@@ -72,7 +72,7 @@ class CryptoInfo {
  class CandidateInfo {
   public:
      CandidateInfo() :
@@ -71,7 +71,7 @@ index 674f4fc..7ebb3dc 100644
      }
      bool isBundle;
      int tag;
-@@ -99,6 +99,7 @@ class CandidateInfo {
+@@ -90,6 +90,7 @@ class CandidateInfo {
      std::string password;
      MediaType mediaType;
      std::string sdp;
@@ -80,5 +80,5 @@ index 674f4fc..7ebb3dc 100644
  
  /**
 -- 
-2.7.4
+1.9.1
 

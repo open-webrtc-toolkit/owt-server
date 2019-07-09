@@ -260,7 +260,7 @@ install_webrtc(){
 install_licode(){
   $INCR_INSTALL && [[ -d ${ROOT}/third_party/licode ]] && echo "licode already installed." && return 0
 
-  local COMMIT="4c92ddb42ad8bd2eab4dfb39bbb49f985b454fc9" #pre-v5.1
+  local COMMIT="8b4692c88f1fc24dedad66b4f40b1f3d804b50ca" #v6
   local LINK_PATH="$ROOT/source/agent/webrtc/webrtcLib"
   pushd ${ROOT}/third_party >/dev/null
   rm -rf licode
@@ -275,9 +275,6 @@ install_licode(){
 
   # APPLY PATCH
   git am $PATHNAME/patches/licode/*.patch
-  # Cherry-pick upstream fix - Use OpenSSL API for DTLS retransmissions (#1145)
-  # from https://github.com/lynckia/licode/commit/71b38f9bf1d582d5afb1dca8f390c281dbe8ae43
-  git cherry-pick "71b38f9bf1d582d5afb1dca8f390c281dbe8ae43"
 
   popd >/dev/null
   popd >/dev/null

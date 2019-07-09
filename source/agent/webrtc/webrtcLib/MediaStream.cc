@@ -47,7 +47,7 @@ using v8::Exception;
 using v8::Value;
 using json = nlohmann::json;
 
-DEFINE_LOGGER(MediaStream, "ErizoAPI.MediaStream");
+DEFINE_LOGGER(MediaStream, "MediaStreamWrapper");
 
 StatCallWorker::StatCallWorker(Nan::Callback *callback, std::weak_ptr<erizo::MediaStream> weak_stream)
     : Nan::AsyncWorker{callback}, weak_stream_{weak_stream}, stat_{""} {

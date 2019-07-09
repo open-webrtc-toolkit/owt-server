@@ -1,0 +1,141 @@
+From b04daf0fdf50adb19cec7adc8f71ac049f3e50db Mon Sep 17 00:00:00 2001
+From: Chen Li1 <li1.chen@intel.com>
+Date: Tue, 9 Jul 2019 15:22:34 +0800
+Subject: [PATCH] Processing RID in RTP extension
+
+---
+ erizo/src/erizo/WebRtcConnection.cpp          |  7 ++++
+ erizo/src/erizo/rtp/RtpExtensionProcessor.cpp | 60 +++++++++++++++++++++++++++
+ erizo/src/erizo/rtp/RtpExtensionProcessor.h   |  6 ++-
+ 3 files changed, 72 insertions(+), 1 deletion(-)
+
+diff --git a/erizo/src/erizo/WebRtcConnection.cpp b/erizo/src/erizo/WebRtcConnection.cpp
+index 453fb19..86e1ff6 100644
+--- a/erizo/src/erizo/WebRtcConnection.cpp
++++ b/erizo/src/erizo/WebRtcConnection.cpp
+@@ -573,6 +573,13 @@ void WebRtcConnection::onTransportData(std::shared_ptr<DataPacket> packet, Trans
+   } else {
+     RtpHeader *head = reinterpret_cast<RtpHeader*> (buf);
+     uint32_t ssrc = head->getSSRC();
++    auto ridSsrc = this->extension_processor_.checkNewRid(packet);
++    if (!ridSsrc.first.empty()) {
++      // find a new rid
++      ELOG_DEBUG("%s message: Discovered New RID: %s, SSRC: %u",
++                 toLog(), ridSsrc.first.c_str(), ridSsrc.second);
++      maybeNotifyWebRtcConnectionEvent(global_state_, std::to_string(ridSsrc.second), ridSsrc.first);
++    }
+     forEachMediaStream([packet, transport, ssrc] (const std::shared_ptr<MediaStream> &media_stream) {
+       if (media_stream->isSourceSSRC(ssrc) || media_stream->isSinkSSRC(ssrc)) {
+         media_stream->onTransportData(packet, transport);
+diff --git a/erizo/src/erizo/rtp/RtpExtensionProcessor.cpp b/erizo/src/erizo/rtp/RtpExtensionProcessor.cpp
+index f5d39e6..a49ed6e 100644
+--- a/erizo/src/erizo/rtp/RtpExtensionProcessor.cpp
++++ b/erizo/src/erizo/rtp/RtpExtensionProcessor.cpp
+@@ -20,6 +20,7 @@ RtpExtensionProcessor::RtpExtensionProcessor(const std::vector<erizo::ExtMap> ex
+   translationMap_["http://www.ietf.org/id/draft-holmer-rmcat-transport-wide-cc-extensions-01"] = TRANSPORT_CC;
+   translationMap_["http://www.webrtc.org/experiments/rtp-hdrext/playout-delay"]= PLAYBACK_TIME;
+   translationMap_["urn:ietf:params:rtp-hdrext:sdes:rtp-stream-id"]= RTP_ID;
++  translationMap_["urn:ietf:params:rtp-hdrext:sdes:repaired-rtp-stream-id"]= REPARIED_RTP_ID;
+   ext_map_video_.fill(UNKNOWN);
+   ext_map_audio_.fill(UNKNOWN);
+ }
+@@ -63,6 +64,65 @@ bool RtpExtensionProcessor::isValidExtension(std::string uri) {
+   return value != ext_mappings_.end() && translationMap_.find(uri) != translationMap_.end();
+ }
+ 
++std::pair<std::string, uint32_t> RtpExtensionProcessor::checkNewRid(std::shared_ptr<DataPacket> p) {
++  const RtpHeader* head = reinterpret_cast<const RtpHeader*>(p->data);
++  uint32_t len = p->length;
++  std::array<RTPExtensions, 10> extMap;
++  std::pair<std::string, uint32_t> ret;
++
++  if (head->getExtension()) {
++    switch (p->type) {
++      case VIDEO_PACKET:
++        extMap = ext_map_video_;
++        break;
++      case AUDIO_PACKET:
++        extMap = ext_map_audio_;
++        break;
++      default:
++        ELOG_WARN("Won't check RID for unknown type packets");
++        return ret;
++        break;
++    }
++
++    uint16_t totalExtLength = head->getExtLength();
++    if (head->getExtId() == 0xBEDE) {
++      char* extBuffer = (char*)&head->extensions;  // NOLINT
++      uint8_t extByte = 0;
++      uint16_t currentPlace = 1;
++      uint8_t extId = 0;
++      uint8_t extLength = 0;
++      while (currentPlace < (totalExtLength*4)) {
++        extByte = (uint8_t)(*extBuffer);
++        extId = extByte >> 4;
++        extLength = extByte & 0x0F;
++        if (extId != 0 && extMap[extId] != 0) {
++          if (extMap[extId] == RTP_ID) {
++            std::string rid;
++            for (uint32_t i = 1; i <= extLength + 1; i++) {
++              rid.push_back(*(extBuffer + i));
++            }
++            auto it = rids_.find(rid);
++            if (it != rids_.end()) {
++              if (it->second != head->getSSRC()) {
++                ELOG_WARN("Conflict SSRC(%u, %u) for RID(%s)",
++                  it->second, head->getSSRC(), rid.c_str());
++              }
++            } else {
++              ELOG_INFO("New RID:%s, SSRC:%u", rid.c_str(), head->getSSRC());
++              ret.first = rid;
++              ret.second = head->getSSRC();
++              rids_.insert(ret);
++            }
++          }
++        }
++        extBuffer = extBuffer + extLength + 2;
++        currentPlace = currentPlace + extLength + 2;
++      }
++    }
++  }
++  return ret;
++}
++
+ uint32_t RtpExtensionProcessor::processRtpExtensions(std::shared_ptr<DataPacket> p) {
+   const RtpHeader* head = reinterpret_cast<const RtpHeader*>(p->data);
+   uint32_t len = p->length;
+diff --git a/erizo/src/erizo/rtp/RtpExtensionProcessor.h b/erizo/src/erizo/rtp/RtpExtensionProcessor.h
+index b47d421..f3d8919 100644
+--- a/erizo/src/erizo/rtp/RtpExtensionProcessor.h
++++ b/erizo/src/erizo/rtp/RtpExtensionProcessor.h
+@@ -20,7 +20,8 @@ enum RTPExtensions {
+   VIDEO_ORIENTATION,    // urn:3gpp:video-orientation
+   TRANSPORT_CC,         // http://www.ietf.org/id/draft-holmer-rmcat-transport-wide-cc-extensions-01
+   PLAYBACK_TIME,        // http:// www.webrtc.org/experiments/rtp-hdrext/playout-delay
+-  RTP_ID                // urn:ietf:params:rtp-hdrext:sdes:rtp-stream-id
++  RTP_ID,               // urn:ietf:params:rtp-hdrext:sdes:rtp-stream-id
++  REPARIED_RTP_ID       // urn:ietf:params:rtp-hdrext:sdes:repaired-rtp-stream-id
+ };
+ 
+ class RtpExtensionProcessor{
+@@ -32,6 +33,8 @@ class RtpExtensionProcessor{
+ 
+   void setSdpInfo(std::shared_ptr<SdpInfo> theInfo);
+   uint32_t processRtpExtensions(std::shared_ptr<DataPacket> p);
++  // return new RID:ssrc in extension if detected
++  std::pair<std::string, uint32_t> checkNewRid(std::shared_ptr<DataPacket> p);
+   VideoRotation getVideoRotation();
+ 
+   std::array<RTPExtensions, 10> getVideoExtensionMap() {
+@@ -50,6 +53,7 @@ class RtpExtensionProcessor{
+   std::array<RTPExtensions, 10> ext_map_video_, ext_map_audio_;
+   std::map<std::string, uint8_t> translationMap_;
+   VideoRotation video_orientation_;
++  std::map<std::string, uint32_t> rids_;
+   uint32_t processAbsSendTime(char* buf);
+   uint32_t processVideoOrientation(char* buf);
+   uint32_t stripExtension(char* buf, int len);
+-- 
+2.7.4
+
