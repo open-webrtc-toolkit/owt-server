@@ -199,7 +199,7 @@ class Connection extends EventEmitter {
             this.ready = true;
             this.emit('status_event', {type: 'ready'}, newStatus);
           } else if (mess && streamId) {
-            log.debug('message: simulcast, rid: ' + streamId + mess);
+            log.debug('message: simulcast, rid: ', streamId, mess);
 
             const ssrc = parseInt(mess);
             if (ssrc > 0) {
@@ -211,7 +211,7 @@ class Connection extends EventEmitter {
 
                 if (index === 0) {
                   // first RID stream
-                  this.wrtc.setVideoSsrcList(this.id, [ssrc]);
+                  this.wrtc.setVideoSsrcList('', [ssrc]);
                   this.wrtc.setRemoteSdp(this.latestSdp, this.id);
                 } else if (index > 0) {
                   // create stream

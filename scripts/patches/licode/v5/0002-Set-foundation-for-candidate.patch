@@ -1,17 +1,17 @@
-From fa61bf5d1cf39fe1a7a013c8d779fc44c89033c2 Mon Sep 17 00:00:00 2001
+From 97a12f7f7d8fc565566cc5c4e2adbabf47208fcd Mon Sep 17 00:00:00 2001
 From: Chen Li1 <li1.chen@intel.com>
 Date: Wed, 7 Feb 2018 13:57:02 +0800
-Subject: [PATCH 2/7] Set foundation for candidate
+Subject: [PATCH 2/5] Set foundation for candidate
 
 ---
  erizo/src/erizo/LibNiceConnection.cpp | 1 +
  1 file changed, 1 insertion(+)
 
 diff --git a/erizo/src/erizo/LibNiceConnection.cpp b/erizo/src/erizo/LibNiceConnection.cpp
-index 938380b..2df4ae1 100644
+index b24dc78..0b1149a 100644
 --- a/erizo/src/erizo/LibNiceConnection.cpp
 +++ b/erizo/src/erizo/LibNiceConnection.cpp
-@@ -286,6 +286,7 @@ bool LibNiceConnection::setRemoteCandidates(const std::vector<CandidateInfo> &ca
+@@ -287,6 +287,7 @@ bool LibNiceConnection::setRemoteCandidates(const std::vector<CandidateInfo> &ca
        continue;
      }
      NiceCandidate* thecandidate = nice_candidate_new(nice_cand_type);
@@ -20,5 +20,5 @@ index 938380b..2df4ae1 100644
      thecandidate->password = strdup(cinfo.password.c_str());
      thecandidate->stream_id = (guint) 1;
 -- 
-2.7.4
+1.9.1
 
