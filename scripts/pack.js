@@ -26,6 +26,7 @@ optParser.addOption('n', 'node-module-path', 'string', 'Specify shared-node-modu
 optParser.addOption('c', 'copy-module-path', 'string', 'Specify copy node modules directory');
 optParser.addOption('b', 'binary', 'boolean', 'Pack binary');
 optParser.addOption('np', 'no-pseudo', 'boolean', 'Whether use pseudo library');
+optParser.addOption('wf', 'with-ffmpeg', 'boolean', 'Whether pack ffmpeg library');
 optParser.addOption('h', 'help', 'boolean', 'Show help');
 
 const options = optParser.parseArgs(process.argv);
@@ -408,7 +409,7 @@ function isLibAllowed(libSrc) {
     'sipLib',
     'librawquic'
   ];
-  if (!options['archive']) {
+  if (!options['archive'] || options['with-ffmpeg']) {
     whiteList.push('libav');
     whiteList.push('libsw');
   }
