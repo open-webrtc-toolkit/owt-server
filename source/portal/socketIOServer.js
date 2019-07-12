@@ -268,6 +268,7 @@ var Connection = function(spec, socket, reconnectionKey, portal, dock) {
 
       if (state === 'connected' && reconnection.enabled) {
         state = 'waiting_for_reconnecting';
+        socket.disconnect(true);
         waiting_for_reconnecting_timer = setTimeout(() => {
           log.info(client_id + ' waiting for reconnecting timeout.');
           forceClientLeave();
