@@ -1,0 +1,1 @@
+The parameters used in case are usually fixed. If you want to change the parameters, you can operate here. Open the file and add the parameters you want. Direct node + file name will generate a set of parameters. Assign the set of parameters to the corresponding variable > in paramsRest. js.
