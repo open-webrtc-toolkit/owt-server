@@ -115,15 +115,13 @@ var Connection = function(spec, socket, reconnectionKey, portal, dock) {
   const forceClientLeave = () => {
     log.debug('forceClientLeave, client_id:', client_id);
     if (client_id) {
-      dock.getClient(client_id)
-      .then((client) => {
-        if (client.connection === that) {
-          client.leave();
-          dock.onClientLeft(client_id);
-        }
-      });
-      state = 'initialized';
-      client_id = undefined;
+      const client = dock.getClient(client_id)
+      if (client && client.connection === that) {
+        client.leave();
+        dock.onClientLeft(client_id);
+        state = 'initialized';
+        client_id = undefined;
+      }
     }
   };
 
@@ -211,6 +209,9 @@ var Connection = function(spec, socket, reconnectionKey, portal, dock) {
         }
       }).then((clt) => {
         client = clt;
+        if (!client) {
+          return Promise.reject('Client does NOT exist');
+        }
         return client.connection.reconnect();
       }).then((connectionInfo) => {
         if (!connectionInfo.reconnection.enabled) {
@@ -404,9 +405,9 @@ var SocketIOServer = function(spec, portal, observer) {
 
   that.getClient = (id) => {
     if (clients[id]) {
-      return Promise.resolve(clients[id]);
+      return clients[id];
     } else {
-      return Promise.reject('Client does NOT exist');
+      return null;
     }
   };
 
