@@ -34,7 +34,7 @@ void sipua_delete(struct sipua_entity *sipua);
 /*****************/
 /*endpoint -> sipua */
 void sipua_call(struct sipua_entity *sipua, sipua_bool audio, sipua_bool video, const char *calleeURI);
-void sipua_hangup(struct sipua_entity *sipua, const char *peer);
+void sipua_hangup(struct sipua_entity *sipua, void *call);
 void sipua_accept(struct sipua_entity *sipua, const char *peer);
 void sipua_set_call_owner(struct sipua_entity *sipua, void *call, void *call_owner);
 

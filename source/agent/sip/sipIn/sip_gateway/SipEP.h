@@ -42,9 +42,9 @@ public:
     bool sipRegister(const std::string& sipServerAddr, const std::string& userName,
                      const std::string& password, const std::string& displayName);
     bool makeCall(const std::string& calleeURI, bool requireAudio, bool requireVideo);
-    void hangup(const std::string& peer);
+    void hangup(const std::string& peer, void *call);
     bool accept(const std::string& peer);
-    void reject(const std::string& peer);
+    void reject(const std::string& peer, void *call);
     void helpSetCallOwner(void *call, void* owner);
     void resetCallOwner(void *call);
 
@@ -52,7 +52,7 @@ public:
     void onPeerRinging(const std::string &peer);
     void onCallEstablished(const std::string& peer, void *call, const char *audioDir, const char *videoDir);
     void onCallClosed(const std::string& peer, const std::string& reason);
-    void onCallLoss(const std::string& peer, const std::string& reason);
+    void onCallLoss(const std::string& peer, const std::string& reason, void *call);
     void onCallUpdated(const std::string& peer, const char *audioDir, const char *videoDir);
     bool onSipIncomingCall(bool requireAudio, bool requireVideo, const std::string& callerIdentity);
     void onSipAudioFmt(const std::string& peer, const std::string& codecName, unsigned int sampleRate);

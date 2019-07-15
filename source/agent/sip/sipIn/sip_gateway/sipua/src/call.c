@@ -103,7 +103,7 @@ static void set_state(struct call *call, enum state st)
 }
 
 extern void ep_call_closed(void *gateway, const char *peer, const char *reason);
-extern void ep_call_loss(void *gateway, const char *peer, const char *reason);
+extern void ep_call_loss(void *gateway, const char *peer, const char *reason, void *call);
 extern int get_video_counter(const struct video *v);
 extern int get_audio_counter(const struct audio *a);
 extern void reset_video_counter(struct video *v);
@@ -121,7 +121,7 @@ static void check_audio_video_rx(void *arg){
     bool audio_stopped = audio_frames == 0;
 
     if(video_stopped && audio_stopped){
-        ep_call_loss((void *)call->ua->owner->ep, call_peeruri(call), "connection loss");
+        ep_call_loss((void *)call->ua->owner->ep, call_peeruri(call), "connection loss", call);
     }else{
         reset_video_counter(call->video);
         reset_audio_counter(call->audio);
