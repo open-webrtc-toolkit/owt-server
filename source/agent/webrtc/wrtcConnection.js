@@ -181,7 +181,7 @@ module.exports = function (spec, on_status, on_mediaUpdate) {
 
     that.close = function () {
         if (wrtc) {
-            wrtc.stop();
+            wrtc.wrtc.stop();
             unbindFramePacketizers();
             unbindFrameConstructors();
             wrtc.close();
