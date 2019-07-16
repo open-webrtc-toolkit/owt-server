@@ -10,11 +10,16 @@ void setBuildStatus(String message, String state) {
 
 pipeline {
     agent any
+    options {
+        buildDiscarder(logRotator(numToKeepStr:'10', artifactNumToKeepStr:'10'))
+  }
+
     stages {
         stage('Build package') {
+            options { timeout(time:20,unit:'MINUTES') }
             steps {
                 podTemplate(name: 'pack-server', label: 'pack-mcu-server', containers: [
-                    containerTemplate(name: 'pack-on-centos-server', image: "$env.PACK_IMAGE",  ttyEnabled: true, alwaysPullImage: true, privileged: true, resourceRequestCpu: '7000m', resourceLimitCpu: '8000m', network: 'host', command: 'cat')
+                    containerTemplate(name: 'pack-on-centos-server', image: "$env.JS_MCU_BUILD",  ttyEnabled: true, alwaysPullImage: true, privileged: true, resourceRequestCpu: '5000m', resourceLimitCpu: '6000m', network: 'host', command: 'cat')
                 ]){
                     node ('pack-mcu-server') {
                       container ('pack-on-centos-server') {
@@ -26,11 +31,17 @@ pipeline {
         }
 
         stage('Start test') {
+            options { timeout(time:40,unit:'MINUTES') }
+            when {
+              expression {
+                currentBuild.result == null || currentBuild.result == 'SUCCESS' 
+              }
+            }
             parallel {
                 stage('API test') {
                     steps {
                         podTemplate(name: 'api-test-server', label: 'api-test-server', cloud: 'kubernetes', containers: [
-                            containerTemplate(name: 'api-test-server', image: "$env.TEST_IMAGE",  ttyEnabled: true, alwaysPullImage: true, privileged: true, resourceRequestCpu: '3000m', resourceLimitCpu: '4000m', network: 'host', command: 'cat'),
+                            containerTemplate(name: 'api-test-server', image: "$env.JSMCU_TEST_IMAGE",  ttyEnabled: true, alwaysPullImage: true, privileged: true, resourceRequestCpu: '7000m', resourceLimitCpu: '8000m',resourceLimitMemory: '9.0Gi', resourceRequestMemory: '8.0Gi', network: 'host', command: 'cat'),
                             ]) {
                             node('api-test-server') {
                                 container('api-test-server') {
@@ -45,8 +56,8 @@ pipeline {
 
                 stage('Subscribe test') {
                     steps {
-                        podTemplate(name:'subscribe-test-server', label: 'subscribe-test-server', cloud: 'kubernetes', containers: [
-                            containerTemplate(name: 'subscribe-test-server', image: "$env.TEST_IMAGE",  ttyEnabled: true, alwaysPullImage: true, privileged: true, resourceRequestCpu: '3000m', resourceLimitCpu: '4000m', network: 'host', command: 'cat'),
+                        podTemplate(name:'subscribe-test-server', label: 'subscribe-test-server', cloud: 'kubernetes',nodeSelector: 'slave=webrtc-37', containers: [
+                            containerTemplate(name: 'subscribe-test-server', image: "$env.JSMCU_TEST_IMAGE",  ttyEnabled: true, alwaysPullImage: true, privileged: true, resourceRequestCpu: '7000m', resourceLimitCpu: '8000m',resourceLimitMemory: '9.0Gi', resourceRequestMemory: '8.0Gi', network: 'host', command: 'cat'),
                             ]) {
                             node('subscribe-test-server') {
                                 container('subscribe-test-server') {
@@ -71,3 +82,4 @@ pipeline {
         }
     }
 }
+
