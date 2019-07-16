@@ -17,9 +17,7 @@ In the repository root, use one of following commands to install dependency.
 - Non-interactive mode: `scripts/installDepsUnattended.sh`
 In interactive mode, you need type "yes" to continue installation several times and in non-interactive, the installation continues automatically.
 
-## How to build release package
 
-### Requirements
 The media server can be built on following platforms:
 1. Ubuntu 18.04
 2. CentOS 7.6
