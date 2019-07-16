@@ -13,7 +13,7 @@ var path = require('path');
 var logger = require('../logger').logger;
 var cipher = require('../cipher');
 // Logger
-var log = logger.getLogger('tWrtcConnection');
+var log = logger.getLogger('WrtcConnection');
 var transform = require('sdp-transform');
 
 const { Connection } = require('./connection');
@@ -59,7 +59,6 @@ module.exports = function (spec, on_status, on_mediaUpdate) {
      * Given a WebRtcConnection waits for the state CANDIDATES_GATHERED for set remote SDP.
      */
     var initWebRtcConnection = function (wrtc) {
-        log.info('init web rtc conn:', wrtc.id);
         wrtc.on('status_event', (evt, status) => {
             if (evt.type === 'answer') {
                 let message = evt.sdp;
@@ -336,7 +335,6 @@ module.exports = function (spec, on_status, on_mediaUpdate) {
     wrtc = createWrtc(wrtcId, threadPool, ioThreadPool, 'rtp_media_config', ipAddresses);
     wrtc.addMediaStream(wrtc.id, {label: ''}, direction === 'in');
     stream = wrtc.getMediaStream(wrtc.id);
-    log.info('after add stream:', wrtc.id);
 
     if (direction === 'in') {
         bindFrameConstructors();
@@ -345,7 +343,6 @@ module.exports = function (spec, on_status, on_mediaUpdate) {
     if (direction === 'out') {
         bindFramePacketizers();
     }
-    log.info('before init', wrtc.id);
 
     initWebRtcConnection(wrtc);
 
