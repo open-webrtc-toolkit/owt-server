@@ -265,9 +265,6 @@ NAN_METHOD(WebRtcConnection::close) {
   if (!uv_is_closing(reinterpret_cast<uv_handle_t*>(&obj->async_))) {
     uv_close(reinterpret_cast<uv_handle_t*>(&obj->async_), NULL);
   }
-  if (!uv_is_closing(reinterpret_cast<uv_handle_t*>(&obj->asyncStats_))) {
-    uv_close(reinterpret_cast<uv_handle_t*>(&obj->asyncStats_), NULL);
-  }
 }
 
 NAN_METHOD(WebRtcConnection::init) {
