@@ -16,7 +16,6 @@ pipeline {
 
     stages {
         stage('Build package') {
-            options { timeout(time:20,unit:'MINUTES') }
             steps {
                 podTemplate(name: 'pack-server', label: 'pack-mcu-server', containers: [
                     containerTemplate(name: 'pack-on-centos-server', image: "$env.JS_MCU_BUILD",  ttyEnabled: true, alwaysPullImage: true, privileged: true, resourceRequestCpu: '5000m', resourceLimitCpu: '6000m', network: 'host', command: 'cat')
@@ -31,12 +30,6 @@ pipeline {
         }
 
         stage('Start test') {
-            options { timeout(time:40,unit:'MINUTES') }
-            when {
-              expression {
-                currentBuild.result == null || currentBuild.result == 'SUCCESS' 
-              }
-            }
             parallel {
                 stage('API test') {
                     steps {
