@@ -35,7 +35,7 @@ const addon = require('../webrtcLib/build/Release/webrtc');
 const cipher = require('../cipher');
 const logger = require('../logger').logger;
 logger.objectToLog = JSON.stringify;
-const log = logger.getLogger('wConnection');
+const log = logger.getLogger('Connection');
 
 const CONN_INITIAL        = 101;
 const CONN_STARTED        = 102;
@@ -135,10 +135,6 @@ class Connection extends EventEmitter {
     if (!this.latestSdp) {
       return;
     }
-    // this.wrtc.localDescription = new SessionDescription(this.wrtc.getLocalDescription());
-    // const sdp = this.wrtc.localDescription.getSdp(this.sessionVersion++);
-    // let message = sdp.toString();
-    // message = message.replace(this.options.privateRegexp, this.options.publicIP);
 
     const info = {type: this.options.createOffer || forceOffer ? 'offer' : 'answer', sdp: this.latestSdp};
     log.debug(`message: _maybeSendAnswer sending event, type: ${info.type}, streamId: ${streamId}`);
