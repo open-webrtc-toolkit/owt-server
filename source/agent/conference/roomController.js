@@ -1371,12 +1371,14 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
         return Promise.all(old_st.spread.map(function(target_node) {
             return new Promise(function (res, rej) {
                 shrinkStream(streamId, target_node.target);
-                spreadStream(streamId, target_node.target, 'participant', function() {
-                    res('ok');
-                }, function (reason) {
-                    log.warn('Failed in spreading video stream. reason:', reason);
-                    rej(reason);
-                });
+                setTimeout(() => {
+                    spreadStream(streamId, target_node.target, 'participant', function() {
+                        res('ok');
+                    }, function (reason) {
+                        log.warn('Failed in spreading video stream. reason:', reason);
+                        rej(reason);
+                    });
+                }, 20);
             });
         }))
         .then(function () {
