@@ -51,7 +51,7 @@ void SipGateway::hangup(const std::string& peer)
 {
     const CallInfo *call = getCallInfoByPeerURI(peer);
     if (call != NULL)
-        m_sipEP->hangup(peer);
+        m_sipEP->hangup(peer, call->sipCall);
 }
 
 // The main thread
@@ -70,7 +70,8 @@ bool SipGateway::accept(const std::string& peer)
 // The main thread
 void SipGateway::reject(const std::string& peer)
 {
-    m_sipEP->reject(peer);
+    const CallInfo *call = getCallInfoByPeerURI(peer);
+    m_sipEP->reject(peer, (call ? call->sipCall : NULL));
 }
 
 void SipGateway::helpSetCallOwner(void *call, void *owner) const

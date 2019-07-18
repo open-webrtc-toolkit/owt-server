@@ -282,14 +282,14 @@ void sipua_call(struct sipua_entity *sipua, sipua_bool audio, sipua_bool video, 
 	return;
 }
 
-void sipua_hangup(struct sipua_entity *sipua, const char* peer)
+void sipua_hangup(struct sipua_entity *sipua, void* call)
 {
 	if (!sipua || !sipua->mq) {
 		warning("sipua entity NULL!\n");
 		return;
 	}
 
-	mqueue_push(sipua->mq, SIPUA_HANGUP, (void*)peer);
+	mqueue_push(sipua->mq, SIPUA_HANGUP, call);
 	return;
 }
 

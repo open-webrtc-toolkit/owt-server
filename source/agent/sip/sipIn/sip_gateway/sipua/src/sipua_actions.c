@@ -23,9 +23,9 @@ static void sipua_do_call(void *data, void *arg)
 static void sipua_do_hangup(void *data, void *arg)
 {
 	struct uag *uag = (struct uag *)arg;
-	(void)data;
+	struct call *call = (data ? (struct call *)data : NULL);
 
-	ua_hangup(uag_current(uag), NULL, 0, NULL);
+	ua_hangup(uag_current(uag), call, 0, NULL);
 	return;
 }
 
