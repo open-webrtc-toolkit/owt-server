@@ -56,7 +56,7 @@ pipeline {
 
                 stage('Subscribe test') {
                     steps {
-                        podTemplate(name:'subscribe-test-server', label: 'subscribe-test-server', cloud: 'kubernetes',nodeSelector: 'slave=webrtc-37', containers: [
+                        podTemplate(name:'subscribe-test-server', label: 'subscribe-test-server', cloud: 'kubernetes',containers: [
                             containerTemplate(name: 'subscribe-test-server', image: "$env.JSMCU_TEST_IMAGE",  ttyEnabled: true, alwaysPullImage: true, privileged: true, resourceRequestCpu: '7000m', resourceLimitCpu: '8000m',resourceLimitMemory: '9.0Gi', resourceRequestMemory: '8.0Gi', network: 'host', command: 'cat'),
                             ]) {
                             node('subscribe-test-server') {
