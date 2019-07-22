@@ -802,7 +802,7 @@ var Conference = function (rpcClient, selfRpcId) {
       return Promise.reject('Video format unacceptable');
     }
 
-    var isReadded = !!streams[id];
+    var isReadded = !!(streams[id] && !streams[id].isInConnecting);
 
     return new Promise((resolve, reject) => {
       roomController && roomController.publish(info.owner, id, locality, media, info.type, function() {
