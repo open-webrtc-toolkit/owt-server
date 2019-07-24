@@ -8,9 +8,9 @@
 
 namespace mcu {
 
-uint32_t AudioTime::sTimestampOffset = 0;
+uint64_t AudioTime::sTimestampOffset = 0;
 
-void AudioTime::setTimestampOffset(uint32_t offset)
+void AudioTime::setTimestampOffset(uint64_t offset)
 {
     sTimestampOffset = offset;
 }

@@ -11,13 +11,12 @@
 namespace mcu {
 
 class AudioTime {
-
 public:
     static int64_t currentTime(void); //Millisecond
-    static void setTimestampOffset(uint32_t offset);
+    static void setTimestampOffset(uint64_t offset);
 
 private:
-    static uint32_t sTimestampOffset;
+    static uint64_t sTimestampOffset;
 
 };
 
