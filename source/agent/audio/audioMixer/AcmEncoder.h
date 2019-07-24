@@ -57,6 +57,8 @@ private:
 
     uint32_t m_incomingFrameCount;
     boost::shared_ptr<AudioFrame> m_frame;
+
+    uint32_t m_lastTimestamp;
 };
 
 } /* namespace mcu */

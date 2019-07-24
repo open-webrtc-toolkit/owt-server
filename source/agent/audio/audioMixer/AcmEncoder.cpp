@@ -21,6 +21,7 @@ AcmEncoder::AcmEncoder(const FrameFormat format)
     , m_valid(false)
     , m_running(false)
     , m_incomingFrameCount(0)
+    , m_lastTimestamp(0)
 {
     AudioCodingModule::Config config;
     m_audioCodingModule.reset(AudioCodingModule::Create(config));
@@ -175,7 +176,17 @@ int32_t AcmEncoder::SendData(FrameType frame_type,
     frame.additionalInfo.audio.channels = getAudioChannels(frame.format);
     frame.payload = const_cast<uint8_t*>(payload_data);
     frame.length = payload_len_bytes;
-    frame.timeStamp = (AudioTime::currentTime()) * m_rtpSampleRate / 1000;
+
+    int64_t computedTimestamp =  AudioTime::currentTime() * m_rtpSampleRate / 1000; 
+    int64_t sizeFor10Ms = m_rtpSampleRate * 10 / 1000 * frame.additionalInfo.audio.channels; //size for 10 ms, such as 48000 * 10/1000 * 2 = 960
+    int64_t tolerance = sizeFor10Ms * 10; //100ms
+    if (m_lastTimestamp > 0 && abs((computedTimestamp - m_lastTimestamp) - sizeFor10Ms) <= tolerance) { //for normal case, computedTimestamp - m_lastTimestamp should equlas to sizeFor10Ms
+        frame.timeStamp = m_lastTimestamp + sizeFor10Ms;
+    } else {
+        frame.timeStamp = computedTimestamp;
+        ELOG_INFO("sendData(), this: %p, timestamp: %ud, diff(%ld) is bigger than tolerance(%ld), current diff: %ld", (void *)this, frame.timeStamp, computedTimestamp - m_lastTimestamp - sizeFor10Ms, tolerance, computedTimestamp - m_lastTimestamp);    
+    }
+    m_lastTimestamp = frame.timeStamp;
 
     ELOG_TRACE_T("deliverFrame(%s), sampleRate(%d), channels(%d), timeStamp(%d), length(%d), %s",
             getFormatStr(frame.format),
