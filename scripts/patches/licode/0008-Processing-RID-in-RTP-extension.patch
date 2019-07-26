@@ -1,19 +1,27 @@
-From b04daf0fdf50adb19cec7adc8f71ac049f3e50db Mon Sep 17 00:00:00 2001
+From e6a3a705652079c60363fd6384ad9eb9e28991ec Mon Sep 17 00:00:00 2001
 From: Chen Li1 <li1.chen@intel.com>
 Date: Tue, 9 Jul 2019 15:22:34 +0800
 Subject: [PATCH] Processing RID in RTP extension
 
 ---
- erizo/src/erizo/WebRtcConnection.cpp          |  7 ++++
+ erizo/src/erizo/WebRtcConnection.cpp          |  8 ++++
  erizo/src/erizo/rtp/RtpExtensionProcessor.cpp | 60 +++++++++++++++++++++++++++
  erizo/src/erizo/rtp/RtpExtensionProcessor.h   |  6 ++-
- 3 files changed, 72 insertions(+), 1 deletion(-)
+ 3 files changed, 73 insertions(+), 1 deletion(-)
 
 diff --git a/erizo/src/erizo/WebRtcConnection.cpp b/erizo/src/erizo/WebRtcConnection.cpp
-index 453fb19..86e1ff6 100644
+index 453fb19..6eee9a8 100644
 --- a/erizo/src/erizo/WebRtcConnection.cpp
 +++ b/erizo/src/erizo/WebRtcConnection.cpp
-@@ -573,6 +573,13 @@ void WebRtcConnection::onTransportData(std::shared_ptr<DataPacket> packet, Trans
+@@ -157,6 +157,7 @@ bool WebRtcConnection::createOffer(bool video_enabled, bool audioEnabled, bool b
+ 
+ void WebRtcConnection::addMediaStream(std::shared_ptr<MediaStream> media_stream) {
+   asyncTask([media_stream] (std::shared_ptr<WebRtcConnection> connection) {
++    boost::mutex::scoped_lock lock(connection->update_state_mutex_);
+     ELOG_DEBUG("%s message: Adding mediaStream, id: %s", connection->toLog(), media_stream->getId().c_str());
+     connection->media_streams_.push_back(media_stream);
+   });
+@@ -573,6 +574,13 @@ void WebRtcConnection::onTransportData(std::shared_ptr<DataPacket> packet, Trans
    } else {
      RtpHeader *head = reinterpret_cast<RtpHeader*> (buf);
      uint32_t ssrc = head->getSSRC();
