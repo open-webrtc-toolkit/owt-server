@@ -104,6 +104,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                         kfi: Number(KeyFrameInterval) | 'unspecified',
                         subscribers: [terminalID],
                         status: 'active' | 'inactive' | undefined} | undefined,
+                        simulcast: [{id: simId, resolution: res, ...}],
                 spread: [NodeRpcID]
                }
      }
@@ -1095,6 +1096,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
         log.debug('trying recycleTemporaryVideo:', stream_id);
         if (streams[stream_id] &&
             streams[stream_id].video &&
+            streams[stream_id].video.subscribers &&
             streams[stream_id].video.subscribers.length === 0) {
 
             if (terminals[streams[stream_id].owner] && (terminals[streams[stream_id].owner].type === 'vmixer' || terminals[streams[stream_id].owner].type === 'vxcoder')) {
@@ -1164,6 +1166,33 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
         }
     };
 
+    var isVideoMatch = function (videoInfo, format, resolution, framerate, bitrate, keyFrameInterval) {
+        if (isVideoFmtCompatible(video_format_obj(videoInfo.format), video_format_obj(format)) &&
+            (resolution === 'unspecified' || isResolutionEqual(videoInfo.resolution, resolution)) &&
+            (framerate === 'unspecified' || videoInfo.framerate === framerate) &&
+            (bitrate === 'unspecified' || videoInfo.bitrate === bitrate) &&
+            (keyFrameInterval === 'unspecified' || videoInfo.kfi === keyFrameInterval)) {
+            return true;
+        }
+        return false;
+    };
+
+    var simulcastVideoMatch = function (stream_id, format, resolution, framerate, bitrate, keyFrameInterval) {
+        var matchedId;
+        var videoInfo = {};
+        if (streams[stream_id] && streams[stream_id].video &&
+            streams[stream_id].video.simulcast) {
+            for (const simInfo of streams[stream_id].video.simulcast) {
+                const combinedVideo = Object.assign({}, {format: streams[stream_id].video.format}, simInfo);
+                if (isVideoMatch(combinedVideo, format, resolution, framerate, bitrate, keyFrameInterval)) {
+                    matchedId = simInfo.id;
+                    break;
+                }
+            }
+        }
+        return matchedId;
+    };
+
     var getVideoStream = function (stream_id, format, resolution, framerate, bitrate, keyFrameInterval, on_ok, on_error) {
         log.debug('getVideoStream, stream:', stream_id, 'format:', format, 'resolution:', resolution, 'framerate:', framerate, 'bitrate:', bitrate, 'keyFrameInterval', keyFrameInterval);
         var mixView = getViewOfMixStream(stream_id);
@@ -1174,12 +1203,13 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
             }, on_error);
         } else if (streams[stream_id]) {
             if (streams[stream_id].video) {
-                if (isVideoFmtCompatible(video_format_obj(streams[stream_id].video.format), video_format_obj(format)) &&
-                    (resolution === 'unspecified' || (streams[stream_id].video.resolution && (resolution.width === streams[stream_id].video.resolution.width) && (resolution.height === streams[stream_id].video.resolution.height))) &&
-                    (framerate === 'unspecified' || (streams[stream_id].video.framerate && (streams[stream_id].video.framerate === framerate))) &&
-                    (bitrate === 'unspecified' || (streams[stream_id].video.bitrate && (streams[stream_id].video.bitrate === bitrate))) &&
-                    (keyFrameInterval === 'unspecified' || (streams[stream_id].video.kfi && (streams[stream_id].video.kfi === keyFrameInterval)))) {
+                const videoInfo = streams[stream_id].video;
+                const matchedSimId = simulcastVideoMatch(stream_id, format, resolution, framerate, bitrate, keyFrameInterval);
+                if (isVideoMatch(videoInfo, format, resolution, framerate, bitrate, keyFrameInterval)) {
                     on_ok(stream_id);
+                } else if (matchedSimId) {
+                    log.debug('match simulcast stream:', matchedSimId);
+                    on_ok(matchedSimId);
                 } else {
                     getTranscodedVideo(format, resolution, framerate, bitrate, keyFrameInterval, stream_id, function (streamID) {
                         on_ok(streamID);
@@ -1211,7 +1241,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                 removeSubscriptions(stream_id);
                 terminals[terminal_id] && terminals[terminal_id].published.splice(i, 1);
             }
-
+            streams[stream_id].close && stream[stream_id].close();
             delete streams[stream_id];
         } else {
             log.info('try to unpublish an unexisting stream:', stream_id);
@@ -2241,9 +2271,41 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
 
     that.updateStreamInfo = function (streamId, update) {
         if (streams[streamId]) {
-            if (update &&  update.video && update.video.parameters && update.video.parameters.resolution) {
+            if (update.video && update.video.parameters && update.video.parameters.resolution) {
                 streams[streamId].video.resolution = update.video.parameters.resolution;
             }
+            if (update.simIndex >= 0 && streams[streamId].video) {
+                if (!streams[streamId].video.simulcast) {
+                    streams[streamId].video.simulcast = [];
+                }
+                if (!streams[streamId].video.simulcast[update.simIndex]) {
+                    streams[streamId].video.simulcast[update.simIndex] = {};
+                }
+                if (update.simId) {
+                    streams[streamId].video.simulcast[update.simIndex].id = update.simId;
+                    // used for spreading
+                    streams[update.simId] = {
+                        owner: streams[streamId].owner,
+                        video: {},
+                        simulcastDefault: streamId
+                    };
+                }
+                if (update.info && update.info.video &&
+                    update.info.video.parameters &&
+                    update.info.video.parameters.resolution) {
+                    streams[streamId].video.simulcast[update.simIndex].resolution =
+                        update.info.video.parameters.resolution;
+                }
+                if (!streams[streamId].close) {
+                    // add a simulcast close function
+                    streams[streamId].close = () => {
+                        streams[streamId].video.simulcast.forEach((sim) => {
+                            delete streams[sim.id];
+                        });
+                    };
+                }
+            }
+            log.debug('updated stream info', JSON.stringify(streams[streamId]));
         }
     };
 

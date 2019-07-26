@@ -150,7 +150,8 @@ module.exports = function (spec, on_status, on_mediaUpdate) {
     videoFrameConstructor,
     videoFramePacketizer,
     simulcastConstructors = [],
-    streams = [],
+    stream,
+    simStreams = [],
     wrtc;
 
   /*
@@ -193,9 +194,7 @@ module.exports = function (spec, on_status, on_mediaUpdate) {
         // bind video frame constructor here for simulcast stream
         if (video) {
           log.debug('start binding video frame constructor:', evt.rid);
-          const simIndex = streams.length;
-          // notify room about the simulcast stream
-          on_mediaUpdate(JSON.stringify({simIndex: simIndex}));
+          const simIndex = simStreams.length;
           const vfc = new VideoFrameConstructor((mediaUpdate) => {
             const data = {
               simIndex,
@@ -203,12 +202,14 @@ module.exports = function (spec, on_status, on_mediaUpdate) {
             };
             on_mediaUpdate(JSON.stringify(data));
           });
-          vfc.bindTransport(wrtc.getMediaStream(evt.rid));
           simulcastConstructors.push(vfc);
-          streams.push(new WrtcStream({
+          simStreams.push(new WrtcStream({
             audioFramePacketizer,
             videoFrameConstructor: vfc
           }));
+          vfc.bindTransport(wrtc.getMediaStream(evt.rid));
+          // notify room about the simulcast stream
+          on_mediaUpdate(JSON.stringify({simIndex: simIndex}));
         }
       }
     });
@@ -295,17 +296,17 @@ module.exports = function (spec, on_status, on_mediaUpdate) {
       }
     }
 
-    streams.push(new WrtcStream({
+    stream = new WrtcStream({
       audioFrameConstructor,
       videoFrameConstructor,
       audioFramePacketizer,
       videoFramePacketizer
-    }));
+    });
   };
 
   var callOnDefaultStream = function (funcName, ...args) {
-    if (streams[0]) {
-      return streams[0][funcName](...args);
+    if (stream) {
+      return stream[funcName](...args);
     } else {
       log.error('WrtcStream not ready');
       return;
@@ -333,7 +334,10 @@ module.exports = function (spec, on_status, on_mediaUpdate) {
   };
 
   that.getAlternative = function (num) {
-    return streams[num];
+    if (!simStreams[num]) {
+      log.warn('No simulcast index:', wrtcId, num);
+    }
+    return simStreams[num];
   };
 
   that.close = function () {

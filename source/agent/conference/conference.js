@@ -856,16 +856,33 @@ var Conference = function (rpcClient, selfRpcId) {
                   (streams[streamId].media.video.parameters.resolution.width !== info.video.parameters.resolution.width) ||
                   (streams[streamId].media.video.parameters.resolution.height !== info.video.parameters.resolution.height)) {
                 streams[streamId].media.video.parameters.resolution = info.video.parameters.resolution;
-                if (room_config.transcoding.video && room_config.transcoding.video.parameters && room_config.transcoding.video.parameters.resolution) {
+                if (room_config.transcoding.video && room_config.transcoding.video.parameters &&
+                    room_config.transcoding.video.parameters.resolution &&
+                    !streams[streamId].media.video.alternative) {
                   streams[streamId].media.video.optional = (streams[streamId].media.video.optional || {});
                   streams[streamId].media.video.optional.parameters = (streams[streamId].media.video.optional.parameters || {});
-
                   streams[streamId].media.video.optional.parameters.resolution = room_config.mediaOut.video.parameters.resolution.map((x) => {return calcResolution(x, streams[streamId].media.video.parameters.resolution)}).filter((reso, pos, self) => {return ((reso.width < streams[streamId].media.video.parameters.resolution.width) && (reso.height < streams[streamId].media.video.parameters.resolution.height)) && (self.findIndex((r) => {return r.width === reso.width && r.height === reso.height;}) === pos);});
                 }
               }
             }
           }
           room_config.notifying.streamChange && sendMsg('room', 'all', 'stream', {id: streamId, status: 'update', data: {field: '.', value: streams[streamId]}});
+        }
+        if (typeof info.simIndex === 'number') {
+          const simInfo = info.info;
+          if (simInfo && simInfo.video && streams[streamId].media.video) {
+            let alternative = streams[streamId].media.video.alternative || [];
+            alternative[info.simIndex] = alternative[info.simIndex] || { parameters: {} };
+            if (simInfo.video.parameters) {
+              alternative[info.simIndex].parameters = simInfo.video.parameters;
+            }
+            streams[streamId].media.video.alternative = alternative;
+            if (streams[streamId].media.video.optional) {
+              delete streams[streamId].media.video.optional;
+            }
+            room_config.notifying.streamChange &&
+              sendMsg('room', 'all', 'stream', {id: streamId, status: 'update', data: {field: '.', value: streams[streamId]}});
+          }
         }
       }
     }
@@ -1868,7 +1885,7 @@ var Conference = function (rpcClient, selfRpcId) {
   };
 
   that.onMediaUpdate = (sessionId, direction, mediaUpdate) => {
-    log.debug('onMediaUpdate, sessionId:', sessionId, 'direction:', direction, 'mediaUpdate:', mediaUpdate);
+    log.info('onMediaUpdate, sessionId:', sessionId, 'direction:', direction, 'mediaUpdate:', JSON.stringify(mediaUpdate));
     if (direction === 'in' && streams[sessionId] && (streams[sessionId].type === 'forward')) {
       updateStreamInfo(sessionId, mediaUpdate);
       roomController && roomController.updateStreamInfo(sessionId, mediaUpdate);

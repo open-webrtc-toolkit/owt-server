@@ -34,12 +34,45 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
     var connections = new Connections;
     var internalConnFactory = new InternalConnectionFactory;
 
+    // connectionId => [simId0, simId1, ...]
+    var simConnectionMap = new Map();
+    // simId => {connctionId, simIndex}
+    var simIndexMap = new Map();
+
+    // simId is a constructed streamId to identify simulcast stream in controller
+    // simIndex is the index of specific stream in wrtcConnection
+    var addSimulcast = (connectionId, simIndex, controller) => {
+        var simId, simIds;
+        if (!simConnectionMap.has(connectionId)) {
+            simConnectionMap.set(connectionId, []);
+        }
+        simIds = simConnectionMap.get(connectionId);
+        if (!simIds[simIndex]) {
+            // generate a streamId for alternative simulcast stream
+            simId = connectionId + '-' + simIndex;
+            simIds[simIndex] = simId;
+            simConnectionMap.set(connectionId, simIds);
+            simIndexMap.set(simId, {connectionId, simIndex});
+
+            if (connections.getConnection(connectionId)) {
+                const conn = connections.getConnection(connectionId).connection;
+                const alternative = conn.getAlternative(simIndex);
+                connections.addConnection(simId, 'webrtc', controller, alternative, 'in');
+            }
+        }
+        log.debug('add sim Id:', simIds[simIndex]);
+        return simIds[simIndex];
+    };
+
     var notifyStatus = (controller, sessionId, direction, status) => {
         rpcClient.remoteCast(controller, 'onSessionProgress', [sessionId, direction, status]);
     };
 
     var notifyMediaUpdate = (controller, sessionId, direction, mediaUpdate) => {
-        rpcClient.remoteCast(controller, 'onMediaUpdate', [sessionId, direction, JSON.parse(mediaUpdate)]);
+        if (typeof mediaUpdate.simIndex === 'number') {
+            mediaUpdate.simId = addSimulcast(sessionId, mediaUpdate.simIndex, controller);
+        }
+        rpcClient.remoteCast(controller, 'onMediaUpdate', [sessionId, direction, mediaUpdate]);
     };
 
     var createWebRTCConnection = function (connectionId, direction, options, callback) {
@@ -54,7 +87,7 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
         }, function (status) {
             notifyStatus(options.controller, connectionId, direction, status);
         }, function (mediaUpdate) {
-            notifyMediaUpdate(options.controller, connectionId, direction, mediaUpdate);
+            notifyMediaUpdate(options.controller, connectionId, direction, JSON.parse(mediaUpdate));
         });
 
         return connection;
@@ -119,6 +152,13 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
 
     that.unpublish = function (connectionId, callback) {
         log.debug('unpublish, connectionId:', connectionId);
+        if (simConnectionMap.has(connectionId)) {
+            const simIds = simConnectionMap.get(connectionId);
+            for (const simId of simIds) {
+                connections.removeConnection(simId)
+                    .catch((reason) => log.warn('remove simulcast:', reason));
+            }
+        }
         var conn = connections.getConnection(connectionId);
         connections.removeConnection(connectionId).then(function(ok) {
             if (conn && conn.type === 'internal') {
