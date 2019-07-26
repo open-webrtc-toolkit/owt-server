@@ -149,7 +149,6 @@ function filterH264Payload(sdpObj, formatPreference = {}, direction) {
 function filterVideoPayload(sdpObj, videoPreference = {}) {
   var preferred = videoPreference.preferred;
   var optionals = videoPreference.optional || [];
-  var finalFmt = null;
   var selectedPayload = -1;
   var relatedPayloads = new Set();
   var reservedCodecs = ['red', 'ulpfec'];
@@ -175,10 +174,12 @@ function filterVideoPayload(sdpObj, videoPreference = {}) {
         }
       }
       // Get related video payload rtx
-      for (i = 0; i < mediaInfo.fmtp.length; i++) {
-        fmtp = mediaInfo.fmtp[i];
-        if (fmtp.config.indexOf(`apt=${selectedPayload}`) > -1) {
-          relatedPayloads.add(fmtp.payload);
+      if (!mediaInfo.simulcast) {
+        for (i = 0; i < mediaInfo.fmtp.length; i++) {
+          fmtp = mediaInfo.fmtp[i];
+          if (fmtp.config.indexOf(`apt=${selectedPayload}`) > -1) {
+            relatedPayloads.add(fmtp.payload);
+          }
         }
       }
 
@@ -191,13 +192,17 @@ function filterVideoPayload(sdpObj, videoPreference = {}) {
     }
   });
 
-  return { codec: codecMap.get(selectedPayload) };
+  if (selectedPayload !== -1) {
+    return { codec: codecMap.get(selectedPayload) };
+  } else {
+    return null;
+  }
 }
 
 function filterAudioPayload(sdpObj, audioPreference = {}) {
   var preferred = audioPreference.preferred;
   var optionals = audioPreference.optional || [];
-  var finalFmt = null;
+  var finalFmt;
   var selectedPayload = -1;
   var reservedCodecs = ['telephone-event', 'cn'];
   var relatedPayloads = new Set();
@@ -287,13 +292,30 @@ exports.getSimulcastInfo = function (sdp) {
     }
   }
   return simulcast;
-}
+};
+
+exports.hasCodec = function (sdp, codecName) {
+  var sdpObj = transform.parse(sdp);
+  var ret = false;
+  for (const mediaInfo of sdpObj.media) {
+    for (const rtp of mediaInfo.rtp) {
+      const codec = rtp.codec.toLowerCase();
+      if (codec === codecName.toLowerCase()) {
+        return true;
+      }
+    }
+  }
+  return false;
+};
 
 exports.processOffer = function (sdp, preference = {}, direction) {
   var sdpObj = transform.parse(sdp);
   var finalProfile = filterH264Payload(sdpObj, preference, direction);
   var audioFormat = filterAudioPayload(sdpObj, preference.audio);
   var videoFormat = filterVideoPayload(sdpObj, preference.video);
+  if (videoFormat.codec === 'h264') {
+    videoFormat.profile = finalProfile;
+  }
   sdp = transform.write(sdpObj);
 
   return { sdp, audioFormat, videoFormat};
