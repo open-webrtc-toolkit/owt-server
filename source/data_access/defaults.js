@@ -38,6 +38,7 @@ const DEFAULT_VIDEO_IN = [
 const DEFAULT_VIDEO_OUT = [
   { codec: 'vp8' },
   { codec: 'h264', profile: 'CB' },
+  { codec: 'h264', profile: 'B' },
   { codec: 'vp9' },
 ];
 const DEFAULT_VIDEO_PARA = {
