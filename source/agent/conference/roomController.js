@@ -15,6 +15,39 @@ function isResolutionEqual(r1, r2) {
   return r1.width && r2.width && r1.height && r2.height && (r1.width === r2.width) && (r1.height === r2.height);
 }
 
+const audio_format_obj = function (fmtStr) {
+    var fmt_l = fmtStr.split('_'),
+        fmt = {codec: fmt_l[0]};
+    fmt_l[1] && (fmt.sampleRate = Number(fmt_l[1]));
+    fmt_l[2] && (fmt.channelNum = Number(fmt_l[2]));
+    return fmt;
+};
+
+const video_format_obj = function (fmtStr) {
+    var fmt_l = fmtStr.split('_');
+    var fmt = { codec: fmt_l[0] };
+    fmt_l[1] && (fmt.profile = fmt_l[1]);
+    return fmt;
+};
+
+const h264ProfileDict = {
+  'CB': 1,
+  'B': 2,
+  'M': 3,
+  'H': 4
+};
+
+const isVideoProfileCompatible = (curProfile, reqProfile) => {
+  let curP = h264ProfileDict[curProfile],
+    reqP = h264ProfileDict[reqProfile];
+
+  return !curP || !reqP || (curP <= reqP);
+};
+
+const isVideoFmtCompatible = (curFmt, reqFmt) => {
+  return (curFmt.codec === reqFmt.codec && isVideoProfileCompatible(curFmt.profile, reqFmt.profile));
+};
+
 module.exports.create = function (spec, on_init_ok, on_init_failed) {
 
     var that = {};
@@ -1141,7 +1174,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
             }, on_error);
         } else if (streams[stream_id]) {
             if (streams[stream_id].video) {
-                if ((streams[stream_id].video.format === format) &&
+                if (isVideoFmtCompatible(video_format_obj(streams[stream_id].video.format), video_format_obj(format)) &&
                     (resolution === 'unspecified' || (streams[stream_id].video.resolution && (resolution.width === streams[stream_id].video.resolution.width) && (resolution.height === streams[stream_id].video.resolution.height))) &&
                     (framerate === 'unspecified' || (streams[stream_id].video.framerate && (streams[stream_id].video.framerate === framerate))) &&
                     (bitrate === 'unspecified' || (streams[stream_id].video.bitrate && (streams[stream_id].video.bitrate === bitrate))) &&
@@ -2193,21 +2226,6 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
     };
 
     that.getViewCapability = function (view) {
-        var audio_format_obj = function (fmtStr) {
-            var fmt_l = fmtStr.split('_'),
-                fmt = {codec: fmt_l[0]};
-            fmt_l[1] && (fmt.sampleRate = Number(fmt_l[1]));
-            fmt_l[2] && (fmt.channelNum = Number(fmt_l[2]));
-            return fmt;
-        };
-
-        var video_format_obj = function (fmtStr) {
-            var fmt_l = fmtStr.split('_');
-            var fmt = { codec: fmt_l[0] };
-            fmt_l[1] && (fmt.profile = fmt_l[1]);
-            return fmt;
-        };
-
         if (mix_views[view]) {
             return {
                 audio: mix_views[view].audio.supported_formats.map(audio_format_obj),
