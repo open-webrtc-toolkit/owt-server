@@ -15,12 +15,30 @@ var Participant = require('./participant');
 // Logger
 var log = logger.getLogger('Conference');
 
-const isAudioFmtCompatible = (fmt1, fmt2) => {
+const isAudioFmtEqual = (fmt1, fmt2) => {
   return (fmt1.codec === fmt2.codec) && (fmt1.sampleRate === fmt2.sampleRate) && (fmt1.channelNum === fmt2.channelNum);
 };
 
-const isVideoFmtCompatible = (fmt1, fmt2) => {
-  return (fmt1.codec === fmt2.codec && (!fmt1.profile || !fmt2.profile || fmt1.profile === fmt2.profile));
+const isVideoFmtEqual = (fmt1, fmt2) => {
+  return (fmt1.codec === fmt2.codec) && (fmt1.profile === fmt2.profile);
+};
+
+const h264ProfileDict = {
+  'CB': 1,
+  'B': 2,
+  'M': 3,
+  'H': 4
+};
+
+const isVideoProfileCompatible = (curProfile, reqProfile) => {
+  let curP = h264ProfileDict[curProfile],
+    reqP = h264ProfileDict[reqProfile];
+
+  return !curP || !reqP || (curP <= reqP);
+};
+
+const isVideoFmtCompatible = (curFmt, reqFmt) => {
+  return (curFmt.codec === reqFmt.codec && isVideoProfileCompatible(curFmt.profile, reqFmt.profile));
 };
 
 var calcResolution = (x, baseResolution) => {
@@ -428,12 +446,12 @@ var Conference = function (rpcClient, selfRpcId) {
 
                     //FIXME: Validation defaultFormat/mediaOut against av_capability here is not complete.
                     if (viewSettings.audio) {
-                      if (viewSettings.audio.format && (av_capability.audio.findIndex((f) => isAudioFmtCompatible(viewSettings.audio.format, f)) >= 0)) {
+                      if (viewSettings.audio.format && (av_capability.audio.findIndex((f) => isAudioFmtEqual(viewSettings.audio.format, f)) >= 0)) {
                         default_audio_fmt = viewSettings.audio.format;
                       } else {
                         for (var i in room_config.mediaOut.audio) {
                           var fmt = room_config.mediaOut.audio[i];
-                          if (av_capability.audio.findIndex((f) => {return isAudioFmtCompatible(fmt,f);}) >= 0) {
+                          if (av_capability.audio.findIndex((f) => {return isAudioFmtEqual(fmt,f);}) >= 0) {
                             default_audio_fmt = fmt;
                             break;
                           }
@@ -447,12 +465,12 @@ var Conference = function (rpcClient, selfRpcId) {
                     }
 
                     if (viewSettings.video) {
-                      if (viewSettings.video.format && (av_capability.video.encode.findIndex((f) => {return isVideoFmtCompatible(viewSettings.video.format, f);}) >= 0)) {
+                      if (viewSettings.video.format && (av_capability.video.encode.findIndex((f) => {return isVideoFmtEqual(viewSettings.video.format, f);}) >= 0)) {
                         default_video_fmt = viewSettings.video.format;
                       } else {
                         for (var i in room_config.mediaOut.video.format) {
                           var fmt = room_config.mediaOut.video.format[i];
-                          if (av_capability.video.encode.findIndex((f) => {return isVideoFmtCompatible(fmt,f);}) >= 0) {
+                          if (av_capability.video.encode.findIndex((f) => {return isVideoFmtEqual(fmt,f);}) >= 0) {
                             default_video_fmt = fmt;
                             break;
                           }
@@ -473,8 +491,8 @@ var Conference = function (rpcClient, selfRpcId) {
                           format: default_audio_fmt,
                           optional: {
                             format: room_config.mediaOut.audio.filter((fmt) => {
-                              return (av_capability.audio.findIndex((f) => isAudioFmtCompatible(f, fmt)) >= 0
-                                && !isAudioFmtCompatible(fmt, default_audio_fmt));
+                              return (av_capability.audio.findIndex((f) => isAudioFmtEqual(f, fmt)) >= 0
+                                && !isAudioFmtEqual(fmt, default_audio_fmt));
                             })
                           }
                         } : undefined,
@@ -482,8 +500,8 @@ var Conference = function (rpcClient, selfRpcId) {
                           format: default_video_fmt,
                           optional: {
                             format: room_config.mediaOut.video.format.filter((fmt) => {
-                              return (av_capability.video.encode.findIndex((f) => isVideoFmtCompatible(f, fmt)) >= 0
-                                && !isVideoFmtCompatible(fmt, default_video_fmt));
+                              return (av_capability.video.encode.findIndex((f) => isVideoFmtEqual(f, fmt)) >= 0
+                                && !isVideoFmtEqual(fmt, default_video_fmt));
                             }),
                             parameters: {
                               resolution: room_config.mediaOut.video.parameters.resolution.map((x) => {return calcResolution(x, viewSettings.video.parameters.resolution)}).filter((reso, pos, self) => {return ((reso.width < viewSettings.video.parameters.resolution.width) && (reso.height < viewSettings.video.parameters.resolution.height)) && (self.findIndex((r) => {return r.width === reso.width && r.height === reso.height;}) === pos);}),
@@ -777,7 +795,7 @@ var Conference = function (rpcClient, selfRpcId) {
 
   const isAudioFmtAcceptable = (audioIn, audioInList) => {
     for (var i in audioInList) {
-      if (isAudioFmtCompatible(audioIn, audioInList[i])) {
+      if (isAudioFmtEqual(audioIn, audioInList[i])) {
         return true;
       }
     }
@@ -1261,10 +1279,10 @@ var Conference = function (rpcClient, selfRpcId) {
 
   const isAudioFmtAvailable = (streamAudio, fmt) => {
     //log.debug('streamAudio:', JSON.stringify(streamAudio), 'fmt:', fmt);
-    if (isAudioFmtCompatible(streamAudio.format, fmt)) {
+    if (isAudioFmtEqual(streamAudio.format, fmt)) {
       return true;
     }
-    if (streamAudio.optional && streamAudio.optional.format && (streamAudio.optional.format.findIndex((f) => {return isAudioFmtCompatible(f, fmt);}) >= 0)) {
+    if (streamAudio.optional && streamAudio.optional.format && (streamAudio.optional.format.findIndex((f) => {return isAudioFmtEqual(f, fmt);}) >= 0)) {
       return true;
     }
     return false;
