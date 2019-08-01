@@ -59,13 +59,13 @@ class Connection extends EventEmitter {
     this.ioThreadPool = ioThreadPool;
     this.mediaConfiguration = 'default';
     this.mediaStreams = new Map();
-    this.wrtc = this._createWrtc();
     this.initialized = false;
     this.options = options;
     this.trickleIce = options.trickleIce || false;
     this.metadata = this.options.metadata || {};
     this.isProcessingRemoteSdp = false;
     this.ready = false;
+    this.wrtc = this._createWrtc();
   }
 
   _getMediaConfiguration(mediaConfiguration = 'default') {
