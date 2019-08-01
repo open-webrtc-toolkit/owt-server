@@ -86,7 +86,7 @@ class Connection extends EventEmitter {
       global.config.webrtc.stunport,
       global.config.webrtc.minport,
       global.config.webrtc.maxport,
-      this.trickleIce,
+      false, //this.trickleIce,
       this._getMediaConfiguration(this.mediaConfiguration),
       false,
       '', // turnserver,
