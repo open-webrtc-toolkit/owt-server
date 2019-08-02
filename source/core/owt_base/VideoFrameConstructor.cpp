@@ -341,7 +341,7 @@ int VideoFrameConstructor::deliverVideoData_(std::shared_ptr<erizo::DataPacket> 
     if (packetType == RTCP_Sender_PT)
         return m_videoReceiver->ReceivedRTCPPacket(buf, video_packet->length) == -1 ? 0 : video_packet->length;
 
-    const rtcpMinPt = 194, rtcpMaxPt = 223;
+    const uint8_t rtcpMinPt = 194, rtcpMaxPt = 223;
     if (packetType >= rtcpMinPt && packetType <= rtcpMaxPt) {
         ELOG_DEBUG("is rtcp packet ssrc %u %d", chead->getSSRC(), packetType);
         return 0;
