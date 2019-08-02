@@ -76,7 +76,7 @@ pipeline {
     post {
         always {
             script {
-                sh "curl -H \"Content-Type: application/json\" -X POST --data '{\"commit_id\":\"'$GIT_COMMIT'\",\"job_path\":\"'${env.MCU_CHECK_PATH}'\",\"job_name\":\"'$JOB_BASE_NAME'\",\"build_num\":\"'$BUILD_NUMBER'\",\"os_version\":\"centos7.6\"}' '${env.checkServerUrl}'/runServer/MCU_BUILD_STEPS"
+                sh "curl -H \"Content-Type: application/json\" -X POST --data '{\"commit_id\":\"'$GIT_COMMIT'\",\"job_path\":\"'${env.MCU_CHECK_PATH}'\",\"job_name\":\"'$JOB_BASE_NAME'\",\"build_num\":\"'$BUILD_NUMBER'\",\"os_version\":\"'$env.CENTOS_VERSION'\"}' '${env.checkServerUrl}'/runServer/MCU_BUILD_STEPS"
             }
         }
         success {
