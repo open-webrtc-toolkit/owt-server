@@ -185,7 +185,7 @@ int32_t VideoFrameConstructor::RequestKeyFrame()
 {
     boost::shared_lock<boost::shared_mutex> lock(m_rtpRtcpMutex);
     if (m_rtpRtcp) {
-        // ELOG_INFO("RequestKeyFrame");
+        ELOG_DEBUG("RequestKeyFrame");
         return m_rtpRtcp->RequestKeyFrame();
     }
     return 0;
@@ -210,6 +210,7 @@ void VideoFrameConstructor::OnIncomingSSRCChanged(const uint32_t ssrc)
 {
     boost::shared_lock<boost::shared_mutex> lock(m_rtpRtcpMutex);
     if (m_rtpRtcp) {
+        ELOG_DEBUG("set remote ssrc %u", ssrc);
         m_rtpRtcp->SetRemoteSSRC(ssrc);
         m_ssrc = ssrc;
     }

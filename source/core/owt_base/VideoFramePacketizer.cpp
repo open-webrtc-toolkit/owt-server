@@ -129,7 +129,7 @@ bool VideoFramePacketizer::setSendCodec(FrameFormat frameFormat, unsigned int wi
 
 void VideoFramePacketizer::OnReceivedIntraFrameRequest(uint32_t ssrc)
 {
-    // ELOG_DEBUG("onReceivedIntraFrameRequest.");
+    ELOG_DEBUG("onReceivedIntraFrameRequest.");
     FeedbackMsg feedback = {.type = VIDEO_FEEDBACK, .cmd = REQUEST_KEY_FRAME};
     deliverFeedbackMsg(feedback);
 }
