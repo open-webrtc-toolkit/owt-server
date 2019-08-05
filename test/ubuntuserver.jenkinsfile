@@ -2,7 +2,7 @@ void setBuildStatus(String message, String state) {
   step([
       $class: "GitHubCommitStatusSetter",
       reposSource: [$class: "ManuallyEnteredRepositorySource", url: "$env.REPO_URL/owt-server"],
-      contextSource: [$class: "ManuallyEnteredCommitContextSource", context: "ci/jenkins/server"],
+      contextSource: [$class: "ManuallyEnteredCommitContextSource", context: "ci/jenkins/ubuntuserver"],
       errorHandlers: [[$class: "ChangingBuildStatusErrorHandler", result: "UNSTABLE"]],
       statusResultSource: [ $class: "ConditionalStatusResultSource", results: [[$class: "AnyBuildResult", message: message, state: state]] ]
   ]);
@@ -74,7 +74,17 @@ pipeline {
     }
 
     post {
+        always {
+            script {
+                sh "curl -H \"Content-Type: application/json\" -X POST --data '{\"commit_id\":\"'$GIT_COMMIT'\",\"job_path\":\"'${env.MCU_CHECK_UBUNTU_PATH}'\",\"job_name\":\"'$JOB_BASE_NAME'\",\"build_num\":\"'$BUILD_NUMBER'\",\"os_version\":\"'$env.UBUTUN_VERSION'\"}' '${env.checkServerUrl}'/runServer/MCU_BUILD_STEPS"
+            }
+        }
         success {
+            script {
+                if ("${GIT_BRANCH}" == 'master') {
+                   sh "curl ${env.checkServerUrl}/copyNightly/0${GIT_COMMIT}/0"
+        }
+        }
             setBuildStatus("Build succeeded", "SUCCESS");
         }
         failure {
