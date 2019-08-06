@@ -313,7 +313,7 @@ exports.processOffer = function (sdp, preference = {}, direction) {
   var finalProfile = filterH264Payload(sdpObj, preference, direction);
   var audioFormat = filterAudioPayload(sdpObj, preference.audio);
   var videoFormat = filterVideoPayload(sdpObj, preference.video);
-  if (videoFormat.codec === 'h264') {
+  if (videoFormat && videoFormat.codec === 'h264') {
     videoFormat.profile = finalProfile;
   }
   sdp = transform.write(sdpObj);

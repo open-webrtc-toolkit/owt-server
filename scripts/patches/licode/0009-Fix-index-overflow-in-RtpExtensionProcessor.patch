@@ -1,0 +1,98 @@
+From 5c6d26e965c8ab92033f2fad0b5dba308a225c05 Mon Sep 17 00:00:00 2001
+From: Chen Li1 <li1.chen@intel.com>
+Date: Tue, 6 Aug 2019 11:07:30 +0800
+Subject: [PATCH] Fix index overflow in RtpExtensionProcessor
+
+---
+ erizo/src/erizo/rtp/RtpExtensionProcessor.cpp | 11 +++++------
+ erizo/src/erizo/rtp/RtpExtensionProcessor.h   |  8 +++++---
+ 2 files changed, 10 insertions(+), 9 deletions(-)
+
+diff --git a/erizo/src/erizo/rtp/RtpExtensionProcessor.cpp b/erizo/src/erizo/rtp/RtpExtensionProcessor.cpp
+index a49ed6e..5ee860e 100644
+--- a/erizo/src/erizo/rtp/RtpExtensionProcessor.cpp
++++ b/erizo/src/erizo/rtp/RtpExtensionProcessor.cpp
+@@ -35,7 +35,7 @@ void RtpExtensionProcessor::setSdpInfo(std::shared_ptr<SdpInfo> theInfo) {
+     std::map<std::string, uint8_t>::iterator it;
+     switch (theMap.mediaType) {
+       case VIDEO_TYPE:
+-        if (isValidExtension(theMap.uri)) {
++        if (isValidExtension(theMap.uri) && theMap.value < ext_map_video_.size()) {
+           ELOG_DEBUG("Adding RTP Extension for video %s, value %u", theMap.uri.c_str(), theMap.value);
+           ext_map_video_[theMap.value] = RTPExtensions((*translationMap_.find(theMap.uri)).second);
+         } else {
+@@ -43,7 +43,7 @@ void RtpExtensionProcessor::setSdpInfo(std::shared_ptr<SdpInfo> theInfo) {
+         }
+         break;
+       case AUDIO_TYPE:
+-        if (isValidExtension(theMap.uri)) {
++        if (isValidExtension(theMap.uri) && theMap.value < ext_map_audio_.size()) {
+           ELOG_DEBUG("Adding RTP Extension for Audio %s, value %u", theMap.uri.c_str(), theMap.value);
+           ext_map_audio_[theMap.value] = RTPExtensions((*translationMap_.find(theMap.uri)).second);
+         } else {
+@@ -66,8 +66,7 @@ bool RtpExtensionProcessor::isValidExtension(std::string uri) {
+ 
+ std::pair<std::string, uint32_t> RtpExtensionProcessor::checkNewRid(std::shared_ptr<DataPacket> p) {
+   const RtpHeader* head = reinterpret_cast<const RtpHeader*>(p->data);
+-  uint32_t len = p->length;
+-  std::array<RTPExtensions, 10> extMap;
++  std::array<RTPExtensions, kRtpExtSize> extMap;
+   std::pair<std::string, uint32_t> ret;
+ 
+   if (head->getExtension()) {
+@@ -98,7 +97,7 @@ std::pair<std::string, uint32_t> RtpExtensionProcessor::checkNewRid(std::shared_
+         if (extId != 0 && extMap[extId] != 0) {
+           if (extMap[extId] == RTP_ID) {
+             std::string rid;
+-            for (uint32_t i = 1; i <= extLength + 1; i++) {
++            for (uint8_t i = 1; i <= extLength + 1; i++) {
+               rid.push_back(*(extBuffer + i));
+             }
+             auto it = rids_.find(rid);
+@@ -126,7 +125,7 @@ std::pair<std::string, uint32_t> RtpExtensionProcessor::checkNewRid(std::shared_
+ uint32_t RtpExtensionProcessor::processRtpExtensions(std::shared_ptr<DataPacket> p) {
+   const RtpHeader* head = reinterpret_cast<const RtpHeader*>(p->data);
+   uint32_t len = p->length;
+-  std::array<RTPExtensions, 10> extMap;
++  std::array<RTPExtensions, kRtpExtSize> extMap;
+   if (head->getExtension()) {
+     switch (p->type) {
+       case VIDEO_PACKET:
+diff --git a/erizo/src/erizo/rtp/RtpExtensionProcessor.h b/erizo/src/erizo/rtp/RtpExtensionProcessor.h
+index f3d8919..1da8095 100644
+--- a/erizo/src/erizo/rtp/RtpExtensionProcessor.h
++++ b/erizo/src/erizo/rtp/RtpExtensionProcessor.h
+@@ -24,6 +24,8 @@ enum RTPExtensions {
+   REPARIED_RTP_ID       // urn:ietf:params:rtp-hdrext:sdes:repaired-rtp-stream-id
+ };
+ 
++constexpr uint32_t kRtpExtSize = 20;
++
+ class RtpExtensionProcessor{
+   DECLARE_LOGGER();
+ 
+@@ -37,10 +39,10 @@ class RtpExtensionProcessor{
+   std::pair<std::string, uint32_t> checkNewRid(std::shared_ptr<DataPacket> p);
+   VideoRotation getVideoRotation();
+ 
+-  std::array<RTPExtensions, 10> getVideoExtensionMap() {
++  std::array<RTPExtensions, kRtpExtSize> getVideoExtensionMap() {
+     return ext_map_video_;
+   }
+-  std::array<RTPExtensions, 10> getAudioExtensionMap() {
++  std::array<RTPExtensions, kRtpExtSize> getAudioExtensionMap() {
+     return ext_map_audio_;
+   }
+   std::vector<ExtMap> getSupportedExtensionMap() {
+@@ -50,7 +52,7 @@ class RtpExtensionProcessor{
+ 
+  private:
+   std::vector<ExtMap> ext_mappings_;
+-  std::array<RTPExtensions, 10> ext_map_video_, ext_map_audio_;
++  std::array<RTPExtensions, kRtpExtSize> ext_map_video_, ext_map_audio_;
+   std::map<std::string, uint8_t> translationMap_;
+   VideoRotation video_orientation_;
+   std::map<std::string, uint32_t> rids_;
+-- 
+2.7.4
+
