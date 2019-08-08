@@ -1182,7 +1182,8 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
         var videoInfo = {};
         if (streams[stream_id] && streams[stream_id].video &&
             streams[stream_id].video.simulcast) {
-            for (const simInfo of streams[stream_id].video.simulcast) {
+            for (const rid in streams[stream_id].video.simulcast) {
+                const simInfo = streams[stream_id].video.simulcast[rid];
                 const combinedVideo = Object.assign({}, {format: streams[stream_id].video.format}, simInfo);
                 if (isVideoMatch(combinedVideo, format, resolution, framerate, bitrate, keyFrameInterval)) {
                     matchedId = simInfo.id;
@@ -1241,7 +1242,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                 removeSubscriptions(stream_id);
                 terminals[terminal_id] && terminals[terminal_id].published.splice(i, 1);
             }
-            streams[stream_id].close && stream[stream_id].close();
+            stream.close && stream.close();
             delete streams[stream_id];
         } else {
             log.info('try to unpublish an unexisting stream:', stream_id);
@@ -2274,15 +2275,15 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
             if (update.video && update.video.parameters && update.video.parameters.resolution) {
                 streams[streamId].video.resolution = update.video.parameters.resolution;
             }
-            if (update.simIndex >= 0 && streams[streamId].video) {
+            if (update.rid && streams[streamId].video) {
                 if (!streams[streamId].video.simulcast) {
-                    streams[streamId].video.simulcast = [];
+                    streams[streamId].video.simulcast = {};
                 }
-                if (!streams[streamId].video.simulcast[update.simIndex]) {
-                    streams[streamId].video.simulcast[update.simIndex] = {};
+                if (!streams[streamId].video.simulcast[update.rid]) {
+                    streams[streamId].video.simulcast[update.rid] = {};
                 }
                 if (update.simId) {
-                    streams[streamId].video.simulcast[update.simIndex].id = update.simId;
+                    streams[streamId].video.simulcast[update.rid].id = update.simId;
                     // used for spreading
                     streams[update.simId] = {
                         owner: streams[streamId].owner,
@@ -2293,15 +2294,16 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                 if (update.info && update.info.video &&
                     update.info.video.parameters &&
                     update.info.video.parameters.resolution) {
-                    streams[streamId].video.simulcast[update.simIndex].resolution =
+                    streams[streamId].video.simulcast[update.rid].resolution =
                         update.info.video.parameters.resolution;
                 }
                 if (!streams[streamId].close) {
                     // add a simulcast close function
                     streams[streamId].close = () => {
-                        streams[streamId].video.simulcast.forEach((sim) => {
-                            delete streams[sim.id];
-                        });
+                        for (const rid in streams[streamId].video.simulcast) {
+                            const simInfo = streams[streamId].video.simulcast[rid];
+                            delete streams[simInfo.id];
+                        }
                     };
                 }
             }

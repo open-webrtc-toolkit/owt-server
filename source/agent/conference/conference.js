@@ -10,10 +10,10 @@ var AccessController = require('./accessController');
 var RoomController = require('./roomController');
 var dataAccess = require('./data_access');
 var Participant = require('./participant');
-//var Stream = require('./stream');
 
 // Logger
 var log = logger.getLogger('Conference');
+var Stream = require('./stream');
 
 const isAudioFmtEqual = (fmt1, fmt2) => {
   return (fmt1.codec === fmt2.codec) && (fmt1.sampleRate === fmt2.sampleRate) && (fmt1.channelNum === fmt2.channelNum);
@@ -236,54 +236,7 @@ var Conference = function (rpcClient, selfRpcId) {
   var participants = {};
 
   /*
-   * {
-   *   StreamId: {
-   *     id: string(StreamId),
-   *     type: 'forward' | 'mixed',
-   *     media: {
-   *       audio: {
-   *         status: 'active' | 'inactive' | undefined,
-   *         source: 'mic' | 'screen-cast' | 'raw-file' | 'encoded-file' | 'streaming',
-   *         format: object(AudioFormat),
-   *         optional: {
-   *           format: [object(AudioFormat)] | undefined
-   *         } | undefined
-   *       } | undefined,
-   *       video: {
-   *         status: 'active' | 'inactive' | undefined,
-   *         source: 'camera' | screen-cast' | 'raw-file' | 'encoded-file' | 'streaming',
-   *         format: object(VideoFormat),
-   *         parameters: {
-   *           resolution: object(Resolution) | undefined,
-   *           framerate: number(FramerateFPS) | undefined,
-   *           bitrate: number(Kbps) | undefined,
-   *           keyFrameInterval: number(Seconds) | undefined,
-   *           } | undefined
-   *         optional: {
-   *           format: [object(VideoFormat)] | undefined,
-   *           parameters: {
-   *             resolution: [object(Resolution)] | undefined,
-   *             framerate: [number(FramerateFPS)] | undefined,
-   *             bitrate: [number(Kbps] | string('x' + Multiple) | undefined,
-   *             keyFrameRate: [number(Seconds)] | undefined
-   *           } | undefined
-   *         } | undeinfed
-   *       } | undefined
-   *     },
-   *     info: object(PublicationInfo):: {
-   *       owner: string(ParticipantId),
-   *       type: 'webrtc' | 'streaming' | 'sip',
-   *       inViews: [string(ViewLabel)],
-   *       attributes: object(ExternalDefinedObj)
-   *     } | object(ViewInfo):: {
-   *       label: string(ViewLabel),
-   *       layout: [{
-   *         stream: string(StreamId),
-   *         region: object(Region)
-   *       }]
-   *     }
-   *   }
-   * }
+   * {StreamId: object(Stream)}
    */
   var streams = {};
 
@@ -440,90 +393,7 @@ var Conference = function (rpcClient, selfRpcId) {
                       return;
                     }
 
-
-                    var default_audio_fmt = viewSettings.audio.format;
-                    var default_video_fmt = viewSettings.audio.format;
-
-                    //FIXME: Validation defaultFormat/mediaOut against av_capability here is not complete.
-                    if (viewSettings.audio) {
-                      if (viewSettings.audio.format && (av_capability.audio.findIndex((f) => isAudioFmtEqual(viewSettings.audio.format, f)) >= 0)) {
-                        default_audio_fmt = viewSettings.audio.format;
-                      } else {
-                        for (var i in room_config.mediaOut.audio) {
-                          var fmt = room_config.mediaOut.audio[i];
-                          if (av_capability.audio.findIndex((f) => {return isAudioFmtEqual(fmt,f);}) >= 0) {
-                            default_audio_fmt = fmt;
-                            break;
-                          }
-                        }
-                      }
-
-                      if (!default_audio_fmt) {
-                        log.error('No capable audio format for view: ' + viewSettings.label);
-                        return;
-                      }
-                    }
-
-                    if (viewSettings.video) {
-                      if (viewSettings.video.format && (av_capability.video.encode.findIndex((f) => {return isVideoFmtEqual(viewSettings.video.format, f);}) >= 0)) {
-                        default_video_fmt = viewSettings.video.format;
-                      } else {
-                        for (var i in room_config.mediaOut.video.format) {
-                          var fmt = room_config.mediaOut.video.format[i];
-                          if (av_capability.video.encode.findIndex((f) => {return isVideoFmtEqual(fmt,f);}) >= 0) {
-                            default_video_fmt = fmt;
-                            break;
-                          }
-                        }
-                      }
-
-                      if (!default_video_fmt) {
-                        log.error('No capable video format for view: ' + viewSettings.label);
-                        return;
-                      }
-                    }
-
-                    var mixed_stream_info = {
-                      id: mixed_stream_id,
-                      type: 'mixed',
-                      media: {
-                        audio: (viewSettings.audio) ? {
-                          format: default_audio_fmt,
-                          optional: {
-                            format: room_config.mediaOut.audio.filter((fmt) => {
-                              return (av_capability.audio.findIndex((f) => isAudioFmtEqual(f, fmt)) >= 0
-                                && !isAudioFmtEqual(fmt, default_audio_fmt));
-                            })
-                          }
-                        } : undefined,
-                        video: (viewSettings.video) ? {
-                          format: default_video_fmt,
-                          optional: {
-                            format: room_config.mediaOut.video.format.filter((fmt) => {
-                              return (av_capability.video.encode.findIndex((f) => isVideoFmtEqual(f, fmt)) >= 0
-                                && !isVideoFmtEqual(fmt, default_video_fmt));
-                            }),
-                            parameters: {
-                              resolution: room_config.mediaOut.video.parameters.resolution.map((x) => {return calcResolution(x, viewSettings.video.parameters.resolution)}).filter((reso, pos, self) => {return ((reso.width < viewSettings.video.parameters.resolution.width) && (reso.height < viewSettings.video.parameters.resolution.height)) && (self.findIndex((r) => {return r.width === reso.width && r.height === reso.height;}) === pos);}),
-                              framerate: room_config.mediaOut.video.parameters.framerate.filter((x) => {return x < viewSettings.video.parameters.framerate;}),
-                              bitrate: room_config.mediaOut.video.parameters.bitrate,//.map((x) => {return calcBitrate(x, viewSettings.video.parameters.bitrate)}),
-                              keyFrameInterval: room_config.mediaOut.video.parameters.keyFrameInterval.filter((x) => {return x < viewSettings.video.parameters.keyFrameInterval;})
-                            }
-                          },
-                          parameters: {
-                            resolution: viewSettings.video.parameters.resolution,
-                            framerate: viewSettings.video.parameters.framerate,
-                            bitrate: viewSettings.video.parameters.bitrate,
-                            keyFrameInterval: viewSettings.video.parameters.keyFrameInterval,
-                          }
-                        } : undefined
-                      },
-                      info: {
-                        label: viewSettings.label,
-                        activeInput: 'unknown',
-                        layout: []
-                      }
-                    };
+                    var mixed_stream_info = Stream.createMixStream(room_id, viewSettings, room_config.mediaOut, av_capability);
 
                     streams[mixed_stream_id] = mixed_stream_info;
                     log.debug('Mixed stream info:', mixed_stream_info);
@@ -684,100 +554,6 @@ var Conference = function (rpcClient, selfRpcId) {
     return result;
   };
 
-  const constructMediaInfo = (media) => {
-    var result = {};
-
-    if (media.audio) {
-      result.audio = {
-        status: 'active',
-        format: extractAudioFormat(media.audio)
-      };
-
-      media.audio.source && (result.audio.source = media.audio.source);
-
-      if (room_config.transcoding.audio) {
-        result.audio.optional = {format: []};
-        room_config.mediaOut.audio.forEach((fmt) => {
-          if ((fmt.codec !== result.audio.format.codec)
-              || (fmt.sampleRate !== result.audio.format.sampleRate)
-              || (fmt.channelNum !== result.audio.format.channelNum)) {
-            result.audio.optional.format.push(fmt);
-          }
-        });
-      }
-    }
-
-    if (media.video) {
-      result.video = {
-        status: 'active',
-        format: extractVideoFormat(media.video)
-      };
-
-      //FIXME: sometimes, streaming send invalid resolution { width: 0, height: 0}
-      if (media.video.resolution && (!media.video.resolution.height && !media.video.resolution.width)) {
-        delete media.video.resolution;
-      }
-
-      media.video.source && (result.video.source = media.video.source);
-      media.video.resolution && (media.video.resolution.width !== 0) && (media.video.resolution.height !== 0) && (result.video.parameters || (result.video.parameters = {})) && (result.video.parameters.resolution = media.video.resolution);
-      media.video.framerate && (media.video.framerate !== 0) && (result.video.parameters || (result.video.parameters = {})) && (result.video.parameters.framerate = Math.floor(media.video.framerate));
-      media.video.bitrate && (result.video.parameters || (result.video.parameters = {})) && (result.video.parameters.bitrate = media.video.bitrate);
-      media.video.keyFrameInterval && (result.video.parameters || (result.video.parameters = {})) && (result.video.parameters.keyFrameInterval = media.video.keyFrameInterval);
-
-      if (room_config.transcoding.video && room_config.transcoding.video.format) {
-        result.video.optional = {format: []};
-        room_config.mediaOut.video.format.forEach((fmt) => {
-          if ((fmt.codec !== result.video.format.codec)
-              || (fmt.profile !== result.video.format.profile)) {
-            result.video.optional.format.push(fmt);
-          }
-        });
-      }
-
-      if (room_config.transcoding.video && room_config.transcoding.video.parameters) {
-        if (room_config.transcoding.video.parameters.resolution) {
-          result.video.optional = (result.video.optional || {});
-          result.video.optional.parameters = (result.video.optional.parameters || {});
-
-          if (result.video.parameters && result.video.parameters.resolution) {
-            result.video.optional.parameters.resolution = room_config.mediaOut.video.parameters.resolution.map((x) => {return calcResolution(x, result.video.parameters.resolution)}).filter((reso, pos, self) => {return ((reso.width < result.video.parameters.resolution.width) && (reso.height < result.video.parameters.resolution.height)) && (self.findIndex((r) => {return r.width === reso.width && r.height === reso.height;}) === pos);});
-          } else {
-            result.video.optional.parameters.resolution = room_config.mediaOut.video.parameters.resolution
-              .filter((x) => {return (x !== 'x3/4') && (x !== 'x2/3') && (x !== 'x1/2') && (x !== 'x1/3') && (x !== 'x1/4');})//FIXME: is auto-scaling possible?
-              .map((x) => {return calcResolution(x)});
-          }
-        }
-
-        if (room_config.transcoding.video.parameters.framerate) {
-          result.video.optional = (result.video.optional || {});
-          result.video.optional.parameters = (result.video.optional.parameters || {});
-
-          if (result.video.parameters && result.video.parameters.framerate) {
-            result.video.optional.parameters.framerate = room_config.mediaOut.video.parameters.framerate.filter((fr) => {return fr < result.video.parameters.framerate;});
-          } else {
-            result.video.optional.parameters.framerate = room_config.mediaOut.video.parameters.framerate;
-          }
-        }
-
-        if (room_config.transcoding.video.parameters.bitrate) {
-          result.video.optional = (result.video.optional || {});
-          result.video.optional.parameters = (result.video.optional.parameters || {});
-
-          result.video.optional.parameters.bitrate = room_config.mediaOut.video.parameters.bitrate.filter((x) => {return Number(x.substring(1)) < 1;});
-        }
-
-        if (room_config.transcoding.video.parameters.keyFrameInterval) {
-          result.video.optional = (result.video.optional || {});
-          result.video.optional.parameters = (result.video.optional.parameters || {});
-
-          result.video.optional.parameters.keyFrameInterval = room_config.mediaOut.video.parameters.keyFrameInterval;
-        }
-      }
-    }
-
-    return result;
-  };
-
   const initiateStream = (id, info) => {
     if (streams[id]) {
       return Promise.reject('Stream already exists');
@@ -823,12 +599,7 @@ var Conference = function (rpcClient, selfRpcId) {
     return new Promise((resolve, reject) => {
       roomController && roomController.publish(info.owner, id, locality, media, info.type, function() {
         if (participants[info.owner]) {
-          var st = {
-            id: id,
-            type: 'forward',
-            media: constructMediaInfo(media),
-            info: info
-          };
+          var st = Stream.createForwardStream(id, media, info, room_config);
           st.info.inViews = [];
           streams[id] = st;
           setTimeout(() => {
@@ -846,45 +617,9 @@ var Conference = function (rpcClient, selfRpcId) {
   };
 
   const updateStreamInfo = (streamId, info) => {
-    if (streams[streamId] && streams[streamId].type === 'forward') {
-      if (info) {
-        if (info.video && streams[streamId].media.video) {
-          if (info.video.parameters) {
-            if (info.video.parameters.resolution) {
-              streams[streamId].media.video.parameters = (streams[streamId].media.video.parameters || {});
-              if (!streams[streamId].media.video.parameters.resolution ||
-                  (streams[streamId].media.video.parameters.resolution.width !== info.video.parameters.resolution.width) ||
-                  (streams[streamId].media.video.parameters.resolution.height !== info.video.parameters.resolution.height)) {
-                streams[streamId].media.video.parameters.resolution = info.video.parameters.resolution;
-                if (room_config.transcoding.video && room_config.transcoding.video.parameters &&
-                    room_config.transcoding.video.parameters.resolution &&
-                    !streams[streamId].media.video.alternative) {
-                  streams[streamId].media.video.optional = (streams[streamId].media.video.optional || {});
-                  streams[streamId].media.video.optional.parameters = (streams[streamId].media.video.optional.parameters || {});
-                  streams[streamId].media.video.optional.parameters.resolution = room_config.mediaOut.video.parameters.resolution.map((x) => {return calcResolution(x, streams[streamId].media.video.parameters.resolution)}).filter((reso, pos, self) => {return ((reso.width < streams[streamId].media.video.parameters.resolution.width) && (reso.height < streams[streamId].media.video.parameters.resolution.height)) && (self.findIndex((r) => {return r.width === reso.width && r.height === reso.height;}) === pos);});
-                }
-              }
-            }
-          }
-          room_config.notifying.streamChange && sendMsg('room', 'all', 'stream', {id: streamId, status: 'update', data: {field: '.', value: streams[streamId]}});
-        }
-        if (typeof info.simIndex === 'number') {
-          const simInfo = info.info;
-          if (simInfo && simInfo.video && streams[streamId].media.video) {
-            let alternative = streams[streamId].media.video.alternative || [];
-            alternative[info.simIndex] = alternative[info.simIndex] || { parameters: {} };
-            if (simInfo.video.parameters) {
-              alternative[info.simIndex].parameters = simInfo.video.parameters;
-            }
-            streams[streamId].media.video.alternative = alternative;
-            if (streams[streamId].media.video.optional) {
-              delete streams[streamId].media.video.optional;
-            }
-            room_config.notifying.streamChange &&
-              sendMsg('room', 'all', 'stream', {id: streamId, status: 'update', data: {field: '.', value: streams[streamId]}});
-          }
-        }
-      }
+    if (Stream.updateForwardStream(streams[streamId], info, room_config)) {
+      room_config.notifying.streamChange &&
+        sendMsg('room', 'all', 'stream', {id: streamId, status: 'update', data: {field: '.', value: streams[streamId]}});
     }
   };
 

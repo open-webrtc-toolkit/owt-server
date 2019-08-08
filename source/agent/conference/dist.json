@@ -14,6 +14,7 @@
             "rpcRequest.js",
             "conference.js",
             "accessController.js",
+            "stream.js",
             "../index.js",
             "../networkHelper.js",
             "../../common/cipher.js",
