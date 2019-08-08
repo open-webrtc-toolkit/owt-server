@@ -492,13 +492,16 @@ Streams model:
     {
         status: "active" | "inactive", // For forward stream
         source: "camera" | screen-cast" | "raw-file" | "encoded-file" | "streaming", // For forward stream
-        format: object(VideoFormat),
-        parameters: {
+        original: [{
+          format: object(VideoFormat),
+          parameters: {
             resolution: object(Resolution),     // Optional
             framerate: number(FramerateFPS),    // Optional
             bitrate: number(Kbps),              // Optional
             keyFrameInterval: number(Seconds),  // Optional
-        },
+          },
+          simulcastRid: string(SimulcastRid)    // Optional
+        }],
         optional: {                             // Not available for simulcast streams
           format: [object(VideoFormat)],
           parameters: {

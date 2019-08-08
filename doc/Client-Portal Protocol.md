@@ -198,8 +198,11 @@ This a format for client reconnects.
               {
                status: "active" | "inactive" | undefined,
                source: "camera" | "screen-cast" | "raw-file" | "encoded-file" | undefined,
-               format: object(VideoFormat),
-               parameters: object(VideoParameters) | undefined,
+               original: [{
+                 format: object(VideoFormat),
+                 parameters: object(VideoParameters) | undefined,
+                 simulcastRid: string(SimulcastRid) | undefined
+               }],
                optional:
                  {
                   format: [object(VideoFormat)] | undefined,
@@ -212,11 +215,7 @@ This a format for client reconnects.
                     }
                     | undefined
                  }
-                 | undefined,
-               alternative: [{ /* for simulcast streams */
-                 format: object(VideoFormat),
-                 parameters: object(VideoParameters)
-               }] | undefined
+                 | undefined
               }
 
               object(VideoFormat)::
@@ -449,7 +448,8 @@ This a format for client reconnects.
         {
          from: string(StreamId),
          parameters: object(VideoParametersSpecification)/*If specific video parameters are wanted*/
-                     | undefined/*If default video parameters are wanted*/
+                     | undefined/*If default video parameters are wanted*/,
+         simulcastRid: string(rid) /* if simulcastRid is used, parameters will be ignored */
         }
 
         object(VideoParametersSpecification)::
