@@ -207,18 +207,18 @@ class Connection extends EventEmitter {
                   return (val[0] && val[0].scid == streamId);
                 });
 
-                if (index === 0) {
+                if (!this.firstRid) {
                   // first RID stream
+                  this.firstRid = streamId;
                   this.wrtc.setVideoSsrcList('', [ssrc]);
                   this.wrtc.setRemoteSdp(this.latestSdp, this.id);
-                } else if (index > 0) {
+                  this.emit('status_event', {type: 'firstrid', rid: streamId, ssrc}, newStatus);
+                } else {
                   // create stream
                   this.addMediaStream(streamId, {label: streamId}, true);
                   this.wrtc.setVideoSsrcList(streamId, [ssrc]);
                   this.wrtc.setRemoteSdp(this.latestSdp, streamId);
                   this.emit('status_event', {type: 'rid', rid: streamId, ssrc}, newStatus);
-                } else {
-                  log.warn('Unexpected RID:', streamId, this.simulcastInfo);
                 }
               } else {
                 log.warn('No simulcast info RID:', streamId);

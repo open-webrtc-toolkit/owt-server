@@ -152,6 +152,7 @@ module.exports = function (spec, on_status, on_mediaUpdate) {
     simulcastConstructors = [],
     stream,
     simStreams = [],
+    ridStreamMap = new Map(),
     wrtc;
 
   /*
@@ -194,23 +195,26 @@ module.exports = function (spec, on_status, on_mediaUpdate) {
         // bind video frame constructor here for simulcast stream
         if (video) {
           log.debug('start binding video frame constructor:', evt.rid);
-          const simIndex = simStreams.length;
+          const rid = evt.rid;
           const vfc = new VideoFrameConstructor((mediaUpdate) => {
             const data = {
-              simIndex,
+              rid,
               info: JSON.parse(mediaUpdate)
             };
             on_mediaUpdate(JSON.stringify(data));
           });
           simulcastConstructors.push(vfc);
-          simStreams.push(new WrtcStream({
+          const simStream = new WrtcStream({
             audioFramePacketizer,
             videoFrameConstructor: vfc
-          }));
-          vfc.bindTransport(wrtc.getMediaStream(evt.rid));
-          // notify room about the simulcast stream
-          on_mediaUpdate(JSON.stringify({simIndex: simIndex}));
+          });
+          vfc.bindTransport(wrtc.getMediaStream(rid));
+          ridStreamMap.set(rid, simStream)
+          // notify room about the simulfcast stream
+          on_mediaUpdate(JSON.stringify({rid}));
         }
+      } else if (evt.type === 'firstrid') {
+        on_mediaUpdate(JSON.stringify({firstrid: evt.rid}));
       }
     });
     wrtc.init(wrtcId);
@@ -333,11 +337,12 @@ module.exports = function (spec, on_status, on_mediaUpdate) {
     return callOnDefaultStream('setVideoBitrate', ...args);
   };
 
-  that.getAlternative = function (num) {
-    if (!simStreams[num]) {
-      log.warn('No simulcast index:', wrtcId, num);
+  that.getAlternative = function (rid) {
+    if (!ridStreamMap.has(rid)) {
+      log.warn('No simulcast rid:', wrtcId, rid);
+      return that;
     }
-    return simStreams[num];
+    return ridStreamMap.get(rid);
   };
 
   that.close = function () {
@@ -345,6 +350,7 @@ module.exports = function (spec, on_status, on_mediaUpdate) {
       wrtc.wrtc.stop();
       unbindFramePacketizers();
       unbindFrameConstructors();
+      ridStreamMap.clear();
       wrtc.close();
       wrtc = undefined;
     }
