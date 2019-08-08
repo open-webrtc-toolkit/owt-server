@@ -185,7 +185,7 @@ int32_t VideoFrameConstructor::RequestKeyFrame()
 {
     boost::shared_lock<boost::shared_mutex> lock(m_rtpRtcpMutex);
     if (m_rtpRtcp) {
-        // ELOG_INFO("RequestKeyFrame");
+        ELOG_DEBUG("RequestKeyFrame");
         return m_rtpRtcp->RequestKeyFrame();
     }
     return 0;
@@ -210,6 +210,7 @@ void VideoFrameConstructor::OnIncomingSSRCChanged(const uint32_t ssrc)
 {
     boost::shared_lock<boost::shared_mutex> lock(m_rtpRtcpMutex);
     if (m_rtpRtcp) {
+        ELOG_DEBUG("set remote ssrc %u", ssrc);
         m_rtpRtcp->SetRemoteSSRC(ssrc);
         m_ssrc = ssrc;
     }
@@ -339,6 +340,12 @@ int VideoFrameConstructor::deliverVideoData_(std::shared_ptr<erizo::DataPacket> 
     assert(packetType != RTCP_Receiver_PT && packetType != RTCP_PS_Feedback_PT && packetType != RTCP_RTP_Feedback_PT);
     if (packetType == RTCP_Sender_PT)
         return m_videoReceiver->ReceivedRTCPPacket(buf, video_packet->length) == -1 ? 0 : video_packet->length;
+
+    const uint8_t rtcpMinPt = 194, rtcpMaxPt = 223;
+    if (packetType >= rtcpMinPt && packetType <= rtcpMaxPt) {
+        ELOG_DEBUG("is rtcp packet ssrc %u %d", chead->getSSRC(), packetType);
+        return 0;
+    }
 
     PacketTime current;
     boost::shared_lock<boost::shared_mutex> lock(m_rtpRtcpMutex);

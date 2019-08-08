@@ -1,0 +1,135 @@
+From 9ee44a531b38bdc3645777722cacd7cba5384247 Mon Sep 17 00:00:00 2001
+From: Chen Li1 <li1.chen@intel.com>
+Date: Wed, 14 Mar 2018 16:49:39 +0800
+Subject: [PATCH 6/7] Let SDP media formats follow offer's order
+
+---
+ erizo/src/erizo/SdpInfo.cpp | 40 ++++++++++++++++++++++++++++++++--------
+ erizo/src/erizo/SdpInfo.h   |  1 +
+ 2 files changed, 33 insertions(+), 8 deletions(-)
+
+diff --git a/erizo/src/erizo/SdpInfo.cpp b/erizo/src/erizo/SdpInfo.cpp
+index 7c18d40..c4d9ea7 100644
+--- a/erizo/src/erizo/SdpInfo.cpp
++++ b/erizo/src/erizo/SdpInfo.cpp
+@@ -387,10 +387,6 @@ namespace erizo {
+         }
+       }
+ 
+-      for (const auto rid : rids()) {
+-        sdp << "a=rid:" << rid.id << " " << rid.direction << "\n";
+-      }
+-
+       for (unsigned int it = 0; it < payloadVector.size(); it++) {
+         const RtpMap& rtp = payloadVector[it];
+         if (rtp.media_type == VIDEO_TYPE) {
+@@ -418,8 +414,12 @@ namespace erizo {
+         }
+       }
+ 
++      for (const auto rid : rids()) {
++        sdp << "a=rid:" << rid.id << " " << rid.direction << "\n";
++      }
++
+       if (!rids().empty()) {
+-        sdp << "a=simulcast: " << rids()[0].direction << " rid=";
++        sdp << "a=simulcast:" << rids()[0].direction << " ";
+         for (unsigned i = 0; i < rids().size(); ++i) {
+           sdp << rids()[i].id;
+           if (i < rids().size() - 1) {
+@@ -564,6 +564,8 @@ namespace erizo {
+       mtype = VIDEO_TYPE;
+     }
+ 
++    parsed_order_map.clear();
++
+     while (std::getline(iss, line)) {
+       size_t isVideo = line.find(video);
+       size_t isAudio = line.find(audio);
+@@ -603,7 +605,6 @@ namespace erizo {
+             this->videoDirection = RECVONLY;
+           }
+       } else if (isSendOnly != std::string::npos) {
+-        ELOG_DEBUG("SendOnly sdp")
+           if (mtype == AUDIO_TYPE) {
+             this->audioDirection = SENDONLY;
+           } else {
+@@ -615,7 +616,6 @@ namespace erizo {
+         } else {
+           this->videoDirection = SENDRECV;
+         }
+-        ELOG_DEBUG("SendRecv sdp")
+       }
+ 
+       if (isSAVPF != std::string::npos) {
+@@ -675,6 +675,16 @@ namespace erizo {
+         mtype = AUDIO_TYPE;
+         hasAudio = true;
+       }
++      if (isVideo != std::string::npos || isAudio != std::string::npos) {
++        // parse payload number in mline
++        std::vector<std::string> pieces = stringutil::splitOneOf(line, " ");
++        for (unsigned int i = 3; i < pieces.size(); i++) {
++          unsigned int PT = strtoul(pieces[i].c_str(), nullptr, 10);
++          if (parsed_order_map.find(PT) == parsed_order_map.end()) {
++            parsed_order_map[PT] = parsed_order_map.size();
++          }
++        }
++      }
+       if (isCand != std::string::npos) {
+         std::vector<std::string> pieces = stringutil::splitOneOf(line, " ");
+         pieces[0] = stringutil::splitOneOf(pieces[0], ":")[1];
+@@ -905,9 +915,13 @@ namespace erizo {
+           continue;
+         }
+         if (parsed_map.encoding_name == "rtx") {  // we'll process those later when we have the pt maps
+-          rtx_maps.push_back(parsed_map);
++          // rtx_maps.push_back(parsed_map);
++          // continue;
++        }
++        if (parsed_order_map.find(parsed_map.payload_type) == parsed_order_map.end()) {
+           continue;
+         }
++
+         RtpMap negotiated_map(parsed_map);
+         outInPTMap[parsed_map.payload_type] = internal_map.payload_type;
+         inOutPTMap[internal_map.payload_type] = parsed_map.payload_type;
+@@ -949,6 +963,9 @@ namespace erizo {
+           }
+         }
+         negotiated_map.format_parameters = negotiated_parameters;
++        if (negotiated_map.format_parameters.empty()) {
++          negotiated_map.format_parameters = parsed_map.format_parameters;
++        }
+ 
+         if (negotiated_map.media_type == VIDEO_TYPE) {
+           videoCodecs++;
+@@ -962,6 +979,13 @@ namespace erizo {
+       }
+     }
+ 
++    // Reorder the payloadVector
++    auto order_cmp = [this](const RtpMap & a, const RtpMap & b) -> bool
++    {
++      return parsed_order_map[a.payload_type] < parsed_order_map[b.payload_type];
++    };
++    sort(payloadVector.begin(), payloadVector.end(), order_cmp);
++
+     //  Check atp rtx
+     for (RtpMap& rtx_map : rtx_maps) {
+       for (const RtpMap& internal_map : internalPayloadVector_) {
+diff --git a/erizo/src/erizo/SdpInfo.h b/erizo/src/erizo/SdpInfo.h
+index 7ebb3dc..2d60630 100644
+--- a/erizo/src/erizo/SdpInfo.h
++++ b/erizo/src/erizo/SdpInfo.h
+@@ -327,6 +327,7 @@ class SdpInfo {
+   std::vector<ExtMap> supported_ext_map_;
+   std::vector<Rid> rids_;
+   std::string google_conference_flag_set;
++  std::map<unsigned int, int> parsed_order_map;
+ 
+  private:
+   bool processSdp(const std::string& sdp, const std::string& media);
+-- 
+2.7.4
+

@@ -8,8 +8,9 @@
 
 #include "MediaDefinitions.h"
 #include "VideoFramePacketizerWrapper.h"
-#include <WebRtcConnection.h>
+#include <MediaStream.h>
 #include "WebRtcConnection.h"
+#include "MediaStream.h"
 
 using namespace v8;
 
@@ -63,8 +64,8 @@ void VideoFramePacketizer::bindTransport(const FunctionCallbackInfo<Value>& args
   VideoFramePacketizer* obj = ObjectWrap::Unwrap<VideoFramePacketizer>(args.Holder());
   owt_base::VideoFramePacketizer* me = obj->me;
 
-  WebRtcConnection* param = Nan::ObjectWrap::Unwrap<WebRtcConnection>(Nan::To<v8::Object>(args[0]).ToLocalChecked());
-  auto wr = std::shared_ptr<erizo::WebRtcConnection>(param->me).get();
+  MediaStream* param = Nan::ObjectWrap::Unwrap<MediaStream>(Nan::To<v8::Object>(args[0]).ToLocalChecked());
+  auto wr = std::shared_ptr<erizo::MediaStream>(param->me).get();
 
   //MediaSink* param = Nan::ObjectWrap::Unwrap<MediaSink>(args[0]->ToObject());
   erizo::MediaSink* transport = wr;

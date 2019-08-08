@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 #include "WoogeenHandler.h"
-#include "WebRtcConnection.h"
+#include "MediaStream.h"
 #include <rtputils.h>
 
 namespace erizo {
@@ -15,19 +15,20 @@ void WoogeenHandler::read(Context *ctx, std::shared_ptr<DataPacket> packet) {
   char* buf = packet->data;
   RtcpHeader* chead = reinterpret_cast<RtcpHeader*>(buf);
   RtpHeader* h = reinterpret_cast<RtpHeader*>(buf);
+
   if (!chead->isRtcp()) {
     int externalPT = h->getPayloadType();
     int internalPT = externalPT;
     if (packet->type == AUDIO_PACKET) {
-      internalPT = connection_->getRemoteSdpInfo().getAudioInternalPT(externalPT);
+      internalPT = connection_->getRemoteSdpInfo()->getAudioInternalPT(externalPT);
     } else if (packet->type == VIDEO_PACKET) {
-      internalPT = connection_->getRemoteSdpInfo().getVideoInternalPT(externalPT);
+      internalPT = connection_->getRemoteSdpInfo()->getVideoInternalPT(externalPT);
     }
 
     if (internalPT == RED_90000_PT) {
       assert(packet->type == VIDEO_PACKET);
       redheader* redhead = (redheader*)(buf + h->getHeaderLength());
-      redhead->payloadtype = connection_->getRemoteSdpInfo().getVideoInternalPT(redhead->payloadtype);
+      redhead->payloadtype = connection_->getRemoteSdpInfo()->getVideoInternalPT(redhead->payloadtype);
     }
   }
 
@@ -47,15 +48,15 @@ void WoogeenHandler::write(Context *ctx, std::shared_ptr<DataPacket> packet) {
       h->setSSRC(connection_->getAudioSinkSSRC());
     }
 
-    int externalRED = connection_->getRemoteSdpInfo().getVideoExternalPT(RED_90000_PT);
+    int externalRED = connection_->getRemoteSdpInfo()->getVideoExternalPT(RED_90000_PT);
 
     if (h->getPayloadType() == externalRED) {
       int totalLength = h->getHeaderLength();
       int rtpHeaderLength = totalLength;
       redheader *redhead = (redheader*) (buf + totalLength);
-      redhead->payloadtype = connection_->getRemoteSdpInfo().getVideoExternalPT(redhead->payloadtype);
+      redhead->payloadtype = connection_->getRemoteSdpInfo()->getVideoExternalPT(redhead->payloadtype);
 
-      if (!connection_->getRemoteSdpInfo().supportPayloadType(RED_90000_PT)) {
+      if (true || !connection_->getRemoteSdpInfo()->supportPayloadType(RED_90000_PT)) {
         while (redhead->follow) {
           totalLength += redhead->getLength() + 4; // RED header
           redhead = (redheader*) (buf + totalLength);

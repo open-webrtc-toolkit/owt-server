@@ -7,17 +7,17 @@
 
 #include "./logger.h"
 #include "pipeline/Handler.h"
-#include "WebRtcConnection.h"
+#include "MediaStream.h"
 
 namespace erizo {
 
-class WebRtcConnection;
+class MediaStream;
 
 class WoogeenHandler: public Handler, public std::enable_shared_from_this<WoogeenHandler> {
   DECLARE_LOGGER();
 
  public:
-  explicit WoogeenHandler(WebRtcConnection *connection) : connection_{connection}, enabled_{true} {}
+  explicit WoogeenHandler(MediaStream *connection) : connection_{connection}, enabled_{true} {}
 
   // Enabled always
   void enable() override {}
@@ -32,7 +32,7 @@ class WoogeenHandler: public Handler, public std::enable_shared_from_this<Woogee
   void notifyUpdate() override {};
 
  private:
-  WebRtcConnection *connection_;
+  MediaStream *connection_;
   bool enabled_;
   char deliverMediaBuffer[3000];
 };
