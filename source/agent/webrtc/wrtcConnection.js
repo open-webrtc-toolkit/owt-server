@@ -84,7 +84,7 @@ class WrtcStream {
     }
 
     var trackUpdate = false;
-    if ((track === 'av' || track === 'audio') && audio) {
+    if (track === 'av' || track === 'audio') {
       if (dir === 'in' && this.audioFrameConstructor) {
         this.audioFrameConstructor.enable(action === 'on');
       } else if (dir === 'out' && this.audioFramePacketizer) {
@@ -95,7 +95,7 @@ class WrtcStream {
       }
       trackUpdate = true;
     }
-    if ((track === 'av' || track === 'video') && video) {
+    if (track === 'av' || track === 'video') {
       if (dir === 'in' && this.videoFrameConstructor) {
         this.videoFrameConstructor.enable(action === 'on');
       } else if (dir === 'out' && this.videoFramePacketizer) {
