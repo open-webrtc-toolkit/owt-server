@@ -1177,25 +1177,37 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
         return false;
     };
 
-    var simulcastVideoMatch = function (stream_id, format, resolution, framerate, bitrate, keyFrameInterval) {
+    var simulcastVideoMatch = function (stream_id, format, resolution, framerate, bitrate, keyFrameInterval, simulcastRid) {
         var matchedId;
         var videoInfo = {};
-        if (streams[stream_id] && streams[stream_id].video &&
-            streams[stream_id].video.simulcast) {
-            for (const rid in streams[stream_id].video.simulcast) {
-                const simInfo = streams[stream_id].video.simulcast[rid];
-                const combinedVideo = Object.assign({}, {format: streams[stream_id].video.format}, simInfo);
-                if (isVideoMatch(combinedVideo, format, resolution, framerate, bitrate, keyFrameInterval)) {
-                    matchedId = simInfo.id;
-                    break;
+        if (streams[stream_id] && streams[stream_id].video) {
+            if (streams[stream_id].video.rid === simulcastRid) {
+                matchedId = stream_id;
+                return matchedId;
+            } else if (streams[stream_id].video.simulcast) {
+                if (simulcastRid) {
+                    const selectInfo = streams[stream_id].video.simulcast[simulcastRid];
+                    if (selectInfo && selectInfo.id) {
+                        // matched RID
+                        return selectInfo.id;
+                    }
+                }
+                for (const rid in streams[stream_id].video.simulcast) {
+                    const simInfo = streams[stream_id].video.simulcast[rid];
+                    const combinedVideo = Object.assign({}, {format: streams[stream_id].video.format}, simInfo);
+                    if (isVideoMatch(combinedVideo, format, resolution, framerate, bitrate, keyFrameInterval)) {
+                        matchedId = simInfo.id;
+                        break;
+                    }
                 }
             }
         }
         return matchedId;
     };
 
-    var getVideoStream = function (stream_id, format, resolution, framerate, bitrate, keyFrameInterval, on_ok, on_error) {
-        log.debug('getVideoStream, stream:', stream_id, 'format:', format, 'resolution:', resolution, 'framerate:', framerate, 'bitrate:', bitrate, 'keyFrameInterval', keyFrameInterval);
+    var getVideoStream = function (stream_id, format, resolution, framerate, bitrate, keyFrameInterval, simulcastRid, on_ok, on_error) {
+        log.debug('getVideoStream, stream:', stream_id, 'format:', format, 'resolution:', resolution, 'framerate:', framerate,
+                'bitrate:', bitrate, 'keyFrameInterval', keyFrameInterval, 'simulcastRid', simulcastRid);
         var mixView = getViewOfMixStream(stream_id);
         if (mixView) {
             getMixedVideo(mixView, format, resolution, framerate, bitrate, keyFrameInterval, function (streamID) {
@@ -1205,8 +1217,8 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
         } else if (streams[stream_id]) {
             if (streams[stream_id].video) {
                 const videoInfo = streams[stream_id].video;
-                const matchedSimId = simulcastVideoMatch(stream_id, format, resolution, framerate, bitrate, keyFrameInterval);
-                if (isVideoMatch(videoInfo, format, resolution, framerate, bitrate, keyFrameInterval)) {
+                const matchedSimId = simulcastVideoMatch(stream_id, format, resolution, framerate, bitrate, keyFrameInterval, simulcastRid);
+                if (!simulcastRid && isVideoMatch(videoInfo, format, resolution, framerate, bitrate, keyFrameInterval)) {
                     on_ok(stream_id);
                 } else if (matchedSimId) {
                     log.debug('match simulcast stream:', matchedSimId);
@@ -1406,6 +1418,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
             var framerate = 'unspecified';
             var bitrate = 'unspecified';
             var keyFrameInterval = 'unspecified';
+            var simulcastRid = undefined;
             if (subInfo.video) {
                 var subVideoStream = subInfo.video.from;
                 var subView = getViewOfMixStream(subVideoStream);
@@ -1550,7 +1563,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                         log.debug('Got audio stream:', audio_stream);
                         if (subInfo.video) {
                             log.debug('require video track of stream:', subInfo.video.from);
-                            getVideoStream(subInfo.video.from, video_format, resolution, framerate, bitrate, keyFrameInterval, function (streamID) {
+                            getVideoStream(subInfo.video.from, video_format, resolution, framerate, bitrate, keyFrameInterval, subInfo.video.simulcastRid, function (streamID) {
                                 video_stream = streamID;
                                 log.debug('Got video stream:', video_stream);
                                 spread2LocalNode(audio_stream, video_stream, function () {
@@ -1575,7 +1588,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                     }, finaly_error);
                 } else if (subInfo.video) {
                     log.debug('require video track of stream:', subInfo.video.from);
-                    getVideoStream(subInfo.video.from, video_format, resolution, framerate, bitrate, keyFrameInterval, function (streamID) {
+                    getVideoStream(subInfo.video.from, video_format, resolution, framerate, bitrate, keyFrameInterval, subInfo.video.simulcastRid, function (streamID) {
                         video_stream = streamID;
                         spread2LocalNode(undefined, video_stream, function () {
                             linkup(undefined, video_stream);
@@ -2306,6 +2319,8 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                         }
                     };
                 }
+            } else if (update.firstrid && streams[streamId].video) {
+                streams[streamId].video.rid = update.firstrid;
             }
             log.debug('updated stream info', JSON.stringify(streams[streamId]));
         }

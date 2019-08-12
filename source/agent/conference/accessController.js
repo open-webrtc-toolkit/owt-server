@@ -101,6 +101,7 @@ module.exports.create = function(spec, rpcReq, onSessionEstablished, onSessionAb
         session.options.media.video.format && (media.video.format = session.options.media.video.format);
         (session.options.type === 'webrtc') && (media.video.format = video);
         session.options.media.video.parameters && (media.video.parameters = session.options.media.video.parameters);
+        session.options.media.video.simulcastRid && (media.video.simulcastRid = session.options.media.video.simulcastRid);
       }
 
       if (session.options.type === 'recording') {

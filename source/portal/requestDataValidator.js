@@ -210,7 +210,8 @@ const SubscriptionRequest = {
       properties: {
         'from': { type: 'string' },
         'format': { $ref: '#/definitions/VideoFormat' },
-        'parameters': { $ref: '#/definitions/VideoParametersSpecification' }
+        'parameters': { $ref: '#/definitions/VideoParametersSpecification' },
+        'simulcastRid': { type: 'string' }
       },
       additionalProperties: false,
       required: ['from']

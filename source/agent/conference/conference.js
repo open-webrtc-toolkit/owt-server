@@ -1145,6 +1145,24 @@ var Conference = function (rpcClient, selfRpcId) {
       }
     }
 
+    if (req.simulcastRid) {
+      let findRid = false;
+      if (streams[req.from].media.video.rid === req.simulcastRid) {
+        findRid = true;
+      }
+      if (streams[req.from].media.video.alternative) {
+        streams[req.from].media.video.alternative.forEach((item) => {
+          if (item.rid === req.simulcastRid) {
+            findRid = true;
+          }
+        });
+      }
+      if (!findRid) {
+        err && (err.message = 'Simulcast RID is not acceptable');
+        return false;
+      }
+    }
+
     return true;
   };
 

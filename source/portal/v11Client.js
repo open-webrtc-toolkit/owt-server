@@ -21,7 +21,7 @@ var convertStream = function (stream) {
         delete videoInfo.parameters;
       }
       if (videoInfo.rid) {
-        videoInfo.original[0].rid = videoInfo.rid;
+        videoInfo.original[0].simulcastRid = videoInfo.rid;
         delete videoInfo.rid;
       }
     }
@@ -29,6 +29,8 @@ var convertStream = function (stream) {
       videoInfo.alternative.forEach((alt) => {
         if (!alt.format) {
           alt.format = videoInfo.original[0].format;
+          alt.simulcastRid = alt.rid;
+          delete alt.rid;
         }
         videoInfo.original.push(alt);
       });
