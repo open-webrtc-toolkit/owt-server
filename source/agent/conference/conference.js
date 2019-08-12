@@ -1620,7 +1620,7 @@ var Conference = function (rpcClient, selfRpcId) {
   };
 
   that.onMediaUpdate = (sessionId, direction, mediaUpdate) => {
-    log.info('onMediaUpdate, sessionId:', sessionId, 'direction:', direction, 'mediaUpdate:', JSON.stringify(mediaUpdate));
+    log.debug('onMediaUpdate, sessionId:', sessionId, 'direction:', direction, 'mediaUpdate:', JSON.stringify(mediaUpdate));
     if (direction === 'in' && streams[sessionId] && (streams[sessionId].type === 'forward')) {
       updateStreamInfo(sessionId, mediaUpdate);
       roomController && roomController.updateStreamInfo(sessionId, mediaUpdate);
