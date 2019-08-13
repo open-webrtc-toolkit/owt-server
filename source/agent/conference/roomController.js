@@ -1181,7 +1181,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
         var matchedId;
         var videoInfo = {};
         if (streams[stream_id] && streams[stream_id].video) {
-            if (streams[stream_id].video.rid === simulcastRid) {
+            if (simulcastRid && streams[stream_id].video.rid === simulcastRid) {
                 matchedId = stream_id;
                 return matchedId;
             } else if (streams[stream_id].video.simulcast) {
