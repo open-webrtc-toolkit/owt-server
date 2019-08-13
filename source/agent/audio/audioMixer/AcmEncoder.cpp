@@ -17,7 +17,6 @@ DEFINE_LOGGER(AcmEncoder, "mcu.media.AcmEncoder");
 AcmEncoder::AcmEncoder(const FrameFormat format)
     : m_format(format)
     , m_rtpSampleRate(0)
-    , m_timestampOffset(0)
     , m_valid(false)
     , m_running(false)
     , m_incomingFrameCount(0)
@@ -83,7 +82,6 @@ bool AcmEncoder::init()
             break;
     }
 
-    //m_timestampOffset = currentTimeMs();
     m_valid = true;
 
     return true;
@@ -175,7 +173,7 @@ int32_t AcmEncoder::SendData(FrameType frame_type,
     frame.additionalInfo.audio.channels = getAudioChannels(frame.format);
     frame.payload = const_cast<uint8_t*>(payload_data);
     frame.length = payload_len_bytes;
-    frame.timeStamp = (AudioTime::currentTime()) * m_rtpSampleRate / 1000;
+    frame.timeStamp = timestamp;
 
     ELOG_TRACE_T("deliverFrame(%s), sampleRate(%d), channels(%d), timeStamp(%d), length(%d), %s",
             getFormatStr(frame.format),
