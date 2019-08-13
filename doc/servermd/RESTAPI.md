@@ -510,16 +510,7 @@ Streams model:
             bitrate: [number(Kbps)] | [string("x" + Multiple)],
             keyFrameInterval: [number(Seconds)]
           }
-        },
-        alternative: [{                         // For simulcast streams only
-          format: [object(VideoFormat)],
-          parameters: {
-            resolution: object(Resolution),     // Optional
-            framerate: number(FramerateFPS),    // Optional
-            bitrate: number(Kbps),              // Optional
-            keyFrameInterval: number(Seconds),  // Optional
-          }
-        }]
+        }
       }
     }
     object(VideoFormat):
