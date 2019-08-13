@@ -47,7 +47,6 @@ private:
     FrameFormat m_format;
     uint32_t m_rtpSampleRate;
 
-    uint32_t m_timestampOffset;
     bool m_valid;
 
     bool m_running;
