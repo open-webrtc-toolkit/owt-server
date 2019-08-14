@@ -33,6 +33,12 @@
  *           keyFrameRate: [number(Seconds)] | undefined
  *         } | undefined
  *       } | undeinfed
+ *       alternative: [{
+ *         resolution: object(Resolution) | undefined,
+ *         framerate: number(FramerateFPS) | undefined,
+ *         bitrate: number(Kbps) | undefined,
+ *         keyFrameInterval: number(Seconds) | undefined,
+ *       }] | undefined
  *     } | undefined
  *   },
  *   info: object(PublicationInfo):: {

@@ -29,9 +29,9 @@ var convertStream = function (stream) {
       videoInfo.alternative.forEach((alt) => {
         if (!alt.format) {
           alt.format = videoInfo.original[0].format;
-          alt.simulcastRid = alt.rid;
-          delete alt.rid;
         }
+        alt.simulcastRid = alt.rid;
+        delete alt.rid;
         videoInfo.original.push(alt);
       });
       delete videoInfo.alternative;

@@ -204,7 +204,7 @@ class Connection extends EventEmitter {
               if (this.simulcastInfo) {
                 log.debug('sdp simulcast:', JSON.stringify(this.simulcastInfo));
                 const index = this.simulcastInfo.findIndex((val) => {
-                  return (val[0] && val[0].scid == streamId);
+                  return (val[0] && (val[0].scid + '') === streamId);
                 });
 
                 if (!this.firstRid) {

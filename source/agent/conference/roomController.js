@@ -1166,7 +1166,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
         }
     };
 
-    var isVideoMatch = function (videoInfo, format, resolution, framerate, bitrate, keyFrameInterval) {
+    var isVideoMatched = function (videoInfo, format, resolution, framerate, bitrate, keyFrameInterval) {
         if (isVideoFmtCompatible(video_format_obj(videoInfo.format), video_format_obj(format)) &&
             (resolution === 'unspecified' || isResolutionEqual(videoInfo.resolution, resolution)) &&
             (framerate === 'unspecified' || videoInfo.framerate === framerate) &&
@@ -1177,7 +1177,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
         return false;
     };
 
-    var simulcastVideoMatch = function (stream_id, format, resolution, framerate, bitrate, keyFrameInterval, simulcastRid) {
+    var simulcastVideoMatched = function (stream_id, format, resolution, framerate, bitrate, keyFrameInterval, simulcastRid) {
         var matchedId;
         var videoInfo = {};
         if (streams[stream_id] && streams[stream_id].video) {
@@ -1192,10 +1192,13 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                         return selectInfo.id;
                     }
                 }
+                if (isVideoMatched(streams[stream_id].video, format, resolution, framerate, bitrate, keyFrameInterval)) {
+                    return stream_id;
+                }
                 for (const rid in streams[stream_id].video.simulcast) {
                     const simInfo = streams[stream_id].video.simulcast[rid];
                     const combinedVideo = Object.assign({}, {format: streams[stream_id].video.format}, simInfo);
-                    if (isVideoMatch(combinedVideo, format, resolution, framerate, bitrate, keyFrameInterval)) {
+                    if (isVideoMatched(combinedVideo, format, resolution, framerate, bitrate, keyFrameInterval)) {
                         matchedId = simInfo.id;
                         break;
                     }
@@ -1203,6 +1206,10 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
             }
         }
         return matchedId;
+    };
+
+    var isSimulcastStream = function (stream_id) {
+        return !!streams[stream_id].video.rid;
     };
 
     var getVideoStream = function (stream_id, format, resolution, framerate, bitrate, keyFrameInterval, simulcastRid, on_ok, on_error) {
@@ -1217,12 +1224,16 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
         } else if (streams[stream_id]) {
             if (streams[stream_id].video) {
                 const videoInfo = streams[stream_id].video;
-                const matchedSimId = simulcastVideoMatch(stream_id, format, resolution, framerate, bitrate, keyFrameInterval, simulcastRid);
-                if (!simulcastRid && isVideoMatch(videoInfo, format, resolution, framerate, bitrate, keyFrameInterval)) {
+                if (isSimulcastStream(stream_id)) {
+                    const matchedSimId = simulcastVideoMatched(stream_id, format, resolution, framerate, bitrate, keyFrameInterval, simulcastRid);
+                    if (matchedSimId) {
+                        log.debug('match simulcast stream:', matchedSimId);
+                        on_ok(matchedSimId);
+                    } else {
+                        on_error('Simulcast stream not matched:' + stream_id);
+                    }
+                } else if (isVideoMatched(videoInfo, format, resolution, framerate, bitrate, keyFrameInterval)) {
                     on_ok(stream_id);
-                } else if (matchedSimId) {
-                    log.debug('match simulcast stream:', matchedSimId);
-                    on_ok(matchedSimId);
                 } else {
                     getTranscodedVideo(format, resolution, framerate, bitrate, keyFrameInterval, stream_id, function (streamID) {
                         on_ok(streamID);
