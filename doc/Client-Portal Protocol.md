@@ -5,6 +5,7 @@
 |12-06-2017 |Xiande|draft|
 |28-06-2017 |Xiande|1.0 reviewed|
 |08-04-2018 |Tianfang|1.0 final|
+|08-09-2019 |ChenLi|1.1 reviewed|
 -->
 # 1. Overview
 This documentation covers all signaling messages between Client and MCU component through Socket.io connections.
@@ -102,7 +103,7 @@ This a format for client reconnects.
      reconnection: object(ReconnectionOptions)/*If reconnection is required*/
                    | false/*If reconnection is not required*/
                    | undefined/*For compatibility (with 3.4 clients) purpose, will be considered as false or {keepTime: -1}*/,
-     protocol: string(ProtocolVersion)/*e.g.  “1.0”*/
+     protocol: string(ProtocolVersion)/*e.g.  “1.1”*/
                | undefined/*For compatibility (with 3.4 clients) purpose, will be considered as "legacy"*/
     }
 
@@ -198,8 +199,11 @@ This a format for client reconnects.
               {
                status: "active" | "inactive" | undefined,
                source: "camera" | "screen-cast" | "raw-file" | "encoded-file" | undefined,
-               format: object(VideoFormat),
-               parameters: object(VideoParameters) | undefined,
+               original: [{
+                 format: object(VideoFormat),
+                 parameters: object(VideoParameters) | undefined,
+                 simulcastRid: string(SimulcastRid) | undefined
+               }],
                optional:
                  {
                   format: [object(VideoFormat)] | undefined,
@@ -445,7 +449,8 @@ This a format for client reconnects.
         {
          from: string(StreamId),
          parameters: object(VideoParametersSpecification)/*If specific video parameters are wanted*/
-                     | undefined/*If default video parameters are wanted*/
+                     | undefined/*If default video parameters are wanted*/,
+         simulcastRid: string(rid) /* if simulcastRid is used, parameters will be ignored */
         }
 
         object(VideoParametersSpecification)::
