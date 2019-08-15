@@ -15,6 +15,7 @@
     "Main": "INFO",
     "LegacyClient": "INFO",
     "V10Client": "INFO",
+    "V11Client": "INFO",
     "SocketIOServer": "INFO",
     "Portal": "INFO",
     "RpcClient": "INFO",

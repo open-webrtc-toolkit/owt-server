@@ -59,13 +59,14 @@ class Connection extends EventEmitter {
     this.ioThreadPool = ioThreadPool;
     this.mediaConfiguration = 'default';
     this.mediaStreams = new Map();
-    this.wrtc = this._createWrtc();
     this.initialized = false;
     this.options = options;
+    this.ipAddresses = options.ipAddresses || '';
     this.trickleIce = options.trickleIce || false;
     this.metadata = this.options.metadata || {};
     this.isProcessingRemoteSdp = false;
     this.ready = false;
+    this.wrtc = this._createWrtc();
   }
 
   _getMediaConfiguration(mediaConfiguration = 'default') {
@@ -93,7 +94,8 @@ class Connection extends EventEmitter {
       '', // turnport,
       '', //turnusername,
       '', //turnpass,
-      '' //networkinterface
+      '', //networkinterface
+      this.ipAddresses
     );
 
     return wrtc;
@@ -202,21 +204,25 @@ class Connection extends EventEmitter {
               if (this.simulcastInfo) {
                 log.debug('sdp simulcast:', JSON.stringify(this.simulcastInfo));
                 const index = this.simulcastInfo.findIndex((val) => {
-                  return (val[0] && val[0].scid === streamId);
+                  return (val[0] && (val[0].scid + '') === streamId);
                 });
 
-                if (index === 0) {
+                if (!this.firstRid) {
                   // first RID stream
+                  this.firstRid = streamId;
                   this.wrtc.setVideoSsrcList('', [ssrc]);
                   this.wrtc.setRemoteSdp(this.latestSdp, this.id);
-                } else if (index > 0) {
+                  this.emit('status_event', {type: 'firstrid', rid: streamId, ssrc}, newStatus);
+                } else {
                   // create stream
                   this.addMediaStream(streamId, {label: streamId}, true);
                   this.wrtc.setVideoSsrcList(streamId, [ssrc]);
                   this.wrtc.setRemoteSdp(this.latestSdp, streamId);
+                  this.emit('status_event', {type: 'rid', rid: streamId, ssrc}, newStatus);
                 }
+              } else {
+                log.warn('No simulcast info RID:', streamId);
               }
-              this.emit('status_event', {type: 'rid', rid: streamId, ssrc}, newStatus);
             }
           }
           break;
@@ -263,9 +269,6 @@ class Connection extends EventEmitter {
   }
 
   setRemoteSsrc(audioSsrc, videoSsrcList, label) {
-    // this.isProcessingRemoteSdp = true;
-    // this.remoteDescription = new SessionDescription(sdp, this.mediaConfiguration);
-    // this.wrtc.setRemoteDescription(this.remoteDescription.connectionDescription, streamId);
     this.wrtc.setAudioSsrc(label, audioSsrc);
     this.wrtc.setVideoSsrcList(label, videoSsrcList);
   }

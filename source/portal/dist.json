@@ -12,6 +12,7 @@
             "socketIOServer.js",
             "legacyClient.js",
             "v10Client.js",
+            "v11Client.js",
             "requestDataValidator.js",
             "../common/amqp_client.js",
             "../common/cipher.js",

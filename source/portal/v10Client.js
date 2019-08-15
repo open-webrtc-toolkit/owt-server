@@ -31,6 +31,18 @@ const getErrorMessage = function (err) {
   }
 };
 
+const v10Stream = function (stream) {
+  if (stream && stream.media && stream.media.video) {
+    const videoInfo = stream.media.video;
+    if (videoInfo.rid) {
+      delete videoInfo.rid;
+    }
+    if (videoInfo.alternative) {
+      delete videoInfo.alternative;
+    }
+  }
+};
+
 var V10Client = function(clientId, sigConnection, portal) {
   var that = {
     id: clientId,
@@ -216,6 +228,15 @@ var V10Client = function(clientId, sigConnection, portal) {
   };
 
   that.notify = (evt, data) => {
+    if (evt === 'stream') {
+      if (data.status === 'add') {
+        v10Stream(data.data);
+      }
+      if (data.status === 'update' && data.data.field === '.') {
+        v10Stream(data.data.value);
+      }
+      log.debug('converted 1.0 stream data:', JSON.stringify(data));
+    }
     sendMsg(evt, data);
   };
 
@@ -225,8 +246,14 @@ var V10Client = function(clientId, sigConnection, portal) {
         that.inRoom = result.data.room.id;
         that.tokenCode = result.tokenCode;
         result.data.id = that.id;
-        return result.data;
-      });
+        const data = result.data;
+        if (data && data.room && data.room.streams) {
+          data.room.streams.forEach((stream) => {
+            v10Stream(stream);
+          });
+        }
+        return data;
+      })
   };
 
   that.leave = () => {
