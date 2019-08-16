@@ -22,6 +22,7 @@ const {
   getVideoSsrcList,
   getSimulcastInfo,
   hasCodec,
+  addVideoSSRC,
 } = require('./sdp');
 
 var addon = require('../webrtcLib/build/Release/webrtc'); //require('./erizo/build/Release/addon');
@@ -167,6 +168,10 @@ module.exports = function (spec, on_status, on_mediaUpdate) {
             message = message.replace(new RegExp(i.ip_address, 'g'), i.replaced_ip_address);
           }
         });
+        if (videoFramePacketizer) {
+          const vssrc = videoFramePacketizer.ssrc();
+          message = addVideoSSRC(message, vssrc);
+        }
         log.debug('Answer SDP', message);
         on_status({type: 'answer', sdp: message});
 
