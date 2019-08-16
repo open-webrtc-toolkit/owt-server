@@ -30,6 +30,7 @@ void AudioFramePacketizer::Init(v8::Local<v8::Object> exports) {
   NODE_SET_PROTOTYPE_METHOD(tpl, "bindTransport", bindTransport);
   NODE_SET_PROTOTYPE_METHOD(tpl, "unbindTransport", unbindTransport);
   NODE_SET_PROTOTYPE_METHOD(tpl, "enable", enable);
+  NODE_SET_PROTOTYPE_METHOD(tpl, "ssrc", getSsrc);
 
   constructor.Reset(isolate, tpl->GetFunction());
   exports->Set(String::NewFromUtf8(isolate, "AudioFramePacketizer"), tpl->GetFunction());
@@ -91,3 +92,13 @@ void AudioFramePacketizer::enable(const v8::FunctionCallbackInfo<v8::Value>& arg
   me->enable(b);
 }
 
+void AudioFramePacketizer::getSsrc(const v8::FunctionCallbackInfo<v8::Value>& args) {
+  Isolate* isolate = Isolate::GetCurrent();
+  HandleScope scope(isolate);
+
+  AudioFramePacketizer* obj = ObjectWrap::Unwrap<AudioFramePacketizer>(args.Holder());
+  owt_base::AudioFramePacketizer* me = obj->me;
+
+  uint32_t ssrc = me->getSsrc();
+  args.GetReturnValue().Set(Number::New(isolate, ssrc));
+}

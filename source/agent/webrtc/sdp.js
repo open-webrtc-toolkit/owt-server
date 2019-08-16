@@ -321,6 +321,26 @@ exports.processOffer = function (sdp, preference = {}, direction) {
   return { sdp, audioFormat, videoFormat};
 };
 
+exports.addAudioSSRC = function (sdp, ssrc) {
+  const sdpObj = transform.parse(sdp);
+  if (sdpObj.msidSemantic) {
+    const msid = sdpObj.msidSemantic.token;
+    for (const media of sdpObj.media) {
+      if (media.type == 'audio') {
+        if (!media.ssrcs) {
+          media.ssrcs = [
+            {id: ssrc, attribute: 'cname', value: 'o/i14u9pJrxRKAsu'},
+            {id: ssrc, attribute: 'msid', value: `${msid} a0`},
+            {id: ssrc, attribute: 'mslabel', value: msid},
+            {id: ssrc, attribute: 'label', value: `${msid}a0`},
+          ];
+        }
+      }
+    }
+  }
+  return transform.write(sdpObj);
+};
+
 exports.addVideoSSRC = function (sdp, ssrc) {
   const sdpObj = transform.parse(sdp);
   if (sdpObj.msidSemantic) {

@@ -22,6 +22,7 @@ const {
   getVideoSsrcList,
   getSimulcastInfo,
   hasCodec,
+  addAudioSSRC,
   addVideoSSRC,
 } = require('./sdp');
 
@@ -168,9 +169,13 @@ module.exports = function (spec, on_status, on_mediaUpdate) {
             message = message.replace(new RegExp(i.ip_address, 'g'), i.replaced_ip_address);
           }
         });
+        if (audioFramePacketizer) {
+          const aSsrc = audioFramePacketizer.ssrc();
+          message = addAudioSSRC(message, aSsrc);
+        }
         if (videoFramePacketizer) {
-          const vssrc = videoFramePacketizer.ssrc();
-          message = addVideoSSRC(message, vssrc);
+          const vSsrc = videoFramePacketizer.ssrc();
+          message = addVideoSSRC(message, vSsrc);
         }
         log.debug('Answer SDP', message);
         on_status({type: 'answer', sdp: message});
