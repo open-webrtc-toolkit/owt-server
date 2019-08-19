@@ -39,6 +39,7 @@ public:
     void bindTransport(erizo::MediaSink* sink);
     void unbindTransport();
     void enable(bool enabled) {m_enabled = enabled;}
+    uint32_t getSsrc() { return m_ssrc; }
 
     // Implements FrameDestination.
     void onFrame(const Frame&);
