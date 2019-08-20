@@ -1359,6 +1359,61 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
         deinitialize();
     };
 
+    const rebuildStream = (streamId, accessNode, on_ok, on_error) => {
+        log.debug('rebuildStream, streamId:', streamId, 'accessNode:', accessNode.node);
+
+        var old_st = JSON.parse(JSON.stringify(streams[streamId]));
+        terminals[old_st.owner].locality = accessNode;
+        terminals[old_st.owner].subscribers = {};
+        streams[streamId].spread = [];
+        streams[streamId].video.subscribers = [];
+
+        return Promise.all(old_st.spread.map(function(target_node) {
+            return new Promise(function (res, rej) {
+                shrinkStream(streamId, target_node.target);
+                setTimeout(() => {
+                    spreadStream(streamId, target_node.target, 'participant', function() {
+                        res('ok');
+                    }, function (reason) {
+                        log.warn('Failed in spreading video stream. reason:', reason);
+                        rej(reason);
+                    });
+                }, 20);
+            });
+        }))
+        .then(function () {
+            old_st.video.subscribers.forEach(function (t_id) {
+                if (terminals[t_id]) {
+                    for (var sub_id in terminals[t_id].subscribed) {
+                        if (terminals[t_id].subscribed[sub_id].video === streamId) {
+                            makeRPC(
+                                rpcClient,
+                                terminals[t_id].locality.node,
+                                'linkup',
+                                [sub_id, undefined, streamId],
+                                function () {
+                                    log.debug('resumed sub_id:', sub_id, 'for streamId:', streamId);
+                                    streams[streamId].video.subscribers = streams[streamId].video.subscribers || [];
+                                    streams[streamId].video.subscribers.push(t_id);
+                                    terminals[t_id].subscribed[sub_id].video = streamId;
+                                }, function (reason) {
+                                    log.warn('Failed in resuming video subscription:', sub_id, 'reason:', reason);
+                                });
+                        }
+                    }
+                }
+            });
+        })
+        .then(function () {
+            log.debug('Rebuild stream and its subscriptions ok.');
+            on_ok('ok');
+        })
+        .catch(function (err) {
+            log.info('Rebuild stream and or its subscriptions failed. err:', err);
+            on_error(err);
+        });
+    };
+
     that.publish = function (participantId, streamId, accessNode, streamInfo, streamType, on_ok, on_error) {
         log.debug('publish, participantId: ', participantId, 'streamId:', streamId, 'accessNode:', accessNode.node, 'streamInfo:', JSON.stringify(streamInfo));
         if (streams[streamId] === undefined) {
@@ -1381,6 +1436,8 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
             }, function (error_reason) {
                 on_error(error_reason);
             });
+        } else if (streamType === 'analytics'){
+            rebuildStream(streamId, accessNode, on_ok, on_error);
         } else {
             on_error('Stream[' + streamId + '] already set for ' + participantId);
         }
