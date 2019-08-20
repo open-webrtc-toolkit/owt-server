@@ -389,10 +389,7 @@ module.exports = function (spec, on_status, on_mediaUpdate) {
       } else if (msg.type === 'candidate') {
         wrtc.addRemoteCandidate(msg.candidate);
       } else if (msg.type === 'removed-candidates') {
-        msg.candidates.forEach(function (val) {
-          wrtc.removeRemoteCandidate('', 0, val.candidate);
-        });
-        wrtc.removeRemoteCandidate('', -1, '');
+        wrtc.removeRemoteCandidates(msg.candidates);
       }
     };
 
