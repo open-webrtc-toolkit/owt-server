@@ -534,7 +534,7 @@ The following instructions are provided only as recommendations regarding securi
 19. Deploy OWT cluster(Managers + Workers) inside Demilitarized Zone(DMZ) area, utilize external firewall A to protect them against possible attacks, e.g. DoS attack; Deploy Mongo DB and RabbitMQ behind DMZ, configure internal firewall B to make sure only cluster machines can connect to RabbitMQ server and access to MongoDB data resources.
 
 **Figure 2-1. Security Recommendations Picture**
-![Security Recommendations Picture](./pic/deploy.png)
+![Security Recommendations Picture](../ServerPic/deploy.png)
 
 ## 2.7 FAQ
 1. Sudden low volume when connecting Chrome on Windows to OWT server
@@ -544,7 +544,7 @@ The following instructions are provided only as recommendations regarding securi
     Both the Chrome browser and Windows system itself can reduce the volume during a connection to the OWT server. To resolve this issue, disable the following Communications feature found in the Sound Settings using the Windows Control Panel.
 
     **Figure 2-2. Sound Settings**
-    ![Sound Settings](./pic/soundsettings.png)
+    ![Sound Settings](../ServerPic/soundsettings.png)
 2. Failed to start OWT server, and receive the following error message: "child_process.js:948; throw errnoException(process._errno, 'spawn'); Error: spawn EMFILE"
 
     **Resolution**:
@@ -671,7 +671,7 @@ A valid customized video layout should be an array of video layout definition.
 The following example shows the details:
 
 **Figure 3-1. Example Layout**
-![Example layout](./pic/layout.jpg)
+![Example layout](../ServerPic/layout.jpg)
 
 ```json
 // Video layout for the case of 1 input or 6 inputs
@@ -829,7 +829,7 @@ For example, connect to the OWT sample application server XXXXX with the followi
 The peer server is the default signaling server of the Open-WebRTC-Toolkit. The peer server provides the ability to exchange WebRTC signaling messages over Socket.IO between different clients.
 
 **Figure 5-1. Peer Server Framework**
-<img src="./pic/framework.png" alt="Framework" style="width: 600px;">
+<img src="../ServerPic/framework.png" alt="Framework" style="width: 600px;">
 
 ## 5.2 Installation requirements
 The installation requirements for the peer server are listed in Table 5-1 and 5-2.
