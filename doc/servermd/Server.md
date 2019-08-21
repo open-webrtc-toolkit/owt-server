@@ -77,9 +77,9 @@ OWT server|CentOS* 7.6, Ubuntu 18.04 LTS
 
 The GPU-acceleration can only be enabled on kernel 4.14 or later (4.19 or later is recommended).
 
-If you want to set up video conference service with H.264 codec support powered by non GPU-accelerated OWT server, OpenH264 library is required. See [Deploy Cisco OpenH264* Library](#Conferencesection2_3_4) section for more details.
+If you want to set up video conference service with H.264 codec support powered by non GPU-accelerated OWT server, OpenH264 library is required. See [Deploy Cisco OpenH264* Library](#2-3-4-Deploy-Cisco-OpenH264--Library) section for more details.
 
-If you want to set up video conference service with SVT-HEVC Encoder on Ubuntu 18.04 LTS. See [Deploy SVT-HEVC Encoder Library](#Conferencesection2_3_6) section for more details.
+If you want to set up video conference service with SVT-HEVC Encoder on Ubuntu 18.04 LTS. See [Deploy SVT-HEVC Encoder Library](#2-3-6-Deploy-SVT-HEVC-Encoder-Library) section for more details.
 
 If you want to set up video conference service powered by GPU-accelerated OWT server through Intel® Media SDK, please follow the below instructions to install server side SDK where the video-agents run.
 
@@ -180,7 +180,7 @@ For Ubuntu version OWT server, do as following:
     tar xf CS_WebRTC_Conference_Server_MCU.v<Version>.Ubuntu.tgz
 ~~~~~~
 
-### 2.3.4 Deploy Cisco OpenH264* Library {#Conferencesection2_3_4}
+### 2.3.4 Deploy Cisco OpenH264* Library
 The default H.264 library installed is a pseudo one without any media logic. To enable H.264 support in non GPU-accelerated OWT server system, you must deploy the Cisco OpenH264 library. Choose yes to download and enable Cisco Open H264 library during video-agent dependency installation at Release-<Version>/[video_agent/analytics_agent]/install_deps.sh.
 
 Or you can also use install_openh264.sh or uninstall_openh264.sh scripts under Release-<Version>/video_agent folder to enable or disable Cisco OpenH264 library later.
@@ -198,7 +198,7 @@ The default ffmpeg library used by OWT server has no libfdk_aac support. If you 
 
 2. Copy all output libraries under ffmpeg_libfdkaac_lib folder to Release-<Version>/audio_agent/lib to replace the existing ones.
 
-### 2.3.6 Deploy SVT-HEVC Encoder Library {#Conferencesection2_3_6}
+### 2.3.6 Deploy SVT-HEVC Encoder Library
 The default SVT-HEVC Encoder library installed is a pseudo one without any media logic. If you want to enable SVT-HEVC Encoder, please compile and deploy the library yourself with following steps:
 
 1. Go to Release-<Version>/video_agent folder, compile SVT-HEVC Encoder library with below command:
