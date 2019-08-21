@@ -1,8 +1,8 @@
 Open WebRTC Toolkit(OWT) Server User Guide
 ----------------------
 
-# 1 Overview {#Conferencesection1}
-## 1.1 Introduction {#Conferencesection1_1}
+# 1 Overview
+## 1.1 Introduction
 Welcome to the Open WebRTC Toolkit Server User Guide. This guide describes how to install and configure the Open WebRTC Toolkit Server for multi-party conferences and so on. This guide also explains how to install and launch the Peer Server for peer-to-peer communications.
 
 Open WebRTC Toolkit Server provides an efficient WebRTC-based video conference service that scales a single WebRTC stream out to many endpoints. The following list briefly explains the purpose of each section in this guide:
@@ -15,10 +15,10 @@ Open WebRTC Toolkit Server provides an efficient WebRTC-based video conference s
 
 Installation requirements and dependencies for the OWT server, sample application server, and peer server are described in their associated sections.
 
-##1.2 Terminology {#Conferencesection1_2}
+## 1.2 Terminology
 This manual uses the following acronyms and terms:
 
-  Abbreviation       |  Full Name
+|  Abbreviation       |  Full Name|
 -------------|--------------
 ADT|Android Developer Toolkit
 API|Application Programming Interface
@@ -41,7 +41,7 @@ SIP|Session Initiation Protocol
 XMPP|Extensible Messaging and Presence Protocol
 WebRTC|Web Real-Time Communication
 
-##1.3 For more information {#Conferencesection1_3}
+## 1.3 For more information
 For more information, visit the following Web pages:
 
  - Intel HTML Developer Zone: https://software.intel.com/en-us/html5/tools
@@ -57,20 +57,21 @@ For more information, visit the following Web pages:
  - W3C WebRTC Working Group: http://www.w3.org/2011/04/webrtc/
  - WebRTC Open Project: http://www.webrtc.org
 
-# 2 OWT Server Installation {#Conferencesection2}
+# 2 OWT Server Installation
 
-## 2.1 Introduction {#Conferencesection2_1}
+## 2.1 Introduction
 
 This section describes the system requirements for installing the OWT server, and the compatibility with its client.
 
-> **Note**:    Installation requirements for the peer server are described in <a href="#Conferencesection5">section 5</a> of this guide.
+> **Note**:    Installation requirements for the peer server are described in [section 5](#5-Peer-Server) of this guide.
 
-## 2.2 Requirements and compatibility {#Conferencesection2_2}
+## 2.2 Requirements and compatibility
 
 Table 2-1 describes the system requirements for installing the OWT server. Table 2-2 gives an overview of OWT server compatibility with the client.
 
 **Table 2-1. Server requirements**
-Application name|OS version
+
+| Application name|OS version |
 -------------|--------------
 OWT server|CentOS* 7.6, Ubuntu 18.04 LTS
 
@@ -812,7 +813,7 @@ For example, connect to the OWT sample application server XXXXX with the followi
 
         https://XXXXX:3004/?url=rtsp_stream_url
 
-# 5 Peer Server {#Conferencesection5}
+# 5 Peer Server
 ## 5.1 Introduction {#Conferencesection5_1}
 The peer server is the default signaling server of the Open-WebRTC-Toolkit. The peer server provides the ability to exchange WebRTC signaling messages over Socket.IO between different clients.
 
