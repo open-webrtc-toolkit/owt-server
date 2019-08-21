@@ -893,13 +893,16 @@ The Server provides 4 plugins as source code which can be built by your own. To 
 
 #### 6.1.3.1 Face Detection Plugin
 Identified by GUID b849f44bee074b08bf3e627f3fc927c7. This plugin provides the capability of finding faces in current analyzed stream and annotates it with a rectangle boarder on the face.
+
 #### 6.1.3.2 Face Recognition Plugin
 Identified by GUID 3f932ff2a80341faa0a73ebb3bcfb85d. This plugin provides the capability of identifying people's name in current stream and annotates them with a rectangle on the face, and also list the name and the confidence of the recognition result.
 To add new people for recognition, here are the steps:
 1. Take at least 3 pictures of one person and place them under the raw_photos directory with sub-directory name that identifies that person's name(no space in the directory name). The raw_photos should be under the same directory with the pre-process tool.
 2. Run the pre-process tool to process the raw photos (which is also built when you build the samples). Append the path of libcpu_extension.so you built to LD_LIBRARY_PATH before you run the tool. Put the output vectors.txt under analytics_agent direcotry of OWT server.
+
 #### 6.1.3.3 Smart Class Room Plugin
 Identified by GUID 10c213f3d55249718d3bd44712488502. This plugin provides the capability of recognizing the gestures in the stream and annotates the gestures accordingly.
+
 #### 6.1.3.4 Dummy Plugin
 Identified by GUID dc51138a8284436f873418a21ba8cfa7. This plugin simply modifies part of the stream to demonstrate the working process of plugins.
 
@@ -908,8 +911,10 @@ OWT server allows you creating your own media analytics plugins and deploy them 
 
 #### 6.1.4.1 Create Plugin
 Your plugin class implementation must inherit from rvaPlugin interface as defined in analytics_agent/plugins/include/plugin.h. Besides the plugin class implementation, it is required to include the DECLARE_PLUGIN(ClassName) macro to export your plugin implementation.
+
 #### 6.1.4.2 Deploy Your Plugin
 To deploy a plugin to OWT Server, you will need to generate a new GUID for your plugin. After that, copy your plugin .so files to analytics_agent/lib, or to the libpath as specified by agent.toml of analtyics agent. Also you need to add an entry into the plugin.cfg file under analytics_agent with the GUID you generated, for example:
+```shell
 	[c842f499aa093c27cf1e328f2fc987c7]
 	description = 'my own plugin'
 	pluginversion = 1
@@ -920,5 +925,5 @@ To deploy a plugin to OWT Server, you will need to generate a new GUID for your 
 	messaging = true       # set to false if your plugin does not send notification
 	inputfourcc = 'I420'   # must be I420 for current version
 	outputfourcc = 'I420'  # set to "" if your plugin will not republish analyzed stream to OWT server.
-
+```
 Restart analytics agent and your plugin will be added to OWT server.
