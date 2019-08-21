@@ -104,8 +104,10 @@ Management Console|YES|YES|YES|YES|N/A|N/A|N/A
 
 ## 2.3 Install the OWT server
 This section describes the dependencies and steps for installing the OWT server.
+
 ### 2.3.1 Dependencies
 **Table 2-3. OWT Server Dependencies**
+
 |Name|Version|Remarks|
 --------|--------|--------
 Node.js |8.15.0|Website: http://nodejs.org/
@@ -579,7 +581,7 @@ If you have not launched OWT servers, you should launch the management-api serve
 
 ## 3.3 Source Code
 The source code of the management console is in Release-<Version>/management_console/public/.
-## 3.4 Service Management {#Conferencesection3_4}
+## 3.4 Service Management
 Only super service user can access service management, in the 'overview' tab to create or delete services. The service is the instance that owns rooms and has the ability to manage them. 
 > **Note**: Super service cannot be deleted, it can be configured in management_api/management_api.toml.
 
