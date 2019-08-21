@@ -93,7 +93,7 @@ If you are working on the following platforms with the integrated graphics, plea
 
 For download or installation instructions, please visit https://github.com/Intel-Media-SDK/MediaSDK.
 
-The external stream output and mp4 format recording rely on AAC encoder libfdk_aac support in ffmpeg library, please see [Compile and deploy ffmpeg with libfdk_aac](#Conferencesection2_3_5) section for detailed instructions.
+The external stream output and mp4 format recording rely on AAC encoder libfdk_aac support in ffmpeg library, please see [Compile and deploy ffmpeg with libfdk_aac](#235-Compile-and-deploy-ffmpeg-with-libfdk_aac) section for detailed instructions.
 
  **Table 2-2. Client compatibility**
  
@@ -615,7 +615,7 @@ view.layout | The layout of mixed video stream
 view.layout.fitPolicy | The fit policy for input that does not perfectly match the width/height ratio
 view.layout.templates | The layout template for the mixed video stream, a user can choose a base layout template and customize its own preferred ones, which would be combined as a whole for rendering mixed video
 view.layout.templates.base | The template base for video layout
-view.layout.templates.custom | The customized video layout uppon the base, see the [Section 3.5.1](#Conferencesection3_5_1)
+view.layout.templates.custom | The customized video layout uppon the base, see the [Section 3.5.1](#351-Customized-video-layout)
 mediaIn | The audio/video format that the room can accept, see the Table 3-2 for supported format
 mediaOut | The audio/video format and parameters that the room can generate through media processing, see the Table 3-2 for supported formats
 transcoding | The transcoding switch on audio, video format and parameters
