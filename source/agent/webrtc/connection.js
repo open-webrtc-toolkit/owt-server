@@ -278,7 +278,7 @@ class Connection extends EventEmitter {
   }
 
   removeRemoteCandidates(candidates) {
-    candidates.forEach(function (val) {
+    candidates.forEach(val => {
       this.wrtc.removeRemoteCandidate('', 0, val.candidate);
     });
     this.wrtc.removeRemoteCandidate('', -1, '');
