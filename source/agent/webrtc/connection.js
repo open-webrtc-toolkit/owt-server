@@ -277,6 +277,13 @@ class Connection extends EventEmitter {
     this.wrtc.addRemoteCandidate(candidate.sdpMid, candidate.sdpMLineIndex, candidate.candidate);
   }
 
+  removeRemoteCandidates(candidates) {
+    candidates.forEach(function (val) {
+      this.wrtc.removeRemoteCandidate('', 0, val.candidate);
+    });
+    this.wrtc.removeRemoteCandidate('', -1, '');
+  }
+
   getMediaStream(id) {
     return this.mediaStreams.get(id);
   }
