@@ -135,6 +135,7 @@ install_libnice014(){
     patch -p1 < $PATHNAME/patches/libnice014-agentlock-plus.patch
     patch -p1 < $PATHNAME/patches/libnice014-removecandidate.patch
     patch -p1 < $PATHNAME/patches/libnice014-keepalive.patch
+    patch -p1 < $PATHNAME/patches/libnice014-startcheck.patch
     PKG_CONFIG_PATH=$PREFIX_DIR"/lib/pkgconfig":$PREFIX_DIR"/lib64/pkgconfig":$PKG_CONFIG_PATH ./configure --prefix=$PREFIX_DIR && make -s V= && make install
     cd $CURRENT_DIR
   else
