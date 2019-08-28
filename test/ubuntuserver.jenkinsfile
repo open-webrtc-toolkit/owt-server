@@ -47,7 +47,7 @@ pipeline {
                                 container('api-test-server-ubuntu') {
                                     sh "ls -al"
                                     sh "pwd"
-                                    sh "/root/start.sh ${env.GIT_COMMIT}1 ConferenceClient_api"
+                                    sh "/root/startPRn.sh ${env.GIT_COMMIT}1 ConferenceClient_api"
                                 }
                             }
                         }
@@ -63,7 +63,7 @@ pipeline {
                                 container('subscribe-test-server-ubuntu') {
                                     sh "ls -al"
                                     sh "pwd"
-                                    sh "/root/start.sh ${env.GIT_COMMIT}2 ConferenceClient_subscribe"
+                                    sh "/root/startPRn.sh ${env.GIT_COMMIT}2 ConferenceClient_subscribe"
                                 }
                             }
                         }
