@@ -1181,26 +1181,29 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
         var matchedId;
         var videoInfo = {};
         if (streams[stream_id] && streams[stream_id].video) {
-            if (simulcastRid && streams[stream_id].video.rid === simulcastRid) {
-                matchedId = stream_id;
-                return matchedId;
-            } else if (streams[stream_id].video.simulcast) {
-                if (simulcastRid) {
+            if (simulcastRid) {
+                // Use specified simucalst RID
+                if (streams[stream_id].video.rid === simulcastRid) {
+                    return stream_id;
+                } else if (streams[stream_id].video.simulcast) {
                     const selectInfo = streams[stream_id].video.simulcast[simulcastRid];
                     if (selectInfo && selectInfo.id) {
                         // matched RID
                         return selectInfo.id;
                     }
                 }
+            } else {
+                // Match with parameters
                 if (isVideoMatched(streams[stream_id].video, format, resolution, framerate, bitrate, keyFrameInterval)) {
                     return stream_id;
-                }
-                for (const rid in streams[stream_id].video.simulcast) {
-                    const simInfo = streams[stream_id].video.simulcast[rid];
-                    const combinedVideo = Object.assign({}, {format: streams[stream_id].video.format}, simInfo);
-                    if (isVideoMatched(combinedVideo, format, resolution, framerate, bitrate, keyFrameInterval)) {
-                        matchedId = simInfo.id;
-                        break;
+                } else if (streams[stream_id].video.simulcast) {
+                    for (const rid in streams[stream_id].video.simulcast) {
+                        const simInfo = streams[stream_id].video.simulcast[rid];
+                        const combinedVideo = Object.assign({}, {format: streams[stream_id].video.format}, simInfo);
+                        if (isVideoMatched(combinedVideo, format, resolution, framerate, bitrate, keyFrameInterval)) {
+                            matchedId = simInfo.id;
+                            break;
+                        }
                     }
                 }
             }
