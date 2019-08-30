@@ -227,6 +227,10 @@ var V10Client = function(clientId, sigConnection, portal) {
     });
   };
 
+  that.rawNotify = (evt, data) => {
+    sendMsg(evt, data);
+  };
+
   that.notify = (evt, data) => {
     if (evt === 'stream') {
       if (data.status === 'add') {
@@ -240,13 +244,19 @@ var V10Client = function(clientId, sigConnection, portal) {
     sendMsg(evt, data);
   };
 
-  that.join = (token) => {
+  that.rawJoin = (token) => {
     return portal.join(clientId, token)
       .then(function(result){
         that.inRoom = result.data.room.id;
         that.tokenCode = result.tokenCode;
         result.data.id = that.id;
-        const data = result.data;
+        return result.data;
+      })
+  };
+
+  that.join = (token) => {
+    return that.rawJoin(token)
+      .then(function(data){
         if (data && data.room && data.room.streams) {
           data.room.streams.forEach((stream) => {
             v10Stream(stream);

@@ -44,8 +44,8 @@ var convertStream = function (stream) {
 
 var V11Client = function(clientId, sigConnection, portal) {
   var client = V10Client(clientId, sigConnection, portal);
-  var legacyJoin = client.join;
-  var legacyNotify = client.notify;
+  var legacyJoin = client.rawJoin;
+  var legacyNotify = client.rawNotify;
 
   client.join = (token) => {
     return legacyJoin(token).then((data) => {
