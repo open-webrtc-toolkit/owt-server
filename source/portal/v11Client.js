@@ -30,6 +30,9 @@ var convertStream = function (stream) {
         if (!alt.format) {
           alt.format = videoInfo.original[0].format;
         }
+        alt.parameters = Object.assign({},
+            videoInfo.original[0].parameters,
+            alt.parameters);
         alt.simulcastRid = alt.rid;
         delete alt.rid;
         videoInfo.original.push(alt);
