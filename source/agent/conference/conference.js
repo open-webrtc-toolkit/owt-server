@@ -1082,6 +1082,11 @@ var Conference = function (rpcClient, selfRpcId) {
     if (streamVideo.optional && streamVideo.optional.parameters && streamVideo.optional.parameters.resolution && (streamVideo.optional.parameters.resolution.findIndex((r) => {return isResolutionEqual(r, resolution);}) >= 0)) {
       return true;
     }
+    if (streamVideo.alternative) {
+      if (streamVideo.alternative.findIndex((para) => isResolutionEqual(para.resolution, resolution)) >= 0) {
+        return true;
+      }
+    }
     return false;
   };
 
