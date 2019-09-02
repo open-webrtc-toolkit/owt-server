@@ -15,11 +15,10 @@ var log = logger.getLogger('StreamsResource');
 const convertV1Stream = function (stream) {
   if (stream && stream.media && stream.media.video) {
     const videoInfo = stream.media.video;
-    if (videoInfo.rid) {
-      delete videoInfo.rid;
-    }
-    if (videoInfo.alternative) {
-      delete videoInfo.alternative;
+    if (videoInfo.original && videoInfo.original[0]) {
+      videoInfo.format = videoInfo.original[0].format;
+      videoInfo.parameters = videoInfo.original[0].parameters;
+      delete videoInfo.original;
     }
   }
 };
