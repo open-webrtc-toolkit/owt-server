@@ -1191,6 +1191,8 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                         // matched RID
                         return selectInfo.id;
                     }
+                } else {
+                    matchedId = null;
                 }
             } else {
                 // Match with parameters
@@ -1205,6 +1207,8 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                             break;
                         }
                     }
+                } else {
+                    matchedId = null;
                 }
             }
         }
