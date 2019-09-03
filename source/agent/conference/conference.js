@@ -397,7 +397,8 @@ var Conference = function (rpcClient, selfRpcId) {
 
                     streams[mixed_stream_id] = mixed_stream_info;
                     log.debug('Mixed stream info:', mixed_stream_info);
-                    room_config.notifying.streamChange && sendMsg('room', 'all', 'stream', {id: mixed_stream_id, status: 'add', data: mixed_stream_info});
+                    room_config.notifying.streamChange &&
+                      sendMsg('room', 'all', 'stream', {id: mixed_stream_id, status: 'add', data: Stream.toPortalFormat(mixed_stream_info)});
                   });
 
                   participants['admin'] = Participant({
@@ -606,7 +607,8 @@ var Conference = function (rpcClient, selfRpcId) {
           streams[id] = st;
           if (!isReadded) {
             setTimeout(() => {
-              room_config.notifying.streamChange && sendMsg('room', 'all', 'stream', {id: id, status: 'add', data: st});
+              room_config.notifying.streamChange &&
+                sendMsg('room', 'all', 'stream', {id: id, status: 'add', data: Stream.toPortalFormat(st)});
             }, 10);
           }
           resolve('ok');
@@ -623,7 +625,7 @@ var Conference = function (rpcClient, selfRpcId) {
   const updateStreamInfo = (streamId, info) => {
     if (Stream.updateForwardStream(streams[streamId], info, room_config)) {
       room_config.notifying.streamChange &&
-        sendMsg('room', 'all', 'stream', {id: streamId, status: 'update', data: {field: '.', value: streams[streamId]}});
+        sendMsg('room', 'all', 'stream', {id: streamId, status: 'update', data: {field: '.', value: Stream.toPortalFormat(streams[streamId])}});
     }
   };
 
@@ -882,7 +884,7 @@ var Conference = function (rpcClient, selfRpcId) {
 
         for (var stream_id in streams) {
           if (!streams[stream_id].isInConnecting) {
-            current_streams.push(streams[stream_id]);
+            current_streams.push(Stream.toPortalFormat(streams[stream_id]));
           }
         }
 
@@ -1081,6 +1083,11 @@ var Conference = function (rpcClient, selfRpcId) {
     }
     if (streamVideo.optional && streamVideo.optional.parameters && streamVideo.optional.parameters.resolution && (streamVideo.optional.parameters.resolution.findIndex((r) => {return isResolutionEqual(r, resolution);}) >= 0)) {
       return true;
+    }
+    if (streamVideo.alternative) {
+      if (streamVideo.alternative.findIndex((para) => isResolutionEqual(para.resolution, resolution)) >= 0) {
+        return true;
+      }
     }
     return false;
   };
@@ -1763,7 +1770,7 @@ var Conference = function (rpcClient, selfRpcId) {
     var result = [];
     for (var stream_id in streams) {
       if (!streams[stream_id].isInConnecting) {
-        result.push(streams[stream_id]);
+        result.push(Stream.toPortalFormat(streams[stream_id]));
       }
     }
     callback('callback', result);

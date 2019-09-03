@@ -379,8 +379,46 @@ function updateForwardStream(stream, info, roomConfig) {
   return false;
 }
 
+function toPortalFormat (internalStream) {
+  var stream = JSON.parse(JSON.stringify(internalStream));
+  if (stream && stream.media && stream.media.video) {
+    const videoInfo = stream.media.video;
+    if (!videoInfo.original) {
+      videoInfo.original = [{}];
+      if (videoInfo.format) {
+        videoInfo.original[0].format = videoInfo.format;
+        delete videoInfo.format;
+      }
+      if (videoInfo.parameters) {
+        videoInfo.original[0].parameters = videoInfo.parameters;
+        delete videoInfo.parameters;
+      }
+      if (videoInfo.rid) {
+        videoInfo.original[0].simulcastRid = videoInfo.rid;
+        delete videoInfo.rid;
+      }
+    }
+    if (videoInfo.alternative) {
+      videoInfo.alternative.forEach((alt) => {
+        if (!alt.format) {
+          alt.format = videoInfo.original[0].format;
+        }
+        alt.parameters = Object.assign({},
+            videoInfo.original[0].parameters,
+            alt.parameters);
+        alt.simulcastRid = alt.rid;
+        delete alt.rid;
+        videoInfo.original.push(alt);
+      });
+      delete videoInfo.alternative;
+    }
+  }
+  return stream;
+};
+
 module.exports = {
   createMixStream,
   createForwardStream,
-  updateForwardStream
+  updateForwardStream,
+  toPortalFormat
 };
