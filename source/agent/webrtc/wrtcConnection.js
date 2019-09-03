@@ -155,6 +155,7 @@ module.exports = function (spec, on_status, on_mediaUpdate) {
     stream,
     simStreams = [],
     ridStreamMap = new Map(),
+    isSimulcast = false,
     wrtc;
 
   /*
@@ -198,7 +199,8 @@ module.exports = function (spec, on_status, on_mediaUpdate) {
         on_status({
           type: 'ready',
           audio: audio_fmt ? audio_fmt : false,
-          video: video_fmt ? video_fmt : false
+          video: video_fmt ? video_fmt : false,
+          simulcast: isSimulcast ? { video: true } : false
         });
       } else if (evt.type === 'rid') {
         log.info('discover id:', evt.rid, evt.ssrc);
@@ -294,9 +296,13 @@ module.exports = function (spec, on_status, on_mediaUpdate) {
       }
       const aSsrc = getAudioSsrc(sdp);
       const vSsrc = getVideoSsrcList(sdp);
+      const simulcastInfo = getSimulcastInfo(sdp);
+      if (simulcastInfo.length > 0) {
+        isSimulcast = true;
+      }
       log.debug('SDP ssrc:', aSsrc, vSsrc);
       wrtc.setRemoteSsrc(aSsrc, vSsrc, '');
-      wrtc.setSimulcastInfo(getSimulcastInfo(sdp));
+      wrtc.setSimulcastInfo(simulcastInfo);
     } else {
       if (audio) {
         audioFramePacketizer = new AudioFramePacketizer();

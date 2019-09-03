@@ -57,6 +57,7 @@ module.exports.create = function(spec, rpcReq, onSessionEstablished, onSessionAb
 
   const onReady = (sessionId, status) => {
     var audio = status.audio, video = status.video;
+    var simulcast = status.simulcast;
     var session = sessions[sessionId];
 
     if (session.options.type === 'webrtc') {
@@ -88,6 +89,7 @@ module.exports.create = function(spec, rpcReq, onSessionEstablished, onSessionAb
       media.video && session.options.media.video && session.options.media.video.parameters && session.options.media.video.parameters.resolution && (media.video.resolution = session.options.media.video.parameters.resolution);
       media.video && session.options.media.video && session.options.media.video.parameters && session.options.media.video.parameters.framerate && (media.video.framerate = session.options.media.video.parameters.framerate);
 
+      simulcast && simulcast.video && (media.video.simulcast = true);
       session.options.attributes && (info.attributes = session.options.attributes);
     } else {
       if (session.options.media.audio) {
