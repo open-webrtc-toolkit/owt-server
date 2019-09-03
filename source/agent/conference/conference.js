@@ -718,12 +718,12 @@ var Conference = function (rpcClient, selfRpcId) {
               media.video.parameters.bitrate = 'unspecified';
             }
           } else {
-            media.video.parameters.bitrate = (media.video.parameters.bitrate || (source.parameters && source.parameters.bitrate) || 'unspecified');
+            media.video.parameters.bitrate = (media.video.parameters.bitrate || 'unspecified');
           }
 
-          media.video.parameters.resolution = (media.video.parameters.resolution || (source.parameters && source.parameters.resolution) || 'unspecified');
-          media.video.parameters.framerate = (media.video.parameters.framerate || (source.parameters && source.parameters.framerate) || 'unspecified');
-          media.video.parameters.keyFrameInterval = (media.video.parameters.keyFrameInterval || (source.parameters && source.parameters.keyFrameInterval) || 'unspecified');
+          media.video.parameters.resolution = (media.video.parameters.resolution || 'unspecified');
+          media.video.parameters.framerate = (media.video.parameters.framerate || 'unspecified');
+          media.video.parameters.keyFrameInterval = (media.video.parameters.keyFrameInterval || 'unspecified');
         } else {
           media.video.parameters = {
             resolution: 'unspecified',

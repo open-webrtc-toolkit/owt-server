@@ -32,7 +32,7 @@
  *           bitrate: [number(Kbps] | string('x' + Multiple) | undefined,
  *           keyFrameRate: [number(Seconds)] | undefined
  *         } | undefined
- *       } | undeinfed
+ *       } | undefined
  *       alternative: [{
  *         resolution: object(Resolution) | undefined,
  *         framerate: number(FramerateFPS) | undefined,
@@ -259,54 +259,66 @@ function createForwardStream(id, media, info, roomConfig) {
     media.video.bitrate && (result.video.parameters || (result.video.parameters = {})) && (result.video.parameters.bitrate = media.video.bitrate);
     media.video.keyFrameInterval && (result.video.parameters || (result.video.parameters = {})) && (result.video.parameters.keyFrameInterval = media.video.keyFrameInterval);
 
-    if (roomConfig.transcoding.video && roomConfig.transcoding.video.format) {
-      result.video.optional = {format: []};
-      roomConfig.mediaOut.video.format.forEach((fmt) => {
-        if ((fmt.codec !== result.video.format.codec)
-            || (fmt.profile !== result.video.format.profile)) {
-          result.video.optional.format.push(fmt);
+    if (!media.video.simulcast) {
+      if (roomConfig.transcoding.video && roomConfig.transcoding.video.format) {
+        result.video.optional = {format: []};
+        roomConfig.mediaOut.video.format.forEach((fmt) => {
+          if ((fmt.codec !== result.video.format.codec)
+              || (fmt.profile !== result.video.format.profile)) {
+            result.video.optional.format.push(fmt);
+          }
+        });
+      }
+
+      if (roomConfig.transcoding.video && roomConfig.transcoding.video.parameters) {
+        if (roomConfig.transcoding.video.parameters.resolution) {
+          result.video.optional = (result.video.optional || {});
+          result.video.optional.parameters = (result.video.optional.parameters || {});
+
+          if (result.video.parameters && result.video.parameters.resolution) {
+            result.video.optional.parameters.resolution = roomConfig.mediaOut.video.parameters.resolution.map((x) => {return calcResolution(x, result.video.parameters.resolution)}).filter((reso, pos, self) => {return ((reso.width < result.video.parameters.resolution.width) && (reso.height < result.video.parameters.resolution.height)) && (self.findIndex((r) => {return r.width === reso.width && r.height === reso.height;}) === pos);});
+          } else {
+            result.video.optional.parameters.resolution = roomConfig.mediaOut.video.parameters.resolution
+              .filter((x) => {return (x !== 'x3/4') && (x !== 'x2/3') && (x !== 'x1/2') && (x !== 'x1/3') && (x !== 'x1/4');})//FIXME: is auto-scaling possible?
+              .map((x) => {return calcResolution(x)});
+          }
         }
-      });
-    }
 
-    if (roomConfig.transcoding.video && roomConfig.transcoding.video.parameters) {
-      if (roomConfig.transcoding.video.parameters.resolution) {
-        result.video.optional = (result.video.optional || {});
-        result.video.optional.parameters = (result.video.optional.parameters || {});
+        if (roomConfig.transcoding.video.parameters.framerate) {
+          result.video.optional = (result.video.optional || {});
+          result.video.optional.parameters = (result.video.optional.parameters || {});
 
-        if (result.video.parameters && result.video.parameters.resolution) {
-          result.video.optional.parameters.resolution = roomConfig.mediaOut.video.parameters.resolution.map((x) => {return calcResolution(x, result.video.parameters.resolution)}).filter((reso, pos, self) => {return ((reso.width < result.video.parameters.resolution.width) && (reso.height < result.video.parameters.resolution.height)) && (self.findIndex((r) => {return r.width === reso.width && r.height === reso.height;}) === pos);});
-        } else {
-          result.video.optional.parameters.resolution = roomConfig.mediaOut.video.parameters.resolution
-            .filter((x) => {return (x !== 'x3/4') && (x !== 'x2/3') && (x !== 'x1/2') && (x !== 'x1/3') && (x !== 'x1/4');})//FIXME: is auto-scaling possible?
-            .map((x) => {return calcResolution(x)});
+          if (result.video.parameters && result.video.parameters.framerate) {
+            result.video.optional.parameters.framerate = roomConfig.mediaOut.video.parameters.framerate.filter((fr) => {return fr < result.video.parameters.framerate;});
+          } else {
+            result.video.optional.parameters.framerate = roomConfig.mediaOut.video.parameters.framerate;
+          }
+        }
+
+        if (roomConfig.transcoding.video.parameters.bitrate) {
+          result.video.optional = (result.video.optional || {});
+          result.video.optional.parameters = (result.video.optional.parameters || {});
+
+          result.video.optional.parameters.bitrate = roomConfig.mediaOut.video.parameters.bitrate.filter((x) => {return Number(x.substring(1)) < 1;});
+        }
+
+        if (roomConfig.transcoding.video.parameters.keyFrameInterval) {
+          result.video.optional = (result.video.optional || {});
+          result.video.optional.parameters = (result.video.optional.parameters || {});
+
+          result.video.optional.parameters.keyFrameInterval = roomConfig.mediaOut.video.parameters.keyFrameInterval;
         }
       }
-
-      if (roomConfig.transcoding.video.parameters.framerate) {
-        result.video.optional = (result.video.optional || {});
-        result.video.optional.parameters = (result.video.optional.parameters || {});
-
-        if (result.video.parameters && result.video.parameters.framerate) {
-          result.video.optional.parameters.framerate = roomConfig.mediaOut.video.parameters.framerate.filter((fr) => {return fr < result.video.parameters.framerate;});
-        } else {
-          result.video.optional.parameters.framerate = roomConfig.mediaOut.video.parameters.framerate;
+    } else {
+      result.video.optional = {
+        format: [],
+        parameters: {
+          resolution: [],
+          framerate: [],
+          bitrate: [],
+          keyFrameInterval: [],
         }
-      }
-
-      if (roomConfig.transcoding.video.parameters.bitrate) {
-        result.video.optional = (result.video.optional || {});
-        result.video.optional.parameters = (result.video.optional.parameters || {});
-
-        result.video.optional.parameters.bitrate = roomConfig.mediaOut.video.parameters.bitrate.filter((x) => {return Number(x.substring(1)) < 1;});
-      }
-
-      if (roomConfig.transcoding.video.parameters.keyFrameInterval) {
-        result.video.optional = (result.video.optional || {});
-        result.video.optional.parameters = (result.video.optional.parameters || {});
-
-        result.video.optional.parameters.keyFrameInterval = roomConfig.mediaOut.video.parameters.keyFrameInterval;
-      }
+      };
     }
   }
 
@@ -331,7 +343,8 @@ function updateForwardStream(stream, info, roomConfig) {
             stream.media.video.parameters.resolution = info.video.parameters.resolution;
             if (roomConfig.transcoding.video &&
                 roomConfig.transcoding.video.parameters &&
-                roomConfig.transcoding.video.parameters.resolution) {
+                roomConfig.transcoding.video.parameters.resolution &&
+                stream.media.video.rid === undefined) {
               stream.media.video.optional = (stream.media.video.optional || {});
               stream.media.video.optional.parameters = (stream.media.video.optional.parameters || {});
               stream.media.video.optional.parameters.resolution =
@@ -357,17 +370,6 @@ function updateForwardStream(stream, info, roomConfig) {
           alternative[pos].parameters = simInfo.video.parameters;
         }
         stream.media.video.alternative = alternative;
-        if (stream.media.video.optional) {
-          stream.media.video.optional = {
-            format: [],
-            parameters: {
-              resolution: [],
-              framerate: [],
-              bitrate: [],
-              keyFrameInterval: [],
-            }
-          };
-        }
       }
       return true;
     } else if (info.firstrid) {
