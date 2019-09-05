@@ -338,8 +338,7 @@ NAN_METHOD(WebRtcConnection::removeRemoteCandidate) {
   v8::String::Utf8Value param2(Nan::To<v8::String>(info[2]).ToLocalChecked());
   std::string sdp = std::string(*param2);
 
-  // bool r = me->removeRemoteCandidate(mid, sdpMLine, sdp);
-  bool r = true;
+  bool r = me->removeRemoteCandidate(mid, sdpMLine, sdp);
   info.GetReturnValue().Set(Nan::New(r));
 }
 
