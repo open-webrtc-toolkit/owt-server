@@ -272,6 +272,7 @@ static void video_destructor(void *arg)
 }
 
 extern void call_connection_rx_fir(void *owner);
+extern void call_connection_rx_gnack(void* owner, uint32_t ssrcPacket, uint32_t ssrcMedia, uint32_t n, uint32_t* pid_blp);
 extern void ep_update_video_params(void *gateway, const char *peer, const char *cdcname, int bitrate, int packetsize, int fps, const char *fmtp);
 
 static int get_fps(const struct video *v)
@@ -456,6 +457,8 @@ static void stream_recv_handler(const struct rtp_header *hdr,
 static void rtcp_handler(struct rtcp_msg *msg, void *arg)
 {
 	struct video *v = arg;
+  uint32_t fci[32] = {0};
+  size_t i = 0;
 	void *owner = (v->call ? call_get_owner(v->call) : NULL);
 	if (!owner)
 		return;
@@ -477,7 +480,15 @@ static void rtcp_handler(struct rtcp_msg *msg, void *arg)
 	case RTCP_RTPFB:
 		if (msg->hdr.count == RTCP_RTPFB_GNACK) {
 			v->vtx.picup = true;
-			call_connection_rx_fir(owner);
+      if (msg->r.fb.n > 32) {
+        info("Too manay GNACK blocks:%u", msg->r.fb.n);
+        break;
+      }
+      for (i = 0; i < msg->r.fb.n; i++) {
+        fci[i] = msg->r.fb.fci.gnackv[i].pid;
+        fci[i] = (fci[i] << 16) + msg->r.fb.fci.gnackv[i].blp;
+      }
+			call_connection_rx_gnack(owner, msg->r.fb.ssrc_packet, msg->r.fb.ssrc_media, msg->r.fb.n, fci);
 		}
 		break;
 
@@ -525,8 +536,11 @@ int video_alloc(struct video **vp, const struct config *cfg,
 				   "framerate", "%d", v->cfg.fps);
 
 	/* RFC 4585 */
-	/*TODO intel webrtc */
 	err |= sdp_media_set_lattr(stream_sdpmedia(v->strm), true,
+				   "rtcp-fb", "* nack");
+
+	/* RFC 5104 */
+	err |= sdp_media_set_lattr(stream_sdpmedia(v->strm), false,
 				   "rtcp-fb", "* ccm fir");
 
 	/* RFC 4796 */

@@ -214,6 +214,8 @@ static int stream_sock_alloc(struct stream *s, int af)
 }
 
 
+const char sdp_proto_rtpavpf[]  = "RTP/AVPF";   /**< RTP Profile          */
+
 int stream_alloc(struct stream **sp, const struct config_avt *cfg,
 		 struct call *call, struct sdp_session *sdp_sess,
 		 const char *name, int label,
@@ -263,7 +265,12 @@ int stream_alloc(struct stream **sp, const struct config_avt *cfg,
 	err = sdp_media_add(&s->sdp, sdp_sess, name,
 			    sa_port(rtp_local(s->rtp)),
 			    (menc && menc->sdp_proto) ? menc->sdp_proto :
-			    sdp_proto_rtpavp);
+			    sdp_proto_rtpavpf);
+	if (err)
+		goto out;
+
+	err = sdp_media_set_alt_protos(s->sdp, 1,
+					     "RTP/AVP");
 	if (err)
 		goto out;
 

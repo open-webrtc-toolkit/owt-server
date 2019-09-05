@@ -44,6 +44,14 @@ void call_connection_rx_fir(void* owner)
     }
 }
 
+void call_connection_rx_gnack(void* owner, uint32_t ssrcPacket, uint32_t ssrcMedia, uint32_t n, uint32_t* pid_blp)
+{
+    if (owner != NULL) {
+        sip_gateway::SipCallConnection* obj = static_cast<sip_gateway::SipCallConnection*>(owner);
+        obj->onSipGNACK(ssrcPacket, ssrcMedia, n, pid_blp);
+    }
+}
+
 void call_connection_closed(void* owner) {
     if (owner != NULL) {
         sip_gateway::SipCallConnection* obj = static_cast<sip_gateway::SipCallConnection*>(owner);
@@ -222,6 +230,53 @@ void SipCallConnection::onSipFIR()
         rtcpPacket[pos++] = (uint8_t) 0;
         rtcpPacket[pos++] = (uint8_t) 0;
         rtcpPacket[pos++] = (uint8_t) 0;
+
+        fb_sink_->deliverFeedback(
+            std::make_shared<erizo::DataPacket>(0, (char *)rtcpPacket, pos, erizo::VIDEO_PACKET));
+    }
+}
+
+//Construct a General NACK request by folloing rfc4585.
+void SipCallConnection::onSipGNACK(uint32_t ssrcPacket, uint32_t ssrcMedia, uint32_t n, uint32_t* pid_blp)
+{
+    ELOG_DEBUG("SipCallConnection::onSipGNACK, ssrcPacket:%u, ssrcMedia:%u, n:%u, pid_blp[0]:%u", ssrcPacket, ssrcMedia, n, pid_blp[0]);
+    boost::shared_lock<boost::shared_mutex> lock(m_mutex);
+    if (running) {
+        if(fb_sink_ == NULL)
+            return;
+        // As the MediaSink, handle sip client's General NACK request, deliver to FramePacketizer
+        int pos = 0;
+        uint8_t rtcpPacket[512] = {0};
+        // hdr.V, hdr.P, hdr.FMT
+        uint8_t FMT = 1;
+        rtcpPacket[pos++] = (uint8_t) 0x80 + FMT;
+        // hdr.PT
+        rtcpPacket[pos++] = (uint8_t) 205;
+
+        // hdr.length, 2 + n
+        rtcpPacket[pos++] = (uint8_t) 0;
+        rtcpPacket[pos++] = (uint8_t) (2 + n);
+
+        // SSRC of packet sender
+        uint32_t* ptr = reinterpret_cast<uint32_t*>(rtcpPacket + pos);
+        ptr[0] = htonl(ssrcPacket);
+        pos += 4;
+
+        // SSRC of media source
+        ptr = reinterpret_cast<uint32_t*>(rtcpPacket + pos);
+        ptr[0] = htonl(ssrcMedia);
+        pos += 4;
+
+        // Feedback Control Information (FCI)
+        for (uint32_t i = 0; i < n; i++) {
+          uint16_t* pid = reinterpret_cast<uint16_t*>(rtcpPacket + pos);
+          pid[0] = htonl((pid_blp[i] >> 16) & 0x00FF);
+          pos +=2;
+
+          uint16_t* blp = reinterpret_cast<uint16_t*>(rtcpPacket + pos);
+          blp[0] = htonl((pid_blp[i] >> 0) & 0x00FF);
+          pos +=2;
+        }
 
         fb_sink_->deliverFeedback(
             std::make_shared<erizo::DataPacket>(0, (char *)rtcpPacket, pos, erizo::VIDEO_PACKET));
