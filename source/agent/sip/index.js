@@ -354,25 +354,23 @@ module.exports = function (rpcC, selfRpcId, parentRpcId, clusterWorkerIP) {
                 } else {
                     //check resolution
                     var fmtp = info.videoResolution,
-                        preferred_resolution = calls[client_id].videoSource.media.video.parameters.resolution,
+                        preferred_resolution,
                         optional_resolutions = calls[client_id].videoSource.media.video.optional.parameters.resolution;
 
                     const isResolutionEqual = (r1, r2) => {return r1.width === r2.width && r1.height === r2.height;};
                     //TODO: currently we only check CIF/QCIF, there might be other options in fmtp from other devices.
                     if((fmtp.indexOf('CIF') !== -1 || fmtp.indexOf('QCIF') !== -1) && optional_resolutions){
                         var required_resolution = ((fmtp.indexOf('CIF') !== -1) ? {width: 352, height: 288} : {width: 176, height: 144});
-                        if (!isResolutionEqual(required_resolution, preferred_resolution)) {
-                            var diff = Number.MAX_VALUE;
-                            for (var index in optional_resolutions) {
-                                var current_diff = (optional_resolutions[index].width - 352) + (optional_resolutions[index].height - 288);
-                                if (current_diff < diff){
-                                    diff = current_diff;
-                                    preferred_resolution = optional_resolutions[index];
-                                }
+                        var diff = Number.MAX_VALUE;
+                        for (var index in optional_resolutions) {
+                            var current_diff = (optional_resolutions[index].width - 352) + (optional_resolutions[index].height - 288);
+                            if (current_diff < diff){
+                                diff = current_diff;
+                                preferred_resolution = optional_resolutions[index];
                             }
                         }
                     }
-                    subInfo.media.video.parameters = {resolution: preferred_resolution};
+                    preferred_resolution && (subInfo.media.video.parameters = {resolution: preferred_resolution});
                 }
             }
             //TODO: The subscriptions binding should be done in the success callback.
