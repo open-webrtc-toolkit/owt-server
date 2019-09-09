@@ -1097,7 +1097,7 @@ class RoomApp extends React.Component {
       this.setState({
         data: ret,
         pageSize: state.pageSize,
-        pages: Math.ceil(this.state.dataCount / state.pageSize),
+        pages: Math.ceil(this.roomCount / state.pageSize),
         loading: false
       });
     });
