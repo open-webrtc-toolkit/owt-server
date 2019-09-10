@@ -133,3 +133,5 @@ done
 ${INSTALL_DEPS} && install_deps
 
 ${MONGO_INIT_INSTALL} && init_mongo
+
+install_db
