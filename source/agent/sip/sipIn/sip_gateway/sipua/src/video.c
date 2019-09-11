@@ -470,6 +470,10 @@ static void rtcp_handler(struct rtcp_msg *msg, void *arg)
 		call_connection_rx_fir(owner);
 		break;
 
+	case RTCP_NACK:
+    info("Ignored RTCP NACK, ssrc:%u, fsn:%u, blp:%u", msg->r.nack.ssrc, msg->r.nack.fsn, msg->r.nack.blp);
+		break;
+
 	case RTCP_PSFB:
 		if (msg->hdr.count == RTCP_PSFB_PLI) {
 			v->vtx.picup = true;
@@ -871,7 +875,7 @@ void video_send(struct video *v, uint8_t *data, size_t len)
 	}
 
 	if (len < RTP_HEADER_SIZE) {
-		warning("audio_send: len < 12\n");
+		warning("video_send: len < 12\n");
 		goto out;
 	}
 
@@ -904,6 +908,28 @@ void video_send(struct video *v, uint8_t *data, size_t len)
     return;
 }
 
+void video_rtcpfb_send(struct video *v, uint8_t *data, size_t len)
+{
+  int err = 0;
+  struct mbuf *mb = mbuf_alloc(len);
+
+  if (!v) {
+		/*warning("video_rtcpfb_send: v == NULL.\n");*/
+		goto out;
+	}
+
+  err = mbuf_write_mem(mb, data, len);
+  if (err) {
+    warning("video_rtcpfb_send: mbuf_write_mem failed.\n");
+    goto out;
+  }
+
+  stream_send_rtcpfb(v->strm, mb);
+
+ out:
+  mem_deref(mb);
+  return;
+}
 
 void video_fir(struct video *v)
 {

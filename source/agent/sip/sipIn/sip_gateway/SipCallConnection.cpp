@@ -18,6 +18,7 @@ extern "C" {
 /*endpoint -> sipua */
 extern void call_connection_tx_audio(void *call, uint8_t *data, size_t len);
 extern void call_connection_tx_video(void *call, uint8_t *data, size_t len);
+extern void call_connection_tx_rtcpfb(void *call, uint8_t *data, size_t len);
 extern void call_connection_fir(void *call);
 
 void call_connection_rx_audio(void* owner, uint8_t* data, size_t len)
@@ -151,7 +152,7 @@ int SipCallConnection::deliverFeedback_(std::shared_ptr<erizo::DataPacket> data_
 {
     boost::shared_lock<boost::shared_mutex> lock(m_mutex);
     if (running) {
-       call_connection_fir(m_sipCall);
+       call_connection_tx_rtcpfb(m_sipCall, (uint8_t*)data_packet->data, (size_t)data_packet->length);
     }
     return 0;
 }

@@ -524,6 +524,23 @@ void stream_send_fir(struct stream *s, bool pli)
 	}
 }
 
+extern int rtcp_send(struct rtp_sock *rs, struct mbuf *mb);
+void stream_send_rtcpfb(struct stream *s, struct mbuf *mb)
+{
+	int err;
+
+	if (!s)
+		return;
+
+	err = rtcp_send(s->rtp, mb);
+
+	if (err) {
+		s->metric_tx.n_err++;
+
+		warning("stream: failed to send RTCP-FB: %m\n", err);
+	}
+}
+
 
 void stream_reset(struct stream *s)
 {
