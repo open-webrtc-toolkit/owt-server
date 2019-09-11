@@ -208,19 +208,35 @@ function filterAudioPayload(sdpObj, audioPreference = {}) {
   var relatedPayloads = new Set();
   var rtpMap = new Map();
 
+  const isAudioMatchRtp = (fmt, rtp) => {
+    if (fmt && fmt.codec === rtp.codec.toLowerCase()) {
+      // codec matched
+      if ((!fmt.sampleRate || fmt.codec === 'g722' ||
+          fmt.sampleRate === rtp.rate)) {
+        // rate matched
+        if (!fmt.channelNum ||
+            (fmt.channelNum === 1 && !rtp.encoding) ||
+            (fmt.channelNum === rtp.encoding)) {
+          // channel matched
+          return true;
+        }
+      }
+    }
+    return false;
+  };
+
   sdpObj.media.forEach((mediaInfo) => {
     var i, rtp, fmtp;
     if (mediaInfo.type === 'audio') {
       for (i = 0; i < mediaInfo.rtp.length; i++) {
         rtp = mediaInfo.rtp[i];
         rtpMap.set(rtp.payload, rtp);
-        const codec = rtp.codec.toLowerCase();
-        if (preferred && preferred.codec === codec) {
+        if (isAudioMatchRtp(preferred, rtp)) {
           selectedPayload = rtp.payload;
           finalFmt = preferred;
         }
         optionals.forEach((fmt) => {
-          if (fmt.codec === codec && selectedPayload < 0) {
+          if (selectedPayload < 0 && isAudioMatchRtp(fmt, rtp)) {
             selectedPayload = rtp.payload;
             finalFmt = fmt;
           }
@@ -232,7 +248,8 @@ function filterAudioPayload(sdpObj, audioPreference = {}) {
         rtpMap.forEach((rtp) => {
           const codecName = rtp.codec.toLowerCase();
           if (reservedCodecs.includes(codecName) &&
-              rtp.rate === selectedRtp.rate) {
+              rtp.rate === selectedRtp.rate &&
+              rtp.encoding === rtp.encoding) {
             relatedPayloads.add(rtp.payload);
           }
         });
