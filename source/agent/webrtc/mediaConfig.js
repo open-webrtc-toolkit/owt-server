@@ -142,6 +142,24 @@ const isac32 = {
   mediaType: 'audio',
 };
 
+// Since native SdpInfo ignores channels
+// g722 matches both g722/1 and g722/2
+const g722 = {
+  payloadType: 9,
+  encodingName: 'G722',
+  clockRate: 8000,
+  channels: 1,
+  mediaType: 'audio',
+};
+
+const ilbc = {
+  payloadType: 102,
+  encodingName: 'ILBC',
+  clockRate: 8000,
+  channels: 1,
+  mediaType: 'audio',
+};
+
 const pcmu = {
   payloadType: 0,
   encodingName: 'PCMU',
@@ -202,7 +220,8 @@ const mediaConfig = {
   default: {
     rtpMappings: {
       vp8, vp9, h264, h265, red, rtx,
-      opus, pcmu, pcma, isac16, isac32, ulpfec, telephoneevent
+      opus, pcmu, pcma, isac16, isac32, g722, ilbc,
+      ulpfec, telephoneevent
     },
     extMappings
   },
