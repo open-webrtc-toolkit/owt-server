@@ -352,8 +352,8 @@ function updateForwardStream(stream, info, roomConfig) {
                   .map(x => calcResolution(x, stream.media.video.parameters.resolution))
                   .filter(reso => (reso.width < stream.media.video.parameters.resolution.width &&
                     reso.height < stream.media.video.parameters.resolution.height));
-              return true;
             }
+            return true;
           }
         }
       }
