@@ -149,7 +149,7 @@ install_openssl(){
   $INCR_INSTALL && [[ ! -z $LIST_LIBS ]] && echo "openssl already installed." && return 0
 
   if [ -d $LIB_DIR ]; then
-    local SSL_VERSION="1.0.2r"
+    local SSL_VERSION="1.1.1d"
     cd $LIB_DIR
     rm -f ./build/lib/libssl.*
     rm -f ./build/lib/libcrypto.*
