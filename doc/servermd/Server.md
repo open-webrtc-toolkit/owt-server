@@ -70,6 +70,7 @@ This section describes the system requirements for installing the OWT server, an
 Table 2-1 describes the system requirements for installing the OWT server. Table 2-2 gives an overview of OWT server compatibility with the client.
 
 **Table 2-1. Server requirements**
+
 Application name|OS version
 -------------|--------------
 OWT server|CentOS* 7.6, Ubuntu 18.04 LTS
@@ -95,6 +96,7 @@ For download or installation instructions, please visit https://github.com/Intel
 The external stream output and mp4 format recording rely on AAC encoder libfdk_aac support in ffmpeg library, please see [Compile and deploy ffmpeg with libfdk_aac](#Conferencesection2_3_5) section for detailed instructions.
 
  **Table 2-2. Client compatibility**
+ 
 Application Name|Google Chrome\* 73|Mozilla Firefox\* 66|Microsoft Edge\* 44.17763.1.0|Safari\* 12.1|Open WebRTC Toolkit Client SDK for Android | Open WebRTC Toolkit Client SDK for iOS | Open WebRTC Toolkit Client SDK for Windows
 --------|--------|--------|--------|--------|--------|--------|--------
 OWT Client|YES|YES|YES|YES|YES|YES|YES
@@ -104,6 +106,7 @@ Management Console|YES|YES|YES|YES|N/A|N/A|N/A
 This section describes the dependencies and steps for installing the OWT server.
 ### 2.3.1 Dependencies {#Conferencesection2_3_1}
 **Table 2-3. OWT Server Dependencies**
+
 Name|Version|Remarks
 --------|--------|--------
 Node.js |8.15.0|Website: http://nodejs.org/
@@ -215,6 +218,7 @@ We use PFX formatted certificates in OWT server. See https://nodejs.org/api/tls.
 After editing the configuration file, you should run `./initcert.js` inside each component to input your passphrases for the certificates, which would then store them in an encrypted file. Be aware that you should have node binary in your shell's $PATH to run the JS script.
 
  **Table 2-4. OWT server certificates configuration**
+ 
 |  |configuration file|
 |--------|--------|
 | management-api HTTPS | management_api/management_api.toml |
@@ -256,6 +260,7 @@ Run the following commands to stop the OWT server:
 
 ### 2.3.10 Set up the OWT server cluster {#Conferencesection2_3_10}
  **Table 2-5. Distributed OWT server components**
+ 
 Component Name|Deployment Number|Responsibility
 --------|--------|--------
 management-api|1 or many|The entrance of OWT service, keeping the configurations of all rooms, generating and verifying the tokens. Application can implement load balancing strategy across multiple management-api instances
@@ -469,6 +474,7 @@ To stop the OWT server cluster, follow these steps:
 Open WebRTC Toolkit server provides built-in fault tolerance / resilience support for its key components, as Table 2-6 shows.
 
  **Table 2-6. OWT Server cluster components’ fault tolerance / resilience**
+ 
 Component Name|Server Reaction|Client Awareness
 --------|--------|--------
 management-api|Multiple management-api instances provide stateless services at the same time. If application implements node failure detection and rescheduling strategy, when one node fails, other nodes should take over when the further requests are assigned to any of them.|Management-API RESTful request fail
@@ -488,6 +494,7 @@ sip-agent/node|All sip participants it carries should be dropped by session node
 Open WebRTC Toolkit server provides the following settings in configuration files to configure the network interfaces for public access.
 
  **Table 2-7. Configuration Items for Public Access**
+ 
 Configuration Item|Location|Usage
 --------|--------|--------
 webrtc.network_interfaces | webrtc_agent/agent.toml | The network interfaces of webrtc-agent that clients in public network can connect to
@@ -582,6 +589,7 @@ Any service user can do room management inside the service, including creating, 
 To modify rooms, a user can edit room configuration for its own preference. The the details of each configuration item for room are listed in the following table:
 
  **Table 3-1. Room Configuration**
+ 
 Item|Description
 --------|------------------
 name | The name of the room (name is not equal to the ID, room's ID cannot be changed once created)
@@ -615,6 +623,7 @@ sip | The SIP setting for the room
 notifying | The notifying policy for the room
 
  **Table 3-2 Supported Media Formats**
+ 
 Name|Type
 -----|-----
 opus | audio
@@ -635,6 +644,7 @@ vp9 | video
 > **Note**: When video format is "h264", for decoding, either software or hardware version OWT server supports all profiles. For encoding, software version OWT server with openh264 supports constrained-baseline profile and hardware version supports profiles including constrained-baseline, baseline, main, high.
 
  **Table 3-3 Default bitrate for typical resolutions (30fps)**
+ 
 |Resolution|Default bitrate(kbps)|
 |------|------|
 |352x288 (cif)|442|
@@ -823,12 +833,14 @@ The peer server is the default signaling server of the Open-WebRTC-Toolkit. The 
 The installation requirements for the peer server are listed in Table 5-1 and 5-2.
 
 **Table 5-1. Installation requirements**
+
 Component name | OS version
 ----|-----
 Peer server | Ubuntu 18.04 LTS, CentOS* 7.6/7.4
 
 > **Note**: The peer server has been fully tested on Ubuntu14.04 LTS,64-bit.
 **Table 5-2. Peer Server Dependencies**
+
 Name | Version | Remarks
 -----|----|----
 Node.js | 8.15.0 | Website: http://nodejs.org/
