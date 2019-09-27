@@ -10,7 +10,6 @@ var rolessubscribeaudio = [true];
 var viewslabel = ["common"];
 var viewsaudioformat = [{ "codec": "opus", "sampleRate": 48000, "channelNum": 2 }, { "codec": "g722", "sampleRate": 16000, "channelNum": 1 }, { "codec": "acc", "sampleRate": 48000, "channelNum": 2 }];
 var viewsaudiovad = [true];
-//此处是software模式，在hardware模式的时候，加上{ "codec": "h264", "profile": "B" }, { "codec": "h264", "profile": "M" }, { "codec": "h264", "profile": "H" }, { "codec": "h265" },即可
 var viewsvideoformat = [{ "codec": "h264", "profile": "CB" }, { "codec": "vp8" }, { "codec": "vp9" }];
 var viewsvideoparametersresolution = [{ width: 640, height: 480 }, { width: 1024, height: 768 }, { width: 1280, height: 720 }, { width: 480, height: 320 }, { width: 1920, height: 1080 }];
 var viewsvideoparametersframerate = [6, 6, 6, 12, 15, 24, 30, 48, 60];
@@ -45,7 +44,6 @@ var sipusername = [""];
 var sippassword = [""];
 var roomarray = [];
 /*
-  roomarray是一个数组，主要储存不同参数的request body的集合（postmouldjs）
   name：Required : string
   participantLimit： -1 means no limit
   inputLimit：inputLimit：number
@@ -100,15 +98,8 @@ var roomarray = [];
   transcodingvideokeyframeinterval： boolean
   notifyingparticipantActivities：boolean
   notifyingstreamChange：boolean
-  sipsipserver：sip 服务器ip或者域名
-  sipusername：sip用户名
-  sippassword：sip密码
-postmouldjs是发送post http://localhost:3000/v1/rooms/   请求时的request body对象
-声明一个 appendJson函数，主要作用是给postmouldjs中的每个参数赋值，并且把赋值后的postmouldjs对象添加到roomarray数组中
-roomarray数组里的元素是赋值后的postmouldjs，每次赋值postmouldjs，数组末尾追加一个postmouldjs元素
-*/
-var appendJson = function (roomarray,
-  name,
+ */
+ name,
   participantLimit,
   inputLimit,
   rolesrole,
@@ -152,7 +143,7 @@ var appendJson = function (roomarray,
   sipusername,
   sippassword
 ) {
-  var postmould = '{"name":"66","options":{"notifying":{"streamChange":true,"participantActivities":true},"transcoding":{"video":{"parameters":{"keyFrameInterval":true,"bitrate":true,"framerate":true,"resolution":true},"format":true},"audio":true},"mediaOut":{"video":{"parameters":{"keyFrameInterval":[1,30,5,2,1],"bitrate":["x0.8","x0.6","x0.4","x0.2"],"framerate":[6,12,15,24,30,48,60],"resolution":["x3/4","x2/3","x1/2","x1/3","x1/4","hd1080p","hd720p","svga","vga","cif"]},"format":[{"codec":"h264","profile":"CB"},{"codec":"vp8"},{"codec":"vp9"}]},"audio":[{"codec":"opus","sampleRate":48000,"channelNum":2},{"codec":"isac","sampleRate":16000},{"codec":"isac","sampleRate":32000},{"codec":"g722","sampleRate":16000,"channelNum":1},{"codec":"pcma"},{"codec":"pcmu"},{"codec":"aac","sampleRate":48000,"channelNum":2},{"codec":"ac3"},{"codec":"nellymoser"},{"codec":"ilbc"}]},"mediaIn":{"video":[{"codec":"h264","profile":"CB"},{"codec":"vp8"},{"codec":"vp9"}],"audio":[{"codec":"opus","sampleRate":48000,"channelNum":2},{"codec":"isac","sampleRate":16000},{"codec":"isac","sampleRate":32000},{"codec":"g722","sampleRate":16000,"channelNum":1},{"codec":"pcma"},{"codec":"pcmu"},{"codec":"aac"},{"codec":"ac3"},{"codec":"nellymoser"},{"codec":"ilbc"}]},"views":[{"video":{"layout":{"templates":{"custom":[{"region":[{"id":"rectang","shape":"rectangle","area":{"left":0.5,"top":0.5,"width":0.5,"height":0.5}}]}],"base":"fluid"},"fitPolicy":"letterbox"},"keepActiveInputPrimary":false,"bgColor":{"b":0,"g":0,"r":0},"motionFactor":0.8,"maxInput":16,"parameters":{"keyFrameInterval":100,"framerate":24,"resolution":{"height":480,"width":640},"bitrate":500},"format":{"codec":"vp8"}},"audio":{"vad":true,"format":{"channelNum":2,"sampleRate":48000,"codec":"opus"}},"label":"common"}],"roles":[{"subscribe":{"audio":true,"video":true},"publish":{"audio":true,"video":true},"role":"presenter"}],"participantLimit":-1,"inputLimit":-1,"sip":{"sipServer":"10.239.44.17","username":"jp","password":"123"}}}';
+  var postmould = '{"name":"66","options":{"notifying":{"streamChange":true,"participantActivities":true},"transcoding":{"video":{"parameters":{"keyFrameInterval":true,"bitrate":true,"framerate":true,"resolution":true},"format":true},"audio":true},"mediaOut":{"video":{"parameters":{"keyFrameInterval":[1,30,5,2,1],"bitrate":["x0.8","x0.6","x0.4","x0.2"],"framerate":[6,12,15,24,30,48,60],"resolution":["x3/4","x2/3","x1/2","x1/3","x1/4","hd1080p","hd720p","svga","vga","cif"]},"format":[{"codec":"h264","profile":"CB"},{"codec":"vp8"},{"codec":"vp9"}]},"audio":[{"codec":"opus","sampleRate":48000,"channelNum":2},{"codec":"isac","sampleRate":16000},{"codec":"isac","sampleRate":32000},{"codec":"g722","sampleRate":16000,"channelNum":1},{"codec":"pcma"},{"codec":"pcmu"},{"codec":"aac","sampleRate":48000,"channelNum":2},{"codec":"ac3"},{"codec":"nellymoser"},{"codec":"ilbc"}]},"mediaIn":{"video":[{"codec":"h264","profile":"CB"},{"codec":"vp8"},{"codec":"vp9"}],"audio":[{"codec":"opus","sampleRate":48000,"channelNum":2},{"codec":"isac","sampleRate":16000},{"codec":"isac","sampleRate":32000},{"codec":"g722","sampleRate":16000,"channelNum":1},{"codec":"pcma"},{"codec":"pcmu"},{"codec":"aac"},{"codec":"ac3"},{"codec":"nellymoser"},{"codec":"ilbc"}]},"views":[{"video":{"layout":{"templates":{"custom":[{"region":[{"id":"rectang","shape":"rectangle","area":{"left":0.5,"top":0.5,"width":0.5,"height":0.5}}]}],"base":"fluid"},"fitPolicy":"letterbox"},"keepActiveInputPrimary":false,"bgColor":{"b":0,"g":0,"r":0},"motionFactor":0.8,"maxInput":16,"parameters":{"keyFrameInterval":100,"framerate":24,"resolution":{"height":480,"width":640},"bitrate":500},"format":{"codec":"vp8"}},"audio":{"vad":true,"format":{"channelNum":2,"sampleRate":48000,"codec":"opus"}},"label":"common"}],"roles":[{"subscribe":{"audio":true,"video":true},"publish":{"audio":true,"video":true},"role":"presenter"}],"participantLimit":-1,"inputLimit":-1,"sip":{"sipServer":"10.239.44.17","username":"user","password":"123"}}}';
   var postmouldjs = JSON.parse(postmould);
   postmouldjs.name = name;
   postmouldjs.options.participantLimit = participantLimit;
@@ -256,6 +247,6 @@ for (var i = 0; i < viewsvideoparametersframerate.length; i++) {
 
 roomarrayjson = JSON.stringify(roomarray);
 var filename = "./casesRoomTrue.json";
-fs.writeFile(filename, roomarrayjson, (err) => { if (err) throw err; console.log('case集合生成完毕'); });
+fs.writeFile(filename, roomarrayjson, (err) => { if (err) throw err; console.log('case ok'); });
 
 

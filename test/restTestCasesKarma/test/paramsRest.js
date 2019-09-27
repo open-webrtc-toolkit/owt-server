@@ -411,7 +411,7 @@ jsonPost = [{
 }]
 sipcallsPostp = [
     {
-        "peerURI": "jp22@webrtctest18.sh.intel.com",
+        "peerURI": "user@URL",
         "mediaIn": {
             "audio": true,
             "video": true

@@ -19,11 +19,9 @@ var path5 = ["/media/video/parameters/keyFrameInterval"];
 var value5 = [1, 2, 5, 30, 100];
 var recordarray = [];
 /*
-recordarray是一个数组，主要储存不同参数的request body的集合（recordjs)
 op0: "replace",
 path0: "/media/audio/from"
 value0: string
-recordarray是一个数组，主要储存不同参数的request body的集合（recordjs)
 op1: "replace",
 path1: "/media/video/from"
 value1: string
@@ -39,9 +37,6 @@ value4: "6" | "12" | "15" | "24" | "30" | "48" | "60"
 op5: "replace",
 path5: "/media/video/parameters/keyFrameInterval",
 value5: "1" | "2" | "5" | "30" | "100"
-recordjs是发送patch http://localhost:3000/v1/rooms/{{roomId}}/recordings/{{recordingsid}} 请求时的request body
-recordtest函数，主要作用是给recordjs中的每个参数赋值，并且把赋值后的recordjs对象添加到recordarray数组中
-recordarray数组里的元素是赋值后的recordjs，每次赋值recordjs，数组末尾追加一个recordjs元素
 */
 var recordtest = function (recordarray,
 	op0,
@@ -108,4 +103,4 @@ for (var i = 0; i < value4.length; i++) {
 }
 var recordarrayjson = JSON.stringify(recordarray);
 var filename = "./casesPatchRecord.json";
-fs.writeFile(filename, recordarrayjson, (err) => { if (err) throw err; console.log('case集合生成完毕'); });
+fs.writeFile(filename, recordarrayjson, (err) => { if (err) throw err; console.log('case ok'); });
