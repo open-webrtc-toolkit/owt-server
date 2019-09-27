@@ -8,6 +8,7 @@
 #include <rtputils.h>
 #include <sstream>
 #include <sys/time.h>
+#include <memory>
 
 #include "MediaUtilities.h"
 
@@ -49,7 +50,9 @@ static int filterNALs(uint8_t *data, int size, const std::vector<int> &remove_ty
         nalu_type = buffer_start[nalu_start_offset] & 0x1F;
         if ((remove_types.size() > 0 && find(remove_types.begin(), remove_types.end(), nalu_type) != remove_types.end())
                 || (pass_types.size() > 0 && find(pass_types.begin(), pass_types.end(), nalu_type) == pass_types.end())) {
-            memmove(buffer_start, buffer_start + nalu_start_offset + nalu_found_length, buffer_length - nalu_start_offset - nalu_found_length);
+            std::unique_ptr<uint8_t> buffer_delegate(buffer_start);
+            memmove(buffer_delegate.get(), buffer_delegate.get() + nalu_start_offset + nalu_found_length, buffer_length - nalu_start_offset - nalu_found_length);
+            buffer_delegate.release();
             buffer_length -= nalu_start_offset + nalu_found_length;
 
             remove_nals_size += nalu_start_offset + nalu_found_length;
@@ -1162,7 +1165,9 @@ bool LiveStreamIn::parse_avcC(AVPacket *pkt) {
 
             m_sps_pps_buffer_length = nals_size;
             m_sps_pps_buffer = (uint8_t *)malloc(m_sps_pps_buffer_length);
-            memcpy(m_sps_pps_buffer, nals_buf , m_sps_pps_buffer_length);
+            std::unique_ptr<uint8_t> buffer_delegate(m_sps_pps_buffer);
+            memcpy(buffer_delegate.get(), nals_buf , m_sps_pps_buffer_length);
+            buffer_delegate.release();
         }
 
         free(nals_buf);
