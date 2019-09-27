@@ -10,7 +10,6 @@ var mediavideoparametersbitrate = ["x0.2", "x0.6", "x0.4", "x0.8"];
 var mediavideoparameterskeyFrameInterval = [1, 2, 5, 30, 100];
 var recordarray = [];
 /*
-recordarray是一个数组，主要储存不同参数的request body的集合（recordjs）
 container={"mp4" | "mkv" | "auto" | "ts"}  The container type of the recording file, "auto" by default.
 mediaaudiofrom：target audio StreamID
 mediaaudioformat：audio codec
@@ -20,9 +19,6 @@ mediavideoparametersresolution：resolution { width: number, height: number }
 mediavideoparametersframerate  ：framerate：number
 mediavideoparametersbitrate  ：bitrate：number
 mediavideoparameterskeyFrameInterval ：keyFrameInterval ：number
-recordjs是发送post http://localhost:3000/v1/rooms/{{roomId}}/recordings 请求时的request body
-recordtest函数，主要作用是给recordjs中的每个参数赋值，并且把赋值后的recordjs对象添加到recordarray数组中
-recordarray数组里的元素是赋值后的recordjs，每次赋值recordjs，数组末尾追加一个recordjs元素
 */
 var recordtest = function (recordarray,
 	container,
@@ -63,7 +59,7 @@ for (var i = 0; i < mediavideoparametersframerate.length; i++) {
 
 var recordarrayjson = JSON.stringify(recordarray);
 var filename = "./casesPostRecord.json";
-fs.writeFile(filename, recordarrayjson, (err) => { if (err) throw err; console.log('case集合生成完毕'); });
+fs.writeFile(filename, recordarrayjson, (err) => { if (err) throw err; console.log('case ok'); });
 
 
 

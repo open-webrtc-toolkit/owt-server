@@ -1711,7 +1711,7 @@ describe('rest_api_case', function () {
                     sipcallsX()
                         .then((resp) => {
                             sipcallsPostpp = {
-                                "peerURI": "jp22@webrtctest18.sh.intel.com",
+                                "peerURI": "user@url",
                                 "mediaIn": {
                                     "audio": true,
                                     "video": true
