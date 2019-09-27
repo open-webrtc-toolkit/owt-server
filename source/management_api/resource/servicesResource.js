@@ -54,15 +54,19 @@ exports.create = function (req, res, next) {
         log.info('Service ', authData.service._id, ' not authorized for this action');
         return next(new e.AccessError('Permission denied'));
     }
+
+    if (typeof req.body !== 'object' || req.body === null) {
+        return next(new e.BadRequestError('Invalid request body'));
+    }
+    // Check the request body as service
+    if (typeof req.body.name !== 'string' || typeof req.body.key !== 'string') {
+        return next(new e.BadRequestError('Service name and key do not have string type'));
+    }
+
     var service = {
         name: req.body.name,
         key: req.body.key
     };
-
-    // Check the request body as service
-    if (typeof service.name !== 'string' || typeof service.key !== 'string') {
-        return next(new e.BadRequestError('Service name and key do not have string type'));
-    }
 
     service.encrypted = true;
     service.key = cipher.encrypt(cipher.k, service.key);
