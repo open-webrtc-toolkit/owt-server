@@ -365,9 +365,12 @@ function updateForwardStream(stream, info, roomConfig) {
         if (pos < 0) {
           pos = alternative.length;
           alternative.push({rid: info.rid});
+          alternative[pos].parameters = stream.media.video.parameters;
         }
         if (simInfo.video.parameters) {
-          alternative[pos].parameters = simInfo.video.parameters;
+          alternative[pos].parameters = Object.assign({},
+            alternative[pos].parameters,
+            simInfo.video.parameters);
         }
         stream.media.video.alternative = alternative;
       }
@@ -405,9 +408,6 @@ function toPortalFormat (internalStream) {
         if (!alt.format) {
           alt.format = videoInfo.original[0].format;
         }
-        alt.parameters = Object.assign({},
-            videoInfo.original[0].parameters,
-            alt.parameters);
         alt.simulcastRid = alt.rid;
         delete alt.rid;
         videoInfo.original.push(alt);
