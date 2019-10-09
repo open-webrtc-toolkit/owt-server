@@ -323,6 +323,18 @@ exports.hasCodec = function (sdp, codecName) {
   return false;
 };
 
+exports.getExtId = function (sdp, extUri) {
+  var sdpObj = transform.parse(sdp);
+  for (const mediaInfo of sdpObj.media) {
+    for (const extInfo of mediaInfo.ext) {
+      if (extInfo.uri === extUri) {
+        return extInfo.value;
+      }
+    }
+  }
+  return -1;
+};
+
 exports.processOffer = function (sdp, preference = {}, direction) {
   var sdpObj = transform.parse(sdp);
   var finalProfile = filterH264Payload(sdpObj, preference, direction);

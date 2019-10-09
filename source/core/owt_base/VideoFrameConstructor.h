@@ -52,7 +52,7 @@ class VideoFrameConstructor : public erizo::MediaSink,
     DECLARE_LOGGER();
 
 public:
-    VideoFrameConstructor(VideoInfoListener*);
+    VideoFrameConstructor(VideoInfoListener*, uint32_t transportccExtId = 2);
     virtual ~VideoFrameConstructor();
 
     void bindTransport(erizo::MediaSource* source, erizo::FeedbackSink* fbSink);
@@ -105,7 +105,7 @@ public:
     bool setBitrate(uint32_t kbps);
 
 private:
-    bool init();
+    bool init(uint32_t transportccExtId);
 
     bool m_enabled;
     bool m_enableDump;

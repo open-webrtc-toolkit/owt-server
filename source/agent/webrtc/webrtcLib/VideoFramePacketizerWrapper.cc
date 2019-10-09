@@ -43,7 +43,12 @@ void VideoFramePacketizer::New(const FunctionCallbackInfo<Value>& args) {
   bool supportRED = (args[0]->ToBoolean())->BooleanValue();
   bool supportULPFEC = (args[1]->ToBoolean())->BooleanValue();
   VideoFramePacketizer* obj = new VideoFramePacketizer();
-  obj->me = new owt_base::VideoFramePacketizer(supportRED, supportULPFEC);
+  int transportccExt = (args.Length() == 3) ? args[2]->IntegerValue() : -1;
+  if (transportccExt > 0) {
+    obj->me = new owt_base::VideoFramePacketizer(supportRED, supportULPFEC, true, false, transportccExt);
+  } else {
+    obj->me = new owt_base::VideoFramePacketizer(supportRED, supportULPFEC);
+  }
   obj->dest = obj->me;
 
   obj->Wrap(args.This());

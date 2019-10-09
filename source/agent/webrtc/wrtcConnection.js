@@ -22,11 +22,15 @@ const {
   getVideoSsrcList,
   getSimulcastInfo,
   hasCodec,
+  getExtId,
   addAudioSSRC,
   addVideoSSRC,
 } = require('./sdp');
 
-var addon = require('../webrtcLib/build/Release/webrtc'); //require('./erizo/build/Release/addon');
+var addon = require('../webrtcLib/build/Release/webrtc');
+
+const TransportSeqNumUri =
+    'http://www.ietf.org/id/draft-holmer-rmcat-transport-wide-cc-extensions-01';
 
 /*
  * WrtcStream represents a stream object
@@ -291,7 +295,8 @@ module.exports = function (spec, on_status, on_mediaUpdate) {
         audioFrameConstructor.bindTransport(wrtc.getMediaStream(wrtcId));
       }
       if (video) {
-        videoFrameConstructor = new VideoFrameConstructor(on_mediaUpdate);
+        const transportSeqNumExt = getExtId(sdp, TransportSeqNumUri);
+        videoFrameConstructor = new VideoFrameConstructor(on_mediaUpdate, transportSeqNumExt);
         videoFrameConstructor.bindTransport(wrtc.getMediaStream(wrtcId));
       }
       const aSsrc = getAudioSsrc(sdp);
@@ -311,7 +316,8 @@ module.exports = function (spec, on_status, on_mediaUpdate) {
       if (video) {
         const hasRed = hasCodec(sdp, 'red');
         const hasUlpfec = hasCodec(sdp, 'ulpfec');
-        videoFramePacketizer = new VideoFramePacketizer(hasRed, hasUlpfec);
+        const transportSeqNumExt = getExtId(sdp, TransportSeqNumUri);
+        videoFramePacketizer = new VideoFramePacketizer(hasRed, hasUlpfec, transportSeqNumExt);
         videoFramePacketizer.bindTransport(wrtc.getMediaStream(wrtcId));
       }
     }
