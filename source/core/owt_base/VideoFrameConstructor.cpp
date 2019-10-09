@@ -16,7 +16,7 @@ namespace owt_base {
 
 DEFINE_LOGGER(VideoFrameConstructor, "owt.VideoFrameConstructor");
 
-VideoFrameConstructor::VideoFrameConstructor(VideoInfoListener* vil)
+VideoFrameConstructor::VideoFrameConstructor(VideoInfoListener* vil, uint32_t transportccExtId)
     : m_enabled(true)
     , m_enableDump(false)
     , m_format(FRAME_FORMAT_UNKNOWN)
@@ -33,7 +33,7 @@ VideoFrameConstructor::VideoFrameConstructor(VideoInfoListener* vil)
     m_taskRunner.reset(new owt_base::WebRTCTaskRunner("VideoFrameConstructor"));
     m_taskRunner->Start();
     m_feedbackTimer.reset(new JobTimer(1, this));
-    init();
+    init(transportccExtId);
 }
 
 VideoFrameConstructor::~VideoFrameConstructor()
@@ -53,7 +53,7 @@ VideoFrameConstructor::~VideoFrameConstructor()
     boost::unique_lock<boost::shared_mutex> lock(m_rtpRtcpMutex);
 }
 
-bool VideoFrameConstructor::init()
+bool VideoFrameConstructor::init(uint32_t transportccExtId)
 {
     // TODO: move to new jitter buffer implemetation(not ready yet).
     m_video_receiver.reset(new webrtc::vcm::VideoReceiver(Clock::GetRealTimeClock(), nullptr, nullptr, new VCMTiming(Clock::GetRealTimeClock(), nullptr), nullptr, nullptr));
@@ -62,7 +62,7 @@ bool VideoFrameConstructor::init()
     m_remoteBitrateObserver.reset(new VieRemb(Clock::GetRealTimeClock()));
     m_remoteBitrateEstimator.reset(new RemoteEstimatorProxy(Clock::GetRealTimeClock(), m_packetRouter.get()));
     m_videoReceiver.reset(new ViEReceiver(m_video_receiver.get(), m_remoteBitrateEstimator.get(), this));
-    m_videoReceiver->SetReceiveTransportSequenceNumberStatus(true, 2);
+    m_videoReceiver->SetReceiveTransportSequenceNumberStatus(true, transportccExtId);
 
     RtpRtcp::Configuration configuration;
     configuration.audio = false;  // Video.
@@ -73,7 +73,7 @@ bool VideoFrameConstructor::init()
     m_rtpRtcp->SetRTCPStatus(webrtc::RtcpMode::kCompound);
     // Since currently our MCU only claims FIR support in SDP, we choose FirRtcp for now.
     m_rtpRtcp->SetKeyFrameRequestMethod(kKeyFrameReqFirRtcp);
-    m_rtpRtcp->RegisterSendRtpHeaderExtension(RTPExtensionType::kRtpExtensionTransportSequenceNumber, 2);
+    m_rtpRtcp->RegisterSendRtpHeaderExtension(RTPExtensionType::kRtpExtensionTransportSequenceNumber, transportccExtId);
     m_rtpRtcp->SetREMBStatus(false);
     m_videoReceiver->SetRtpRtcpModule(m_rtpRtcp.get());
     m_remoteBitrateObserver->AddRembSender(m_rtpRtcp.get());

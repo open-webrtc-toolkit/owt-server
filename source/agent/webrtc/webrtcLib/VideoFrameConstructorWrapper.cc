@@ -38,7 +38,12 @@ NAN_MODULE_INIT(VideoFrameConstructor::Init) {
 NAN_METHOD(VideoFrameConstructor::New) {
   if (info.IsConstructCall()) {
     VideoFrameConstructor* obj = new VideoFrameConstructor();
-    obj->me = new owt_base::VideoFrameConstructor(obj);
+    uint32_t transportccExt = (info.Length() == 2) ? info[1]->IntegerValue() : -1;
+    if (transportccExt > 0) {
+      obj->me = new owt_base::VideoFrameConstructor(obj, transportccExt);
+    } else {
+      obj->me = new owt_base::VideoFrameConstructor(obj);
+    }
     obj->src = obj->me;
     obj->msink = obj->me;
 
