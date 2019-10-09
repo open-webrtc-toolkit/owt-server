@@ -111,17 +111,15 @@ function filterH264Payload(sdpObj, formatPreference = {}, direction) {
             }
             if (direction === 'in') {
               // For publish connection
-              if (h264ProfileOrder.indexOf(finalProfile) < h264ProfileOrder.indexOf(prf)) {
-                finalProfile = prf;
-                selectedPayload = fmtp.payload;
-              }
+              finalProfile = prf;
+              selectedPayload = fmtp.payload;
+              break;
             } else {
               // For subscribe connection
               if (optionals.findIndex((fmt) => (fmt.profile === prf)) > -1) {
-                if (h264ProfileOrder.indexOf(finalProfile) < h264ProfileOrder.indexOf(prf)) {
-                  finalProfile = prf;
-                  selectedPayload = fmtp.payload;
-                }
+                finalProfile = prf;
+                selectedPayload = fmtp.payload;
+                break;
               }
             }
           }
