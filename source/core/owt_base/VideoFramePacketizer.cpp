@@ -14,7 +14,12 @@ static const int TRANSMISSION_MAXBITRATE_MULTIPLIER = 2;
 
 DEFINE_LOGGER(VideoFramePacketizer, "owt.VideoFramePacketizer");
 
-VideoFramePacketizer::VideoFramePacketizer(bool enableRed, bool enableUlpfec, bool enableTransportcc, bool selfRequestKeyframe)
+VideoFramePacketizer::VideoFramePacketizer(
+    bool enableRed,
+    bool enableUlpfec,
+    bool enableTransportcc,
+    bool selfRequestKeyframe,
+    uint32_t transportccExtId)
     : m_enabled(true)
     , m_enableDump(false)
     , m_keyFrameArrived(false)
@@ -35,7 +40,7 @@ VideoFramePacketizer::VideoFramePacketizer(bool enableRed, bool enableUlpfec, bo
     m_videoTransport.reset(new WebRTCTransport<erizoExtra::VIDEO>(this, nullptr));
     m_taskRunner.reset(new owt_base::WebRTCTaskRunner("VideoFramePacketizer"));
     m_taskRunner->Start();
-    init(enableRed, enableUlpfec, enableTransportcc);
+    init(enableRed, enableUlpfec, enableTransportcc, transportccExtId);
 }
 
 VideoFramePacketizer::~VideoFramePacketizer()
@@ -383,7 +388,7 @@ int VideoFramePacketizer::sendFirPacket()
     return 0;
 }
 
-bool VideoFramePacketizer::init(bool enableRed, bool enableUlpfec, bool enableTransportcc)
+bool VideoFramePacketizer::init(bool enableRed, bool enableUlpfec, bool enableTransportcc, uint32_t transportccExtId)
 {
     using namespace webrtc;
     m_clock = Clock::GetRealTimeClock();
@@ -411,7 +416,7 @@ bool VideoFramePacketizer::init(bool enableRed, bool enableUlpfec, bool enableTr
     int ulpfec_pl_type = enableUlpfec? ULP_90000_PT : -1;
     m_rtpRtcp->SetUlpfecConfig(red_pl_type, ulpfec_pl_type);
     if (enableTransportcc)
-        m_rtpRtcp->RegisterSendRtpHeaderExtension(RTPExtensionType::kRtpExtensionTransportSequenceNumber, 5);
+        m_rtpRtcp->RegisterSendRtpHeaderExtension(RTPExtensionType::kRtpExtensionTransportSequenceNumber, transportccExtId);
     m_rtpRtcp->SetREMBStatus(true);
 
     // Enable NACK.
