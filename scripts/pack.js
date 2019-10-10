@@ -329,21 +329,27 @@ function packAddon(target) {
         let dummyOpenh264 = path.join(rootDir, 'third_party/openh264/pseudo-openh264.so');
         execSync(`cp -av ${dummyOpenh264} ${libOpenh264}`);
       }
-      if (target.rules.name.indexOf('video') === 0) {
-        let vasrc = path.join(depsDir, 'bin/vainfo');
-        let vadist = path.join(packDist, 'bin');
-        if (fs.existsSync(vasrc)) {
-          if (!fs.existsSync(vadist)) {
-            execSync(`mkdir -p ${vadist}`);
-          }
-          execSync(`cp -av ${vasrc} ${vadist}`);
-        }
-      }
-      if (options['archive'] && !options['no-pseudo']) {
-        let libSvtHevcEnc = path.join(libDist, 'libSvtHevcEnc.so.1');
+
+      let libSvtHevcEnc = path.join(libDist, 'libSvtHevcEnc.so.1');
+      if (options['archive'] && fs.existsSync(libSvtHevcEnc) && !options['no-pseudo']) {
         let dummySvtHevcEnc = path.join(rootDir, 'third_party/SVT-HEVC/pseudo-svtHevcEnc.so');
         execSync(`cp -av ${dummySvtHevcEnc} ${libSvtHevcEnc}`);
       }
+
+      if (target.rules.name.indexOf('video') === 0
+        || target.rules.name.indexOf('analytics') === 0) {
+        if (fs.existsSync('/opt/intel/mediasdk')) {
+          let dst_bin = path.join(packDist, 'bin');
+          let dst_lib = path.join(packDist, 'lib');
+          if (!fs.existsSync(dst_bin)) {
+            execSync(`mkdir -p ${dst_bin}`);
+          }
+
+          execSync(`find /opt/intel/mediasdk -type f -name metrics_monitor  | xargs -I '{}' cp -av '{}' ${dst_bin}`);
+          execSync(`find /opt/intel/mediasdk -type f -name libcttmetrics.so | xargs -I '{}' cp -av '{}' ${dst_lib}`);
+        }
+      }
+
       console.log(target.rules.name, '- Pack addon finished.');
     });
 }

@@ -119,37 +119,35 @@ var networkCollector = function (period, interf, max_scale, on_load) {
 };
 
 var gpuCollector = function (period, on_load) {
-    var child = child_process.spawn('intel_gpu_top', ['-s', '200']);
+    var child = child_process.exec('stdbuf -o0 metrics_monitor 100 1000');
     var cpu_load = 0,
         cpu_collector = new cpuCollector(period, function (data) {cpu_load = data;});
 
-    var renders = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0], render_sum = 0,
-        bitstreams = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0], bitstream_sum = 0,
-        blitters = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0], blitter_sum = 0,
-        load = 0;
+    var load = 0;
     child.stdout.on('data', function (data) {
-       var lines = data.toString().split('\n');
+        var usage_sum = 0, samples = 0;
+        var lines = data.toString().split('\n');
 
-       lines.forEach(function (line) {
-           var m = null;
-           if ((m = line.match(/\s+render busy:\s+(\d+)%/)) && m !== null && m.length > 1) {
-               var render = Number(m[1]),
-                   old = renders.shift();
-               renders.push(render);
-               render_sum = render_sum - old + render;
-           } else if ((m = line.match(/\s+bitstream busy:\s+(\d+)%/)) && m !== null && m.length > 1) {
-               var bitstream = Number(m[1]),
-                   old = bitstreams.shift();
-               bitstreams.push(bitstream);
-               bitstream_sum = bitstream_sum - old + bitstream;
-           } else if ((m = line.match(/\s+blitter busy:\s+(\d+)%/)) && m !== null && m.length > 1) {
-               var blitter = Number(m[1]),
-                   old = blitters.shift();
-               blitters.push(blitter);
-               blitter_sum = blitter_sum - old + blitter;
-           }
-       });
-       load = (Math.floor(Math.max(render_sum, bitstream_sum, blitter_sum) / 10)) / 100;
+        var i = lines.length > 10 ? lines.length - 10 : 0;
+        for (; i < lines.length; i++) {
+            var engine_list = lines[i].split('\t');
+            var engine_max_usage = 0;
+            for (var engine of engine_list) {
+                var m = null;
+                if ((m = engine.match(/\s+usage:\s+(\d+\.\d+)/)) && m !== null && m.length > 1) {
+                    var engine_usage = Number(m[1]);
+                    if (engine_max_usage < engine_usage)
+                        engine_max_usage = engine_usage;
+                }
+            }
+            usage_sum = usage_sum + engine_max_usage;
+            samples = samples + 1;
+        }
+
+        if (samples > 0)
+            load = (usage_sum / samples) / 100;
+        else
+            load = 0;
     });
 
     var interval = setInterval(function () {

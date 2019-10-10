@@ -7,6 +7,11 @@ bin=`dirname "$0"`
 bin=`cd "$bin"; pwd`
 ROOT=`cd "${bin}/.."; pwd`
 
+SUDO=""
+if [[ $EUID -ne 0 ]]; then
+   SUDO="sudo -E"
+fi
+
 OWT_UPDATE_DONE=false
 HAVE_AUTH_UPDATE=false
 
@@ -65,6 +70,8 @@ init_hardware()
     ${ROOT}/management_api/init.sh
     ${ROOT}/video_agent/init.sh --hardware
   fi
+
+  ${SUDO} sh -c "echo 0 >> /proc/sys/kernel/perf_event_paranoid"
 }
 
 init_auth()

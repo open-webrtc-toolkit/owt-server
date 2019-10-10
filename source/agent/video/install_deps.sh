@@ -19,19 +19,6 @@ usage() {
   echo
 }
 
-enable_intel_gpu_top() {
-  echo "Enable Intel GPU Top"
-  # make intel-gpu-tools accessable by non-root users.
-  ${SUDO} chmod a+rw /sys/devices/pci0000:00/0000:00:02.0/resource*
-  # make the above change effect at every system startup.
-  ${SUDO} chmod +x /etc/rc.local /etc/rc.d/rc.local
-  if ${SUDO} grep -RInqs "chmod a+rw /sys/devices/pci0000:00/0000:00:02.0/resource*" /etc/rc.local; then
-    echo "intel-gpu-tools has been authorised to non-root users."
-  else
-    ${SUDO} sh -c "echo \"chmod a+rw /sys/devices/pci0000:00/0000:00:02.0/resource*\" >> /etc/rc.local"
-  fi
-}
-
 install_deps() {
   local OS=$(${this}/detectOS.sh | awk '{print tolower($0)}')
   echo $OS
@@ -91,7 +78,7 @@ install_deps
 ${this}/install_ffmpeg.sh
 
 if ${HARDWARE_DEPS} ; then
-  enable_intel_gpu_top
+  :
 else
   # Install if no input for 15s
   read -t 15 -p "Installing OpenH264 Video Codec Library provided by Cisco Systems, Inc? [Yes/no]" yn
