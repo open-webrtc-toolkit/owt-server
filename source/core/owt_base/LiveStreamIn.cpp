@@ -428,7 +428,7 @@ LiveStreamIn::LiveStreamIn(const Options& options, EventRegistry* handle)
     , m_timstampOffset(0)
     , m_lastTimstamp(0)
     , m_enableVideoExtradata(false)
-    , m_sps_pps_buffer(NULL)
+    , m_sps_pps_buffer()
     , m_sps_pps_buffer_length(0)
 {
     ELOG_INFO_T("url: %s, audio: %s, video: %s, transport: %s, bufferSize: %d"
