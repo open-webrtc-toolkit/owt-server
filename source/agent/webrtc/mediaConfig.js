@@ -230,5 +230,4 @@ const mediaConfig = {
   H264_AND_OPUS: { rtpMappings: { h264, opus }, extMappings },
 };
 
-var module = module || {};
 module.exports = mediaConfig;
