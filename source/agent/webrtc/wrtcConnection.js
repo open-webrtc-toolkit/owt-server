@@ -371,6 +371,18 @@ module.exports = function (spec, on_status, on_mediaUpdate) {
         return transform.write(res);
     };
 
+    var findTransportccId = function (sdp) {
+        var sdpObj = transform.parse(sdp);
+        for (const mediaInfo of sdpObj.media) {
+            for (const extInfo of mediaInfo.ext) {
+                if (extInfo.uri === 'http://www.ietf.org/id/draft-holmer-rmcat-transport-wide-cc-extensions-01') {
+                    return extInfo.value;
+                }
+            }
+        }
+        return -1;
+    };
+
     var CONN_INITIAL = 101, CONN_STARTED = 102, CONN_GATHERED = 103, CONN_READY = 104, CONN_FINISHED = 105, CONN_CANDIDATE = 201, CONN_SDP = 202, CONN_FAILED = 500;
     /*
      * Given a WebRtcConnection waits for the state CANDIDATES_GATHERED for set remote SDP.
@@ -434,7 +446,7 @@ module.exports = function (spec, on_status, on_mediaUpdate) {
         });
     };
 
-    var bindFrameConstructors = function () {
+    var bindFrameConstructors = function (sdp) {
         if (audio) {
             audioFrameConstructor = new AudioFrameConstructor();
             //wrtc.setAudioReceiver(audioFrameConstructor);
@@ -442,7 +454,8 @@ module.exports = function (spec, on_status, on_mediaUpdate) {
         }
 
         if (video) {
-            videoFrameConstructor = new VideoFrameConstructor(on_mediaUpdate);
+            const transportccExt = findTransportccId(sdp);
+            videoFrameConstructor = new VideoFrameConstructor(on_mediaUpdate, transportccExt);
             //wrtc.setVideoReceiver(videoFrameConstructor);
             videoFrameConstructor.bindTransport(wrtc);
         }
@@ -462,7 +475,7 @@ module.exports = function (spec, on_status, on_mediaUpdate) {
         }
     };
 
-    var bindFramePacketizers = function () {
+    var bindFramePacketizers = function (sdp) {
         if (audio) {
             audioFramePacketizer = new AudioFramePacketizer();
             audioFramePacketizer.bindTransport(wrtc);
@@ -471,7 +484,8 @@ module.exports = function (spec, on_status, on_mediaUpdate) {
         if (video) {
             // TODO: check remote-side's support on RED/ULPFEC instead of
             // hardcoding here
-            videoFramePacketizer = new VideoFramePacketizer(true, true);
+            const transportccExt = findTransportccId(sdp);
+            videoFramePacketizer = new VideoFramePacketizer(true, true, transportccExt);
             videoFramePacketizer.bindTransport(wrtc);
             //video.resolution && wrtc.setSendResolution(video.resolution);
         }
@@ -526,6 +540,12 @@ module.exports = function (spec, on_status, on_mediaUpdate) {
                 checkOffer(msg.sdp, function() {
                     msg.sdp = filterH264Payload(msg.sdp);
                     log.debug('offer after h264 filter:', msg.sdp);
+                    if (direction === 'in') {
+                        bindFrameConstructors(msg.sdp);
+                    }
+                    if (direction === 'out') {
+                        bindFramePacketizers(msg.sdp);
+                    }
                     wrtc.setRemoteSdp(msg.sdp);
                 }, function (reason) {
                     log.error('offer error:', reason);
@@ -669,14 +689,6 @@ module.exports = function (spec, on_status, on_mediaUpdate) {
               }
             });
             wrtc = createWrtc(wrtcId, threadPool, ioThreadPool, 'rtp_media_config', ipAddresses);
-
-            if (direction === 'in') {
-                bindFrameConstructors();
-            }
-
-            if (direction === 'out') {
-                bindFramePacketizers();
-            }
 
             initWebRtcConnection(wrtc);
         } else {
