@@ -58,15 +58,15 @@ exports.create = function (req, res, next) {
     if (typeof req.body !== 'object' || req.body === null) {
         return next(new e.BadRequestError('Invalid request body'));
     }
+
+    var service = {};
     // Check the request body as service
     if (typeof req.body.name !== 'string' || typeof req.body.key !== 'string') {
         return next(new e.BadRequestError('Service name and key do not have string type'));
+    } else {
+        service.name = req.body.name;
+        service.key = req.body.key;
     }
-
-    var service = {
-        name: req.body.name,
-        key: req.body.key
-    };
 
     service.encrypted = true;
     service.key = cipher.encrypt(cipher.k, service.key);
