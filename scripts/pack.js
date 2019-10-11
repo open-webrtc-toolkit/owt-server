@@ -73,14 +73,15 @@ if (options.encrypt) {
 
   // Check encrypt deps
   console.log('Checking encrypt dependencies...');
-  try {
-    for (const dep of encryptDeps) {
-      execSync(`npm list -g ${dep}`);
-    }
+  const npmRoot = execSync(`npm root -g`).toString().trim();
+  const missingDeps = encryptDeps.filter((dep) => {
+    return !fs.existsSync(path.join(npmRoot, dep));
+  });
+
+  if (missingDeps.length === 0) {
     console.log('Encrypt dependencies OK.');
-  } catch (e) {
-    console.log('Install node dependencies for Encrypt...');
-    for (const dep of encryptDeps) {
+  } else {
+    for (const dep of missingDeps) {
       execSync(`npm install -g --save-dev ${dep}`, { stdio: 'inherit' });
     }
   }
