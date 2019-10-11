@@ -1202,7 +1202,8 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                     for (const rid in streams[stream_id].video.simulcast) {
                         const simInfo = streams[stream_id].video.simulcast[rid];
                         const combinedVideo = Object.assign({}, {format: streams[stream_id].video.format}, simInfo);
-                        if (isVideoMatched(combinedVideo, format, resolution, framerate, bitrate, keyFrameInterval)) {
+                        // TODO: match other parameters after more video info updated for simulcast stream
+                        if (isVideoMatched(combinedVideo, format, resolution, 'unspecified', 'unspecified', 'unspecified')) {
                             matchedId = simInfo.id;
                             break;
                         }
