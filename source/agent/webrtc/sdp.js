@@ -151,10 +151,18 @@ function filterVideoPayload(sdpObj, videoPreference = {}) {
   var relatedPayloads = new Set();
   var reservedCodecs = ['red', 'ulpfec'];
   var codecMap = new Map();
+  var payloadOrder = new Map();
 
   sdpObj.media.forEach((mediaInfo) => {
     var i, rtp, fmtp;
+    var payloads;
     if (mediaInfo.type === 'video') {
+      // Keep payload order in m line
+      mediaInfo.payloads.split(' ')
+        .forEach((p, index) => {
+          payloadOrder.set(parseInt(p), index);
+        });
+
       for (i = 0; i < mediaInfo.rtp.length; i++) {
         rtp = mediaInfo.rtp[i];
         const codec = rtp.codec.toLowerCase();
@@ -166,7 +174,8 @@ function filterVideoPayload(sdpObj, videoPreference = {}) {
           selectedPayload = rtp.payload;
         }
         if (optionals.findIndex((fmt) => (fmt.codec === codec)) > -1) {
-          if (selectedPayload < 0) {
+          if (selectedPayload < 0 ||
+              payloadOrder.get(rtp.payload) < payloadOrder.get(selectedPayload)) {
             selectedPayload = rtp.payload;
           }
         }
@@ -205,6 +214,7 @@ function filterAudioPayload(sdpObj, audioPreference = {}) {
   var reservedCodecs = ['telephone-event', 'cn'];
   var relatedPayloads = new Set();
   var rtpMap = new Map();
+  var payloadOrder = new Map();
 
   const isAudioMatchRtp = (fmt, rtp) => {
     if (fmt && fmt.codec === rtp.codec.toLowerCase()) {
@@ -226,6 +236,12 @@ function filterAudioPayload(sdpObj, audioPreference = {}) {
   sdpObj.media.forEach((mediaInfo) => {
     var i, rtp, fmtp;
     if (mediaInfo.type === 'audio') {
+      // Keep payload order in m line
+      mediaInfo.payloads.split(' ')
+        .forEach((p, index) => {
+          payloadOrder.set(parseInt(p), index);
+        });
+
       for (i = 0; i < mediaInfo.rtp.length; i++) {
         rtp = mediaInfo.rtp[i];
         rtpMap.set(rtp.payload, rtp);
@@ -234,9 +250,12 @@ function filterAudioPayload(sdpObj, audioPreference = {}) {
           finalFmt = preferred;
         }
         optionals.forEach((fmt) => {
-          if (selectedPayload < 0 && isAudioMatchRtp(fmt, rtp)) {
-            selectedPayload = rtp.payload;
-            finalFmt = fmt;
+          if (isAudioMatchRtp(fmt, rtp)) {
+            if (selectedPayload < 0 ||
+                payloadOrder.get(rtp.payload) < payloadOrder.get(selectedPayload)) {
+              selectedPayload = rtp.payload;
+              finalFmt = fmt;
+            }
           }
         });
       }
