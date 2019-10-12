@@ -65,6 +65,39 @@ function translateProfile (profLevId) {
   return profile;
 }
 
+function filterVP9Payload(sdpObj) {
+  var removePayloads = [];
+  var vp9Payloads = new Set();
+
+  sdpObj.media.forEach((mediaInfo) => {
+    var i, rtp, fmtp;
+    if (mediaInfo.type === 'video') {
+      for (i = 0; i < mediaInfo.rtp.length; i++) {
+        rtp = mediaInfo.rtp[i];
+        if (rtp.codec.toLowerCase() === 'vp9') {
+          vp9Payloads.add(rtp.payload);
+        }
+      }
+      for (i = 0; i < mediaInfo.fmtp.length; i++) {
+        fmtp = mediaInfo.fmtp[i];
+        if (vp9Payloads.has(fmtp.payload) > -1) {
+          // Remove profile-id=2 vp9
+          if (fmtp.config.indexOf('profile-id=2') > -1)
+            removePayloads.push(fmtp.payload);
+        }
+      }
+
+      // Remove related vp9 payload
+      mediaInfo.rtp = mediaInfo.rtp.filter((rtp) => {
+        return removePayloads.findIndex((pl) => (pl === rtp.payload)) === -1;
+      });
+      mediaInfo.fmtp = mediaInfo.fmtp.filter((fmtp) => {
+        return removePayloads.findIndex((pl) => (pl === fmtp.payload)) === -1;
+      });
+    }
+  });
+}
+
 function filterH264Payload(sdpObj, formatPreference = {}, direction) {
   var removePayloads = [];
   var selectedPayload = -1;
@@ -356,6 +389,7 @@ exports.getExtId = function (sdp, extUri) {
 
 exports.processOffer = function (sdp, preference = {}, direction) {
   var sdpObj = transform.parse(sdp);
+  filterVP9Payload(sdpObj);
   var finalProfile = filterH264Payload(sdpObj, preference, direction);
   var audioFormat = filterAudioPayload(sdpObj, preference.audio);
   var videoFormat = filterVideoPayload(sdpObj, preference.video);
