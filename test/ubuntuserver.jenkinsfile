@@ -2,7 +2,7 @@ void setBuildStatus(String message, String state) {
   step([
       $class: "GitHubCommitStatusSetter",
       reposSource: [$class: "ManuallyEnteredRepositorySource", url: "$env.REPO_URL/owt-server"],
-      contextSource: [$class: "ManuallyEnteredCommitContextSource", context: "ci/jenkins/server"],
+      contextSource: [$class: "ManuallyEnteredCommitContextSource", context: "ci/jenkins/ubuntuserver"],
       errorHandlers: [[$class: "ChangingBuildStatusErrorHandler", result: "UNSTABLE"]],
       statusResultSource: [ $class: "ConditionalStatusResultSource", results: [[$class: "AnyBuildResult", message: message, state: state]] ]
   ]);
@@ -18,11 +18,11 @@ pipeline {
         stage('Build package') {
             options { timeout(time:30,unit:'MINUTES') }
             steps {
-                podTemplate(name: 'pack-server', label: 'pack-mcu-server', containers: [
-                    containerTemplate(name: 'pack-on-centos-server', image: "$env.JS_MCU_BUILD_UBUNTU42x",  ttyEnabled: true, alwaysPullImage: true, privileged: true, resourceRequestCpu: '5000m', resourceLimitCpu: '6000m', network: 'host', command: 'cat')
+                podTemplate(name: 'pack-server-ubuntu', label: 'pack-mcu-server-ubuntu', containers: [
+                    containerTemplate(name: 'pack-on-ubuntu-server', image: "$env.JS_MCU_BUILD_UBUNTU42x",  ttyEnabled: true, alwaysPullImage: true, privileged: true, resourceRequestCpu: '5000m', resourceLimitCpu: '6000m', network: 'host', command: 'cat')
                 ]){
-                    node ('pack-mcu-server') {
-                      container ('pack-on-centos-server') {
+                    node ('pack-mcu-server-ubuntu') {
+                      container ('pack-on-ubuntu-server') {
                         sh "/root/packMCUInDocker.sh software $env.GIT_COMMIT $env.GIT_BRANCH $env.CHANGE_ID"
                       }
                     }
@@ -31,7 +31,7 @@ pipeline {
         }
 
         stage('Start test') {
-            options { timeout(time:100,unit:'MINUTES') }
+            options { timeout(time:50,unit:'MINUTES') }
             when {
               expression {
                 currentBuild.result == null || currentBuild.result == 'SUCCESS' 
@@ -40,11 +40,11 @@ pipeline {
             parallel {
                 stage('API test') {
                     steps {
-                        podTemplate(name: 'api-test-server', label: 'api-test-server', cloud: 'kubernetes', containers: [
-                            containerTemplate(name: 'api-test-server', image: "$env.JSMCU_TEST_IMAGE_UBUNTU42x",  ttyEnabled: true, alwaysPullImage: true, privileged: true, resourceRequestCpu: '7000m', resourceLimitCpu: '8000m',resourceLimitMemory: '9.0Gi', resourceRequestMemory: '8.0Gi', network: 'host', command: 'cat'),
+                        podTemplate(name: 'api-test-server-ubuntu', label: 'api-test-server-ubuntu', cloud: 'kubernetes', containers: [
+                            containerTemplate(name: 'api-test-server-ubuntu', image: "$env.JSMCU_TEST_IMAGE_UBUNTU42x",  ttyEnabled: true, alwaysPullImage: true, privileged: true, resourceRequestCpu: '7000m', resourceLimitCpu: '8000m',resourceLimitMemory: '9.0Gi', resourceRequestMemory: '8.0Gi', network: 'host', command: 'cat'),
                             ]) {
-                            node('api-test-server') {
-                                container('api-test-server') {
+                            node('api-test-server-ubuntu') {
+                                container('api-test-server-ubuntu') {
                                     sh "ls -al"
                                     sh "pwd"
                                     sh "/root/start.sh ${env.GIT_COMMIT}1 ConferenceClient_api"
@@ -56,11 +56,11 @@ pipeline {
 
                 stage('Subscribe test') {
                     steps {
-                        podTemplate(name:'subscribe-test-server', label: 'subscribe-test-server', cloud: 'kubernetes',containers: [
-                            containerTemplate(name: 'subscribe-test-server', image: "$env.JSMCU_TEST_IMAGE_UBUNTU42x",  ttyEnabled: true, alwaysPullImage: true, privileged: true, resourceRequestCpu: '7000m', resourceLimitCpu: '8000m',resourceLimitMemory: '9.0Gi', resourceRequestMemory: '8.0Gi', network: 'host', command: 'cat'),
+                        podTemplate(name:'subscribe-test-server-ubuntu', label: 'subscribe-test-server-ubuntu', cloud: 'kubernetes',containers: [
+                            containerTemplate(name: 'subscribe-test-server-ubuntu', image: "$env.JSMCU_TEST_IMAGE_UBUNTU42x",  ttyEnabled: true, alwaysPullImage: true, privileged: true, resourceRequestCpu: '7000m', resourceLimitCpu: '8000m',resourceLimitMemory: '9.0Gi', resourceRequestMemory: '8.0Gi', network: 'host', command: 'cat'),
                             ]) {
-                            node('subscribe-test-server') {
-                                container('subscribe-test-server') {
+                            node('subscribe-test-server-ubuntu') {
+                                container('subscribe-test-server-ubuntu') {
                                     sh "ls -al"
                                     sh "pwd"
                                     sh "/root/start.sh ${env.GIT_COMMIT}2 ConferenceClient_subscribe"
