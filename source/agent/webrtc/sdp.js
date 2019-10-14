@@ -191,10 +191,12 @@ function filterVideoPayload(sdpObj, videoPreference = {}) {
     var payloads;
     if (mediaInfo.type === 'video') {
       // Keep payload order in m line
-      mediaInfo.payloads.split(' ')
-        .forEach((p, index) => {
-          payloadOrder.set(parseInt(p), index);
-        });
+      if (typeof mediaInfo.payloads === 'string') {
+        mediaInfo.payloads.split(' ')
+          .forEach((p, index) => {
+            payloadOrder.set(parseInt(p), index);
+          });
+      }
 
       for (i = 0; i < mediaInfo.rtp.length; i++) {
         rtp = mediaInfo.rtp[i];
