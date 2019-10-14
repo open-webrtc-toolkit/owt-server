@@ -29,6 +29,7 @@ const originCwd = cwd();
 // Detect OS script
 const osScript = path.join(rootDir, 'scripts/detectOS.sh');
 const osType = execSync(`. ${osScript}`).toString().toLowerCase();
+const msdkDir = '/opt/intel/mediasdk';
 
 function getTargets() {
   var buildSet = new Set();
@@ -152,6 +153,10 @@ for (const name of buildList) {
   console.log('', name, '');
 }
 var works = buildList.map((name) => {
+  if (name.indexOf('msdk') > 0 && !fs.existsSync(msdkDir)) {
+    console.log(`\x1b[33mSkip: ${name} - MSDK not installed\x1b[0m`);
+    return Promise.resolve();
+  }
   return buildTarget(name);
 });
 
