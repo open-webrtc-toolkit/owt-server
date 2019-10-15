@@ -60,6 +60,11 @@
         "path" : "source/agent/video/videoTranscoder/videoTranscoder_msdk",
         "gyp" : "binding.msdk.gyp"
     },
+    "gst-pipeline":{
+      "path" : "source/agent/analytics/videoGstPipeline",
+      "gyp"  : "binding.pipeline.gyp"
+      },
+
     "internal-io" : {
         "path" : "source/agent/addons/internalIO"
     },
@@ -85,5 +90,8 @@
     ,
     "quicIO" : {
         "path" : "source/agent/addons/quicIO"
+    },
+    "resource-util" : {
+        "path" : "source/agent/addons/resourceUtil"
     }
 }

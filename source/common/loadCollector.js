@@ -151,14 +151,11 @@ var gpuCollector = function (period, on_load) {
     });
 
     var interval = setInterval(function () {
-        var result = Math.max(load, cpu_load);
-        on_load(result);
+        on_load(load);
     }, period);
 
     this.stop = function () {
         log.debug("To stop gpu load collector.");
-        cpu_collector && cpu_collector.stop();
-        cpu_collector = undefined;
         child && child.kill();
         child = undefined;
         interval && clearInterval(interval);
@@ -166,11 +163,91 @@ var gpuCollector = function (period, on_load) {
     };
 };
 
+var vpuCollector = function (period, on_load) {    
+    const resource = require('./resourceUtil/build/Release/resourceUtil');
+    var resourceUtil = new resource();
+    var interval = setInterval(function () {
+        var vpu_load = resourceUtil.getVPUUtil();
+        log.debug("VPU load is:",vpu_load);
+        on_load(vpu_load);
+    }, period);
+
+    this.stop = function () {
+        log.debug("To stop gpu load collector.");
+        resourceUtil = undefined;
+        interval && clearInterval(interval);
+        interval = undefined;
+    };
+};
+
+var resourceCollector = function (period, cpu, gpu, vpu, network, disk, memory, on_load) {    
+    var cpu_load = 0,
+        gpu_load = 0,
+        vpu_load = 0,
+        network_load = 0,
+        disk_load =0,
+        memory_load = 0
+
+    if(cpu) {
+        var cpu_collector = new cpuCollector(period, function (data) {cpu_load = data;});
+    }
+
+    if(gpu) {
+        var gpu_collector = new gpuCollector(period, function (data) {gpu_load = data;});
+    }
+
+    if(vpu) {
+        var vpu_collector = new vpuCollector(period, function (data) {vpu_load = data;});
+    }
+
+    if(network) {
+        var network_collector = new networkCollector(period, function (data) {network_load = data;});
+    }
+
+    if(disk) {
+        var disk_collector = new diskCollector(period, function (data) {disk_load = data;});
+    }
+
+    if(memory) {
+        var memory_collector = new memoryCollector(period, function (data) {memory_load = data;});
+    }
+
+    var interval = setInterval(function () {
+        var result = Math.max(cpu_load, gpu_load, vpu_load, network_load, disk_load, memory_load);
+        log.debug("Report resource load:", result);
+        on_load(result);
+    }, period);
+
+
+    this.stop = function () {
+        log.debug("To stop resource load collector.");
+        cpu_collector && cpu_collector.stop();
+        cpu_collector = undefined;
+        gpu_collector && gpu_collector.stop();
+        gpu_collector = undefined;
+        vpu_collector && vpu_collector.stop();
+        vpu_collector = undefined;
+        network_collector && network_collector.stop();
+        network_collector = undefined;
+        disk_collector && disk_collector.stop();
+        disk_collector = undefined;
+        memory_collector && memory_collector.stop();
+        memory_collector = undefined;
+    };
+    
+};
+
 exports.LoadCollector = function (spec) {
     var that = {};
 
     var period = spec.period || 1000,
         item = spec.item,
+        cpu = spec.item.cpu || false,
+        gpu = spec.item.gpu || false,
+        vpu = spec.item.vpu || false,
+        network = spec.item.network || false,
+        disk = spec.item.disk || false,
+        memory = spec.item.memory || false,
         on_load = spec.onLoad || function (load) {log.debug('Got', item.name, 'load:', load);},
         collector = undefined;
 
@@ -180,27 +257,7 @@ exports.LoadCollector = function (spec) {
         collector = undefined;
     };
 
-    switch (item.name) {
-        case 'network':
-            collector = new networkCollector(period, item.interf, item.max_scale, on_load);
-            break;
-        case 'cpu':
-            collector = new cpuCollector(period, on_load);
-            break;
-        case 'gpu':
-            collector = new gpuCollector(period, on_load);
-            break;
-        case 'memory':
-            collector = new memCollector(period, on_load);
-            break;
-        case 'disk':
-            collector = new diskCollector(period, item.drive, on_load);
-            break;
-        default:
-            log.error('Unknown load item');
-            return undefined;
-            //break;
-    }
+    collector = new resourceCollector(period, cpu, gpu, vpu, network, disk, memory, on_load);
 
     return that;
 };

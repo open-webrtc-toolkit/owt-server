@@ -24,7 +24,9 @@ module.exports.load = () => {
     config.cluster.worker.load.max = config.cluster.max_load || 0.85;
     config.cluster.worker.load.period = config.cluster.report_load_interval || 1000;
     config.cluster.worker.load.item = {
-      name: 'cpu'
+      cpu: true,
+      gpu: false,
+      vpu: false
     };
 
     config.internal.ip_address = config.internal.ip_address || '';
@@ -51,7 +53,7 @@ module.exports.load = () => {
     config.video.codecs = videoCap.codecs;
 
     if (videoCap.hw) {
-      config.cluster.worker.load.item.name = 'gpu';
+      config.cluster.worker.load.item.gpu = true;
     }
 
     config.capacity = config.capacity || {};

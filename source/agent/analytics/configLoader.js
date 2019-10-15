@@ -25,8 +25,21 @@ module.exports.load = () => {
     config.cluster.worker.load.max = config.cluster.max_load || 0.85;
     config.cluster.worker.load.period = config.cluster.report_load_interval || 1000;
     config.cluster.worker.load.item = {
-      name: 'cpu'
+      cpu: true,
+      gpu: false,
+      vpu: false
     };
+
+    var resource = config.cluster.load_items;
+    //In current environment, always report CPU resource
+
+    if (resource.toLowerCase().indexOf("gpu") != -1) {
+      config.cluster.worker.load.item.gpu = true;
+    }
+
+    if (resource.toLowerCase().indexOf("vpu") != -1) {
+      config.cluster.worker.load.item.vpu = true;
+    }
 
     config.internal.ip_address = config.internal.ip_address || '';
     config.internal.network_interface = config.internal.network_interface || undefined;
