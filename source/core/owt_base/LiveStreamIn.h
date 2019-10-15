@@ -8,6 +8,7 @@
 #include <boost/thread.hpp>
 #include <boost/asio.hpp>
 #include <boost/scoped_ptr.hpp>
+#include <boost/shared_array.hpp>
 #include <EventRegistry.h>
 #include <logger.h>
 #include <string>
@@ -221,7 +222,7 @@ private:
     int64_t m_lastTimstamp;
 
     bool m_enableVideoExtradata;
-    uint8_t *m_sps_pps_buffer;
+    boost::shared_array<uint8_t> m_sps_pps_buffer;
     int m_sps_pps_buffer_length;
 
     char m_errbuff[500];

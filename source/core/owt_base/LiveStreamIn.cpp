@@ -428,7 +428,7 @@ LiveStreamIn::LiveStreamIn(const Options& options, EventRegistry* handle)
     , m_timstampOffset(0)
     , m_lastTimstamp(0)
     , m_enableVideoExtradata(false)
-    , m_sps_pps_buffer(NULL)
+    , m_sps_pps_buffer()
     , m_sps_pps_buffer_length(0)
 {
     ELOG_INFO_T("url: %s, audio: %s, video: %s, transport: %s, bufferSize: %d"
@@ -505,8 +505,7 @@ LiveStreamIn::~LiveStreamIn()
 
     m_enableVideoExtradata = false;
     if (m_sps_pps_buffer) {
-        free(m_sps_pps_buffer);
-        m_sps_pps_buffer = NULL;
+        m_sps_pps_buffer.reset();
         m_sps_pps_buffer_length = 0;
     }
 
@@ -785,8 +784,7 @@ bool LiveStreamIn::reconnect()
 
     m_enableVideoExtradata = false;
     if (m_sps_pps_buffer) {
-        free(m_sps_pps_buffer);
-        m_sps_pps_buffer = NULL;
+        m_sps_pps_buffer.reset();
         m_sps_pps_buffer_length = 0;
     }
 
@@ -1079,8 +1077,7 @@ bool LiveStreamIn::parse_avcC(AVPacket *pkt) {
         int nals_size = 0;
 
         if (m_sps_pps_buffer) {
-            free(m_sps_pps_buffer);
-            m_sps_pps_buffer = NULL;
+            m_sps_pps_buffer.reset();
             m_sps_pps_buffer_length = 0;
         }
 
@@ -1164,10 +1161,8 @@ bool LiveStreamIn::parse_avcC(AVPacket *pkt) {
             ELOG_DEBUG_T("New video extradata");
 
             m_sps_pps_buffer_length = nals_size;
-            m_sps_pps_buffer = (uint8_t *)malloc(m_sps_pps_buffer_length);
-            std::unique_ptr<uint8_t> buffer_delegate(m_sps_pps_buffer);
-            memcpy(buffer_delegate.get(), nals_buf , m_sps_pps_buffer_length);
-            buffer_delegate.release();
+            m_sps_pps_buffer.reset(new uint8_t[m_sps_pps_buffer_length]);
+            memcpy(m_sps_pps_buffer.get(), nals_buf , m_sps_pps_buffer_length);
         }
 
         free(nals_buf);
@@ -1198,7 +1193,7 @@ bool LiveStreamIn::filterPS(AVStream *st, AVPacket *pkt) {
 
             av_grow_packet(pkt, m_sps_pps_buffer_length);
             memmove(pkt->data + m_sps_pps_buffer_length, pkt->data, pkt->size - m_sps_pps_buffer_length);
-            memcpy(pkt->data, m_sps_pps_buffer, m_sps_pps_buffer_length);
+            memcpy(pkt->data, m_sps_pps_buffer.get(), m_sps_pps_buffer_length);
         }
     }
 
