@@ -5,6 +5,8 @@
 'use strict';
 
 const transform = require('sdp-transform');
+const logger = require('../logger').logger;
+const log = logger.getLogger('Sdp');
 
 const h264ProfileOrder = ['E', 'H', 'M', 'B', 'CB'];
 
@@ -42,7 +44,7 @@ function translateProfile (profLevId) {
       }
       break;
     case '64':
-      (profile_iop === 0) && (profile = 'H');
+      (profile = 'H');
       break;
     case '6E':
       (profile_iop === 0) && (profile = 'H10');
@@ -104,6 +106,7 @@ function filterH264Payload(sdpObj, formatPreference = {}, direction) {
   var preferred = null;
   var optionals = [];
   var finalProfile = null;
+  var firstPayload = -1;
 
   if (formatPreference.video) {
     preferred = formatPreference.video.preferred;
@@ -134,8 +137,11 @@ function filterH264Payload(sdpObj, formatPreference = {}, direction) {
           if (fmtp.config.indexOf('profile-level-id') >= 0) {
             var params = transform.parseParams(fmtp.config);
             var prf = translateProfile(params['profile-level-id'].toString());
+            if (firstPayload < 0) {
+              firstPayload = fmtp.payload;
+            }
             if (preferred) {
-              if (preferred.profile && preferred.profile === prf) {
+              if (!preferred.profile || preferred.profile === prf) {
                 // Use preferred profile
                 selectedPayload = fmtp.payload;
                 finalProfile = prf;
@@ -155,10 +161,18 @@ function filterH264Payload(sdpObj, formatPreference = {}, direction) {
                 break;
               }
             }
+          } else {
+            selectedPayload = fmtp.payload;
           }
         }
       }
 
+      if (direction === 'out' && selectedPayload === -1) {
+        if (!global.config.webrtc.strict_profile_match && firstPayload > -1) {
+          log.warn('No matched H264 profiles');
+          selectedPayload = firstPayload;
+        }
+      }
       if (selectedPayload > -1) {
         i = removePayloads.indexOf(selectedPayload);
         removePayloads.splice(i, 1);
