@@ -82,7 +82,9 @@ module.exports = function (rpcClient, rpcId, agentId, clusterIp) {
 
   // RPC callback
   const rpcSuccess = (callback) => {
+    log.info('rpcSuccess callback:',callback);
     return function(result) {
+      log.info('rpcSuccess result:',result);
       callback('callback', result || 'ok');
     }
   };
@@ -96,6 +98,7 @@ module.exports = function (rpcClient, rpcId, agentId, clusterIp) {
   // RPC API
   return {
     createInternalConnection: function (connectionId, direction, internalOpt, callback) {
+     log.info('createInternalConnection,','connectionId:',connectionId,'direction:',direction,'internalOpt:',internalOpt,'callback:',callback);
       agent.createInternalConnection(connectionId, direction, internalOpt)
         .then(rpcSuccess(callback))
         .catch(rpcError(callback));
@@ -106,6 +109,7 @@ module.exports = function (rpcClient, rpcId, agentId, clusterIp) {
         .catch(rpcError(callback));
     },
     publish: function (connectionId, connectionType, options, callback) {
+     log.info('publish,connectionId:',connectionId,'connectionType:',connectionType,'options:',options,'callback:',callback);
       agent.publish(connectionId, connectionType, options)
         .then(rpcSuccess(callback))
         .catch(rpcError(callback));
@@ -116,6 +120,7 @@ module.exports = function (rpcClient, rpcId, agentId, clusterIp) {
         .catch(rpcError(callback));
     },
     subscribe: function (connectionId, connectionType, options, callback) {
+      log.info('subscribe,connectionId:',connectionId,'connectionType:',connectionType,'options:',options,'callback:',callback);
       agent.subscribe(connectionId, connectionType, options)
         .then(rpcSuccess(callback))
         .catch(rpcError(callback));
@@ -126,6 +131,8 @@ module.exports = function (rpcClient, rpcId, agentId, clusterIp) {
         .catch(rpcError(callback));
     },
     linkup: function (connectionId, audioFrom, videoFrom, callback) {
+      //log.info('linkup,','connectionId:',connectionId,'audioFrom:',audiofrom,'videoFrom:',videoFrom,'callback:',callback);
+      log.info('linkup,','connectionId:',connectionId,'videoFrom:',videoFrom,'callback:',callback);
       agent.linkup(connectionId, audioFrom, videoFrom)
         .then(rpcSuccess(callback))
         .catch(rpcError(callback));
@@ -135,11 +142,11 @@ module.exports = function (rpcClient, rpcId, agentId, clusterIp) {
         .then(rpcSuccess(callback))
         .catch(rpcError(callback));
     },
-    //close: function(callback) {
-    //  agent.cleanup()
-    //    .then(rpcSuccess(callback))
-    //    .catch(rpcError(callback));
-    //},
+    /*close: function(callback) {
+      agent.cleanup()
+        .then(rpcSuccess(callback))
+        .catch(rpcError(callback));
+    },*/
     onFaultDetected: function (message) {
       if (message.purpose === 'conference') {
         agent.cleanup();

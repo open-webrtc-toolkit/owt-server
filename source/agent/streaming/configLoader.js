@@ -24,7 +24,8 @@ module.exports.load = () => {
     config.cluster.worker.load.max = config.cluster.max_load || 0.85;
     config.cluster.worker.load.period = config.cluster.report_load_interval || 1000;
     config.cluster.worker.load.item = {
-      name: 'network',
+      cpu: true,
+      network: true,
       interf: 'lo',
       max_scale: config.cluster.network_max_scale || 1000
     };
