@@ -21,6 +21,7 @@ const {
   getAudioSsrc,
   getVideoSsrcList,
   getSimulcastInfo,
+  getLegacySimulcastInfo,
   hasCodec,
   getExtId,
   addAudioSSRC,
@@ -288,6 +289,51 @@ module.exports = function (spec, on_status, on_mediaUpdate) {
     }
   };
 
+  var processLegacySimulcast = function (sdp) {
+    // Process legacy simulcast info for Safari
+    log.debug('Process legacy simulcast');
+    var firstRidSent = false;
+    const simInfo = getLegacySimulcastInfo(sdp);
+    if (simInfo.length > 1 && video) {
+      isSimulcast = true;
+      stream = new WrtcStream({
+        audioFrameConstructor,
+        videoFrameConstructor,
+        audioFramePacketizer,
+        videoFramePacketizer
+      });
+      const aSsrc = getAudioSsrc(sdp);
+      wrtc.setRemoteSsrc(aSsrc, [simInfo[0]], '');
+
+      for (let i = 1; i < simInfo.length; i++) {
+        const simLabel = simInfo[i] + '';
+        const vfc = new VideoFrameConstructor((mediaUpdate) => {
+          if (!firstRidSent) {
+            firstRidSent = true;
+            on_mediaUpdate(JSON.stringify({firstrid: simInfo[0] + ''}));
+          }
+          const data = {
+            rid: simLabel,
+            info: JSON.parse(mediaUpdate)
+          };
+          on_mediaUpdate(JSON.stringify(data));
+        });
+        simulcastConstructors.push(vfc);
+        const simStream = new WrtcStream({
+          audioFramePacketizer,
+          videoFrameConstructor: vfc
+        });
+        wrtc.addMediaStream(simLabel, {label: simLabel}, true);
+        wrtc.wrtc.setVideoSsrcList(simLabel, [simInfo[i]]);
+        wrtc.wrtc.setRemoteSdp(sdp, simLabel);
+        vfc.bindTransport(wrtc.getMediaStream(simLabel));
+        ridStreamMap.set(simLabel, simStream)
+      }
+      return true;
+    }
+    return false;
+  };
+
   var setupTransport = function (sdp) {
     if (direction === 'in') {
       if (audio) {
@@ -298,6 +344,10 @@ module.exports = function (spec, on_status, on_mediaUpdate) {
         const transportSeqNumExt = getExtId(sdp, TransportSeqNumUri);
         videoFrameConstructor = new VideoFrameConstructor(on_mediaUpdate, transportSeqNumExt);
         videoFrameConstructor.bindTransport(wrtc.getMediaStream(wrtcId));
+      }
+
+      if (processLegacySimulcast(sdp)) {
+        return;
       }
       const aSsrc = getAudioSsrc(sdp);
       const vSsrc = getVideoSsrcList(sdp);
