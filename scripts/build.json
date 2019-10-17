@@ -10,6 +10,8 @@
             "audio",
             "webrtc",
             "avstream",
+	    "gst-pipeline",
+	    "resource-util",
             "sip"
         ]
     },

@@ -1,6 +1,6 @@
+// Copyright (C) <2019> Intel Corporation
 //
-// Created by xyk on 19-7-9.
-//
+// SPDX-License-Identifier: Apache-2.0
 
 #include <zconf.h>
 #include "VideoGstAnalyzer.h"

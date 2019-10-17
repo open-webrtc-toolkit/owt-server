@@ -1,3 +1,7 @@
+// Copyright (C) <2019> Intel Corporation
+//
+// SPDX-License-Identifier: Apache-2.0
+
 #ifndef VideoGstAnalyzerWRAPPER_H
 #define VideoGstAnalyzerWRAPPER_H
 

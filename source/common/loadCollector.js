@@ -180,7 +180,7 @@ var vpuCollector = function (period, on_load) {
     };
 };
 
-var resourceCollector = function (period, cpu, gpu, vpu, network, disk, memory, on_load) {    
+var resourceCollector = function (period, cpu, gpu, vpu, network, disk, memory, item, on_load) {    
     var cpu_load = 0,
         gpu_load = 0,
         vpu_load = 0,
@@ -201,11 +201,11 @@ var resourceCollector = function (period, cpu, gpu, vpu, network, disk, memory, 
     }
 
     if(network) {
-        var network_collector = new networkCollector(period, function (data) {network_load = data;});
+        var network_collector = new networkCollector(period, item.interf, item.max_scale, function (data) {network_load = data;});
     }
 
     if(disk) {
-        var disk_collector = new diskCollector(period, function (data) {disk_load = data;});
+        var disk_collector = new diskCollector(period, item.drive, function (data) {disk_load = data;});
     }
 
     if(memory) {
@@ -257,7 +257,7 @@ exports.LoadCollector = function (spec) {
         collector = undefined;
     };
 
-    collector = new resourceCollector(period, cpu, gpu, vpu, network, disk, memory, on_load);
+    collector = new resourceCollector(period, cpu, gpu, vpu, network, disk, memory, item, on_load);
 
     return that;
 };

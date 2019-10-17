@@ -1,3 +1,7 @@
+// Copyright (C) <2019> Intel Corporation
+//
+// SPDX-License-Identifier: Apache-2.0
+
 #ifndef ResourceUtilWRAPPER_H
 #define ResourceUtilWRAPPER_H
 
