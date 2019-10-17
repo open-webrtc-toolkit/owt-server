@@ -352,11 +352,8 @@ exports.getSimulcastInfo = function (sdp) {
   var simulcast = [];
   for (const media of sdpObj.media) {
     if (media.type == 'video') {
-      if (media.simulcast) {
-        const simInfo = media.simulcast;
-        if (simInfo.dir1 === 'send') {
-          simulcast = transform.parseSimulcastStreamList(simInfo.list1);
-        }
+      if (media.rids && Array.isArray(media.rids)) {
+        simulcast = media.rids;
       }
     }
   }
