@@ -24,7 +24,6 @@ public:
 
 private:
 	Core ie;
-    //hddl::HddlClient* m_hddlClient;
 };
 
 }

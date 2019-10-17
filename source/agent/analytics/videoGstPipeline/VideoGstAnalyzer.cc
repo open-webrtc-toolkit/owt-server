@@ -21,8 +21,6 @@ VideoGstAnalyzer::VideoGstAnalyzer() {
 }
 
 VideoGstAnalyzer::~VideoGstAnalyzer() {
-    ELOG_DEBUG("CloseAll");
-
     ELOG_DEBUG("Closed all media in this Analyzer");
 }
 
@@ -224,32 +222,14 @@ gboolean VideoGstAnalyzer::push_data (gpointer data) {
 
 void VideoGstAnalyzer::start_feed (GstElement * source, guint size, gpointer data)
 {
-    #if 1
     VideoGstAnalyzer* pStreamObj = static_cast<VideoGstAnalyzer*>(data);
     pStreamObj->m_internalin->setPushData(true);
-    #else
-    VideoGstAnalyzer* pStreamObj = static_cast<VideoGstAnalyzer*>(data);
-    if (pStreamObj->sourceid == 0) {
-        ELOG_INFO("Start feeding data\n");
-        pStreamObj->sourceid = g_idle_add ((GSourceFunc) push_data, data);
-    }
-    #endif
 }
 
 void VideoGstAnalyzer::stop_feed (GstElement * source, gpointer data)
 {
-    #if 1
     VideoGstAnalyzer* pStreamObj = static_cast<VideoGstAnalyzer*>(data);
     pStreamObj->m_internalin->setPushData(false);
-    #else
-    VideoGstAnalyzer* pStreamObj = static_cast<VideoGstAnalyzer*>(data);
-    if (pStreamObj->sourceid != 0) {
-        ELOG_INFO("Stop feeding data\n");
-        g_source_remove (pStreamObj->sourceid);
-        pStreamObj->m_internalin->setPushData(false);
-        pStreamObj->sourceid = 0;
-    } 
-    #endif 
     
 }
 
@@ -288,27 +268,9 @@ int VideoGstAnalyzer::addElementMany() {
     g_object_set(G_OBJECT(fakesink),"sync", false, NULL);
     g_object_set(G_OBJECT(fakesink),"video-sink", videosink, NULL);
 
-    ELOG_DEBUG("=================Set fakedisplaysink properties \n");
-
-    #if 0
-    gst_bin_add_many(GST_BIN (pipeline), source,fpssink, NULL);
-
-    if (gst_element_link_many(source,fpssink,NULL) != TRUE) {
-    //if (gst_element_link_many(source,receive,h264parse,decodebin,postproc,NULL) != TRUE) {
-        ELOG_ERROR("Elements source,decodebin could not be linked.\n");
-        gst_object_unref(pipeline);
-        return -1;
-    }
-
-    g_signal_connect (source, "need-data", G_CALLBACK (start_feed), this);
-    g_signal_connect (source, "enough-data", G_CALLBACK (stop_feed), this);
-
-    #else
     gst_bin_add_many(GST_BIN (pipeline), source,decodebin,videorate,postproc,h264parse,detect,fakesink, NULL);
 
-
     if (gst_element_link_many(source,h264parse,decodebin,videorate,NULL) != TRUE) {
-    //if (gst_element_link_many(source,receive,h264parse,decodebin,postproc,NULL) != TRUE) {
         ELOG_ERROR("Elements source,decodebin could not be linked.\n");
         gst_object_unref(pipeline);
         return -1;
@@ -341,7 +303,6 @@ int VideoGstAnalyzer::addElementMany() {
         return -1;
     }
 
-    #endif
 
     return 0;
 }
@@ -400,7 +361,6 @@ int VideoGstAnalyzer::setPlaying() {
 void VideoGstAnalyzer::emitListenTo(int minPort, int maxPort) {
     pthread_t tid;
     tid = pthread_self();
-    ELOG_DEBUG("*****main thread tid: %u (0x%x)\n", (unsigned int)tid, (unsigned int)tid);
     m_internalin.reset(new InternalIn((GstAppSrc*)source, minPort, maxPort));
     
 }
