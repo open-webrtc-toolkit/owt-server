@@ -374,6 +374,29 @@ exports.getSimulcastInfo = function (sdp) {
   return simulcast;
 };
 
+exports.getLegacySimulcastInfo = function (sdp) {
+  var sdpObj = transform.parse(sdp);
+  var simulcast = [];
+  for (const media of sdpObj.media) {
+    if (media.type == 'video') {
+      if (media.ssrcGroups) {
+        media.ssrcGroups.forEach(ssrcGroup => {
+          // Ignore FID for legacy simulcast.
+          if (ssrcGroup.semantics === 'SIM') {
+            ssrcGroup.ssrcs.split(' ').forEach(ssrc => {
+              const nssrc = parseInt(ssrc);
+              if (nssrc > 0) {
+                simulcast.push(nssrc);
+              }
+            });
+          }
+        });
+      }
+    }
+  }
+  return simulcast;
+};
+
 exports.hasCodec = function (sdp, codecName) {
   var sdpObj = transform.parse(sdp);
   var ret = false;
