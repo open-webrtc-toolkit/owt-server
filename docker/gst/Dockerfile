@@ -397,7 +397,7 @@ RUN apt-get update && apt-get install -y -q --no-install-recommends ca-certifica
 
 RUN apt-get install rabbitmq-server mongodb libboost-system-dev libboost-thread-dev liblog4cxx-dev libglib2.0-0 libfreetype6-dev curl libgl1-mesa-dev libvdpau-dev -y
 
-RUN mv /home/rabbitmq.config /etc/rabbitmq/ && wget ${NODE_REPO} && \
+RUN mv /home/rabbitmq.config /etc/rabbitmq/ && chmod +x /home/start.sh && wget ${NODE_REPO} && \
     tar xf node-${NODE_VER}-linux-x64.tar.xz && \
     cp node-*/* /usr/ -rf && rm -rf node-*
 
@@ -414,7 +414,7 @@ libpng16-16 libvisual-0.4-0 libtheora0 libcdparanoia0 libsoup2.4-1 libjpeg8 libj
 libgtk2.0 clinfo \
 \
 libusb-1.0-0-dev libboost-all-dev libjson-c-dev \
-build-essential cmake ocl-icd-opencl-dev wget gcovr vim git gdb ca-certificates libssl-dev uuid-dev liblog4cxx-dev intel-gpu-tools \
+build-essential cmake ocl-icd-opencl-dev wget gcovr vim git gdb ca-certificates libssl-dev uuid-dev liblog4cxx-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Install

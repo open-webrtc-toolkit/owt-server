@@ -1310,6 +1310,19 @@ function restStopRecording() {
     })
 }
 
+function restListAnalyzing() {
+    let {
+        roomId
+    } = getRestfulParmas();
+    listAnalytics(roomId, (resp) => {
+        resp = JSON.parse(resp);
+        console.log(`list analytics success: `, resp);
+    }, err => {
+        console.log('list analytics failed: ', err);
+    })
+}
+
+
 //add sampleservice.js
 /*app.post('/rooms/:room/analytics', function(req, res) {
   'use strict';
