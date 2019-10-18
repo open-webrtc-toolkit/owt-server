@@ -1,0 +1,784 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta http-equiv='X-UA-Compatible' content='IE=EmulateIE10'>
+    <META HTTP-EQUIV="pragma" CONTENT="no-cache">
+    <META HTTP-EQUIV="Cache-Control" CONTENT="no-cache, must-revalidate">
+    <META HTTP-EQUIV="expires" CONTENT="0">
+    <title>Woogeen Test</title>
+    <style type="text/css">
+        * {
+            margin: 0;
+            padding: 0;
+        }
+
+        /* header style */
+        #wrapper {
+            margin: 2px 5px;
+        }
+
+        #woogeen-header {
+            margin: 1px auto;
+            border: 1px solid #ddd;
+            background-color: #AAF5AC;
+            position: relative;
+            text-align: center;
+        }
+
+        #woogeen-header div {
+            position: absolute;
+            right: 10px;
+            bottom: 5px;
+        }
+
+        #woogeen-header h1 {
+            padding: 10px 0;
+        }
+
+        .clearfix::after {
+            content: '.';
+            clear: both;
+            display: block;
+            overflow: hidden;
+            font-size: 0;
+            height: 0;
+        }
+
+        /* @container style */
+        /* video layout */
+        #container-video {
+            margin-right: 5px;
+            width: 40%;
+            /*height: 1000px;*/
+            float: left;
+            background-color: #F1E6F9;
+        }
+
+        .smallVideo {
+            margin: 3px 0px 3px 3px;
+            float: left;
+            width: 48%;
+            background-color: #A1A6A9;
+        }
+
+        video {
+            width: 100%;
+            height: 100%;
+        }
+
+        .normalVideo {
+            margin: 1%;
+            width: 98%;
+            float: left;
+            background-color: #A1A6A9;
+        }
+
+        /* test layout */
+        #container-test {
+            border: 1px solid #646cb6;
+            margin: 5px;
+            width: 55%;
+            float: right;
+        }
+
+        .wraptest {
+            margin: 5px 0;
+            text-align: center;
+        }
+
+        .testarea1 {
+            margin: 0 2px;
+            width: 23%;
+            max-width: 221px;
+            float: left;
+            text-align: center;
+        }
+
+        /* test layout */
+        .testarea2 {
+            margin: 0 2px;
+            width: 19%;
+            max-width: 221px;
+            float: left;
+            text-align: center;
+        }
+
+        li {
+            list-style: none;
+        }
+
+        ul li {
+            /* max-width: 200px; */
+            height: 24px;
+        }
+
+        a {
+            display: inline-block;
+            /* max-width: 200px; */
+            height: 24px;
+            width: 100%;
+            text-decoration: none;
+            color: #000;
+            background-color: #94B8E9;
+            line-height: 24px;
+            border-bottom: 1px solid #ddd;
+            border-top: 1px solid #ddd;
+            overflow: hidden;
+            white-space: nowrap;
+            text-align: center;
+        }
+
+        a:hover {
+            background-color: #33C583;
+            font-size: 1.5em;
+            cursor: crosshair;
+        }
+
+        label {
+            display: block;
+            height: 100%;
+            line-height: 1.5em;
+            border-bottom: 1px solid #229A9D;
+        }
+
+        input[type='text'] {
+            width: 40%;
+            margin: 3px 0;
+        }
+
+        input[type='text']:focus {
+            position: relative;
+            z-index: 2;
+            background-color: #B4F5F7;
+        }
+
+        input[type='button']:hover,
+        button:hover {
+            background-color: #AD3490;
+        }
+
+        .labelinput {
+            background-color: #94B8E9;
+        }
+
+        #recorder,
+        #other,
+        .rtmp {
+            background-color: #DED8D8;
+            padding: 2px;
+            text-align: left;
+            /* max-width: 200px; */
+        }
+
+        #recorder span,
+        .rtmp span {
+            display: inline-block;
+            width: 100px;
+        }
+
+        #multiple,
+        #autotest {
+            padding: 2px;
+            text-align: left;
+            /* max-width: 200px; */
+            background-color: #ABD2D1;
+        }
+
+
+        h2 {
+            margin-right: 0px;
+            background-color: #E66464;
+        }
+
+        h3 {
+            margin-right: 0px;
+            background-color: #C79C9C;
+        }
+
+        .options {
+            text-align: left;
+            border: #333333 1px solid;
+        }
+
+        .fillparent {
+            width: 100%;
+        }
+
+        #resultRecorder {
+            border: #333333 1px solid;
+            background: #E5F00C;
+            position: absolute;
+            left: 10px;
+            top: 10px;
+            padding: 0px 10px;
+            width: 300px;
+            height: 30px;
+            opacity: 0.8;
+            text-align: center;
+            font-size: 14px;
+            font-weight: 900;
+            color: #E93030;
+            line-height: 30px;
+
+        }
+
+        #frame {
+            position: absolute;
+            left: 50%;
+            top: 5px;
+            border: 1px solid #ad2222;
+            width: 400px;
+            margin-left: -200px;
+            height: 50px;
+            border-radius: 5px 5px;
+        }
+
+        #frame>div {
+            width: 96px;
+            height: 50px;
+            margin: 2px;
+            background-color: #e5f00c;
+            display: inline-block;
+            float: left;
+            border-radius: 25px 25px;
+            color: red;
+            text-align: center;
+            font-size: 22px;
+            vertical-align: bottom;
+        }
+
+        < !-- rtmp test -->#startrtmp {
+            margin-right: 10px;
+        }
+
+        < !-- update room-->#plv,
+        #ulv,
+        #emv {
+            height: 24px;
+            position: absolute;
+            display: none;
+        }
+
+        .mmv {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(222, 212, 232, 0.3);
+            display: none;
+        }
+
+        /*select mix resolution*/
+        #mixresolutions,
+        #mixqualitylevels,
+        #mixviews,
+        #forwardstreams,
+        #forwardresolutions,
+        .selectSomething {
+            display: none;
+            position: absolute;
+            list-style: none;
+            width: 100px;
+            background: #777;
+            margin-top: 1px;
+        }
+
+        #unmixoperation {
+            display: none;
+            width: 240px;
+            overflow: auto;
+            height: 120px;
+            margin-top: -96px;
+            position: absolute;
+            background: #777;
+        }
+
+        #allremotestreams {
+            float: left;
+            padding: 0 10px;
+            margin: 2px;
+        }
+
+        #allviews {
+            float: right;
+            padding: 0 10px;
+            margin: 2px;
+        }
+
+        #unmixoperation>.direction {
+            margin-top: 18%;
+        }
+
+        #run {
+            width: 80%;
+            display: inline-block;
+        }
+
+        #unmixrun,
+        #mixrun,
+        #mixclose {
+            width: 30%;
+            margin-bottom: 5px;
+        }
+
+        #mixresolutions>li,
+        #mixqualitylevels>li,
+        #mixviews>li,
+        #unmixoperation li,
+        #forwardstreams>li,
+        #forwardresolutions>li,
+        .selectSomething>li {
+            border-bottom: 1px solid #e6cfcf;
+            height: 23px;
+            line-height: 23px;
+        }
+
+        /*clear float*/
+        #woogeen-footer {
+            clear: both;
+        }
+    </style>
+</head>
+
+<body>
+    <div id='wrapper'>
+        <div id='woogeen-header'>
+            <h1>WebRTC Conference Call</h1>
+            <div>
+                <span>Enable By: </span>
+                <img src="intel.png">
+            </div>
+        </div>
+        <div id='woogeen-container'>
+            <div id='container-video'>
+                <div id='localVideo' class="smallVideo">
+                    <video playsinline autoplay muted controls></video>
+                </div>
+                <div id='screenVideo' class="smallVideo">
+                    <video playsinline autoplay muted controls></video>
+                </div>
+                <div id='mixVideo' class="normalVideo">
+                    <!-- <video playsinline muted autoplay controls></video> -->
+                </div>
+            </div>
+            <div id='container-test'>
+                <div id="conference-test" class="clearfix wraptest">
+                    <h2>ConferenceClient</h2>
+                    <div class="testarea1">
+                        <h3>LocalStream</h3>
+                        <div class="options">
+                            <label><input type='radio' name='videosource' value='camera' checked="checked" />
+                                camera</label>
+                            <label><input type='radio' name='videosource' value='screen-cast' /> screen-cast</label>
+                            <label><input type='radio' name='videosource' value='' /> false</label>
+                        </div>
+                        <div class="options">
+                            <label><input type='radio' name='audiosource' value='mic' checked="checked" /> mic</label>
+                            <label><input type='radio' name='audiosource' value='screen-cast' /> screen-cast</label>
+                            <label><input type='radio' name='audiosource' value='' /> false</label>
+                        </div>
+                        <div class="options">
+                            <select id='resolution' class="fillparent">
+                                <option value="">resolution</option>
+                                <option value="sif">sif</option>
+                                <option value="vga">vga</option>
+                                <option value="r640x360">r640x360</option>
+                                <option value="hd720p">hd720p</option>
+                                <option value="hd1080p">hd1080p</option>
+                                <option value="invalid">invalid</option>
+                            </select>
+                            <select id='audiodeviceid' class="fillparent">
+                                <option value="">audio device id</option>
+                                <option value="invalid">invalid</option>
+                            </select>
+                            <select id='videodeviceid' class="fillparent">
+                                <option value="">video device id</option>
+                                <option value="invalid">invalid</option>
+                            </select>
+                        </div>
+                        <ul>
+                            <li><label class='labelinput'>ID: <input type='text' id='extensionid'
+                                        value='caamnkgooanlpocmehlanokfmcjobblm' /></label></li>
+                            <li><a href="javascript:void(0)" onclick="createLocalStream()">create local</a></li>
+                            <li><a href="javascript:void(0)" onclick="stopLocal()">stop local</a></li>
+                        </ul>
+                        <h3>join</h3>
+
+                        <ul>
+                            <li><label class='labelinput'>role: <input type='text' id='role'
+                                        value="presenter" /></label></li>
+                            <li><a href="javascript:void(0)" onclick="createNewToken()">create token</a></li>
+                            <li><a href="javascript:void(0)" onclick="joinRoom()">join room</a></li>
+                        </ul>
+                        <h3>publish</h3>
+                        <div class="options">
+                            <select id='localstreamid' class="fillparent">
+                                <option value="">local stream</option>
+                            </select>
+                        </div>
+                <div class="options">
+                            <select class="fillparent" id="simulcast">
+                                 <option value="">simulcast</option>
+                                 <option value="true">true</option>
+                                 <option value="false">false</option>
+                            </select>
+                        </div>
+                        <div class="options">
+                            <select class="fillparent" id="videocodec">
+                                <option value="">video codec</option>
+                                <option value="vp8">vp8</option>
+                                <option value="vp9">vp9</option>
+                                <option value="h264CB">h264</option>
+                                <option value="h265">h265</option>
+                                <option value="%^UJH">invalid</option>
+                            </select>
+                        </div>
+                        <div class="options">
+                            <select class="fillparent" id="audiocodec">
+                                <option value="">audio codec</option>
+                                <option value="pcmu">pcmu</option>
+                                <option value="opus">opus</option>
+                                <option value="pcma">pcma</option>
+                                <option value="aac">aac</option>
+                                <option value="g722-1">g722-1</option>
+                                <option value="g722-2">g722-2</option>
+                                <option value="ilbc">ilbc</option>
+                                <option value="isac16">isac16</option>
+                                <option value="isac32">isac32</option>
+                                <option value="ac3">ac3</option>
+                                <option value="nellymoser">nellymoser</option>
+                                <option value="%^UJH">invalid</option>
+                            </select>
+                        </div>
+                        <div class="options">
+                            <select class="fillparent" id="videoCodecpub">
+                                <option value="">videoCodecpub</option>
+                                <option value='VP8'>vp8</option>
+                                <option value='VP9'>vp9</option>
+                                <option value='H264'>h264</option>
+                                <option value="%^UJH">invalid</option>
+                            </select>
+                        </div>
+            <div class="options">
+                            <select class="fillparent" id="simulcastAudio">
+                                <option value="">simulcastAudio</option>
+                <option value='true'>true</option>
+                <option value='false'>false</option>
+                                <option value="%^UJH">invalid</option>
+                            </select>
+                        </div>
+                        <ul>
+                            <li><label class='labelinput'>vMB: <input type='text' id='videomaxbitrate' /></label></li>
+                            <li><label class='labelinput'>aMB: <input type='text' id='audiomaxbitrate' /></label></li>
+                            <li><a href="javascript:void(0)" onclick="publish()">publish</a></li>
+                        </ul>
+                    </div>
+                    <div class="testarea1">
+                        <h3>Publication</h3>
+                        <div class="options">
+                            <select class="fillparent" id="availablepublication">
+                                <option value="">publication</option>
+                                <option value="all">All</option>
+                            </select>
+                        </div>
+                        <div class="options">
+                            <select class="fillparent" id="publicationtrackkind">
+                                <option value="">track kind</option>
+                                <option value="audio">audio</option>
+                                <option value="video">video</option>
+                                <option value="av">audio-and-video</option>
+                                <option value="%^UJH">invalid</option>
+                            </select>
+                        </div>
+                        <ul>
+                            <li><a href="javascript:void(0)" onclick="publicationMute()">mute</a></li>
+                            <li><a href="javascript:void(0)" onclick="publicationUnmute()">unmute</a></li>
+                            <li><a href="javascript:void(0)" onclick="publicationGetStats()">getStats</a></li>
+                            <li><a href="javascript:void(0)" onclick="publicationStop()">stop</a></li>
+                        </ul>
+                        <h3>subscribe</h3>
+                        <div class="options">
+                            <select class="fillparent" id="availableremotestream">
+                                <option value="">remote stream</option>
+                            </select>
+                        </div>
+                        <div class="options">
+                            <select class="fillparent" id="subscribetrackkind">
+                                <option value="">track kind</option>
+                                <option value="audio">audio</option>
+                                <option value="video">video</option>
+                                <option value="av">audio-and-video</option>
+                            </select>
+                        </div>
+                        <div class="options">
+                            <select class="fillparent" id="supportedaudiocodec">
+                                <option value="">audio codec</option>
+                            </select>
+                        </div>
+                        <div class="options">
+                            <select class="fillparent" id="supportedvideocodec">
+                                <option value="">video codec</option>
+                            </select>
+                        </div>
+                        <div class="options">
+                            <select class="fillparent" id="supportedbitrate">
+                                <option value="">bitrate</option>
+                            </select>
+                        </div>
+                        <div class="options">
+                            <select class="fillparent" id="supportedresolution">
+                                <option value="">resolution</option>
+                            </select>
+                        </div>
+                        <div class="options">
+                            <select class="fillparent" id="supportedframerate">
+                                <option value="">framerate</option>
+                            </select>
+                        </div>
+                        <div class="options">
+                            <select class="fillparent" id="supportedkfi">
+                                <option value="">keyFrameInterval</option>
+                            </select>
+                        </div>
+                        <div class="options">
+                            <select class="fillparent" id="supportedRid">
+                                <option value="">rid</option>
+                            </select>
+                        </div>
+                        <ul>
+                            <li><a href="javascript:void(0)" onclick="subscribe()">subscribe</a></li>
+                        </ul>
+                    </div>
+                    <div class="testarea1">
+                        <div>
+                            <h3>Subscription</h3>
+                            <div class="options">
+                                <select class="fillparent" id="availablesubscription">
+                                    <option value="">subscription</option>
+                                    <option value="all">All</option>
+                                </select>
+                            </div>
+                            <div class="options">
+                                <select class="fillparent" id="subscriptiontrackkind">
+                                    <option value="">track kind</option>
+                                    <option value="audio">audio</option>
+                                    <option value="video">video</option>
+                                    <option value="av">audio-and-video</option>
+                                </select>
+                            </div>
+                            <ul>
+                                <li><a href="javascript:void(0)" onclick="subscriptionMute()">mute</a></li>
+                                <li><a href="javascript:void(0)" onclick="subscriptionUnmute()">unmute</a></li>
+                                <li><a href="javascript:void(0)" onclick="subscriptionGetStats()">getStats</a></li>
+                                <li><a href="javascript:void(0)" onclick="subscriptionApplyOption()">apply options</a>
+                                </li>
+                                <li><a href="javascript:void(0)" onclick="subscriptionStop()">stop</a></li>
+                            </ul>
+                            <h3>Send</h3>
+                            <label>content:<input type="text" id="sendcontent"></label>
+                            <div class="options">
+                                <select class="fillparent" id="participantsid">
+                                    <option value="">participant</option>
+                                    <option value="all">All</option>
+                                </select>
+                            </div>
+                            <ul>
+                                <li><a href="javascript:void(0)" onclick="sendMessage()">send message</a></li>
+                            </ul>
+
+                            <h3>Leave</h3>
+                            <ul>
+                                <li><a href="javascript:void(0)" onclick="leave()">leave</a></li>
+                            </ul>
+
+                        </div>
+                    </div>
+                    <div class="testarea1">
+                        <h3>Multiple</h3>
+                        <div id='multiple'>
+                            <label>count:<input type="text" id="cycleCounts"></label>
+                            <label>intervals:<input type="text" id="intervals" placeholder="ms"></label>
+                            <button onclick="pub_unpub()">pub_unpub</button>
+                            <button onclick="sub_unsub()">sub_unsub </button>
+                            <button onclick="mix_unmix()">mix_unmix</button>
+                            <button onclick="pubmute_unmute()">pubmute_unmute</button>
+                            <button onclick="submute_unmute()">submute_unmute</button>
+                        </div>
+                        <h3>Auto Test</h3>
+                        <div id="autotest">
+                            <label>regulation:<input type="text" id="datarule" placeholder="num:3/mix:screen"></label>
+                            <button onclick="startPromiseReorder()">Record</button>
+                            <button onclick="qualityTest()">quality test</button>
+                        </div>
+                    </div>
+                </div>
+                <div id="restful-test" class="wraptest">
+                    <h2>Restful</h2>
+                    <div class="testarea2">
+                        <h3>Room</h3>
+                        <select class="fillparent" id="roomlist">
+                            <option value="">room list</option>
+                        </select>
+                        <select class="fillparent" id="participantlist">
+                            <option value="">participant list</option>
+                        </select>
+                        <select class="fillparent" id="audioforbidoptions">
+                            <option value="">audio</option>
+                            <option value="false">false</option>
+                            <option value="true">true</option>
+                        </select>
+                        <select class="fillparent" id="videoforbidoptions">
+                            <option value="">video</option>
+                            <option value="false">false</option>
+                            <option value="true">true</option>
+                        </select>
+                        <ul>
+                            <li><a href="javascript:void(0)" onclick="restListRooms()">list rooms</a></li>
+                            <li><a href="javascript:void(0)" onclick="restGetRoom()">get room</a></li>
+                            <li><a href="javascript:void(0)" onclick="restCreateRoom()">create room</a></li>
+                            <li><a href="javascript:void(0)" onclick="restDeleteRoom()">delete room</a></li>
+                            <li><a href="javascript:void(0)" onclick="restUpdateRoom()">update room</a></li>
+                            <li><a href="javascript:void(0)" onclick="restListParticipants()">list participants</a></li>
+                            <li><a href="javascript:void(0)" onclick="restGetParticipant()">get participant</a></li>
+                            <li><a href="javascript:void(0)" onclick="restForbidSub()">update sub</a></li>
+                            <li><a href="javascript:void(0)" onclick="restForbidPub()">update pub</a></li>
+                            <li><a href="javascript:void(0)" onclick="restDropParticipant()">drop participant</a></li>
+                        </ul>
+                    </div>
+                    <div class="testarea2">
+                        <h3>Stream</h3>
+                        <select class="fillparent" id="mixstreamlist">
+                            <option value="">mix streams</option>
+                        </select>
+                        <select class="fillparent" id="viewlist">
+                            <option value="">view</option>
+                        </select>
+                        <select class="fillparent" id="forwardstreamlist">
+                            <option value="">forward streams</option>
+                        </select>
+                        <select class="fillparent" id="resttrackkind">
+                            <option value="">track kind</option>
+                            <option value="audio">audio</option>
+                            <option value="video">video</option>
+                            <option value="av">audio-and-video</option>
+                        </select>
+                        <ul>
+                            <li><a href="javascript:void(0)" onclick="restListStreams()">list streams</a></li>
+                            <li><a href="javascript:void(0)" onclick="restGetStream()">get stream</a></li>
+                            <li><a href="javascript:void(0)" onclick="restDropStream()">drop stream</a></li>
+                            <li><label class='labelinput'>reg: <input type='text' id='regionid' /></label></li>
+                            <li><a href="javascript:void(0)" onclick="restSetRegion()">set region</a></li>
+                            <li><a href="javascript:void(0)" onclick="restPauseStream()">pause stream</a></li>
+                            <li><a href="javascript:void(0)" onclick="restPlayStream()">paly stream</a></li>
+                            <li><a href="javascript:void(0)" onclick="restMixStream()">mix stream</a></li>
+                            <li><a href="javascript:void(0)" onclick="restUnmixStream()">unmix stream</a></li>
+                        </ul>
+                    </div>
+
+                    <div class="testarea2">
+                        <h3>Sipcalls</h3>
+                        <select class="fillparent" id="sipcallslist">
+                            <option value="">sipcalls list</option>
+                        </select>
+
+                        <select class="fillparent" id="resttrackkind">
+                            <option value="">track kind</option>
+                            <option value="audio">audio</option>
+                            <option value="video">video</option>
+                            <option value="av">audio-and-video</option>
+                        </select>
+                        <ul>
+                            <li><a href="javascript:void(0)" onclick="restListSipcalls()">list sipcalls</a></li>
+                            <li><label class='labelinput'>Jitsi: <input type='text' id='peerURI' /></label></li>
+                            <li><a href="javascript:void(0)" onclick="restCreateSipcalls()">create Sipcalls</a></li>
+                            <li><a href="javascript:void(0)" onclick="restDropSipcalls()">drop Sipcalls</a></li>
+                            <li><a href="javascript:void(0)" onclick="restUpdateSipcalls()">update Sipcalls</a></li>
+                        </ul>
+                    </div>
+
+                    <div class="testarea2">
+                        <h3>Streaming</h3>
+                        <select class="fillparent" id="audiofromlist">
+                            <option value="">audio from</option>
+                        </select>
+                        <select class="fillparent" id="videofromlist">
+                            <option value="">video from</option>
+                        </select>
+                        <select class="fillparent" id="audioactive">
+                            <option value="">audio active</option>
+                            <option value="active">active</option>
+                            <option value="inactive">inactive</option>
+                        </select><select class="fillparent" id="videoactive">
+                            <option value="">video active</option>
+                            <option value="active">active</option>
+                            <option value="inactive">inactive</option>
+                        </select>
+                        </select><select class="fillparent" id="rtspurl">
+                            <option value="rtsp://admin:master@10.239.44.67:554/h264/ch1/main/av_stream">HIKVISION
+                            </option>
+                            <option value="rtsp://10.239.44.8:554/rtsp_tunnel%3Fh26x=4%26line=1">Bosch</option>
+                            <option
+                                value="rtsp://admin:admin@10.239.44.135:554/cam/realmonitor?channel=1&subtype=0&unicast=true&proto=Onvif">
+                                Dahua</option>
+                        </select>
+                        <ul>
+                            <li><label class='labelinput'>rtmpin: <input type='text' id='rtmpin'
+                                        value="/home/webrtc/jinpeng/BBB_640x480_audio_48000_30fps_HP.mp4" /></label>
+                            </li>
+                            <li><label class='labelinput'>streamOut: <input type='text' id='rtmpurl'
+                                        value="rtmp://webrtc101.sh.intel.com:1935/liveshow/test" /></label></li>
+                            <li><label class='labelinput'>dash: <input type='text' id='dashurl'
+                                        value="/var/www/html/mcu.mpd" /></label></li>
+                            <li><label class='labelinput'>outId: <input type='text' id='streamingoutid' /></label></li>
+                            <li><a href="javascript:void(0)" onclick="restStartStreamingIn()">streamingIn start</a></li>
+                            <li><a href="javascript:void(0)" onclick="restStopStreamingIn()">streamingIn stop</a></li>
+                            <li><a href="javascript:void(0)" onclick="restStartStreamingOut()">streamingOut start</a>
+                            </li>
+                            <li><a href="javascript:void(0)" onclick="restStopStreamingOut()">streamingOut stop</a></li>
+                            <li><a href="javascript:void(0)" onclick="restListStreamingOuts()">list streamingOut</a>
+                            </li>
+                            <li><a href="javascript:void(0)" onclick="restUpdateStreamingOut()">update streamingOut</a>
+                            </li>
+
+
+                        </ul>
+                    </div>
+                    <div class="testarea2">
+                        <h3>Recording</h3>
+                        <ul>
+                            <li><label class='labelinput'>recorderId: <input type='text' id='recorderid' /></label></li>
+                            <li><label class='labelinput'>container: <input type='text' id='container'
+                                        value="auto" /></label></li>
+                            <li><a href="javascript:void(0)" onclick="restStartRecording()">start recording</a></li>
+                            <li><a href="javascript:void(0)" onclick="restupdateRecording()">update recording</a></li>
+                            <li><a href="javascript:void(0)" onclick="restListRecordings()">list recording</a></li>
+                            <li><a href="javascript:void(0)" onclick="restStopRecording()">stop recording</a></li>
+                            <li><a href="javascript:void(0)" onclick="transCodec()">transCodec recording</a></li>
+                        </ul>
+             <h3>Analytics</h3>
+                <ul>
+                    <li><label class='labelinput'>analytics id: <input type='text' id='analyticsid' /></label></li>
+                    <li><label class='labelinput'>algorithm: <input type='text' id='algorithm' value="dc51138a8284436f873418a21ba8cfa7" /></label></li>
+                    <li><a href="javascript:void(0)" onclick="restStartAnalyzing()">start_analytics</a></li>
+                    <li><a href="javascript:void(0)" onclick="restStopAnalyzing()">stop analytics</a></li>
+		    <li><a href="javascript:void(0)" onclick="restListAnalyzing()">list analytics</a></li>
+                </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div id='woogeen-footer'>
+
+        </div>
+</div>
+  <script src="https://code.jquery.com/jquery-3.2.1.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.2.0/socket.io.js" type="text/javascript"></script>
+  <script src="https://webrtchacks.github.io/adapter/adapter-7.0.0.js" type="text/javascript"></script>
+  <script type="text/javascript" src="./scripts/owt.js"></script>
+  <script type="text/javascript" src="script2.js"></script>
+
+</body>
+
+</html>

@@ -1,0 +1,40 @@
+
+1. How to build Open Web Toolkit(OWT) image
+Please download openvino version 2019.3.334 from https://software.intel.com/en-us/openvino-toolkit/choose-download and place it in docker/gst folder
+Run ./build_docker_image.sh then following 3 docker images for OWT will be generated:
+ gst-owt:build -- OWT build environment image, used to compile and generate OWT package
+ gst-owt:run -- OWT main modules run environment image, used to run all OWT modules except analytics agent
+ gst-analytics:run -- OWT analytics run environment image, used to run Gstreamer pipeline based OWT analytics agent
+
+2. How to deploy OWT
+ a. OWT run on serverip
+ 	Launch OWT main modules image with following command:
+ 	docker run -itd --net=host gst-owt:run bash
+ 	then log into docker container and run following command:
+ 	cd /home
+ 	./start.sh
+ 	Then all OWT modules except analytics agent will be launched. To stop analytics agent run following command:
+ 	cd /home/owt
+ 	./bin/stop-all.sh
+
+b. Analytics agent run
+Copy analytics agent image and related models to VCAA card and load the image, launch a container with following command:
+
+ docker run -u root -v ~:/mnt -v /var/tmp:/var/tmp --privileged --net=host $(env | grep -E '_(proxy)=' | sed 's/^/-e /') --entrypoint bash -tid gst-analytics:run
+
+then log into docker container and make sure that models could be found in /mnt/models/ in analytics agent container and modify rabbitmq host configuration in /home/analytics_agent/agent.toml:
+
+[rabbit]
+host = "172.32.1.254" #default: "localhost"
+
+Launch hddldaemon before running analytics agent.
+
+Then launch analytics agent with following command in /home:
+./bin/daemon.sh start analytics-agent
+
+
+Then you can open chrome tab and go to url: https://serverip:3004 and start your analytics with specified stream.
+
+
+
+
