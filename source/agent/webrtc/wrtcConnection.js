@@ -292,7 +292,6 @@ module.exports = function (spec, on_status, on_mediaUpdate) {
   var processLegacySimulcast = function (sdp) {
     // Process legacy simulcast info for Safari
     log.debug('Process legacy simulcast');
-    var firstRidSent = false;
     const simInfo = getLegacySimulcastInfo(sdp);
     if (simInfo.length > 1 && video) {
       isSimulcast = true;
@@ -304,14 +303,15 @@ module.exports = function (spec, on_status, on_mediaUpdate) {
       });
       const aSsrc = getAudioSsrc(sdp);
       wrtc.setRemoteSsrc(aSsrc, [simInfo[0]], '');
+      wrtc.on('status_event', (evt, status) => {
+        if (evt.type === 'ready') {
+          on_mediaUpdate(JSON.stringify({firstrid: simInfo[0] + ''}));
+        }
+      });
 
       for (let i = 1; i < simInfo.length; i++) {
         const simLabel = simInfo[i] + '';
         const vfc = new VideoFrameConstructor((mediaUpdate) => {
-          if (!firstRidSent) {
-            firstRidSent = true;
-            on_mediaUpdate(JSON.stringify({firstrid: simInfo[0] + ''}));
-          }
           const data = {
             rid: simLabel,
             info: JSON.parse(mediaUpdate)
