@@ -1,0 +1,34 @@
+<!DOCTYPE>
+<html>
+  <body>
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    <p>
+      1. Push a stream to /your/absolute/path/for/mcu/extras/basic_example/public/mcu.m3u8
+      2. Open the url http://${server_ip}:port/mcu.m3u8
+    </p>
+    <video id="video" controls></video>
+
+    <script>
+      let video = document.getElementById('video');
+      if(Hls.isSupported()){
+        console.log('Support hls');
+        let hls = new Hls();
+        let mcuSource = `http://${location.host}/mcu.m3u8`
+        console.log('Loading hls');
+        hls.loadSource(mcuSource);
+        hls.attachMedia(video);
+        console.log('Attach hls');
+        hls.on(Hls.Events.MANIFEST_PARSED,()=>{
+          video.play()
+          .then(resp=>{
+            console.log('Play hls success');
+          })
+          .catch(err=>{
+            console.log('Play hls failed', err);
+          })
+        })
+      }
+
+   </script>
+  </body>
+<html>

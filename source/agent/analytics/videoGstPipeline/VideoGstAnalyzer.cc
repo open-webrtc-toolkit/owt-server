@@ -259,7 +259,7 @@ int VideoGstAnalyzer::addElementMany() {
 
     g_object_set(G_OBJECT(detect),"inference-id", "dtc", NULL);
     g_object_set(G_OBJECT(detect),"device", "HDDL", NULL);
-    g_object_set(G_OBJECT(detect),"model","/home/models/pedestrian-detection-adas-0002-fp16.xml", NULL);
+    g_object_set(G_OBJECT(detect),"model","/mnt/models/pedestrian-detection-adas-0002-fp16.xml", NULL);
     //g_object_set(G_OBJECT(detect),"every-nth-frame", 5, NULL);
 
     
