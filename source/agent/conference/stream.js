@@ -378,7 +378,9 @@ function updateForwardStream(stream, info, roomConfig) {
     } else if (info.firstrid) {
       if (stream.media.video) {
         stream.media.video.rid = info.firstrid;
+        stream.media.video.optional.parameters.resolution = [];
       }
+      return true;
     }
   }
   return false;
