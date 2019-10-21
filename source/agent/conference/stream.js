@@ -179,8 +179,9 @@ function createMixStream(roomId, viewSettings, mediaOut, avCapability) {
           parameters: {
             resolution: mediaOut.video.parameters.resolution
                 .map(x => calcResolution(x, viewSettings.video.parameters.resolution))
-                .filter(reso => (reso.width < viewSettings.video.parameters.resolution.width
-                    && reso.height < viewSettings.video.parameters.resolution.height)),
+                .filter((reso, pos, self) => (reso.width < viewSettings.video.parameters.resolution.width
+                    && reso.height < viewSettings.video.parameters.resolution.height)
+                    && (self.findIndex(r => r.width === reso.width && r.height === reso.height) === pos)),
             framerate: mediaOut.video.parameters.framerate
                 .filter(x => (x < viewSettings.video.parameters.framerate)),
             bitrate: mediaOut.video.parameters.bitrate,
