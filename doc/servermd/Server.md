@@ -1,8 +1,8 @@
 Open WebRTC Toolkit(OWT) Server User Guide
 ----------------------
 
-# 1 Overview {#Conferencesection1}
-## 1.1 Introduction {#Conferencesection1_1}
+# 1 Overview
+## 1.1 Introduction
 Welcome to the Open WebRTC Toolkit Server User Guide. This guide describes how to install and configure the Open WebRTC Toolkit Server for multi-party conferences and so on. This guide also explains how to install and launch the Peer Server for peer-to-peer communications.
 
 Open WebRTC Toolkit Server provides an efficient WebRTC-based video conference service that scales a single WebRTC stream out to many endpoints. The following list briefly explains the purpose of each section in this guide:
@@ -15,10 +15,10 @@ Open WebRTC Toolkit Server provides an efficient WebRTC-based video conference s
 
 Installation requirements and dependencies for the OWT server, sample application server, and peer server are described in their associated sections.
 
-##1.2 Terminology {#Conferencesection1_2}
+## 1.2 Terminology
 This manual uses the following acronyms and terms:
 
-  Abbreviation       |  Full Name
+|  Abbreviation       |  Full Name|
 -------------|--------------
 ADT|Android Developer Toolkit
 API|Application Programming Interface
@@ -41,7 +41,7 @@ SIP|Session Initiation Protocol
 XMPP|Extensible Messaging and Presence Protocol
 WebRTC|Web Real-Time Communication
 
-##1.3 For more information {#Conferencesection1_3}
+## 1.3 For more information
 For more information, visit the following Web pages:
 
  - Intel HTML Developer Zone: https://software.intel.com/en-us/html5/tools
@@ -57,28 +57,29 @@ For more information, visit the following Web pages:
  - W3C WebRTC Working Group: http://www.w3.org/2011/04/webrtc/
  - WebRTC Open Project: http://www.webrtc.org
 
-# 2 OWT Server Installation {#Conferencesection2}
+# 2 OWT Server Installation
 
-## 2.1 Introduction {#Conferencesection2_1}
+## 2.1 Introduction
 
 This section describes the system requirements for installing the OWT server, and the compatibility with its client.
 
-> **Note**:    Installation requirements for the peer server are described in <a href="#Conferencesection5">section 5</a> of this guide.
+> **Note**:    Installation requirements for the peer server are described in [section 5](#5-Peer-Server) of this guide.
 
-## 2.2 Requirements and compatibility {#Conferencesection2_2}
+## 2.2 Requirements and compatibility
 
 Table 2-1 describes the system requirements for installing the OWT server. Table 2-2 gives an overview of OWT server compatibility with the client.
 
 **Table 2-1. Server requirements**
-Application name|OS version
+
+| Application name|OS version |
 -------------|--------------
 OWT server|CentOS* 7.6, Ubuntu 18.04 LTS
 
 The GPU-acceleration can only be enabled on kernel 4.14 or later (4.19 or later is recommended).
 
-If you want to set up video conference service with H.264 codec support powered by non GPU-accelerated OWT server, OpenH264 library is required. See [Deploy Cisco OpenH264* Library](#Conferencesection2_3_4) section for more details.
+If you want to set up video conference service with H.264 codec support powered by non GPU-accelerated OWT server, OpenH264 library is required. See [Deploy Cisco OpenH264* Library](#234-deploy-cisco-openh264-library) section for more details.
 
-If you want to set up video conference service with SVT-HEVC Encoder on Ubuntu 18.04 LTS. See [Deploy SVT-HEVC Encoder Library](#Conferencesection2_3_6) section for more details.
+If you want to set up video conference service with SVT-HEVC Encoder on Ubuntu 18.04 LTS. See [Deploy SVT-HEVC Encoder Library](#236-Deploy-SVT-HEVC-Encoder-Library) section for more details.
 
 If you want to set up video conference service powered by GPU-accelerated OWT server through Intel® Media SDK, please follow the below instructions to install server side SDK where the video-agents run.
 
@@ -92,19 +93,22 @@ If you are working on the following platforms with the integrated graphics, plea
 
 For download or installation instructions, please visit https://github.com/Intel-Media-SDK/MediaSDK.
 
-The external stream output and mp4 format recording rely on AAC encoder libfdk_aac support in ffmpeg library, please see [Compile and deploy ffmpeg with libfdk_aac](#Conferencesection2_3_5) section for detailed instructions.
+The external stream output and mp4 format recording rely on AAC encoder libfdk_aac support in ffmpeg library, please see [Compile and deploy ffmpeg with libfdk_aac](#235-Compile-and-deploy-ffmpeg-with-libfdk_aac) section for detailed instructions.
 
  **Table 2-2. Client compatibility**
-Application Name|Google Chrome\* 73|Mozilla Firefox\* 66|Microsoft Edge\* 44.17763.1.0|Safari\* 12.1|Open WebRTC Toolkit Client SDK for Android | Open WebRTC Toolkit Client SDK for iOS | Open WebRTC Toolkit Client SDK for Windows
+ 
+|Application Name|Google Chrome\* 73|Mozilla Firefox\* 66|Microsoft Edge\* 44.17763.1.0|Safari\* 12.1|Open WebRTC Toolkit Client SDK for Android | Open WebRTC Toolkit Client SDK for iOS | Open WebRTC Toolkit Client SDK for Windows|
 --------|--------|--------|--------|--------|--------|--------|--------
 OWT Client|YES|YES|YES|YES|YES|YES|YES
 Management Console|YES|YES|YES|YES|N/A|N/A|N/A
 
-## 2.3 Install the OWT server {#Conferencesection2_3}
+## 2.3 Install the OWT server
 This section describes the dependencies and steps for installing the OWT server.
-### 2.3.1 Dependencies {#Conferencesection2_3_1}
+
+### 2.3.1 Dependencies
 **Table 2-3. OWT Server Dependencies**
-Name|Version|Remarks
+
+|Name|Version|Remarks|
 --------|--------|--------
 Node.js |8.15.0|Website: http://nodejs.org/
 Node modules|Specified|N/A
@@ -119,7 +123,7 @@ Regarding Node.js*, make sure it's installed in your system prior to installing 
 
 Before installing the OWT server, make sure your login account has sys-admin privileges; i.e. the ability to execute `sudo`.
 
-### 2.3.2 Configure the OWT server machine {#Conferencesection2_3_2}
+### 2.3.2 Configure the OWT server machine
 
 If you run OWT server on CentOS, configure the system firewall well to make sure all ports required by OWT server components are open.
 
@@ -165,26 +169,26 @@ In order for the OWT server to deliver the best performance on video conferencin
 
 6. You can run command "ulimit -a" to make sure the new setting in limits.conf is correct as you set.
 
-### 2.3.3 Install the OWT server package {#Conferencesection2_3_3}
+### 2.3.3 Install the OWT server package
 
 On the server machine, directly unarchive the package file.
 
-~~~~~~{.sh}
+```shell
     tar xf CS_WebRTC_Conference_Server_MCU.v<Version>.CentOS.tgz
-~~~~~~
+```
 
 For Ubuntu version OWT server, do as following:
 
-~~~~~~{.sh}
+```shell
     tar xf CS_WebRTC_Conference_Server_MCU.v<Version>.Ubuntu.tgz
-~~~~~~
+```
 
-### 2.3.4 Deploy Cisco OpenH264* Library {#Conferencesection2_3_4}
+### 2.3.4 Deploy Cisco OpenH264* Library
 The default H.264 library installed is a pseudo one without any media logic. To enable H.264 support in non GPU-accelerated OWT server system, you must deploy the Cisco OpenH264 library. Choose yes to download and enable Cisco Open H264 library during video-agent dependency installation at Release-<Version>/[video_agent/analytics_agent]/install_deps.sh.
 
 Or you can also use install_openh264.sh or uninstall_openh264.sh scripts under Release-<Version>/video_agent folder to enable or disable Cisco OpenH264 library later.
 
-### 2.3.5 Compile and deploy ffmpeg with libfdk_aac {#Conferencesection2_3_5}
+### 2.3.5 Compile and deploy ffmpeg with libfdk_aac
 
 The default ffmpeg library used by OWT server has no libfdk_aac support. If you want to enable libfdk_aac for external stream output or mp4 format recording, please compile and deploy ffmpeg yourself with following steps:
 
@@ -197,7 +201,7 @@ The default ffmpeg library used by OWT server has no libfdk_aac support. If you 
 
 2. Copy all output libraries under ffmpeg_libfdkaac_lib folder to Release-<Version>/audio_agent/lib to replace the existing ones.
 
-### 2.3.6 Deploy SVT-HEVC Encoder Library {#Conferencesection2_3_6}
+### 2.3.6 Deploy SVT-HEVC Encoder Library
 The default SVT-HEVC Encoder library installed is a pseudo one without any media logic. If you want to enable SVT-HEVC Encoder, please compile and deploy the library yourself with following steps:
 
 1. Go to Release-<Version>/video_agent folder, compile SVT-HEVC Encoder library with below command:
@@ -206,7 +210,7 @@ The default SVT-HEVC Encoder library installed is a pseudo one without any media
 
 2. Copy the built library(libSvtHevcEnc.so.1) to Release-<Version>/video_agent/lib to replace the existing one.
 
-### 2.3.7 Use your own certificate {#Conferencesection2_3_7}
+### 2.3.7 Use your own certificate
 
 The default certificate (certificate.pfx) for the OWT server is located in the Release-<Version>/<Component>/cert folder. When using HTTPS and/or secure socket.io connection, you should use your own certificate for each server. First, you should edit management_api/management_api.toml, webrtc_agent/agent.toml, portal/portal.toml, management_console/management_console.toml to provide the path of each certificate for each server, under the key keystorePath. See Table 2-4 for details.
 
@@ -215,6 +219,7 @@ We use PFX formatted certificates in OWT server. See https://nodejs.org/api/tls.
 After editing the configuration file, you should run `./initcert.js` inside each component to input your passphrases for the certificates, which would then store them in an encrypted file. Be aware that you should have node binary in your shell's $PATH to run the JS script.
 
  **Table 2-4. OWT server certificates configuration**
+ 
 |  |configuration file|
 |--------|--------|
 | management-api HTTPS | management_api/management_api.toml |
@@ -224,7 +229,7 @@ After editing the configuration file, you should run `./initcert.js` inside each
 
 For OWT sample application's certificate configuration, please follow the instruction file 'README.md' located at Release-<Version>/extras/basic_example/.
 
-### 2.3.8 Launch the OWT server as single node {#Conferencesection2_3_8}
+### 2.3.8 Launch the OWT server as single node
 To launch the OWT server on one machine, follow steps below:
 
 1. Initialize the OWT package for the first time execution.
@@ -248,15 +253,16 @@ To launch the OWT server on one machine, follow steps below:
 
 > **Note**: The procedures in this guide use the default room in the sample.
 
-### 2.3.9 Stop the OWT server {#Conferencesection2_3_9}
+### 2.3.9 Stop the OWT server
 Run the following commands to stop the OWT server:
 
     cd Release-<Version>/
     bin/stop-all.sh
 
-### 2.3.10 Set up the OWT server cluster {#Conferencesection2_3_10}
+### 2.3.10 Set up the OWT server cluster
  **Table 2-5. Distributed OWT server components**
-Component Name|Deployment Number|Responsibility
+ 
+|Component Name|Deployment Number|Responsibility|
 --------|--------|--------
 management-api|1 or many|The entrance of OWT service, keeping the configurations of all rooms, generating and verifying the tokens. Application can implement load balancing strategy across multiple management-api instances
 cluster-manager|1 or many|The manager of all active workers in the cluster, checking their lives, scheduling workers with the specified purposes according to the configured policies. If one has been elected as master, it will provide service; others will be standby
@@ -275,7 +281,7 @@ management-console|0 or 1|The console for conference management
 
 Follow the steps below to set up a OWT server cluster:
 
-1. Make sure you have installed the OWT server package on each machine before launching the cluster which has been described in section [Install the OWT server package](#Conferencesection2_3_3).
+1. Make sure you have installed the OWT server package on each machine before launching the cluster which has been described in section [Install the OWT server package](#233-Install-the-OWT-server-package).
 
 2. Choose machines to initialize MongoDB and RabbitMQ servers.
 
@@ -345,7 +351,7 @@ Follow the steps below to set up a OWT server cluster:
 
 13. Choose a worker machine to run conference-agent and/or webrtc-agent and/or streaming-agent and/or recording-agent and/or audio-agent and/or video-agent and/or sip-agent. This machine must be visible to other agent machines. If webrtc-agent or sip-agent is running on it, it must be visible to clients.
 
-    - If you want to use Intel<sup>®</sup> Visual Compute Accelerator (VCA) to run video agents, please follow section [Configure VCA nodes](#Conferencesection2_3_10) to enable nodes of Intel VCA as a visible separated machine.
+    - If you want to use Intel<sup>®</sup> Visual Compute Accelerator (VCA) to run video agents, please follow section [Configure VCA nodes](#2311-Configure-VCA-nodes-as-seperated-machines-to-run-video-agent) to enable nodes of Intel VCA as a visible separated machine.
 
 14. Edit the configuration items in Release-<Version>/{audio, video, conference, webrtc, streaming, recording, sip}_agent/agent.toml.
     - Make sure the [rabbit.port] and [rabbit.host] point to the RabbitMQ server.
@@ -353,7 +359,6 @@ Follow the steps below to set up a OWT server cluster:
 
     Special for conference-agent, edit conference_agent/agent.toml
     - Make sure the [mongo.dataBaseURL] points to the MongoDB instance.
-
 
 15. Initialize and run agent worker.
 
@@ -387,7 +392,7 @@ Follow the steps below to set up a OWT server cluster:
         cd Release-<Version>/
         bin/daemon.sh start management-console
 
-### 2.3.11 Configure VCA nodes as seperated machines to run video-agent {#Conferencesection2_3_11}
+### 2.3.11 Configure VCA nodes as seperated machines to run video-agent
 To setup VCA nodes as separate machines, two approaches are provided. One is the network bridging provided by VCA software stack. The other is IP forwarding rules setting through iptables.
 
 VCA built-in software stack provides network bridging support. Follow section 4.4.1 - Configuring nodes for bridged mode operation in VCA_SoftwareUserGuide.pdf. In this approach, all network traffic will go through one Ethernet interface.
@@ -397,6 +402,7 @@ If you want to map each VCA node to different Ethernet interface, IP forwarding 
 2. Make sure the host machine has enough ethernet interface for VCA nodes. Eg: host IP is "10.239.44.100" and 3 ethernet interfaces for 3 nodes of 1 VCA card, and the IP of ethernet Interfaces are "10.239.44.1", "10.239.44.2", "10.239.44.3".
 3. Make sure your ip routing tables(please get it with "route -n") on host machine are like below :
 
+```shell
         Destination     Gateway         Genmask         Flags Metric Ref    Use Iface
         0.0.0.0         10.239.44.241   0.0.0.0         UG    100    0        0 enp132s0f0
         10.239.27.228   10.239.44.241   255.255.255.255 UGH   100    0        0 enp132s0f0
@@ -404,6 +410,7 @@ If you want to map each VCA node to different Ethernet interface, IP forwarding 
         172.31.1.0      0.0.0.0         255.255.255.0   U     0      0        0 eth0
         172.31.2.0      0.0.0.0         255.255.255.0   U     0      0        0 eth2
         172.31.3.0      0.0.0.0         255.255.255.0   U     0      0        0 eth1
+```
    > **Note**: 10.239.27.228 is DNS server. enp132s0f0 is used for host machine and IP is "10.239.44.100".
 4. Please use "ifconfig" on host machine of VCA card to list IP of VCA nodes, you will get the VCA node IPs like "172.31.1.254", "172.31.2.254", "172.31.3.254".
 5. Configure IP soft routing policy to set VCA Node to seperated machine.
@@ -437,7 +444,7 @@ If you want to map each VCA node to different Ethernet interface, IP forwarding 
             systemctl stop firewalld
             systemctl disable firewalld
 
-### 2.3.12 Stop the OWT server cluster {#Conferencesection2_3_12}
+### 2.3.12 Stop the OWT server cluster
 
 To stop the OWT server cluster, follow these steps:
 1. Run the following commands on each management-api node to stop management-api instances:
@@ -464,12 +471,13 @@ To stop the OWT server cluster, follow these steps:
         cd Release-<Version>/
         bin/daemon.sh stop management-console
 
-### 2.4 OWT Server cluster’s fault tolerance / resilience {#Conferencesection2_4}
+### 2.4 OWT Server cluster’s fault tolerance / resilience
 
 Open WebRTC Toolkit server provides built-in fault tolerance / resilience support for its key components, as Table 2-6 shows.
 
  **Table 2-6. OWT Server cluster components’ fault tolerance / resilience**
-Component Name|Server Reaction|Client Awareness
+ 
+|Component Name|Server Reaction|Client Awareness|
 --------|--------|--------
 management-api|Multiple management-api instances provide stateless services at the same time. If application implements node failure detection and rescheduling strategy, when one node fails, other nodes should take over when the further requests are assigned to any of them.|Management-API RESTful request fail
 cluster-manager|Auto elect another cluster-manager node as master and provide service.|Transparent
@@ -483,12 +491,13 @@ video-agent/node|Auto schedule new video-agent/node resource to recover the sess
 analytics-agent/node|All analytics stream actions assign to this node will be dropped. Client needs to redo these actions.|stream-failed event
 sip-agent/node|All sip participants it carries should be dropped by session nodes.|SIP BYE signaling event
 
-## 2.5 OWT Server configurations for public access {#Conferencesection2_5}
+## 2.5 OWT Server configurations for public access
 
 Open WebRTC Toolkit server provides the following settings in configuration files to configure the network interfaces for public access.
 
  **Table 2-7. Configuration Items for Public Access**
-Configuration Item|Location|Usage
+
+|Configuration Item|Location|Usage|
 --------|--------|--------
 webrtc.network_interfaces | webrtc_agent/agent.toml | The network interfaces of webrtc-agent that clients in public network can connect to
 webrtc.minport | webrtc_agent/agent.toml | The webrtc port range lowerbound for clients to connect through UDP
@@ -497,7 +506,7 @@ management-api.port | management_api/management_api.toml | The port of managemen
 portal.hostname, portal.ip_address | portal/portal.toml | The hostname and IP address of portal for public access; hostname first if it is not empty.
 portal.port | portal/portal.toml | The port of portal for public access through TCP
 
-## 2.6 Security Recommendations {#Conferencesection2_6}
+## 2.6 Security Recommendations
 Intel Corporation does not host any conference cluster/service. Instead, the entire suite is provided so you can build your own video conference system and host your own server cluster.
 
 Customers must be familiar with industry standards and best practices for deploying server clusters. Intel Corporation assumes no responsibility for loss caused from potential improper deployment and mismanagement.
@@ -525,9 +534,9 @@ The following instructions are provided only as recommendations regarding securi
 19. Deploy OWT cluster(Managers + Workers) inside Demilitarized Zone(DMZ) area, utilize external firewall A to protect them against possible attacks, e.g. DoS attack; Deploy Mongo DB and RabbitMQ behind DMZ, configure internal firewall B to make sure only cluster machines can connect to RabbitMQ server and access to MongoDB data resources.
 
 **Figure 2-1. Security Recommendations Picture**
-![Security Recommendations Picture](./pic/deploy.png)
+![Security Recommendations Picture](../ServerPic/deploy.png)
 
-## 2.7 FAQ {#Conferencesection2_7}
+## 2.7 FAQ
 1. Sudden low volume when connecting Chrome on Windows to OWT server
 
     **Resolution**:
@@ -535,18 +544,18 @@ The following instructions are provided only as recommendations regarding securi
     Both the Chrome browser and Windows system itself can reduce the volume during a connection to the OWT server. To resolve this issue, disable the following Communications feature found in the Sound Settings using the Windows Control Panel.
 
     **Figure 2-2. Sound Settings**
-    ![Sound Settings](./pic/soundsettings.png)
+    ![Sound Settings](../ServerPic/soundsettings.png)
 2. Failed to start OWT server, and receive the following error message: "child_process.js:948; throw errnoException(process._errno, 'spawn'); Error: spawn EMFILE"
 
     **Resolution**:
 
-    Use the proper Node.js version as outlined in the [Dependencies](#Conferencesection2_3_1) section.
+    Use the proper Node.js version as outlined in the [Dependencies](#231-Dependencies) section.
 
 3. Failed to start OWT server, and receive the following error message: "Creating superservice in localhost/management-apidb SuperService ID: Sat Feb 7 19:10:32.456 TypeError: Cannot read property '_id' of null SuperService KEY: Sat Feb  7 19:10:32.479 TypeError: Cannot read property 'key' of null"
 
     **Resolution**:
 
-    Use the proper MongoDB version as outlined in the [Dependencies](#Conferencesection2_3_1) section.
+    Use the proper MongoDB version as outlined in the [Dependencies](#231-Dependencies) section.
 4. Run into network port conflicts on OWT server, and probably some error message like "net::ERR_CONNECTION_TIMED_OUT" or "ERROR: server connection failed: connection_error"
 
     **Resolution**:
@@ -556,10 +565,10 @@ The following instructions are provided only as recommendations regarding securi
         sudo setcap cap_net_bind_service=+ep $(which node)
 
     If you are still not able to bypass the 1024 port limitation, remember to put the **OWT server library path into /etc/ld.so.conf.d**.
-# 3 OWT Server Management Console Brief Guide {#Conferencesection3}
-## 3.1 Introduction {#Conferencesection3_1}
+# 3 OWT Server Management Console Brief Guide
+## 3.1 Introduction
 The OWT Server Management Console is the frontend console to manage the OWT server. It is built with OWT's server-side APIs and it provides the management interface to OWT administrators.
-## 3.2 Access {#Conferencesection3_2}
+## 3.2 Access
 Once you have launched OWT servers, you can then access the console via a browser at https://XXXX:3300/console/ by default. You will be asked for your the service-id and service-key in order to access the service.
 
 After inputting your service-id and service-key in the dialog prompt, choose 'remember me' and click 'save changes' to save your session. If you want to switch to another service, click the ‘profile' button on the upper-right corner to get in this dialog prompt and do the similar procedure again. If you want to log out the management console, click the red ‘clear cookie' button in the dialog prompt.
@@ -570,19 +579,20 @@ If you have not launched OWT servers, you should launch the management-api serve
     bin/daemon.sh start management-api
     bin/daemon.sh start management-console
 
-## 3.3 Source Code {#Conferencesection3_3}
+## 3.3 Source Code
 The source code of the management console is in Release-<Version>/management_console/public/.
-## 3.4 Service Management {#Conferencesection3_4}
+## 3.4 Service Management
 Only super service user can access service management, in the 'overview' tab to create or delete services. The service is the instance that owns rooms and has the ability to manage them. 
 > **Note**: Super service cannot be deleted, it can be configured in management_api/management_api.toml.
 
-## 3.5 Room Management {#Conferencesection3_5}
+## 3.5 Room Management
 Any service user can do room management inside the service, including creating, deleting or modifying rooms.
 
 To modify rooms, a user can edit room configuration for its own preference. The the details of each configuration item for room are listed in the following table:
 
  **Table 3-1. Room Configuration**
-Item|Description
+ 
+|Item|Description|
 --------|------------------
 name | The name of the room (name is not equal to the ID, room's ID cannot be changed once created)
 inputLimit | The input limitation for the room, means how many publication can a room allow
@@ -607,7 +617,7 @@ view.layout | The layout of mixed video stream
 view.layout.fitPolicy | The fit policy for input that does not perfectly match the width/height ratio
 view.layout.templates | The layout template for the mixed video stream, a user can choose a base layout template and customize its own preferred ones, which would be combined as a whole for rendering mixed video
 view.layout.templates.base | The template base for video layout
-view.layout.templates.custom | The customized video layout uppon the base, see the [Section 3.5.1](#Conferencesection3_5_1)
+view.layout.templates.custom | The customized video layout uppon the base, see the [Section 3.5.1](#351-Customized-video-layout)
 mediaIn | The audio/video format that the room can accept, see the Table 3-2 for supported format
 mediaOut | The audio/video format and parameters that the room can generate through media processing, see the Table 3-2 for supported formats
 transcoding | The transcoding switch on audio, video format and parameters
@@ -615,7 +625,8 @@ sip | The SIP setting for the room
 notifying | The notifying policy for the room
 
  **Table 3-2 Supported Media Formats**
-Name|Type
+ 
+|Name|Type|
 -----|-----
 opus | audio
 isac_16000 | audio
@@ -635,6 +646,7 @@ vp9 | video
 > **Note**: When video format is "h264", for decoding, either software or hardware version OWT server supports all profiles. For encoding, software version OWT server with openh264 supports constrained-baseline profile and hardware version supports profiles including constrained-baseline, baseline, main, high.
 
  **Table 3-3 Default bitrate for typical resolutions (30fps)**
+ 
 |Resolution|Default bitrate(kbps)|
 |------|------|
 |352x288 (cif)|442|
@@ -653,15 +665,15 @@ If framerate or resolution is specified in the subscription without bitrate, def
 
 > **Note**: If base layout is set to 'void', user must input customized layout for the room, otherwise the video layout would be treated as invalid. Read 3.5.1 for details of customized layout. maxInput indicates the maximum number of video frame inputs for the video layout definition.
 
-### 3.5.1 Customized video layout {#Conferencesection3_5_1}
+### 3.5.1 Customized video layout
 The OWT server supports the mixed video layout configuration which is similar as RFC5707 Media Server Markup Language (MSML).
 A valid customized video layout should be an array of video layout definition.
 The following example shows the details:
 
 **Figure 3-1. Example Layout**
-![Example layout](./pic/layout.jpg)
+![Example layout](../ServerPic/layout.jpg)
 
-~~~~~~{.js}
+```json
 // Video layout for the case of 1 input or 6 inputs
 [
   {
@@ -743,7 +755,7 @@ The following example shows the details:
     ]
   }
 ]
-~~~~~~
+```
 Each "region" defines video panes that are used to display participant video streams.
 
 Regions are rendered on top of the root mixed stream. "id" is the identifier for each video layout region.
@@ -752,7 +764,7 @@ The size of a region is specified relative to the size of the root mixed stream 
 
 Regions are located on the root window based on the value of the position attributes "top" and "left".  These attributes define the position of the top left corner of the region as an offset from the top left corner of the root mixed stream, which is a percent of the vertical or horizontal dimension of the root mixed stream.
 
-### 3.5.2 Enable SIP connectivity {#Conferencesection3_5_2}
+### 3.5.2 Enable SIP connectivity
 The OWT server supports connection from SIP clients. Before setting up SIP connectivity for rooms, make sure SIP server (like Kamailio) and related SIP user accounts are available. The SIP settings can be enabled through SDK or management console. On the console page, find the room that needs interaction with SIP clients and click the related "Room Detail" field. Then find the SIP setting fields in sub-section "sip".
 
 The meaning of each field is listed below:
@@ -763,7 +775,7 @@ The meaning of each field is listed below:
 
 After the SIP settings have been done, click the "Apply" button at the right side of the Room row to let it take effect. If the "Update Room Success" message shows up and the SIP related information is correct, then SIP clients should be able to join this room via the registered SIP server.
 
-## 3.6 Cluster Worker Scheduling Policy Introduction {#Conferencesection3_6}
+## 3.6 Cluster Worker Scheduling Policy Introduction
 All workers including portals, conference-agents, webrtc-agents, streaming-agents, recording-agents, audio-agents, video-agents, sip-agents in the cluster are scheduled by the cluster-manager with respect to the configured scheduling strategies in cluster_manager/cluster_manager.toml.  For example, the configuration item "portal = last-used" means the scheduling policy of workers with purposes of "portal" is set to "last-used". The following built-in scheduling strategies are provided:
 1. last-used: If more than 1 worker with the specified purpose is alive and available, the last used one will be scheduled.
 2. least-used: If more than 1 worker with the specified purpose is alive and available, the one with the least work-load will be scheduled.
@@ -773,18 +785,18 @@ All workers including portals, conference-agents, webrtc-agents, streaming-agent
 
 For portal and webrtc-agent workers, the "isp" and "region" preferences can be specified in portal and webrtc-agent configurations. Pass the preferred "isp" and "region" when creating a token, then cluster-manager will only schedule the corresponding worker nodes to the client requests that match "isp" and "region" preferences. The portal and webrtc-agent will serve all the isp and region if corresponding configuration items under "capacity" are set to empty lists. If no preferences are specified for clients when creating token, then only those portal and webrtc-agent with empty isp and region setting will serve them.
 
-## 3.7 Runtime Configuration {#Conferencesection3_7}
+## 3.7 Runtime Configuration
 Only super service user can access runtime configuration. Current management console implementation just provides the OWT server cluster runtime configuration viewer.
 
-# 4 OWT Sample Application Server User Guide  {#Conferencesection4}
-## 4.1 Introduction {#Conferencesection4_1}
-The OWT sample application server is a Web application demo that shows how to host audio/video conference services powered by the Open WebRTC Toolkit. The sample application server is based on OWT runtime components. Refer to [Section 2](#Conferencesection2) of this guide, for system requirements and launch/stop instructions.
+# 4 OWT Sample Application Server User Guide
+## 4.1 Introduction
+The OWT sample application server is a Web application demo that shows how to host audio/video conference services powered by the Open WebRTC Toolkit. The sample application server is based on OWT runtime components. Refer to [Section 2](#2-OWT-Server-Installation) of this guide, for system requirements and launch/stop instructions.
 
 The source code of the sample application is in Release-<Version>/extras/basic_example/.
 
 This section explains how to start a conference and then connect to a conference using different qualifiers, such as a specific video resolution.
 
-## 4.2 Start a Conference through the OWT Sample Application Server {#Conferencesection4_2}
+## 4.2 Start a Conference through the OWT Sample Application Server
 These general steps show how to start a conference:
 
 1. Start up the OWT server components.
@@ -793,49 +805,51 @@ These general steps show how to start a conference:
 > **Note**: Latest Chrome browser versions from v47 force https access on WebRTC applications. You will get SSL warning page with default certificates, replace them with your own trusted ones.
 4. Start your conference with this default room created by the sample application server.
 
-### 4.2.1 Connect to an OWT server conference with specific room {#Conferencesection4_2_1}
+### 4.2.1 Connect to an OWT server conference with specific room
 You can connect to a particular conference room. To do this, simply specify your room ID via a query string in your URL: room.
 For example, connect to the OWT sample application server XXXXX with the following URL:
 
         https://XXXXX:3004/?room=some_particular_room_id
 This will direct the conference connection to the room with the ID some_particular_room_id.
-### 4.2.2 Connect to an OWT server conference to subscribe forward streams {#Conferencesection4_2_2}
+### 4.2.2 Connect to an OWT server conference to subscribe forward streams
 Since OWT conference room can now produce both forward streams and mixed stream at the same time, including the screen sharing stream, the client is able to subscribe specified stream(s) by a query string in your URL: forward. The default value for the key word is false.
 
 For example, to subscribe forward stream instead of mixed stream from OWT server, connect to the OWT sample application server XXXXX with the following URL:
 
         https://XXXXX:3004/?forward=true
 
-### 4.2.3 Connect to an OWT conference with an RTSP input {#Conferencesection4_2_3}
+### 4.2.3 Connect to an OWT conference with an RTSP input
 The OWT conference supports external stream input from devices that support RTSP protocol, like IP Camera.
 For example, connect to the OWT sample application server XXXXX with the following URL:
 
         https://XXXXX:3004/?url=rtsp_stream_url
 
-# 5 Peer Server {#Conferencesection5}
+# 5 Peer Server
 ## 5.1 Introduction {#Conferencesection5_1}
 The peer server is the default signaling server of the Open-WebRTC-Toolkit. The peer server provides the ability to exchange WebRTC signaling messages over Socket.IO between different clients.
 
 **Figure 5-1. Peer Server Framework**
-<img src="./pic/framework.png" alt="Framework" style="width: 600px;">
+<img src="../ServerPic/framework.png" alt="Framework" style="width: 600px;">
 
-## 5.2 Installation requirements {#Conferencesection5_2}
+## 5.2 Installation requirements
 The installation requirements for the peer server are listed in Table 5-1 and 5-2.
 
 **Table 5-1. Installation requirements**
-Component name | OS version
+
+|Component name | OS version|
 ----|-----
 Peer server | Ubuntu 18.04 LTS, CentOS* 7.6/7.4
 
 > **Note**: The peer server has been fully tested on Ubuntu14.04 LTS,64-bit.
 **Table 5-2. Peer Server Dependencies**
-Name | Version | Remarks
+
+|Name | Version | Remarks|
 -----|----|----
 Node.js | 8.15.0 | Website: http://nodejs.org/
 Node modules | Specified | N/A
 
 Regarding Node.js*, make sure it's installed in your system prior to installing the Peer Server. We recommend version 8.15.0. Refer to http://nodejs.org/ for installation details.
-## 5.3 Installation {#Conferencesection5_3}
+## 5.3 Installation
 On the server machine, unpack the peer server release package, and install node modules
 
         tar –zxvf CS_WebRTC_Conference_Server_Peer.v<Version>.tgz
@@ -843,25 +857,25 @@ On the server machine, unpack the peer server release package, and install node 
         npm install
 
 The default http port is 8095, and the default secured port is 8096.  Those default values can be modified in the file config.json.
-## 5.4 Use your own certificate  {#Conferencesection5_4}
+## 5.4 Use your own certificate
 If you want to use a secured socket.io connection, you should use your own certificate for the service. A default certificate is stored in cert with two files: cert.pem and key.pem. Replace these files with your own certificate and key files.
-## 5.5 Launch the peer server {#Conferencesection5_5}
+## 5.5 Launch the peer server
 Run the following commands to launch the peer server:
 
         cd PeerServer-Release-<Version>
         node peerserver.js
 
-## 5.6 Stop the peer server {#Conferencesection5_6}
+## 5.6 Stop the peer server
 Run the **kill** command directly from the terminal to stop the peer server.
 
-# 6 Appendix {#Conferencesection6}
-## 6.1 Media Analytics in OWT Server {#Conferencesection6_1}
-### 6.1.1 Introduction {#Conferencesection6_1_1}
+# 6 Appendix
+## 6.1 Media Analytics in OWT Server
+### 6.1.1 Introduction
 OWT server provides media analytics functionality via REST API. The media analytics plugins allows you performing analytics on any stream in OWT server, generating new streams and/or emitting events during analytics. The proposed usage scenario for real-time media analytics includes but is not limited to movement/object detection in surveillance and remote health care, customer/audience analyzing in retail and remote education, etc.
 
 For usage of media analytics REST API, refer to the REST API document.
 
-### 6.1.2 Building Existing Plugins {#Conferencesection6_1_2}
+### 6.1.2 Building Existing Plugins
 A few sample plugins are shipped with OWT server. After you build and install OWT server, the source of those analytics plugins will be placed under analytics_agent/plugins/ directory.
 
 Before you build those plugins, you need to install Intel Distribution of OpenVINO 2018 R5 from [https://software.intel.com/en-us/openvino-toolkit/](https://software.intel.com/en-us/openvino-toolkit/). After installation, make sure you go to /opt/intel/computer_vision_sdk/install_dependencies/ directory, and run:
@@ -874,28 +888,33 @@ To build the plugins, simply go to analytics_agent/plugins/sample directory, and
 
 Copy all files under build/intel64/Release/lib/ to analytics_agent/lib/ directory, or to the libpath as specified in agent.toml in analytics_agent.
 
-### 6.1.3 Using Pre-built Plugins {#Conferencesection6_1_3}
-The Server provides 4 plugins as source code which can be built by your own. To verify them, make sure you run ```source /opt/intel/computer_vision_sdk/bin/setupvars.sh``` before starting up OWT server.
+### 6.1.3 Using Pre-built Plugins
+The Server provides 4 plugins as source code which can be built by your own. To verify them, make sure you run `/opt/intel/computer_vision_sdk/bin/setupvars.sh` before starting up OWT server.
 
-#### 6.1.3.1 Face Detection Plugin {#Conferencesection6_1_3_1}
+#### 6.1.3.1 Face Detection Plugin
 Identified by GUID b849f44bee074b08bf3e627f3fc927c7. This plugin provides the capability of finding faces in current analyzed stream and annotates it with a rectangle boarder on the face.
-#### 6.1.3.2 Face Recognition Plugin {#Conferencesection6_1_3_2}
+
+#### 6.1.3.2 Face Recognition Plugin
 Identified by GUID 3f932ff2a80341faa0a73ebb3bcfb85d. This plugin provides the capability of identifying people's name in current stream and annotates them with a rectangle on the face, and also list the name and the confidence of the recognition result.
 To add new people for recognition, here are the steps:
 1. Take at least 3 pictures of one person and place them under the raw_photos directory with sub-directory name that identifies that person's name(no space in the directory name). The raw_photos should be under the same directory with the pre-process tool.
-2. Run the pre-process tool to process the raw photos (which is also built when you build the samples). Append the path of libcpu_extension.so you built to LD_LIBRARY_PATH before you run the tool. Put the output vectors.txt under analytics_agent direcotry of OWT server.
-#### 6.1.3.3 Smart Class Room Plugin {#Conferencesection6_1_3_3}
+2. Run the pre-process tool to process the raw photos (which is also built when you build the samples). Append the path of libcpu_extension.so you built to `LD_LIBRARY_PATH` before you run the tool. Put the output vectors.txt under analytics_agent direcotry of OWT server.
+
+#### 6.1.3.3 Smart Class Room Plugin
 Identified by GUID 10c213f3d55249718d3bd44712488502. This plugin provides the capability of recognizing the gestures in the stream and annotates the gestures accordingly.
-#### 6.1.3.4 Dummy Plugin {#Conferencesection6_1_3_4}
+
+#### 6.1.3.4 Dummy Plugin
 Identified by GUID dc51138a8284436f873418a21ba8cfa7. This plugin simply modifies part of the stream to demonstrate the working process of plugins.
 
-### 6.1.4 Create and Deploy Your Own Media Analytics Plugin {#Conferencesection6_1_4}
+### 6.1.4 Create and Deploy Your Own Media Analytics Plugin
 OWT server allows you creating your own media analytics plugins and deploy them to OWT server. Refer to the analytics_agent/plugins/include/plugin.h for more detailed API interface that each media analytics plugin needs to implement.
 
-#### 6.1.4.1 Create Plugin {#Conferencesection6_1_4_1}
+#### 6.1.4.1 Create Plugin
 Your plugin class implementation must inherit from rvaPlugin interface as defined in analytics_agent/plugins/include/plugin.h. Besides the plugin class implementation, it is required to include the DECLARE_PLUGIN(ClassName) macro to export your plugin implementation.
-#### 6.1.4.2 Deploy Your Plugin {#Conferencesection6_1_4_2}
+
+#### 6.1.4.2 Deploy Your Plugin
 To deploy a plugin to OWT Server, you will need to generate a new GUID for your plugin. After that, copy your plugin .so files to analytics_agent/lib, or to the libpath as specified by agent.toml of analtyics agent. Also you need to add an entry into the plugin.cfg file under analytics_agent with the GUID you generated, for example:
+```shell
 	[c842f499aa093c27cf1e328f2fc987c7]
 	description = 'my own plugin'
 	pluginversion = 1
@@ -906,5 +925,5 @@ To deploy a plugin to OWT Server, you will need to generate a new GUID for your 
 	messaging = true       # set to false if your plugin does not send notification
 	inputfourcc = 'I420'   # must be I420 for current version
 	outputfourcc = 'I420'  # set to "" if your plugin will not republish analyzed stream to OWT server.
-
+```
 Restart analytics agent and your plugin will be added to OWT server.
