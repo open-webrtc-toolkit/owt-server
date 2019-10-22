@@ -1,6 +1,6 @@
 {
   "name": "OWT-MCU",
-  "version":"4.2.0",
+  "version":"4.3.0",
   "description": "Intel CS for WebRTC Conference Server",
   "engine": {
     "node": "8.15.0"
