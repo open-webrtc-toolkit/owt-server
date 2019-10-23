@@ -3,11 +3,11 @@
 // SPDX-License-Identifier: Apache-2.0
 
 'use strict';
-var dataAccess = require('../data_access');
-var requestHandler = require('../requestHandler');
-var e = require('../errors');
+var dataAccess = require('../../data_access');
+var requestHandler = require('../../requestHandler');
+var e = require('../../errors');
 
-var logger = require('./../logger').logger;
+var logger = require('../../logger').logger;
 
 // Logger
 var log = logger.getLogger('StreamsResource');

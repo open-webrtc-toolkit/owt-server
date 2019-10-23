@@ -3,10 +3,10 @@
 // SPDX-License-Identifier: Apache-2.0
 
 'use strict';
-var requestHandler = require('../requestHandler');
-var e = require('../errors');
+var requestHandler = require('../../requestHandler');
+var e = require('../../errors');
 
-var logger = require('./../logger').logger;
+var logger = require('./../../logger').logger;
 
 // Logger
 var log = logger.getLogger('AnalyticsResource');

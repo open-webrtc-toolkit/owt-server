@@ -1829,7 +1829,7 @@ var Conference = function (rpcClient, selfRpcId) {
           }, 60);
         });
       }).then(() => {
-        callback('callback', streams[stream_id]);
+        callback('callback', Stream.toPortalFormat(streams[stream_id]));
       }).catch((e) => {
         callback('callback', 'error', e.message ? e.message : e);
         removeStream(stream_id);
@@ -2012,7 +2012,7 @@ var Conference = function (rpcClient, selfRpcId) {
     ).then(() => {
       return Promise.all(muteReq.map((r) => {return setStreamMute(streamId, r.track, r.mute);}));
     }).then(() => {
-      callback('callback', streams[streamId]);
+      callback('callback', Stream.toPortalFormat(streams[streamId]));
     }, (err) => {
       log.warn('failed in controlStream, reason:', err.message ? err.message : err);
       callback('callback', 'error', err.message ? err.message : err);

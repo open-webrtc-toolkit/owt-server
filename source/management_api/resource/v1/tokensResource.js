@@ -28,11 +28,11 @@
 
 'use strict';
 
-var dataAccess = require('../data_access');
+var dataAccess = require('../../data_access');
 var crypto = require('crypto');
-var requestHandler = require('../requestHandler');
-var logger = require('./../logger').logger;
-var e = require('../errors');
+var requestHandler = require('../../requestHandler');
+var logger = require('../../logger').logger;
+var e = require('../../errors');
 
 // Logger
 var log = logger.getLogger('TokensResource');
