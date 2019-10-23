@@ -1,4 +1,4 @@
-# Client-Portal Communication Protocol
+# Client-Portal Communication Protocol (version 1.1)
 <!--
 |date | contributor | revision |
 | :-------: | :------------: | :------------: |
