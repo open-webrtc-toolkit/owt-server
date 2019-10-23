@@ -3,34 +3,28 @@
 // SPDX-License-Identifier: Apache-2.0
 
 'use strict';
-var dataAccess = require('../data_access');
-var requestHandler = require('../requestHandler');
-var e = require('../errors');
+var dataAccess = require('../../data_access');
+var requestHandler = require('../../requestHandler');
+var e = require('../../errors');
 
-var logger = require('./../logger').logger;
+var logger = require('../../logger').logger;
 
 // Logger
-var log = logger.getLogger('RecordingsResource');
+var log = logger.getLogger('SipCallsResource');
 
 exports.getList = function (req, res, next) {
-    log.debug('Representing recordings for room ', req.params.room, 'and service', req.authData.service._id);
-    requestHandler.getSubscriptionsInRoom (req.params.room, 'recording', function (recordings) {
-        if (recordings === 'error') {
+    log.debug('Representing sip calls for room ', req.params.room, 'and service', req.authData.service._id);
+    requestHandler.getSipCallsInRoom (req.params.room, function (sipcalls) {
+        if (sipcalls === 'error') {
             return next(new e.CloudError('Operation failed'));
         }
-        res.send(recordings);
+        res.send(sipcalls);
     });
 };
 
 exports.add = function (req, res, next) {
-    var sub_req = {
-      type: 'recording',
-      connection: {
-        container: req.body.container
-      },
-      media: req.body.media
-    };
-    requestHandler.addServerSideSubscription(req.params.room, sub_req, function (result, err) {
+    log.debug('addSipCall for room', req.params.room);
+    requestHandler.addSipCall(req.params.room, req.body, function (result, err) {
         if (result === 'error') {
             return next(err);
         }
@@ -42,7 +36,7 @@ exports.add = function (req, res, next) {
 exports.patch = function (req, res, next) {
     var sub_id = req.params.id,
         cmds = req.body;
-    requestHandler.controlSubscription(req.params.room, sub_id, cmds, function (result) {
+    requestHandler.updateSipCall(req.params.room, sub_id, cmds, function (result) {
         if (result === 'error') {
             return next(new e.CloudError('Operation failed'));
         }
@@ -53,7 +47,7 @@ exports.patch = function (req, res, next) {
 
 exports.delete = function (req, res, next) {
     var sub_id = req.params.id;
-    requestHandler.deleteSubscription(req.params.room, sub_id, 'recording', function (result) {
+    requestHandler.deleteSipCall(req.params.room, sub_id, function (result) {
         log.debug('result', result);
         if (result === 'error') {
             next(new e.CloudError('Operation failed'));

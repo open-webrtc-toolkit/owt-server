@@ -27,10 +27,10 @@
 // This file is borrowed from lynckia/licode with some modifications.
 
 'use strict';
-var dataAccess = require('../data_access');
-var requestHandler = require('../requestHandler');
-var logger = require('./../logger').logger;
-var e = require('../errors');
+var dataAccess = require('../../data_access');
+var requestHandler = require('../../requestHandler');
+var logger = require('./../../logger').logger;
+var e = require('../../errors');
 
 // Logger
 var log = logger.getLogger('RoomResource');
