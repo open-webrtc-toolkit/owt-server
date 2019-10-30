@@ -161,6 +161,7 @@ module.exports = function (spec, on_status, on_mediaUpdate) {
     simStreams = [],
     ridStreamMap = new Map(),
     isSimulcast = false,
+    transportSeqNumExt = -1,
     wrtc;
 
   /*
@@ -219,7 +220,7 @@ module.exports = function (spec, on_status, on_mediaUpdate) {
               info: JSON.parse(mediaUpdate)
             };
             on_mediaUpdate(JSON.stringify(data));
-          });
+          }, transportSeqNumExt);
           simulcastConstructors.push(vfc);
           const simStream = new WrtcStream({
             audioFramePacketizer,
@@ -317,7 +318,7 @@ module.exports = function (spec, on_status, on_mediaUpdate) {
             info: JSON.parse(mediaUpdate)
           };
           on_mediaUpdate(JSON.stringify(data));
-        });
+        }, transportSeqNumExt);
         simulcastConstructors.push(vfc);
         const simStream = new WrtcStream({
           audioFramePacketizer,
@@ -341,7 +342,7 @@ module.exports = function (spec, on_status, on_mediaUpdate) {
         audioFrameConstructor.bindTransport(wrtc.getMediaStream(wrtcId));
       }
       if (video) {
-        const transportSeqNumExt = getExtId(sdp, TransportSeqNumUri);
+        transportSeqNumExt = getExtId(sdp, TransportSeqNumUri);
         videoFrameConstructor = new VideoFrameConstructor(on_mediaUpdate, transportSeqNumExt);
         videoFrameConstructor.bindTransport(wrtc.getMediaStream(wrtcId));
       }
@@ -366,7 +367,7 @@ module.exports = function (spec, on_status, on_mediaUpdate) {
       if (video) {
         const hasRed = hasCodec(sdp, 'red');
         const hasUlpfec = hasCodec(sdp, 'ulpfec');
-        const transportSeqNumExt = getExtId(sdp, TransportSeqNumUri);
+        transportSeqNumExt = getExtId(sdp, TransportSeqNumUri);
         videoFramePacketizer = new VideoFramePacketizer(hasRed, hasUlpfec, transportSeqNumExt);
         videoFramePacketizer.bindTransport(wrtc.getMediaStream(wrtcId));
       }
