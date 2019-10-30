@@ -9,7 +9,7 @@
     "fraction.js": "*",
     "log4js": "^1.1.1",
     "mongojs": "",
-    "mongoose": "^4.13.6",
+    "mongoose": "^5.7.7",
     "package.json": "^2.0.1",
     "toml": "*"
   },
