@@ -52,7 +52,7 @@ class VideoFrameConstructor : public erizo::MediaSink,
     DECLARE_LOGGER();
 
 public:
-    VideoFrameConstructor(VideoInfoListener*, uint32_t transportccExtId = 2);
+    VideoFrameConstructor(VideoInfoListener*, uint32_t transportccExtId = 0);
     virtual ~VideoFrameConstructor();
 
     void bindTransport(erizo::MediaSource* source, erizo::FeedbackSink* fbSink);
