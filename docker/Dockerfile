@@ -20,7 +20,7 @@ RUN npm install -g grunt-cli node-gyp
 RUN bash -c "echo \"Defaults env_keep = \\\"http_proxy https_proxy no_proxy \\\"\" >> /etc/sudoers"
 
 # Install owt-client
-RUN git clone https://github.com/open-webrtc-toolkit/owt-client-javascript.git
+RUN git clone https://github.com/open-webrtc-toolkit/owt-client-javascript.git --depth=1
 RUN cd owt-client-javascript/scripts && npm install && grunt
 
 RUN wget https://github.com/Intel-Media-SDK/MediaSDK/releases/download/intel-mediasdk-$MEDIA_SDK_VER/MediaStack.tar.gz -P /tmp
