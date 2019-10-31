@@ -1,0 +1,179 @@
+From 15553a66a08795ab3bbbcfdc9ad3547911ac763e Mon Sep 17 00:00:00 2001
+From: Chen Li1 <li1.chen@intel.com>
+Date: Thu, 31 Oct 2019 15:39:42 +0800
+Subject: [PATCH] Enable REMB for RID streams
+
+---
+ erizo/src/erizo/MediaStream.cpp                    | 16 +++++++++++++---
+ erizo/src/erizo/SdpInfo.cpp                        |  1 +
+ erizo/src/erizo/rtp/BandwidthEstimationHandler.cpp | 20 ++++++++++++++------
+ erizo/src/erizo/rtp/BandwidthEstimationHandler.h   |  4 ++--
+ erizo/src/erizo/rtp/RtpExtensionProcessor.cpp      |  2 +-
+ 5 files changed, 31 insertions(+), 12 deletions(-)
+
+diff --git a/erizo/src/erizo/MediaStream.cpp b/erizo/src/erizo/MediaStream.cpp
+index a78b057..4327c6f 100644
+--- a/erizo/src/erizo/MediaStream.cpp
++++ b/erizo/src/erizo/MediaStream.cpp
+@@ -21,7 +21,7 @@
+ #include "rtp/RtcpForwarder.h"
+ // #include "rtp/RtpSlideShowHandler.h"
+ // #include "rtp/RtpTrackMuteHandler.h"
+-// #include "rtp/BandwidthEstimationHandler.h"
++#include "rtp/BandwidthEstimationHandler.h"
+ // #include "rtp/FecReceiverHandler.h"
+ #include "rtp/RtcpProcessorHandler.h"
+ // #include "rtp/RtpRetransmissionHandler.h"
+@@ -151,6 +151,10 @@ bool MediaStream::setRemoteSdp(std::shared_ptr<SdpInfo> sdp) {
+   if (!sending_) {
+     return true;
+   }
++  if (!sdp) {
++    ELOG_WARN("%s message: setting remote SDP nullptr", toLog());
++    return true;
++  }
+   remote_sdp_ =  std::make_shared<SdpInfo>(*sdp.get());
+   if (remote_sdp_->videoBandwidth != 0) {
+     ELOG_DEBUG("%s message: Setting remote BW, maxVideoBW: %u", toLog(), remote_sdp_->videoBandwidth);
+@@ -193,6 +197,10 @@ bool MediaStream::setRemoteSdp(std::shared_ptr<SdpInfo> sdp) {
+       rtcp_processor_->addSourceSsrc(new_ssrc);
+   });
+ 
++  if (remote_sdp_->rids().size() > 1) {
++    simulcast_ = true;
++  }
++
+   initializePipeline();
+ 
+   initializeStats();
+@@ -348,7 +356,7 @@ void MediaStream::initializePipeline() {
+   pipeline_->addFront(std::make_shared<PacketReader>(this));
+   pipeline_->addFront(WoogeenHandler(this));
+ 
+-  pipeline_->addFront(std::make_shared<RtcpProcessorHandler>());
++  // pipeline_->addFront(std::make_shared<RtcpProcessorHandler>());
+   // pipeline_->addFront(std::make_shared<FecReceiverHandler>());
+   // pipeline_->addFront(std::make_shared<LayerBitrateCalculationHandler>());
+   // pipeline_->addFront(std::make_shared<QualityFilterHandler>());
+@@ -357,7 +365,9 @@ void MediaStream::initializePipeline() {
+   // pipeline_->addFront(std::make_shared<RtpSlideShowHandler>());
+   // pipeline_->addFront(std::make_shared<RtpPaddingGeneratorHandler>());
+   // pipeline_->addFront(std::make_shared<PliPacerHandler>());
+-  // pipeline_->addFront(std::make_shared<BandwidthEstimationHandler>());
++  if (simulcast_ && is_publisher_) {
++    pipeline_->addFront(std::make_shared<BandwidthEstimationHandler>());
++  }
+   // pipeline_->addFront(std::make_shared<RtpPaddingRemovalHandler>());
+   // pipeline_->addFront(std::make_shared<RtcpFeedbackGenerationHandler>());
+   // pipeline_->addFront(std::make_shared<RtpRetransmissionHandler>());
+diff --git a/erizo/src/erizo/SdpInfo.cpp b/erizo/src/erizo/SdpInfo.cpp
+index c4d9ea7..4e13951 100644
+--- a/erizo/src/erizo/SdpInfo.cpp
++++ b/erizo/src/erizo/SdpInfo.cpp
+@@ -69,6 +69,7 @@ namespace erizo {
+   }
+ 
+   bool SdpInfo::initWithSdp(const std::string& sdp, const std::string& media) {
++    rids_.clear();
+     return processSdp(sdp, media);
+   }
+   std::string SdpInfo::addCandidate(const CandidateInfo& info) {
+diff --git a/erizo/src/erizo/rtp/BandwidthEstimationHandler.cpp b/erizo/src/erizo/rtp/BandwidthEstimationHandler.cpp
+index a5a9366..d283ca5 100644
+--- a/erizo/src/erizo/rtp/BandwidthEstimationHandler.cpp
++++ b/erizo/src/erizo/rtp/BandwidthEstimationHandler.cpp
+@@ -97,15 +97,15 @@ void BandwidthEstimationHandler::process() {
+   }, std::chrono::milliseconds(rbe_->TimeUntilNextProcess()));
+ }
+ 
+-void BandwidthEstimationHandler::updateExtensionMaps(std::array<RTPExtensions, 10> video_map,
+-                                                     std::array<RTPExtensions, 10> audio_map) {
++void BandwidthEstimationHandler::updateExtensionMaps(std::array<RTPExtensions, 20> video_map,
++                                                     std::array<RTPExtensions, 20> audio_map) {
+   updateExtensionMap(true, video_map);
+   updateExtensionMap(false, audio_map);
+ }
+ 
+-void BandwidthEstimationHandler::updateExtensionMap(bool is_video, std::array<RTPExtensions, 10> map) {
++void BandwidthEstimationHandler::updateExtensionMap(bool is_video, std::array<RTPExtensions, 20> map) {
+   webrtc::RTPExtensionType type = webrtc::kRtpExtensionNone;
+-  for (uint8_t id = 0; id < 10; id++) {
++  for (uint8_t id = 0; id < 20; id++) {
+     RTPExtensions extension = map[id];
+     switch (extension) {
+       case RTP_ID:
+@@ -130,6 +130,9 @@ void BandwidthEstimationHandler::updateExtensionMap(bool is_video, std::array<RT
+       case PLAYBACK_TIME:
+         type = webrtc::kRtpExtensionPlayoutDelay;
+         break;
++      default:
++        continue;
++        break;
+     }
+     if (type == webrtc::kRtpExtensionNone) {
+       continue;
+@@ -219,6 +222,11 @@ void BandwidthEstimationHandler::pickEstimator() {
+ }
+ 
+ void BandwidthEstimationHandler::sendREMBPacket() {
++  uint32_t mul = 1;
++  auto remoteSdp = stream_->getRemoteSdpInfo();
++  if (remoteSdp && !remoteSdp->rids().empty()) {
++    mul = (1 << remoteSdp->rids().size()) - 1;
++  }
+   remb_packet_.setPacketType(RTCP_PS_Feedback_PT);
+   remb_packet_.setBlockCount(RTCP_AFB);
+   memcpy(&remb_packet_.report.rembPacket.uniqueid, "REMB", 4);
+@@ -229,12 +237,12 @@ void BandwidthEstimationHandler::sendREMBPacket() {
+   remb_packet_.setLength(5);
+   uint32_t capped_bitrate = max_video_bw_ > 0 ? std::min(max_video_bw_, bitrate_) : bitrate_;
+   ELOG_DEBUG("Bitrates min(%u,%u) = %u", bitrate_, max_video_bw_, capped_bitrate);
+-  remb_packet_.setREMBBitRate(capped_bitrate);
++  remb_packet_.setREMBBitRate(bitrate_ * mul);
+   remb_packet_.setREMBNumSSRC(1);
+   remb_packet_.setREMBFeedSSRC(0, stream_->getVideoSourceSSRC());
+   int remb_length = (remb_packet_.getLength() + 1) * 4;
+   if (active_) {
+-    ELOG_DEBUG("BWE Estimation is %d", last_send_bitrate_);
++    ELOG_DEBUG("BWE Estimation is %d", bitrate_ * mul);
+     getContext()->fireWrite(std::make_shared<DataPacket>(0,
+       reinterpret_cast<char*>(&remb_packet_), remb_length, OTHER_PACKET));
+   }
+diff --git a/erizo/src/erizo/rtp/BandwidthEstimationHandler.h b/erizo/src/erizo/rtp/BandwidthEstimationHandler.h
+index c851ab1..166d799 100644
+--- a/erizo/src/erizo/rtp/BandwidthEstimationHandler.h
++++ b/erizo/src/erizo/rtp/BandwidthEstimationHandler.h
+@@ -55,7 +55,7 @@ class BandwidthEstimationHandler: public Handler, public RemoteBitrateObserver,
+   void write(Context *ctx, std::shared_ptr<DataPacket> packet) override;
+   void notifyUpdate() override;
+ 
+-  void updateExtensionMaps(std::array<RTPExtensions, 10> video_map, std::array<RTPExtensions, 10> audio_map);
++  void updateExtensionMaps(std::array<RTPExtensions, 20> video_map, std::array<RTPExtensions, 20> audio_map);
+ 
+  private:
+   void process();
+@@ -65,7 +65,7 @@ class BandwidthEstimationHandler: public Handler, public RemoteBitrateObserver,
+   void pickEstimatorFromHeader();
+   void pickEstimator();
+ 
+-  void updateExtensionMap(bool video, std::array<RTPExtensions, 10> map);
++  void updateExtensionMap(bool video, std::array<RTPExtensions, 20> map);
+ 
+   MediaStream *stream_;
+   std::shared_ptr<Worker> worker_;
+diff --git a/erizo/src/erizo/rtp/RtpExtensionProcessor.cpp b/erizo/src/erizo/rtp/RtpExtensionProcessor.cpp
+index 5ee860e..6ea37e8 100644
+--- a/erizo/src/erizo/rtp/RtpExtensionProcessor.cpp
++++ b/erizo/src/erizo/rtp/RtpExtensionProcessor.cpp
+@@ -153,7 +153,7 @@ uint32_t RtpExtensionProcessor::processRtpExtensions(std::shared_ptr<DataPacket>
+         if (extId != 0 && extMap[extId] != 0) {
+           switch (extMap[extId]) {
+             case ABS_SEND_TIME:
+-              processAbsSendTime(extBuffer);
++              // processAbsSendTime(extBuffer);
+               break;
+             case VIDEO_ORIENTATION:
+               processVideoOrientation(extBuffer);
+-- 
+2.7.4
+
