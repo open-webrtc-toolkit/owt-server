@@ -253,6 +253,10 @@ install_webrtc(){
 
   pushd ${ROOT}/third_party/webrtc
   git clone -b 59-server https://github.com/open-webrtc-toolkit/owt-deps-webrtc.git src
+  pushd src
+  local COMMIT="c2aa290cfe4f63d5bfbb6540122a5e6bf2783187"
+  git reset --hard $COMMIT
+  popd
   ./src/tools-woogeen/install.sh
   ./src/tools-woogeen/build.sh
   popd
