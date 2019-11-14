@@ -55,6 +55,7 @@ public:
     //int deliverFeedback(char*, int len);
 
     void onSipFIR();
+    void onSipGNACK(uint32_t ssrcPacket, uint32_t ssrcMedia, uint32_t n, uint32_t* pid_blp);
 
     void onSipAudioData(char* data, int len);
     void onSipVideoData(char* data, int len);

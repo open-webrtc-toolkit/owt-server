@@ -104,6 +104,7 @@ void call_subscribe_audio(struct call *call, void *subscriber);
 void call_subscribe_video(struct call *call, void *subscriber);
 void call_connection_tx_audio(void* call, uint8_t *data, size_t len);
 void call_connection_tx_video(void* call, uint8_t *data, size_t len);
+void call_connection_tx_rtcpfb(void* call, uint8_t *data, size_t len);
 void call_connection_fir(void* call);
 
 /*

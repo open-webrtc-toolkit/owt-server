@@ -272,6 +272,7 @@ static void video_destructor(void *arg)
 }
 
 extern void call_connection_rx_fir(void *owner);
+extern void call_connection_rx_gnack(void* owner, uint32_t ssrcPacket, uint32_t ssrcMedia, uint32_t n, uint32_t* pid_blp);
 extern void ep_update_video_params(void *gateway, const char *peer, const char *cdcname, int bitrate, int packetsize, int fps, const char *fmtp);
 
 static int get_fps(const struct video *v)
@@ -456,6 +457,8 @@ static void stream_recv_handler(const struct rtp_header *hdr,
 static void rtcp_handler(struct rtcp_msg *msg, void *arg)
 {
 	struct video *v = arg;
+  uint32_t fci[32] = {0};
+  size_t i = 0;
 	void *owner = (v->call ? call_get_owner(v->call) : NULL);
 	if (!owner)
 		return;
@@ -465,6 +468,10 @@ static void rtcp_handler(struct rtcp_msg *msg, void *arg)
 	case RTCP_FIR:
 		v->vtx.picup = true;
 		call_connection_rx_fir(owner);
+		break;
+
+	case RTCP_NACK:
+    info("Ignored RTCP NACK, ssrc:%u, fsn:%u, blp:%u", msg->r.nack.ssrc, msg->r.nack.fsn, msg->r.nack.blp);
 		break;
 
 	case RTCP_PSFB:
@@ -477,7 +484,15 @@ static void rtcp_handler(struct rtcp_msg *msg, void *arg)
 	case RTCP_RTPFB:
 		if (msg->hdr.count == RTCP_RTPFB_GNACK) {
 			v->vtx.picup = true;
-			call_connection_rx_fir(owner);
+      if (msg->r.fb.n > 32) {
+        info("Too manay GNACK blocks:%u", msg->r.fb.n);
+        break;
+      }
+      for (i = 0; i < msg->r.fb.n; i++) {
+        fci[i] = msg->r.fb.fci.gnackv[i].pid;
+        fci[i] = (fci[i] << 16) + msg->r.fb.fci.gnackv[i].blp;
+      }
+			call_connection_rx_gnack(owner, msg->r.fb.ssrc_packet, msg->r.fb.ssrc_media, msg->r.fb.n, fci);
 		}
 		break;
 
@@ -525,8 +540,11 @@ int video_alloc(struct video **vp, const struct config *cfg,
 				   "framerate", "%d", v->cfg.fps);
 
 	/* RFC 4585 */
-	/*TODO intel webrtc */
 	err |= sdp_media_set_lattr(stream_sdpmedia(v->strm), true,
+				   "rtcp-fb", "* nack");
+
+	/* RFC 5104 */
+	err |= sdp_media_set_lattr(stream_sdpmedia(v->strm), false,
 				   "rtcp-fb", "* ccm fir");
 
 	/* RFC 4796 */
@@ -857,7 +875,7 @@ void video_send(struct video *v, uint8_t *data, size_t len)
 	}
 
 	if (len < RTP_HEADER_SIZE) {
-		warning("audio_send: len < 12\n");
+		warning("video_send: len < 12\n");
 		goto out;
 	}
 
@@ -890,6 +908,28 @@ void video_send(struct video *v, uint8_t *data, size_t len)
     return;
 }
 
+void video_rtcpfb_send(struct video *v, uint8_t *data, size_t len)
+{
+  int err = 0;
+  struct mbuf *mb = mbuf_alloc(len);
+
+  if (!v) {
+		/*warning("video_rtcpfb_send: v == NULL.\n");*/
+		goto out;
+	}
+
+  err = mbuf_write_mem(mb, data, len);
+  if (err) {
+    warning("video_rtcpfb_send: mbuf_write_mem failed.\n");
+    goto out;
+  }
+
+  stream_send_rtcpfb(v->strm, mb);
+
+ out:
+  mem_deref(mb);
+  return;
+}
 
 void video_fir(struct video *v)
 {
