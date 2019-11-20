@@ -240,6 +240,7 @@ void RawTransport<prot>::listenTo(uint32_t minPort, uint32_t maxPort)
 
             if (ec) {
                 ELOG_WARN("TCP transport listen in port range bind error: %s", ec.message().c_str());
+                m_socket.tcp.acceptor.reset();
                 break;
             }
 
