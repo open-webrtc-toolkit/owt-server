@@ -8,10 +8,10 @@ const Connections = require('./connections');
 const InternalConnectionFactory = require('./InternalConnectionFactory');
 const logger = require('../logger').logger;
 const QuicConnection = require('./quicConnection');
-const log = logger.getLogger('WebrtcQuicNode');
+const log = logger.getLogger('QuicNode');
 const addon = require('../quic/build/Release/webrtc-quic');
 
-log.info('WebRTC QUIC node.')
+log.info('QUIC transport node.')
 
 const threadPool = new addon.ThreadPool(global.config.webrtc.num_workers || 24);
 threadPool.start();

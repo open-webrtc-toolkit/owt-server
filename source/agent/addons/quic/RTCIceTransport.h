@@ -16,7 +16,6 @@
 #include <nan.h>
 
 #include "RTCIceCandidate.h"
-#include "IceConnectionAdapter.h"
 
 enum class RTCIceTransportEventType : int {
     IceCandidate,
@@ -53,7 +52,7 @@ class RTCIceTransport : public erizo::IceConnectionListener,
 
 public:
     static NAN_MODULE_INIT(Init);
-    std::shared_ptr<IceConnectionAdapter> iceConnection();
+    //std::shared_ptr<IceConnectionAdapter> iceConnection();
 
 protected:
     // Defined in erizo::IceConnectionListener.

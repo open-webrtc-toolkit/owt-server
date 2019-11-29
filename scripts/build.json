@@ -110,10 +110,6 @@
         "path" : "source/agent/webrtc/webrtcLib",
         "gyp": "binding.webrtc.gyp"
     },
-    "webrtc-quic" : {
-        "path" : "source/agent/webrtc/quic",
-        "gyp": "binding.quic.gyp"
-    },
     "sip" : {
         "path" : "source/agent/sip/sipIn",
         "gyp" : "binding.sip.gyp"
@@ -133,5 +129,8 @@
     },
     "resource-util" : {
         "path" : "source/agent/addons/resourceUtil"
+    },
+    "quic" : {
+        "path" : "source/agent/addons/quic"
     }
 }

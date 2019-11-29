@@ -65,7 +65,7 @@ NAN_METHOD(RTCIceTransport::newInstance)
     erizo::IceConfig config;
     config.ice_components = 1;
     RTCIceTransport* obj = new RTCIceTransport();
-    obj->m_iceConnection.reset(erizo::LibNiceConnection::create(obj, config));
+    obj->m_iceConnection.reset(erizo::LibNiceConnection::create(config));
     uv_async_init(uv_default_loop(), &obj->m_asyncOnCandidate, &RTCIceTransport::onCandidateCallback);
     obj->Wrap(info.This());
     info.GetReturnValue().Set(info.This());
@@ -233,7 +233,7 @@ void RTCIceTransport::drainPendingRemoteCandidates()
     m_pendingRemoteCandidates.clear();
 }
 
-std::shared_ptr<IceConnectionAdapter> RTCIceTransport::iceConnection()
-{
-    return std::make_shared<IceConnectionAdapter>(m_iceConnection.get());
-}
+// std::shared_ptr<IceConnectionAdapter> RTCIceTransport::iceConnection()
+// {
+//     return std::make_shared<IceConnectionAdapter>(m_iceConnection.get());
+// }
