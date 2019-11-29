@@ -1,0 +1,56 @@
+{
+  "name": "quic-agent",
+  "dest": "quic_agent",
+  "common": {
+      "package": "package.json",
+      "files": [
+          "agent.toml",
+          "log4js_configuration.json",
+          "configLoader.js",
+          "../index.js",
+          "../networkHelper.js",
+          "../nodeManager.js",
+          "../workingNode.js",
+          "log4cxx.properties",
+          "../../common/amqp_client.js",
+          "../../common/cipher.js",
+          "../../common/clusterWorker.js",
+          "../../common/loadCollector.js",
+          "../../common/logger.js",
+          "../../common/makeRPC.js",
+          "../../common/rpcChannel.js",
+          "../../../scripts/release/initcert.js",
+          "../../../scripts/release/initauth.js",
+          "../../../scripts/detectOS.sh"
+      ],
+      "folders": {
+          "webrtc": [
+              "index.js",
+              "quicConnection.js",
+              "../connections.js",
+              "../InternalConnectionFactory.js"
+          ],
+          "cert": [
+              "../../../cert/.owt.keystore"
+          ]
+      }
+  },
+  "natives": {
+      "libdist": "lib",
+      "addons": [
+          {
+              "folder": "../addons/quic",
+              "name": "quic"
+          },
+          {
+              "folder": "../addons/internalIO",
+              "name": "internalIO"
+          },
+          {
+              "folder": "../addons/logger",
+              "name": "logger"
+          }
+      ]
+  },
+  "start": "node . -U quic"
+}

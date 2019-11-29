@@ -4,22 +4,22 @@
 
 'use strict';
 const path = require('path');
-const Connections = require('./connections');
-const InternalConnectionFactory = require('./InternalConnectionFactory');
+//const Connections = require('./connections');
+//const InternalConnectionFactory = require('./InternalConnectionFactory');
 const logger = require('../logger').logger;
 const QuicConnection = require('./quicConnection');
 const log = logger.getLogger('QuicNode');
-const addon = require('../quic/build/Release/webrtc-quic');
+const addon = require('../quic/build/Release/quic');
 
 log.info('QUIC transport node.')
 
-const threadPool = new addon.ThreadPool(global.config.webrtc.num_workers || 24);
+const threadPool = new addon.ThreadPool(global.config.quic.num_workers || 24);
 threadPool.start();
 
 // We don't use Nicer connection now
-const ioThreadPool = new addon.IOThreadPool(global.config.webrtc.io_workers || 1);
+const ioThreadPool = new addon.IOThreadPool(global.config.quic.io_workers || 1);
 
-if (global.config.webrtc.use_nicer) {
+if (global.config.quic.use_nicer) {
   log.info('Starting ioThreadPool');
   ioThreadPool.start();
 }
