@@ -6,7 +6,7 @@
 'use strict';
 const logger = require('../logger').logger;
 const log = logger.getLogger('QuicConnection');
-const addon = require('./build/Release/webrtc-quic');
+const addon = require('./build/Release/quic');
 
 module.exports = class QuicConnection {
   constructor(id, sendCallback) {

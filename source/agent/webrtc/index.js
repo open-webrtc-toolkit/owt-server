@@ -9,14 +9,11 @@ var WrtcConnection = require('./wrtcConnection');
 var Connections = require('./connections');
 var InternalConnectionFactory = require('./InternalConnectionFactory');
 var logger = require('../logger').logger;
-const QuicConnection = require('./quicConnection');
 
 // Logger
 var log = logger.getLogger('WebrtcNode');
 
 var addon = require('../rtcConn/build/Release/rtcConn.node');
-
-log.info('WebRTC node.');
 
 var threadPool = new addon.ThreadPool(global.config.webrtc.num_workers || 24);
 threadPool.start();
@@ -285,18 +282,7 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
                     conn.connect(options);//FIXME: May FAIL here!!!!!
                 break;
             case 'webrtc':
-                if (options.transport && options.transport.protocol === 'quic') {
-                  log.warn(
-                    'QUIC is an experimental feature. It may not work as you expected.'
-                  );
-                  conn = new QuicConnection(connectionId, (data) => {
-                    notifyStatus(options.controller, connectionId, 'out',
-                      data);
-                  });
-                } else {
-                  conn = createWebRTCConnection(connectionId, 'out', options,
-                    callback);
-                }
+                conn = createWebRTCConnection(connectionId, 'out', options, callback);
                 break;
             default:
                 log.error('Connection type invalid:' + connectionType);
@@ -340,7 +326,7 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
         log.debug('onTransportSignaling, connection id:', connectionId, 'msg:', msg);
         var conn = getWebRTCConnection(connectionId);
         if (conn) {
-            if (conn.type === 'webrtc') { //NOTE: Only webrtc connection supports signaling.
+            if (conn.type === 'webrtc') {//NOTE: Only webrtc connection supports signaling.
                 conn.connection.onSignalling(msg);
                 callback('callback', 'ok');
             } else {

@@ -35,12 +35,6 @@
                 "../connections.js",
                 "../InternalConnectionFactory.js"
             ],
-            "quic": [
-                "quic.js",
-                "quicConnection.js",
-                "../connections.js",
-                "../InternalConnectionFactory.js"
-            ],
             "cert": [
                 "../../../cert/.owt.keystore"
             ]
@@ -58,16 +52,16 @@
                 "name": "rtcFrame"
             },
             {
-                "folder": "quic",
-                "name": "webrtc-quic"
-            },
-            {
                 "folder": "../addons/internalIO",
                 "name": "internalIO"
             },
             {
                 "folder": "../addons/logger",
                 "name": "logger"
+            },
+            {
+                "folder": "../addons/quicIO",
+                "name": "quicIO"
             }
         ]
     },

@@ -169,6 +169,13 @@ case $startStop in
           > "${stdout}" 2>&1 </dev/null &
         echo $! > ${pid}
         ;;
+      quic-agent )
+        cd ${OWT_HOME}/quic_agent
+        export LD_LIBRARY_PATH=./lib:${LD_LIBRARY_PATH}
+        nohup nice -n ${OWT_NICENESS} node . -U quic\
+          > "${stdout}" 2>&1 </dev/null &
+        echo $! > ${pid}
+        ;;
       analytics-agent )
         cd ${OWT_HOME}/analytics_agent
         export LD_LIBRARY_PATH=./lib:${LD_LIBRARY_PATH}

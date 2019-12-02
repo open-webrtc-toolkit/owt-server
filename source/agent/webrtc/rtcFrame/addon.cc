@@ -10,13 +10,6 @@
 #include "ThreadPool.h"
 #include "IOThreadPool.h"
 #include "MediaStream.h"
-#if defined OMS_ENABLE_QUIC
-#include "RTCIceTransport.h"
-#include "RTCIceCandidate.h"
-#include "RTCQuicTransport.h"
-#include "RTCCertificate.h"
-#include "QuicStream.h"
-#endif
 
 #include <node.h>
 

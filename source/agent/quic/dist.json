@@ -11,6 +11,7 @@
           "../networkHelper.js",
           "../nodeManager.js",
           "../workingNode.js",
+          "../InternalConnectionFactory.js",
           "log4cxx.properties",
           "../../common/amqp_client.js",
           "../../common/cipher.js",
@@ -24,7 +25,7 @@
           "../../../scripts/detectOS.sh"
       ],
       "folders": {
-          "webrtc": [
+          "quic": [
               "index.js",
               "quicConnection.js",
               "../connections.js",

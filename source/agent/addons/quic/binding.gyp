@@ -13,6 +13,8 @@
       #'QuicConnectionAdapter.cc',
       #'QuicStream.cc',
       #'../webrtc/webrtcLib/erizo/src/erizo/LibNiceConnection.cpp',
+      '../../webrtc/webrtcLib/ThreadPool.cc',
+      '../../webrtc/webrtcLib/IOThreadPool.cc',
       '../../../../third_party/licode/erizo/src/erizo/LibNiceConnection.cpp',
       '../../../../third_party/licode/erizo/src/erizo/IceConnection.cpp',
       '../../../../third_party/licode/erizo/src/erizo/lib/LibNiceInterfaceImpl.cpp',
