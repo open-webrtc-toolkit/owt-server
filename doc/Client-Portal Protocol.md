@@ -144,11 +144,13 @@ This a format for client reconnects.
         {
          publish: {
              audio: true | false,
-             video: true | false
+             video: true | false,
+             data:  true | false
          },
          subscribe: {
              audio: true | false,
-             video: true | false
+             video: true | false,
+             data:  true | false
          }
         }
 
@@ -164,7 +166,8 @@ This a format for client reconnects.
           {
            id: string(StreamID),
            type: "forward" | "augmented" |"mixed",
-           media: object(MediaInfo),
+           media: object(MediaInfo) | null,
+           data: object(DataInfo) | null,
            info: object(PublicationInfo)/*If type equals "forward"*/
                 | object(AugmentInfo)/*If type equals "augmented"*/
                 | object(ViewInfo)/*If type equals "mixed"*/
@@ -243,7 +246,7 @@ This a format for client reconnects.
           object(PublicationInfo):
             {
              owner: string(ParticipantId),
-             type: "webrtc" | "streaming" | "sip",
+             type: "webrtc" | "streaming" | "sip" | "quic-p2p",
              inViews: [String(ViewLabel)],
              attributes: object(ClientDefinedAttributes)
             }
@@ -350,7 +353,7 @@ This a format for client reconnects.
      message: string(Message)
     }
 
-### 3.3.7 Participant Starts Publishing a WebRTC Stream to Room
+### 3.3.7 Participant Starts Publishing a Stream to Room
 **RequestName**: “publish”<br>
 
 **RequestData**: The PublicationRequest object with following definition:
@@ -358,6 +361,7 @@ This a format for client reconnects.
   object(PublicationRequest)::
     {
      media: object(WebRTCMediaOptions),
+     transport: object(TransportOptions),
      attributes: object(ClientDefinedAttributes)
     }
 
@@ -381,7 +385,8 @@ This a format for client reconnects.
 
   object(PublicationResult)::
     {
-     id: string(SessionId) //will be used as the stream id when it gets ready.
+      transportId: string(transportId),  // Can be reused in the following publication or subscription.
+     publicationId: string(SessionId) //will be used as the stream id when it gets ready.
     }
 ### 3.3.8 Participant Stops Publishing a Stream to Room
 **RequestName**: “unpublish”<br>
@@ -431,7 +436,8 @@ This a format for client reconnects.
 
   object(SubscriptionRequest)::
     {
-     media: object(MediaSubOptions)
+     media: object(MediaSubOptions),
+     transport: object(TransportOptions),
     }
 
     object(MediaSubOptions)::
@@ -464,7 +470,8 @@ This a format for client reconnects.
 
   object(SubscriptionResult)::
     {
-     id: string(SubscriptionId)
+      transportId: string(transportId),  // Can be reused in the following publication or subscription.
+     subscriptionId: string(SubscriptionId)
     }
 ### 3.3.12 Participant Stops a Self-Initiated Subscription
 **RequestName**: “unsubscribe”<br>
@@ -526,7 +533,8 @@ This a format for client reconnects.
     object(OfferAnswer)::
       {
        type: "offer" | "answer",
-       sdp: string(SDP)
+       sdp: string(SDP) | null,  // WebRTC connection
+       clientTransportParameters: object(P2PQuicClientParametersMessage) | null  // QUIC connection
       }
 
     object(CandidateMessage)::
@@ -547,6 +555,30 @@ This a format for client reconnects.
        sdpMLineIndex: number(mLineIndex),   // optional in RemovedCandidatesMessage
        candidate: string(candidateSdp)
       }
+
+    object(TransportOptions)::
+      {
+        type: "webrtc" | "quic-p2p",
+        id: string(transportId) | null,  // null will result to create a new transport channel.
+      }
+
+    object(P2PQuicClientParametersMessage)::
+      {
+        type: "quic-p2p-client-parameters",
+        quicKey: arrayBuffer(Key),
+        iceParameters: object(IceParameters)
+      }
+    object(P2PQuicServerParametersMessage)::
+      {
+        type: "quic-p2p-server-parameters",
+        iceParameters: object(IceParameters)
+      }
+
+    object(IceParameters)::
+      {
+        usernameFragment: string(UsernameFragment),
+        password: string(Password)
+      }
 **ResponseData**: undefined if **ResponseStatus** is “ok”.
 ### 3.3.15 Participant Receives Session Progress
 **NotificationName**: “progress”<br>
@@ -557,7 +589,7 @@ This a format for client reconnects.
     {
      id: string(SessionId), /* StreamId returned in publishing or SubscriptionId returned in subscribing*/
      status: "soac" | "ready" | "error",
-     data: object(OfferAnswer) | object(CandidateMessage)/*If status equals “soac”*/
+     data: object(OfferAnswer) | object(CandidateMessage) | object(P2PQuicServerParametersMessage) /*If status equals “soac”*/
           | (undefined/*If status equals “ready” and session is NOT for recording*/
              | object(RecorderInfo)/*If status equals “ready” and session is for recording*/ )
           | string(Reason)/*If status equals “error”*/
