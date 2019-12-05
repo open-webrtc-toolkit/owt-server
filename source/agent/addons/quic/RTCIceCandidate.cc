@@ -117,7 +117,7 @@ std::string RTCIceCandidate::toString() const
         hostType = "host";
         break;
     }
-    sdp << "candidate:"<< m_candidate->foundation << " " << m_candidate->componentId
+    sdp << m_candidate->foundation << " " << m_candidate->componentId
         << " " << m_candidate->netProtocol << " " << m_candidate->priority << " "
         << m_candidate->hostAddress << " " << m_candidate->hostPort << " typ "
         << hostType;

@@ -7,7 +7,7 @@
 'use strict';
 
 const expect = require('chai').use(require('chai-as-promised')).expect;
-const addon = require('../build/Debug/webrtc-quic');
+const addon = require('../build/Debug/quic');
 const http = require('http');
 const util=require('util');
 
@@ -24,7 +24,7 @@ describe('Test RTCQuicTransport.', () => {
     iceTransport.stop();
   });
 
-  xit('Create an RTCQuicTransports.', (done) => {
+  xit('Create an RTCQuicTransport.', (done) => {
     expect(quicTransport).to.be.an.instanceof(addon.RTCQuicTransport);
     done();
   });
@@ -32,7 +32,7 @@ describe('Test RTCQuicTransport.', () => {
   xit(
     'Create an RTCQuicTransport without RTCIceTransport should throw error.',
     (done) => {
-      expect(new addon.RTCQuicTransport()).to.throw(TypeError);
+      expect(function () { new addon.RTCQuicTransport() }).to.throw(TypeError);
       done();
     });
 
@@ -53,7 +53,7 @@ describe('Test RTCQuicTransport.', () => {
         0, 1));
     });
 
-  xit('getLocalParameters returns local parameters.', () => {
+  it('getLocalParameters returns local parameters.', () => {
     const localParameters = quicTransport.getLocalParameters();
     expect(localParameters).to.have.property('role');
     expect(localParameters).to.have.property('fingerprints');
@@ -70,7 +70,7 @@ describe('Test RTCQuicTransport.', () => {
   });
 
   // This case is intended to be tested with https://github.com/jianjunz/owt-client-javascript/blob/quicsample/src/samples/conference/public/quic.html.
-  it('Create an RTCQuicTransport and listen.', (done)=>{
+  xit('Create an RTCQuicTransport and listen.', (done)=>{
     quicTransport.onbidirectionalstream=(stream)=>{
       console.log('onbidirectionalstream '+stream);
       stream.ondata=(data)=>{

@@ -1,0 +1,26 @@
+{
+  "name": "OWT-Server-QUIC-test",
+  "version": "4.3.0",
+  "dependencies": {
+    "log4js": "^1.1.1",
+    "node-getopt": "*"
+  },
+  "devDependencies": {
+    "chai": "^4.2.0",
+    "chai-as-promised": "^7.1.1",
+    "mocha": "^5.2.0",
+    "node-gyp": "*"
+  },
+  "engine": {
+    "node": "8.15.0"
+  },
+  "bin": "index.js",
+  "pkg": {
+    "assets": [
+      "node_modules*"
+    ],
+    "targets": [
+      "node8"
+    ]
+  }
+}

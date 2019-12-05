@@ -1,7 +1,7 @@
 
 #include "RTCIceTransport.h"
 #include "RTCIceCandidate.h"
-//#include "RTCQuicTransport.h"
+#include "RTCQuicTransport.h"
 //#include "RTCCertificate.h"
 //#include "QuicStream.h"
 #include "../../webrtc/webrtcLib/ThreadPool.h"
@@ -13,7 +13,7 @@ using namespace v8;
 void InitAll(Handle<Object> exports) {
   ThreadPool::Init(exports);
   IOThreadPool::Init(exports);
-  //RTCQuicTransport::Init(exports);
+  RTCQuicTransport::Init(exports);
   RTCIceTransport::Init(exports);
   RTCIceCandidate::Init(exports);
   //RTCCertificate::Init(exports);

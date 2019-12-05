@@ -8,7 +8,7 @@
 'use strict';
 
 const expect = require('chai').use(require('chai-as-promised')).expect;
-const addon = require('../build/Debug/webrtc-quic');
+const addon = require('../build/Debug/quic');
 
 describe('Test RTCIceTransport with licode and libnice.', () => {
   let iceTransport;
@@ -24,14 +24,14 @@ describe('Test RTCIceTransport with licode and libnice.', () => {
     iceTransport2.stop();
   });
 
-  xit('Fire statechange and get local candidates on RTCIceTransport', (done) => {
+  it('Fire statechange and get local candidates on RTCIceTransport', (done) => {
     iceTransport.onstatechange = () => {
       done();
     }
     iceTransport.gather();
   });
 
-  it('Fire icecandidate on RTCIceTransport', (done) => {
+  xit('Fire icecandidate on RTCIceTransport', (done) => {
     let calledFirstTime = false;
     iceTransport.onicecandidate = (event) => {
       if (calledFirstTime) {
@@ -42,6 +42,12 @@ describe('Test RTCIceTransport with licode and libnice.', () => {
       }
     }
     iceTransport.gather();
+    iceTransport.start({usernameFragment: 'qlkT', password: '0/MLO8kD6QgBOgQvzX1l8pmO'});
+    const candidate = new addon.RTCIceCandidate({
+      sdpMid: 0,
+      candidate: '4278134664 0 udp 2122063616 192.168.1.8 62630 typ host generation 0 ufrag qlkT network-id 2'
+    });
+    iceTransport.addRemoteCandidate(candidate);
   });
 
   xit('Add remote candidates and start.',(done)=>{

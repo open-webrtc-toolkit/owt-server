@@ -5,7 +5,7 @@
       'addon.cc',
       'RTCIceTransport.cc',
       'RTCIceCandidate.cc',
-      #'RTCQuicTransport.cc',
+      'RTCQuicTransport.cc',
       #'RTCQuicTransportBase.cc',
       #'RTCCertificate.cc',
       #'P2PQuicTransport.cc',
@@ -28,7 +28,6 @@
     ],
     'defines':[
       'OWT_ENABLE_QUIC=1',
-      'GOOGLE_PROTOBUF_NO_RTTI',
     ],
     'cflags_cc': ['-std=c++14', '-fexceptions', '-DWEBRTC_POSIX', '-DWEBRTC_LINUX', '-DLINUX', '-DNOLINUXIF', '-DNO_REG_RPC=1', '-DHAVE_VFPRINTF=1', '-DRETSIGTYPE=void', '-DNEW_STDIO', '-DHAVE_STRDUP=1', '-DHAVE_STRLCPY=1', '-DHAVE_LIBM=1', '-DHAVE_SYS_TIME_H=1', '-DTIME_WITH_SYS_TIME_H=1'],
     'include_dirs': [
@@ -42,13 +41,14 @@
       '../../../core/common',
       '../../../core/owt_base',
       '../../../../build/libdeps/build/include',
+      '/home/jianjunz/code/quic/src/owt/quic_transport/api',
       '<!@(pkg-config glib-2.0 --cflags-only-I | sed s/-I//g)',
     ],
     'ldflags': [
       '-Wl,--no-as-needed',
       '-Wl,-rpath,$(CHROMIUM_HOME)/out/debug',
       '-L$(CORE_HOME)/../../build/libdeps/build/lib',
-      '-L$(CHROMIUM_HOME)/out/gcc',
+      '-L/home/jianjunz/code/quic/src/out/debug',
     ],
     'cflags_cc!': [
       '-std=gnu++0x',
@@ -60,6 +60,7 @@
       '-lboost_thread',
       '-lboost_system',
       '-lnice',
+      '-lowt_quic_transport',
     ],
   }]
 }
