@@ -5,7 +5,10 @@
  */
 
 #include "RTCQuicTransport.h"
+#include "IceConnectionAdapter.h"
+#include "QuicFactory.h"
 #include "owt/quic/quic_definitions.h"
+#include "owt/quic/quic_transport_factory.h"
 
 using v8::Array;
 using v8::Function;
@@ -73,11 +76,16 @@ NAN_METHOD(RTCQuicTransport::newInstance)
     if (!maybeIceTransport.ToLocalChecked()->IsObject()) {
         return Nan::ThrowTypeError("RTCIceTransport is required.");
     }
+    auto rtcIceTransport = Nan::ObjectWrap::Unwrap<RTCIceTransport>(maybeIceTransport.ToLocalChecked()->ToObject());
+    obj->m_iceTransport = rtcIceTransport;
+    erizo::IceConnection* iceConnection = rtcIceTransport->iceConnection();
+    obj->m_packetTransport = std::make_unique<IceConnectionAdapter>(IceConnectionAdapter(iceConnection));
+    obj->m_transport = QuicFactory::getQuicTransportFactory()->CreateP2PServerTransport(obj->m_packetTransport.get());
     // uv_async_init(uv_default_loop(), &obj->m_asyncOnStream, &RTCQuicTransport::onStreamCallback);
     // ELOG_DEBUG("Create P2PQuicTransport.");
-    // auto rtcIceTransport = Nan::ObjectWrap::Unwrap<RTCIceTransport>(maybeIceTransport.ToLocalChecked()->ToObject());
-    // obj->m_iceTransport = rtcIceTransport;
-    //obj->m_transport = obj->createP2PQuicTransport(rtcIceTransport, obj->createServerCryptoConfig());
+    // 
+    // 
+    //
     /*
     ELOG_DEBUG("Checking certs.");
     std::vector<rtc::scoped_refptr<rtc::RTCCertificate>> certificates;
@@ -170,14 +178,14 @@ NAN_METHOD(RTCQuicTransport::getLocalParameters)
 
 NAN_METHOD(RTCQuicTransport::createBidirectionalStream)
 {
-    RTCQuicTransport* obj = Nan::ObjectWrap::Unwrap<RTCQuicTransport>(info.Holder());
+    //RTCQuicTransport* obj = Nan::ObjectWrap::Unwrap<RTCQuicTransport>(info.Holder());
     //quic::QuartcStream* quicStream=obj->m_transport->CreateOutgoingBidirectionalStream();
     //info.GetReturnValue().Set(QuicStream::newInstance(quicStream));
 }
 
 NAN_METHOD(RTCQuicTransport::stop)
 {
-    RTCQuicTransport* obj = Nan::ObjectWrap::Unwrap<RTCQuicTransport>(info.Holder());
+    //RTCQuicTransport* obj = Nan::ObjectWrap::Unwrap<RTCQuicTransport>(info.Holder());
     ELOG_DEBUG("Stop an RTCQuicTransport.");
     // if (!uv_is_closing(reinterpret_cast<uv_handle_t*>(&obj->m_asyncOnStream))) {
     //     uv_close(reinterpret_cast<uv_handle_t*>(&obj->m_asyncOnStream), NULL);

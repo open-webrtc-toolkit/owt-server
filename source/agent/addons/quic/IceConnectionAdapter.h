@@ -7,28 +7,24 @@
 #ifndef WEBRTC_ICECONNECTIONADAPTER_H_
 #define WEBRTC_ICECONNECTIONADAPTER_H_
 
-#include "rtc_base/third_party/sigslot/sigslot.h"
+#include "owt/quic/p2p_quic_packet_transport_interface.h"
 #include <IceConnection.h>
-
-// This interface is not complete.
-class IceConnectionInterface {
-    virtual int sendPacket(const char* data, int length) = 0;
-};
 
 // IceConnectionAdapter could also be a class inherited from IceConnection.
 // However, it will lose licode's benifits for supporting both libnice and
 // nIcer.
 class IceConnectionAdapter : public erizo::IceConnectionListener,
-                             public IceConnectionInterface {
+                             public owt::quic::P2PQuicPacketTransportInterface {
     DECLARE_LOGGER();
 
 public:
     explicit IceConnectionAdapter(erizo::IceConnection* iceConnection);
-    virtual int sendPacket(const char* data, int length) override;
 
-    // Sigslots.
-    sigslot::signal5<IceConnectionAdapter*, const char*, size_t, const int64_t, int> signalReadPacket;
-    sigslot::signal1<IceConnectionAdapter*> signalReadyToSend;
+    // Implements owt::quic::P2PQuicPacketTransportInterface.
+    int WritePacket(const char* data, size_t length) override;
+    void SetReceiveDelegate(ReceiveDelegate* receiveDelegate) override;
+    void SetWriteObserver(WriteObserver* writeObserver) override;
+    bool Writable() override;
 
 protected:
     virtual void onPacketReceived(erizo::packetPtr packet);
@@ -36,8 +32,10 @@ protected:
     virtual void updateIceState(erizo::IceState state, erizo::IceConnection* conn);
 
 private:
+    bool m_writeable;
     erizo::IceConnection* m_iceConnection;
-    erizo::IceConnectionListener* m_originListener;
+    ReceiveDelegate* m_receiveDelegate;
+    WriteObserver* m_writeObserver;
 };
 
 #endif

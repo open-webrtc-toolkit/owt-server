@@ -20,7 +20,6 @@ Nan::Persistent<v8::Function> RTCCertificate::s_constructor;
 
 DEFINE_LOGGER(RTCCertificate, "RTCCertificate");
 
-
 NAN_MODULE_INIT(RTCCertificate::Init)
 {
     Local<FunctionTemplate> tpl = Nan::New<FunctionTemplate>(newInstance);

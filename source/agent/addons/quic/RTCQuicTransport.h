@@ -13,6 +13,7 @@
 #include <nan.h>
 #include "RTCIceTransport.h"
 #include "owt/quic/p2p_quic_transport_interface.h"
+#include "owt/quic/p2p_quic_packet_transport_interface.h"
 
 // Node.js addon of RTCQuicTransport.
 // https://w3c.github.io/webrtc-quic/#dom-rtcquictransport
@@ -42,6 +43,7 @@ private:
     static Nan::Persistent<v8::Function> s_constructor;
 
     RTCIceTransport* m_iceTransport;
+    std::unique_ptr<owt::quic::P2PQuicPacketTransportInterface> m_packetTransport;
     std::unique_ptr<owt::quic::P2PQuicTransportInterface> m_transport;
 };
 

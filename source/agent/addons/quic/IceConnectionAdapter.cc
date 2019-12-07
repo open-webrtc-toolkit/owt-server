@@ -9,41 +9,52 @@
 DEFINE_LOGGER(IceConnectionAdapter, "IceConnectionAdapter");
 
 IceConnectionAdapter::IceConnectionAdapter(erizo::IceConnection* iceConnection)
-    : m_iceConnection(iceConnection)
+    : m_writeable(false)
+    , m_iceConnection(iceConnection)
+    , m_receiveDelegate(nullptr)
+    , m_writeObserver(nullptr)
 {
-    m_originListener = iceConnection->getIceListener();
-    iceConnection->setIceListener(this);
 }
 
 void IceConnectionAdapter::onPacketReceived(erizo::packetPtr packet)
 {
     ELOG_DEBUG("IceConnectionAdapter::onPacketReceived");
-    signalReadPacket(this, packet->data, packet->length, 0/* TODO: use correct time */, 0);
-    if (m_originListener) {
-        m_originListener->onPacketReceived(packet);
+    if (m_receiveDelegate) {
+        m_receiveDelegate->OnPacketDataReceived(packet->data, packet->length);
     }
 }
 
 void IceConnectionAdapter::onCandidate(const erizo::CandidateInfo& candidate, erizo::IceConnection* conn)
 {
     ELOG_DEBUG("IceConnectionAdapter::onCandidate");
-    if (m_originListener) {
-        m_originListener->onCandidate(candidate, conn);
-    }
 }
 void IceConnectionAdapter::updateIceState(erizo::IceState state, erizo::IceConnection* conn)
 {
     ELOG_DEBUG("IceConnectionAdapter::updateIceState %d", state);
     if (state == erizo::IceState::READY) {
-        signalReadyToSend(this);
-    }
-    if (m_originListener) {
-        m_originListener->updateIceState(state, conn);
+        m_writeable = true;
+    } else if (state == erizo::IceState::FAILED) {
+        m_writeable = false;
     }
 }
 
-int IceConnectionAdapter::sendPacket(const char* data, int length)
+int IceConnectionAdapter::WritePacket(const char* data, size_t length)
 {
     ELOG_DEBUG("IceConnectionAdapter::sendPacket length: %d", length);
     return m_iceConnection->sendData(1, data, length);
+}
+
+void IceConnectionAdapter::SetReceiveDelegate(ReceiveDelegate* receiveDelegate)
+{
+    m_receiveDelegate = receiveDelegate;
+}
+
+void IceConnectionAdapter::SetWriteObserver(WriteObserver* writeObserver)
+{
+    m_writeObserver = writeObserver;
+}
+
+bool IceConnectionAdapter::Writable()
+{
+    return m_writeable;
 }

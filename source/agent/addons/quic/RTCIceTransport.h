@@ -52,7 +52,7 @@ class RTCIceTransport : public erizo::IceConnectionListener,
 
 public:
     static NAN_MODULE_INIT(Init);
-    //std::shared_ptr<IceConnectionAdapter> iceConnection();
+    erizo::IceConnection* iceConnection();
 
 protected:
     // Defined in erizo::IceConnectionListener.

@@ -233,7 +233,7 @@ void RTCIceTransport::drainPendingRemoteCandidates()
     m_pendingRemoteCandidates.clear();
 }
 
-// std::shared_ptr<IceConnectionAdapter> RTCIceTransport::iceConnection()
-// {
-//     return std::make_shared<IceConnectionAdapter>(m_iceConnection.get());
-// }
+erizo::IceConnection* RTCIceTransport::iceConnection()
+{
+    return m_iceConnection.get();
+}
