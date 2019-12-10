@@ -41,6 +41,11 @@ var Connection = function(spec, socket, reconnectionKey, portal, dock) {
   var client_id;
   var protocol_version;
   var waiting_for_reconnecting_timer = null;
+  // [{ event, data, seq, time }]
+  // Use queue instead of array if its size is very large
+  var message_seq = 0;
+  var message_buffer = [];
+  var message_keep_time = spec.pingInterval + spec.pingTimeout + 1;
   var pending_messages = [];
 
   let reconnection = {
@@ -225,13 +230,19 @@ var Connection = function(spec, socket, reconnectionKey, portal, dock) {
           client_id = connectionInfo.clientId + '';
           protocol_version = connectionInfo.protocolVersion + '';
           pending_messages = connectionInfo.pendingMessages;
+          message_seq = connectionInfo.messageSeq;
+          message_buffer = connectionInfo.messageBuffer;
           reconnection.enabled = true;
           return client.resetConnection(that);
         }
       }).then(() => {
         let ticket = generateReconnectionTicket();
+        let messages = message_buffer.map(msg => {
+          delete msg.time;
+          return msg;
+        });
         state = 'connected';
-        safeCall(callback, okWord(), ticket);
+        safeCall(callback, okWord(), {ticket, messages});
         drainPendingMessages();
       }).catch((err) => {
         state = 'initialized';
@@ -298,6 +309,8 @@ var Connection = function(spec, socket, reconnectionKey, portal, dock) {
 
     return {
       pendingMessages: pending_messages,
+      messageSeq: message_seq,
+      messageBuffer: message_buffer,
       clientId: client_id,
       protocolVersion: protocol_version,
       reconnection: reconnection
@@ -312,8 +325,16 @@ var Connection = function(spec, socket, reconnectionKey, portal, dock) {
       } catch (e) {
         log.error('socket.emit error:', e.message);
       }
-    } else {
-      pending_messages.push({event: event, data: data});
+    }
+    let currentTime = process.hrtime()[0];
+    message_seq++;
+    message_buffer.push({event, data, seq: message_seq, time: currentTime});
+    while (message_buffer[0]) {
+      if (currentTime - message_buffer[0].time > message_keep_time) {
+        message_buffer.shift();
+      } else {
+        break;
+      }
     }
   };
 
