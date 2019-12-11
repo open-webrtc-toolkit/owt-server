@@ -6,6 +6,7 @@
 |28-06-2017 |Xiande|1.0 reviewed|
 |08-04-2018 |Tianfang|1.0 final|
 |08-09-2019 |ChenLi|1.1 reviewed|
+|03-10-2021 |ChenLi|1.2 reviewed|
 -->
 # 1. Overview
 This documentation covers all signaling messages between Client and MCU component through Socket.io connections.
@@ -90,7 +91,19 @@ This a format for client reconnects.
 
 **RequestName**: "relogin"<br>
 
-**RequestData**: The ReconnectionTicket object defined in 3.3.1 section.<br>
+**RequestData**: The ReconnectionTicket object defined in 3.3.1 section and PendingMessages:
+
+  object(ReloginResponse)::
+    {
+      ticket: string(Base64Encoded(object(ReconnectionTicket)))
+      messages: [
+        {
+          event: string(NotificationName),
+          data: object(NotificationData),
+          seq: number(InternalSeqNo)
+        }
+      ]
+    }
 
 **ResponseData**: A refreshed base64-encoded ReconnectionTicket object if ResponseStatus is "ok".
 ## 3.3 Conferencing
