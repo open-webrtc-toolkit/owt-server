@@ -242,8 +242,12 @@ var Connection = function(spec, socket, reconnectionKey, portal, dock) {
           return msg;
         });
         state = 'connected';
-        safeCall(callback, okWord(), {ticket, messages});
-        drainPendingMessages();
+        if (protocol_version === '1.2') {
+          safeCall(callback, okWord(), {ticket, messages});
+        } else {
+          safeCall(callback, okWord(), ticket);
+          drainPendingMessages();
+        }
       }).catch((err) => {
         state = 'initialized';
         const err_message = getErrorMessage(err);
@@ -325,6 +329,8 @@ var Connection = function(spec, socket, reconnectionKey, portal, dock) {
       } catch (e) {
         log.error('socket.emit error:', e.message);
       }
+    } else {
+      pending_messages.push({event: event, data: data});
     }
     let currentTime = process.hrtime()[0];
     message_seq++;
