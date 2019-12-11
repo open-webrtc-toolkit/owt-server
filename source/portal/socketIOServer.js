@@ -149,13 +149,13 @@ var Connection = function(spec, socket, reconnectionKey, portal, dock) {
       if (login_info.protocol === undefined) {
         protocol_version = 'legacy';
         client = new LegacyClient(client_id, that, portal);
-      } else if (login_info.protocol === '1.0') {
+      } else if (login_info.protocol === '1.0' || login_info.protocol === '1.0.1') {
         //FIXME: Reject connection from 3.5 client
         if (login_info.userAgent && login_info.userAgent.sdk && login_info.userAgent.sdk.version === '3.5') {
           safeCall(callback, 'error', 'Deprecated client version');
           return socket.disconnect();
         }
-        protocol_version = '1.0';
+        protocol_version = login_info.protocol;
         client = new V10Client(client_id, that, portal);
       } else {
         safeCall(callback, 'error', 'Unknown client protocol');
@@ -238,8 +238,12 @@ var Connection = function(spec, socket, reconnectionKey, portal, dock) {
           return msg;
         });
         state = 'connected';
-        safeCall(callback, okWord(), {ticket, messages});
-        drainPendingMessages();
+        if (protocol_version === '1.0.1') {
+          safeCall(callback, okWord(), {ticket, messages});
+        } else {
+          safeCall(callback, okWord(), ticket);
+          drainPendingMessages();
+        }
       }).catch((err) => {
         state = 'initialized';
         const err_message = getErrorMessage(err);
@@ -320,6 +324,8 @@ var Connection = function(spec, socket, reconnectionKey, portal, dock) {
       } catch (e) {
         log.error('socket.emit error:', e.message);
       }
+    } else {
+      pending_messages.push({event: event, data: data});
     }
     let currentTime = process.hrtime()[0];
     message_seq++;
