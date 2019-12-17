@@ -7,10 +7,14 @@ cmake_minimum_required (VERSION 2.8)
 set(TARGET_NAME "IntelPipeline")
 
 set (SAMPLEPIPELINE_SRC mypipeline.cc)
-include_directories ("/usr/include/gstreamer-1.0")
-include_directories ("/usr/include/glib-2.0")
-include_directories ("/usr/lib/x86_64-linux-gnu/glib-2.0/include")
-include_directories ("/home/owt-server/dist/analytics_agent/plugins/include")
+
+find_package(PkgConfig REQUIRED)
+pkg_search_module(GLIB REQUIRED glib-2.0)
+include_directories(${GLIB_INCLUDE_DIRS})
+
+pkg_check_modules(GSTREAMER REQUIRED gstreamer-1.0)
+include_directories(${GSTREAMER_INCLUDE_DIRS})
+
 include_directories ("../../include")
 include_directories ("../toml")
 
