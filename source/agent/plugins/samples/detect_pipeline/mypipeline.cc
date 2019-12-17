@@ -67,7 +67,7 @@ GstElement * MyPipeline::InitializePipeline() {
     videorate = gst_element_factory_make("videorate","rate");
 
     /* Create the empty VideoGstAnalyzer */
-    pipeline = gst_pipeline_new("sample-pipeline");
+    pipeline = gst_pipeline_new("detect-pipeline");
 
 
     if (!detect){

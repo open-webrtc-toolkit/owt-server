@@ -4,7 +4,7 @@
 
 cmake_minimum_required (VERSION 2.8)
 
-set(TARGET_NAME "IntelPipeline")
+set(TARGET_NAME "DetectPipeline")
 
 set (SAMPLEPIPELINE_SRC mypipeline.cc)
 
