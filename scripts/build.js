@@ -28,7 +28,7 @@ const originCwd = cwd();
 
 // Detect OS script
 const osScript = path.join(rootDir, 'scripts/detectOS.sh');
-const osType = execSync(`. ${osScript}`).toString().toLowerCase();
+const osType = execSync(`/bin/bash ${osScript}`).toString().toLowerCase();
 const msdkDir = '/opt/intel/mediasdk';
 
 function getTargets() {

@@ -51,14 +51,6 @@ else ()
 endif()
 
 # use this flag if you need to throw custom message in case if the IE package is not found.
-if (IE_NOT_FOUND_MESSAGE)
-    find_package(InferenceEngine 1.5 QUIET)
-    if (NOT(InferenceEngine_FOUND))
-        message(FATAL_ERROR ${IE_NOT_FOUND_MESSAGE})
-    endif()
-else()
-    find_package(InferenceEngine 1.5 REQUIRED)
-endif()
 
 if (WIN32)
     if (NOT "${CMAKE_SIZEOF_VOID_P}" EQUAL "8")
