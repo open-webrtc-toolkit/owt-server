@@ -27,6 +27,7 @@ void VideoGstAnalyzer::Init(Handle<Object> exports, Handle<Object> module) {
   NODE_SET_PROTOTYPE_METHOD(tpl, "close", close);
   NODE_SET_PROTOTYPE_METHOD(tpl, "getListeningPort", getListeningPort);
   NODE_SET_PROTOTYPE_METHOD(tpl, "createPipeline", createPipeline);
+  NODE_SET_PROTOTYPE_METHOD(tpl, "clearPipeline", clearPipeline);
   NODE_SET_PROTOTYPE_METHOD(tpl, "emitListenTo", emitListenTo);
   NODE_SET_PROTOTYPE_METHOD(tpl, "emitConnectTo", emitConnectTo);
   NODE_SET_PROTOTYPE_METHOD(tpl, "addElementMany", addElementMany);

@@ -62,7 +62,7 @@ createInternalConnection(connectionId, direction, internalOpt) {
   unpublish(connectionId) {
     log.debug('unpublish:', connectionId);
     this.engine.clearPipeline();
-    return Promise.resolve();
+    return Promise.resolve('ok');
   }
 
   // override
@@ -78,8 +78,7 @@ createInternalConnection(connectionId, direction, internalOpt) {
        }
       return Promise.resolve("ok");
     }
-
-      this.engine.createPipeline();
+      
       const videoFormat = options.connection.video.format;
       const videoParameters = options.connection.video.parameters;
       const algo = options.connection.algorithm;
@@ -108,11 +107,15 @@ createInternalConnection(connectionId, direction, internalOpt) {
                keyFrameInterval, 'bitrate:',bitrate);
       
       this.engine.setOutputParam(codec,resolution,framerate,bitrate,keyFrameInterval,algo,pluginName);
+      this.engine.createPipeline();
 
       streamInfo.media.video.bitrate = bitrate;
             this.onStreamGenerated(options.controller, newStreamId, streamInfo);
 
       this.engine.addElementMany();;
+      this.connectionclose = () => {
+          this.onStreamDestroyed(options.controller, newStreamId);
+      }
       return Promise.resolve();
   }
 
@@ -120,6 +123,7 @@ createInternalConnection(connectionId, direction, internalOpt) {
   unsubscribe(connectionId) {
     log.debug('unsubscribe:', connectionId);
     //this.engine.disconnect(this.outputs[connectionId]);
+    this.connectionclose();
     return Promise.resolve();
   }
 

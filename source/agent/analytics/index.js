@@ -115,6 +115,7 @@ module.exports = function (rpcClient, rpcId, agentId, clusterIp) {
         .catch(rpcError(callback));
     },
     unpublish: function (connectionId, callback) {
+      log.debug('unpublish:',connectionId);
       agent.unpublish(connectionId)
         .then(rpcSuccess(callback))
         .catch(rpcError(callback));
@@ -126,18 +127,20 @@ module.exports = function (rpcClient, rpcId, agentId, clusterIp) {
         .catch(rpcError(callback));
     },
     unsubscribe: function (connectionId, callback) {
+      log.debug("unsubscribe",connectionId);
       agent.unsubscribe(connectionId)
         .then(rpcSuccess(callback))
         .catch(rpcError(callback));
     },
     linkup: function (connectionId, audioFrom, videoFrom, callback) {
       //log.info('linkup,','connectionId:',connectionId,'audioFrom:',audiofrom,'videoFrom:',videoFrom,'callback:',callback);
-      log.info('linkup,','connectionId:',connectionId,'videoFrom:',videoFrom,'callback:',callback);
+      log.debug('linkup,','connectionId:',connectionId,'videoFrom:',videoFrom,'callback:',callback);
       agent.linkup(connectionId, audioFrom, videoFrom)
         .then(rpcSuccess(callback))
         .catch(rpcError(callback));
     },
     cutoff: function (connectionId, callback) {
+      log.debug("cutoff",connectionId);
       agent.cutoff(connectionId)
         .then(rpcSuccess(callback))
         .catch(rpcError(callback));
@@ -148,6 +151,7 @@ module.exports = function (rpcClient, rpcId, agentId, clusterIp) {
         .catch(rpcError(callback));
     },*/
     onFaultDetected: function (message) {
+      log.debug("onFaultDetected",message);
       if (message.purpose === 'conference') {
         agent.cleanup();
       }
