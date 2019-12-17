@@ -12,6 +12,7 @@
 #include <boost/thread.hpp>
 #include <logger.h>
 #include "InternalIn.h"
+#include "AnalyticsPipeline.h"
 
 namespace mcu {
 
@@ -50,12 +51,15 @@ protected:
     static GMainLoop *loop;
     static gboolean StreamEventCallBack(GstBus *bus, GstMessage *message, gpointer data);
     void setState();
-    void printFPS();
     boost::scoped_ptr<InternalIn> m_internalin;
     guint sourceid;
 
 private:
-    GstElement *pipeline, *source, *receive,*detect,*decodebin,*postproc,*h264parse,*videosink,*fakesink,*fpssink,*sendsink, *rtsph264, *videorate;
+    GstElement *pipeline, *source;
+    void* pipelineHandle;
+    rvaPipeline* pipeline_;
+    rva_create_t* createPlugin;
+    rva_destroy_t* destroyPlugin;
     
     GstStateChangeReturn ret;
 
@@ -68,7 +72,7 @@ private:
 
     //param
     std::string codec;
-    std::string algo,pluginName;
+    std::string algo,libraryName;
     std::string resolution;
     int width,height;
     int framerate,bitrate;

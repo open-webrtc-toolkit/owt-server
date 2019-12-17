@@ -48,11 +48,14 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({
   extended: true
 }));
+app.disable('x-powered-by');
 
 app.use(function(req, res, next) {
   res.header('Access-Control-Allow-Origin', '*');
   res.header('Access-Control-Allow-Methods', 'POST, GET, PUT, PATCH, OPTIONS, DELETE');
   res.header('Access-Control-Allow-Headers', 'origin, content-type');
+  res.header('Strict-Transport-Security', 'max-age=1024000; includeSubDomain');
+  res.header('X-Content-Type-Options', 'nosniff');
   if (req.method == 'OPTIONS') {
     res.send(200);
   } else {
@@ -60,7 +63,7 @@ app.use(function(req, res, next) {
   }
 });
 
-icsREST.API.init('5d65f59e34f9bd0b8d3f980e', 'a56XPVFYKIkQy/P1HEdwd7aHxH3TVBFKU2DT5mTM18Hrb8zjJSKRRkzIMvlmDTbCLsJJA+kywEftzA1VEJsQmNl05LfAku6HMzPn1UymXQ810q+XTAQs2/BtTX1/geRE3mcwulTqZsjRBOVQYMBOu/1YWErLH0LRQ1NXyjuqx3c=', 'https://localhost:3000/', false);
+icsREST.API.init('5d4d1341b96801588b044ab8', '6SwgZU9oOIMau/ooO293D75Oq3EVe+TOGyRVDeV7GnIHL1qWO9FEn2awvyvN7lnUx+XegirB15eQv5ON2jGyAwHBaXEK3npXDYNBlPHzzYuc2AQn5zEpPGXWyStzjVwPAn7bipJ4PxStctLQ+D7DyakHjbYKTRVyzI4UiKpYgjY=', 'https://localhost:3000/', false);
 
 var sampleRoom;
 var pageOption = { page: 1, per_page: 100 };
@@ -386,10 +389,12 @@ app.get('/rooms/:room/streaming-outs', function(req, res) {
 app.post('/rooms/:room/streaming-outs', function(req, res) {
   'use strict';
   var room = req.params.room,
+    protocol = req.body.protocol,
     url = req.body.url,
+    parameters = req.body.parameters,
     media = req.body.media;
 
-  icsREST.API.startStreamingOut(room, url, media, function(info) {
+  icsREST.API.startStreamingOut(room, protocol, url, parameters, media, function(info) {
     res.send(info);
   }, function(err) {
     res.send(err);
@@ -469,7 +474,7 @@ app.post('/rooms/:room/analytics', function(req, res) {
   var room = req.params.room,
     algorithm = req.body.algorithm,
     media = req.body.media;
-  icsREST.API.startAnalyzing(room, algorithm, media, function(info) {
+  icsREST.API.startAnalytics(room, algorithm, media, function(info) {
     res.send(info);
   }, function(err) {
     res.send(err);
@@ -480,7 +485,7 @@ app.delete('/rooms/:room/analytics/:id', function(req, res) {
   'use strict';
   var room = req.params.room,
     id = req.params.id;
-  icsREST.API.stopAnalyzing(room, id, function(result) {
+  icsREST.API.stopAnalytics(room, id, function(result) {
     res.send(result);
   }, function(err) {
     res.send(err);
@@ -490,7 +495,7 @@ app.delete('/rooms/:room/analytics/:id', function(req, res) {
 app.get('/rooms/:room/analytics', function(req, res) {
   'use strict';
   var room = req.params.room;
-  icsREST.API.getAnalyzing(room, function(analytics) {
+  icsREST.API.getAnalytics(room, function(analytics) {
     res.send(analytics);
   }, function(err) {
     res.send(err);

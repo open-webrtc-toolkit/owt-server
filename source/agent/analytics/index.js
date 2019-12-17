@@ -115,6 +115,7 @@ module.exports = function (rpcClient, rpcId, agentId, clusterIp) {
         .catch(rpcError(callback));
     },
     unpublish: function (connectionId, callback) {
+      log.info("=================unpublish");
       agent.unpublish(connectionId)
         .then(rpcSuccess(callback))
         .catch(rpcError(callback));
@@ -126,6 +127,7 @@ module.exports = function (rpcClient, rpcId, agentId, clusterIp) {
         .catch(rpcError(callback));
     },
     unsubscribe: function (connectionId, callback) {
+      log.info("=================unsubscribe");
       agent.unsubscribe(connectionId)
         .then(rpcSuccess(callback))
         .catch(rpcError(callback));
@@ -138,6 +140,7 @@ module.exports = function (rpcClient, rpcId, agentId, clusterIp) {
         .catch(rpcError(callback));
     },
     cutoff: function (connectionId, callback) {
+      log.info("=================cutoff");
       agent.cutoff(connectionId)
         .then(rpcSuccess(callback))
         .catch(rpcError(callback));
@@ -148,7 +151,9 @@ module.exports = function (rpcClient, rpcId, agentId, clusterIp) {
         .catch(rpcError(callback));
     },*/
     onFaultDetected: function (message) {
+      log.info("=================on fault detected");
       if (message.purpose === 'conference') {
+        log.info("=================cleanup");
         agent.cleanup();
       }
     },

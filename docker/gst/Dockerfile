@@ -388,7 +388,8 @@ ARG NODE_VER=v8.15.0
 ARG NODE_REPO=https://nodejs.org/dist/${NODE_VER}/node-${NODE_VER}-linux-x64.tar.xz
 COPY rabbitmq.config /home/
 COPY 4_3page/index.html /home/owt/extras/basic_example/public/
-COPY 4_3page/script2.js /home/owt/extras/basic_example/public/
+COPY 4_3page/index.js /home/owt/extras/basic_example/public/scripts/
+COPY 4_3page/rest-sample.js /home/owt/extras/basic_example/public/scripts/
 COPY 4_3page/rest.js /home/owt/extras/basic_example/
 COPY 4_3page/samplertcservice.js /home/owt/extras/basic_example/
 COPY start.sh /home/
@@ -470,5 +471,6 @@ RUN wget ${GST_VIDEO_ANALYTICS_REPO} && \
         && make -j $(nproc) \
         && make install \
         && echo "/usr/lib/gst-video-analytics" >> /etc/ld.so.conf.d/opencv-dldt-gst.conf && ldconfig && \
-        rm -rf /home/${GST_VIDEO_ANALYTICS_NAME} && rm /home/v${GST_VIDEO_ANALYTICS_VER}.tar.gz
+        rm -rf /home/${GST_VIDEO_ANALYTICS_NAME} && rm /home/v${GST_VIDEO_ANALYTICS_VER}.tar.gz && \
+        cd /home/analytics_agent/plugins/samples && build_samples.sh && cp build/intel64/Release/lib/libSamplePipeline.so /home/analytics_agent/lib/
 ENV GST_PLUGIN_PATH=/usr/lib/gst-video-analytics/

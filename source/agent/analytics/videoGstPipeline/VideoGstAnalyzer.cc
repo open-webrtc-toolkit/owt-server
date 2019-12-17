@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 #include <zconf.h>
+#include <dlfcn.h>
 #include "VideoGstAnalyzer.h"
 #include <iostream>
 #include <string>
@@ -22,6 +23,10 @@ VideoGstAnalyzer::VideoGstAnalyzer() {
 
 VideoGstAnalyzer::~VideoGstAnalyzer() {
     ELOG_DEBUG("Closed all media in this Analyzer");
+    if (pipeline_ != nullptr && pipelineHandle != nullptr) {
+         destroyPlugin(pipeline_);
+         dlclose(pipelineHandle);
+    }
 }
 
 void VideoGstAnalyzer::print_one_tag (const GstTagList * list, const gchar * tag, gpointer user_data)
@@ -103,9 +108,9 @@ gboolean VideoGstAnalyzer::StreamEventCallBack(GstBus *bus, GstMessage *message,
             GstState old_state, new_state, pending_state;
             gst_message_parse_state_changed(message, &old_state, &new_state, &pending_state);
             ELOG_DEBUG("State change from %d to %d, play:%d \n",old_state, new_state, GST_STATE_PAUSED);
-            if(new_state == GST_STATE_PLAYING) {
+            if(new_state == GST_STATE_PLAYING || new_state == GST_STATE_PAUSED) {
                 ELOG_DEBUG("Create debug dot file\n");
-                //GST_DEBUG_BIN_TO_DOT_FILE_WITH_TS(GST_BIN(pStreamObj->pipeline),GST_DEBUG_GRAPH_SHOW_ALL, "play");
+                GST_DEBUG_BIN_TO_DOT_FILE_WITH_TS(GST_BIN(pStreamObj->pipeline),GST_DEBUG_GRAPH_SHOW_ALL, "play");
             }
             break;
         }
@@ -121,48 +126,56 @@ void VideoGstAnalyzer::clearPipeline()
         if (pipeline != nullptr){
             gst_element_set_state(pipeline, GST_STATE_NULL);
             gst_object_unref(GST_OBJECT(pipeline));
-            gst_object_unref(m_bus);
             g_source_remove(m_bus_watch_id);
             g_main_loop_unref(loop);
+	    printf("Clear pipeline\n");
         }
  
     }
 
 int VideoGstAnalyzer::createPipeline() {
-    /* Initialize GStreamer */
-    gst_init(NULL, NULL);
 
-    /* Create the elements */
-    source = gst_element_factory_make("appsrc", "appsource");
-    h264parse = gst_element_factory_make("h264parse","parse"); 
-    decodebin = gst_element_factory_make("vaapih264dec","decode");
-    postproc = gst_element_factory_make("vaapipostproc","postproc");
-    detect = gst_element_factory_make("gvadetect","detect"); 
-    fpssink = gst_element_factory_make("fakesink","sendsink");
-    fakesink = gst_element_factory_make("fpsdisplaysink","fake");
-    videosink = gst_element_factory_make("fakesink","video");
-    sendsink = gst_element_factory_make("sendsink","send");
-    videorate = gst_element_factory_make("videorate","rate");
-
+    printf("VideoGstAnalyzer create pipeline\n");
     loop = g_main_loop_new(NULL, FALSE);
 
+    pipelineHandle = dlopen(libraryName.c_str(), RTLD_LAZY);
+    if (pipelineHandle == nullptr) {
+        ELOG_ERROR_T("Failed to open the plugin.(%s)", libraryName.c_str());
+        return false;
+    }
+
+    createPlugin = (rva_create_t*)dlsym(pipelineHandle, "CreatePipeline");
+    destroyPlugin = (rva_destroy_t*)dlsym(pipelineHandle, "DestroyPipeline");
+
+    if (createPlugin == nullptr || destroyPlugin == nullptr) {
+        ELOG_ERROR_T("Failed to get plugin interface.");
+        dlclose(pipelineHandle);
+        return false;
+    }
+
+    pipeline_ = createPlugin();
+    if (pipeline_ == nullptr) {
+        ELOG_ERROR_T("Failed to create the plugin.");
+        dlclose(pipelineHandle);
+        return false;
+    }
+
+    std::unordered_map<std::string, std::string> plugin_config_map = {
+        {"inputwidth", std::to_string(width)},
+        {"inputheight", std::to_string(height)},
+        {"inputframerate", std::to_string(framerate)},
+        {"pipelinename", algo} };
+    pipeline_->PipelineInit(plugin_config_map);
+
     /* Create the empty VideoGstAnalyzer */
-    pipeline = gst_pipeline_new("test-pipeline");
+    pipeline = pipeline_->InitializePipeline();
+    printf("Intialize pipeline\n");
 
-    if (!fpssink) {
-        ELOG_ERROR("fpssink element coule not be created\n");
+    if (!pipeline) {
+        ELOG_ERROR("pipeline could not be created\n");
         return -1;
     }
 
-    if (!detect){
-        ELOG_ERROR("detect element coule not be created\n");
-        return -1;
-    }
-
-    if (!pipeline || !source || !decodebin || !h264parse || !postproc || !videorate) {
-        ELOG_ERROR("pipeline or source or decodebin or h264parse or postproc elements could not be created.\n");
-        return -1;
-    }
 
     m_bus = gst_pipeline_get_bus(GST_PIPELINE(pipeline));
     m_bus_watch_id = gst_bus_add_watch(m_bus, StreamEventCallBack, this);
@@ -234,75 +247,18 @@ void VideoGstAnalyzer::stop_feed (GstElement * source, gpointer data)
 }
 
 int VideoGstAnalyzer::addElementMany() {
+    printf("VideoGstAnalyzer add elements\n");
+    if(pipeline_)
+        pipeline_->LinkElements();
 
-    gboolean link_ok;
-    GstCaps *caps, *ratecaps;
-
-    caps = gst_caps_new_simple ("video/x-raw",
-          "format", G_TYPE_STRING, "BGRA",
-          "width", G_TYPE_INT, 672,
-          "height", G_TYPE_INT, 384,
-          NULL);
-
-    ratecaps = gst_caps_new_simple ("video/x-raw",
-          "framerate", GST_TYPE_FRACTION, 5, 1,
-          NULL);
-
-    GstCaps* incaps = gst_caps_new_simple("video/x-h264",
-                "format", G_TYPE_STRING, "avc",
-                "width", G_TYPE_INT, width,
-                "height", G_TYPE_INT, height,
-                "framerate", GST_TYPE_FRACTION, framerate, 1, NULL);
-
-    g_object_set(source, "caps", incaps, NULL);
-    gst_caps_unref (incaps);
-
-    g_object_set(G_OBJECT(detect),"inference-id", "dtc", NULL);
-    g_object_set(G_OBJECT(detect),"device", "HDDL", NULL);
-    g_object_set(G_OBJECT(detect),"model","/mnt/models/pedestrian-detection-adas-0002-fp16.xml", NULL);
-    //g_object_set(G_OBJECT(detect),"every-nth-frame", 5, NULL);
-
-    
-    g_object_set(G_OBJECT(fakesink),"text-overlay", false, NULL);
-    g_object_set(G_OBJECT(fakesink),"signal-fps-measurements", true, NULL);
-    g_object_set(G_OBJECT(fakesink),"sync", false, NULL);
-    g_object_set(G_OBJECT(fakesink),"video-sink", videosink, NULL);
-
-    gst_bin_add_many(GST_BIN (pipeline), source,decodebin,videorate,postproc,h264parse,detect,fakesink, NULL);
-
-    if (gst_element_link_many(source,h264parse,decodebin,videorate,NULL) != TRUE) {
-        ELOG_ERROR("Elements source,decodebin could not be linked.\n");
-        gst_object_unref(pipeline);
+    source = gst_bin_get_by_name (GST_BIN (pipeline), "appsource");
+    if (!source) {
+        ELOG_ERROR("appsrc in pipeline does not be created\n");
         return -1;
     }
 
     g_signal_connect (source, "need-data", G_CALLBACK (start_feed), this);
     g_signal_connect (source, "enough-data", G_CALLBACK (stop_feed), this);
-
-    link_ok = gst_element_link_filtered (videorate, postproc, ratecaps);
-    gst_caps_unref (ratecaps);
-
-      if (!link_ok) {
-        ELOG_ERROR ("Failed to link videorate and postproc!");
-        gst_object_unref(pipeline);
-        return -1;
-      }
-
-   link_ok = gst_element_link_filtered (postproc, detect, caps);
-    gst_caps_unref (caps);
-
-      if (!link_ok) {
-        ELOG_ERROR ("Failed to link postproc and detect!");
-        gst_object_unref(pipeline);
-        return -1;
-      }
-
-    if(gst_element_link(detect,fakesink) !=TRUE){
-        ELOG_ERROR("Elements detect,fakesink could not be linked. \n");
-        gst_object_unref(pipeline);
-        return -1;
-    }
-
 
     return 0;
 }
@@ -334,24 +290,9 @@ void VideoGstAnalyzer::setState() {
 } 
 
 
-void VideoGstAnalyzer::printFPS() {
-    gchar *fps_msg;
-    guint delay_show_FPS = 0;
-    while(1) {
-        g_object_get (G_OBJECT (fakesink), "last-message", &fps_msg, NULL);
-        if (fps_msg != NULL) {
-            ELOG_INFO("Frame info: %s\n", fps_msg);
-        }
-
-        boost::this_thread::sleep( boost::posix_time::milliseconds(200) );
-    }
-} 
-
 int VideoGstAnalyzer::setPlaying() {
 
     m_playthread = boost::thread(boost::bind(&VideoGstAnalyzer::setState, this));
-
-    //boost::thread(boost::bind(&VideoGstAnalyzer::printFPS, this));
 
     m_thread = g_thread_create((GThreadFunc)main_loop_thread,NULL,TRUE,NULL);
 
@@ -377,7 +318,7 @@ int VideoGstAnalyzer::getListeningPort() {
 }
 
 void VideoGstAnalyzer::setOutputParam(std::string codec, int width, int height, 
-    int framerate, int bitrate, int kfi, std::string algo, std::string pluginName){
+    int framerate, int bitrate, int kfi, std::string algo, std::string libraryName){
 
     this->codec = codec;
     this->width = width;
@@ -386,11 +327,11 @@ void VideoGstAnalyzer::setOutputParam(std::string codec, int width, int height,
     this->bitrate = bitrate;
     this->kfi = kfi;
     this->algo = algo;
-    this->pluginName = pluginName;
+    this->libraryName = libraryName;
 
     std::cout<<"setting param,codec="<<this->codec<<",width="<<this->width<<",height="
         <<this->height<<",framerate="<<this->framerate<<",bitrate="<<this->bitrate<<",kfi="
-        <<this->kfi<<",algo="<<this->algo<<",pluginName="<<this->pluginName<<std::endl;
+        <<this->kfi<<",algo="<<this->algo<<",pluginName="<<this->libraryName<<std::endl;
 }
 
 }

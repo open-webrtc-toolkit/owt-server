@@ -1343,33 +1343,6 @@ OWT_REST.API = (function(OWT_REST) {
     }, callbackError);
   };
 
-  var startAnalyzing = function(room, algorithm, media, callback, callbackError) {
-    var options = {
-      algorithm: algorithm,
-      media: media
-    };
-
-    send('POST', 'rooms/' + room + '/analytics/', options, function(analyticsRtn) {
-      var result = JSON.parse(analyticsRtn);
-      callback(result);
-    }, callbackError);
-  };
-
-  var stopAnalyzing = function(room, id, callback, callbackError) {
-    if (typeof id !== 'string' || id.trim().length === 0) {
-      return callbackError('Invalid analytics ID');
-    }
-    send('DELETE', 'rooms/' + room + '/analytics/' + id, undefined, function(result) {
-      callback(result);
-    }, callbackError);
-  };
-
-  var getAnalyzing = function(room, callback, callbackError) {
-    send('GET', 'rooms/' + room + '/analytics/', undefined, function(analyticsList) {
-      var result = JSON.parse(analyticsList);
-      callback(result);
-    }, callbackError);
-  };
 
   /*
      * * @callback onSipCallList
@@ -1702,11 +1675,11 @@ OWT_REST.API = (function(OWT_REST) {
     startRecording: startRecording,
     updateRecording: updateRecording,
     stopRecording: stopRecording,
- 
+
     //Analytics management
-    startAnalyzing: startAnalyzing,
-    stopAnalyzing: stopAnalyzing,
-    getAnalyzing: getAnalyzing,
+    getAnalytics: getAnalytics,
+    startAnalytics: startAnalytics,
+    stopAnalytics: stopAnalytics,
 
     //Sip calls management
     getSipCalls: getSipCalls,
