@@ -30,13 +30,10 @@ public:
 
     virtual rvaStatus LinkElements();
 
-protected:
-    void printFPS();
-
 private:
-    GstElement *pipeline, *source, *receive,*detect,*decodebin,*postproc,*h264parse,*videosink,*fakesink,*sendsink, *rtsph264, *videorate;
+    GstElement *pipeline, *source, *receive,*detect,*decodebin,*postproc,*h264parse,*counter,*fakesink, *videorate;
     int inputwidth, inputheight, inputframerate;
     std::string pipelinename;
 };
 
-#endif  //MYPLUGIN_H
+#endif  //MYPIPELINE_H

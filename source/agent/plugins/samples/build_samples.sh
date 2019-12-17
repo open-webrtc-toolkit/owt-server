@@ -24,6 +24,15 @@ if ! command -v cmake &>/dev/null; then
 fi
 
 build_dir=$PWD/build
+TOML11_PATH=https://github.com/ToruNiina/toml11.git
+
+if [ ! -d toml ]; then
+git clone ${TOML11_PATH}
+mkdir toml
+cp -r toml11/toml toml/
+cp -r toml11/toml.hpp toml/
+rm -rf toml11
+fi
 mkdir -p $build_dir
 cd $build_dir
 cmake -DCMAKE_BUILD_TYPE=Release $SAMPLES_PATH

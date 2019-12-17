@@ -136,26 +136,11 @@ rvaStatus MyPipeline::LinkElements() {
         return RVA_ERR_LINK;
     }
 
-    //boost::thread(boost::bind(&MyPipeline::printFPS, this));
 
     return RVA_ERR_OK;
 } 
 
-/*
-void MyPipeline::printFPS() {
-    gchar *fps_msg;
-    guint delay_show_FPS = 0;
-    while(1) {
-        g_object_get (G_OBJECT (fakesink), "last-message", &fps_msg, NULL);
-        if (fps_msg != NULL) {
-            std::cout << "Frame info: %s" << fps_msg << std::endl;
-        }
 
-        boost::this_thread::sleep( boost::posix_time::milliseconds(200) );
-    }
-} 
-*/
-
-// Declare the plugin 
+// Declare the pipeline 
 DECLARE_PIPELINE(MyPipeline)
 

@@ -12,6 +12,7 @@ include_directories ("/usr/include/glib-2.0")
 include_directories ("/usr/lib/x86_64-linux-gnu/glib-2.0/include")
 include_directories ("/home/owt-server/dist/analytics_agent/plugins/include")
 include_directories ("../../include")
+include_directories ("../toml")
 
 add_library(${TARGET_NAME} SHARED ${SAMPLEPIPELINE_SRC})
 

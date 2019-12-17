@@ -166,6 +166,6 @@ rvaStatus MyPipeline::LinkElements() {
     return RVA_ERR_OK;
 } 
 
-// Declare the plugin 
+// Declare the pipeline 
 DECLARE_PIPELINE(MyPipeline)
 
