@@ -128,14 +128,12 @@ void VideoGstAnalyzer::clearPipeline()
             gst_object_unref(GST_OBJECT(pipeline));
             g_source_remove(m_bus_watch_id);
             g_main_loop_unref(loop);
-	    printf("Clear pipeline\n");
         }
  
     }
 
 int VideoGstAnalyzer::createPipeline() {
 
-    printf("VideoGstAnalyzer create pipeline\n");
     loop = g_main_loop_new(NULL, FALSE);
 
     pipelineHandle = dlopen(libraryName.c_str(), RTLD_LAZY);
@@ -169,7 +167,6 @@ int VideoGstAnalyzer::createPipeline() {
 
     /* Create the empty VideoGstAnalyzer */
     pipeline = pipeline_->InitializePipeline();
-    printf("Intialize pipeline\n");
 
     if (!pipeline) {
         ELOG_ERROR("pipeline could not be created\n");
@@ -247,7 +244,6 @@ void VideoGstAnalyzer::stop_feed (GstElement * source, gpointer data)
 }
 
 int VideoGstAnalyzer::addElementMany() {
-    printf("VideoGstAnalyzer add elements\n");
     if(pipeline_)
         pipeline_->LinkElements();
 
@@ -273,7 +269,7 @@ void VideoGstAnalyzer::stopLoop(){
 }
 
 void VideoGstAnalyzer::disconnect(int connectionID){
-    printf("Disconnect remote connection\n");
+    ELOG_DEBUG("Disconnect remote connection\n");
 }
 
 void VideoGstAnalyzer::main_loop_thread(gpointer data){
@@ -329,9 +325,9 @@ void VideoGstAnalyzer::setOutputParam(std::string codec, int width, int height,
     this->algo = algo;
     this->libraryName = libraryName;
 
-    std::cout<<"setting param,codec="<<this->codec<<",width="<<this->width<<",height="
-        <<this->height<<",framerate="<<this->framerate<<",bitrate="<<this->bitrate<<",kfi="
-        <<this->kfi<<",algo="<<this->algo<<",pluginName="<<this->libraryName<<std::endl;
+    std::cout << "setting param,codec=" << this->codec<<",width=" << this->width << ",height="
+         << this->height << ",framerate=" << this->framerate<<",bitrate=" << this->bitrate << ",kfi="
+         << this->kfi << ",algo=" << this->algo << ",pluginName=" << this->libraryName << std::endl;
 }
 
 }

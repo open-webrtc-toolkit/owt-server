@@ -71,7 +71,7 @@ GstElement * MyPipeline::InitializePipeline() {
 
 
     if (!detect){
-	    std::cout << "detect element coule not be created" << std::endl;
+        std::cout << "detect element coule not be created" << std::endl;
         return NULL;
     }
 
@@ -89,11 +89,11 @@ rvaStatus MyPipeline::LinkElements() {
     const char* path = std::getenv("CONFIGFILE_PATH");
     const auto data = toml::parse(path);
     const auto& pipelineconfig = toml::find(data, pipelinename.c_str());
-    const auto  model  = toml::find<std::string>(pipelineconfig, "modelpath");
-    const auto inferencewidth    = toml::find<std::int64_t    >(pipelineconfig, "inferencewidth");
-    const auto inferenceheight    = toml::find<std::int64_t    >(pipelineconfig, "inferenceheight");
-    const auto inferenceframerate    = toml::find<std::int64_t    >(pipelineconfig, "inferenceframerate");
-    const auto  device  = toml::find<std::string>(pipelineconfig, "device");
+    const auto model = toml::find<std::string>(pipelineconfig, "modelpath");
+    const auto inferencewidth = toml::find<std::int64_t>(pipelineconfig, "inferencewidth");
+    const auto inferenceheight = toml::find<std::int64_t>(pipelineconfig, "inferenceheight");
+    const auto inferenceframerate = toml::find<std::int64_t>(pipelineconfig, "inferenceframerate");
+    const auto device = toml::find<std::string>(pipelineconfig, "device");
 
     std::cout << "inferencewidth is:" << inferencewidth << std::endl;
     std::cout << "inferenceheight is:" << inferenceheight << std::endl;
@@ -142,20 +142,20 @@ rvaStatus MyPipeline::LinkElements() {
     link_ok = gst_element_link_filtered (videorate, postproc, postprocsinkcaps);
     gst_caps_unref (postprocsinkcaps);
 
-      if (!link_ok) {
+    if (!link_ok) {
         std::cout << "Failed to link videorate and postproc!" << std::endl;
         gst_object_unref(pipeline);
         return RVA_ERR_LINK;
-      }
+    }
 
-   link_ok = gst_element_link_filtered (postproc, detect, postprocsrccaps);
+    link_ok = gst_element_link_filtered (postproc, detect, postprocsrccaps);
     gst_caps_unref (postprocsrccaps);
 
-      if (!link_ok) {
+    if (!link_ok) {
         std::cout << "Failed to link postproc and detect!" << std::endl;
         gst_object_unref(pipeline);
         return RVA_ERR_LINK;
-      }
+    }
 
     if(gst_element_link_many(detect,counter,fakesink,NULL) !=TRUE){
         std::cout << "Elements detect,counter,fakesink could not be linked. " << std::endl;
