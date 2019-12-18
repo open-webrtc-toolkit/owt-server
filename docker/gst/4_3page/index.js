@@ -190,7 +190,15 @@ window.onload = function() {
                 // audioConstraintsForMic
                 let audioConstraints = new Owt.Base.AudioTrackConstraints(Owt.Base.AudioSourceInfo.MIC);
                 // videoConstraintsForCamera
-                let videoConstraints = new Owt.Base.VideoTrackConstraints(Owt.Base.VideoSourceInfo.CAMERA);
+                //let videoConstraints = new Owt.Base.VideoTrackConstraints(Owt.Base.VideoSourceInfo.CAMERA);
+                let videoConstraints = {
+                    resolution: {
+        		width: 640,
+        		height: 480
+    		    },
+        	    source:'camera'
+      		};
+
                 if (shareScreen) {
                     // audioConstraintsForScreen
                     audioConstraints = new Owt.Base.AudioTrackConstraints(Owt.Base.AudioSourceInfo.SCREENCAST);
@@ -208,7 +216,13 @@ window.onload = function() {
                             {rid: 'h', active: true/*, scaleResolutionDownBy: 2.0*/},
                             {rid: 'f', active: true}
                         ]};
-                    }
+                    } else {
+			publishOption = {
+			   video: [{
+				   codec: {name:"h264"}
+        		   }]
+			};
+		    }
                     mediaStream = stream;
                     localStream = new Owt.Base.LocalStream(
                         mediaStream, new Owt.Base.StreamSourceInfo(
