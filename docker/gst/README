@@ -17,21 +17,24 @@ Run ./build_docker_image.sh then following 3 docker images for OWT will be gener
  	cd /home/owt
  	./bin/stop-all.sh
 
-b. Analytics agent run
-Copy analytics agent image(gst-analytics:run) and related models to VCAA card and load the image, launch a container with following command:
+b. Start analytics agent container
+	Copy analytics agent image(gst-analytics:run) and related models to VCAA card and load the image, launch a container with following command:
 
- docker run -u root -v ~:/mnt -v /var/tmp:/var/tmp --privileged --net=host $(env | grep -E '_(proxy)=' | sed 's/^/-e /') --entrypoint bash -tid gst-analytics:run
+	 docker run -u root -v ~:/mnt -v /var/tmp:/var/tmp --privileged --net=host $(env | grep -E '_(proxy)=' | sed 's/^/-e /') --entrypoint bash -tid gst-analytics:run
 
-then log into docker container and make sure that models could be found in /mnt/models/ in analytics agent container and modify rabbitmq host configuration in /home/analytics_agent/agent.toml:
+	then log into docker container and make sure that models could be found in /mnt/models/ in analytics agent container and modify rabbitmq host configuration in /home/analytics_agent/agent.toml:
 
-[agent]
-#Max processes that agent can run
-maxProcesses = 50 #default: 13
+	[agent]
+	#Max processes that agent can run
+	maxProcesses = 50 #default: 13
 
-[rabbit]
-host = "172.32.1.254" #default: "localhost"
+	[rabbit]
+	host = "172.32.1.254" #default: "localhost"
+c. Compile pipeline share library
+	Follow README in /home/analytics_agent/plugins on analytics container to compile pipeline share library, you can follow the README to build your own GStreamer pipeline.
 
 Launch hddldaemon before running analytics agent.
+
 
 Then launch analytics agent with following command in /home:
 ./bin/daemon.sh start analytics-agent

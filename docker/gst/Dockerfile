@@ -471,9 +471,9 @@ RUN wget ${GST_VIDEO_ANALYTICS_REPO} && \
         && make -j $(nproc) \
         && make install \
         && echo "/usr/lib/gst-video-analytics" >> /etc/ld.so.conf.d/opencv-dldt-gst.conf && ldconfig && \
-        rm -rf /home/${GST_VIDEO_ANALYTICS_NAME} && rm /home/v${GST_VIDEO_ANALYTICS_VER}.tar.gz && \
-        cd /home/analytics_agent/plugins/samples && build_samples.sh && \ 
-	cp build/intel64/Release/lib/libSamplePipeline.so /home/analytics_agent/lib/ && \
-	cp build/intel64/Release/lib/libDetectPipeline.so /home/analytics_agent/lib/
+        rm -rf /home/${GST_VIDEO_ANALYTICS_NAME} && rm /home/v${GST_VIDEO_ANALYTICS_VER}.tar.gz
+        #cd /home/analytics_agent/plugins/samples && ls && source build_samples.sh && \ 
+	#cp build/intel64/Release/lib/libSamplePipeline.so /home/analytics_agent/lib/ && \
+	#cp build/intel64/Release/lib/libDetectPipeline.so /home/analytics_agent/lib/
 ENV GST_PLUGIN_PATH=/usr/lib/gst-video-analytics/
 
