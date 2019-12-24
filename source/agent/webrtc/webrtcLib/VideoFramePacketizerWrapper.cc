@@ -31,6 +31,7 @@ void VideoFramePacketizer::Init(v8::Local<v8::Object> exports) {
   NODE_SET_PROTOTYPE_METHOD(tpl, "unbindTransport", unbindTransport);
   NODE_SET_PROTOTYPE_METHOD(tpl, "enable", enable);
   NODE_SET_PROTOTYPE_METHOD(tpl, "ssrc", getSsrc);
+  NODE_SET_PROTOTYPE_METHOD(tpl, "setFoV", setFoV);
 
   constructor.Reset(isolate, tpl->GetFunction());
   exports->Set(String::NewFromUtf8(isolate, "VideoFramePacketizer"), tpl->GetFunction());
@@ -109,5 +110,17 @@ void VideoFramePacketizer::getSsrc(const v8::FunctionCallbackInfo<v8::Value>& ar
 
   uint32_t ssrc = me->getSsrc();
   args.GetReturnValue().Set(Number::New(isolate, ssrc));
+}
+
+void VideoFramePacketizer::setFoV(const v8::FunctionCallbackInfo<v8::Value>& args) {
+  Isolate* isolate = Isolate::GetCurrent();
+  HandleScope scope(isolate);
+
+  VideoFramePacketizer* obj = ObjectWrap::Unwrap<VideoFramePacketizer>(args.Holder());
+  owt_base::VideoFramePacketizer* me = obj->me;
+
+  int yaw = args[0]->Int32Value();
+  int pitch = args[1]->Int32Value();
+  me->setFoV(yaw, pitch);
 }
 

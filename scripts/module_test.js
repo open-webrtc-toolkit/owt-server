@@ -11,6 +11,7 @@ if (!process.env.MODULE_TEST) {
   process.env.MODULE_TEST = true;
   process.env.LD_LIBRARY_PATH = [
     path.resolve(__dirname, '../build/libdeps/build/lib'),
+    path.resolve(__dirname, '../build/libdeps/build/lib64'),
     path.resolve(__dirname, '../third_party/openh264'),
     path.resolve(__dirname, '../third_party/quic-lib/dist/lib'),
     path.resolve(__dirname, '/opt/intel/mediasdk/lib64'),

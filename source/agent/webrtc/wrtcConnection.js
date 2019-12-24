@@ -413,6 +413,25 @@ module.exports = function (spec, on_status, on_mediaUpdate) {
     return callOnDefaultStream('onTrackControl', ...args);
   };
 
+  that.onFoVControl = function (fov, on_ok, on_error) {
+      var trackUpdate = false;
+      if (video) {
+          if (videoFramePacketizer) {
+              videoFramePacketizer.setFoV(fov.yaw, fov.pitch);
+          } else {
+              on_error('FoV Ambiguous video direction.');
+              return;
+          }
+          trackUpdate = true;
+      }
+
+      if (trackUpdate) {
+          on_ok();
+      } else {
+          on_error('No FoV found');
+      }
+  };
+
   that.setVideoBitrate = function (...args) {
     return callOnDefaultStream('setVideoBitrate', ...args);
   };

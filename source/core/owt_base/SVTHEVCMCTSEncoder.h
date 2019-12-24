@@ -2,8 +2,8 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-#ifndef SVTHEVCEncoder_h
-#define SVTHEVCEncoder_h
+#ifndef SVTHEVCMCTSEncoder_h
+#define SVTHEVCMCTSEncoder_h
 
 #include <queue>
 
@@ -19,12 +19,12 @@
 
 namespace owt_base {
 
-class SVTHEVCEncoder : public VideoFrameEncoder {
+class SVTHEVCMCTSEncoder : public VideoFrameEncoder, SVTHEVCEncoderdPacketListener {
     DECLARE_LOGGER();
 
 public:
-    SVTHEVCEncoder(FrameFormat format, VideoCodecProfile profile, bool useSimulcast = false);
-    ~SVTHEVCEncoder();
+    SVTHEVCMCTSEncoder(FrameFormat format, VideoCodecProfile profile, bool useSimulcast = false);
+    ~SVTHEVCMCTSEncoder();
 
     FrameFormat getInputFormat() {return FRAME_FORMAT_I420;}
 
@@ -39,8 +39,10 @@ public:
 
     void sendLoop(void);
 
+    void onEncodedPacket(SVTHEVCEncoderBase *encoder, boost::shared_ptr<SVTHEVCEncodedPacket> pkt);
+
 protected:
-    static void InitEncoder(SVTHEVCEncoder*This, uint32_t width, uint32_t height, uint32_t frameRate, uint32_t bitrateKbps, uint32_t keyFrameIntervalSeconds)
+    static void InitEncoder(SVTHEVCMCTSEncoder*This, uint32_t width, uint32_t height, uint32_t frameRate, uint32_t bitrateKbps, uint32_t keyFrameIntervalSeconds)
     {
         This->initEncoder(width, height, frameRate, bitrateKbps, keyFrameIntervalSeconds);
     }
@@ -48,34 +50,45 @@ protected:
     bool initEncoder(uint32_t width, uint32_t height, uint32_t frameRate, uint32_t bitrateKbps, uint32_t keyFrameIntervalSeconds);
     bool initEncoderAsync(uint32_t width, uint32_t height, uint32_t frameRate, uint32_t bitrateKbps, uint32_t keyFrameIntervalSeconds);
 
-    void fillPacketDone(boost::shared_ptr<SVTHEVCEncodedPacket> encoded_pkt);
+    void fillPacketsDone(boost::shared_ptr<SVTHEVCEncodedPacket> hi_res_pkt, boost::shared_ptr<SVTHEVCEncodedPacket> low_res_pkt);
 
 private:
     bool                        m_encoderReady;
     FrameDestination            *m_dest;
 
-    uint32_t m_width;
-    uint32_t m_height;
+    uint32_t m_width_hi;
+    uint32_t m_height_hi;
+    uint32_t m_width_low;
+    uint32_t m_height_low;
     uint32_t m_frameRate;
     uint32_t m_bitrateKbps;
     uint32_t m_keyFrameIntervalSeconds;
 
-    boost::shared_ptr<SVTHEVCEncoderBase> m_hevc_encoder;
-    uint32_t m_encoded_frame_count;
+    uint32_t m_encodedFrameCount;
+
+    boost::shared_ptr<SVTHEVCEncoderBase> m_hi_res_encoder;
+    boost::shared_ptr<SVTHEVCEncoderBase> m_low_res_encoder;
+
+    uint32_t m_hi_res_pending_call;
+    uint32_t m_low_res_pending_call;
 
     boost::shared_mutex m_mutex;
+
+    std::queue<boost::shared_ptr<SVTHEVCEncodedPacket>> m_hi_res_packet_queue;
+    std::queue<boost::shared_ptr<SVTHEVCEncodedPacket>> m_low_res_packet_queue;
+    boost::mutex m_queueMutex;
+    boost::condition_variable m_queueCond;
+
+    uint8_t *m_payload_buffer;
+    uint32_t m_payload_buffer_length;
 
     boost::shared_ptr<boost::asio::io_service> m_srv;
     boost::shared_ptr<boost::asio::io_service::work> m_srvWork;
     boost::shared_ptr<boost::thread> m_thread;
-
-    std::queue<boost::shared_ptr<SVTHEVCEncodedPacket>> m_packet_queue;
-    boost::mutex m_queueMutex;
-    boost::condition_variable m_queueCond;
 
     boost::thread m_sendThread;
     bool m_sendThreadExited;
 };
 
 } /* namespace owt_base */
-#endif /* SVTHEVCEncoder_h */
+#endif /* SVTHEVCMCTSEncoder_h */

@@ -260,6 +260,28 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
         }
     };
 
+    that.updateFoV = function (connectionId, fov, callback) {
+        log.debug('updateFoV, connection id:', connectionId, 'fov:', fov);
+        var conn = connections.getConnection(connectionId);
+        if (conn) {
+            if (conn.type === 'webrtc') {//NOTE: Only webrtc connection supports
+                conn.connection.onFoVControl(fov,
+                                                function () {
+                                                    callback('callback', 'ok');
+                                                }, function (error_reason) {
+                                                    log.info('trac control failed:', error_reason);
+                                                    callback('callback', 'error', error_reason);
+                                                });
+            } else {
+                log.info('updateFoV on non-webrtc connection');
+                callback('callback', 'error', 'updateFoV  on non-webrtc connection');
+            }
+        } else {
+          log.info('Connection does NOT exist:' + connectionId);
+          callback('callback', 'error', 'Connection does NOT exist:' + connectionId);
+        }
+    };
+
     that.setVideoBitrate = function (connectionId, bitrate, callback) {
         log.debug('setVideoBitrate, connection id:', connectionId, 'bitrate:', bitrate);
         var conn = connections.getConnection(connectionId);

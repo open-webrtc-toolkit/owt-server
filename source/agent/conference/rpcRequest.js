@@ -58,6 +58,10 @@ var RpcRequest = function(rpcChannel) {
     return rpcChannel.makeRPC(accessNode, 'mediaOnOff', [sessionId, track, direction, onOff]);
   };
 
+  that.updateFoV = function(accessNode, sessionId, fov) {
+    return rpcChannel.makeRPC(accessNode, 'updateFoV', [sessionId, fov]);
+  };
+
   that.sendMsg = function(portal, participantId, event, data) {
     return rpcChannel.makeRPC(portal, 'notify', [participantId, event, data]);
   };

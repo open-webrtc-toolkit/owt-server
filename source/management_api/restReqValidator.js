@@ -385,6 +385,14 @@ const SubscriptionControlInfo = {
     {
       properties: {
         'op': { 'const': 'replace' },
+        'path': { enum: ['/media/video/fov'] },
+        'value': { type: 'number' }
+      },
+      additionalProperties: false
+    },
+    {
+      properties: {
+        'op': { 'const': 'replace' },
         'path': { 'const': '/media/video/parameters/resolution' },
         'value': { $ref: '/Resolution' }
       },
