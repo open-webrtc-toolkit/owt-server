@@ -414,7 +414,8 @@ function isLibAllowed(libSrc) {
     'libopenh264',
     'libre',
     'sipLib',
-    'librawquic'
+    'librawquic',
+    'lib360SCVP'
   ];
   if (!options['archive'] || options['with-ffmpeg']) {
     whiteList.push('libav');

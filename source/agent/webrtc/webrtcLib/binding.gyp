@@ -47,9 +47,10 @@
       '../../../core/owt_base/VideoFramePacketizer.cpp',
       '../../../core/owt_base/SsrcGenerator.cc',
       '../../../core/rtc_adapter/VieReceiver.cc',
-      '../../../core/rtc_adapter/VieRemb.cc' #20150508
+      '../../../core/rtc_adapter/VieRemb.cc', #20150508
+      '../../../core/owt_base/HEVCTilesMerger.cpp',
     ],
-    'cflags_cc': ['-DWEBRTC_POSIX', '-DWEBRTC_LINUX', '-DLINUX', '-DNOLINUXIF', '-DNO_REG_RPC=1', '-DHAVE_VFPRINTF=1', '-DRETSIGTYPE=void', '-DNEW_STDIO', '-DHAVE_STRDUP=1', '-DHAVE_STRLCPY=1', '-DHAVE_LIBM=1', '-DHAVE_SYS_TIME_H=1', '-DTIME_WITH_SYS_TIME_H=1'],
+    'cflags_cc': ['-DWEBRTC_POSIX', '-DWEBRTC_LINUX', '-DLINUX', '-DNOLINUXIF', '-DNO_REG_RPC=1', '-DHAVE_VFPRINTF=1', '-DRETSIGTYPE=void', '-DNEW_STDIO', '-DHAVE_STRDUP=1', '-DHAVE_STRLCPY=1', '-DHAVE_LIBM=1', '-DHAVE_SYS_TIME_H=1', '-DTIME_WITH_SYS_TIME_H=1', '-D_ENABLE_HEVC_TILES_MERGER_'],
     'include_dirs': [
       "<!(node -e \"require('nan')\")",
       'conn_handler',
@@ -77,6 +78,7 @@
       '-lboost_thread',
       '-lboost_system',
       '-lnice',
+      '-l360SCVP',
       '-L$(CORE_HOME)/../../third_party/webrtc', '-lwebrtc',
     ],
     'conditions': [
