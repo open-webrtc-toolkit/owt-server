@@ -14,6 +14,7 @@
       '../../../../core/owt_base/FrameProcesser.cpp',
       '../../../../core/owt_base/FFmpegDrawText.cpp',
       '../../../../core/owt_base/SVTHEVCEncoder.cpp',
+      '../../../../core/owt_base/SVTHEVCEncoderBase.cpp',
       '../../../../core/common/JobTimer.cpp',
     ],
     'cflags_cc': [
@@ -33,6 +34,7 @@
                       '$(CORE_HOME)/../../third_party/webrtc/src',
                       '$(CORE_HOME)/../../third_party/webrtc/src/third_party/libyuv/include',
                       '$(CORE_HOME)/../../build/libdeps/build/include',
+                      '$(CORE_HOME)/../../build/libdeps/build/include/svt-hevc',
     ],
     'libraries': [
       '-lboost_thread',
@@ -43,7 +45,7 @@
       '<!@(pkg-config --libs libavcodec)',
       '<!@(pkg-config --libs libavformat)',
       '<!@(pkg-config --libs libavfilter)',
-      '-L$(CORE_HOME)/../../build/libdeps/build/lib', '-lSvtHevcEnc',
+      '-L$(CORE_HOME)/../../build/libdeps/build/lib64', '-lSvtHevcEnc',
     ],
   }]
 }

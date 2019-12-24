@@ -1597,6 +1597,10 @@ var Conference = function (rpcClient, selfRpcId) {
       });
   };
 
+  const updateFoV = (subscriptionId, fov) => {
+      return accessController.updateFoV(subscriptionId, fov);
+  };
+
   that.subscriptionControl = (participantId, subscriptionId, command, callback) => {
     log.debug('subscriptionControl, participantId:', participantId, 'subscriptionId:', subscriptionId, 'command:', JSON.stringify(command));
 
@@ -2226,6 +2230,7 @@ var Conference = function (rpcClient, selfRpcId) {
 
   var doControlSubscription = function(subId, commands) {
     var subUpdate;
+    var fovUpdate;
     var muteReqs = [];
     return Promise.all(
       commands.map((cmd) => {
@@ -2251,6 +2256,11 @@ var Conference = function (rpcClient, selfRpcId) {
               subUpdate = (subUpdate || {});
               subUpdate.video = (subUpdate.video || {});
               subUpdate.video.from = cmd.value;
+              exe = Promise.resolve('ok');
+            } else if ((cmd.path === '/media/video/fov')) {
+              fovUpdate = (fovUpdate || {});
+              fovUpdate.yaw = Number(cmd.value) & 0xffff;
+              fovUpdate.pitch = Number(cmd.value) >> 16;
               exe = Promise.resolve('ok');
             } else if (cmd.path === '/media/video/parameters/resolution') {
               subUpdate = (subUpdate || {});
@@ -2292,6 +2302,12 @@ var Conference = function (rpcClient, selfRpcId) {
     }).then(() => {
       if (subUpdate) {
         return updateSubscription(subId, subUpdate);
+      } else {
+        return 'ok';
+      }
+    }).then(() => {
+      if (fovUpdate) {
+        return updateFoV(subId, fovUpdate);
       } else {
         return 'ok';
       }

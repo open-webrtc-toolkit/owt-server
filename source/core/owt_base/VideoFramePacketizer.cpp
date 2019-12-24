@@ -6,6 +6,7 @@
 #include "MediaUtilities.h"
 #include "TaskRunnerPool.h"
 #include <rtputils.h>
+#include <boost/make_shared.hpp>
 
 namespace owt_base {
 
@@ -264,8 +265,19 @@ static void dump(void* index, FrameFormat format, uint8_t* buf, int len)
     }
 }
 
-void VideoFramePacketizer::onFrame(const Frame& frame)
+void VideoFramePacketizer::onFrame(const Frame& inFrame)
 {
+    Frame frame = inFrame;
+
+#ifdef _ENABLE_HEVC_TILES_MERGER_
+    if (frame.format == FRAME_FORMAT_HEVC_MCTS) {
+        if (!m_tilesMerger)
+            m_tilesMerger = boost::make_shared<HEVCTilesMerger>();
+
+        m_tilesMerger->onFrame(inFrame, &frame);
+    }
+#endif
+
     ELOG_DEBUG("onFrame, format:%d, length:%d", frame.format, frame.length);
     using namespace webrtc;
     if (!m_enabled) {
@@ -439,6 +451,13 @@ void VideoFramePacketizer::close()
 
 int VideoFramePacketizer::sendPLI() {
     return 0;
+}
+
+void VideoFramePacketizer::setFoV(int32_t yaw, int32_t pitch) {
+#ifdef _ENABLE_HEVC_TILES_MERGER_
+    if (m_tilesMerger)
+        m_tilesMerger->setFoV(yaw, pitch);
+#endif
 }
 
 }

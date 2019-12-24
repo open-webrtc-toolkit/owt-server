@@ -66,6 +66,7 @@ install_ffmpeg(){
   rm -fr ${DIR}
   tar xf ${SRC}
   pushd ${DIR}
+  patch -p1 < $PATHNAME/patches/0001-Add-HEVC-support-in-rtmp-flvdec.patch
   [[ "${DISABLE_NONFREE}" == "true" ]] && \
   PKG_CONFIG_PATH=${PREFIX_DIR}/lib/pkgconfig CFLAGS=-fPIC ./configure --prefix=${PREFIX_DIR} --enable-shared --disable-static --disable-libvpx --disable-vaapi --enable-libfreetype || \
   PKG_CONFIG_PATH=${PREFIX_DIR}/lib/pkgconfig CFLAGS=-fPIC ./configure --prefix=${PREFIX_DIR} --enable-shared --disable-static --disable-libvpx --disable-vaapi --enable-libfreetype --enable-libfdk-aac --enable-nonfree && \
@@ -470,7 +471,7 @@ install_svt_hevc(){
     git clone https://github.com/intel/SVT-HEVC.git
 
     pushd SVT-HEVC >/dev/null
-    git checkout v1.3.0
+    git checkout v1.4.3
 
     mkdir build
     pushd build >/dev/null

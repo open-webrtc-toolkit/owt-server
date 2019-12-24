@@ -25,6 +25,10 @@
 #include <webrtc/base/timeutils.h>
 #include <webrtc/base/rate_limiter.h>
 
+#ifdef _ENABLE_HEVC_TILES_MERGER_
+#include "HEVCTilesMerger.h"
+#endif
+
 namespace owt_base {
 /**
  * This is the class to accept the encoded frame with the given format,
@@ -51,6 +55,8 @@ public:
     void unbindTransport();
     void enable(bool enabled);
     uint32_t getSsrc() { return m_ssrc; }
+
+    void setFoV(int32_t yaw, int32_t pitch);
 
     // Implements FrameDestination.
     void onFrame(const Frame&);
@@ -109,6 +115,10 @@ private:
     ///// NEW INTERFACE ///////////
     int deliverFeedback_(std::shared_ptr<erizo::DataPacket> data_packet);
     int sendPLI();
+
+#ifdef _ENABLE_HEVC_TILES_MERGER_
+    boost::shared_ptr<HEVCTilesMerger> m_tilesMerger;
+#endif
 };
 
 }

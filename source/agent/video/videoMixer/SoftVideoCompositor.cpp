@@ -209,6 +209,18 @@ void SoftInput::pushInput(webrtc::VideoFrame *videoFrame)
             return;
     }
 
+    if (isHEVCMCTSVideoResolution(videoFrame->width(), videoFrame->height())) {
+        rtc::scoped_refptr<webrtc::VideoFrameBuffer> srcI420Buffer = videoFrame->video_frame_buffer();
+        {
+            boost::unique_lock<boost::shared_mutex> lock(m_mutex);
+            if (m_active) {
+                m_busyFrame.reset(new webrtc::VideoFrame(srcI420Buffer, webrtc::kVideoRotation_0, videoFrame->timestamp_us()));
+            }
+        }
+
+        return;
+    }
+
     rtc::scoped_refptr<webrtc::I420Buffer> dstBuffer = m_bufferManager->getFreeBuffer(videoFrame->width(), videoFrame->height());
     if (!dstBuffer) {
         ELOG_ERROR("No free buffer");
@@ -281,7 +293,7 @@ SoftFrameGenerator::SoftFrameGenerator(
 
     m_outputs.resize(m_maxSupportedFps / m_minSupportedFps);
 
-    m_bufferManager.reset(new I420BufferManager(1));
+    m_bufferManager.reset(new I420BufferManager(30));
 
     // parallet composition
     uint32_t nThreads = boost::thread::hardware_concurrency();
@@ -527,6 +539,15 @@ rtc::scoped_refptr<webrtc::VideoFrameBuffer> SoftFrameGenerator::layout()
     if (!compositeBuffer) {
         ELOG_ERROR("No valid composite buffer");
         return NULL;
+    }
+
+    if (isHEVCMCTSVideoResolution(m_size.width, m_size.height)) {
+        if (m_layout.size() == 1) {
+            boost::shared_ptr<webrtc::VideoFrame> inputFrame = m_owner->getInputFrame(m_layout.front().input);
+            if (inputFrame && inputFrame->width() == (int32_t)m_size.width && inputFrame->height() == (int32_t)m_size.height) {
+                return inputFrame->video_frame_buffer();
+            }
+        }
     }
 
     // Set the background color

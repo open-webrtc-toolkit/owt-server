@@ -41,6 +41,7 @@ private:
     AVPacket m_packet;
 
     boost::scoped_ptr<owt_base::I420BufferManager> m_bufferManager;
+    bool m_needKeyFrame;
 
     char m_errbuff[500];
     char *ff_err2str(int errRet);

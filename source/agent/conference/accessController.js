@@ -334,6 +334,20 @@ module.exports.create = function(spec, rpcReq, onSessionEstablished, onSessionAb
       });
   };
 
+  that.updateFoV = function(sessionId, fov) {
+    if (!sessions[sessionId]) {
+      return Promise.reject('Session does NOT exist');
+    }
+
+    var session = sessions[sessionId];
+
+    if (session.options.type !== 'webrtc') {
+      return Promise.reject('Session does NOT support muting');
+    }
+
+    return rpcReq.updateFoV(session.locality.node, sessionId, fov);
+  };
+
   that.onFaultDetected = function (faultType, faultId) {
     for (var session_id in sessions) {
       var locality = sessions[session_id].locality;
