@@ -15,6 +15,7 @@
       '../../../../core/owt_base/FFmpegDrawText.cpp',
       '../../../../core/owt_base/SVTHEVCEncoder.cpp',
       '../../../../core/owt_base/SVTHEVCEncoderBase.cpp',
+      '../../../../core/owt_base/SVTHEVCMCTSEncoder.cpp',
     ],
     'cflags_cc': [
         '-Wall',

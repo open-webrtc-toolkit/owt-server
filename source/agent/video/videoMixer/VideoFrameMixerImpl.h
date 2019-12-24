@@ -27,6 +27,7 @@
 
 #ifdef ENABLE_SVT_HEVC_ENCODER
 #include <SVTHEVCEncoder.h>
+#include <SVTHEVCMCTSEncoder.h>
 #endif
 
 namespace mcu {
@@ -100,10 +101,12 @@ private:
     boost::shared_mutex m_outputMutex;
 
     bool m_useSimulcast;
+    owt_base::VideoSize m_rootSize;
 };
 
 VideoFrameMixerImpl::VideoFrameMixerImpl(uint32_t maxInput, owt_base::VideoSize rootSize, owt_base::YUVColor bgColor, bool useSimulcast, bool crop)
     : m_useSimulcast(useSimulcast)
+    , m_rootSize(rootSize)
 {
 #ifdef ENABLE_MSDK
     if (!m_compositor)
@@ -153,6 +156,10 @@ inline bool VideoFrameMixerImpl::addInput(int input, owt_base::FrameFormat forma
     if (!decoder && owt_base::MsdkFrameDecoder::supportFormat(format))
         decoder.reset(new owt_base::MsdkFrameDecoder());
 #endif
+
+    if (owt_base::isHEVCMCTSVideoResolution(m_rootSize.width, m_rootSize.height))
+        if (!decoder && (format == owt_base::FRAME_FORMAT_H265 || format == owt_base::FRAME_FORMAT_H264))
+            decoder.reset(new owt_base::FFmpegFrameDecoder());
 
     if (!decoder && owt_base::VCMFrameDecoder::supportFormat(format))
         decoder.reset(new owt_base::VCMFrameDecoder(format));
@@ -257,8 +264,12 @@ inline bool VideoFrameMixerImpl::addOutput(int output,
 #endif
 
 #if ENABLE_SVT_HEVC_ENCODER
-        if (!encoder && format == owt_base::FRAME_FORMAT_H265)
-            encoder.reset(new owt_base::SVTHEVCEncoder(format, profile, m_useSimulcast));
+        if (!encoder && format == owt_base::FRAME_FORMAT_H265) {
+            if (owt_base::isHEVCMCTSVideoResolution(m_rootSize.width, m_rootSize.height))
+                encoder.reset(new owt_base::SVTHEVCMCTSEncoder(format, profile, m_useSimulcast));
+            else
+                encoder.reset(new owt_base::SVTHEVCEncoder(format, profile, m_useSimulcast));
+        }
 #endif
 
         if (!encoder && owt_base::VCMFrameEncoder::supportFormat(format))

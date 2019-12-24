@@ -22,6 +22,7 @@ enum FrameFormat {
     FRAME_FORMAT_VP9,
     FRAME_FORMAT_H264,
     FRAME_FORMAT_H265,
+    FRAME_FORMAT_HEVC_MCTS,
 
     FRAME_FORMAT_MSDK       = 300,
 
@@ -81,6 +82,11 @@ struct Frame {
     MediaSpecInfo   additionalInfo;
 };
 
+inline bool isHEVCMCTSVideoResolution(uint32_t width, uint32_t height) {
+    return (width = 3840 && height == 2048)
+        || (width = 7680 && height == 3840);
+}
+
 inline FrameFormat getFormat(const std::string& codec) {
     if (codec == "vp8") {
         return owt_base::FRAME_FORMAT_VP8;
@@ -138,6 +144,8 @@ inline const char *getFormatStr(const FrameFormat &format) {
             return "H264";
         case FRAME_FORMAT_H265:
             return "H265";
+        case FRAME_FORMAT_HEVC_MCTS:
+            return "HEVC_MCTS";
         case FRAME_FORMAT_PCM_48000_2:
             return "PCM_48000_2";
         case FRAME_FORMAT_PCMU:
@@ -191,7 +199,8 @@ inline bool isVideoFrame(const Frame& frame) {
           || frame.format == FRAME_FORMAT_VP8
           || frame.format == FRAME_FORMAT_VP9
           || frame.format == FRAME_FORMAT_H264
-          || frame.format == FRAME_FORMAT_H265;
+          || frame.format == FRAME_FORMAT_H265
+          || frame.format == FRAME_FORMAT_HEVC_MCTS;
 }
 
 enum FeedbackType {
