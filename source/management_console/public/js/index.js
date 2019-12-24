@@ -109,7 +109,6 @@ function a_click(nowList, dom) {
 }
 
 var login = new Promise((resolve, reject) => {
-  $(".modal-backdrop").css("height", document.body.scrollHeight);
   $(".close").on("click", function() {
     if (serviceId === '' || serviceKey === '') {
       return;
