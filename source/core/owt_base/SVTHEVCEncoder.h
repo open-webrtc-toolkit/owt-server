@@ -15,8 +15,7 @@
 
 #include "logger.h"
 #include "MediaFramePipeline.h"
-
-#include "svt-hevc/EbApi.h"
+#include "SVTHEVCEncoderBase.h"
 
 namespace owt_base {
 
@@ -38,14 +37,9 @@ public:
     void setBitrate(unsigned short kbps, int32_t streamId);
     void requestKeyFrame(int32_t streamId);
 
+    void sendLoop(void);
+
 protected:
-    void initDefaultParameters();
-
-    void updateParameters(uint32_t width, uint32_t height, uint32_t frameRate, uint32_t bitrateKbps, uint32_t keyFrameIntervalSeconds);
-
-    bool allocateBuffers();
-    void deallocateBuffers();
-
     static void InitEncoder(SVTHEVCEncoder*This, uint32_t width, uint32_t height, uint32_t frameRate, uint32_t bitrateKbps, uint32_t keyFrameIntervalSeconds)
     {
         This->initEncoder(width, height, frameRate, bitrateKbps, keyFrameIntervalSeconds);
@@ -54,11 +48,7 @@ protected:
     bool initEncoder(uint32_t width, uint32_t height, uint32_t frameRate, uint32_t bitrateKbps, uint32_t keyFrameIntervalSeconds);
     bool initEncoderAsync(uint32_t width, uint32_t height, uint32_t frameRate, uint32_t bitrateKbps, uint32_t keyFrameIntervalSeconds);
 
-    bool convert2BufferHeader(const Frame& frame, EB_BUFFERHEADERTYPE *bufferHeader);
-
-    void fillPacketDone(EB_BUFFERHEADERTYPE* pBufferHeader);
-
-    void dump(uint8_t *buf, int len);
+    void fillPacketDone(boost::shared_ptr<SVTHEVCEncodedPacket> encoded_pkt);
 
 private:
     bool                        m_encoderReady;
@@ -70,16 +60,8 @@ private:
     uint32_t m_bitrateKbps;
     uint32_t m_keyFrameIntervalSeconds;
 
-    EB_COMPONENTTYPE            *m_handle;
-    EB_H265_ENC_CONFIGURATION   m_encParameters;
-
-    std::vector<EB_BUFFERHEADERTYPE> m_inputBufferPool;
-    std::queue<EB_BUFFERHEADERTYPE *> m_freeInputBuffers;
-    std::vector<EB_BUFFERHEADERTYPE> m_streamBufferPool;
-
-    bool m_forceIDR;
-    uint32_t m_frameCount;
-    uint32_t m_frameEncodedCount;
+    boost::shared_ptr<SVTHEVCEncoderBase> m_hevc_encoder;
+    uint32_t m_encoded_frame_count;
 
     boost::shared_mutex m_mutex;
 
@@ -87,8 +69,12 @@ private:
     boost::shared_ptr<boost::asio::io_service::work> m_srvWork;
     boost::shared_ptr<boost::thread> m_thread;
 
-    bool m_enableBsDump;
-    FILE *m_bsDumpfp;
+    std::queue<boost::shared_ptr<SVTHEVCEncodedPacket>> m_packet_queue;
+    boost::mutex m_queueMutex;
+    boost::condition_variable m_queueCond;
+
+    boost::thread m_sendThread;
+    bool m_sendThreadExited;
 };
 
 } /* namespace owt_base */
