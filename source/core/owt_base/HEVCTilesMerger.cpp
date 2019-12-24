@@ -287,7 +287,6 @@ void HEVCTilesMerger::onFrame(const Frame& frame, Frame *pOutFrame)
         m_360scvp_param.outputBitstreamLen = 0;
         m_360scvp_param.outputSEILen = 0;
 
-#if 0
         // change viewport
         if (tilesFrame.isKey) {
             bool needSetFoV = false;
@@ -315,7 +314,6 @@ void HEVCTilesMerger::onFrame(const Frame& frame, Frame *pOutFrame)
                 I360SCVP_setViewPort(m_handle, m_360scvp_param.paramViewPort.viewPortYaw, m_360scvp_param.paramViewPort.viewPortPitch);
             }
         }
-#endif
 
         I360SCVP_process(&m_360scvp_param, m_handle);
         if (m_360scvp_param.outputBitstreamLen > 0) {
