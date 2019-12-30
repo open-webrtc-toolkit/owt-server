@@ -20,8 +20,10 @@ SVTHEVCEncodedPacket::SVTHEVCEncodedPacket(EB_BUFFERHEADERTYPE *pBuffer)
     , isKey(false)
 {
     if (pBuffer && pBuffer->pBuffer && pBuffer->nFilledLen) {
-        data = (uint8_t *)malloc(pBuffer->nFilledLen);
-        memcpy(data, pBuffer->pBuffer, pBuffer->nFilledLen);
+        m_array.reset(new uint8_t[pBuffer->nFilledLen]);
+        memcpy(m_array.get(), pBuffer->pBuffer, pBuffer->nFilledLen);
+
+        data = m_array.get();
         length = pBuffer->nFilledLen;
         isKey = (pBuffer->sliceType == EB_IDR_PICTURE);
         pts = pBuffer->pts;
@@ -30,8 +32,6 @@ SVTHEVCEncodedPacket::SVTHEVCEncodedPacket(EB_BUFFERHEADERTYPE *pBuffer)
 
 SVTHEVCEncodedPacket::~SVTHEVCEncodedPacket()
 {
-    if(data)
-        free(data);
 }
 
 SVTHEVCEncoderBase::SVTHEVCEncoderBase()
@@ -83,7 +83,7 @@ void SVTHEVCEncoderBase::initDefaultParameters()
 
     // GOP Structure
     m_encParameters.intraPeriodLength               = 255;
-    m_encParameters.intraRefreshType                = 1;
+    m_encParameters.intraRefreshType                = 0;
     m_encParameters.hierarchicalLevels              = 0;
 
     m_encParameters.predStructure                   = 0;
@@ -453,6 +453,10 @@ void SVTHEVCEncoderBase::requestKeyFrame()
 
 bool SVTHEVCEncoderBase::allocateBuffers()
 {
+    memset(&m_inputFrameBuffer, 0, sizeof(m_inputFrameBuffer));
+    memset(&m_inputBuffer, 0, sizeof(m_inputBuffer));
+    memset(&m_outputBuffer, 0, sizeof(m_outputBuffer));
+
     // output buffer
     m_inputBuffer.nSize        = sizeof(EB_BUFFERHEADERTYPE);
     m_inputBuffer.nAllocLen    = 0;
