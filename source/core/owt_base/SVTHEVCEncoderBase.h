@@ -10,6 +10,7 @@
 #include <boost/make_shared.hpp>
 #include <boost/scoped_ptr.hpp>
 #include <boost/shared_ptr.hpp>
+#include <boost/shared_array.hpp>
 #include <boost/asio.hpp>
 #include <boost/thread.hpp>
 
@@ -32,6 +33,9 @@ public:
     int32_t length;
     bool isKey;
     int64_t pts;
+
+private:
+    boost::shared_array<uint8_t> m_array;
 };
 
 class SVTHEVCEncoderBase;
