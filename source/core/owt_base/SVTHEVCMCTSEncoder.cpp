@@ -89,25 +89,25 @@ bool SVTHEVCMCTSEncoder::initEncoder(uint32_t width, uint32_t height, uint32_t f
     if (width == 7680 && height == 3840) {
         m_width_hi = 7680;
         m_height_hi = 3840;
-        bitrate_hi = 0.8 * 100000 * 30 / frameRate;
+        bitrate_hi = 100000 * 30 / frameRate;
         tiles_w_hi = 12;
         tiles_h_hi = 6;
 
         m_width_low = 512;
         m_height_low = 1280;
-        bitrate_low = 0.8 * calcBitrate(m_width_low, m_height_low, frameRate);
+        bitrate_low = calcBitrate(m_width_low, m_height_low, frameRate);
         tiles_w_low = 2;
         tiles_h_low = 2;
     } else if (width == 3840 && height == 2048) {
         m_width_hi = 3840;
         m_height_hi = 2048;
-        bitrate_hi = 0.8 * 10000 * 30 / frameRate;
+        bitrate_hi = 25000 * 30 / frameRate;
         tiles_w_hi = 10;
         tiles_h_hi = 8;
 
         m_width_low = 1280;
         m_height_low = 768;
-        bitrate_low = 0.8 * calcBitrate(m_width_low, m_height_low, frameRate);
+        bitrate_low = calcBitrate(m_width_low, m_height_low, frameRate);
         tiles_w_low = 5;
         tiles_h_low = 3;
     } else {
