@@ -5,27 +5,29 @@
 #ifndef VideoFrameConstructor_h
 #define VideoFrameConstructor_h
 
-#include "WebRTCTaskRunner.h"
-#include "WebRTCTransport.h"
 #include "MediaFramePipeline.h"
-#include "VieReceiver.h"
-#include "VieRemb.h"
+#include "WebRTCTransport.h"
 
 #include <boost/scoped_ptr.hpp>
-#include <boost/shared_ptr.hpp>
-#include <logger.h>
 #include <MediaDefinitions.h>
 #include <MediaDefinitionExtra.h>
 
 #include <JobTimer.h>
-#include <webrtc/modules/remote_bitrate_estimator/include/remote_bitrate_estimator.h>
-#include <webrtc/modules/remote_bitrate_estimator/remote_estimator_proxy.h>
-#include <webrtc/modules/rtp_rtcp/include/rtp_rtcp.h>
-#include <webrtc/modules/pacing/packet_router.h>
-#include <webrtc/modules/video_coding/include/video_codec_interface.h>
-#include <webrtc/modules/video_coding/include/video_coding.h>
-#include <webrtc/modules/video_coding/include/video_coding_defines.h>
-#include <webrtc/modules/video_coding/video_coding_impl.h>
+#include <modules/remote_bitrate_estimator/include/remote_bitrate_estimator.h>
+#include <modules/remote_bitrate_estimator/remote_estimator_proxy.h>
+#include <modules/rtp_rtcp/include/rtp_rtcp.h>
+#include <modules/pacing/packet_router.h>
+#include <modules/video_coding/include/video_codec_interface.h>
+#include <modules/video_coding/include/video_coding.h>
+#include <modules/video_coding/include/video_coding_defines.h>
+#include <modules/video_coding/video_coding_impl.h>
+
+#include <rtc_base/task_queue.h>
+#include <call/call.h>
+#include <api/task_queue/default_task_queue_factory.h>
+#include <api/video_codecs/video_codec.h>
+#include <api/video_codecs/video_decoder.h>
+#include <api/video_codecs/video_decoder_factory.h>
 
 
 namespace owt_base {
@@ -36,7 +38,6 @@ public:
     virtual void onVideoInfo(const std::string& videoInfoJSON) = 0;
 };
 
-
 /**
  * A class to process the incoming streams by leveraging video coding module from
  * webrtc engine, which will framize and decode the frames.
@@ -44,12 +45,12 @@ public:
 class VideoFrameConstructor : public erizo::MediaSink,
                               public FrameSource,
                               public JobTimerListener,
-                              public webrtc::VideoDecoder,
+                              public rtc::VideoSinkInterface<webrtc::VideoFrame>,
+                              public webrtc::VideoDecoderFactory/*,
                               public webrtc::RtpFeedback,
                               public webrtc::VCMReceiveCallback,
                               public webrtc::VCMFrameTypeCallback,
-                              public webrtc::VCMPacketRequestCallback {
-    DECLARE_LOGGER();
+                              public webrtc::VCMPacketRequestCallback*/ {
 
 public:
     VideoFrameConstructor(VideoInfoListener*, uint32_t transportccExtId = 0);
@@ -62,89 +63,78 @@ public:
     // Implements the JobTimerListener.
     void onTimeout();
 
-    // Implements the webrtc::VCMPacketRequestCallback interface.
-    virtual int32_t ResendPackets(const uint16_t* sequenceNumbers, uint16_t length);
+    // Implements the webrtc::VideoDecoderFactory interface.
+    std::vector<webrtc::SdpVideoFormat> GetSupportedFormats() const override;
+    std::unique_ptr<webrtc::VideoDecoder> CreateVideoDecoder(
+      const webrtc::SdpVideoFormat& format) override;
 
-    // Implements the webrtc::VCMFrameTypeCallback interface.
-    virtual int32_t RequestKeyFrame();
-
-    // Implements the webrtc::VCMReceiveCallback interface.
-    virtual int32_t FrameToRender(webrtc::VideoFrame& videoFrame,
-                                  rtc::Optional<uint8_t> qp) { return 0; }
-
-    // Implements the webrtc::RtpFeedback interface.
-    virtual int32_t OnInitializeDecoder(
-        const int8_t payload_type,
-        const char payload_name[RTP_PAYLOAD_NAME_SIZE],
-        const int frequency,
-        const size_t channels,
-        const uint32_t rate);
-    virtual void OnIncomingSSRCChanged( const uint32_t ssrc);
-    virtual void OnIncomingCSRCChanged( const uint32_t CSRC, const bool added) { }
-    virtual void ResetStatistics(uint32_t ssrc);
-
-    // Implements the webrtc::VideoDecoder interface.
-    virtual int32_t InitDecode(const webrtc::VideoCodec* codecSettings, int32_t numberOfCores);
-    virtual int32_t Decode(const webrtc::EncodedImage& inputImage,
-                           bool missingFrames,
-                           const webrtc::RTPFragmentationHeader* fragmentation,
-                           const webrtc::CodecSpecificInfo* codecSpecificInfo = NULL,
-                           int64_t renderTimeMs = -1);
-    virtual int32_t RegisterDecodeCompleteCallback(webrtc::DecodedImageCallback* callback) { return 0; }
-    virtual int32_t Release() { return 0; }
-    virtual int32_t Reset() { return 0; }
-
-
-    // Implements the MediaSink interfaces.
-    // int deliverAudioData(char*, int len);
-    // int deliverVideoData(char*, int len);
+    // Implements rtc::VideoSinkInterface<VideoFrame>.
+    void OnFrame(const webrtc::VideoFrame& video_frame) override {};
 
     // Implements the FrameSource interfaces.
     void onFeedback(const FeedbackMsg& msg);
 
+    int32_t RequestKeyFrame();
+
     bool setBitrate(uint32_t kbps);
 
 private:
-    bool init(uint32_t transportccExtId);
+    class AdaptorDecoder : public webrtc::VideoDecoder {
+      public:
+        AdaptorDecoder(VideoFrameConstructor* src): m_src(src) {}
 
-    bool m_enabled;
-    bool m_enableDump;
-    FrameFormat m_format;
-    uint16_t m_width;
-    uint16_t m_height;
-    uint32_t m_ssrc;
+        int32_t InitDecode(const webrtc::VideoCodec* config,
+                           int32_t number_of_cores) override;
 
-    boost::scoped_ptr<webrtc::vcm::VideoReceiver> m_video_receiver;
-    boost::scoped_ptr<webrtc::VieRemb> m_remoteBitrateObserver;
-    boost::scoped_ptr<webrtc::RemoteBitrateEstimator> m_remoteBitrateEstimator;
-    boost::scoped_ptr<webrtc::ViEReceiver> m_videoReceiver;
-    boost::scoped_ptr<webrtc::RtpRtcp> m_rtpRtcp;
-    boost::scoped_ptr<webrtc::PacketRouter> m_packetRouter;
-    boost::shared_mutex m_rtpRtcpMutex;
-    boost::shared_ptr<WebRTCTransport<erizoExtra::VIDEO>> m_videoTransport;
+        int32_t Decode(const webrtc::EncodedImage& input,
+                       bool missing_frames,
+                       int64_t render_time_ms) override;
 
-    boost::shared_ptr<WebRTCTaskRunner> m_taskRunner;
+        int32_t RegisterDecodeCompleteCallback(
+            webrtc::DecodedImageCallback* callback) override { return 0; }
 
-    erizo::MediaSource* m_transport;
-    boost::shared_mutex m_transport_mutex;
-    boost::scoped_ptr<JobTimer> m_feedbackTimer;
-    uint32_t m_pendingKeyFrameRequests;
+        int32_t Release() override { return 0; }
+      private:
+        VideoFrameConstructor* m_src;
+        webrtc::VideoCodecType m_codec;
+        uint16_t m_width;
+        uint16_t m_height;
+        std::unique_ptr<uint8_t[]> m_frameBuffer;
+        uint32_t m_bufferSize;
+    };
 
-    ////////////// NEW INTERFACE ///////////
+    void maybeCreateReceiveVideo(uint32_t ssrc);
+
+    // Implement erizo::MediaSink
     int deliverAudioData_(std::shared_ptr<erizo::DataPacket> audio_packet) override;
     int deliverVideoData_(std::shared_ptr<erizo::DataPacket> video_packet) override;
     int deliverEvent_(erizo::MediaEventPtr event) override;
     void close();
 
-    char buf[1500];
+    bool m_enabled;
+    bool m_enableDump;
+    FrameFormat m_format;
+    uint32_t m_ssrc;
+
+    erizo::MediaSource* m_transport;
+    boost::shared_mutex m_transportMutex;
+    boost::scoped_ptr<JobTimer> m_feedbackTimer;
+    uint32_t m_pendingKeyFrameRequests;
+    std::atomic<bool> m_isRequestingKeyFrame;
 
     VideoInfoListener* m_videoInfoListener;
+    std::unique_ptr<WebRTCTransport<erizoExtra::VIDEO>> m_videoTransport;
+
+    // Temporary buffer
+    char buf[1500];
+
+    std::unique_ptr<webrtc::TaskQueueFactory> task_queue_factory;
+    std::unique_ptr<webrtc::RtcEventLog> event_log;
+    std::unique_ptr<webrtc::Call> call;
+    webrtc::VideoReceiveStream* video_recv_stream = nullptr;
+    rtc::TaskQueue task_queue;
 };
 
-class DummyRemoteBitrateObserver : public webrtc::RemoteBitrateObserver {
-public:
-    virtual void OnReceiveBitrateChanged(const std::vector<unsigned int>& ssrcs, unsigned int bitrate) { }
-};
+} // namespace owt_base
 
-}
 #endif /* VideoFrameConstructor_h */
