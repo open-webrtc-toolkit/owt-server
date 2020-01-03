@@ -323,6 +323,7 @@ RUN if [ "$ENABLE_RDKAFKA_INSTALLATION" = "true" ] ; then \
         echo "KAFKA install disabled"; \
     fi
 
+RUN apt-get install -y -q --no-install-recommends gtk-doc-tools
 
 ARG NODE_VERSION=8.15.0
 ARG NODE_REPO=https://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}.tar.gz

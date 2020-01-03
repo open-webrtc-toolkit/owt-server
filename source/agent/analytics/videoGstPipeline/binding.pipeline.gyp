@@ -6,6 +6,7 @@
       './VideoGstAnalyzerWrapper.cc',
       './VideoGstAnalyzer.cpp',
       '../../../core/owt_base/RawTransport.cpp',
+      '../../../core/owt_base/InternalOut.cpp',
       './InternalIn.cpp',
     ],
     'include_dirs': [
@@ -13,7 +14,8 @@
       '/usr/include/glib-2.0',
       '/usr/lib/x86_64-linux-gnu/glib-2.0/include',
       '$(CORE_HOME)/common',
-      '$(CORE_HOME)/owt_base'
+      '$(CORE_HOME)/owt_base',
+      '$(CORE_HOME)/addons/common'
     ],
     # 'include_dirs': [ '..',
     #                   '$(CORE_HOME)/common',
@@ -37,7 +39,7 @@
     ],
     # 'INET', 'INET6' flags must be added for usrsctp lib, otherwise the arguments of receive callback would shift
     #'cflags_cc': ['-DINET', '-DINET6', '-DBUILD_FOR_RTSPSOURCE'],
-    'cflags_cc': ['-DINET', '-DINET6'],
+    'cflags_cc': ['-DINET', '-DINET6', '-DBUILD_FOR_GST_ANALYTICS'],
     'conditions': [
       [ 'OS=="mac"', {
         'xcode_settings': {

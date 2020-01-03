@@ -11,7 +11,6 @@
 #include <iostream>
 
 using namespace v8;
-using namespace owt_base;
 
 Persistent<Function> VideoGstAnalyzer::constructor;
 VideoGstAnalyzer::VideoGstAnalyzer() {};
@@ -35,6 +34,7 @@ void VideoGstAnalyzer::Init(Handle<Object> exports, Handle<Object> module) {
   NODE_SET_PROTOTYPE_METHOD(tpl, "stopLoop", stopLoop);
   NODE_SET_PROTOTYPE_METHOD(tpl, "setOutputParam", setOutputParam);
   NODE_SET_PROTOTYPE_METHOD(tpl, "disconnect", disconnect);
+  NODE_SET_PROTOTYPE_METHOD(tpl, "addOutput", addOutput);
 
   constructor.Reset(isolate, tpl->GetFunction());
   module->Set(String::NewFromUtf8(isolate, "exports"), tpl->GetFunction());
@@ -173,8 +173,8 @@ void VideoGstAnalyzer::setOutputParam(const FunctionCallbackInfo<Value>& args){
 
   String::Utf8Value param1(args[1]->ToString());
   std::string resolution = std::string(*param1);
-  VideoSize vSize{0, 0};
-  VideoResolutionHelper::getVideoSize(resolution, vSize);
+  owt_base::VideoSize vSize{0, 0};
+  owt_base::VideoResolutionHelper::getVideoSize(resolution, vSize);
   unsigned int width = vSize.width;
   unsigned int height = vSize.height;
 
@@ -190,4 +190,19 @@ void VideoGstAnalyzer::setOutputParam(const FunctionCallbackInfo<Value>& args){
 
   me->setOutputParam(codec,width,height,framerateFPS,bitrateKbps,
                        keyFrameIntervalSeconds,algorithm,pluginName);
+}
+
+void VideoGstAnalyzer::addOutput(const FunctionCallbackInfo<Value>& args){
+  Isolate* isolate = Isolate::GetCurrent();
+  HandleScope scope(isolate);
+  VideoGstAnalyzer* obj = ObjectWrap::Unwrap<VideoGstAnalyzer>(args.Holder());
+  mcu::VideoGstAnalyzer* me = obj->me;
+
+  unsigned int index = 0;
+
+  index = args[0]->Uint32Value();
+  InternalOut* param8 = ObjectWrap::Unwrap<InternalOut>(args[1]->ToObject());
+  owt_base::InternalOut* out = param8->out;
+
+  me->addOutput(index, out);
 }

@@ -19,6 +19,8 @@ GMainLoop* VideoGstAnalyzer::loop = g_main_loop_new(NULL,FALSE);
 VideoGstAnalyzer::VideoGstAnalyzer() {
     ELOG_INFO("Init");
     sourceid = 0;
+    sink = NULL;
+    fp = NULL;
 }
 
 VideoGstAnalyzer::~VideoGstAnalyzer() {
@@ -243,6 +245,36 @@ void VideoGstAnalyzer::stop_feed (GstElement * source, gpointer data)
     
 }
 
+void VideoGstAnalyzer::new_sample_from_sink (GstElement * source, gpointer data)
+{
+    ELOG_DEBUG("Got new sample from sink\n");
+    VideoGstAnalyzer* pStreamObj = static_cast<VideoGstAnalyzer*>(data);
+    GstSample *sample;
+    GstBuffer *app_buffer, *buffer;
+
+    /* get the sample from appsink */
+    sample = gst_app_sink_pull_sample (GST_APP_SINK (pStreamObj->sink));
+    buffer = gst_sample_get_buffer (sample);
+
+    /* make a copy */
+    //app_buffer = gst_buffer_copy (buffer);
+    GstMapInfo map;
+    gst_buffer_map (buffer, &map, GST_MAP_READ);
+ 
+    /* we don't need the appsink sample anymore */
+    
+    for ( auto& x: pStreamObj->m_internalout)
+        x->onFrame(map.data, map.size);
+
+    /*if(pStreamObj->fp == NULL) 
+        pStreamObj->fp = fopen("/tmp/receive","w+b");
+    fwrite(map.data,sizeof(char),map.size,pStreamObj->fp);*/
+
+    gst_sample_unref(sample);
+    gst_buffer_unmap(buffer, &map);
+    gst_buffer_unref(buffer);
+}
+
 int VideoGstAnalyzer::addElementMany() {
     if(pipeline_)
         pipeline_->LinkElements();
@@ -251,6 +283,11 @@ int VideoGstAnalyzer::addElementMany() {
     if (!source) {
         ELOG_ERROR("appsrc in pipeline does not be created\n");
         return -1;
+    }
+
+    sink = gst_bin_get_by_name (GST_BIN (pipeline), "appsink");
+    if (!sink) {
+        ELOG_ERROR("There is no appsink in pipeline\n");
     }
 
     g_signal_connect (source, "need-data", G_CALLBACK (start_feed), this);
@@ -266,10 +303,6 @@ void VideoGstAnalyzer::stopLoop(){
         g_main_loop_quit(loop);
     }
     g_thread_join(m_thread);
-}
-
-void VideoGstAnalyzer::disconnect(int connectionID){
-    ELOG_DEBUG("Disconnect remote connection\n");
 }
 
 void VideoGstAnalyzer::main_loop_thread(gpointer data){
@@ -296,14 +329,39 @@ int VideoGstAnalyzer::setPlaying() {
 }
 
 void VideoGstAnalyzer::emitListenTo(int minPort, int maxPort) {
-    pthread_t tid;
-    tid = pthread_self();
+    ELOG_DEBUG("Listening\n");
     m_internalin.reset(new InternalIn((GstAppSrc*)source, minPort, maxPort));
     
 }
 
 void VideoGstAnalyzer::emitConnectTo(int connectionID, char* ip, int remotePort){
-    ELOG_DEBUG("============Connect to remote port\n");
+    if (sink != nullptr){
+        ELOG_DEBUG("Connect to remote ip %s port %d with connetionID %d\n", ip, remotePort);
+        
+    }
+    else {
+        ELOG_ERROR("No appsink in the pipeline\n");
+    }
+}
+
+void VideoGstAnalyzer::addOutput(int connectionID, owt_base::InternalOut* out) {
+    ELOG_DEBUG("Add analyzed stream back to OWT\n");
+    if (sink != nullptr){
+        //m_internalout.insert(connectionID, out);
+        //boost::unique_lock<boost::shared_mutex> lock(m_video_dests_mutex);
+        m_internalout.push_back(out);
+        //lock.unlock();
+        g_object_set (G_OBJECT (sink), "emit-signals", TRUE, "sync", FALSE, NULL);
+        g_signal_connect (sink, "new-sample", G_CALLBACK (new_sample_from_sink), this);
+    } else {
+        ELOG_ERROR("No appsink in pipeline\n");
+    }
+    
+}
+
+void VideoGstAnalyzer::disconnect(int connectionID){
+    ELOG_DEBUG("Disconnect remote connection:%d\n", connectionID);
+    //m_internalout.erase(connectionID);
 }
 
 int VideoGstAnalyzer::getListeningPort() {

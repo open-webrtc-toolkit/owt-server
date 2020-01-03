@@ -5,6 +5,7 @@
 #ifndef VideoGstAnalyzerWRAPPER_H
 #define VideoGstAnalyzerWRAPPER_H
 
+#include "../../addons/common/GstInternalOutWrapper.h"
 #include "VideoGstAnalyzer.h"
 #include <node.h>
 #include <node_object_wrap.h>
@@ -32,6 +33,7 @@ class VideoGstAnalyzer: public node::ObjectWrap{
   static void addElementMany(const v8::FunctionCallbackInfo<v8::Value>& args);
   static void stopLoop(const v8::FunctionCallbackInfo<v8::Value>& args);
   static void disconnect(const v8::FunctionCallbackInfo<v8::Value>& args);
+  static void addOutput(const v8::FunctionCallbackInfo<v8::Value>& args);
 };
 
 
