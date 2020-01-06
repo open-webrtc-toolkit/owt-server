@@ -351,7 +351,7 @@ void VideoGstAnalyzer::addOutput(int connectionID, owt_base::InternalOut* out) {
         //m_internalout.insert(connectionID, out);
         //boost::unique_lock<boost::shared_mutex> lock(m_video_dests_mutex);
         if(encoder_pad == nullptr) {
-            GstElement *encoder = gst_bin_get_by_name (GST_BIN (pipeline), "encode");
+            GstElement *encoder = gst_bin_get_by_name (GST_BIN (pipeline), "encoder");
             encoder_pad = gst_element_get_static_pad(encoder, "src");
             out->setPad(encoder_pad);
             ELOG_ERROR("Set encoder pad to internal output\n");

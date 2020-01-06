@@ -37,8 +37,6 @@ void InternalOut::onFrame(uint8_t *buffer, uint32_t length)
 {
     Frame outFrame;
     memset(&outFrame, 0, sizeof(outFrame));
-    printf("============Set key frame to true in 1\n");
-    printf("============New buffer size is:%d\n", length);
 
     outFrame.format = FRAME_FORMAT_H264;
     outFrame.length = length;
@@ -47,7 +45,6 @@ void InternalOut::onFrame(uint8_t *buffer, uint32_t length)
     if(m_frameCount == 0)
        outFrame.additionalInfo.video.isKeyFrame = true; 
     outFrame.timeStamp = (m_frameCount++) * 1000 / 30 * 90;
-    printf("============Set key frame to true\n");
 
     outFrame.payload = buffer;
     
@@ -70,12 +67,9 @@ void InternalOut::onTransportData(char* buf, int len)
     switch (buf[0]) {
         case TDT_FEEDBACK_MSG:
         {
-            printf("============Got feedback message\n");
             FeedbackMsg* msg = reinterpret_cast<FeedbackMsg*>(buf + 1);
             if(encoder_pad != nullptr) {
-                printf("============Got video feedback message\n");
                 if(msg->type == VIDEO_FEEDBACK){
-                    printf("============Trigger force key unit event\n");
                     gst_pad_send_event(encoder_pad, gst_event_new_custom( GST_EVENT_CUSTOM_UPSTREAM, gst_structure_new( "GstForceKeyUnit", "all-headers", G_TYPE_BOOLEAN, TRUE, NULL)));
                 }
             }

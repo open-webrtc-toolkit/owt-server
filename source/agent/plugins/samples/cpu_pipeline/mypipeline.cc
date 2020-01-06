@@ -147,17 +147,10 @@ rvaStatus MyPipeline::LinkElements() {
     //g_object_set(G_OBJECT(detect),"pre-proc", "vaapi", NULL);
     //g_object_set(G_OBJECT(detect),"every-nth-frame", 5, NULL);
 
-    g_object_set(G_OBJECT(fakesink),"location", "/home/output.h264", NULL);
-    
-    g_object_set(G_OBJECT(fakesink),"async", false, NULL);
 
     gst_bin_add_many(GST_BIN (pipeline), source,decodebin,watermark,postproc,h264parse,detect,converter, encoder,outsink, NULL);
-    //gst_bin_add_many(GST_BIN (pipeline), source,decodebin,videorate,postproc,h264parse,detect,counter,fakesink, NULL);
 
     if (gst_element_link_many(source,h264parse,decodebin, postproc, detect, watermark,converter, encoder, NULL) != TRUE) {
-    //if (gst_element_link_many(source,h264parse,decodebin, converter, encoder, NULL) != TRUE) {
-    //if (gst_element_link_many(source,h264parse,decodebin, postproc, detect, watermark,converter, encoder, outsink, NULL) != TRUE) {
-    //if (gst_element_link_many(source,h264parse,decodebin,postproc,NULL) != TRUE) {
         std::cout << "Elements source,decodebin could not be linked." << std::endl;
         gst_object_unref(pipeline);
         return RVA_ERR_LINK;
