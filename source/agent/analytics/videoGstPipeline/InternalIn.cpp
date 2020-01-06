@@ -6,13 +6,12 @@
 #include <gst/gst.h>
 #include <stdio.h>
 
-using namespace std;
 
 DEFINE_LOGGER(InternalIn, "InternalIn");
 InternalIn::InternalIn(GstAppSrc *data, unsigned int minPort, unsigned int maxPort)
 {
     ELOG_INFO(">>>>>>>>>>>>>>Internal in constructor\n");
-    m_transport.reset(new owt_base::RawTransport<TCP>(this));
+    m_transport.reset(new owt_base::RawTransport<owt_base::TCP>(this));
 
     if (minPort > 0 && minPort <= maxPort) {
         m_transport->listenTo(minPort, maxPort);
@@ -43,7 +42,7 @@ void InternalIn::setPushData(bool status){
 void InternalIn::onFeedback(const FeedbackMsg& msg)
 {
     char sendBuffer[512];
-    sendBuffer[0] = TDT_FEEDBACK_MSG;
+    sendBuffer[0] = owt_base::TDT_FEEDBACK_MSG;
     memcpy(&sendBuffer[1], reinterpret_cast<char*>(const_cast<FeedbackMsg*>(&msg)), sizeof(FeedbackMsg));
     m_transport->sendData((char*)sendBuffer, sizeof(FeedbackMsg) + 1);
 }
@@ -60,7 +59,7 @@ void InternalIn::onTransportData(char* buf, int len)
 
     Frame* frame = nullptr;
     switch (buf[0]) {
-        case TDT_MEDIA_FRAME:{
+        case owt_base::TDT_MEDIA_FRAME:{
             frame = reinterpret_cast<Frame*>(buf + 1);
             if(frame->additionalInfo.video.width == 1) {
                 ELOG_DEBUG("============Not a valid video frame\n");

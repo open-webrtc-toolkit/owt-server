@@ -29,7 +29,9 @@ public:
 
 private:
     boost::shared_ptr<owt_base::RawTransportInterface> m_transport;
+    #ifdef BUILD_FOR_GST_ANALYTICS
     int m_frameCount;
+    #endif
 };
 
 } /* namespace owt_base */

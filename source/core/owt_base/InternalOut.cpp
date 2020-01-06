@@ -35,6 +35,7 @@ void InternalOut::onFrame(const Frame& frame)
     m_transport->sendData(sendBuffer, header_len + 1, reinterpret_cast<char*>(const_cast<uint8_t*>(frame.payload)), frame.length);
 }
 
+#ifdef BUILD_FOR_GST_ANALYTICS
 void InternalOut::onFrame(uint8_t *buffer, uint32_t length)
 {
     Frame outFrame;
@@ -61,6 +62,7 @@ void InternalOut::onFrame(uint8_t *buffer, uint32_t length)
     memcpy(&sendBuffer[1], reinterpret_cast<char*>(const_cast<Frame*>(&outFrame)), header_len);
     m_transport->sendData(sendBuffer, header_len + 1, reinterpret_cast<char*>(const_cast<uint8_t*>(outFrame.payload)), outFrame.length);
 }
+#endif
 
 void InternalOut::onTransportData(char* buf, int len)
 {
