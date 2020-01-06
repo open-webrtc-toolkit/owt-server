@@ -105,6 +105,8 @@ function createResolutionButtons(stream, subscribeResolutionCallback) {
         $p = $(`<div id=${stream.id}resolutions> </div>`);
         $p.appendTo($('body'));
     }
+
+/*
     // Resolutions from settings.
     for (const videoSetting of stream.settings.video) {
         const resolution = videoSetting.resolution;
@@ -130,6 +132,7 @@ function createResolutionButtons(stream, subscribeResolutionCallback) {
         });
         button.prependTo($p);
     };
+*/
     return $p;
 }
 function subscribeAndRenderVideo(stream){
