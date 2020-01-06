@@ -19,7 +19,10 @@ class AnalyticsAgent extends BaseAgent {
 
     this.agentId = config.agentId;
     this.rpcId = config.rpcId;
-    this.outputs = {}
+    // connectionId - {engine, options, output, videoFrom}
+    this.inputs = {};
+    // connectionId - dispatcher
+    this.outputs = {};
 
     var conf = {
       'hardware': false,
@@ -131,6 +134,8 @@ createInternalConnection(connectionId, direction, internalOpt) {
     }
 
     if(this.outputs[connectionId]){
+      var iConn;
+      log.debug('linkup with connection id:', connectionId);
       iConn = this.connections.getConnection(connectionId);
       if (iConn && iConn.direction === 'out' && !iConn.videoFrom)
       {

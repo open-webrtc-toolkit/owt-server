@@ -14,10 +14,8 @@ InternalOut::InternalOut(const std::string& protocol, const std::string& dest_ip
         m_transport.reset(new owt_base::RawTransport<UDP>(this));
 
     m_transport->createConnection(dest_ip, dest_port);
-
-    #ifdef BUILD_FOR_GST_ANALYTICS
     m_frameCount = 0;
-    #endif
+    encoder_pad = NULL;
 }
 
 InternalOut::~InternalOut()
@@ -35,7 +33,6 @@ void InternalOut::onFrame(const Frame& frame)
     m_transport->sendData(sendBuffer, header_len + 1, reinterpret_cast<char*>(const_cast<uint8_t*>(frame.payload)), frame.length);
 }
 
-#ifdef BUILD_FOR_GST_ANALYTICS
 void InternalOut::onFrame(uint8_t *buffer, uint32_t length)
 {
     Frame outFrame;
@@ -62,20 +59,30 @@ void InternalOut::onFrame(uint8_t *buffer, uint32_t length)
     memcpy(&sendBuffer[1], reinterpret_cast<char*>(const_cast<Frame*>(&outFrame)), header_len);
     m_transport->sendData(sendBuffer, header_len + 1, reinterpret_cast<char*>(const_cast<uint8_t*>(outFrame.payload)), outFrame.length);
 }
-#endif
+
+void InternalOut::setPad(GstPad *pad) {
+     encoder_pad = pad;
+}
+
 
 void InternalOut::onTransportData(char* buf, int len)
 {
     switch (buf[0]) {
         case TDT_FEEDBACK_MSG:
+        {
             printf("============Got feedback message\n");
-            // #ifdef BUILD_FOR_GST_ANALYTICS
-            // FeedbackMsg* msg = reinterpret_cast<FeedbackMsg*>(buf + 1);
-            // if(msg->type == VIDEO_FEEDBACK) {
-            //     printf("============Got video feedback message\n");
-            // }
-            // #endif
-            deliverFeedbackMsg(*(reinterpret_cast<FeedbackMsg*>(buf + 1)));
+            FeedbackMsg* msg = reinterpret_cast<FeedbackMsg*>(buf + 1);
+            if(encoder_pad != nullptr) {
+                printf("============Got video feedback message\n");
+                if(msg->type == VIDEO_FEEDBACK){
+                    printf("============Trigger force key unit event\n");
+                    gst_pad_send_event(encoder_pad, gst_event_new_custom( GST_EVENT_CUSTOM_UPSTREAM, gst_structure_new( "GstForceKeyUnit", "all-headers", G_TYPE_BOOLEAN, TRUE, NULL)));
+                }
+            }
+            else{
+                deliverFeedbackMsg(*(reinterpret_cast<FeedbackMsg*>(buf + 1)));
+            }            
+        }
         default:
             break;
     }

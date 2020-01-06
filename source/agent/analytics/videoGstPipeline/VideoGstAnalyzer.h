@@ -63,6 +63,7 @@ protected:
 
 private:
     GstElement *pipeline, *source, *sink;
+    GstPad *encoder_pad;
     void* pipelineHandle;
     rvaPipeline* pipeline_;
     rva_create_t* createPlugin;

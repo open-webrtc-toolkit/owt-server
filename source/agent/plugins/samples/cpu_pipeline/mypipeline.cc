@@ -127,16 +127,17 @@ rvaStatus MyPipeline::LinkElements() {
     //g_object_set(G_OBJECT(videorate),"max-rate", inferenceframerate, NULL);
     //g_object_set(G_OBJECT(postproc),"brightness", 0.0001, NULL);
     
-    g_object_set(G_OBJECT(encoder),"key-int-max", 5, NULL);
+    g_object_set(G_OBJECT(encoder),"key-int-max", 30, NULL);
     g_object_set(G_OBJECT(encoder),"pass", 5, NULL);
     g_object_set(G_OBJECT(encoder),"quantizer", 25, NULL);
     g_object_set(G_OBJECT(encoder),"speed-preset", 6, NULL);
     //g_object_set(G_OBJECT(encoder),"cabac", false, NULL);
     g_object_set(G_OBJECT(encoder),"bitrate", 812, NULL);
     //g_object_set(G_OBJECT(encoder),"dct8x8", true, NULL);
+    g_object_set(G_OBJECT(encoder),"aud", false, NULL);
     g_object_set(G_OBJECT(encoder),"tune", "zerolatency", NULL);
     
-    g_object_set(G_OBJECT(outsink),"drop", TRUE, NULL);
+    g_object_set(G_OBJECT(outsink),"drop", true, NULL);
 
     g_object_set(G_OBJECT(detect),"inference-id", "dtc", NULL);
     g_object_set(G_OBJECT(detect),"device", device.c_str(), NULL);
@@ -154,6 +155,7 @@ rvaStatus MyPipeline::LinkElements() {
     //gst_bin_add_many(GST_BIN (pipeline), source,decodebin,videorate,postproc,h264parse,detect,counter,fakesink, NULL);
 
     if (gst_element_link_many(source,h264parse,decodebin, postproc, detect, watermark,converter, encoder, NULL) != TRUE) {
+    //if (gst_element_link_many(source,h264parse,decodebin, converter, encoder, NULL) != TRUE) {
     //if (gst_element_link_many(source,h264parse,decodebin, postproc, detect, watermark,converter, encoder, outsink, NULL) != TRUE) {
     //if (gst_element_link_many(source,h264parse,decodebin,postproc,NULL) != TRUE) {
         std::cout << "Elements source,decodebin could not be linked." << std::endl;
