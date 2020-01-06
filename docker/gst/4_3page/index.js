@@ -149,7 +149,7 @@ function subscribeAndRenderVideo(stream){
         });
     }
     let $p = createResolutionButtons(stream, subscribeDifferentResolution);
-    conference.subscribe(stream)
+    conference.subscribe(stream, {audio:false})
     .then((subscription)=>{
         subscirptionLocal = subscription;
         let $video = $(`<video controls autoplay id=${stream.id} style="display:block" >this browser does not supported video tag</video>`);
@@ -189,7 +189,7 @@ conference.addEventListener('streamadded', (event) => {
     });
 });
 
-conference.addEventListener('streamadded', (event) => {
+conference.addEventListener('serverdisconnected', (event) => {
     console.log('server disconnected');
     remoteStreamMap.clear();
 });
@@ -236,6 +236,7 @@ function restListAnalytics() {
 function subscribeVideo() {
   let remoteStreamId = $('#subscribevideolist').val();
   let remoteStream = remoteStreamMap.get(remoteStreamId);
+  console.log("Remote stream is:", remoteStream, " id is:", remoteStreamId);
   subscribeAndRenderVideo(remoteStream); 
 }
 
