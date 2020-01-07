@@ -44,7 +44,8 @@ function getParameterByName(name) {
         /\+/g, ' '));
 }
 
-var subscribeForward = getParameterByName('true') === 'false'?false:true;
+//var subscribeForward = getParameterByName('true') === 'false'?false:true;
+var subscribeForward = false;
 var isSelf = getParameterByName('self') === 'false'?false:true;
 conference = new Owt.Conference.ConferenceClient();
 
@@ -320,6 +321,7 @@ window.onload = function() {
             var streams = resp.remoteStreams;
             for (const stream of streams) {
                 $('#videofromlist').append($(`<option value=${stream.id}>${stream.id}</option>`));
+		/*
                 if(!subscribeForward){
                   if (stream.source.audio === 'mixed' || stream.source.video ===
                     'mixed') {
@@ -327,7 +329,7 @@ window.onload = function() {
                   }
                 } else if (stream.source.audio !== 'mixed') {
                     subscribeAndRenderVideo(stream);
-                }
+                }*/
             }
             console.log('Streams in conference:', streams.length);
             var participants = resp.participants;
