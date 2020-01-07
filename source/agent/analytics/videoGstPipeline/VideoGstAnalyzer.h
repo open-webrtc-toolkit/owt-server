@@ -39,7 +39,7 @@ public:
 
     void stopLoop();
 
-    void disconnect(int connectionID);
+    void disconnect(owt_base::InternalOut* out);
 
     void addOutput(int connectionID, owt_base::InternalOut* out);
 

@@ -366,9 +366,10 @@ void VideoGstAnalyzer::addOutput(int connectionID, owt_base::InternalOut* out) {
     
 }
 
-void VideoGstAnalyzer::disconnect(int connectionID){
-    ELOG_DEBUG("Disconnect remote connection:%d\n", connectionID);
-    //m_internalout.erase(connectionID);
+void VideoGstAnalyzer::disconnect(owt_base::InternalOut* out){
+    ELOG_DEBUG("Disconnect remote connection\n");
+    m_internalout.remove(out);
+    g_object_set (G_OBJECT (sink), "emit-signals", FALSE, "sync", FALSE, NULL);
 }
 
 int VideoGstAnalyzer::getListeningPort() {

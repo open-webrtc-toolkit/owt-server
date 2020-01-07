@@ -121,9 +121,17 @@ createInternalConnection(connectionId, direction, internalOpt) {
   // override
   unsubscribe(connectionId) {
     log.debug('unsubscribe:', connectionId);
-    //this.engine.disconnect(this.outputs[connectionId]);
+    if(this.outputs[connectionId]){
+      var iConn;
+      log.debug('disconnect connection id:', connectionId);
+      iConn = this.connections.getConnection(connectionId);
+      if (iConn)
+      {
+        this.engine.disconnect(iConn.connection.receiver());
+      }
+    }
     this.connectionclose();
-    return Promise.resolve();
+    return super.unsubscribe(connectionId);
   }
 
   // override

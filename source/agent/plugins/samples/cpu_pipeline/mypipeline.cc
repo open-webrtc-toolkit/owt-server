@@ -13,7 +13,6 @@ MyPipeline::MyPipeline() {
     inputframerate = 24;
     pipeline = NULL; 
     source = NULL;
-    fakesink = NULL;
     std::cout << "MyPipeline constructor" << std::endl;
 }
 
@@ -63,10 +62,9 @@ GstElement * MyPipeline::InitializePipeline() {
     postproc = gst_element_factory_make("videoconvert","postproc");
     detect = gst_element_factory_make("gvadetect","detect"); 
     counter = gst_element_factory_make("gvafpscounter","counter"); 
-    fakesink = gst_element_factory_make("filesink","fake");
     watermark = gst_element_factory_make("gvawatermark","rate");
     converter = gst_element_factory_make("videoconvert","convert");
-    encoder = gst_element_factory_make("x264enc","encode");
+    encoder = gst_element_factory_make("x264enc","encoder");
     outsink = gst_element_factory_make("appsink","appsink");
 
     /* Create the empty VideoGstAnalyzer */

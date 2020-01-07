@@ -156,10 +156,10 @@ void VideoGstAnalyzer::disconnect(const FunctionCallbackInfo<Value>& args){
   VideoGstAnalyzer* obj = ObjectWrap::Unwrap<VideoGstAnalyzer>(args.Holder());
   mcu::VideoGstAnalyzer* me = obj->me;
 
-  int connectionID;
-  connectionID = args[0]->Uint32Value();
+  InternalOut* param8 = ObjectWrap::Unwrap<InternalOut>(args[0]->ToObject());
+  owt_base::InternalOut* out = param8->out;
 
-  me->disconnect(connectionID);
+  me->disconnect(out);
 }
 
 void VideoGstAnalyzer::setOutputParam(const FunctionCallbackInfo<Value>& args){
