@@ -4,16 +4,14 @@ const log = require('../logger').logger.getLogger('AnalyticsAgent');
 const BaseAgent = require('./base-agent');
 
 const VideoPipeline = require('../videoGstPipeline/build/Release/videoAnalyzer-pipeline');
-
 const EventEmitter = require('events').EventEmitter;
 const { getVideoParameterForAddon } = require('../mediaUtil');
 
 var portInfo = 0; 
-var count = 0;
 
-
-class AnalyticsAgent  {
+class AnalyticsAgent extends BaseAgent {
   constructor(config) {
+    super('analytics', config);
     this.algorithms = config.algorithms;
     this.onStatus = config.onStatus;
     this.onStreamGenerated = config.onStreamGenerated;
@@ -21,7 +19,10 @@ class AnalyticsAgent  {
 
     this.agentId = config.agentId;
     this.rpcId = config.rpcId;
-    this.outputs = {}
+    // connectionId - {engine, options, output, videoFrom}
+    this.inputs = {};
+    // connectionId - dispatcher
+    this.outputs = {};
 
     var conf = {
       'hardware': false,
@@ -42,6 +43,9 @@ createInternalConnection(connectionId, direction, internalOpt) {
     if(direction == 'in'){
       this.engine.emitListenTo(internalOpt.minport,internalOpt.maxport);
       portInfo = this.engine.getListeningPort();
+    }
+    else {
+      super.createInternalConnection(connectionId, direction, internalOpt);
     }
     
     // Create internal connection always success
@@ -69,14 +73,8 @@ createInternalConnection(connectionId, direction, internalOpt) {
   subscribe(connectionId, connectionType, options) { 
     log.debug('subscribe:', connectionId, connectionType, JSON.stringify(options));
     if (connectionType !== 'analytics') {
-       // return super.subscribe(connectionId, connectionType, options);
-       if(!this.outputs[connectionId]){
-        this.outputs[connectionId] = count;
-        this.engine.stopLoop();
-        this.engine.emitConnectTo(count,options.ip,options.port);
-        count++;
-       }
-      return Promise.resolve("ok");
+       this.outputs[connectionId] = true;
+       return super.subscribe(connectionId, connectionType, options);
     }
       
       const videoFormat = options.connection.video.format;
@@ -110,27 +108,48 @@ createInternalConnection(connectionId, direction, internalOpt) {
       this.engine.createPipeline();
 
       streamInfo.media.video.bitrate = bitrate;
-            this.onStreamGenerated(options.controller, newStreamId, streamInfo);
+      this.onStreamGenerated(options.controller, newStreamId, streamInfo);
 
       this.engine.addElementMany();;
       this.connectionclose = () => {
           this.onStreamDestroyed(options.controller, newStreamId);
       }
+      this.inputs[connectionId] = true;
       return Promise.resolve();
   }
 
   // override
   unsubscribe(connectionId) {
     log.debug('unsubscribe:', connectionId);
-    //this.engine.disconnect(this.outputs[connectionId]);
+    if(this.outputs[connectionId]){
+      var iConn;
+      log.debug('disconnect connection id:', connectionId);
+      iConn = this.connections.getConnection(connectionId);
+      if (iConn)
+      {
+        this.engine.disconnect(iConn.connection.receiver());
+      }
+    }
     this.connectionclose();
-    return Promise.resolve();
+    return super.unsubscribe(connectionId);
   }
 
   // override
   linkup(connectionId, audioFrom, videoFrom) {
     log.debug('linkup:', connectionId, audioFrom, videoFrom);
-    this.engine.setPlaying();
+    if(this.inputs[connectionId]) {
+      this.engine.setPlaying();
+    }
+
+    if(this.outputs[connectionId]){
+      var iConn;
+      log.debug('linkup with connection id:', connectionId);
+      iConn = this.connections.getConnection(connectionId);
+      if (iConn && iConn.direction === 'out' && !iConn.videoFrom)
+      {
+        this.engine.addOutput(connectionId, iConn.connection.receiver());
+      }
+    }
 
     return Promise.resolve();
   }

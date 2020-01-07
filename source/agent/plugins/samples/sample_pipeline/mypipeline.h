@@ -14,7 +14,7 @@ class MyPipeline : public rvaPipeline {
 public:
     MyPipeline();
 
-    virtual rvaStatus PipelineInit(std::unordered_map<std::string, std::string> params);
+    virtual rvaStatus PipelineConfig(std::unordered_map<std::string, std::string> params);
 
     virtual rvaStatus PipelineClose();
 

@@ -13,7 +13,6 @@ MyPipeline::MyPipeline() {
     inputframerate = 24;
     pipeline = NULL; 
     source = NULL;
-    fakesink = NULL;
     std::cout << "MyPipeline constructor" << std::endl;
 }
 
@@ -59,12 +58,14 @@ GstElement * MyPipeline::InitializePipeline() {
     /* Create the elements */
     source = gst_element_factory_make("appsrc", "appsource");
     h264parse = gst_element_factory_make("h264parse","parse"); 
-    decodebin = gst_element_factory_make("vaapih264dec","decode");
-    postproc = gst_element_factory_make("vaapipostproc","postproc");
+    decodebin = gst_element_factory_make("avdec_h264","decode");
+    postproc = gst_element_factory_make("videoconvert","postproc");
     detect = gst_element_factory_make("gvadetect","detect"); 
     counter = gst_element_factory_make("gvafpscounter","counter"); 
-    fakesink = gst_element_factory_make("fakesink","fake");
-    videorate = gst_element_factory_make("videorate","rate");
+    watermark = gst_element_factory_make("gvawatermark","rate");
+    converter = gst_element_factory_make("videoconvert","convert");
+    encoder = gst_element_factory_make("x264enc","encoder");
+    outsink = gst_element_factory_make("appsink","appsink");
 
     /* Create the empty VideoGstAnalyzer */
     pipeline = gst_pipeline_new("detect-pipeline");
@@ -75,7 +76,7 @@ GstElement * MyPipeline::InitializePipeline() {
         return NULL;
     }
 
-    if (!pipeline || !source || !decodebin || !h264parse || !postproc || !videorate) {
+    if (!pipeline || !source || !decodebin || !h264parse || !postproc || !watermark || !outsink) {
         std::cout << "pipeline or source or decodebin or h264parse or postproc elements could not be created." << std::endl;
         return NULL;
     }
@@ -115,50 +116,50 @@ rvaStatus MyPipeline::LinkElements() {
     g_object_set(source, "caps", inputcaps, NULL);
     gst_caps_unref (inputcaps);
 
-    g_object_set(G_OBJECT(videorate),"max-rate", inferenceframerate, NULL);
-    g_object_set(G_OBJECT(postproc),"brightness", 0.0001, NULL);
+    GstCaps* encodecaps = gst_caps_new_simple("video/x-h264",
+		"stream-format", G_TYPE_STRING, "byte-stream",
+		"width", G_TYPE_INT, 640,
+		"height", G_TYPE_INT, 480,
+                "profile", G_TYPE_STRING, "constrained-baseline", NULL);
+
+    //g_object_set(G_OBJECT(videorate),"max-rate", inferenceframerate, NULL);
+    //g_object_set(G_OBJECT(postproc),"brightness", 0.0001, NULL);
+    
+    g_object_set(G_OBJECT(encoder),"key-int-max", 30, NULL);
+    g_object_set(G_OBJECT(encoder),"pass", 5, NULL);
+    g_object_set(G_OBJECT(encoder),"quantizer", 25, NULL);
+    g_object_set(G_OBJECT(encoder),"speed-preset", 6, NULL);
+    //g_object_set(G_OBJECT(encoder),"cabac", false, NULL);
+    g_object_set(G_OBJECT(encoder),"bitrate", 812, NULL);
+    //g_object_set(G_OBJECT(encoder),"dct8x8", true, NULL);
+    g_object_set(G_OBJECT(encoder),"aud", false, NULL);
+    g_object_set(G_OBJECT(encoder),"tune", "zerolatency", NULL);
+    
+    g_object_set(G_OBJECT(outsink),"drop", true, NULL);
 
     g_object_set(G_OBJECT(detect),"inference-id", "dtc", NULL);
     g_object_set(G_OBJECT(detect),"device", device.c_str(), NULL);
     g_object_set(G_OBJECT(detect),"model",model.c_str(), NULL);
     g_object_set(G_OBJECT(detect),"cpu-streams", 12, NULL);
     g_object_set(G_OBJECT(detect),"nireq", 24, NULL);
-    g_object_set(G_OBJECT(detect),"pre-proc", "vaapi", NULL);
+    //g_object_set(G_OBJECT(detect),"pre-proc", "vaapi", NULL);
     //g_object_set(G_OBJECT(detect),"every-nth-frame", 5, NULL);
 
-    
-    g_object_set(G_OBJECT(fakesink),"async", false, NULL);
 
-    gst_bin_add_many(GST_BIN (pipeline), source,decodebin,videorate,postproc,h264parse,detect,counter,fakesink, NULL);
-    //gst_bin_add_many(GST_BIN (pipeline), source,decodebin,videorate,postproc,h264parse,detect,counter,fakesink, NULL);
+    gst_bin_add_many(GST_BIN (pipeline), source,decodebin,watermark,postproc,h264parse,detect,converter, encoder,outsink, NULL);
 
-    if (gst_element_link_many(source,h264parse,decodebin,videorate,NULL) != TRUE) {
-    //if (gst_element_link_many(source,h264parse,decodebin,postproc,NULL) != TRUE) {
+    if (gst_element_link_many(source,h264parse,decodebin, postproc, detect, watermark,converter, encoder, NULL) != TRUE) {
         std::cout << "Elements source,decodebin could not be linked." << std::endl;
         gst_object_unref(pipeline);
         return RVA_ERR_LINK;
     }
 
-    link_ok = gst_element_link_filtered (videorate, postproc, postprocsinkcaps);
-    gst_caps_unref (postprocsinkcaps);
+
+    link_ok = gst_element_link_filtered (encoder, outsink, encodecaps);
+    gst_caps_unref (encodecaps);
 
     if (!link_ok) {
         std::cout << "Failed to link videorate and postproc!" << std::endl;
-        gst_object_unref(pipeline);
-        return RVA_ERR_LINK;
-    }
-
-    link_ok = gst_element_link_filtered (postproc, detect, postprocsrccaps);
-    gst_caps_unref (postprocsrccaps);
-
-    if (!link_ok) {
-        std::cout << "Failed to link postproc and detect!" << std::endl;
-        gst_object_unref(pipeline);
-        return RVA_ERR_LINK;
-    }
-
-    if(gst_element_link_many(detect,counter,fakesink,NULL) !=TRUE){
-        std::cout << "Elements detect,counter,fakesink could not be linked. " << std::endl;
         gst_object_unref(pipeline);
         return RVA_ERR_LINK;
     }

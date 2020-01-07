@@ -323,6 +323,7 @@ RUN if [ "$ENABLE_RDKAFKA_INSTALLATION" = "true" ] ; then \
         echo "KAFKA install disabled"; \
     fi
 
+RUN apt-get install -y -q --no-install-recommends gtk-doc-tools
 
 ARG NODE_VERSION=8.15.0
 ARG NODE_REPO=https://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}.tar.gz
@@ -396,7 +397,7 @@ COPY start.sh /home/
 
 RUN apt-get update && apt-get install -y -q --no-install-recommends ca-certificates wget xz-utils 
 
-RUN apt-get install rabbitmq-server mongodb libboost-system-dev libboost-thread-dev liblog4cxx-dev libglib2.0-0 libfreetype6-dev curl libgl1-mesa-dev libvdpau-dev -y
+RUN apt-get install rabbitmq-server mongodb libboost-system-dev libboost-thread-dev liblog4cxx-dev libglib2.0-0 libfreetype6-dev curl libgl1-mesa-dev libvdpau-dev gstreamer1.0-tools -y
 
 RUN mv /home/rabbitmq.config /etc/rabbitmq/ && chmod +x /home/start.sh && wget ${NODE_REPO} && \
     tar xf node-${NODE_VER}-linux-x64.tar.xz && \

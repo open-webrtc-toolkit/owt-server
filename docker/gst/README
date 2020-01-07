@@ -28,6 +28,7 @@ b. Start analytics agent container
 	#Max processes that agent can run
 	maxProcesses = 50 #default: 13
 
+	If analytics and owt container are running on the same device, just leave below rabbit host to localhost, otherwise, set analytics rabbit host to rabbitmq server address (We will start rabbitmq server by default in OWT container, so in most cases please set this rabbit.host to OWT server address)
 	[rabbit]
 	host = "172.32.1.254" #default: "localhost"
 c. Compile pipeline share library
