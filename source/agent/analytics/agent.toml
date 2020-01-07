@@ -18,7 +18,7 @@ report_load_interval = 1000 #default: 1000, unit: millisecond
 #The max load under which this worker can take new tasks.
 max_load = 0.85 #default: 0.85
 
-load_items = "CPU,GPU,VPU"
+load_items = "CPU"
 
 [capacity]
 #The ISP list this agent tends to handle

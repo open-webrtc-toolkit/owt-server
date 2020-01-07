@@ -23,7 +23,7 @@ class rvaPipeline {
    @param params unordered map that contains name-value pair of parameters
    @return RVA_ERR_OK if no issue initialize it. Other return code if any failure.
   */
-  virtual rvaStatus PipelineInit(std::unordered_map<std::string, std::string> params) = 0;
+  virtual rvaStatus PipelineConfig(std::unordered_map<std::string, std::string> params) = 0;
   /**
    @brief Release internal resources the plugin holds before MCU destroy the plugin.
    @return RVA_ERR_OK if no issue close the plugin. Other return code if any failure.

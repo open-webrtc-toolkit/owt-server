@@ -11,7 +11,6 @@
 
 #include "RawTransport.h"
 
-using namespace owt_base;
 
 enum FrameFormat {
     FRAME_FORMAT_UNKNOWN    = 0,
@@ -94,7 +93,7 @@ struct FeedbackMsg {
     FeedbackMsg(FeedbackType t, FeedbackCmd c) : type{t}, cmd{c} {}
 };
 
-class InternalIn : public RawTransportListener{
+class InternalIn : public owt_base::RawTransportListener{
     DECLARE_LOGGER();
 public:
     InternalIn(GstAppSrc *data, unsigned int minPort = 0, unsigned int maxPort = 0);
@@ -117,6 +116,5 @@ private:
     GstAppSrc *appsrc;
     boost::shared_ptr<owt_base::RawTransportInterface> m_transport;
 };
-
 
 #endif /* InternalIn_h */

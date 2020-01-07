@@ -8,11 +8,14 @@
 #include <gst/gst.h>
 #include <glib-object.h>
 #include <gst/pbutils/encoding-profile.h>
+#include <gst/app/gstappsink.h>
 #include <string>
 #include <boost/thread.hpp>
 #include <logger.h>
 #include "InternalIn.h"
+#include <InternalOut.h>
 #include "AnalyticsPipeline.h"
+#include <stdio.h>
 
 namespace mcu {
 
@@ -36,7 +39,9 @@ public:
 
     void stopLoop();
 
-    void disconnect(int connectionID);
+    void disconnect(owt_base::InternalOut* out);
+
+    void addOutput(int connectionID, owt_base::InternalOut* out);
 
     static void pad_added_handler(GstElement *src, GstPad *new_pad, GstElement *data);
     static void on_pad_added (GstElement *element, GstPad *pad, gpointer data);
@@ -45,6 +50,7 @@ public:
     static void start_feed (GstElement * source, guint size, gpointer data);
     static gboolean push_data (gpointer data);
     static void stop_feed (GstElement * source, gpointer data);
+    static void new_sample_from_sink (GstElement * source, gpointer data);
 
 protected:
     static void main_loop_thread(gpointer);
@@ -52,10 +58,12 @@ protected:
     static gboolean StreamEventCallBack(GstBus *bus, GstMessage *message, gpointer data);
     void setState();
     boost::scoped_ptr<InternalIn> m_internalin;
+    std::list<owt_base::InternalOut*> m_internalout;
     guint sourceid;
 
 private:
-    GstElement *pipeline, *source;
+    GstElement *pipeline, *source, *sink;
+    GstPad *encoder_pad;
     void* pipelineHandle;
     rvaPipeline* pipeline_;
     rva_create_t* createPlugin;
@@ -77,6 +85,7 @@ private:
     int width,height;
     int framerate,bitrate;
     int kfi; //keyFrameInterval
+    FILE *fp;
 };
 
 }

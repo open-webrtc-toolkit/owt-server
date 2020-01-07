@@ -44,15 +44,70 @@ function getParameterByName(name) {
         /\+/g, ' '));
 }
 
-var subscribeForward = getParameterByName('forward') === 'false'?false:true;
+//var subscribeForward = getParameterByName('true') === 'false'?false:true;
+var subscribeForward = false;
 var isSelf = getParameterByName('self') === 'false'?false:true;
 conference = new Owt.Conference.ConferenceClient();
+
+class EventMap {
+    constructor() {
+        this._store = new Map();
+        this._addListeners = [];
+        this._removeListeners = [];
+    }
+    get(key) {
+        return this._store.get(key);
+    }
+
+    set(key, value) {
+        if (this._store.has(key)) {
+            return
+        }
+        this._store.set(key, value);
+        let len = this._addListeners.length
+        if (len > 0) {
+            for (let i = 0; i < len; i++) {
+                this._addListeners[i](key, value);
+            }
+        }
+    }
+
+    delete(key) {
+        this._store.delete(key);
+        let len = this._removeListeners.length
+        if (len > 0) {
+            for (let i = 0; i < len; i++) {
+                this._removeListeners[i](key);
+            }
+        }
+    }
+    forEach(cb) {
+        this._store.forEach(cb);
+    }
+    getMap() {
+        return this._store
+    }
+    clear() {
+        this._store.clear();
+    }
+    onLengthAdd(listener) {
+        this._addListeners.push(listener);
+    }
+
+    onLengthRemove(listener) {
+        this._removeListeners.push(listener)
+    }
+}
+let remoteStreamMap = new EventMap();
+
 function createResolutionButtons(stream, subscribeResolutionCallback) {
     let $p = $(`#${stream.id}resolutions`);
     if ($p.length === 0) {
         $p = $(`<div id=${stream.id}resolutions> </div>`);
         $p.appendTo($('body'));
     }
+
+/*
     // Resolutions from settings.
     for (const videoSetting of stream.settings.video) {
         const resolution = videoSetting.resolution;
@@ -78,6 +133,7 @@ function createResolutionButtons(stream, subscribeResolutionCallback) {
         });
         button.prependTo($p);
     };
+*/
     return $p;
 }
 function subscribeAndRenderVideo(stream){
@@ -88,7 +144,7 @@ function subscribeAndRenderVideo(stream){
         const videoOptions = {};
         videoOptions.resolution = resolution;
         conference.subscribe(stream, {
-            audio: true,
+            audio: false,
             video: videoOptions
         }).then((
             subscription) => {
@@ -97,7 +153,7 @@ function subscribeAndRenderVideo(stream){
         });
     }
     let $p = createResolutionButtons(stream, subscribeDifferentResolution);
-    conference.subscribe(stream)
+    conference.subscribe(stream, {audio:false})
     .then((subscription)=>{
         subscirptionLocal = subscription;
         let $video = $(`<video controls autoplay id=${stream.id} style="display:block" >this browser does not supported video tag</video>`);
@@ -108,6 +164,7 @@ function subscribeAndRenderVideo(stream){
     stream.addEventListener('ended', () => {
         removeUi(stream.id);
         $('#videofromlist').find(`[value=${stream.id}]`).remove();
+        $('#subscribevideolist').find(`[value=${stream.id}]`).remove();
         $(`#${stream.id}resolutions`).remove();
     });
     stream.addEventListener('updated', () => {
@@ -123,13 +180,22 @@ function removeUi(id){
 conference.addEventListener('streamadded', (event) => {
     console.log('A new stream is added ', event.stream.id);
     $('#videofromlist').append($(`<option value=${event.stream.id}>${event.stream.id}</option>`));
+    $('#subscribevideolist').append($(`<option value=${event.stream.id}>${event.stream.id}</option>`));
     isSelf = isSelf?isSelf:event.stream.id != publicationGlobal.id;
     //subscribeForward && isSelf && subscribeAndRenderVideo(event.stream);
     //mixStream(myRoom, event.stream.id, 'common');
+    remoteStreamMap.set(event.stream.id, event.stream);
     event.stream.addEventListener('ended', () => {
 	$('#videofromlist').find(`[value=${event.stream.id}]`).remove();
+	$('#subscribevideolist').find(`[value=${event.stream.id}]`).remove();
+	remoteStreamMap.delete(event.stream.id);
         console.log(event.stream.id + ' is ended.');
     });
+});
+
+conference.addEventListener('serverdisconnected', (event) => {
+    console.log('server disconnected');
+    remoteStreamMap.clear();
 });
 
 function restStartStreamingIn() {
@@ -171,6 +237,14 @@ function restListAnalytics() {
   })
 }
 
+function subscribeVideo() {
+  let remoteStreamId = $('#subscribevideolist').val();
+  let remoteStream = remoteStreamMap.get(remoteStreamId);
+  console.log("Remote stream is:", remoteStream, " id is:", remoteStreamId);
+  subscribeAndRenderVideo(remoteStream); 
+}
+
+
 window.onload = function() {
     var simulcast = getParameterByName('simulcast') || false;
     var shareScreen = getParameterByName('screen') || false;
@@ -183,6 +257,10 @@ window.onload = function() {
         conference.join(token).then(resp => {
             myId = resp.self.id;
             myRoom = resp.id;
+	    resp.remoteStreams.forEach(function (remoteStream) {
+                remoteStreamMap.set(remoteStream.id, remoteStream);
+            })
+
             if(mediaUrl){
                  startStreamingIn(myRoom, mediaUrl);
             }
@@ -242,7 +320,10 @@ window.onload = function() {
             }
             var streams = resp.remoteStreams;
             for (const stream of streams) {
-                $('#videofromlist').append($(`<option value=${stream.id}>${stream.id}</option>`));
+		if(stream.source.video !== 'mixed') {
+                  $('#videofromlist').append($(`<option value=${stream.id}>${stream.id}</option>`));
+		}
+		/*
                 if(!subscribeForward){
                   if (stream.source.audio === 'mixed' || stream.source.video ===
                     'mixed') {
@@ -250,7 +331,7 @@ window.onload = function() {
                   }
                 } else if (stream.source.audio !== 'mixed') {
                     subscribeAndRenderVideo(stream);
-                }
+                }*/
             }
             console.log('Streams in conference:', streams.length);
             var participants = resp.participants;
