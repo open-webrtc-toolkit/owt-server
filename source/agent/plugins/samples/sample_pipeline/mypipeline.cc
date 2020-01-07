@@ -90,13 +90,7 @@ rvaStatus MyPipeline::LinkElements() {
     const auto data = toml::parse(path);
     const auto& pipelineconfig = toml::find(data, pipelinename.c_str());
     const std::string outputpath = toml::find<std::string>(pipelineconfig, "outputpath");
-    const int inferencewidth = toml::find<std::int64_t>(pipelineconfig, "inferencewidth");
-    const int inferenceheight = toml::find<std::int64_t>(pipelineconfig, "inferenceheight");
-    const int inferenceframerate = toml::find<std::int64_t>(pipelineconfig, "inferenceframerate");
 
-    std::cout << "inferencewidth is:" << inferencewidth << std::endl;
-    std::cout << "inferenceheight is:" << inferenceheight << std::endl;
-    std::cout << "inferenceframerate is:" << inferenceframerate << std::endl;
     std::cout << "outputpath is:" << outputpath << std::endl;
     std::cout << "inputwidth is:" << inputwidth << std::endl;
     std::cout << "input height is:" << inputheight << std::endl;
