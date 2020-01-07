@@ -11,17 +11,17 @@ tag=${2:-latest}
 
 BASEDIR=$(dirname "$0")
 
-docker build --target owt-build -t gst-owt-2:build \
+docker build --target owt-build -t gst-owt:build \
     --build-arg http_proxy=${HTTP_PROXY} \
     --build-arg https_proxy=${HTTPS_PROXY} \
     .
 
-docker build --target owt-run -t gst-owt-2:run \
+docker build --target owt-run -t gst-owt:run \
     --build-arg http_proxy=${HTTP_PROXY} \
     --build-arg https_proxy=${HTTPS_PROXY} \
     .
 
-docker build --target analytics-run -t gst-analytics-2:run \
+docker build --target analytics-run -t gst-analytics:run \
     --build-arg http_proxy=${HTTP_PROXY} \
     --build-arg https_proxy=${HTTPS_PROXY} \
     .
