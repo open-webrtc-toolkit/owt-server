@@ -320,7 +320,9 @@ window.onload = function() {
             }
             var streams = resp.remoteStreams;
             for (const stream of streams) {
-                $('#videofromlist').append($(`<option value=${stream.id}>${stream.id}</option>`));
+		if(stream.source.video !== 'mixed') {
+                  $('#videofromlist').append($(`<option value=${stream.id}>${stream.id}</option>`));
+		}
 		/*
                 if(!subscribeForward){
                   if (stream.source.audio === 'mixed' || stream.source.video ===

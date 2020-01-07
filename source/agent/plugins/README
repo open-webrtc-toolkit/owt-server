@@ -43,6 +43,6 @@ inferenceheight = 384   # inference input height.
 inferenceframerate = 5  # inference input framerate
 device = "CPU"
 
-Note: The model face-detection-retail-0004.xm used in the sample configuration are all from OpenVINO, please refer to https://github.com/opencv/open_model_zoo/blob/master/tools/downloader/README.md to download OpenVINO sample models and put it in container where analytics agent runs.
+Note: The model face-detection-retail-0004.xm used in the sample configuration are all from OpenVINO, please refer to https://github.com/opencv/open_model_zoo/blob/master/tools/downloader/README.md to download OpenVINO sample models and put it in container where analytics agent runs and then specify model path in plugin.cfg.
 
-3. Run build_samples.sh in samples folder to compile and generated related GStreamer pipeline share library. Copy share libraries generated in samples/build/intel64/Release/lib/ to analytics_agent/lib/ folder in OWT package.
+4. Run build_samples.sh in analytics_agent/plugins/samples folder to compile and generate related GStreamer pipeline share library. Copy share libraries generated in samples/build/intel64/Release/lib/ to analytics_agent/lib/ folder in OWT package.
