@@ -18,21 +18,58 @@ Nan::Persistent<Function> RTCIceTransport::constructor;
 
 DEFINE_LOGGER(RTCIceTransport, "RTCIceTransport");
 
+static std::unordered_map<erizo::IceState, std::string> s_iceStateMap = {
+    { erizo::IceState::INITIAL, "new" },
+    { erizo::IceState::CANDIDATES_RECEIVED, "checking" },
+    { erizo::IceState::READY, "connected" },
+    { erizo::IceState::FINISHED, "completed" },
+    { erizo::IceState::FAILED, "failed" }
+};
+
+// RTCIceTransport holds an IceConnectionListenerProxy. IceConnectionListenerProxy's weak pointer is passed to IceConnectionInterface as its listener. IceConnectionProxy should never be referenced anywhere else, so its lifetime is always shorter than RTCIceTransport.
+// The problem is IceConnection only accepts weak_ptr as a listener, perhaps there is a better solution without proxy.
+class IceConnectionListenerProxy : public erizo::IceConnectionListener {
+public:
+    IceConnectionListenerProxy(RTCIceTransport* iceTransport)
+        : m_iceTransport(iceTransport)
+    {
+    }
+
+private:
+    void onPacketReceived(erizo::packetPtr packet) override
+    {
+        m_iceTransport->onPacketReceived(packet);
+    };
+    void onCandidate(const erizo::CandidateInfo& candidate, erizo::IceConnection* conn) override
+    {
+        m_iceTransport->onCandidate(candidate, conn);
+    }
+    void updateIceState(erizo::IceState state, erizo::IceConnection* conn) override
+    {
+        m_iceTransport->updateIceState(state, conn);
+    };
+
+    RTCIceTransport* m_iceTransport;
+};
+
 // Using unordered_map after upgrading C++ compiler to a later version.
 // See http://www.open-std.org/jtc1/sc22/wg21/docs/lwg-defects.html#2148
-static std::map<const RTCIceTransportEventType, const std::string> s_eventTypeNameMap = {
-    { RTCIceTransportEventType::IceCandidate, "icecandidate" },
-    { RTCIceTransportEventType::StateChange, "statechange" }
-};
+static std::map<const RTCIceTransportEventType, const std::string>
+    s_eventTypeNameMap = {
+        { RTCIceTransportEventType::IceCandidate, "icecandidate" },
+        { RTCIceTransportEventType::StateChange, "statechange" }
+    };
 
 RTCIceTransport::RTCIceTransport()
     : m_localCandidates(std::vector<erizo::CandidateInfo>())
     , m_pendingRemoteCandidates(std::vector<erizo::CandidateInfo>())
+    , m_quicListener(nullptr)
 {
 }
 
 RTCIceTransport::~RTCIceTransport()
 {
+    ELOG_DEBUG("~RTCIceTransport.");
     if (!uv_is_closing(reinterpret_cast<uv_handle_t*>(&m_asyncOnCandidate))) {
         uv_close(reinterpret_cast<uv_handle_t*>(&m_asyncOnCandidate), NULL);
     }
@@ -66,7 +103,10 @@ NAN_METHOD(RTCIceTransport::newInstance)
     config.ice_components = 1;
     RTCIceTransport* obj = new RTCIceTransport();
     obj->m_iceConnection.reset(erizo::LibNiceConnection::create(config));
+    obj->m_iceConnectionListener = std::make_shared<IceConnectionListenerProxy>(obj);
+    obj->m_iceConnection->setIceListener(obj->m_iceConnectionListener);
     uv_async_init(uv_default_loop(), &obj->m_asyncOnCandidate, &RTCIceTransport::onCandidateCallback);
+    uv_async_init(uv_default_loop(), &obj->m_asyncStateUpdate, &RTCIceTransport::onStateUpdateCallback);
     obj->Wrap(info.This());
     info.GetReturnValue().Set(info.This());
 }
@@ -174,18 +214,55 @@ NAN_GETTER(RTCIceTransport::roleGetter)
     info.GetReturnValue().Set(Nan::New("controlled").ToLocalChecked());
 }
 
-NAUV_WORK_CB(RTCIceTransport::onCandidateCallback)
+NAUV_WORK_CB(RTCIceTransport::onStateUpdateCallback)
 {
     Nan::HandleScope scope;
     RTCIceTransport* obj = reinterpret_cast<RTCIceTransport*>(async->data);
-    if (!obj || obj->m_unnotifiedLocalCandidates.empty())
+    if (!obj || obj->m_unnotifiedState.empty()) {
+        ELOG_DEBUG("m_unnotifiedState is empty.");
         return;
+    }
+    std::lock_guard<std::mutex> lock(obj->m_stateUpdateMutex);
+    while (!obj->m_unnotifiedState.empty()) {
+        Nan::MaybeLocal<v8::Value> onEvent = Nan::Get(obj->handle(), Nan::New<v8::String>("onstatechange").ToLocalChecked());
+        if (!onEvent.IsEmpty()) {
+            ELOG_DEBUG("onEvent is not empty.");
+            v8::Local<v8::Value> onEventLocal = onEvent.ToLocalChecked();
+            if (onEventLocal->IsFunction()) {
+                ELOG_DEBUG("onEventLocal is func.");
+                v8::Local<v8::Function> eventCallback = onEventLocal.As<Function>();
+                Nan::AsyncResource* resource = new Nan::AsyncResource(Nan::New<v8::String>("EventCallback").ToLocalChecked());
+                auto state = obj->m_unnotifiedState.front();
+                auto stateValue = s_iceStateMap.find(state);
+                if (stateValue == s_iceStateMap.end()) {
+                    ELOG_WARN("Invalid ICE state.");
+                    continue;
+                }
+                Local<Value> args[] = { Nan::New<v8::String>(stateValue->second).ToLocalChecked() };
+                resource->runInAsyncScope(Nan::GetCurrentContext()->Global(), eventCallback, 1, args);
+            }
+        }
+        obj->m_unnotifiedState.pop();
+    }
+}
+
+NAUV_WORK_CB(RTCIceTransport::onCandidateCallback)
+{
+    ELOG_DEBUG("onCandidateCallback.");
+    Nan::HandleScope scope;
+    RTCIceTransport* obj = reinterpret_cast<RTCIceTransport*>(async->data);
+    if (!obj || obj->m_unnotifiedLocalCandidates.empty()){
+        ELOG_DEBUG("m_unnotifiedLocalCandidates is empty.");
+        return;
+    }
     std::lock_guard<std::mutex> lock(obj->m_candidateMutex);
     while (!obj->m_unnotifiedLocalCandidates.empty()) {
         Nan::MaybeLocal<v8::Value> onEvent = Nan::Get(obj->handle(), Nan::New<v8::String>("onicecandidate").ToLocalChecked());
         if (!onEvent.IsEmpty()) {
+            ELOG_DEBUG("onEvent is not empty.");
             v8::Local<v8::Value> onEventLocal = onEvent.ToLocalChecked();
             if (onEventLocal->IsFunction()) {
+                ELOG_DEBUG("onEventLocal is func.");
                 v8::Local<v8::Function> eventCallback = onEventLocal.As<Function>();
                 Nan::AsyncResource* resource = new Nan::AsyncResource(Nan::New<v8::String>("EventCallback").ToLocalChecked());
                 v8::Local<v8::Object> candidateObject = Nan::New<v8::Object>();
@@ -202,6 +279,9 @@ NAUV_WORK_CB(RTCIceTransport::onCandidateCallback)
 void RTCIceTransport::onPacketReceived(erizo::packetPtr packet)
 {
     ELOG_DEBUG("RTCIceTransport::onPacketReceived");
+    if (m_quicListener) {
+        m_quicListener->onReadPacket(packet->data, packet->length);
+    }
 }
 
 void RTCIceTransport::onCandidate(const erizo::CandidateInfo& candidate, erizo::IceConnection* conn)
@@ -218,7 +298,16 @@ void RTCIceTransport::onCandidate(const erizo::CandidateInfo& candidate, erizo::
 
 void RTCIceTransport::updateIceState(erizo::IceState state, erizo::IceConnection* conn)
 {
-    //notifyEvent(RTCIceTransportEventType::StateChange, Nan::Undefined());
+    ELOG_DEBUG("Update ICE state.");
+    {
+        std::lock_guard<std::mutex> lock(m_stateUpdateMutex);
+        m_unnotifiedState.push(state);
+    }
+    m_asyncStateUpdate.data = this;
+    uv_async_send(&m_asyncStateUpdate);
+    if (state == erizo::IceState::READY && m_quicListener) {
+        m_quicListener->onReadyToWrite();
+    }
 }
 
 void RTCIceTransport::drainPendingRemoteCandidates()
@@ -236,4 +325,9 @@ void RTCIceTransport::drainPendingRemoteCandidates()
 erizo::IceConnection* RTCIceTransport::iceConnection()
 {
     return m_iceConnection.get();
+}
+
+void RTCIceTransport::setQuicListener(QuicListener* quicListener)
+{
+    m_quicListener = quicListener;
 }

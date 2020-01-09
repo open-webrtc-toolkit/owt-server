@@ -18,7 +18,7 @@ describe('Test RTCIceTransport with licode and libnice.', () => {
   afterEach(() => {
     iceTransport.stop();
   });
-  xit('Create an RTCIceTransport.', () => {
+  it('Create an RTCIceTransport.', () => {
     const iceTransport2 = new addon.RTCIceTransport();
     expect(iceTransport).to.be.an.instanceof(addon.RTCIceTransport);
     iceTransport2.stop();
@@ -31,7 +31,7 @@ describe('Test RTCIceTransport with licode and libnice.', () => {
     iceTransport.gather();
   });
 
-  xit('Fire icecandidate on RTCIceTransport', (done) => {
+  it('Fire icecandidate on RTCIceTransport', (done) => {
     let calledFirstTime = false;
     iceTransport.onicecandidate = (event) => {
       if (calledFirstTime) {
@@ -50,7 +50,7 @@ describe('Test RTCIceTransport with licode and libnice.', () => {
     iceTransport.addRemoteCandidate(candidate);
   });
 
-  xit('Add remote candidates and start.',(done)=>{
+  it('Add remote candidates and start.',(done)=>{
     iceTransport.gather();
     iceTransport.start({usernameFragment: 'qlkT', password: '0/MLO8kD6QgBOgQvzX1l8pmO'});
     const candidate = new addon.RTCIceCandidate({
@@ -61,7 +61,7 @@ describe('Test RTCIceTransport with licode and libnice.', () => {
     done();
   });
 
-  xit('Get local parameters.',(done)=>{
+  it('Get local parameters.',(done)=>{
     iceTransport.gather();
     const parameters=iceTransport.getLocalParameters();
     expect(parameters.usernameFragment).to.be.a('string').that.is.not.empty;

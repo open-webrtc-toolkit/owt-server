@@ -42,7 +42,6 @@ private:
 
     static Nan::Persistent<v8::Function> s_constructor;
 
-    RTCIceTransport* m_iceTransport;
     std::unique_ptr<owt::quic::P2PQuicPacketTransportInterface> m_packetTransport;
     std::unique_ptr<owt::quic::P2PQuicTransportInterface> m_transport;
 };

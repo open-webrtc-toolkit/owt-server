@@ -30,7 +30,7 @@
     'defines':[
       'OWT_ENABLE_QUIC=1',
     ],
-    'cflags_cc': ['-std=c++14', '-fexceptions', '-DWEBRTC_POSIX', '-DWEBRTC_LINUX', '-DLINUX', '-DNOLINUXIF', '-DNO_REG_RPC=1', '-DHAVE_VFPRINTF=1', '-DRETSIGTYPE=void', '-DNEW_STDIO', '-DHAVE_STRDUP=1', '-DHAVE_STRLCPY=1', '-DHAVE_LIBM=1', '-DHAVE_SYS_TIME_H=1', '-DTIME_WITH_SYS_TIME_H=1'],
+    'cflags_cc': ['-std=c++17', '-fexceptions', '-DWEBRTC_POSIX', '-DWEBRTC_LINUX', '-DLINUX', '-DNOLINUXIF', '-DNO_REG_RPC=1', '-DHAVE_VFPRINTF=1', '-DRETSIGTYPE=void', '-DNEW_STDIO', '-DHAVE_STRDUP=1', '-DHAVE_STRLCPY=1', '-DHAVE_LIBM=1', '-DHAVE_SYS_TIME_H=1', '-DTIME_WITH_SYS_TIME_H=1'],
     'include_dirs': [
       "<!(node -e \"require('nan')\")",
       'conn_handler',
@@ -47,8 +47,9 @@
     ],
     'ldflags': [
       '-Wl,--no-as-needed',
-      '-Wl,-rpath,$(CHROMIUM_HOME)/out/debug',
+      '-Wl,-rpath,/home/jianjunz/code/quic/src/out/debug',
       '-L$(CORE_HOME)/../../build/libdeps/build/lib',
+      #'-L/home/jianjunz/code/quic/src/out/debug/obj/owt/quic_transport',
       '-L/home/jianjunz/code/quic/src/out/debug',
     ],
     'cflags_cc!': [

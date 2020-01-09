@@ -8,17 +8,27 @@
 #include "QuicFactory.h"
 #include "owt/quic/quic_transport_factory.h"
 
+DEFINE_LOGGER(QuicFactory, "QuicFactory");
+
 std::once_flag getQuicFactoryOnce;
+
+std::shared_ptr<QuicFactory> QuicFactory::s_quicFactory = nullptr;
 
 QuicFactory::QuicFactory()
     : m_quicTransportFactory(std::make_shared<owt::quic::QuicTransportFactory>())
 {
+    ELOG_DEBUG("QuicFactory ctor.");
 }
 
 std::shared_ptr<owt::quic::QuicTransportFactory> QuicFactory::getQuicTransportFactory()
 {
+    ELOG_DEBUG("Before call once.");
     std::call_once(getQuicFactoryOnce, []() {
-        s_quicFactory = std::shared_ptr<QuicFactory>();
+        ELOG_DEBUG("Before new.");
+        QuicFactory* factory=new QuicFactory();
+        ELOG_DEBUG("After new.");
+        s_quicFactory = std::shared_ptr<QuicFactory>(factory);
     });
+    ELOG_DEBUG("After call once.");
     return s_quicFactory->m_quicTransportFactory;
 }

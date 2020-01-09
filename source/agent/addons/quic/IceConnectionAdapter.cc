@@ -16,26 +16,19 @@ IceConnectionAdapter::IceConnectionAdapter(erizo::IceConnection* iceConnection)
 {
 }
 
-void IceConnectionAdapter::onPacketReceived(erizo::packetPtr packet)
+void IceConnectionAdapter::onReadPacket(const char* buffer, size_t buffer_length)
 {
-    ELOG_DEBUG("IceConnectionAdapter::onPacketReceived");
+    ELOG_DEBUG("IceConnectionAdapter::onReadPacket");
     if (m_receiveDelegate) {
-        m_receiveDelegate->OnPacketDataReceived(packet->data, packet->length);
+        m_receiveDelegate->OnPacketDataReceived(buffer, buffer_length);
+    } else {
+        ELOG_DEBUG("ReceiveDelegate is nullptr");
     }
 }
 
-void IceConnectionAdapter::onCandidate(const erizo::CandidateInfo& candidate, erizo::IceConnection* conn)
+void IceConnectionAdapter::onReadyToWrite()
 {
-    ELOG_DEBUG("IceConnectionAdapter::onCandidate");
-}
-void IceConnectionAdapter::updateIceState(erizo::IceState state, erizo::IceConnection* conn)
-{
-    ELOG_DEBUG("IceConnectionAdapter::updateIceState %d", state);
-    if (state == erizo::IceState::READY) {
-        m_writeable = true;
-    } else if (state == erizo::IceState::FAILED) {
-        m_writeable = false;
-    }
+    ELOG_DEBUG("IceConnectionAdapter::onReadyToWrite");
 }
 
 int IceConnectionAdapter::WritePacket(const char* data, size_t length)

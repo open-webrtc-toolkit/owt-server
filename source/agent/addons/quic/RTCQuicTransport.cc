@@ -52,13 +52,6 @@ NAN_MODULE_INIT(RTCQuicTransport::Init)
 
     s_constructor.Reset(tpl->GetFunction());
     Nan::Set(target, Nan::New("RTCQuicTransport").ToLocalChecked(), Nan::GetFunction(tpl).ToLocalChecked());
-
-    // base::CommandLine::Init(0, nullptr);
-    // // Logging settings for Chromium.
-    // logging::SetMinLogLevel(LOG_VERBOSE);
-    // LoggingSettings settings;
-    // settings.logging_dest = LOG_TO_SYSTEM_DEBUG_LOG;
-    // InitLogging(settings);
 }
 
 NAN_METHOD(RTCQuicTransport::newInstance)
@@ -77,14 +70,19 @@ NAN_METHOD(RTCQuicTransport::newInstance)
         return Nan::ThrowTypeError("RTCIceTransport is required.");
     }
     auto rtcIceTransport = Nan::ObjectWrap::Unwrap<RTCIceTransport>(maybeIceTransport.ToLocalChecked()->ToObject());
-    obj->m_iceTransport = rtcIceTransport;
     erizo::IceConnection* iceConnection = rtcIceTransport->iceConnection();
-    obj->m_packetTransport = std::make_unique<IceConnectionAdapter>(IceConnectionAdapter(iceConnection));
-    obj->m_transport = QuicFactory::getQuicTransportFactory()->CreateP2PServerTransport(obj->m_packetTransport.get());
+    ELOG_DEBUG("Got erizo::IceConnection.");
+    auto iceAdapter = std::make_unique<IceConnectionAdapter>(IceConnectionAdapter(iceConnection));
+    // TODO: Remove listener in dtor.
+    rtcIceTransport->setQuicListener(iceAdapter.get());
+    obj->m_packetTransport = std::move(iceAdapter);
+    auto factory = QuicFactory::getQuicTransportFactory();
+    ELOG_DEBUG("Got Quic factory.");
+    obj->m_transport = factory->CreateP2PServerTransport(obj->m_packetTransport.get());
     // uv_async_init(uv_default_loop(), &obj->m_asyncOnStream, &RTCQuicTransport::onStreamCallback);
     // ELOG_DEBUG("Create P2PQuicTransport.");
-    // 
-    // 
+    //
+    //
     //
     /*
     ELOG_DEBUG("Checking certs.");
