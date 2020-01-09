@@ -53,6 +53,10 @@ class VideoFrameConstructor : public erizo::MediaSink,
                               public webrtc::VCMPacketRequestCallback*/ {
 
 public:
+    struct Config {
+        uint32_t transport_cc = 0;
+    };
+
     VideoFrameConstructor(VideoInfoListener*, uint32_t transportccExtId = 0);
     virtual ~VideoFrameConstructor();
 
@@ -97,13 +101,13 @@ private:
       private:
         VideoFrameConstructor* m_src;
         webrtc::VideoCodecType m_codec;
-        uint16_t m_width;
-        uint16_t m_height;
         std::unique_ptr<uint8_t[]> m_frameBuffer;
         uint32_t m_bufferSize;
     };
 
     void maybeCreateReceiveVideo(uint32_t ssrc);
+
+    Config m_config;
 
     // Implement erizo::MediaSink
     int deliverAudioData_(std::shared_ptr<erizo::DataPacket> audio_packet) override;
@@ -113,8 +117,12 @@ private:
 
     bool m_enabled;
     bool m_enableDump;
-    FrameFormat m_format;
     uint32_t m_ssrc;
+
+    // Video Statistics collected in decoder thread
+    FrameFormat m_format;
+    uint16_t m_width;
+    uint16_t m_height;
 
     erizo::MediaSource* m_transport;
     boost::shared_mutex m_transportMutex;
@@ -125,7 +133,7 @@ private:
     VideoInfoListener* m_videoInfoListener;
     std::unique_ptr<WebRTCTransport<erizoExtra::VIDEO>> m_videoTransport;
 
-    // Temporary buffer
+    // Temporary buffer for dump
     char buf[1500];
 
     std::unique_ptr<webrtc::TaskQueueFactory> task_queue_factory;

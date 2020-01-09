@@ -20,12 +20,7 @@ namespace owt_base {
 
 const uint32_t kBufferSize = 8192;
 // Local SSRC has no meaning for receive stream here
-const uint32_t kLocalSsrc = 152320;
-
-constexpr char kNameVp8[] = "VP8";
-constexpr char kNameVp9[] = "VP9";
-constexpr char kNameH264[] = "H264";
-constexpr char kNameH265[] = "H265";
+const uint32_t kLocalSsrc = 1;
 
 static void dump(void* index, FrameFormat format, uint8_t* buf, int len)
 {
@@ -39,26 +34,12 @@ static void dump(void* index, FrameFormat format, uint8_t* buf, int len)
     }
 }
 
-class FakeTransport : public webrtc::Transport{
-public:
-    virtual bool SendRtp(const uint8_t* data, size_t len, const webrtc::PacketOptions& options) override {
-        return true;
-    }
-    virtual bool SendRtcp(const uint8_t* data, size_t len) override {
-        return true;
-    }
-// private:
-//     erizoExtra::RTPDataReceiver* m_rtpReceiver;
-};
-
 int32_t VideoFrameConstructor::AdaptorDecoder::InitDecode(const webrtc::VideoCodec* config,
                                                           int32_t number_of_cores) {
     RTC_DLOG(LS_INFO) << "AdaptorDecoder InitDecode";
     if (config) {
         m_codec = config->codecType;
     }
-    m_width = 0;
-    m_height = 0;
     if (!m_frameBuffer) {
         m_bufferSize = kBufferSize;
         m_frameBuffer.reset(new uint8_t[m_bufferSize]);
@@ -69,7 +50,7 @@ int32_t VideoFrameConstructor::AdaptorDecoder::InitDecode(const webrtc::VideoCod
 int32_t VideoFrameConstructor::AdaptorDecoder::Decode(const webrtc::EncodedImage& encodedImage,
                                                       bool missing_frames,
                                                       int64_t render_time_ms) {
-    RTC_DLOG(LS_INFO) << "AdaptorDecoder Decode";
+    RTC_DLOG(LS_VERBOSE) << "AdaptorDecoder Decode";
     FrameFormat format = FRAME_FORMAT_UNKNOWN;
     bool resolutionChanged = false;
 
@@ -90,16 +71,6 @@ int32_t VideoFrameConstructor::AdaptorDecoder::Decode(const webrtc::EncodedImage
             RTC_LOG(LS_WARNING) << "Unknown FORMAT";
             return 0;
     }
-
-    if (encodedImage._encodedWidth != 0 && m_width != encodedImage._encodedWidth) {
-        m_width = encodedImage._encodedWidth;
-        resolutionChanged = true;
-    };
-
-    if (encodedImage._encodedHeight != 0 && m_height != encodedImage._encodedHeight) {
-        m_height = encodedImage._encodedHeight;
-        resolutionChanged = true;
-    };
 
     if (resolutionChanged) {
         // Notify resolution change
@@ -123,6 +94,31 @@ int32_t VideoFrameConstructor::AdaptorDecoder::Decode(const webrtc::EncodedImage
 
     if (m_src) {
         m_src->deliverFrame(frame);
+        // Check video update
+        if (m_src->m_videoInfoListener) {
+            if (format != m_src->m_format) {
+            // Format update
+            }
+            if (encodedImage._encodedWidth != 0 && m_src->m_width != encodedImage._encodedWidth) {
+                m_src->m_width = encodedImage._encodedWidth;
+                resolutionChanged = true;
+            };
+            if (encodedImage._encodedHeight != 0 && m_src->m_height != encodedImage._encodedHeight) {
+                m_src->m_height = encodedImage._encodedHeight;
+                resolutionChanged = true;
+            };
+            if (resolutionChanged) {
+                char buf[1024];
+                rtc::SimpleStringBuilder ss(buf);
+                ss << "{\"video\": {\"parameters\": {\"resolution\": {"
+                         << "\"width\":" << m_src->m_width << ", "
+                         << "\"height\":" << m_src->m_height
+                         << "}}}}";
+
+                RTC_DLOG(LS_INFO) << "Video update:" << ss.str();
+                m_src->m_videoInfoListener->onVideoInfo(ss.str());
+            }
+        }
         // Dump for debug use
         if (m_src->m_enableDump && (frame.format == FRAME_FORMAT_H264 || frame.format == FRAME_FORMAT_H265)) {
             dump(this, frame.format, frame.payload, frame.length);
@@ -140,6 +136,8 @@ VideoFrameConstructor::VideoFrameConstructor(VideoInfoListener* vil, uint32_t tr
     , m_enableDump(false)
     , m_format(FRAME_FORMAT_UNKNOWN)
     , m_ssrc(0)
+    , m_width(0)
+    , m_height(0)
     , m_transport(nullptr)
     , m_pendingKeyFrameRequests(0)
     , m_isRequestingKeyFrame(false)
@@ -151,6 +149,7 @@ VideoFrameConstructor::VideoFrameConstructor(VideoInfoListener* vil, uint32_t tr
 {
     m_videoTransport.reset(new WebRTCTransport<erizoExtra::VIDEO>(nullptr, nullptr));
     sink_fb_source_ = m_videoTransport.get();
+    m_config.transport_cc = transportccExtId;
     // m_feedbackTimer.reset(new JobTimer(1, this));
     task_queue.PostTask([this]() {
         // Initialize call
@@ -187,14 +186,18 @@ void VideoFrameConstructor::maybeCreateReceiveVideo(uint32_t ssrc) {
             RTC_DLOG(LS_INFO) << "Create VideoReceiveStream with SSRC: " << ssrc;
             // Create Receive Video Stream
             webrtc::VideoReceiveStream::Config default_config(m_videoTransport.get());
-            default_config.rtp.transport_cc = true;
             default_config.rtp.local_ssrc = kLocalSsrc;
-            default_config.rtp.rtcp_mode = webrtc::RtcpMode::kCompound;
+            default_config.rtp.rtcp_mode = webrtc::RtcpMode::kReducedSize;
             default_config.rtp.remote_ssrc = m_ssrc;
             default_config.rtp.red_payload_type = RED_90000_PT;
-            char ext_url[] = "http://www.ietf.org/id/draft-holmer-rmcat-transport-wide-cc-extensions-01";
-            default_config.rtp.extensions.emplace_back(ext_url, 3);
-            // default_config.rtp.extensions.push_back(extension);
+            if (m_config.transport_cc) {
+                RTC_DLOG(LS_INFO) << "TransportSequenceNumber Extension Enabled";
+                default_config.rtp.transport_cc = true;
+                default_config.rtp.extensions.emplace_back(
+                    webrtc::RtpExtension::kTransportSequenceNumberUri, m_config.transport_cc);
+            } else {
+                default_config.rtp.transport_cc = false;
+            }
             // default_config.rtp.nack.rtp_history_ms = rtp_history_ms;
             // Enable RTT calculation so NTP time estimator will work.
             // default_config.rtp.rtcp_xr.receiver_reference_time_report =
@@ -214,25 +217,30 @@ void VideoFrameConstructor::maybeCreateReceiveVideo(uint32_t ssrc) {
             decoder.decoder_factory = this;
             // Add VP8 decoder
             decoder.payload_type = VP8_90000_PT;
-            decoder.video_format = webrtc::SdpVideoFormat(kNameVp8);
+            decoder.video_format = webrtc::SdpVideoFormat(
+                webrtc::CodecTypeToPayloadString(webrtc::VideoCodecType::kVideoCodecVP8));
             RTC_DLOG(LS_INFO) <<  "Config add decoder:" << decoder.ToString();
             video_recv_config.decoders.push_back(decoder);
             // Add VP9 decoder
             decoder.payload_type = VP9_90000_PT;
-            decoder.video_format = webrtc::SdpVideoFormat(kNameVp9);
+            decoder.video_format = webrtc::SdpVideoFormat(
+                webrtc::CodecTypeToPayloadString(webrtc::VideoCodecType::kVideoCodecVP9));
             RTC_DLOG(LS_INFO) <<  "Config add decoder:" << decoder.ToString();
             video_recv_config.decoders.push_back(decoder);
             // Add H264 decoder
             decoder.payload_type = H264_90000_PT;
-            decoder.video_format = webrtc::SdpVideoFormat(kNameH264);
+            decoder.video_format = webrtc::SdpVideoFormat(
+                webrtc::CodecTypeToPayloadString(webrtc::VideoCodecType::kVideoCodecH264));
             RTC_DLOG(LS_INFO) <<  "Config add decoder:" << decoder.ToString();
             video_recv_config.decoders.push_back(decoder);
             // Add H265 decoder
             decoder.payload_type = H265_90000_PT;
-            decoder.video_format = webrtc::SdpVideoFormat(kNameH265);
+            decoder.video_format = webrtc::SdpVideoFormat(
+                webrtc::CodecTypeToPayloadString(webrtc::VideoCodecType::kVideoCodecH265));
             RTC_DLOG(LS_INFO) <<  "Config add decoder:" << decoder.ToString();
             video_recv_config.decoders.push_back(decoder);
 
+            RTC_DLOG(LS_INFO) << "VideoReceiveStream::Config " << video_recv_config.ToString();
             video_recv_stream = call->CreateVideoReceiveStream(std::move(video_recv_config));
             video_recv_stream->Start();
             call->SignalChannelNetworkState(webrtc::MediaType::VIDEO, webrtc::NetworkState::kNetworkUp);
@@ -282,10 +290,14 @@ bool VideoFrameConstructor::setBitrate(uint32_t kbps)
 
 std::vector<webrtc::SdpVideoFormat> VideoFrameConstructor::GetSupportedFormats() const {
     return std::vector<webrtc::SdpVideoFormat>{
-        webrtc::SdpVideoFormat(kNameVp8),
-        webrtc::SdpVideoFormat(kNameVp9),
-        webrtc::SdpVideoFormat(kNameH264),
-        webrtc::SdpVideoFormat(kNameH265)
+        webrtc::SdpVideoFormat(
+            webrtc::CodecTypeToPayloadString(webrtc::VideoCodecType::kVideoCodecVP8)),
+        webrtc::SdpVideoFormat(
+            webrtc::CodecTypeToPayloadString(webrtc::VideoCodecType::kVideoCodecVP9)),
+        webrtc::SdpVideoFormat(
+            webrtc::CodecTypeToPayloadString(webrtc::VideoCodecType::kVideoCodecH264)),
+        webrtc::SdpVideoFormat(
+            webrtc::CodecTypeToPayloadString(webrtc::VideoCodecType::kVideoCodecH265))
     };
 }
 
