@@ -155,14 +155,12 @@ NAN_METHOD(RTCQuicTransport::start)
 NAN_METHOD(RTCQuicTransport::listen)
 {
     ELOG_DEBUG("RTCQuicTransport::listen");
-    // RTCQuicTransport* obj = Nan::ObjectWrap::Unwrap<RTCQuicTransport>(info.Holder());
-    // char* keyBuffer = node::Buffer::Data(info[0]);
-    // size_t keyLength = node::Buffer::Length(info[0]);
-    // auto cryptoServerConfig = obj->createServerCryptoConfig();
-    // std::string keyString = std::string(keyBuffer, keyLength);
-    // cryptoServerConfig->set_pre_shared_key(keyString);
-    // obj->m_ioThread->task_runner()->PostTask(FROM_HERE, base::BindOnce(&RTCQuicTransport::createAndStartP2PQuicTransport, base::Unretained(obj), obj->m_iceTransport, cryptoServerConfig, base::Unretained(obj->m_ioThread->task_runner().get())));
-    // ELOG_DEBUG("After create P2P Quic transport.");
+    RTCQuicTransport* obj = Nan::ObjectWrap::Unwrap<RTCQuicTransport>(info.Holder());
+    char* keyBuffer = node::Buffer::Data(info[0]);
+    size_t keyLength = node::Buffer::Length(info[0]);
+    std::string keyString = std::string(keyBuffer, keyLength);
+    obj->m_transport->Listen(keyString);
+    ELOG_DEBUG("After create P2P Quic transport.");
 }
 
 NAN_METHOD(RTCQuicTransport::getLocalParameters)
