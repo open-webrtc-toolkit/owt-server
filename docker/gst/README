@@ -18,11 +18,11 @@ Run ./build_docker_image.sh then following 3 docker images for OWT will be gener
  	./bin/stop-all.sh
 
 b. Start analytics agent container
-	Copy analytics agent image(gst-analytics:run) and related models to VCAA card and load the image, launch a container with following command:
+	Copy analytics agent image(gst-analytics:run) and related models to device and load the image, launch a container with following command:
 
 	 docker run -u root -v ~:/mnt -v /var/tmp:/var/tmp --privileged --net=host $(env | grep -E '_(proxy)=' | sed 's/^/-e /') --entrypoint bash -tid gst-analytics:run
 
-	then log into docker container and make sure that models could be found in /mnt/models/ in analytics agent container and modify rabbitmq host configuration in /home/analytics_agent/agent.toml:
+	then log into docker container and modify rabbitmq host configuration in /home/analytics_agent/agent.toml:
 
 	[agent]
 	#Max processes that agent can run
@@ -31,10 +31,11 @@ b. Start analytics agent container
 	If analytics and owt container are running on the same device, just leave below rabbit host to localhost, otherwise, set analytics rabbit host to rabbitmq server address (We will start rabbitmq server by default in OWT container, so in most cases please set this rabbit.host to OWT server address)
 	[rabbit]
 	host = "172.32.1.254" #default: "localhost"
+	make sure that models can be found in analytics agent container, follow https://github.com/opencv/open_model_zoo/blob/master/tools/downloader/README.md to download OpenVINO pre-trained models. you can configure related model parameters in /home/analytics_agent/plugin.cfg
 c. Compile pipeline share library
 	Follow README in /home/analytics_agent/plugins on analytics container to compile pipeline share library, you can follow the README to build your own GStreamer pipeline.
 
-Launch hddldaemon before running analytics agent.
+If analytics agent is deployed on VCAA card and VPU is used(in detect_pipeline in analytics_agent/plugins/samples), launch hddldaemon VCAA card  before running analytics agent on container.
 
 
 Then launch analytics agent with following command in /home:
