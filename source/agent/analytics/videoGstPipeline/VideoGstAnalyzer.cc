@@ -32,41 +32,6 @@ VideoGstAnalyzer::~VideoGstAnalyzer() {
     }
 }
 
-void VideoGstAnalyzer::print_one_tag (const GstTagList * list, const gchar * tag, gpointer user_data)
-{
-  int i, num;
-
-  num = gst_tag_list_get_tag_size (list, tag);
-  for (i = 0; i < num; ++i) {
-    const GValue *val;
-
-    /* Note: when looking for specific tags, use the gst_tag_list_get_xyz() API,
-     * we only use the GValue approach here because it is more generic */
-    val = gst_tag_list_get_value_index (list, tag, i);
-    if (G_VALUE_HOLDS_STRING (val)) {
-      ELOG_DEBUG ("\t%20s : %s\n", tag, g_value_get_string (val));
-    } else if (G_VALUE_HOLDS_UINT (val)) {
-      ELOG_DEBUG ("\t%20s : %u\n", tag, g_value_get_uint (val));
-    } else if (G_VALUE_HOLDS_DOUBLE (val)) {
-      ELOG_DEBUG ("\t%20s : %g\n", tag, g_value_get_double (val));
-    } else if (G_VALUE_HOLDS_BOOLEAN (val)) {
-      ELOG_DEBUG ("\t%20s : %s\n", tag,
-          (g_value_get_boolean (val)) ? "true" : "false");
-    } else if (GST_VALUE_HOLDS_BUFFER (val)) {
-      GstBuffer *buf = gst_value_get_buffer (val);
-      guint buffer_size = gst_buffer_get_size (buf);
-
-      ELOG_DEBUG ("\t%20s : buffer of size %u\n", tag, buffer_size);
-    } else if (GST_VALUE_HOLDS_DATE_TIME (val)) {
-      
-      ELOG_DEBUG ("\t%20s : hold date time\n", tag);
-
-    } else {
-      ELOG_DEBUG ("\t%20s : tag of type '%s'\n", tag, G_VALUE_TYPE_NAME (val));
-    }
-  }
-}
-
 gboolean VideoGstAnalyzer::StreamEventCallBack(GstBus *bus, GstMessage *message, gpointer data)
     {
         ELOG_DEBUG("Got %s message\n", GST_MESSAGE_TYPE_NAME(message));
@@ -96,8 +61,6 @@ gboolean VideoGstAnalyzer::StreamEventCallBack(GstBus *bus, GstMessage *message,
             gst_message_parse_tag (message, &tags);
 
             ELOG_DEBUG("Got tags from element %s:\n", GST_OBJECT_NAME (message->src));
-            gst_tag_list_foreach (tags, print_one_tag, NULL);
-            ELOG_DEBUG("\n");
             gst_tag_list_unref (tags);
             break;
         }
@@ -257,23 +220,13 @@ void VideoGstAnalyzer::new_sample_from_sink (GstElement * source, gpointer data)
     sample = gst_app_sink_pull_sample (GST_APP_SINK (pStreamObj->sink));
     buffer = gst_sample_get_buffer (sample);
 
-    /* make a copy */
-    //app_buffer = gst_buffer_copy (buffer);
     GstMapInfo map;
     gst_buffer_map (buffer, &map, GST_MAP_READ);
- 
-    /* we don't need the appsink sample anymore */
     
     for ( auto& x: pStreamObj->m_internalout)
         x->onFrame(map.data, map.size);
 
-    /*if(pStreamObj->fp == NULL) 
-        pStreamObj->fp = fopen("/tmp/receive","w+b");
-    fwrite(map.data,sizeof(char),map.size,pStreamObj->fp);*/
-
-    gst_sample_unref(sample);
     gst_buffer_unmap(buffer, &map);
-    gst_buffer_unref(buffer);
 }
 
 int VideoGstAnalyzer::addElementMany() {
@@ -289,6 +242,7 @@ int VideoGstAnalyzer::addElementMany() {
     sink = gst_bin_get_by_name (GST_BIN (pipeline), "appsink");
     if (!sink) {
         ELOG_ERROR("There is no appsink in pipeline\n");
+        return -1;
     }
 
     g_signal_connect (source, "need-data", G_CALLBACK (start_feed), this);
@@ -348,8 +302,6 @@ void VideoGstAnalyzer::emitConnectTo(int connectionID, char* ip, int remotePort)
 void VideoGstAnalyzer::addOutput(int connectionID, owt_base::InternalOut* out) {
     ELOG_DEBUG("Add analyzed stream back to OWT\n");
     if (sink != nullptr){
-        //m_internalout.insert(connectionID, out);
-        //boost::unique_lock<boost::shared_mutex> lock(m_video_dests_mutex);
         if(encoder_pad == nullptr) {
             GstElement *encoder = gst_bin_get_by_name (GST_BIN (pipeline), "encoder");
             encoder_pad = gst_element_get_static_pad(encoder, "src");
@@ -357,7 +309,6 @@ void VideoGstAnalyzer::addOutput(int connectionID, owt_base::InternalOut* out) {
             ELOG_ERROR("Set encoder pad to internal output\n");
         }
         m_internalout.push_back(out);
-        //lock.unlock();
         g_object_set (G_OBJECT (sink), "emit-signals", TRUE, "sync", FALSE, NULL);
         g_signal_connect (sink, "new-sample", G_CALLBACK (new_sample_from_sink), this);
     } else {

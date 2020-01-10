@@ -45,7 +45,6 @@ public:
 
     static void pad_added_handler(GstElement *src, GstPad *new_pad, GstElement *data);
     static void on_pad_added (GstElement *element, GstPad *pad, gpointer data);
-    static void print_one_tag (const GstTagList * list, const gchar * tag, gpointer user_data);
 
     static void start_feed (GstElement * source, guint size, gpointer data);
     static gboolean push_data (gpointer data);
