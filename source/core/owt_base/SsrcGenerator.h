@@ -7,18 +7,15 @@
 
 #include <set>
 
-#include "webrtc/base/criticalsection.h"
-#include "webrtc/base/random.h"
-#include "webrtc/base/thread_annotations.h"
-#include "webrtc/system_wrappers/include/static_instance.h"
-#include "webrtc/typedefs.h"
+#include "rtc_base/critical_section.h"
+#include "rtc_base/random.h"
+#include "base/thread_annotations.h"
 
 namespace owt_base {
 
 class SsrcGenerator {
  public:
   static SsrcGenerator* GetSsrcGenerator();
-  static void ReturnSsrcGenerator();
 
   uint32_t CreateSsrc();
   void RegisterSsrc(uint32_t ssrc);
@@ -27,13 +24,6 @@ class SsrcGenerator {
  protected:
   SsrcGenerator();
   ~SsrcGenerator();
-
-  static SsrcGenerator* CreateInstance() { return new SsrcGenerator(); }
-
-  // Friend function to allow the SSRC destructor to be accessed from the
-  // template class.
-  friend SsrcGenerator* webrtc::GetStaticInstance<SsrcGenerator>(
-      CountOperation count_operation);
 
  private:
   rtc::CriticalSection crit_;

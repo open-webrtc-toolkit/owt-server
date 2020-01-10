@@ -13,14 +13,6 @@
 #include <MediaDefinitionExtra.h>
 
 #include <JobTimer.h>
-#include <modules/remote_bitrate_estimator/include/remote_bitrate_estimator.h>
-#include <modules/remote_bitrate_estimator/remote_estimator_proxy.h>
-#include <modules/rtp_rtcp/include/rtp_rtcp.h>
-#include <modules/pacing/packet_router.h>
-#include <modules/video_coding/include/video_codec_interface.h>
-#include <modules/video_coding/include/video_coding.h>
-#include <modules/video_coding/include/video_coding_defines.h>
-#include <modules/video_coding/video_coding_impl.h>
 
 #include <rtc_base/task_queue.h>
 #include <call/call.h>

@@ -7,7 +7,7 @@
 #include <rtputils.h>
 #include <common_types.h>
 #include <modules/video_coding/timing.h>
-#include <modules/remote_bitrate_estimator/remote_bitrate_estimator_single_stream.h>
+#include <modules/video_coding/include/video_error_codes.h>
 #include <rtc_base/time_utils.h>
 #include <random>
 #include <future>
@@ -134,8 +134,8 @@ int32_t VideoFrameConstructor::AdaptorDecoder::Decode(const webrtc::EncodedImage
 VideoFrameConstructor::VideoFrameConstructor(VideoInfoListener* vil, uint32_t transportccExtId)
     : m_enabled(true)
     , m_enableDump(false)
-    , m_format(FRAME_FORMAT_UNKNOWN)
     , m_ssrc(0)
+    , m_format(FRAME_FORMAT_UNKNOWN)
     , m_width(0)
     , m_height(0)
     , m_transport(nullptr)

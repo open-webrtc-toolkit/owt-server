@@ -5,6 +5,12 @@
 #include "VideoFramePacketizer.h"
 #include "MediaUtilities.h"
 #include <rtputils.h>
+#include <api/video_codecs/video_codec.h>
+#include <api/video/video_codec_type.h>
+#include <api/rtc_event_log/rtc_event_log.h>
+#include <modules/rtp_rtcp/source/rtp_video_header.h>
+#include <modules/include/module_common_types.h>
+#include <rtc_base/logging.h>
 
 namespace owt_base {
 
@@ -48,7 +54,6 @@ VideoFramePacketizer::~VideoFramePacketizer()
     close();
     m_taskRunner->Stop();
     m_ssrc_generator->ReturnSsrc(m_ssrc);
-    SsrcGenerator::ReturnSsrcGenerator();
     boost::unique_lock<boost::shared_mutex> lock(m_rtpRtcpMutex);
 }
 
@@ -82,59 +87,9 @@ void VideoFramePacketizer::enable(bool enabled)
     }
 }
 
-bool VideoFramePacketizer::setSendCodec(FrameFormat frameFormat, unsigned int width, unsigned int height)
-{
-    using namespace webrtc;
-    // The send video format should be identical to the input video format,
-    // because we (VideoFramePacketizer) don't have the transcoding capability.
-    assert(frameFormat == m_frameFormat);
-
-    VideoCodec codec;
-    memset(&codec, 0, sizeof(codec));
-
-    switch (frameFormat) {
-    case FRAME_FORMAT_VP8:
-        codec.codecType = webrtc::kVideoCodecVP8;
-        strcpy(codec.plName, "VP8");
-        codec.plType = VP8_90000_PT;
-        break;
-    case FRAME_FORMAT_VP9:
-        codec.codecType = webrtc::kVideoCodecVP9;
-        strcpy(codec.plName, "VP9");
-        codec.plType = VP9_90000_PT;
-        break;
-    case FRAME_FORMAT_H264:
-        codec.codecType = webrtc::kVideoCodecH264;
-        strcpy(codec.plName, "H264");
-        codec.plType = H264_90000_PT;
-        break;
-    case FRAME_FORMAT_H265:
-        codec.codecType = webrtc::kVideoCodecH265;
-        strcpy(codec.plName, "H265");
-        codec.plType = H265_90000_PT;
-        break;
-    case FRAME_FORMAT_I420:
-    default:
-        return false;
-    }
-
-    uint32_t targetKbps = 0;
-    targetKbps = calcBitrate(width, height) * (frameFormat == FRAME_FORMAT_VP8 ? 0.9 : 1);
-
-    uint32_t minKbps = targetKbps / 4;
-    // The bitrate controller is accepting "bps".
-    //m_bitrateController->SetBitrateObserver(this, targetKbps * 1000, minKbps * 1000, TRANSMISSION_MAXBITRATE_MULTIPLIER * targetKbps * 1000);
-    //Update with M53
-    m_bitrateController->SetStartBitrate(targetKbps * 1000);
-    m_bitrateController->SetMinMaxBitrate(minKbps * 1000, TRANSMISSION_MAXBITRATE_MULTIPLIER * targetKbps * 1000);
-
-    boost::shared_lock<boost::shared_mutex> lock(m_rtpRtcpMutex);
-    return m_rtpRtcp && m_rtpRtcp->RegisterSendPayload(codec) != -1;
-}
-
 void VideoFramePacketizer::OnReceivedIntraFrameRequest(uint32_t ssrc)
 {
-    ELOG_DEBUG("onReceivedIntraFrameRequest.");
+    // ELOG_WARN("onReceivedIntraFrameRequest.");
     FeedbackMsg feedback = {.type = VIDEO_FEEDBACK, .cmd = REQUEST_KEY_FRAME};
     deliverFeedbackMsg(feedback);
 }
@@ -144,7 +99,8 @@ int VideoFramePacketizer::deliverFeedback_(std::shared_ptr<erizo::DataPacket> da
     // ELOG_INFO("deliverFeedback_ %p", this);
     boost::shared_lock<boost::shared_mutex> lock(m_rtpRtcpMutex);
     if (m_rtpRtcp) {
-        return m_rtpRtcp->IncomingRtcpPacket(reinterpret_cast<uint8_t*>(data_packet->data), data_packet->length) == -1 ? 0 : data_packet->length;
+        m_rtpRtcp->IncomingRtcpPacket(reinterpret_cast<uint8_t*>(data_packet->data), data_packet->length);
+        return data_packet->length;
     }
     return 0;
 }
@@ -157,17 +113,9 @@ void VideoFramePacketizer::receiveRtpData(char* buf, int len, erizoExtra::DataTy
     }
 
     assert(type == erizoExtra::VIDEO);
-
-    ELOG_DEBUG("receiveRtpData %p", buf);
+    // ELOG_WARN("receiveRtpData %p", buf);
     video_sink_->deliverVideoData(std::make_shared<erizo::DataPacket>(0, buf, len, erizo::VIDEO_PACKET));
 }
-
-void VideoFramePacketizer::OnNetworkChanged(const uint32_t target_bitrate, const uint8_t fraction_loss, const int64_t rtt)
-{
-    // Receiver's network change detected. But we do not deliver feedback to
-    // sender because sender may adjust sending bitrate for a specific receiver.
-}
-
 
 static int getNextNaluPosition(uint8_t *buffer, int buffer_size, bool &is_aud_or_sei) {
     if (buffer_size < 4) {
@@ -267,7 +215,7 @@ static void dump(void* index, FrameFormat format, uint8_t* buf, int len)
 
 void VideoFramePacketizer::onFrame(const Frame& frame)
 {
-    ELOG_DEBUG("onFrame, format:%d, length:%d", frame.format, frame.length);
+    // ELOG_DEBUG("onFrame, format:%d, length:%d", frame.format, frame.length);
     using namespace webrtc;
     if (!m_enabled) {
         return;
@@ -275,7 +223,7 @@ void VideoFramePacketizer::onFrame(const Frame& frame)
 
     if (!m_keyFrameArrived) {
         if (!frame.additionalInfo.video.isKeyFrame) {
-            ELOG_DEBUG("Key frame has not arrived, send key-frame-request.");
+            // ELOG_DEBUG("Key frame has not arrived, send key-frame-request.");
             FeedbackMsg feedback = {.type = VIDEO_FEEDBACK, .cmd = REQUEST_KEY_FRAME};
             deliverFeedbackMsg(feedback);
             return;
@@ -294,7 +242,7 @@ void VideoFramePacketizer::onFrame(const Frame& frame)
                 || (m_sendFrameCount == 30)
                 || (m_sendFrameCount == 60)
                 || (m_sendFrameCount == 150)) {
-                ELOG_DEBUG("Self generated key-frame-request.");
+                // ELOG_DEBUG("Self generated key-frame-request.");
                 FeedbackMsg feedback = {.type = VIDEO_FEEDBACK, .cmd = REQUEST_KEY_FRAME};
                 deliverFeedbackMsg(feedback);
             }
@@ -304,10 +252,8 @@ void VideoFramePacketizer::onFrame(const Frame& frame)
 
     // Recalculate timestamp for stream substitution
     uint32_t timeStamp = frame.timeStamp + m_timeStampOffset;//kMsToRtpTimestamp * m_clock->TimeInMilliseconds();
-
     webrtc::RTPVideoHeader h;
     memset(&h, 0, sizeof(webrtc::RTPVideoHeader));
-    uint32_t transport_frame_id_out = 0;
 
     if (frame.format != m_frameFormat
         || frame.additionalInfo.video.width != m_frameWidth
@@ -315,20 +261,45 @@ void VideoFramePacketizer::onFrame(const Frame& frame)
         m_frameFormat = frame.format;
         m_frameWidth = frame.additionalInfo.video.width;
         m_frameHeight = frame.additionalInfo.video.height;
-        setSendCodec(m_frameFormat, m_frameWidth, m_frameHeight);
     }
 
+    h.frame_type = frame.additionalInfo.video.isKeyFrame ?
+        VideoFrameType::kVideoFrameKey : VideoFrameType::kVideoFrameDelta;
+    // h.rotation = image.rotation_;
+    // h.content_type = image.content_type_;
+    // h.playout_delay = image.playout_delay_;
+    h.width = m_frameWidth;
+    h.height = m_frameHeight;
+
     if (frame.format == FRAME_FORMAT_VP8) {
-        h.codec = webrtc::kRtpVideoVp8;
-        h.codecHeader.VP8.InitRTPVideoHeaderVP8();
+        h.codec = webrtc::VideoCodecType::kVideoCodecVP8;
+        auto& vp8_header = h.video_type_header.emplace<RTPVideoHeaderVP8>();
+        vp8_header.InitRTPVideoHeaderVP8();
         boost::shared_lock<boost::shared_mutex> lock(m_rtpRtcpMutex);
-        m_rtpRtcp->SendOutgoingData(webrtc::kVideoFrameKey, VP8_90000_PT, timeStamp, timeStamp / 90, frame.payload, frame.length, nullptr, &h, &transport_frame_id_out);
+        m_senderVideo->SendVideo(
+            VP8_90000_PT,
+            webrtc::kVideoCodecVP8,
+            timeStamp,
+            timeStamp,
+            rtc::ArrayView<const uint8_t>(frame.payload, frame.length),
+            nullptr,
+            h,
+            m_rtpRtcp->ExpectedRetransmissionTimeMs());
     } else if (frame.format == FRAME_FORMAT_VP9) {
-        h.codec = webrtc::kRtpVideoVp9;
-        h.codecHeader.VP9.InitRTPVideoHeaderVP9();
-        h.codecHeader.VP9.inter_pic_predicted = !frame.additionalInfo.video.isKeyFrame;
+        h.codec = webrtc::VideoCodecType::kVideoCodecVP9;
+        auto& vp9_header = h.video_type_header.emplace<RTPVideoHeaderVP9>();
+        vp9_header.InitRTPVideoHeaderVP9();
+        vp9_header.inter_pic_predicted = !frame.additionalInfo.video.isKeyFrame;
         boost::shared_lock<boost::shared_mutex> lock(m_rtpRtcpMutex);
-        m_rtpRtcp->SendOutgoingData(webrtc::kVideoFrameKey, VP9_90000_PT, timeStamp, timeStamp / 90, frame.payload, frame.length, nullptr, &h, &transport_frame_id_out);
+        m_senderVideo->SendVideo(
+            VP9_90000_PT,
+            webrtc::kVideoCodecVP9,
+            timeStamp,
+            timeStamp,
+            rtc::ArrayView<const uint8_t>(frame.payload, frame.length),
+            nullptr,
+            h,
+            m_rtpRtcp->ExpectedRetransmissionTimeMs());
     } else if (frame.format == FRAME_FORMAT_H264 || frame.format == FRAME_FORMAT_H265) {
         int frame_length = frame.length;
         if (m_enableDump) {
@@ -349,8 +320,8 @@ void VideoFramePacketizer::onFrame(const Frame& frame)
         int sc_len = 0;
         RTPFragmentationHeader frag_info;
 
-
-        h.codec = (frame.format == FRAME_FORMAT_H264)?(webrtc::kRtpVideoH264):(webrtc::kRtpVideoH265);
+        h.codec = (frame.format == FRAME_FORMAT_H264)?
+            webrtc::VideoCodecType::kVideoCodecH264 : webrtc::VideoCodecType::kVideoCodecH265;
         while (buffer_length > 0) {
             nalu_found_length = findNALU(buffer_start, buffer_length, &nalu_start_offset, &nalu_end_offset, &sc_len);
             if (nalu_found_length < 0) {
@@ -369,9 +340,27 @@ void VideoFramePacketizer::onFrame(const Frame& frame)
 
         boost::shared_lock<boost::shared_mutex> lock(m_rtpRtcpMutex);
         if (frame.format == FRAME_FORMAT_H264) {
-          m_rtpRtcp->SendOutgoingData(webrtc::kVideoFrameKey, H264_90000_PT, timeStamp, timeStamp / 90, frame.payload, frame_length, &frag_info, &h, &transport_frame_id_out);
+            h.video_type_header.emplace<RTPVideoHeaderH264>();
+            m_senderVideo->SendVideo(
+                H264_90000_PT,
+                webrtc::kVideoCodecH264,
+                timeStamp,
+                timeStamp,
+                rtc::ArrayView<const uint8_t>(frame.payload, frame.length),
+                &frag_info,
+                h,
+                m_rtpRtcp->ExpectedRetransmissionTimeMs());
         } else {
-          m_rtpRtcp->SendOutgoingData(webrtc::kVideoFrameKey, H265_90000_PT, timeStamp, timeStamp / 90, frame.payload, frame_length, &frag_info, &h, &transport_frame_id_out);
+            h.video_type_header.emplace<RTPVideoHeaderH265>();
+            m_senderVideo->SendVideo(
+                H265_90000_PT,
+                webrtc::kVideoCodecH265,
+                timeStamp,
+                timeStamp,
+                rtc::ArrayView<const uint8_t>(frame.payload, frame.length),
+                &frag_info,
+                h,
+                m_rtpRtcp->ExpectedRetransmissionTimeMs());
         }
     }
 }
@@ -393,37 +382,46 @@ bool VideoFramePacketizer::init(bool enableRed, bool enableUlpfec, bool enableTr
     using namespace webrtc;
     m_clock = Clock::GetRealTimeClock();
     m_retransmissionRateLimiter.reset(new webrtc::RateLimiter(Clock::GetRealTimeClock(), 1000));
-    m_bitrateController.reset(webrtc::BitrateController::CreateBitrateController(Clock::GetRealTimeClock(), this, &m_rtcEventLog));
-    m_bandwidthObserver.reset(m_bitrateController->CreateRtcpBandwidthObserver());
-    // FIXME: Provide the correct bitrate settings (start, min and max bitrates).
-    //m_bitrateController->SetBitrateObserver(this, 300 * 1000, 0, 0);
-    m_bitrateController->SetStartBitrate(300*1000);
-    m_bitrateController->SetMinMaxBitrate(0, 0);
 
+    event_log = std::make_unique<webrtc::RtcEventLogNull>();
     RtpRtcp::Configuration configuration;
+    configuration.clock = m_clock;
+    configuration.audio = false;
+    configuration.receiver_only = false;
     configuration.outgoing_transport = m_videoTransport.get();
-    configuration.audio = false;  // Video.
     configuration.intra_frame_callback = this;
-    configuration.event_log = &m_rtcEventLog;
-    configuration.bandwidth_callback = m_bandwidthObserver.get();
+    configuration.event_log = event_log.get();
     configuration.retransmission_rate_limiter = m_retransmissionRateLimiter.get();
-    m_rtpRtcp.reset(RtpRtcp::CreateRtpRtcp(configuration));
-    m_rtpRtcp->SetSSRC(m_ssrc);
+    configuration.local_media_ssrc = m_ssrc;//rtp_config.ssrcs[i];
 
-    // TODO: the parameters should be dynamically adjustable.
-    // Upstream might bundle RED with ULPFEC. Revisit this once upgrade to post M60.
-    int red_pl_type = enableRed? RED_90000_PT : -1;
-    int ulpfec_pl_type = enableUlpfec? ULP_90000_PT : -1;
-    m_rtpRtcp->SetUlpfecConfig(red_pl_type, ulpfec_pl_type);
-    if (enableTransportcc)
-        m_rtpRtcp->RegisterSendRtpHeaderExtension(RTPExtensionType::kRtpExtensionTransportSequenceNumber, transportccExtId);
-    m_rtpRtcp->SetREMBStatus(true);
 
-    // Enable NACK.
-    // TODO: the parameters should be dynamically adjustable.
+    m_rtpRtcp = RtpRtcp::Create(configuration);
+    m_rtpRtcp->SetSendingStatus(true);
+    m_rtpRtcp->SetSendingMediaStatus(true);
+    m_rtpRtcp->SetRTCPStatus(RtcpMode::kReducedSize);
+    // Set NACK.
     m_rtpRtcp->SetStorePacketsStatus(true, 600);
-    m_rtpRtcp->SetMaxRtpPacketSize(1200);
+    if (transportccExtId > 0) {
+        m_rtpRtcp->RegisterRtpHeaderExtension(
+            webrtc::RtpExtension::kTransportSequenceNumberUri, transportccExtId);
+    }
 
+    // FieldTrialBasedConfig field_trial_config;
+    webrtc::RTPSenderVideo::Config video_config;
+    m_playout_delay_oracle = std::make_unique<PlayoutDelayOracle>();
+    m_field_trial_config = std::make_unique<FieldTrialBasedConfig>();
+    video_config.clock = configuration.clock;
+    video_config.rtp_sender = m_rtpRtcp->RtpSender();
+    video_config.field_trials = m_field_trial_config.get();
+    video_config.playout_delay_oracle = m_playout_delay_oracle.get();
+    if (enableRed) {
+        video_config.red_payload_type = RED_90000_PT;
+    }
+    if (enableUlpfec) {
+        video_config.ulpfec_payload_type = ULP_90000_PT;
+    }
+    m_senderVideo = std::make_unique<RTPSenderVideo>(video_config);
+    // m_params = std::make_unique<RtpPayloadParams>(m_ssrc, nullptr);
     m_taskRunner->RegisterModule(m_rtpRtcp.get());
 
     return true;
@@ -432,9 +430,6 @@ bool VideoFramePacketizer::init(bool enableRed, bool enableUlpfec, bool enableTr
 void VideoFramePacketizer::close()
 {
     unbindTransport();
-    // M53 does not support removing observer
-    //if (m_bitrateController)
-    //   m_bitrateController->RemoveBitrateObserver(this);
     m_taskRunner->DeRegisterModule(m_rtpRtcp.get());
 }
 

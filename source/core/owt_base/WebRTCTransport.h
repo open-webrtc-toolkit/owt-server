@@ -8,8 +8,9 @@
 #include <MediaDefinitions.h>
 #include <MediaDefinitionExtra.h>
 #include <rtputils.h>
-#include <webrtc/common_types.h>
-#include <webrtc/api/call/transport.h>
+#include <common_types.h>
+#include <api/call/transport.h>
+#include <rtc_base/location.h>
 
 namespace owt_base {
 
