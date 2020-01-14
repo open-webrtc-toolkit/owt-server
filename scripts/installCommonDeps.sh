@@ -475,8 +475,8 @@ install_svt_hevc(){
 
     mkdir build
     pushd build >/dev/null
-    cmake -DCMAKE_INSTALL_PREFIX=${PREFIX_DIR} ..
-    make && make install
+    cmake -DCMAKE_INSTALL_PREFIX=${PREFIX_DIR} -DCMAKE_INSTALL_LIBDIR=lib ..
+    make -j && make install
     popd >/dev/null
 
     # pseudo lib
@@ -487,6 +487,27 @@ install_svt_hevc(){
 
     popd >/dev/null
     popd >/dev/null
+}
+
+install_360scvp(){
+    local SCVP_VER="v1.0.0"
+    local SCVP_REPO=https://github.com/OpenVisualCloud/Immersive-Video-Sample.git
+
+    mkdir -p ${LIB_DIR}
+    pushd ${LIB_DIR}
+
+    git clone ${SCVP_REPO}
+    pushd Immersive-Video-Sample/src/360SCVP
+    git checkout ${SCVP_VER}
+    mkdir build
+    pushd  build
+    cmake -DCMAKE_INSTALL_PREFIX=${PREFIX_DIR} -DCMAKE_INSTALL_LIBDIR=lib ../
+    make -j
+    make install
+
+    popd
+    popd
+    popd
 }
 
 cleanup_common(){
