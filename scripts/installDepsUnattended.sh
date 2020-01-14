@@ -98,6 +98,8 @@ if [ "$NIGHTLY" != "true" ]; then
 
   install_json_hpp
 
+  install_360scvp
+
 fi
 
 ${NO_INTERNAL} || install_webrtc
