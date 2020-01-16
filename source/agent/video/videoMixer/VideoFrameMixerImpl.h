@@ -14,6 +14,8 @@
 
 #include "SoftVideoCompositor.h"
 
+#include "Im360VideoCompositor.h"
+
 #include <VCMFrameDecoder.h>
 #include <VCMFrameEncoder.h>
 
@@ -113,8 +115,10 @@ VideoFrameMixerImpl::VideoFrameMixerImpl(uint32_t maxInput, owt_base::VideoSize 
         m_compositor.reset(new MsdkVideoCompositor(maxInput, rootSize, bgColor, crop));
 #endif
 
-    if (!m_compositor)
-        m_compositor.reset(new SoftVideoCompositor(maxInput, rootSize, bgColor, crop));
+    if (!m_compositor) {
+        //m_compositor.reset(new SoftVideoCompositor(maxInput, rootSize, bgColor, crop));
+        m_compositor.reset(new xcam::Im360VideoCompositor(6, {7680, 3840}, bgColor, crop));
+    }
 }
 
 VideoFrameMixerImpl::~VideoFrameMixerImpl()

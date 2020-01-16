@@ -5,6 +5,7 @@
       '../addon.cc',
       '../VideoMixerWrapper.cc',
       '../SoftVideoCompositor.cpp',
+      '../Im360VideoCompositor.cpp',
       '../VideoMixer.cpp',
       '../../../../core/owt_base/I420BufferManager.cpp',
       '../../../../core/owt_base/MediaFramePipeline.cpp',
@@ -35,6 +36,7 @@
                       '$(CORE_HOME)/../../third_party/webrtc/src/third_party/libyuv/include',
                       '$(CORE_HOME)/../../build/libdeps/build/include',
                       '$(CORE_HOME)/../../build/libdeps/build/include/svt-hevc',
+                      '$(CORE_HOME)/../../build/libdeps/build/include/xcam',
     ],
     'libraries': [
       '-lboost_thread',
@@ -45,6 +47,7 @@
       '<!@(pkg-config --libs libavcodec)',
       '<!@(pkg-config --libs libavformat)',
       '<!@(pkg-config --libs libavfilter)',
+      '<!@(pkg-config --libs libxcam)',
       '-L$(CORE_HOME)/../../build/libdeps/build/lib64', '-lSvtHevcEnc',
     ],
   }]

@@ -100,6 +100,7 @@ if [ "$NIGHTLY" != "true" ]; then
 
   install_360scvp
 
+  . install_libxcam.sh
 fi
 
 ${NO_INTERNAL} || install_webrtc
