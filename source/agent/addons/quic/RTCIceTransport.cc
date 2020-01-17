@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#include <map>
+#include <unordered_map>
 
 #include "RTCIceTransport.h"
 #include <LibNiceConnection.h>
@@ -280,6 +280,7 @@ void RTCIceTransport::onPacketReceived(erizo::packetPtr packet)
 {
     ELOG_DEBUG("RTCIceTransport::onPacketReceived");
     if (m_quicListener) {
+        ELOG_DEBUG("m_quicListener->onReadPacket.");
         m_quicListener->onReadPacket(packet->data, packet->length);
     }
 }
@@ -306,6 +307,7 @@ void RTCIceTransport::updateIceState(erizo::IceState state, erizo::IceConnection
     m_asyncStateUpdate.data = this;
     uv_async_send(&m_asyncStateUpdate);
     if (state == erizo::IceState::READY && m_quicListener) {
+        ELOG_DEBUG("onReadyToWrite.");
         m_quicListener->onReadyToWrite();
     }
 }

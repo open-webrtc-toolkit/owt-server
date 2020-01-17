@@ -7,8 +7,6 @@
 #ifndef WEBRTC_RTCQUICTRANSPORT_H_
 #define WEBRTC_RTCQUICTRANSPORT_H_
 
-#include <IceConnection.h>
-#include <logger.h>
 #include <memory>
 #include <nan.h>
 #include "RTCIceTransport.h"

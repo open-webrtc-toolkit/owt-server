@@ -158,8 +158,10 @@ NAN_METHOD(RTCQuicTransport::listen)
     RTCQuicTransport* obj = Nan::ObjectWrap::Unwrap<RTCQuicTransport>(info.Holder());
     char* keyBuffer = node::Buffer::Data(info[0]);
     size_t keyLength = node::Buffer::Length(info[0]);
-    std::string keyString = std::string(keyBuffer, keyLength);
-    obj->m_transport->Listen(keyString);
+    const std::string keyString = std::string(keyBuffer, keyLength);
+    ELOG_DEBUG("KeyString length is %d", keyString.size());
+    obj->m_transport->Listen(std::string(keyString));
+    ELOG_DEBUG("KeyString length is %d", keyString.size());
     ELOG_DEBUG("After create P2P Quic transport.");
 }
 

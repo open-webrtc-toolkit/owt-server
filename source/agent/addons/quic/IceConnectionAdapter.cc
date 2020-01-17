@@ -29,6 +29,9 @@ void IceConnectionAdapter::onReadPacket(const char* buffer, size_t buffer_length
 void IceConnectionAdapter::onReadyToWrite()
 {
     ELOG_DEBUG("IceConnectionAdapter::onReadyToWrite");
+    if (m_writeObserver) {
+        m_writeObserver->OnCanWrite();
+    }
 }
 
 int IceConnectionAdapter::WritePacket(const char* data, size_t length)
