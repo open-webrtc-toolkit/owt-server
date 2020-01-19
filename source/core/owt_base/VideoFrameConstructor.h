@@ -32,17 +32,13 @@ public:
 
 /**
  * A class to process the incoming streams by leveraging video coding module from
- * webrtc engine, which will framize and decode the frames.
+ * webrtc engine, which will framize the frames.
  */
 class VideoFrameConstructor : public erizo::MediaSink,
                               public FrameSource,
                               public JobTimerListener,
                               public rtc::VideoSinkInterface<webrtc::VideoFrame>,
-                              public webrtc::VideoDecoderFactory/*,
-                              public webrtc::RtpFeedback,
-                              public webrtc::VCMReceiveCallback,
-                              public webrtc::VCMFrameTypeCallback,
-                              public webrtc::VCMPacketRequestCallback*/ {
+                              public webrtc::VideoDecoderFactory {
 
 public:
     struct Config {

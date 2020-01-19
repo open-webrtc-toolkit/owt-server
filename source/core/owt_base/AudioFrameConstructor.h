@@ -16,7 +16,7 @@ namespace owt_base {
 
 /**
  * A class to process the incoming streams by leveraging video coding module from
- * webrtc engine, which will framize and decode the frames.
+ * webrtc engine, which will framize the frames.
  */
 class AudioFrameConstructor : public erizo::MediaSink,
                               public erizo::FeedbackSource,
@@ -31,10 +31,6 @@ public:
     void unbindTransport();
     void enable(bool enabled) {m_enabled = enabled;}
 
-    // Implements the MediaSink interfaces.
-    // int deliverAudioData(char*, int len);
-    // int deliverVideoData(char*, int len);
-
     // Implements the FrameSource interfaces.
     void onFeedback(const FeedbackMsg& msg);
 
@@ -43,7 +39,7 @@ private:
     erizo::MediaSource* m_transport;
     boost::shared_mutex m_transport_mutex;
 
-    ////////////// NEW INTERFACE ///////////
+    // Implement erizo::MediaSink
     int deliverAudioData_(std::shared_ptr<erizo::DataPacket> audio_packet) override;
     int deliverVideoData_(std::shared_ptr<erizo::DataPacket> video_packet) override;
     int deliverEvent_(erizo::MediaEventPtr event) override;

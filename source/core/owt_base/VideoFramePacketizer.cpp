@@ -96,7 +96,6 @@ void VideoFramePacketizer::OnReceivedIntraFrameRequest(uint32_t ssrc)
 
 int VideoFramePacketizer::deliverFeedback_(std::shared_ptr<erizo::DataPacket> data_packet)
 {
-    // ELOG_INFO("deliverFeedback_ %p", this);
     boost::shared_lock<boost::shared_mutex> lock(m_rtpRtcpMutex);
     if (m_rtpRtcp) {
         m_rtpRtcp->IncomingRtcpPacket(reinterpret_cast<uint8_t*>(data_packet->data), data_packet->length);
@@ -406,7 +405,6 @@ bool VideoFramePacketizer::init(bool enableRed, bool enableUlpfec, bool enableTr
             webrtc::RtpExtension::kTransportSequenceNumberUri, transportccExtId);
     }
 
-    // FieldTrialBasedConfig field_trial_config;
     webrtc::RTPSenderVideo::Config video_config;
     m_playout_delay_oracle = std::make_unique<PlayoutDelayOracle>();
     m_field_trial_config = std::make_unique<FieldTrialBasedConfig>();

@@ -198,12 +198,13 @@ void VideoFrameConstructor::maybeCreateReceiveVideo(uint32_t ssrc) {
             } else {
                 default_config.rtp.transport_cc = false;
             }
-            // default_config.rtp.nack.rtp_history_ms = rtp_history_ms;
+            /*
+            default_config.rtp.nack.rtp_history_ms = rtp_history_ms;
             // Enable RTT calculation so NTP time estimator will work.
-            // default_config.rtp.rtcp_xr.receiver_reference_time_report =
-            //     receiver_reference_time_report;
+            default_config.rtp.rtcp_xr.receiver_reference_time_report =
+                receiver_reference_time_report;
+            */
             default_config.renderer = this;
-
             webrtc::VideoReceiveStream::Config video_recv_config(default_config.Copy());
             video_recv_config.decoders.clear();
             /*

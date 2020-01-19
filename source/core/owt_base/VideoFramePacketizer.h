@@ -72,6 +72,11 @@ private:
     bool init(bool enableRed, bool enableUlpfec, bool enableTransportcc, uint32_t transportccExt);
     void close();
 
+    // Implement erizo::FeedbackSink
+    int deliverFeedback_(std::shared_ptr<erizo::DataPacket> data_packet);
+    // Implement erizo::MediaSource
+    int sendPLI();
+
     bool m_enabled;
     bool m_enableDump;
     bool m_keyFrameArrived;
@@ -80,8 +85,6 @@ private:
     // boost::scoped_ptr<webrtc::BitrateController> m_bitrateController;
     boost::scoped_ptr<webrtc::RtcpBandwidthObserver> m_bandwidthObserver;
     std::unique_ptr<webrtc::RtpRtcp> m_rtpRtcp;
-    // Use dummy event logger
-    // webrtc::RtcEventLogNullImpl m_rtcEventLog;
     boost::shared_mutex m_rtpRtcpMutex;
 
     boost::shared_ptr<webrtc::Transport> m_videoTransport;
@@ -99,16 +102,10 @@ private:
     webrtc::Clock *m_clock;
     int64_t m_timeStampOffset;
 
-    // Implement erizo::FeedbackSink
-    int deliverFeedback_(std::shared_ptr<erizo::DataPacket> data_packet);
-    // Implement erizo::MediaSource
-    int sendPLI();
-
     std::unique_ptr<webrtc::RtcEventLog> event_log;
     std::unique_ptr<webrtc::RTPSenderVideo> m_senderVideo;
     std::unique_ptr<webrtc::PlayoutDelayOracle> m_playout_delay_oracle;
     std::unique_ptr<webrtc::FieldTrialBasedConfig> m_field_trial_config;
-    // std::unique_ptr<webrtc::RtpPayloadParams> m_params;
 };
 
 }
