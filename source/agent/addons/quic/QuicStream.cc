@@ -17,15 +17,14 @@ Nan::Persistent<v8::Function> QuicStream::s_constructor;
 
 DEFINE_LOGGER(QuicStream, "QuicStream");
 
-QuicStream::QuicStream(P2PQuicStream* p2pQuicStream)
+QuicStream::QuicStream(owt::quic::P2PQuicStreamInterface* p2pQuicStream)
     : m_p2pQuicStream(p2pQuicStream)
 {
     ELOG_DEBUG("QuicStream::QuicStream");
-    if(!p2pQuicStream){
-        ELOG_DEBUG("P2PQuicStream is nullptr.");
+    if (!p2pQuicStream) {
+        ELOG_DEBUG("owt::quic::P2PQuicStreamInterface is nullptr.");
     }
     p2pQuicStream->SetDelegate(this);
-    m_deliveryDataToCppSink=true;
 }
 
 NAN_MODULE_INIT(QuicStream::Init)
@@ -34,20 +33,21 @@ NAN_MODULE_INIT(QuicStream::Init)
     tpl->SetClassName(Nan::New("QuicStream").ToLocalChecked());
     Local<ObjectTemplate> instanceTpl = tpl->InstanceTemplate();
     instanceTpl->SetInternalFieldCount(1);
-    Nan::SetPrototypeMethod(tpl, "write", write);
-    Nan::SetPrototypeMethod(tpl, "addDestination", addDestination);
+    // Nan::SetPrototypeMethod(tpl, "write", write);
     s_constructor.Reset(tpl->GetFunction());
 }
 
 NAN_METHOD(QuicStream::newInstance)
 {
+    ELOG_DEBUG("Default newInstance.");
     if (!info.IsConstructCall()) {
         return Nan::ThrowError("Must be called as a constructor.");
     }
     if (info.Length() != 1 || !info[0]->IsExternal()) {
         return Nan::ThrowError("Must be called internally.");
     }
-    P2PQuicStream* p2pQuicStream = static_cast<P2PQuicStream*>(info[0].As<v8::External>()->Value());
+    owt::quic::P2PQuicStreamInterface* p2pQuicStream = static_cast<owt::quic::P2PQuicStreamInterface*>(info[0].As<v8::External>()->Value());
+    ELOG_DEBUG("Before assert.");
     assert(p2pQuicStream);
     QuicStream* obj = new QuicStream(p2pQuicStream);
     uv_async_init(uv_default_loop(), &obj->m_asyncOnData, &QuicStream::onDataCallback);
@@ -55,31 +55,21 @@ NAN_METHOD(QuicStream::newInstance)
     info.GetReturnValue().Set(info.This());
 }
 
-NAN_METHOD(QuicStream::write)
-{
-    ELOG_DEBUG("write");
-    if (info.Length() != 1) {
-        return Nan::ThrowTypeError("QuicStreamWriteParameters is not provided");
-    }
-    QuicStream* obj = Nan::ObjectWrap::Unwrap<QuicStream>(info.Holder());
-    Nan::MaybeLocal<Value> maybeQuicStreamWriteParameters = info[0];
-    Local<v8::Object> quicStreamWriteParameters = maybeQuicStreamWriteParameters.ToLocalChecked()->ToObject();
-    auto parametersData = Nan::Get(quicStreamWriteParameters, Nan::New("data").ToLocalChecked()).ToLocalChecked();
-    char* data = node::Buffer::Data(parametersData);
-    size_t dataLength = node::Buffer::Length(parametersData);
-    bool finished = Nan::Get(quicStreamWriteParameters, Nan::New("finished").ToLocalChecked()).ToLocalChecked()->ToBoolean()->BooleanValue();
-    obj->m_p2pQuicStream->WriteOrBufferData(quic::QuicStringPiece(data, dataLength), finished);
-}
-
-NAN_METHOD(QuicStream::addDestination){
-    ELOG_DEBUG("QuicStream::addDestination.");
-    QuicStream* obj = Nan::ObjectWrap::Unwrap<QuicStream>(info.Holder());
-    ELOG_DEBUG("obj");
-    owt_base::FrameDestination* dest = Nan::ObjectWrap::Unwrap<QuicStream>(info[0]->ToObject());
-    ELOG_DEBUG("dest");
-    obj->addDataDestination(dest);
-    ELOG_DEBUG("addDataDestination.");
-}
+// NAN_METHOD(QuicStream::write)
+// {
+//     ELOG_DEBUG("write");
+//     if (info.Length() != 1) {
+//         return Nan::ThrowTypeError("QuicStreamWriteParameters is not provided");
+//     }
+//     QuicStream* obj = Nan::ObjectWrap::Unwrap<QuicStream>(info.Holder());
+//     Nan::MaybeLocal<Value> maybeQuicStreamWriteParameters = info[0];
+//     Local<v8::Object> quicStreamWriteParameters = maybeQuicStreamWriteParameters.ToLocalChecked()->ToObject();
+//     auto parametersData = Nan::Get(quicStreamWriteParameters, Nan::New("data").ToLocalChecked()).ToLocalChecked();
+//     char* data = node::Buffer::Data(parametersData);
+//     size_t dataLength = node::Buffer::Length(parametersData);
+//     bool finished = Nan::Get(quicStreamWriteParameters, Nan::New("finished").ToLocalChecked()).ToLocalChecked()->ToBoolean()->BooleanValue();
+//     obj->m_p2pQuicStream->WriteOrBufferData(quic::QuicStringPiece(data, dataLength), finished);
+// }
 
 NAUV_WORK_CB(QuicStream::onDataCallback)
 {
@@ -91,7 +81,6 @@ NAUV_WORK_CB(QuicStream::onDataCallback)
     }
     v8::Isolate *isolate = v8::Isolate::GetCurrent();
     v8::EscapableHandleScope escapableScope(isolate);
-    Nan::MaybeLocal<v8::Value> onEvent1=escapableScope.Escape(obj->handle()->Get(isolate->GetCurrentContext(), Nan::New<v8::String>("ondata").ToLocalChecked()).FromMaybe(v8::Local<v8::Value>()));
     std::lock_guard<std::mutex> lock(obj->m_dataQueueMutex);
     while (!obj->m_dataToBeNotified.empty()) {
         ELOG_DEBUG("copy");
@@ -111,12 +100,15 @@ NAUV_WORK_CB(QuicStream::onDataCallback)
     }
 }
 
-v8::Local<v8::Object> QuicStream::newInstance(P2PQuicStream* p2pQuicStream)
+v8::Local<v8::Object> QuicStream::newInstance(owt::quic::P2PQuicStreamInterface* p2pQuicStream)
 {
+    ELOG_DEBUG("New instance with P2PQuicStream.");
+    assert(p2pQuicStream);
     Nan::EscapableHandleScope scope;
     const unsigned argc = 1;
     v8::Local<v8::Value> argv[argc] = { Nan::New<v8::External>(p2pQuicStream) };
     v8::Local<v8::Function> cons = Nan::New<v8::Function>(s_constructor);
+    ELOG_DEBUG("Before cons->NewInstance");
     v8::Local<v8::Object> instance = cons->NewInstance(argc, argv);
     return scope.Escape(instance);
 }
@@ -131,18 +123,4 @@ void QuicStream::OnDataReceived(std::vector<uint8_t> data, bool fin)
     }
     m_asyncOnData.data = this;
     uv_async_send(&m_asyncOnData);
-    // Delivery data in C++ level.
-    // TODO: Check if it has sink.
-    owt_base::Frame frame;
-    memset(&frame, 0, sizeof(frame));
-    frame.format = owt_base::FrameFormat::FRAME_FORMAT_DATA;
-    frame.payload = data.data();
-    frame.length = data.size();
-    deliverFrame(frame);  // Sync call.
-}
-
-void QuicStream::onFrame(const owt_base::Frame& frame)
-{
-    std::vector<uint8_t> data(frame.payload, frame.payload + frame.length); // Copy payload because WriteOrBufferData is an async call.
-    m_p2pQuicStream->WriteOrBufferData(data, false);
 }
