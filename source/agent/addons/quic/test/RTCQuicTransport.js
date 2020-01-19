@@ -10,7 +10,7 @@ const expect = require('chai').use(require('chai-as-promised')).expect;
 const addon = require('../build/Debug/quic');
 const http = require('http');
 const util = require('util');
-const serverHostname = 'jianjunz-nuc-ubuntu.sh.intel.com';
+const serverHostname = '10.239.158.33';
 
 describe('Test RTCQuicTransport.', () => {
   let iceTransport;

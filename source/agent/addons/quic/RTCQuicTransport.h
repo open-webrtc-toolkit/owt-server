@@ -10,13 +10,14 @@
 #include <memory>
 #include <nan.h>
 #include "RTCIceTransport.h"
+#include "owt/quic/p2p_quic_stream_interface.h"
 #include "owt/quic/p2p_quic_transport_interface.h"
 #include "owt/quic/p2p_quic_packet_transport_interface.h"
 
 // Node.js addon of RTCQuicTransport.
 // https://w3c.github.io/webrtc-quic/#dom-rtcquictransport
 // Some of its implementation is based on blink::P2PQuicTransportImpl.
-class RTCQuicTransport : public Nan::ObjectWrap {
+class RTCQuicTransport : public Nan::ObjectWrap, public owt::quic::P2PQuicTransportInterface::Delegate {
     DECLARE_LOGGER();
 
 public:
@@ -30,7 +31,7 @@ public:
     static NAN_METHOD(stop);
 
 protected:
-    //virtual void OnStream(P2PQuicStream* stream) override;
+    void OnIncomingStream(owt::quic::P2PQuicStreamInterface* stream) override;
 
 private:
     explicit RTCQuicTransport();
@@ -42,6 +43,9 @@ private:
 
     std::unique_ptr<owt::quic::P2PQuicPacketTransportInterface> m_packetTransport;
     std::unique_ptr<owt::quic::P2PQuicTransportInterface> m_transport;
+    uv_async_t m_asyncOnStream;
+    std::mutex m_onStreamMutex;
+    std::queue<owt::quic::P2PQuicStreamInterface*> m_unnotifiedStreams;
 };
 
 #endif

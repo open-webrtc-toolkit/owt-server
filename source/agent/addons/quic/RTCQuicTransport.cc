@@ -79,11 +79,8 @@ NAN_METHOD(RTCQuicTransport::newInstance)
     auto factory = QuicFactory::getQuicTransportFactory();
     ELOG_DEBUG("Got Quic factory.");
     obj->m_transport = factory->CreateP2PServerTransport(obj->m_packetTransport.get());
-    // uv_async_init(uv_default_loop(), &obj->m_asyncOnStream, &RTCQuicTransport::onStreamCallback);
-    // ELOG_DEBUG("Create P2PQuicTransport.");
-    //
-    //
-    //
+    obj->m_transport->SetDelegate(obj);
+    uv_async_init(uv_default_loop(), &obj->m_asyncOnStream, &RTCQuicTransport::onStreamCallback);
     /*
     ELOG_DEBUG("Checking certs.");
     std::vector<rtc::scoped_refptr<rtc::RTCCertificate>> certificates;
@@ -160,7 +157,8 @@ NAN_METHOD(RTCQuicTransport::listen)
     size_t keyLength = node::Buffer::Length(info[0]);
     const std::string keyString = std::string(keyBuffer, keyLength);
     ELOG_DEBUG("KeyString length is %d", keyString.size());
-    obj->m_transport->Listen(std::string(keyString));
+    //obj->m_transport->Listen(keyString);
+    obj->m_transport->Listen((uint8_t*)keyBuffer, keyLength);
     ELOG_DEBUG("KeyString length is %d", keyString.size());
     ELOG_DEBUG("After create P2P Quic transport.");
 }
@@ -195,8 +193,12 @@ NAUV_WORK_CB(RTCQuicTransport::onStreamCallback)
     ELOG_DEBUG("RTCQuicTransport::onStreamCallback")
     Nan::HandleScope scope;
     RTCQuicTransport* obj = reinterpret_cast<RTCQuicTransport*>(async->data);
-    // if (!obj || obj->m_streamsToBeNotified.empty())
-    //     return;
+    if (!obj || obj->m_unnotifiedStreams.empty())
+        return;
+    std::lock_guard<std::mutex> lock(obj->m_onStreamMutex);
+    while (!obj->m_unnotifiedStreams.empty()) {
+        // TODO: Create Stream.
+    }
     // std::lock_guard<std::mutex> lock(obj->m_streamQueueMutex);
     // while (!obj->m_streamsToBeNotified.empty()) {
     //     ELOG_DEBUG("RTCQuicTransport::onStreamCallback1");
@@ -217,4 +219,15 @@ NAUV_WORK_CB(RTCQuicTransport::onStreamCallback)
     //     }
     //     obj->m_streamsToBeNotified.pop();
     // }
+}
+
+void RTCQuicTransport::OnIncomingStream(owt::quic::P2PQuicStreamInterface* stream)
+{
+    ELOG_DEBUG("OnIncomingStream.");
+    {
+        std::lock_guard<std::mutex> lock(m_onStreamMutex);
+        m_unnotifiedStreams.push(stream);
+    }
+    m_asyncOnStream.data = this;
+    uv_async_send(&m_asyncOnStream);
 }
