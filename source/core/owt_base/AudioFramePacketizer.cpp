@@ -4,8 +4,9 @@
 
 #include "AudioFramePacketizer.h"
 #include "AudioUtilities.h"
-
 #include "WebRTCTaskRunner.h"
+
+#include <rtc_base/logging.h>
 
 using namespace webrtc;
 
@@ -35,7 +36,6 @@ AudioFramePacketizer::~AudioFramePacketizer()
     close();
     m_taskRunner->Stop();
     m_ssrc_generator->ReturnSsrc(m_ssrc);
-    SsrcGenerator::ReturnSsrcGenerator();
     boost::unique_lock<boost::shared_mutex> lock(m_rtpRtcpMutex);
 }
 
@@ -60,7 +60,8 @@ void AudioFramePacketizer::unbindTransport()
 int AudioFramePacketizer::deliverFeedback_(std::shared_ptr<erizo::DataPacket> data_packet)
 {
     boost::shared_lock<boost::shared_mutex> lock(m_rtpRtcpMutex);
-    return m_rtpRtcp->IncomingRtcpPacket(reinterpret_cast<uint8_t*>(data_packet->data), data_packet->length) == -1 ? 0 : data_packet->length;
+    m_rtpRtcp->IncomingRtcpPacket(reinterpret_cast<uint8_t*>(data_packet->data), data_packet->length);
+    return data_packet->length;
 }
 
 void AudioFramePacketizer::receiveRtpData(char* buf, int len, erizoExtra::DataType type, uint32_t channelId)
@@ -106,22 +107,40 @@ void AudioFramePacketizer::onFrame(const Frame& frame)
         return;
 
     boost::shared_lock<boost::shared_mutex> lock(m_rtpRtcpMutex);
-    // FIXME: The frame type information is lost. We treat every frame a kAudioFrameSpeech frame for now.
-    m_rtpRtcp->SendOutgoingData(webrtc::kAudioFrameSpeech, payloadType, frame.timeStamp, -1, frame.payload, frame.length, nullptr, nullptr, nullptr);
+    if (!m_rtpRtcp->OnSendingRtpFrame(frame.timeStamp, -1, payloadType, false)) {
+        RTC_DLOG(LS_WARNING) << "OnSendingRtpFrame return false";
+        return;
+    }
+    const uint32_t rtp_timestamp = frame.timeStamp + m_rtpRtcp->StartTimestamp();
+    // TODO: The frame type information is lost. We treat every frame a kAudioFrameSpeech frame for now.
+    if (!m_senderAudio->SendAudio(webrtc::AudioFrameType::kAudioFrameSpeech, payloadType, rtp_timestamp,
+                                  frame.payload, frame.length)) {
+        RTC_DLOG(LS_ERROR) << "ChannelSend::SendData() failed to send data to RTP/RTCP module";
+    }
 }
 
 bool AudioFramePacketizer::init()
 {
-    RtpRtcp::Configuration configuration;
-    configuration.outgoing_transport = m_audioTransport.get();
-    configuration.audio = true;  // Audio.
-    m_rtpRtcp.reset(RtpRtcp::CreateRtpRtcp(configuration));
-    m_rtpRtcp->SetSSRC(m_ssrc);
+    m_clock = Clock::GetRealTimeClock();
+    event_log = std::make_unique<webrtc::RtcEventLogNull>();
 
-    // Enable NACK.
-    // TODO: the parameters should be dynamically adjustable.
+    RtpRtcp::Configuration configuration;
+    configuration.clock = m_clock;
+    configuration.audio = true;  // Audio.
+    configuration.receiver_only = false;
+    configuration.outgoing_transport = m_audioTransport.get();
+    configuration.event_log = event_log.get();
+    configuration.local_media_ssrc = m_ssrc;//rtp_config.ssrcs[i];
+
+    m_rtpRtcp = RtpRtcp::Create(configuration);
+    m_rtpRtcp->SetSendingStatus(true);
+    m_rtpRtcp->SetSendingMediaStatus(true);
+    m_rtpRtcp->SetRTCPStatus(RtcpMode::kReducedSize);
+    // Set NACK.
     m_rtpRtcp->SetStorePacketsStatus(true, 600);
 
+    m_senderAudio = std::make_unique<RTPSenderAudio>(
+        configuration.clock, m_rtpRtcp->RtpSender());
     m_taskRunner->RegisterModule(m_rtpRtcp.get());
 
     return true;
@@ -129,13 +148,15 @@ bool AudioFramePacketizer::init()
 
 bool AudioFramePacketizer::setSendCodec(FrameFormat format)
 {
-    webrtc::CodecInst codec;
+    CodecInst codec;
 
     if (!getAudioCodecInst(m_frameFormat, codec))
         return false;
 
     boost::shared_lock<boost::shared_mutex> lock(m_rtpRtcpMutex);
-    m_rtpRtcp->RegisterSendPayload(codec);
+    m_rtpRtcp->RegisterSendPayloadFrequency(codec.pltype, codec.plfreq);
+    m_senderAudio->RegisterAudioPayload("audio", codec.pltype,
+                                        codec.plfreq, codec.channels, 0);
     return true;
 }
 

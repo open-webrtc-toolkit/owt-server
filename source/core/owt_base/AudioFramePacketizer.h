@@ -16,8 +16,9 @@
 #include <boost/thread/shared_mutex.hpp>
 #include <MediaDefinitions.h>
 #include <MediaDefinitionExtra.h>
-#include <webrtc/modules/rtp_rtcp/include/rtp_rtcp.h>
-
+#include <modules/rtp_rtcp/include/rtp_rtcp.h>
+#include <modules/rtp_rtcp/source/rtp_sender_audio.h>
+#include <api/rtc_event_log/rtc_event_log.h>
 
 namespace owt_base {
 
@@ -53,9 +54,14 @@ private:
     void close();
     void updateSeqNo(uint8_t* rtp);
 
+    // Implement erizo::FeedbackSink
+    int deliverFeedback_(std::shared_ptr<erizo::DataPacket> data_packet);
+    // Implement erizo::MediaSource
+    int sendPLI();
+
     bool m_enabled;
-    boost::scoped_ptr<webrtc::RtpRtcp> m_rtpRtcp;
     boost::shared_mutex m_rtpRtcpMutex;
+    std::unique_ptr<webrtc::RtpRtcp> m_rtpRtcp;
 
     boost::shared_ptr<webrtc::Transport> m_audioTransport;
     boost::shared_ptr<WebRTCTaskRunner> m_taskRunner;
@@ -67,9 +73,9 @@ private:
     uint32_t m_ssrc;
     SsrcGenerator* const m_ssrc_generator;
 
-    ///// NEW INTERFACE ///////////
-    int deliverFeedback_(std::shared_ptr<erizo::DataPacket> data_packet);
-    int sendPLI();
+    webrtc::Clock *m_clock;
+    std::unique_ptr<webrtc::RtcEventLog> event_log;
+    std::unique_ptr<webrtc::RTPSenderAudio> m_senderAudio;
 };
 
 }

@@ -2,23 +2,20 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-#include <webrtc/common_types.h>
-
+#include "AudioUtilities.h"
 #include "rtputils.h"
 #include "MediaFramePipeline.h"
-
-using namespace webrtc;
 
 namespace owt_base {
 
 struct AudioCodecInsMap {
-    owt_base::FrameFormat format;
+    FrameFormat format;
     CodecInst codec;
 };
 
 static const AudioCodecInsMap codecInsDB[] = {
     {
-        owt_base::FRAME_FORMAT_PCMU,
+        FRAME_FORMAT_PCMU,
         {
             PCMU_8000_PT,
             "PCMU",
@@ -29,7 +26,7 @@ static const AudioCodecInsMap codecInsDB[] = {
         }
     },
     {
-        owt_base::FRAME_FORMAT_PCMA,
+        FRAME_FORMAT_PCMA,
         {
             PCMA_8000_PT,
             "PCMA",
@@ -40,7 +37,7 @@ static const AudioCodecInsMap codecInsDB[] = {
         }
     },
     {
-        owt_base::FRAME_FORMAT_ISAC16,
+        FRAME_FORMAT_ISAC16,
         {
             ISAC_16000_PT,
             "ISAC",
@@ -51,7 +48,7 @@ static const AudioCodecInsMap codecInsDB[] = {
         }
     },
     {
-        owt_base::FRAME_FORMAT_ISAC32,
+        FRAME_FORMAT_ISAC32,
         {
             ISAC_32000_PT,
             "ISAC",
@@ -62,7 +59,7 @@ static const AudioCodecInsMap codecInsDB[] = {
         }
     },
     {
-        owt_base::FRAME_FORMAT_OPUS,
+        FRAME_FORMAT_OPUS,
         {
             OPUS_48000_PT,
             "opus",
@@ -73,7 +70,7 @@ static const AudioCodecInsMap codecInsDB[] = {
         }
     },
     {
-        owt_base::FRAME_FORMAT_PCM_48000_2,
+        FRAME_FORMAT_PCM_48000_2,
         {
             L16_48000_PT,
             "L16",
@@ -84,7 +81,7 @@ static const AudioCodecInsMap codecInsDB[] = {
         }
     },
     {
-        owt_base::FRAME_FORMAT_ILBC,
+        FRAME_FORMAT_ILBC,
         {
             ILBC_8000_PT,
             "ILBC",
@@ -95,7 +92,7 @@ static const AudioCodecInsMap codecInsDB[] = {
         }
     },
     {
-        owt_base::FRAME_FORMAT_G722_16000_1,
+        FRAME_FORMAT_G722_16000_1,
         {
             G722_16000_1_PT,
             "G722",
@@ -106,7 +103,7 @@ static const AudioCodecInsMap codecInsDB[] = {
         }
     },
     {
-        owt_base::FRAME_FORMAT_G722_16000_2,
+        FRAME_FORMAT_G722_16000_2,
         {
             G722_16000_2_PT,
             "G722",
@@ -120,7 +117,7 @@ static const AudioCodecInsMap codecInsDB[] = {
 
 static const int numCodecIns = sizeof(codecInsDB) / sizeof(codecInsDB[0]);
 
-bool getAudioCodecInst(owt_base::FrameFormat format, CodecInst& audioCodec)
+bool getAudioCodecInst(FrameFormat format, CodecInst& audioCodec)
 {
     for (size_t i = 0; i < numCodecIns; i++) {
         if (codecInsDB[i].format == format) {
@@ -132,7 +129,7 @@ bool getAudioCodecInst(owt_base::FrameFormat format, CodecInst& audioCodec)
     return false;
 }
 
-int getAudioPltype(owt_base::FrameFormat format)
+int getAudioPltype(FrameFormat format)
 {
     for (size_t i = 0; i < numCodecIns; i++) {
         if (codecInsDB[i].format == format) {
@@ -154,13 +151,13 @@ FrameFormat getAudioFrameFormat(int pltype)
     return FRAME_FORMAT_UNKNOWN;
 }
 
-int32_t getAudioSampleRate(const owt_base::FrameFormat format) {
+int32_t getAudioSampleRate(const FrameFormat format) {
     switch (format) {
-        case owt_base::FRAME_FORMAT_AAC_48000_2:
+        case FRAME_FORMAT_AAC_48000_2:
             return 48000;
-        case owt_base::FRAME_FORMAT_AAC:
-        case owt_base::FRAME_FORMAT_AC3:
-        case owt_base::FRAME_FORMAT_NELLYMOSER:
+        case FRAME_FORMAT_AAC:
+        case FRAME_FORMAT_AC3:
+        case FRAME_FORMAT_NELLYMOSER:
             return 0;
         default:
             break;
@@ -175,13 +172,13 @@ int32_t getAudioSampleRate(const owt_base::FrameFormat format) {
     return 0;
 }
 
-uint32_t getAudioChannels(const owt_base::FrameFormat format) {
+uint32_t getAudioChannels(const FrameFormat format) {
     switch (format) {
-        case owt_base::FRAME_FORMAT_AAC_48000_2:
+        case FRAME_FORMAT_AAC_48000_2:
             return 2;
-        case owt_base::FRAME_FORMAT_AAC:
-        case owt_base::FRAME_FORMAT_AC3:
-        case owt_base::FRAME_FORMAT_NELLYMOSER:
+        case FRAME_FORMAT_AAC:
+        case FRAME_FORMAT_AC3:
+        case FRAME_FORMAT_NELLYMOSER:
             return 0;
         default:
             break;
