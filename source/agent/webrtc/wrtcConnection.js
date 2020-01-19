@@ -3,11 +3,12 @@
 // SPDX-License-Identifier: Apache-2.0
 
 'use strict';
-var webrtcAddon = require('../webrtcLib/build/Release/webrtc');
-var AudioFrameConstructor = webrtcAddon.AudioFrameConstructor;
-var VideoFrameConstructor = webrtcAddon.VideoFrameConstructor;
-var AudioFramePacketizer = webrtcAddon.AudioFramePacketizer;
-var VideoFramePacketizer = webrtcAddon.VideoFramePacketizer;
+
+var addon = require('../rtcFrame/build/Release/rtcFrame.node');
+var AudioFrameConstructor = addon.AudioFrameConstructor;
+var AudioFramePacketizer = addon.AudioFramePacketizer;
+var VideoFrameConstructor = addon.VideoFrameConstructor;
+var VideoFramePacketizer = addon.VideoFramePacketizer;
 
 var path = require('path');
 var logger = require('../logger').logger;
@@ -28,8 +29,6 @@ const {
   addAudioSSRC,
   addVideoSSRC,
 } = require('./sdp');
-
-var addon = require('../webrtcLib/build/Release/webrtc');
 
 const TransportSeqNumUri =
     'http://www.ietf.org/id/draft-holmer-rmcat-transport-wide-cc-extensions-01';
