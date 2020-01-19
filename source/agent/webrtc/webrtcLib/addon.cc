@@ -1,7 +1,7 @@
-#include "AudioFrameConstructorWrapper.h"
-#include "AudioFramePacketizerWrapper.h"
-#include "VideoFrameConstructorWrapper.h"
-#include "VideoFramePacketizerWrapper.h"
+// Copyright (C) <2019> Intel Corporation
+//
+// SPDX-License-Identifier: Apache-2.0
+
 #include "WebRtcConnection.h"
 #include "ThreadPool.h"
 #include "IOThreadPool.h"
@@ -16,10 +16,6 @@ void InitAll(Handle<Object> exports) {
   MediaStream::Init(exports);
   ThreadPool::Init(exports);
   IOThreadPool::Init(exports);
-  AudioFrameConstructor::Init(exports);
-  AudioFramePacketizer::Init(exports);
-  VideoFrameConstructor::Init(exports);
-  VideoFramePacketizer::Init(exports);
 }
 
 NODE_MODULE(addon, InitAll)

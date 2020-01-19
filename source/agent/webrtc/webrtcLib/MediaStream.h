@@ -32,10 +32,11 @@
 #include <nan.h>
 #include <MediaStream.h>
 #include <logger.h>
-#include "MediaDefinitions.h"
 #include <queue>
 #include <string>
 #include <future>  // NOLINT
+
+#include "MediaWrapper.h"
 
 class StatCallWorker : public Nan::AsyncWorker {
  public:
@@ -56,7 +57,7 @@ class StatCallWorker : public Nan::AsyncWorker {
  * A WebRTC Connection. This class represents a MediaStream that can be established with other peers via a SDP negotiation
  * it comprises all the necessary ICE and SRTP components.
  */
-class MediaStream : public MediaSink, public erizo::MediaStreamStatsListener, public erizo::MediaStreamEventListener {
+class MediaStream : public MediaFilter, public erizo::MediaStreamStatsListener, public erizo::MediaStreamEventListener {
  public:
     DECLARE_LOGGER();
     static NAN_MODULE_INIT(Init);
