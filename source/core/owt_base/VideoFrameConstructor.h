@@ -35,10 +35,12 @@ public:
  * webrtc engine, which will framize the frames.
  */
 class VideoFrameConstructor : public erizo::MediaSink,
+                              public erizo::FeedbackSource,
                               public FrameSource,
                               public JobTimerListener,
                               public rtc::VideoSinkInterface<webrtc::VideoFrame>,
-                              public webrtc::VideoDecoderFactory {
+                              public webrtc::VideoDecoderFactory,
+                              public webrtc::Transport {
 
 public:
     struct Config {
@@ -61,10 +63,16 @@ public:
       const webrtc::SdpVideoFormat& format) override;
 
     // Implements rtc::VideoSinkInterface<VideoFrame>.
-    void OnFrame(const webrtc::VideoFrame& video_frame) override {};
+    void OnFrame(const webrtc::VideoFrame& video_frame) override;
 
     // Implements the FrameSource interfaces.
-    void onFeedback(const FeedbackMsg& msg);
+    void onFeedback(const FeedbackMsg& msg) override;
+
+    // Implements webrtc::Transport
+    bool SendRtp(const uint8_t* packet,
+                 size_t length,
+                 const webrtc::PacketOptions& options) override;
+    bool SendRtcp(const uint8_t* packet, size_t length) override;
 
     int32_t RequestKeyFrame();
 

@@ -147,8 +147,6 @@ VideoFrameConstructor::VideoFrameConstructor(VideoInfoListener* vil, uint32_t tr
         "CallTaskQueue",
         webrtc::TaskQueueFactory::Priority::NORMAL))
 {
-    m_videoTransport.reset(new WebRTCTransport<erizoExtra::VIDEO>(nullptr, nullptr));
-    sink_fb_source_ = m_videoTransport.get();
     m_config.transport_cc = transportccExtId;
     // m_feedbackTimer.reset(new JobTimer(1, this));
     task_queue.PostTask([this]() {
@@ -180,12 +178,14 @@ VideoFrameConstructor::~VideoFrameConstructor()
     f.wait();
 }
 
+void VideoFrameConstructor::OnFrame(const webrtc::VideoFrame& video_frame) {}
+
 void VideoFrameConstructor::maybeCreateReceiveVideo(uint32_t ssrc) {
     task_queue.PostTask([this, ssrc]() {
         if (call && !video_recv_stream) {
             RTC_DLOG(LS_INFO) << "Create VideoReceiveStream with SSRC: " << ssrc;
             // Create Receive Video Stream
-            webrtc::VideoReceiveStream::Config default_config(m_videoTransport.get());
+            webrtc::VideoReceiveStream::Config default_config(this);
             default_config.rtp.local_ssrc = kLocalSsrc;
             default_config.rtp.rtcp_mode = webrtc::RtcpMode::kReducedSize;
             default_config.rtp.remote_ssrc = m_ssrc;
@@ -205,6 +205,7 @@ void VideoFrameConstructor::maybeCreateReceiveVideo(uint32_t ssrc) {
                 receiver_reference_time_report;
             */
             default_config.renderer = this;
+
             webrtc::VideoReceiveStream::Config video_recv_config(default_config.Copy());
             video_recv_config.decoders.clear();
             /*
@@ -256,14 +257,14 @@ void VideoFrameConstructor::bindTransport(erizo::MediaSource* source, erizo::Fee
     m_transport = source;
     m_transport->setVideoSink(this);
     m_transport->setEventSink(this);
-    m_videoTransport->setFeedbackSink(fbSink);
+    setFeedbackSink(fbSink);
 }
 
 void VideoFrameConstructor::unbindTransport()
 {
     boost::unique_lock<boost::shared_mutex> lock(m_transportMutex);
     if (m_transport) {
-        m_videoTransport->setFeedbackSink(nullptr);
+        setFeedbackSink(nullptr);
         m_transport = nullptr;
     }
 }
@@ -326,11 +327,15 @@ int VideoFrameConstructor::deliverVideoData_(std::shared_ptr<erizo::DataPacket> 
         m_ssrc = head->getSSRC();
         maybeCreateReceiveVideo(m_ssrc);
     }
-    task_queue.PostTask([this, video_packet]() {
+
+    // TODO: since framer and connection are built with different libc++,
+    // shard_ptr must be recreated due to abi issues
+    std::shared_ptr<erizo::DataPacket> wp = std::make_shared<erizo::DataPacket>(*video_packet);
+    task_queue.PostTask([this, wp]() {
         if (call) {
             call->Receiver()->DeliverPacket(
                 webrtc::MediaType::VIDEO,
-                rtc::CopyOnWriteBuffer(video_packet->data, video_packet->length),
+                rtc::CopyOnWriteBuffer(wp->data, wp->length),
                 rtc::TimeUTCMicros());
         }
     });
@@ -367,6 +372,22 @@ void VideoFrameConstructor::onFeedback(const FeedbackMsg& msg)
 
 int VideoFrameConstructor::deliverEvent_(erizo::MediaEventPtr event){
     return 0;
+}
+
+bool VideoFrameConstructor::SendRtp(const uint8_t* data, size_t len, const webrtc::PacketOptions& options)
+{
+    return true;
+}
+
+bool VideoFrameConstructor::SendRtcp(const uint8_t* data, size_t len)
+{
+    if (fb_sink_) {
+        fb_sink_->deliverFeedback(
+            std::make_shared<erizo::DataPacket>(0,
+                reinterpret_cast<char*>(const_cast<uint8_t*>(data)), len, erizo::VIDEO_PACKET));
+        return true;
+    }
+    return false;
 }
 
 void VideoFrameConstructor::close(){
