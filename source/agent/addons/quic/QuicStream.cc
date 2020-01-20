@@ -33,7 +33,7 @@ NAN_MODULE_INIT(QuicStream::Init)
     tpl->SetClassName(Nan::New("QuicStream").ToLocalChecked());
     Local<ObjectTemplate> instanceTpl = tpl->InstanceTemplate();
     instanceTpl->SetInternalFieldCount(1);
-    // Nan::SetPrototypeMethod(tpl, "write", write);
+    Nan::SetPrototypeMethod(tpl, "write", write);
     s_constructor.Reset(tpl->GetFunction());
 }
 
@@ -55,21 +55,21 @@ NAN_METHOD(QuicStream::newInstance)
     info.GetReturnValue().Set(info.This());
 }
 
-// NAN_METHOD(QuicStream::write)
-// {
-//     ELOG_DEBUG("write");
-//     if (info.Length() != 1) {
-//         return Nan::ThrowTypeError("QuicStreamWriteParameters is not provided");
-//     }
-//     QuicStream* obj = Nan::ObjectWrap::Unwrap<QuicStream>(info.Holder());
-//     Nan::MaybeLocal<Value> maybeQuicStreamWriteParameters = info[0];
-//     Local<v8::Object> quicStreamWriteParameters = maybeQuicStreamWriteParameters.ToLocalChecked()->ToObject();
-//     auto parametersData = Nan::Get(quicStreamWriteParameters, Nan::New("data").ToLocalChecked()).ToLocalChecked();
-//     char* data = node::Buffer::Data(parametersData);
-//     size_t dataLength = node::Buffer::Length(parametersData);
-//     bool finished = Nan::Get(quicStreamWriteParameters, Nan::New("finished").ToLocalChecked()).ToLocalChecked()->ToBoolean()->BooleanValue();
-//     obj->m_p2pQuicStream->WriteOrBufferData(quic::QuicStringPiece(data, dataLength), finished);
-// }
+NAN_METHOD(QuicStream::write)
+{
+    ELOG_DEBUG("write");
+    if (info.Length() != 1) {
+        return Nan::ThrowTypeError("QuicStreamWriteParameters is not provided");
+    }
+    QuicStream* obj = Nan::ObjectWrap::Unwrap<QuicStream>(info.Holder());
+    Nan::MaybeLocal<Value> maybeQuicStreamWriteParameters = info[0];
+    Local<v8::Object> quicStreamWriteParameters = maybeQuicStreamWriteParameters.ToLocalChecked()->ToObject();
+    auto parametersData = Nan::Get(quicStreamWriteParameters, Nan::New("data").ToLocalChecked()).ToLocalChecked();
+    char* data = node::Buffer::Data(parametersData);
+    size_t dataLength = node::Buffer::Length(parametersData);
+    bool finished = Nan::Get(quicStreamWriteParameters, Nan::New("finished").ToLocalChecked()).ToLocalChecked()->ToBoolean()->BooleanValue();
+    obj->m_p2pQuicStream->WriteOrBufferData(reinterpret_cast<uint8_t*>(data), dataLength, finished);
+}
 
 NAUV_WORK_CB(QuicStream::onDataCallback)
 {
