@@ -4,7 +4,7 @@
     'variables': {
       'source_rel_dir': '../../..', # relative source dir path
       'source_abs_dir%': '<(module_root_dir)/../../..', # absolute source dir path
-      'webrtc_abs_dir%': '<(module_root_dir)/../../../../third_party/test-new-webrtc' # absolute webrtc dir path
+      'webrtc_abs_dir%': '<(module_root_dir)/../../../../third_party/webrtc-m79' # absolute webrtc dir path
     },
     'sources': [
       '<(source_rel_dir)/core/owt_base/AudioFrameConstructor.cpp',
@@ -20,7 +20,7 @@
       'VideoFramePacketizerWrapper.cc',
       'addon.cc',
     ],
-    'cflags_cc': ['-DWEBRTC_POSIX', '-DWEBRTC_LINUX', '-DLINUX', '-DNOLINUXIF', '-DNO_REG_RPC=1', '-DHAVE_VFPRINTF=1', '-DRETSIGTYPE=void', '-DNEW_STDIO', '-DHAVE_STRDUP=1', '-DHAVE_STRLCPY=1', '-DHAVE_LIBM=1', '-DHAVE_SYS_TIME_H=1', '-DTIME_WITH_SYS_TIME_H=1', '-DOWT_ENABLE_H265', '-D_LIBCPP_ABI_UNSTABLE'],
+    'cflags_cc': ['-DWEBRTC_POSIX', '-DWEBRTC_LINUX', '-DLINUX', '-DNOLINUXIF', '-DNO_REG_RPC=1', '-DHAVE_VFPRINTF=1', '-DRETSIGTYPE=void', '-DNEW_STDIO', '-DHAVE_STRDUP=1', '-DHAVE_STRLCPY=1', '-DHAVE_LIBM=1', '-DHAVE_SYS_TIME_H=1', '-DTIME_WITH_SYS_TIME_H=1', '-DOWT_ENABLE_H265', '-D_LIBCPP_ABI_UNSTABLE', '-DNDEBUG'],
     'include_dirs': [
       "<!(node -e \"require('nan')\")",
       '../rtcConn/erizo/src/erizo',
@@ -61,7 +61,7 @@
             '-isystem<(webrtc_abs_dir)/src/buildtools/third_party/libc++abi/trunk/include'
           ],
           #'cflags_cc!' : ['-fno-rtti']
-      }],
+      }]
     ]
   }]
 }
