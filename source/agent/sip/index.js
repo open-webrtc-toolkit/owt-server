@@ -235,6 +235,7 @@ module.exports = function (rpcC, selfRpcId, parentRpcId, clusterWorkerIP) {
         calls = {},
         subscriptions = {},
         recycling_mode = false,
+        retry_times = 0,
         internalConnFactory = new InternalConnectionFactory;
 
     var getClientId = function(peerURI) {
@@ -622,21 +623,40 @@ module.exports = function (rpcC, selfRpcId, parentRpcId, clusterWorkerIP) {
         gateway = new SipGateway.SipGateway();
 
         gateway.addEventListener('SIPRegisterOK', function() {
-            callback('callback', 'ok');
+            if (retry_times === 0) {
+                callback('callback', 'ok');
+            }
+            retry_times = 0;
         });
 
         gateway.addEventListener('SIPRegisterFailed', function() {
-            log.error("Register Failed");
-            gateway.close();
-            gateway = undefined;
-            callback('callback', 'error', 'SIP registration fail');
+            log.warn("Register Failed");
+            if (retry_times < global.config.sip.retry_limit) {
+                retry_times++;
+                setTimeout(() => {
+                    log.info('Trying register after failure', retry_times);
+                    if (gateway && !gateway.register(
+                            options.sip_server, options.sip_user, options.sip_passwd, options.sip_user)) {
+                        log.error("Register error!");
+                        gateway.close();
+                        gateway = undefined;
+                    }
+                }, global.config.sip.retry_timeout);
+            } else {
+                log.info('Stop trying register after', retry_times + 1, 'failures');
+                gateway.close();
+                gateway = undefined;
+                if (retry_times === 0) {
+                    callback('callback', 'error', 'SIP registration fail');
+                }
+            }
         });
 
         if (!gateway.register(options.sip_server, options.sip_user, options.sip_passwd, options.sip_user)) {
             log.error("Register error!");
             gateway.close();
             gateway = undefined;
-            callback('callback', 'error', 'SIP registration fail');
+            callback('callback', 'error', 'SIP registration error');
         }
 
         sip_server = options.sip_server;
