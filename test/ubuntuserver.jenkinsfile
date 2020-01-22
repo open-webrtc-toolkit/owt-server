@@ -90,6 +90,30 @@ pipeline {
                         }
                     }
                 }
+
+                stage('Simucast test') {
+                    steps {
+                        podTemplate(name:'simucast-test-server-ubuntu', label: 'simucast-test-server-ubuntu', cloud: 'kubernetes',
+                        volumes: [
+                        persistentVolumeClaim(claimName: 'ubuntu-package',mountPath: '/root/ubuntu_package',readOnly: false),
+                        persistentVolumeClaim(claimName: 'ubuntu-audio-lib',mountPath: '/root/audio_lib',readOnly: false),
+                        persistentVolumeClaim(claimName: 'ubuntu-recording-lib',mountPath: '/root/recording_lib',readOnly: false),
+                        persistentVolumeClaim(claimName: 'ubuntu-sip-lib',mountPath: '/root/sip_lib',readOnly: false),
+                        persistentVolumeClaim(claimName: 'ubuntu-streaming-lib',mountPath: '/root/streaming_lib',readOnly: false),
+                        persistentVolumeClaim(claimName: 'ubuntu-video-lib',mountPath: '/root/video_lib',readOnly: false),
+                        persistentVolumeClaim(claimName: 'ubuntu-log',mountPath: '/root/ubuntu_log',readOnly: false)
+                              ],
+                        containers: [
+                            containerTemplate(name: 'simucast-test-server-ubuntu', image: "$env.ubuntu_test_images",  ttyEnabled: true, alwaysPullImage: true, privileged: true, resourceRequestCpu: '7000m', resourceLimitCpu: '8000m',resourceLimitMemory: '9.0Gi', resourceRequestMemory: '8.0Gi', network: 'host', command: 'cat'),
+                            ]) {
+                            node('simucast-test-server-ubuntu') {
+                                container('simucast-test-server-ubuntu') {
+                                    sh "/root/startRun.sh $env.gitlab_username $env.gitlab_password ubuntu test ${env.GIT_COMMIT} ConferenceClient_simulcast"
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
     }
