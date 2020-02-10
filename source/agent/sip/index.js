@@ -633,6 +633,10 @@ module.exports = function (rpcC, selfRpcId, parentRpcId, clusterWorkerIP) {
         });
 
         var startRegisterTimeout = () => {
+            if (gateway) {
+                gateway.close();
+                gateway = new SipGateway.SipGateway();
+            }
             if (retry_times < global.config.sip.retry_limit) {
                 retry_times++;
                 setTimeout(() => {
@@ -646,7 +650,6 @@ module.exports = function (rpcC, selfRpcId, parentRpcId, clusterWorkerIP) {
             } else {
                 log.info('Stop trying register after', retry_times + 1, 'failures');
                 gateway.close();
-                gateway = undefined;
                 process.exit(1);
             }
         };
