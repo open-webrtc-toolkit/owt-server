@@ -131,6 +131,9 @@ int32_t VideoFrameConstructor::AdaptorDecoder::Decode(const webrtc::EncodedImage
     return 0;
 }
 
+std::unique_ptr<webrtc::RtcEventLog> event_log;
+std::unique_ptr<webrtc::Call> call;
+
 VideoFrameConstructor::VideoFrameConstructor(VideoInfoListener* vil, uint32_t transportccExtId)
     : m_enabled(true)
     , m_enableDump(false)
@@ -151,6 +154,8 @@ VideoFrameConstructor::VideoFrameConstructor(VideoInfoListener* vil, uint32_t tr
     // m_feedbackTimer.reset(new JobTimer(1, this));
     task_queue.PostTask([this]() {
         // Initialize call
+        if (call)
+            return;
         event_log = std::make_unique<webrtc::RtcEventLogNull>();
         webrtc::Call::Config call_config(event_log.get());
         call_config.task_queue_factory = task_queue_factory.get();

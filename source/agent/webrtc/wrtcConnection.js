@@ -186,7 +186,7 @@ module.exports = function (spec, on_status, on_mediaUpdate) {
         }
         if (isSimulcast) {
           // TODO: enable transport-cc for simulcast if bandwidth works
-          message = filterExt(message, TransportSeqNumUri);
+          // message = filterExt(message, TransportSeqNumUri);
         }
         log.debug('Answer SDP', message);
         on_status({type: 'answer', sdp: message});
@@ -345,7 +345,7 @@ module.exports = function (spec, on_status, on_mediaUpdate) {
       transportSeqNumExt = getExtId(sdp, TransportSeqNumUri);
       if (simulcastInfo.length > 0 || legacySimInfo.length > 1) {
         isSimulcast = true;
-        transportSeqNumExt = 0;
+        // transportSeqNumExt = 0;
       }
 
       if (audio) {
