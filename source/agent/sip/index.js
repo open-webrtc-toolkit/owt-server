@@ -622,42 +622,43 @@ module.exports = function (rpcC, selfRpcId, parentRpcId, clusterWorkerIP) {
 
         gateway = new SipGateway.SipGateway();
 
+        if (global.config.sip.retry_limit > 0) {
+            callback('callback', 'ok');
+        }
         gateway.addEventListener('SIPRegisterOK', function() {
-            if (retry_times === 0) {
+            if (global.config.sip.retry_limit === 0) {
                 callback('callback', 'ok');
             }
             retry_times = 0;
         });
 
-        gateway.addEventListener('SIPRegisterFailed', function() {
-            log.warn("Register Failed");
+        var startRegisterTimeout = () => {
             if (retry_times < global.config.sip.retry_limit) {
                 retry_times++;
                 setTimeout(() => {
                     log.info('Trying register after failure', retry_times);
                     if (gateway && !gateway.register(
                             options.sip_server, options.sip_user, options.sip_passwd, options.sip_user)) {
-                        log.error("Register error!");
-                        gateway.close();
-                        gateway = undefined;
+                        log.error("Register retrying error!");
+                        startRegisterTimeout();
                     }
                 }, global.config.sip.retry_timeout);
             } else {
                 log.info('Stop trying register after', retry_times + 1, 'failures');
                 gateway.close();
                 gateway = undefined;
-                if (retry_times === 0) {
-                    callback('callback', 'error', 'SIP registration fail');
-                }
+                process.exit(1);
+            }
+        };
+
+        gateway.addEventListener('SIPRegisterFailed', function() {
+            log.warn("Register Failed");
+            if (global.config.sip.retry_limit === 0) {
+                callback('callback', 'error', 'SIP registration fail');
+            } else {
+                startRegisterTimeout();
             }
         });
-
-        if (!gateway.register(options.sip_server, options.sip_user, options.sip_passwd, options.sip_user)) {
-            log.error("Register error!");
-            gateway.close();
-            gateway = undefined;
-            callback('callback', 'error', 'SIP registration error');
-        }
 
         sip_server = options.sip_server;
 
@@ -697,6 +698,17 @@ module.exports = function (rpcC, selfRpcId, parentRpcId, clusterWorkerIP) {
         gateway.addEventListener('CallClosed', function(peerURI) {
             handleCallClosed(peerURI);
         });
+
+        if (!gateway.register(options.sip_server, options.sip_user, options.sip_passwd, options.sip_user)) {
+            log.error("Register error!");
+            if (global.config.sip.retry_limit === 0) {
+                gateway.close();
+                gateway = undefined;
+                callback('callback', 'error', 'SIP registration error');
+            } else {
+                setTimeout(startRegisterTimeout, global.config.sip.retry_timeout);
+            }
+        }
     };
 
     that.keepAlive = function (callback) {
