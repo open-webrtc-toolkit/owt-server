@@ -56,7 +56,7 @@ pipeline {
                         persistentVolumeClaim(claimName: 'ubuntu-log',mountPath: '/root/ubuntu_log',readOnly: false)
                         ],
                         containers: [
-                            containerTemplate(name: 'api-test-server-ubuntu', image: "$env.ubuntu_test_images",  ttyEnabled: true, alwaysPullImage: true, privileged: true, resourceRequestCpu: '7000m', resourceLimitCpu: '8000m',resourceLimitMemory: '9.0Gi', resourceRequestMemory: '8.0Gi', network: 'host', command: 'cat'),
+                            containerTemplate(name: 'api-test-server-ubuntu', image: "$env.ubuntu_test_images",  ttyEnabled: true, alwaysPullImage: true, privileged: true, resourceRequestCpu: '2000m', resourceLimitCpu: '6000m',resourceLimitMemory: '9.0Gi', resourceRequestMemory: '8.0Gi', network: 'host', command: 'cat'),
                             ]) {
                             node('api-test-server-ubuntu') {
                                 container('api-test-server-ubuntu') {
@@ -80,7 +80,7 @@ pipeline {
                         persistentVolumeClaim(claimName: 'ubuntu-log',mountPath: '/root/ubuntu_log',readOnly: false)
                         ],
                         containers: [
-                            containerTemplate(name: 'subscribe-test-server-ubuntu', image: "$env.ubuntu_test_images",  ttyEnabled: true, alwaysPullImage: true, privileged: true, resourceRequestCpu: '7000m', resourceLimitCpu: '8000m',resourceLimitMemory: '9.0Gi', resourceRequestMemory: '8.0Gi', network: 'host', command: 'cat'),
+                            containerTemplate(name: 'subscribe-test-server-ubuntu', image: "$env.ubuntu_test_images",  ttyEnabled: true, alwaysPullImage: true, privileged: true, resourceRequestCpu: '2000m', resourceLimitCpu: '6000m',resourceLimitMemory: '9.0Gi', resourceRequestMemory: '8.0Gi', network: 'host', command: 'cat'),
                             ]) {
                             node('subscribe-test-server-ubuntu') {
                                 container('subscribe-test-server-ubuntu') {
@@ -104,7 +104,7 @@ pipeline {
                         persistentVolumeClaim(claimName: 'ubuntu-log',mountPath: '/root/ubuntu_log',readOnly: false)
                               ],
                         containers: [
-                            containerTemplate(name: 'simucast-test-server-ubuntu', image: "$env.ubuntu_test_images",  ttyEnabled: true, alwaysPullImage: true, privileged: true, resourceRequestCpu: '7000m', resourceLimitCpu: '8000m',resourceLimitMemory: '9.0Gi', resourceRequestMemory: '8.0Gi', network: 'host', command: 'cat'),
+                            containerTemplate(name: 'simucast-test-server-ubuntu', image: "$env.ubuntu_test_images",  ttyEnabled: true, alwaysPullImage: true, privileged: true, resourceRequestCpu: '2000m', resourceLimitCpu: '6000m',resourceLimitMemory: '9.0Gi', resourceRequestMemory: '8.0Gi', network: 'host', command: 'cat'),
                             ]) {
                             node('simucast-test-server-ubuntu') {
                                 container('simucast-test-server-ubuntu') {
