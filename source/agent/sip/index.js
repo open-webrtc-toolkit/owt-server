@@ -619,23 +619,77 @@ module.exports = function (rpcC, selfRpcId, parentRpcId, clusterWorkerIP) {
         }
 
         room_id = options.room_id;
+        sip_server = options.sip_server;
 
-        gateway = new SipGateway.SipGateway();
-
-        if (global.config.sip.retry_limit > 0) {
-            callback('callback', 'ok');
-        }
-        gateway.addEventListener('SIPRegisterOK', function() {
-            if (global.config.sip.retry_limit === 0) {
+        var initGateway = (retryCb) => {
+            gateway = new SipGateway.SipGateway();
+            if (retryCb) {
                 callback('callback', 'ok');
             }
-            retry_times = 0;
-        });
+            gateway.addEventListener('SIPRegisterOK', function() {
+                if (!retryCb) {
+                    callback('callback', 'ok');
+                }
+                retry_times = 0;
+            });
+            gateway.addEventListener('SIPRegisterFailed', function() {
+                log.warn("Register Failed");
+                if (!retryCb) {
+                    callback('callback', 'error', 'SIP registration fail');
+                } else {
+                    retryCb();
+                }
+            });
+            gateway.addEventListener('IncomingCall', function(peerURI) {
+                log.debug('IncommingCall: ', peerURI);
+                for (var cid in calls) {
+                    if (calls[cid].peerURI === peerURI) {
+                        return log.error('Duplicated call from the same peer, ignore it.');
+                    }
+                }
+    
+                if (!recycling_mode) {
+                    var client_id = 'SipIn' + Math.round(Math.random() * 10000000000000);
+                    handleIncomingCall(client_id, peerURI, function () {
+                        log.debug('Accept call');
+                        gateway.accept(peerURI);
+                    }, function (reason) {
+                        log.error('reject call error: ', reason);
+                        gateway.reject(peerURI);
+                    });
+                } else {
+                    gateway.reject(peerURI);
+                    log.info('working on recycling mode, do not accept incoming call');
+                }
+            });
+            gateway.addEventListener('CallEstablished', function(data) {
+                var info = JSON.parse(data);
+                handleCallEstablished(info);
+            });
+            gateway.addEventListener('CallUpdated', function(data) {
+                var info = JSON.parse(data);
+                handleCallUpdated(info);
+            });
+            gateway.addEventListener('CallClosed', function(peerURI) {
+                handleCallClosed(peerURI);
+            });
+    
+            if (!gateway.register(options.sip_server, options.sip_user, options.sip_passwd, options.sip_user)) {
+                log.error("Register error!");
+                if (!retryCb) {
+                    gateway.close();
+                    gateway = undefined;
+                    callback('callback', 'error', 'SIP registration error');
+                } else {
+                    setTimeout(retryCb, global.config.sip.retry_timeout);
+                }
+            }
+        };
 
         var startRegisterTimeout = () => {
             if (gateway) {
                 gateway.close();
-                gateway = new SipGateway.SipGateway();
+                initGateway(startRegisterTimeout);
             }
             if (retry_times < global.config.sip.retry_limit) {
                 retry_times++;
@@ -654,63 +708,10 @@ module.exports = function (rpcC, selfRpcId, parentRpcId, clusterWorkerIP) {
             }
         };
 
-        gateway.addEventListener('SIPRegisterFailed', function() {
-            log.warn("Register Failed");
-            if (global.config.sip.retry_limit === 0) {
-                callback('callback', 'error', 'SIP registration fail');
-            } else {
-                startRegisterTimeout();
-            }
-        });
-
-        sip_server = options.sip_server;
-
-        gateway.addEventListener('IncomingCall', function(peerURI) {
-            log.debug('IncommingCall: ', peerURI);
-            for (var cid in calls) {
-                if (calls[cid].peerURI === peerURI) {
-                    return log.error('Duplicated call from the same peer, ignore it.');
-                }
-            }
-
-            if (!recycling_mode) {
-                var client_id = 'SipIn' + Math.round(Math.random() * 10000000000000);
-                handleIncomingCall(client_id, peerURI, function () {
-                    log.debug('Accept call');
-                    gateway.accept(peerURI);
-                }, function (reason) {
-                    log.error('reject call error: ', reason);
-                    gateway.reject(peerURI);
-                });
-            } else {
-                gateway.reject(peerURI);
-                log.info('working on recycling mode, do not accept incoming call');
-            }
-        });
-
-        gateway.addEventListener('CallEstablished', function(data) {
-            var info = JSON.parse(data);
-            handleCallEstablished(info);
-        });
-
-        gateway.addEventListener('CallUpdated', function(data) {
-            var info = JSON.parse(data);
-            handleCallUpdated(info);
-        });
-
-        gateway.addEventListener('CallClosed', function(peerURI) {
-            handleCallClosed(peerURI);
-        });
-
-        if (!gateway.register(options.sip_server, options.sip_user, options.sip_passwd, options.sip_user)) {
-            log.error("Register error!");
-            if (global.config.sip.retry_limit === 0) {
-                gateway.close();
-                gateway = undefined;
-                callback('callback', 'error', 'SIP registration error');
-            } else {
-                setTimeout(startRegisterTimeout, global.config.sip.retry_timeout);
-            }
+        if (global.config.sip.retry_limit > 0) {
+            initGateway(startRegisterTimeout);
+        } else {
+            initGateway();
         }
     };
 
