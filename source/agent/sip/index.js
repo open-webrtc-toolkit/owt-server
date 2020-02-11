@@ -681,29 +681,26 @@ module.exports = function (rpcC, selfRpcId, parentRpcId, clusterWorkerIP) {
                     gateway = undefined;
                     callback('callback', 'error', 'SIP registration error');
                 } else {
-                    setTimeout(retryCb, global.config.sip.retry_timeout);
+                    retryCb();
                 }
             }
         };
 
         var startRegisterTimeout = () => {
-            if (gateway) {
-                gateway.close();
-                initGateway(startRegisterTimeout);
-            }
             if (retry_times < global.config.sip.retry_limit) {
                 retry_times++;
                 setTimeout(() => {
                     log.info('Trying register after failure', retry_times);
-                    if (gateway && !gateway.register(
-                            options.sip_server, options.sip_user, options.sip_passwd, options.sip_user)) {
-                        log.error("Register retrying error!");
-                        startRegisterTimeout();
+                    if (gateway) {
+                        gateway.close();
                     }
+                    initGateway(startRegisterTimeout);
                 }, global.config.sip.retry_timeout);
             } else {
                 log.info('Stop trying register after', retry_times + 1, 'failures');
-                gateway.close();
+                if (gateway) {
+                    gateway.close();
+                }
                 process.exit(1);
             }
         };
