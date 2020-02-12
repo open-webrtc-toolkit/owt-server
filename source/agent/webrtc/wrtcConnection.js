@@ -224,7 +224,7 @@ module.exports = function (spec, on_status, on_mediaUpdate) {
               info: JSON.parse(mediaUpdate)
             };
             on_mediaUpdate(JSON.stringify(data));
-          }, transportSeqNumExt);
+          }, transportSeqNumExt, videoFrameConstructor);
           simulcastConstructors.push(vfc);
           const simStream = new WrtcStream({
             audioFramePacketizer,
@@ -321,7 +321,7 @@ module.exports = function (spec, on_status, on_mediaUpdate) {
             info: JSON.parse(mediaUpdate)
           };
           on_mediaUpdate(JSON.stringify(data));
-        }, transportSeqNumExt);
+        }, transportSeqNumExt, videoFrameConstructor);
         simulcastConstructors.push(vfc);
         const simStream = new WrtcStream({
           audioFramePacketizer,
