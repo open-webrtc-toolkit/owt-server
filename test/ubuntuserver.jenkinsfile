@@ -43,7 +43,7 @@ pipeline {
               }
             }
             parallel {
-                stage('API test') {
+                stage('ConferenceClient API 1') {
                     steps {
                         podTemplate(name: 'api-test-server-ubuntu', label: 'api-test-server-ubuntu', cloud: 'kubernetes',
                         volumes: [
@@ -60,14 +60,14 @@ pipeline {
                             ]) {
                             node('api-test-server-ubuntu') {
                                 container('api-test-server-ubuntu') {
-                                    sh "/root/startRun.sh $env.gitlab_username $env.gitlab_password ubuntu test ${env.GIT_COMMIT} ConferenceClient_api"
+                                    sh "/root/startRun.sh $env.gitlab_username $env.gitlab_password ubuntu test ${env.GIT_COMMIT} ConferenceClient_API_1"
                                 }
                             }
                         }
                     }
                 }
 
-                stage('Subscribe test') {
+                stage('ConferenceClient API 2') {
                     steps {
                         podTemplate(name:'subscribe-test-server-ubuntu', label: 'subscribe-test-server-ubuntu', cloud: 'kubernetes',
                         volumes: [
@@ -84,14 +84,14 @@ pipeline {
                             ]) {
                             node('subscribe-test-server-ubuntu') {
                                 container('subscribe-test-server-ubuntu') {
-                                    sh "/root/startRun.sh $env.gitlab_username $env.gitlab_password ubuntu test ${env.GIT_COMMIT} ConferenceClient_subscribe"
+                                    sh "/root/startRun.sh $env.gitlab_username $env.gitlab_password ubuntu test ${env.GIT_COMMIT} ConferenceClient_API_2"
                                 }
                             }
                         }
                     }
                 }
 
-                stage('Simucast test') {
+                stage('ConferenceClient API 3') {
                     steps {
                         podTemplate(name:'simucast-test-server-ubuntu', label: 'simucast-test-server-ubuntu', cloud: 'kubernetes',
                         volumes: [
@@ -108,7 +108,7 @@ pipeline {
                             ]) {
                             node('simucast-test-server-ubuntu') {
                                 container('simucast-test-server-ubuntu') {
-                                    sh "/root/startRun.sh $env.gitlab_username $env.gitlab_password ubuntu test ${env.GIT_COMMIT} ConferenceClient_simulcast"
+                                    sh "/root/startRun.sh $env.gitlab_username $env.gitlab_password ubuntu test ${env.GIT_COMMIT} ConferenceClient_API_3"
                                 }
                             }
                         }
