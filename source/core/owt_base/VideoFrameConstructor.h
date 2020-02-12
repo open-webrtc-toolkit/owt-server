@@ -48,6 +48,7 @@ public:
     };
 
     VideoFrameConstructor(VideoInfoListener*, uint32_t transportccExtId = 0);
+    VideoFrameConstructor(VideoFrameConstructor*, VideoInfoListener*, uint32_t transportccExtId = 0);
     virtual ~VideoFrameConstructor();
 
     void bindTransport(erizo::MediaSource* source, erizo::FeedbackSink* fbSink);
@@ -133,10 +134,10 @@ private:
     char buf[1500];
 
     std::unique_ptr<webrtc::TaskQueueFactory> task_queue_factory;
-    // std::unique_ptr<webrtc::RtcEventLog> event_log;
-    // std::unique_ptr<webrtc::Call> call;
+    std::unique_ptr<webrtc::RtcEventLog> event_log;
+    std::shared_ptr<webrtc::Call> call;
+    std::shared_ptr<rtc::TaskQueue> task_queue;
     webrtc::VideoReceiveStream* video_recv_stream = nullptr;
-    rtc::TaskQueue task_queue;
 };
 
 } // namespace owt_base

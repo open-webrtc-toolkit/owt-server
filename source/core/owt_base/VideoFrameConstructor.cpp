@@ -131,9 +131,6 @@ int32_t VideoFrameConstructor::AdaptorDecoder::Decode(const webrtc::EncodedImage
     return 0;
 }
 
-std::unique_ptr<webrtc::RtcEventLog> event_log;
-std::unique_ptr<webrtc::Call> call;
-
 VideoFrameConstructor::VideoFrameConstructor(VideoInfoListener* vil, uint32_t transportccExtId)
     : m_enabled(true)
     , m_enableDump(false)
@@ -146,20 +143,41 @@ VideoFrameConstructor::VideoFrameConstructor(VideoInfoListener* vil, uint32_t tr
     , m_isRequestingKeyFrame(false)
     , m_videoInfoListener(vil)
     , task_queue_factory(webrtc::CreateDefaultTaskQueueFactory())
-    , task_queue(task_queue_factory->CreateTaskQueue(
+    , task_queue(std::make_shared<rtc::TaskQueue>(task_queue_factory->CreateTaskQueue(
         "CallTaskQueue",
-        webrtc::TaskQueueFactory::Priority::NORMAL))
+        webrtc::TaskQueueFactory::Priority::NORMAL)))
 {
     m_config.transport_cc = transportccExtId;
     // m_feedbackTimer.reset(new JobTimer(1, this));
-    task_queue.PostTask([this]() {
+    task_queue->PostTask([this]() {
         // Initialize call
-        if (call)
-            return;
         event_log = std::make_unique<webrtc::RtcEventLogNull>();
         webrtc::Call::Config call_config(event_log.get());
         call_config.task_queue_factory = task_queue_factory.get();
         call.reset(webrtc::Call::Create(call_config));
+    });
+}
+
+VideoFrameConstructor::VideoFrameConstructor(
+    VideoFrameConstructor* base,
+    VideoInfoListener* vil, uint32_t transportccExtId)
+    : m_enabled(true)
+    , m_enableDump(false)
+    , m_ssrc(0)
+    , m_format(FRAME_FORMAT_UNKNOWN)
+    , m_width(0)
+    , m_height(0)
+    , m_transport(nullptr)
+    , m_pendingKeyFrameRequests(0)
+    , m_isRequestingKeyFrame(false)
+    , m_videoInfoListener(vil)
+{
+    m_config.transport_cc = transportccExtId;
+    assert(base);
+    task_queue = base->task_queue;
+    task_queue.PostTask([this]() {
+        // Share call with base
+        call = base->call;
     });
 }
 
@@ -169,7 +187,7 @@ VideoFrameConstructor::~VideoFrameConstructor()
     unbindTransport();
     std::promise<int> p;
     std::future<int> f = p.get_future();
-    task_queue.PostTask([this, &p]() {
+    task_queue->PostTask([this, &p]() {
         if (call) {
             if (video_recv_stream) {
                 video_recv_stream->Stop();
@@ -186,7 +204,7 @@ VideoFrameConstructor::~VideoFrameConstructor()
 void VideoFrameConstructor::OnFrame(const webrtc::VideoFrame& video_frame) {}
 
 void VideoFrameConstructor::maybeCreateReceiveVideo(uint32_t ssrc) {
-    task_queue.PostTask([this, ssrc]() {
+    task_queue->PostTask([this, ssrc]() {
         if (call && !video_recv_stream) {
             RTC_DLOG(LS_INFO) << "Create VideoReceiveStream with SSRC: " << ssrc;
             // Create Receive Video Stream
@@ -336,7 +354,7 @@ int VideoFrameConstructor::deliverVideoData_(std::shared_ptr<erizo::DataPacket> 
     // TODO: since framer and connection are built with different libc++,
     // shard_ptr must be recreated due to abi issues
     std::shared_ptr<erizo::DataPacket> wp = std::make_shared<erizo::DataPacket>(*video_packet);
-    task_queue.PostTask([this, wp]() {
+    task_queue->PostTask([this, wp]() {
         if (call) {
             call->Receiver()->DeliverPacket(
                 webrtc::MediaType::VIDEO,
