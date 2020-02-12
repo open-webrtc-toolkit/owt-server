@@ -39,11 +39,11 @@ NAN_METHOD(VideoFrameConstructor::New) {
   if (info.IsConstructCall()) {
     VideoFrameConstructor* obj = new VideoFrameConstructor();
     int transportccExt = (info.Length() >= 2) ? info[1]->IntegerValue() : -1;
-    owt_base::VideoFrameConstructor* vfc_base = (info.Length() == 3)
+    VideoFrameConstructor* base_wrapper = (info.Length() == 3)
       ? Nan::ObjectWrap::Unwrap<VideoFrameConstructor>(Nan::To<v8::Object>(info[2]).ToLocalChecked())
       : nullptr;
-    if (vfc_base) {
-      obj->me = new owt_base::VideoFrameConstructor(vfc_base->me, obj, transportccExt);
+    if (base_wrapper) {
+      obj->me = new owt_base::VideoFrameConstructor(base_wrapper->me, obj, transportccExt);
     } else if (transportccExt > 0) {
       obj->me = new owt_base::VideoFrameConstructor(obj, transportccExt);
     } else {
