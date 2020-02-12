@@ -175,7 +175,7 @@ VideoFrameConstructor::VideoFrameConstructor(
     m_config.transport_cc = transportccExtId;
     assert(base);
     task_queue = base->task_queue;
-    task_queue.PostTask([this]() {
+    task_queue->PostTask([base, this]() {
         // Share call with base
         call = base->call;
     });
