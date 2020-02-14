@@ -1,14 +1,3 @@
-## Warning
-
-This branch is an experimental implemention of QUIC. APIs are not stable. Do not use it in production environments.
-
-There are some known issues:
-
-- Conflicts between OpenSSL and BoringSSL.
-- A QUIC transport only has one stream. Stream multiplexing will be enabled after server-client protocol changes.
-
----------------------
-
 ## Open WebRTC Toolkit Media Server
 
 The media server for OWT provides an efficient video conference and streaming service that is based on WebRTC. It scales a single WebRTC stream out to many endpoints. At the same time, it enables media analytics capabilities for media streams. It features:
@@ -40,7 +29,7 @@ In the root of the repository:
 1. Build native components: `scripts/build.js -t all --check`.
 2. Pack built components and js files: `scripts/pack.js -t all --install-module --app-path ${webrtc-javascript-sdk-sample-conference-dist}`.
 
-The ${webrtc-javascript-sdk-sample-conference-dist} is built from owt-javascript-sdk, e.g. `~/owt-client-javascript/dist/sample/conference`, see https://github.com/open-webrtc-toolkit/owt-client-javascript for details.
+The ${webrtc-javascript-sdk-sample-conference-dist} is built from owt-javascript-sdk, see https://github.com/open-webrtc-toolkit/owt-client-javascript for details.
 
 If "--archive ${name}" option is appended to the pack command, a "Release-${name}.tgz" file will be generated in root folder. For other options, run the scripts with "--help" option.
 
