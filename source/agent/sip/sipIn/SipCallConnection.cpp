@@ -41,6 +41,8 @@ void SipCallConnection::New(const FunctionCallbackInfo<Value>& args) {
   v8::String::Utf8Value str0(args[1]->ToString());
   std::string calleeURI = std::string(*str0);
   obj->me = new sip_gateway::SipCallConnection(gateway->me, calleeURI);
+  obj->msink = obj->me;
+  obj->msource = obj->me;
   obj->Wrap(args.This());
   args.GetReturnValue().Set(args.This());
 }

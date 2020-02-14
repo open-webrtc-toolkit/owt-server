@@ -4,10 +4,12 @@
 
 'use strict';
 var SipGateway = require('../sipIn/build/Release/sipIn');
-var AudioFrameConstructor = SipGateway.AudioFrameConstructor;
-var VideoFrameConstructor = SipGateway.VideoFrameConstructor;
-var AudioFramePacketizer = SipGateway.AudioFramePacketizer;
-var VideoFramePacketizer = SipGateway.VideoFramePacketizer;
+var frameAddon = require('../rtcFrame/build/Release/rtcFrame.node');
+var AudioFrameConstructor = frameAddon.AudioFrameConstructor;
+var AudioFramePacketizer = frameAddon.AudioFramePacketizer;
+var VideoFrameConstructor = frameAddon.VideoFrameConstructor;
+var VideoFramePacketizer = frameAddon.VideoFramePacketizer;
+
 var path = require('path');
 var logger = require('../logger').logger;
 var log = logger.getLogger('SipCallConnection');
