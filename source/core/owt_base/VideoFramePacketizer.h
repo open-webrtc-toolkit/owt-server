@@ -44,7 +44,7 @@ public:
                          bool enableUlpfec,
                          bool enableTransportcc = true,
                          bool selfRequestKeyframe = false,
-                         uint32_t transportccExt = 2);
+                         uint32_t transportccExt = 0);
     ~VideoFramePacketizer();
 
     void bindTransport(erizo::MediaSink* sink);
