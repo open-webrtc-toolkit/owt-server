@@ -10,6 +10,7 @@
     'dependencies': ['sipLib'],
     'cflags_cc': ['-DWEBRTC_POSIX', '-DWEBRTC_LINUX'],
     'include_dirs': [
+      "<!(node -e \"require('nan')\")",
       '../../../core/common',
       '../../../core/owt_base',
       '../../../../third_party/licode/erizo/src/erizo',

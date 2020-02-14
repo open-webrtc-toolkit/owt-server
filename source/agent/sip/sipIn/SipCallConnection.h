@@ -10,6 +10,8 @@
 #include <node_object_wrap.h>
 #include <string>
 
+#include "MediaWrapper.h"
+
 /*
  * Wrapper class of sip_gateway::SipCallConnection
  *

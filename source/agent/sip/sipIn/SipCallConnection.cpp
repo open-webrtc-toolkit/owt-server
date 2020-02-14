@@ -36,7 +36,7 @@ void SipCallConnection::New(const FunctionCallbackInfo<Value>& args) {
   HandleScope scope(isolate);
   SipCallConnection* obj = new SipCallConnection();
 
-  SipGateway* gateway = ObjectWrap::Unwrap<SipGateway>(args[0]->ToObject());
+  SipGateway* gateway = node::ObjectWrap::Unwrap<SipGateway>(args[0]->ToObject());
 
   v8::String::Utf8Value str0(args[1]->ToString());
   std::string calleeURI = std::string(*str0);
@@ -51,7 +51,7 @@ void SipCallConnection::close(const FunctionCallbackInfo<Value>& args) {
   Isolate* isolate = Isolate::GetCurrent();
   HandleScope scope(isolate);
 
-  SipCallConnection* obj = ObjectWrap::Unwrap<SipCallConnection>(args.Holder());
+  SipCallConnection* obj = Nan::ObjectWrap::Unwrap<SipCallConnection>(args.Holder());
   sip_gateway::SipCallConnection* me = obj->me;
   delete me;
   me = NULL;
@@ -61,9 +61,9 @@ void SipCallConnection::setAudioReceiver(const FunctionCallbackInfo<Value>& args
   Isolate* isolate = Isolate::GetCurrent();
   HandleScope scope(isolate);
 
-  SipCallConnection* obj = ObjectWrap::Unwrap<SipCallConnection>(args.Holder());
+  SipCallConnection* obj = Nan::ObjectWrap::Unwrap<SipCallConnection>(args.Holder());
   sip_gateway::SipCallConnection* me = obj->me;
-  MediaSink* param = ObjectWrap::Unwrap<MediaSink>(args[0]->ToObject());
+  MediaSink* param = Nan::ObjectWrap::Unwrap<MediaSink>(args[0]->ToObject());
   erizo::MediaSink* mr = param->msink;
   me->setAudioSink(mr);
 }
@@ -72,10 +72,10 @@ void SipCallConnection::setVideoReceiver(const FunctionCallbackInfo<Value>& args
   Isolate* isolate = Isolate::GetCurrent();
   HandleScope scope(isolate);
 
-  SipCallConnection* obj = ObjectWrap::Unwrap<SipCallConnection>(args.Holder());
+  SipCallConnection* obj = Nan::ObjectWrap::Unwrap<SipCallConnection>(args.Holder());
   sip_gateway::SipCallConnection* me = obj->me;
 
-  MediaSink* param = ObjectWrap::Unwrap<MediaSink>(args[0]->ToObject());
+  MediaSink* param = Nan::ObjectWrap::Unwrap<MediaSink>(args[0]->ToObject());
   erizo::MediaSink* mr = param->msink;
 
   me->setVideoSink(mr);
