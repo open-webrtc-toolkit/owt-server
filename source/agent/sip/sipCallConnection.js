@@ -40,11 +40,10 @@ exports.SipCallConnection = function (spec, onMediaUpdate) {
         audioFramePacketizer.bindTransport(sip_callConnection);
     }
     if (video) {
-        videoFrameConstructor = new VideoFrameConstructor();
-        videoFrameConstructor.bindTransport(sip_callConnection);
-        videoFrameConstructor.addEventListener('mediaInfo', function (mediaUpdate) {
+        videoFrameConstructor = new VideoFrameConstructor(function (mediaUpdate) {
             onMediaUpdate(peerURI, 'in', mediaUpdate);
         });
+        videoFrameConstructor.bindTransport(sip_callConnection);
 
         videoFramePacketizer = new VideoFramePacketizer(support_red, support_ulpfec);
         videoFramePacketizer.bindTransport(sip_callConnection);
