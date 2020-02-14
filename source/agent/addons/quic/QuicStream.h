@@ -30,6 +30,7 @@ protected:
 
 private:
     explicit QuicStream(owt::quic::P2PQuicStreamInterface* p2pQuicStream);
+    virtual ~QuicStream();
     static NAN_METHOD(newInstance);
     static NAN_METHOD(write);
     static NAUV_WORK_CB(onDataCallback);

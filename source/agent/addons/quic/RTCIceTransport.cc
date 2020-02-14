@@ -278,9 +278,7 @@ NAUV_WORK_CB(RTCIceTransport::onCandidateCallback)
 
 void RTCIceTransport::onPacketReceived(erizo::packetPtr packet)
 {
-    ELOG_DEBUG("RTCIceTransport::onPacketReceived");
     if (m_quicListener) {
-        ELOG_DEBUG("m_quicListener->onReadPacket.");
         m_quicListener->onReadPacket(packet->data, packet->length);
     }
 }

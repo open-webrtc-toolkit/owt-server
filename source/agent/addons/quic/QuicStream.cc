@@ -79,12 +79,10 @@ NAUV_WORK_CB(QuicStream::onDataCallback)
     if (!obj || obj->m_dataToBeNotified.empty()) {
         return;
     }
-    v8::Isolate *isolate = v8::Isolate::GetCurrent();
-    v8::EscapableHandleScope escapableScope(isolate);
     std::lock_guard<std::mutex> lock(obj->m_dataQueueMutex);
     while (!obj->m_dataToBeNotified.empty()) {
-        ELOG_DEBUG("copy");
         v8::MaybeLocal<v8::Object> data = Nan::CopyBuffer((char*)(obj->m_dataToBeNotified.front().data()), obj->m_dataToBeNotified.front().size());
+        assert(!obj->handle()->IsNull());
         Nan::MaybeLocal<v8::Value> onEvent = Nan::Get(obj->handle(), Nan::New<v8::String>("ondata").ToLocalChecked());
         if (!onEvent.IsEmpty()) {
             v8::Local<v8::Value> onEventLocal = onEvent.ToLocalChecked();
@@ -123,4 +121,8 @@ void QuicStream::OnDataReceived(std::vector<uint8_t> data, bool fin)
     }
     m_asyncOnData.data = this;
     uv_async_send(&m_asyncOnData);
+}
+
+QuicStream::~QuicStream(){
+    ELOG_DEBUG("QuicStream::~QuicStream");
 }
