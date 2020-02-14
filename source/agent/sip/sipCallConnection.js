@@ -45,7 +45,10 @@ exports.SipCallConnection = function (spec, onMediaUpdate) {
         });
         videoFrameConstructor.bindTransport(sip_callConnection);
 
-        videoFramePacketizer = new VideoFramePacketizer(support_red, support_ulpfec);
+        const transportExt = 0;
+        const selfRequestKeyFrame = true;
+        videoFramePacketizer = new VideoFramePacketizer(
+            support_red, support_ulpfec, transportExt, selfRequestKeyFrame);
         videoFramePacketizer.bindTransport(sip_callConnection);
     }
 
