@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 #include "AudioFramePacketizer.h"
-#include "AudioUtilities.h"
+#include "AudioUtilitiesNew.h"
 #include "WebRTCTaskRunner.h"
 
 #include <rtc_base/logging.h>
