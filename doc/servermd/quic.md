@@ -1,32 +1,18 @@
 # Steps to run OWT server with QUIC enabled
 
-## Build and Run
+QUIC support is working in progress. It is enabled in QUIC addon only. It is not integrated into any agent so far.
 
-### Build Chromium
-1. Get Chromium code. QUIC implementation depends on [QUICHE](https://quiche.googlesource.com/quiche.git). Please download the entire Chromium code according to [Chromium Linux build instruction](https://chromium.googlesource.com/chromium/src/+/master/docs/linux_build_instructions.md). The version we are using is 35a38537d3dfbc276f813c9201c674ae241ff4ae.
-1. Apply [patches](../../scripts/patches) to Chromium. If you don't want to build Chromium with GCC, the first patch may not neccessary. Or you could add a GN
-1. Build target net_quic. `ninja -C <dir> net_quic`.
+### Build OWT QUIC SDK
 
-### Build OWT server
+OWT QUIC SDK is a Chromium based project. However, it is not publicly available right now. Please follow internal instructions in QUIC SDK repo to build it. 
 
-It basically follows the steps in [README.md](../../README.md#how-to-build-release-package). The change we made is to replace webrtc agent with a webrtc-quic agent.
+### Build and try OWT server QUIC addon
+
+QUIC addon provides WebTransport and P2P QUIC style JavaScript APIs for node.js developers.
 
 1. Install dependencies `scripts/installDeps.sh`.
-1. Set environment variable `CHROMIUM_HOME` to the root of your Chromium's `src` folder. If your `net_quic` was not generated in `out\gcc`, please replace `$(CHROMIUM_HOME)/out/gcc` with your output directory in `source/agent/webrtc/quic/binding.quic.gyp`.
-1. Build conference server with the scripts [here](../../scripts/build.js), `scripts/build.js -t mcu`. If you just want to build the QUIC module, please run `scripts/build.js -t webrtc-quic`. You may use this command after making some changes to quic module. Please build webrtc-quic without OpenSSL, see section OpenSSL and BoringSSL below.
-1. Generate server package by `scripts/pack.js -f --sample-path <Path to JavaScript package>`.
+1. Run `./build.js -t quic` in `scripts` directory to build QUIC addon.
+1. You are able to run tests for QUIC addon, and try a connection between the addon and browser.
 
-### Run OWT server
-Please follow [Quick Start](https://github.com/open-webrtc-toolkit/owt-server#quick-start) section to start conference server.
 
-## OpenSSL and BoringSSL
-
-As node.js depends on OpenSSL while QUICHE depends on BoringSSL, there will be macro redefinitions and symbol conflicts during building and linking. In order to resolve this issue, we'll split webrtc-quic agent into two shared libraries. Before this, we need a workaround to make it work.
-
-### A workaround
-
-1. After you install node.js and node-gyp. Rename `~/.node-gyp/<version>/include/node/openssl` to a different name. So OpenSSL headers will not be included.
-1. Run webrtc-agent with a special `node`. You may find a `snode` in the [shared folder](\\kona.sh.intel.com\WebRTC\VolumetricStreaming). OpenSSL is not included in snode.
-1. Build webrtc-quic with this workaround enabled, and build all other modules without this workaround.
-
-You may use [nvm](https://github.com/nvm-sh/nvm) to quickly switch between different versions of Node.js. For example, you may install Node.js v8.15 and v8.16 through `nvm` on the same machine. Performaning the workaround for v8.15 will not impact 8.16.
+QUIC tests could be found in `source/agent/addons/quic/test`. If you want to try how it works with browser, please run `Create an RTCQuicTransport and listen` case of `RTCQuicTransport.js`. You need to get the client side JavaScript code from [here](https://github.com/jianjunz/owt-client-javascript/tree/quicsample/src/samples/quic) and run it in a browser supports P2P QUIC API.
