@@ -215,7 +215,7 @@ const ServerSideSubscriptionRequest = {
       properties: {
         'type': { 'const': 'streaming' },
         'connection': { $ref: '#/definitions/StreamingOutConnectionOptions' },
-        'media': { anyOf: [{ $ref: '#/definitions/MediaSubOptions' },{'const': null}]},
+        'media': { $ref: '#/definitions/MediaSubOptions' },
       },
       additionalProperties: false,
       required: ['type', 'connection', 'media']

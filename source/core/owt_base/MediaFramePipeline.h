@@ -41,8 +41,6 @@ enum FrameFormat {
 
     FRAME_FORMAT_AC3,
     FRAME_FORMAT_NELLYMOSER,
-
-    FRAME_FORMAT_DATA       = 1000,
 };
 
 enum VideoCodecProfile {
@@ -198,11 +196,6 @@ inline bool isVideoFrame(const Frame& frame) {
           || frame.format == FRAME_FORMAT_H265;
 }
 
-inline bool isDataFrame(const Frame& frame)
-{
-    return frame.format == FRAME_FORMAT_DATA;
-}
-
 enum FeedbackType {
     VIDEO_FEEDBACK,
     AUDIO_FEEDBACK
@@ -241,9 +234,6 @@ public:
     void addVideoDestination(FrameDestination*);
     void removeVideoDestination(FrameDestination*);
 
-    void addDataDestination(FrameDestination*);
-    void removeDataDestination(FrameDestination*);
-
 protected:
     void deliverFrame(const Frame&);
 
@@ -252,14 +242,12 @@ private:
     boost::shared_mutex m_audio_dests_mutex;
     std::list<FrameDestination*> m_video_dests;
     boost::shared_mutex m_video_dests_mutex;
-    std::list<FrameDestination*> m_data_dests;
-    boost::shared_mutex m_data_dests_mutex;
 };
 
 
 class FrameDestination {
 public:
-    FrameDestination() : m_audio_src(nullptr), m_video_src(nullptr), m_data_src(nullptr) { }
+    FrameDestination() : m_audio_src(nullptr), m_video_src(nullptr) { }
     virtual ~FrameDestination() { }
 
     virtual void onFrame(const Frame&) = 0;
@@ -271,12 +259,8 @@ public:
     void setVideoSource(FrameSource*);
     void unsetVideoSource();
 
-    void setDataSource(FrameSource*);
-    void unsetDataSource();
-
     bool hasAudioSource() { return m_audio_src != nullptr; }
     bool hasVideoSource() { return m_video_src != nullptr; }
-    bool hasDataSource() { return m_data_src != nullptr; }
 
 protected:
     void deliverFeedbackMsg(const FeedbackMsg& msg);
@@ -286,8 +270,6 @@ private:
     boost::shared_mutex m_audio_src_mutex;
     FrameSource* m_video_src;
     boost::shared_mutex m_video_src_mutex;
-    FrameSource* m_data_src;
-    boost::shared_mutex m_data_src_mutex;
 };
 
 class VideoFrameDecoder : public FrameSource, public FrameDestination {

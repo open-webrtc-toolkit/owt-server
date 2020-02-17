@@ -65,19 +65,8 @@ const PublicationRequest = {
     { // Webrtc Publication
       type: 'object',
       properties: {
-        'media': {
-          anyOf: [{
-            $ref: '#/definitions/WebRTCMediaOptions'
-          }, {
-            'const': false
-          }]
-        },
-        'data': {
-          type: 'boolean'
-        },
-        'attributes': {
-          type: 'object'
-        }
+        'media': { $ref: '#/definitions/WebRTCMediaOptions' },
+        'attributes': { type: 'object' }
       },
       additionalProperties: false,
       required: ['media']
@@ -178,14 +167,7 @@ const SubscriptionRequest = {
     { // Webrtc Subscription
       type: 'object',
       properties: {
-        'media': { anyOf: [ { $ref: '#/definitions/MediaSubOptions' }, {'const': false}]},
-        'data': {
-          anyOf: [
-            { $ref: '#/definitions/DataSubOptions'},
-            { 'const': false }
-          ]
-        },
-        'transport': { $ref: '#/definitions/TransportOptions' },
+        'media': { $ref: '#/definitions/MediaSubOptions' },
       },
       additionalProperties: false,
       required: ['media']
@@ -207,7 +189,7 @@ const SubscriptionRequest = {
             { $ref: '#/definitions/VideoSubOptions'},
             { 'const': false }
           ]
-        },
+        }
       },
       additionalProperties: false,
       required: ['audio', 'video']
@@ -230,15 +212,6 @@ const SubscriptionRequest = {
         'format': { $ref: '#/definitions/VideoFormat' },
         'parameters': { $ref: '#/definitions/VideoParametersSpecification' },
         'simulcastRid': { type: 'string' }
-      },
-      additionalProperties: false,
-      required: ['from']
-    },
-
-    'DataSubOptions': {
-      type: 'object',
-      properties: {
-        'from': { type: 'string' },
       },
       additionalProperties: false,
       required: ['from']
@@ -272,14 +245,6 @@ const SubscriptionRequest = {
         'framerate': { type: 'number' },
         'bitrate': { type: ['string', 'number'] },
         'keyFrameInterval': { type: 'number' }
-      },
-      additionalProperties: false
-    },
-
-    'TransportOptions': {
-      type: 'object',
-      properties: {
-        'protocol': { type: 'string' }
       },
       additionalProperties: false
     }

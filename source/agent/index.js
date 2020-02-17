@@ -37,8 +37,7 @@ for (var prop in opt.options) {
                     value === 'recording' ||
                     value === 'analytics' ||
                     value === 'audio' ||
-                    value === 'video' ||
-                    value === 'quic') {
+                    value === 'video') {
                     myPurpose = value;
                 } else {
                     process.exit(0);

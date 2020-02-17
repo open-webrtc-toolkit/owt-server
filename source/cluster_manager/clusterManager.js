@@ -96,8 +96,6 @@ var ClusterManager = function (clusterName, selfId, spec) {
     };
 
     var schedule = function (purpose, task, preference, reserveTime, on_ok, on_error) {
-        if(purpose==='quic-p2p')
-            purpose='webrtc';
         log.debug('schedule, purpose:', purpose, 'task:', task, ', preference:', preference, 'reserveTime:', reserveTime, 'while state:', state);
         if (state === 'in-service') {
             if (schedulers[purpose]) {

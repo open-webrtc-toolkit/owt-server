@@ -6,7 +6,7 @@
 var fs = require('fs');
 var amqp = require('amqp');
 var log = require('./logger').logger.getLogger('AmqpClient');
-//var cipher = require('./cipher');
+var cipher = require('./cipher');
 var TIMEOUT = 2000;
 var REMOVAL_TIMEOUT = 7 * 24 * 3600 * 1000;
 
@@ -385,11 +385,6 @@ module.exports = function() {
             });
         };
 
-        options.login = 'guest';
-        options.password = 'guest';
-        setupConnection(options);
-
-        /*
         if (fs.existsSync(cipher.astore)) {
             cipher.unlock(cipher.k, cipher.astore, function cb (err, authConfig) {
                 if (!err) {
@@ -405,7 +400,7 @@ module.exports = function() {
             });
         } else {
             setupConnection(options);
-        }*/
+        }
     };
 
     that.disconnect = function() {

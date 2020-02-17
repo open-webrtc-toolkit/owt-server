@@ -17,7 +17,7 @@
     "V10Client": "INFO",
     "V11Client": "INFO",
     "SocketIOServer": "INFO",
-    "Portal": "DEBUG",
+    "Portal": "INFO",
     "RpcClient": "INFO",
     "AmqpClient": "INFO"
   }
