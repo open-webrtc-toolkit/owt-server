@@ -131,7 +131,8 @@ function getPackList(targets) {
   }
 
   var packList = targets.filter((element) => {
-    if (options.target.includes('all')) return true;
+    // Don't include QUIC agent by default until CI is added for QUIC SDK.
+    if (options.target.includes('all') && !element.rules.name != 'quic-agent') return true;
     return options.target.includes(element.rules.name);
   });
   if (packList.length === 0) {
