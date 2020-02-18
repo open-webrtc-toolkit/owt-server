@@ -16,7 +16,10 @@ Here is a table describing the detailed name and definition.
 |:----|:-----------|
 | Portal | The MCU component listening at the Socket.io server port, accepting signaling connections initiated by Clients, receive/send signaling messages from/to Clients. |
 | Client | The program running on end-user’s device which interacts with MCU Server by messages defined in this documentation.|
-| Signaling Connection | The signaling channel between Client and Portal established by Client to send, receive and fetch signaling messages. |
+| Connection | A transport channel between client and server. Different kinds of connections may have different transport protocols. |
+| Signaling Connection | The signaling channel between client and Portal established by Client to send, receive and fetch signaling messages. |
+| WebRTC Connection | A WebRTC transport channel between client and WebRTC agent. It may carry audio and video data. Detailed information about WebRTC could be found [here](https://webrtc.org/). |
+| QUIC Connection | A QUIC transport channel between client and QUIC agent. Detailed information about QUIC could be found [here](https://quicwg.org/). |
 | Room | The logical entity of a conference in which all conference members (participants) exchange their video/audio streams, and where mixed streams are generated. Every room must be assigned with a unique identification **(RoomID)** in the MCU scope. |
 | User | The service account defined in the third-party integration application. The user ID and user role must be specified when asking for a token. |
 | Participant | The logical entity of a user when participating in a conference with a valid token. Every participant must be assigned with a unique identification **(ParticipantID)** in the room scope, and must be assigned a set of operation permissions according to its role. |
@@ -61,7 +64,7 @@ Given that Portal has accepted Clients connecting and the socket object is ready
 - **NotificationName** must be with type of string, and with value defined in this specification;
 - **NotificationData** must be with type of object, and with format defined in this specification, and will be absent if no notification data is present.
 
-## 3.2 Connection Maintenance
+## 3.2 Signaling Connection Maintenance
 ### 3.2.1 Client Connects
 Portal should be able to listen at either a secure or an insecure socket.io server port to accept Clients’ connecting requests.  If the secure socket.io server is enabled, the SSL certificate and private key store path must be correctly specified by configuration item portal.keystorePath in portal.toml.<br>
 
@@ -358,29 +361,33 @@ This a format for client reconnects.
 
 **RequestData**: The PublicationRequest object with following definition:
 
+```
   object(PublicationRequest)::
     {
-     media: object(WebRTCMediaOptions),
+     media: object(WebRTCMediaOptions) | null,
+     data: boolean,
      transport: object(TransportOptions),
-     attributes: object(ClientDefinedAttributes)
+     attributes: object(ClientDefinedAttributes) | null
     }
 
-    object(WebRTCMediaOptions)::
-      {
-       audio: {
-              source: "mic" | "screen-cast" | "raw-file" | "encoded-file"
-             }
-             | false,
-       video: {
-              source: "camera"| "screen-cast"  | "raw-file" | "encoded-file",
-              parameters:
-                {
-                 resolution: object(Resolution),
-                 framerate: number(FramerateFPS)
-                }
-             }
-             | false
-      }
+  object(WebRTCMediaOptions)::
+    {
+      audio: {
+            source: "mic" | "screen-cast" | "raw-file" | "encoded-file"
+            }
+            | false,
+      video: {
+            source: "camera"| "screen-cast"  | "raw-file" | "encoded-file",
+            parameters:
+              {
+                resolution: object(Resolution),
+                framerate: number(FramerateFPS)
+              }
+            }
+            | false
+    }
+```
+
 **ResponseData**: The PublicationResult object with following definition if **ResponseStatus** is “ok”:
 
   object(PublicationResult)::
@@ -526,15 +533,14 @@ This a format for client reconnects.
 
   object(SOACMessage)::
     {
-     id: string(SessionId), /* StreamId returned in publishing or SubscriptionId returned in subscribing*/
-     signaling: object(OfferAnswer) | object(CandidateMessage) | object(RemovedCandidatesMessage)
+     id: string(transportId), /* Transport ID returned in publishing or subscribing*/
+     signaling: object(OfferAnswer) | object(CandidateMessage) | object(RemovedCandidatesMessage) | object(P2PQuicParametersMessage)
     }
 
     object(OfferAnswer)::
       {
        type: "offer" | "answer",
        sdp: string(SDP) | null,  // WebRTC connection
-       clientTransportParameters: object(P2PQuicClientParametersMessage) | null  // QUIC connection
       }
 
     object(CandidateMessage)::
@@ -562,15 +568,20 @@ This a format for client reconnects.
         id: string(transportId) | null,  // null will result to create a new transport channel.
       }
 
+    object(P2PQuicParametersMessage)::
+      {
+       type: "quic-parameters",
+       clientTransportParameters: object(P2PQuicClientParametersMessage) | undefined,
+       serverTransportParameters: object(P2PQuicServerParametersMessage) | undefined
+      }
+
     object(P2PQuicClientParametersMessage)::
       {
-        type: "quic-p2p-client-parameters",
         quicKey: arrayBuffer(Key),
         iceParameters: object(IceParameters)
       }
     object(P2PQuicServerParametersMessage)::
       {
-        type: "quic-p2p-server-parameters",
         iceParameters: object(IceParameters)
       }
 
@@ -583,16 +594,22 @@ This a format for client reconnects.
 ### 3.3.15 Participant Receives Session Progress
 **NotificationName**: “progress”<br>
 
-**NotificationData**: The SessionProgress object with following definition.
+**NotificationData**: The SessionProgress or TransportProgress object with following definition.
+
+  object(TransportProgress)::
+    {
+      id: string(transportId),
+      status: "soac" | "ready" | "error",
+      data: object(OfferAnswer) | object(CandidateMessage) | object(P2PQuicParametersMessage) /*If status equals “soac”*/
+          | (undefined/*If status equals “ready” and session is NOT for recording*/
+          | string(Reason)/*If status equals “error”*/
+    }
 
   object(SessionProgress)::
     {
      id: string(SessionId), /* StreamId returned in publishing or SubscriptionId returned in subscribing*/
      status: "soac" | "ready" | "error",
-     data: object(OfferAnswer) | object(CandidateMessage) | object(P2PQuicServerParametersMessage) /*If status equals “soac”*/
-          | (undefined/*If status equals “ready” and session is NOT for recording*/
-             | object(RecorderInfo)/*If status equals “ready” and session is for recording*/ )
-          | string(Reason)/*If status equals “error”*/
+     data: object(RecorderInfo)/*If status equals “ready” and session is for recording*/ )
     }
 
     object(RecorderInfo)::
@@ -600,3 +617,68 @@ This a format for client reconnects.
        host: string(HostnameOrIPOfRecorder),
        file: string(FullPathNameOfRecordedFile)
       }
+
+# 4. Examples
+
+This section provides a few examples of signaling messages for specific purposes.
+
+## 4.1 Forward data through data channel over QUIC
+
+An endpoint is joined the meeting, and it wants to publish a data stream over a newly created QUIC transport channel.
+
+Step 1: Client sends a "publish" request.
+
+```
+{
+  media: null,
+  data: true,
+  transport: {type: 'quic-p2p'}
+}
+```
+
+Step 2: Receive a response from server.
+
+```
+{
+  transportId: 'b1ff706f-7352-4d02-a6dc-dc840fb3963e'
+  publicationId: '91e24705-1d49-4cdd-bd4a-d461445637c4'
+}
+```
+
+Step 3: Send client QUIC transport parameters.
+
+```
+{
+  id: 'b1ff706f-7352-4d02-a6dc-dc840fb3963e',
+  signaling: {
+    type: "quic-parameters",
+    clientTransportParameters: {
+      quicKey: 'key',
+      iceParameters: {
+        usernameFragment: 'userfrag',
+        password: 'password'
+      }
+    }
+  }
+}
+```
+
+Step 4: Receive server QUIC transport paramters.
+
+```
+{
+  id: ''
+  status: 'soac',
+  data: {
+  type: "quic-parameters",
+  serverTransportParameters:   {
+    iceParameters: {
+      usernameFragment: 'userfrag',
+      password: 'password'
+    }
+  }
+  }
+}
+```
+
+Step 5: Receive transport ready and session ready from server.
