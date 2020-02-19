@@ -237,8 +237,8 @@ install_webrtc79(){
   $INCR_INSTALL &&  [[ -s $ROOT/third_party/webrtc-m79/libwebrtc.a ]] && \
   echo "libwebrtc already installed." && return 0
 
-  rm $ROOT/third_party/webrtc-m79 -rf
-  mkdir $ROOT/third_party/webrtc-m79
+  [[ ! -d $ROOT/third_party/webrtc-m79 ]] && \
+    mkdir $ROOT/third_party/webrtc-m79
 
   pushd ${ROOT}/third_party/webrtc-m79 >/dev/null
   . $PATHNAME/installWebrtc.sh

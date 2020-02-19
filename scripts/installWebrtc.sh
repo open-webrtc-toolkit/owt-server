@@ -34,6 +34,8 @@ is_component_build=false
 use_lld=false
 rtc_build_examples=false
 rtc_include_tests=false
+rtc_include_pulse_audio=false
+rtc_include_internal_audio_device=false
 use_sysroot=false
 is_clang=false
 treat_warnings_as_errors=false
@@ -46,16 +48,15 @@ OWT_DIR="tools-owt"
 DEPOT_TOOLS=
 
 install_depot_tools(){
-  if [ ! -d $OWT_DIR ]; then
-    mkdir -p $OWT_DIR
-  fi
-  pushd $OWT_DIR >/dev/null
-  DEPOT_TOOLS=`pwd`"/depot_tools"
-  popd
+  DEPOT_TOOLS=`pwd`"${OWT_DIR}/depot_tools"
   if [ -d $OWT_DIR/depot_tools ]; then
     echo "depot_tools already installed."
     return 0
   fi
+  if [ ! -d $OWT_DIR ]; then
+    mkdir -p $OWT_DIR
+  fi
+
   pushd $OWT_DIR >/dev/null
   git clone https://chromium.googlesource.com/chromium/tools/depot_tools.git
   popd >/dev/null
@@ -68,7 +69,6 @@ download_and_build(){
     git clone -b 79-sdk https://github.com/open-webrtc-toolkit/owt-deps-webrtc.git src
     mkdir -p src/build_overrides/ssl
     echo $SSL_GNI > src/build_overrides/ssl/ssl.gni
-    export PATH="$PATH:$DEPOT_TOOLS"
     echo $GCLIENT_CONFIG > .gclient
   fi
 
@@ -77,6 +77,7 @@ download_and_build(){
     scl enable devtoolset-7 bash
   fi
 
+  export PATH="$PATH:$DEPOT_TOOLS"
   gclient sync
   pushd src >/dev/null  
   gn gen out --args="$GN_ARGS"
