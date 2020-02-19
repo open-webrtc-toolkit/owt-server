@@ -13,6 +13,11 @@ CLEANUP=false
 NIGHTLY=false
 NO_INTERNAL=false
 INCR_INSTALL=false
+SUDO=""
+
+if [[ $EUID -ne 0 ]]; then
+  SUDO="sudo -E"
+fi
 
 parse_arguments(){
   while [ "$1" != "" ]; do

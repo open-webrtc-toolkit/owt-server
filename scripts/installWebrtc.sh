@@ -33,6 +33,7 @@ ffmpeg_branding="Chrome"
 is_component_build=false
 use_lld=false
 rtc_build_examples=false
+rtc_include_tests=false
 use_sysroot=false
 is_clang=false
 treat_warnings_as_errors=false
@@ -45,15 +46,18 @@ OWT_DIR="tools-owt"
 DEPOT_TOOLS=
 
 install_depot_tools(){
-  [[ -d $OWT_DIR/depot_tools ]] && \
-    echo "depot_tools already installed." && \
-    return 0
-  [[ ! -d $OWT_DIR ]] && \
+  if [ ! -d $OWT_DIR ]; then
     mkdir -p $OWT_DIR
-
+  fi
+  pushd $OWT_DIR >/dev/null
+  DEPOT_TOOLS=`pwd`"/depot_tools"
+  popd
+  if [ -d $OWT_DIR/depot_tools ]; then
+    echo "depot_tools already installed."
+    return 0
+  fi
   pushd $OWT_DIR >/dev/null
   git clone https://chromium.googlesource.com/chromium/tools/depot_tools.git
-  DEPOT_TOOLS=`pwd`"/depot_tools"
   popd >/dev/null
 }
 
@@ -66,6 +70,11 @@ download_and_build(){
     echo $SSL_GNI > src/build_overrides/ssl/ssl.gni
     export PATH="$PATH:$DEPOT_TOOLS"
     echo $GCLIENT_CONFIG > .gclient
+  fi
+
+  if [[ "$OS" =~ .*centos.* ]]
+  then
+    scl enable devtoolset-7 bash
   fi
 
   gclient sync
