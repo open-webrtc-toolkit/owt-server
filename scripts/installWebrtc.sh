@@ -48,7 +48,7 @@ OWT_DIR="tools-owt"
 DEPOT_TOOLS=
 
 install_depot_tools(){
-  DEPOT_TOOLS=`pwd`"${OWT_DIR}/depot_tools"
+  DEPOT_TOOLS=`pwd`"/${OWT_DIR}/depot_tools"
   if [ -d $OWT_DIR/depot_tools ]; then
     echo "depot_tools already installed."
     return 0
