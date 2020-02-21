@@ -170,7 +170,7 @@ This a format for client reconnects.
            id: string(StreamID),
            type: "forward" | "augmented" |"mixed",
            media: object(MediaInfo) | null,
-           data: object(DataInfo) | null,
+           data: true | false,
            info: object(PublicationInfo)/*If type equals "forward"*/
                 | object(AugmentInfo)/*If type equals "augmented"*/
                 | object(ViewInfo)/*If type equals "mixed"*/
@@ -365,7 +365,7 @@ This a format for client reconnects.
   object(PublicationRequest)::
     {
      media: object(WebRTCMediaOptions) | null,
-     data: boolean,
+     data: true | false,
      transport: object(TransportOptions),
      attributes: object(ClientDefinedAttributes) | null
     }
