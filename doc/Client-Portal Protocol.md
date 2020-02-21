@@ -510,7 +510,7 @@ This a format for client reconnects.
 **ResponseData**: undefined or object(BWEResult) for "querybwe" if **ResponseStatus** is “ok”.
   object(BWEResult)::
     {
-      bitrate: number(bps) /*Send side estimated bitrate if enabled*/
+      estimatedBitrate: number(bps) /*Send side estimated bitrate if enabled*/
     }
 ### 3.3.14 Participant Sends Session Signaling
 **RequestName**: “soac”<br>
