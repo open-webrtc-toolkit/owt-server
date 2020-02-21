@@ -13,8 +13,6 @@
 #include <future>
 
 // using namespace webrtc;
-using std::cout;
-using std::endl;
 
 namespace owt_base {
 
