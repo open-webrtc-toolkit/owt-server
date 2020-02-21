@@ -484,9 +484,10 @@ This a format for client reconnects.
   object(SubscriptionControlInfo)::
     {
      id: string(SubscriptionId),
-     operation: "update" | "pause" | "play",
+     operation: "update" | "pause" | "play" | "querybwe",
      data: object(SubscriptionUpdate)/*If operation equals "update"*/
           | ("audio" | "video" | "av")/*If operation equals "pause" or "play"*/
+          | undefined /*If operation equals "querybwe"*/
     }
 
     object(SubscriptionUpdate)::
@@ -506,7 +507,11 @@ This a format for client reconnects.
          parameters: object(VideoParametersSpecification)/*If any video parameters are wanted to be re-specified*/
                      | undefined/*If the video parameters of the ongoing subscription are wanted to be kept*/
         }
-**ResponseData**: undefined if **ResponseStatus** is “ok”.
+**ResponseData**: undefined or object(BWEResult) for "querybwe" if **ResponseStatus** is “ok”.
+  object(BWEResult)::
+    {
+      bitrate: number(bps) /*Send side estimated bitrate if enabled*/
+    }
 ### 3.3.14 Participant Sends Session Signaling
 **RequestName**: “soac”<br>
 
