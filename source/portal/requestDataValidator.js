@@ -66,7 +66,15 @@ const PublicationRequest = {
       type: 'object',
       properties: {
         'media': { $ref: '#/definitions/WebRTCMediaOptions' },
-        'attributes': { type: 'object' }
+        'data': {type: 'boolean' },
+        'attributes': { type: 'object' },
+        'transport': {
+          type: 'object',
+          properties: {
+            'type': {type: 'string'}
+          },
+          additionalProperties: false,
+        }
       },
       additionalProperties: false,
       required: ['media']
@@ -75,7 +83,7 @@ const PublicationRequest = {
 
   definitions: {
     'WebRTCMediaOptions': {
-      type: 'object',
+      type: ['object', 'null'],
       properties: {
         'audio': {
           anyOf: [

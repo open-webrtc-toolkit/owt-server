@@ -97,7 +97,8 @@ var V11Client = function(clientId, sigConnection, portal) {
         if (SOAC.signaling.type === 'offer'
             || SOAC.signaling.type === 'answer'
             || SOAC.signaling.type === 'candidate'
-            || SOAC.signaling.type === 'removed-candidates') {
+            || SOAC.signaling.type === 'removed-candidates'
+            || SOAC.signaling.type === 'p2p-quic-parameters') {
           return Promise.resolve(SOAC);
         } else {
           return Promise.reject('Invalid signaling type');
@@ -127,7 +128,11 @@ var V11Client = function(clientId, sigConnection, portal) {
       var stream_id = Math.round(Math.random() * 1000000000000000000) + '';
       return validatePubReq(pubReq)
         .then((req) => {
-          req.type = 'webrtc';//FIXME: For backend compatibility with v3.4 clients.
+          if (pubReq.transport && pubReq.transport.type == 'quic-p2p') {
+            req.type = 'quic';
+          } else {
+            req.type = 'webrtc'; //FIXME: For backend compatibility with v3.4 clients.
+          }
           return portal.publish(clientId, stream_id, req);
         }).then((result) => {
           safeCall(callback, 'ok', {id: stream_id});

@@ -65,7 +65,12 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
     };
 
     // functions: publish, unpublish, subscribe, unsubscribe, linkup, cutoff
-    that.publish = function (connectionId, connectionType, options, callback) {
+    that.publish = function(connectionId, connectionType, options, callback) {
+        if (connectionType == 'quic') {
+            if (options.transport && options.transport.type) {
+                connectionType = options.transport.type;
+            }
+        }
         log.debug('publish, connectionId:', connectionId, 'connectionType:', connectionType, 'options:', options);
         if (connections.getConnection(connectionId)) {
             return callback('callback', {type: 'failed', reason: 'Connection already exists:'+connectionId});
@@ -73,17 +78,17 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
 
         var conn = null;
         switch (connectionType) {
-            case 'internal':
-                conn = internalConnFactory.fetch(connectionId, 'in');
-                if (conn)
-                    conn.connect(options);
-                break;
-            case 'quic-p2p':
-                log.debug("New QUIC connection.");
-                conn = createQuicConnection(connectionId, 'in', options);
-                pubSubMap.set(connectionId, []);
-                // Forward data from publication to subscriptions.
-                /*
+        case 'internal':
+            conn = internalConnFactory.fetch(connectionId, 'in');
+            if (conn)
+                conn.connect(options);
+            break;
+        case 'quic-p2p':
+            log.debug("New P2P QUIC connection.");
+            conn = createQuicConnection(connectionId, 'in', options);
+            pubSubMap.set(connectionId, []);
+            // Forward data from publication to subscriptions.
+            /*
                 conn.ondata=(data)=>{
                     log.debug('conn.ondata');
                     if(pubSubMap.has(connectionId)){
@@ -94,15 +99,16 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
                         }
                     }
                 }*/
-                break;
-            default:
-                log.error('Connection type invalid:' + connectionType);
+            break;
+        default:
+            log.error('Connection type invalid:' + connectionType);
         }
         if (!conn) {
             log.error('Create connection failed', connectionId, connectionType);
             return callback('callback', {type: 'failed', reason: 'Create Connection failed'});
         }
 
+        log.debug('QUIC add connection.');
         connections.addConnection(connectionId, connectionType, options.controller, conn, 'in')
         .then(onSuccess(callback), onError(callback));
     };
@@ -196,15 +202,15 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
     };
 
     that.onSessionSignaling = function (connectionId, msg, callback) {
-        log.debug('onSessionSignaling, connection id:', connectionId, 'msg:', msg);
+        log.debug('quic onSessionSignaling, connection id:', connectionId, 'msg:', msg);
         var conn = connections.getConnection(connectionId);
         if (conn) {
-            if (conn.type === 'quic-p2p' || conn.type === 'webrtc') { //NOTE: Only webrtc connection supports signaling.
+            if (conn.type === 'quic-p2p') {
                 conn.connection.onSignalling(msg);
                 callback('callback', 'ok');
             } else {
-                log.info('signaling on non-webrtc connection');
-                callback('callback', 'error', 'signaling on non-webrtc connection');
+                log.info('signaling on non-quic connection');
+                callback('callback', 'error', 'signaling on non-quic connection');
             }
         } else {
           callback('callback', 'error', 'Connection does NOT exist:' + connectionId);

@@ -977,6 +977,10 @@ var Conference = function (rpcClient, selfRpcId) {
       return callback('callback', 'error', 'Participant has not joined');
     }
 
+    if (!pubInfo.media) {
+        pubInfo.media = { audio : false, video : false };
+    }
+
     if ((pubInfo.media.audio && !participants[participantId].isPublishPermitted('audio'))
         || (pubInfo.media.video && !participants[participantId].isPublishPermitted('video'))) {
       return callback('callback', 'error', 'unauthorized');
