@@ -15,7 +15,7 @@ END
 GCLIENT_CONFIG=$(cat <<-END
 solutions = [
   {
-    "url": "https://webrtc.googlesource.com/src.git",
+    "url": "https://github.com/open-webrtc-toolkit/owt-deps-webrtc.git",
     "managed": False,
     "name": "src",
     "deps_file": "DEPS",
@@ -74,7 +74,7 @@ download_and_build(){
 
   if [[ "$OS" =~ .*centos.* ]]
   then
-    scl enable devtoolset-7 bash
+    source scl_source enable devtoolset-7
   fi
 
   export PATH="$PATH:$DEPOT_TOOLS"
