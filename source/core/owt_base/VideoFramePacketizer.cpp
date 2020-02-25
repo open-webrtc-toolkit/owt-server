@@ -35,14 +35,14 @@ VideoFramePacketizer::VideoFramePacketizer(
     , m_frameHeight(0)
     , m_random(rtc::TimeMicros())
     , m_ssrc(0)
-    , m_ssrc_generator(SsrcGenerator::GetSsrcGenerator())
+    , m_ssrcGenerator(SsrcGenerator::GetSsrcGenerator())
     , m_sendFrameCount(0)
     , m_clock(nullptr)
     , m_timeStampOffset(0)
 {
     video_sink_ = nullptr;
-    m_ssrc = m_ssrc_generator->CreateSsrc();
-    m_ssrc_generator->RegisterSsrc(m_ssrc);
+    m_ssrc = m_ssrcGenerator->CreateSsrc();
+    m_ssrcGenerator->RegisterSsrc(m_ssrc);
     m_videoTransport.reset(new WebRTCTransport<erizoExtra::VIDEO>(this, nullptr));
     m_taskRunner.reset(new owt_base::WebRTCTaskRunner("VideoFramePacketizer"));
     m_taskRunner->Start();
@@ -53,13 +53,13 @@ VideoFramePacketizer::~VideoFramePacketizer()
 {
     close();
     m_taskRunner->Stop();
-    m_ssrc_generator->ReturnSsrc(m_ssrc);
+    m_ssrcGenerator->ReturnSsrc(m_ssrc);
     boost::unique_lock<boost::shared_mutex> lock(m_rtpRtcpMutex);
 }
 
 void VideoFramePacketizer::bindTransport(erizo::MediaSink* sink)
 {
-    boost::unique_lock<boost::shared_mutex> lock(m_transport_mutex);
+    boost::unique_lock<boost::shared_mutex> lock(m_transportMutex);
     video_sink_ = sink;
     video_sink_->setVideoSinkSSRC(m_rtpRtcp->SSRC());
     erizo::FeedbackSource* fbSource = video_sink_->getFeedbackSource();
@@ -69,7 +69,7 @@ void VideoFramePacketizer::bindTransport(erizo::MediaSink* sink)
 
 void VideoFramePacketizer::unbindTransport()
 {
-    boost::unique_lock<boost::shared_mutex> lock(m_transport_mutex);
+    boost::unique_lock<boost::shared_mutex> lock(m_transportMutex);
     if (video_sink_) {
         video_sink_ = nullptr;
     }
@@ -106,7 +106,7 @@ int VideoFramePacketizer::deliverFeedback_(std::shared_ptr<erizo::DataPacket> da
 
 void VideoFramePacketizer::receiveRtpData(char* buf, int len, erizoExtra::DataType type, uint32_t channelId)
 {
-    boost::shared_lock<boost::shared_mutex> lock(m_transport_mutex);
+    boost::shared_lock<boost::shared_mutex> lock(m_transportMutex);
     if (!video_sink_) {
         return;
     }
@@ -382,14 +382,14 @@ bool VideoFramePacketizer::init(bool enableRed, bool enableUlpfec, bool enableTr
     m_clock = Clock::GetRealTimeClock();
     m_retransmissionRateLimiter.reset(new webrtc::RateLimiter(Clock::GetRealTimeClock(), 1000));
 
-    event_log = std::make_unique<webrtc::RtcEventLogNull>();
+    m_eventLog = std::make_unique<webrtc::RtcEventLogNull>();
     RtpRtcp::Configuration configuration;
     configuration.clock = m_clock;
     configuration.audio = false;
     configuration.receiver_only = false;
     configuration.outgoing_transport = m_videoTransport.get();
     configuration.intra_frame_callback = this;
-    configuration.event_log = event_log.get();
+    configuration.event_log = m_eventLog.get();
     configuration.retransmission_rate_limiter = m_retransmissionRateLimiter.get();
     configuration.local_media_ssrc = m_ssrc;//rtp_config.ssrcs[i];
 
@@ -406,12 +406,12 @@ bool VideoFramePacketizer::init(bool enableRed, bool enableUlpfec, bool enableTr
     }
 
     webrtc::RTPSenderVideo::Config video_config;
-    m_playout_delay_oracle = std::make_unique<PlayoutDelayOracle>();
-    m_field_trial_config = std::make_unique<FieldTrialBasedConfig>();
+    m_playoutDelayOracle = std::make_unique<PlayoutDelayOracle>();
+    m_fieldTrialConfig = std::make_unique<FieldTrialBasedConfig>();
     video_config.clock = configuration.clock;
     video_config.rtp_sender = m_rtpRtcp->RtpSender();
-    video_config.field_trials = m_field_trial_config.get();
-    video_config.playout_delay_oracle = m_playout_delay_oracle.get();
+    video_config.field_trials = m_fieldTrialConfig.get();
+    video_config.playout_delay_oracle = m_playoutDelayOracle.get();
     if (enableRed) {
         video_config.red_payload_type = RED_90000_PT;
     }

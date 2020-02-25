@@ -133,11 +133,11 @@ private:
     // Temporary buffer for dump
     char buf[1500];
 
-    std::unique_ptr<webrtc::TaskQueueFactory> task_queue_factory;
-    std::unique_ptr<webrtc::RtcEventLog> event_log;
-    std::shared_ptr<webrtc::Call> call;
-    std::shared_ptr<rtc::TaskQueue> task_queue;
-    webrtc::VideoReceiveStream* video_recv_stream = nullptr;
+    std::unique_ptr<webrtc::TaskQueueFactory> m_taskQueueFactory;
+    std::unique_ptr<webrtc::RtcEventLog> m_eventLog;
+    std::shared_ptr<webrtc::Call> m_call;
+    std::shared_ptr<rtc::TaskQueue> m_taskQueue;
+    webrtc::VideoReceiveStream* m_videoRecvStream = nullptr;
 };
 
 } // namespace owt_base

@@ -74,7 +74,7 @@ private:
     SsrcGenerator* const m_ssrc_generator;
 
     webrtc::Clock *m_clock;
-    std::unique_ptr<webrtc::RtcEventLog> m_event_log;
+    std::unique_ptr<webrtc::RtcEventLog> m_eventLog;
     std::unique_ptr<webrtc::RTPSenderAudio> m_senderAudio;
 };
 

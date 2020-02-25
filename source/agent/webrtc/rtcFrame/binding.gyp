@@ -59,8 +59,7 @@
             '-nostdinc++',
             '-isystem<(webrtc_abs_dir)/src/buildtools/third_party/libc++/trunk/include',
             '-isystem<(webrtc_abs_dir)/src/buildtools/third_party/libc++abi/trunk/include'
-          ],
-          #'cflags_cc!' : ['-fno-rtti']
+          ]
       }]
     ]
   }]

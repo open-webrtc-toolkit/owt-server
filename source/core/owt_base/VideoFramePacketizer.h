@@ -94,18 +94,18 @@ private:
     uint16_t m_frameHeight;
     webrtc::Random m_random;
     uint32_t m_ssrc;
-    SsrcGenerator* const m_ssrc_generator;
+    SsrcGenerator* const m_ssrcGenerator;
 
-    boost::shared_mutex m_transport_mutex;
+    boost::shared_mutex m_transportMutex;
 
     uint16_t m_sendFrameCount;
     webrtc::Clock *m_clock;
     int64_t m_timeStampOffset;
 
-    std::unique_ptr<webrtc::RtcEventLog> event_log;
+    std::unique_ptr<webrtc::RtcEventLog> m_eventLog;
     std::unique_ptr<webrtc::RTPSenderVideo> m_senderVideo;
-    std::unique_ptr<webrtc::PlayoutDelayOracle> m_playout_delay_oracle;
-    std::unique_ptr<webrtc::FieldTrialBasedConfig> m_field_trial_config;
+    std::unique_ptr<webrtc::PlayoutDelayOracle> m_playoutDelayOracle;
+    std::unique_ptr<webrtc::FieldTrialBasedConfig> m_fieldTrialConfig;
 };
 
 }

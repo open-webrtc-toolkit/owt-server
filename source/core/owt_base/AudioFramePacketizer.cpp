@@ -122,14 +122,14 @@ void AudioFramePacketizer::onFrame(const Frame& frame)
 bool AudioFramePacketizer::init()
 {
     m_clock = Clock::GetRealTimeClock();
-    m_event_log = std::make_unique<webrtc::RtcEventLogNull>();
+    m_eventLog = std::make_unique<webrtc::RtcEventLogNull>();
 
     RtpRtcp::Configuration configuration;
     configuration.clock = m_clock;
     configuration.audio = true;  // Audio.
     configuration.receiver_only = false;
     configuration.outgoing_transport = m_audioTransport.get();
-    configuration.event_log = m_event_log.get();
+    configuration.event_log = m_eventLog.get();
     configuration.local_media_ssrc = m_ssrc;//rtp_config.ssrcs[i];
 
     m_rtpRtcp = RtpRtcp::Create(configuration);
