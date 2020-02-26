@@ -122,17 +122,8 @@ rvaStatus MyPipeline::LinkElements() {
 		"height", G_TYPE_INT, 480,
                 "profile", G_TYPE_STRING, "constrained-baseline", NULL);
 
-    //g_object_set(G_OBJECT(videorate),"max-rate", inferenceframerate, NULL);
-    //g_object_set(G_OBJECT(postproc),"brightness", 0.0001, NULL);
     
-    g_object_set(G_OBJECT(source),"max-bytes", 500,
-		    //"blocksize",307200,
-		    //"min-percent",50,NULL,
-		    "is-live", true, NULL);
-		    /*
-		    "do-timestamp", true,
-		    "min-latency", 0,
-		    "max-latency", 1000000, NULL);*/
+    g_object_set(G_OBJECT(source),"is-live", true, NULL);
 
     g_object_set(G_OBJECT(encoder),"pass", 5,
 		    "quantizer", 25,
@@ -151,19 +142,16 @@ rvaStatus MyPipeline::LinkElements() {
 		    "cpu-streams", 12,
 		    "nireq", 24,
 		    "inference-id", "dtc", NULL);
-    //g_object_set(G_OBJECT(detect),"pre-proc", "vaapi", NULL);
-    //g_object_set(G_OBJECT(detect),"every-nth-frame", 5, NULL);
 
 
     gst_bin_add_many(GST_BIN (pipeline), source,decodebin,watermark,postproc,h264parse,detect,converter, encoder,outsink, NULL);
-    //gst_bin_add_many(GST_BIN (pipeline), source,decodebin,postproc,h264parse,encoder,outsink,NULL);
 
     if (gst_element_link_many(source,h264parse,decodebin, postproc, detect, watermark,converter, encoder, NULL) != TRUE) {
-    //if (gst_element_link_many(source,h264parse,decodebin, postproc, encoder, NULL) != TRUE) {
         std::cout << "Elements source,decodebin could not be linked." << std::endl;
         gst_object_unref(pipeline);
         return RVA_ERR_LINK;
     }
+
 
 
     link_ok = gst_element_link_filtered (encoder, outsink, encodecaps);
