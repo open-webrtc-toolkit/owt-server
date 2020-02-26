@@ -68,7 +68,7 @@ GstElement * MyPipeline::InitializePipeline() {
     outsink = gst_element_factory_make("appsink","appsink");
 
     /* Create the empty VideoGstAnalyzer */
-    pipeline = gst_pipeline_new("detect-pipeline");
+    pipeline = gst_pipeline_new("cpu-pipeline");
 
 
     if (!detect){
@@ -125,30 +125,41 @@ rvaStatus MyPipeline::LinkElements() {
     //g_object_set(G_OBJECT(videorate),"max-rate", inferenceframerate, NULL);
     //g_object_set(G_OBJECT(postproc),"brightness", 0.0001, NULL);
     
-    g_object_set(G_OBJECT(encoder),"key-int-max", 30, NULL);
-    g_object_set(G_OBJECT(encoder),"pass", 5, NULL);
-    g_object_set(G_OBJECT(encoder),"quantizer", 25, NULL);
-    g_object_set(G_OBJECT(encoder),"speed-preset", 6, NULL);
-    //g_object_set(G_OBJECT(encoder),"cabac", false, NULL);
-    g_object_set(G_OBJECT(encoder),"bitrate", 812, NULL);
-    //g_object_set(G_OBJECT(encoder),"dct8x8", true, NULL);
-    g_object_set(G_OBJECT(encoder),"aud", false, NULL);
-    g_object_set(G_OBJECT(encoder),"tune", "zerolatency", NULL);
-    
-    g_object_set(G_OBJECT(outsink),"drop", true, NULL);
+    g_object_set(G_OBJECT(source),"max-bytes", 500,
+		    //"blocksize",307200,
+		    //"min-percent",50,NULL,
+		    "is-live", true, NULL);
+		    /*
+		    "do-timestamp", true,
+		    "min-latency", 0,
+		    "max-latency", 1000000, NULL);*/
 
-    g_object_set(G_OBJECT(detect),"inference-id", "dtc", NULL);
-    g_object_set(G_OBJECT(detect),"device", device.c_str(), NULL);
-    g_object_set(G_OBJECT(detect),"model",model.c_str(), NULL);
-    g_object_set(G_OBJECT(detect),"cpu-streams", 12, NULL);
-    g_object_set(G_OBJECT(detect),"nireq", 24, NULL);
+    g_object_set(G_OBJECT(encoder),"pass", 5,
+		    "quantizer", 25,
+		    "speed-preset", 6,
+		    "bitrate", 812,
+		    "aud", false,
+		    "tune", 0x00000004,
+		    "key-int-max", 30, NULL);
+    
+    g_object_set(G_OBJECT(outsink), "max-buffers", 1,
+		    "sync", false,
+		    "drop", true, NULL);
+
+    g_object_set(G_OBJECT(detect),"device", device.c_str(),
+		    "model",model.c_str(),
+		    "cpu-streams", 12,
+		    "nireq", 24,
+		    "inference-id", "dtc", NULL);
     //g_object_set(G_OBJECT(detect),"pre-proc", "vaapi", NULL);
     //g_object_set(G_OBJECT(detect),"every-nth-frame", 5, NULL);
 
 
     gst_bin_add_many(GST_BIN (pipeline), source,decodebin,watermark,postproc,h264parse,detect,converter, encoder,outsink, NULL);
+    //gst_bin_add_many(GST_BIN (pipeline), source,decodebin,postproc,h264parse,encoder,outsink,NULL);
 
     if (gst_element_link_many(source,h264parse,decodebin, postproc, detect, watermark,converter, encoder, NULL) != TRUE) {
+    //if (gst_element_link_many(source,h264parse,decodebin, postproc, encoder, NULL) != TRUE) {
         std::cout << "Elements source,decodebin could not be linked." << std::endl;
         gst_object_unref(pipeline);
         return RVA_ERR_LINK;
