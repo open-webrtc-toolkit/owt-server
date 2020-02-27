@@ -105,7 +105,9 @@ createInternalConnection(connectionId, direction, internalOpt) {
                keyFrameInterval, 'bitrate:',bitrate);
       
       this.engine.setOutputParam(codec,resolution,framerate,bitrate,keyFrameInterval,algo,pluginName);
-      this.engine.createPipeline();
+      if(this.engine.createPipeline() === false) {
+        return Promise.reject('Create pipeline failed');
+      }
 
       streamInfo.media.video.bitrate = bitrate;
       this.onStreamGenerated(options.controller, newStreamId, streamInfo);

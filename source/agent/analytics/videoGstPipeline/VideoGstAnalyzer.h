@@ -24,7 +24,7 @@ class VideoGstAnalyzer{
 public:
     VideoGstAnalyzer();
     virtual ~VideoGstAnalyzer();
-    int createPipeline();
+    bool createPipeline();
     void clearPipeline();
     int getListeningPort();
     void emitListenTo(int minPort,int maxPort);

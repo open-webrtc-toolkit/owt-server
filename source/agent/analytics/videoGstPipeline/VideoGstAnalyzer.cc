@@ -14,7 +14,6 @@ namespace mcu {
 DEFINE_LOGGER(VideoGstAnalyzer, "mcu.VideoGstAnalyzer");
 
 GMainLoop* VideoGstAnalyzer::loop = g_main_loop_new(NULL,FALSE);
-#define DELAY_VALUE 1000000
 
 VideoGstAnalyzer::VideoGstAnalyzer() {
     ELOG_INFO("Init");
@@ -76,7 +75,7 @@ gboolean VideoGstAnalyzer::StreamEventCallBack(GstBus *bus, GstMessage *message,
             ELOG_DEBUG("State change from %d to %d, play:%d \n",old_state, new_state, GST_STATE_PAUSED);
             if(new_state == GST_STATE_PLAYING || new_state == GST_STATE_PAUSED) {
                 ELOG_DEBUG("Create debug dot file\n");
-                GST_DEBUG_BIN_TO_DOT_FILE_WITH_TS(GST_BIN(pStreamObj->pipeline),GST_DEBUG_GRAPH_SHOW_ALL, "play");
+                //GST_DEBUG_BIN_TO_DOT_FILE_WITH_TS(GST_BIN(pStreamObj->pipeline),GST_DEBUG_GRAPH_SHOW_ALL, "play");
             }
             break;
         }
@@ -98,7 +97,7 @@ void VideoGstAnalyzer::clearPipeline()
  
     }
 
-int VideoGstAnalyzer::createPipeline() {
+bool VideoGstAnalyzer::createPipeline() {
 
     loop = g_main_loop_new(NULL, FALSE);
 
@@ -136,59 +135,16 @@ int VideoGstAnalyzer::createPipeline() {
 
     if (!pipeline) {
         ELOG_ERROR("pipeline could not be created\n");
-        return -1;
+        return false;
     }
-
 
     m_bus = gst_pipeline_get_bus(GST_PIPELINE(pipeline));
     m_bus_watch_id = gst_bus_add_watch(m_bus, StreamEventCallBack, this);
  
     gst_object_unref(m_bus);
 
-    return 0;
+    return true;
 };
-
-void VideoGstAnalyzer::pad_added_handler(GstElement *src, GstPad *new_pad, GstElement *data){
-    GstPad *sink_pad = gst_element_get_static_pad(data, "sink");
-    GstPadLinkReturn ret;
-    GstCaps *new_pad_caps = NULL;
-    GstStructure *new_pad_struct = NULL;
-    const gchar *new_pad_type = NULL;
-
-    ELOG_DEBUG("Received new pad '%s' from '%s':\n", GST_PAD_NAME (new_pad), GST_ELEMENT_NAME (src));
-
-    /*if (gst_pad_is_linked(sink_pad)) {
-        g_print("We are already linked. Ignoring.\n");
-        goto exit;
-    }*/
-    new_pad_caps = gst_pad_get_current_caps(new_pad);
-    new_pad_struct = gst_caps_get_structure(new_pad_caps, 0);
-    new_pad_type = gst_structure_get_name(new_pad_struct);
-
-    ret = gst_pad_link(new_pad,sink_pad);
-    if(GST_PAD_LINK_FAILED(ret)){
-        ELOG_ERROR("Type is '%s' but link failed.\n",new_pad_type);
-        if(new_pad_caps != NULL)
-        gst_caps_unref(new_pad_caps);
-
-        gst_object_unref(sink_pad);
-    }
-    else{
-        ELOG_DEBUG("Link succeeded(type '%s').\n",new_pad_type);
-    }
-    
-}
-
-void VideoGstAnalyzer::on_pad_added (GstElement *element, GstPad *pad, gpointer data)
-{
-    GstPad *sinkpad;
-    GstElement *decoder = (GstElement *) data;
-    /* We can now link this pad with the rtsp-decoder sink pad */
-    ELOG_DEBUG ("Dynamic pad created, linking source/demuxer\n");
-    sinkpad = gst_element_get_static_pad (decoder, "sink");
-    gst_pad_link (pad, sinkpad);
-    gst_object_unref (sinkpad);
-}
 
 gboolean VideoGstAnalyzer::push_data (gpointer data) {
     VideoGstAnalyzer* pStreamObj = static_cast<VideoGstAnalyzer*>(data);
@@ -227,6 +183,7 @@ void VideoGstAnalyzer::new_sample_from_sink (GstElement * source, gpointer data)
         x->onFrame(map.data, map.size);
 
     gst_buffer_unmap(buffer, &map);
+    gst_sample_unref(sample);
 }
 
 int VideoGstAnalyzer::addElementMany() {
@@ -285,8 +242,7 @@ int VideoGstAnalyzer::setPlaying() {
 
 void VideoGstAnalyzer::emitListenTo(int minPort, int maxPort) {
     ELOG_DEBUG("Listening\n");
-    m_internalin.reset(new InternalIn((GstAppSrc*)source, minPort, maxPort));
-    
+    m_internalin.reset(new InternalIn((GstAppSrc*)source, minPort, maxPort));  
 }
 
 void VideoGstAnalyzer::emitConnectTo(int connectionID, char* ip, int remotePort){
