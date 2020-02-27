@@ -65,7 +65,7 @@ module.exports = class QuicConnection {
     log.debug('On signaling message to QUIC connection: ' + JSON.stringify(
       message));
     switch (message.type) {
-      case 'p2p-quic-parameters':
+      case 'quic-p2p-parameters':
         log.debug('Setting remote ICE parameters.');
         // Move gather() to constructor could speed up ICE gathering. But candidates may be sent to client side before the ack of publish/subscribe.
         this._iceTransport.gather();
@@ -132,8 +132,10 @@ module.exports = class QuicConnection {
   _sendIceParameters() {
     log.info('Send ICE parameters.');
     this._send({
-      type: 'p2p-quic-parameters',
-      iceParameters: this._iceTransport.getLocalParameters()
+      type: 'quic-p2p-parameters',
+      serverTransportParameters: {
+        iceParameters: this._iceTransport.getLocalParameters()
+      }
     });
   }
 };

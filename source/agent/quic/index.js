@@ -127,6 +127,11 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
     };
 
     that.subscribe = function (connectionId, connectionType, options, callback) {
+        if (connectionType == 'quic') {
+            if (options.transport && options.transport.type) {
+                connectionType = options.transport.type;
+            }
+        }
         log.debug('subscribe, connectionId:', connectionId, 'connectionType:', connectionType, 'options:', options);
         if(!options.data){
             log.error('Subscription request does not include data field.');

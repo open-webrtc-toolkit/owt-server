@@ -151,7 +151,7 @@ module.exports.create = function(spec, rpcReq, on_session_established, on_sessio
       onReady(sessionId, status);
     } else if (status.type === 'failed') {
       onFailed(sessionId, status.reason);
-    } else if (status.type === 'offer' || status.type === 'answer' || status.type === 'candidate' || status.type === 'p2p-quic-parameters') {
+    } else if (status.type === 'offer' || status.type === 'answer' || status.type === 'candidate' || status.type === 'quic-p2p-parameters') {
       onSignaling(sessionId, status);
     } else {
       log.error('Irrispective status:' + status.type);
@@ -220,8 +220,9 @@ module.exports.create = function(spec, rpcReq, on_session_established, on_sessio
           controller: self_rpc_id
         };
         sessionOptions.connection && (options.connection = sessionOptions.connection);
-        sessionOptions.media && (options.media = sessionOptions.media);
         sessionOptions.transport && (options.transport = sessionOptions.transport);
+        sessionOptions.media && (options.media = sessionOptions.media);
+        sessionOptions.data && (options.data = sessionOptions.data);
         formatPreference && (options.formatPreference = formatPreference);
         return rpcReq.initiate(locality.node,
                                sessionId,

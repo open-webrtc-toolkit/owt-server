@@ -237,7 +237,7 @@ var Conference = function (rpcClient, selfRpcId) {
   var onSessionEstablished = (participantId, sessionId, direction, sessionInfo) => {
     log.debug('onSessionEstablished, participantId:', participantId, 'sessionId:', sessionId, 'direction:', direction, 'sessionInfo:', JSON.stringify(sessionInfo));
     if (direction === 'in') {
-      return addStream(sessionId, sessionInfo.locality, sessionInfo.media, sessionInfo.info
+      return addStream(sessionId, sessionInfo.locality, sessionInfo.transport, sessionInfo.media, sessionInfo.data, sessionInfo.info
         ).then(() => {
           if (sessionInfo.info && sessionInfo.info.type !== 'webrtc') {
             sendMsgTo(participantId, 'progress', {id: sessionId, status: 'ready'});
@@ -250,7 +250,7 @@ var Conference = function (rpcClient, selfRpcId) {
           });
         });
     } else if (direction === 'out') {
-      return addSubscription(sessionId, sessionInfo.locality, sessionInfo.media, sessionInfo.info
+      return addSubscription(sessionId, sessionInfo.locality, sessioninfo.transport, sessionInfo.media, sessionInfo.data, sessionInfo.info
         ).then(() => {
           if (sessionInfo.info && sessionInfo.info.type !== 'webrtc') {
             if (sessionInfo.info.location) {
@@ -575,7 +575,7 @@ var Conference = function (rpcClient, selfRpcId) {
     return Promise.resolve('ok');
   };
 
-  const addStream = (id, locality, media, info) => {
+  const addStream = (id, locality, transport, media, data, info) => {
     info.origin = streams[id] ? streams[id].info.origin : {isp:"isp", region:"region"};
     if (info.analytics && subscriptions[info.analytics]) {
       let sourceId;
@@ -593,7 +593,7 @@ var Conference = function (rpcClient, selfRpcId) {
       }
     }
 
-    const fwdStream = new ForwardStream(id, media, info, locality);
+    const fwdStream = new ForwardStream(id, media, data, info, locality);
     const errMsg = fwdStream.checkMediaError();
     if (errMsg) {
       return Promise.reject(errMsg);
@@ -698,7 +698,9 @@ var Conference = function (rpcClient, selfRpcId) {
 
     subscriptions[id] = {
       id: id,
+      transport: subSpec.transport,
       media: subSpec.media,
+      data: subSpec.data,
       info: info,
       isInConnecting: true
     };
@@ -706,7 +708,7 @@ var Conference = function (rpcClient, selfRpcId) {
     return Promise.resolve('ok');
   };
 
-  const addSubscription = (id, locality, mediaSpec, info) => {
+  const addSubscription = (id, locality, transport, mediaSpec, dataSpec, info) => {
     if (!participants[info.owner]) {
       return Promise.reject('Participant early left');
     }
@@ -734,18 +736,17 @@ var Conference = function (rpcClient, selfRpcId) {
       }
     }
 
-    const isAudioPubPermitted = !!participants[info.owner].isPublishPermitted('audio'); 
+    const isAudioPubPermitted = !!participants[info.owner].isPublishPermitted('audio');
     const subArgs = subscription.toRoomCtrlSubArgs();
     const subs = subArgs.map(subArg => new Promise((resolve, reject) => {
-      if (roomController) {
-        // data is not a part of media, but the |media| here is passed to roomController.subscribe as |subInfo|. Original authors may think subscription only have media data. Consider to rename |media| to subInfo.
-        subArg.media.data = subArg.data;
-        roomController.subscribe(
-          subArg.owner, subArg.id, subArg.locality, subArg.media, subArg.type,
-          isAudioPubPermitted, resolve, reject);
-      } else {
-        reject('RoomController is not ready');
-      }
+        if (roomController) {
+            const subInfo = { transport : transport, media : subArg.media, data : subArg.data };
+            roomController.subscribe(
+                subArg.owner, subArg.id, subArg.locality, subInfo, subArg.type,
+                isAudioPubPermitted, resolve, reject);
+        } else {
+            reject('RoomController is not ready');
+        }
     }));
     return Promise.all(subs).then(() => {
       if (participants[info.owner]) {
@@ -1011,7 +1012,7 @@ var Conference = function (rpcClient, selfRpcId) {
     }
 
     if (pubInfo.type === 'sip') {
-      return addStream(streamId, pubInfo.locality, pubInfo.media, {owner: participantId, type: 'sip'})
+      return addStream(streamId, pubInfo.locality, pubInfo.transport, pubInfo.media, pubInfo.data, {owner: participantId, type: 'sip'})
       .then((result) => {
         callback('callback', result);
       })
@@ -1019,8 +1020,8 @@ var Conference = function (rpcClient, selfRpcId) {
         callback('callback', 'error', e.message ? e.message : e);
       });
     } else if (pubInfo.type === 'analytics') {
-      return addStream(streamId, pubInfo.locality,
-        pubInfo.media,
+      return addStream(streamId, pubInfo.locality, pubInfo.transport,
+        pubInfo.media, pubInfo.data,
         {owner: 'admin', type: 'analytics', analytics: pubInfo.analyticsId})
       .then((result) => {
         callback('callback', result);
@@ -1257,7 +1258,7 @@ var Conference = function (rpcClient, selfRpcId) {
     }
 
     if (subDesc.type === 'sip') {
-      return addSubscription(subscriptionId, subDesc.locality, subDesc.media, {owner: participantId, type: 'sip'})
+      return addSubscription(subscriptionId, subDesc.transport, subDesc.locality, subDesc.media, subDesc.data, {owner: participantId, type: 'sip'})
       .then((result) => {
         callback('callback', result);
       })

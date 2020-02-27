@@ -1457,20 +1457,21 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
 
     that.subscribe = function(participantId, subscriptionId, accessNode, subInfo, subType, isAudioPubPermitted, on_ok, on_error) {
         log.debug('subscribe, participantId:', participantId, 'subscriptionId:', subscriptionId, 'accessNode:', accessNode.node, 'subInfo:', JSON.stringify(subInfo), 'subType:', subType);
-        if ((!subInfo.audio || (streams[subInfo.audio.from] && streams[subInfo.audio.from].audio) || getViewOfMixStream(subInfo.audio.from))
-            && (!subInfo.video || (streams[subInfo.video.from] && streams[subInfo.video.from].video) || getViewOfMixStream(subInfo.video.from))) {
+        const mediaInfo = subInfo.media;
+        if ((!mediaInfo.audio || (streams[mediaInfo.audio.from] && streams[mediaInfo.audio.from].audio) || getViewOfMixStream(mediaInfo.audio.from))
+            && (!mediaInfo.video || (streams[mediaInfo.video.from] && streams[mediaInfo.video.from].video) || getViewOfMixStream(mediaInfo.video.from))) {
 
             var audio_format = undefined;
-            if (subInfo.audio) {
-                var subAudioStream = subInfo.audio.from;
+            if (mediaInfo.audio) {
+                var subAudioStream = mediaInfo.audio.from;
                 var subView = getViewOfMixStream(subAudioStream);
                 var isMixStream = !!subView;
-                audio_format = isMixStream? getMixedFormat(subInfo.audio, mix_views[subView].audio.supported_formats)
-                    : getForwardFormat(subInfo.audio, streams[subAudioStream].audio.format, enable_audio_transcoding);
+                audio_format = isMixStream? getMixedFormat(mediaInfo.audio, mix_views[subView].audio.supported_formats)
+                    : getForwardFormat(mediaInfo.audio, streams[subAudioStream].audio.format, enable_audio_transcoding);
 
                 if (audio_format === 'unavailable') {
                     log.error('No available audio format');
-                    log.debug('subInfo.audio:', subInfo.audio, 'targetStream.audio:', streams[subAudioStream] ? streams[subAudioStream].audio : 'mixed_stream', 'enable_audio_transcoding:', enable_audio_transcoding);
+                    log.debug('mediaInfo.audio:', mediaInfo.audio, 'targetStream.audio:', streams[subAudioStream] ? streams[subAudioStream].audio : 'mixed_stream', 'enable_audio_transcoding:', enable_audio_transcoding);
                     return on_error('No available audio format');
                 }
             }
@@ -1481,32 +1482,32 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
             var bitrate = 'unspecified';
             var keyFrameInterval = 'unspecified';
             var simulcastRid = undefined;
-            if (subInfo.video) {
-                var subVideoStream = subInfo.video.from;
+            if (mediaInfo.video) {
+                var subVideoStream = mediaInfo.video.from;
                 var subView = getViewOfMixStream(subVideoStream);
                 var isMixStream = !!subView;
 
                 if (isMixStream) {
                     // Is mix stream
-                    video_format = getMixedFormat(subInfo.video, mix_views[subView].video.supported_formats.encode);
+                    video_format = getMixedFormat(mediaInfo.video, mix_views[subView].video.supported_formats.encode);
                 } else {
                     // Is forward stream
-                    video_format = getForwardFormat(subInfo.video, streams[subVideoStream].video.format, enable_video_transcoding);
+                    video_format = getForwardFormat(mediaInfo.video, streams[subVideoStream].video.format, enable_video_transcoding);
                 }
 
                 if (video_format === 'unavailable') {
                     log.error('No available video format');
-                    log.debug('subInfo.video:', subInfo.video, 'targetStream.video:', streams[subVideoStream] ? streams[subVideoStream].video : 'mixed_stream', 'enable_video_transcoding:', enable_video_transcoding);
+                    log.debug('mediaInfo.video:', mediaInfo.video, 'targetStream.video:', streams[subVideoStream] ? streams[subVideoStream].video : 'mixed_stream', 'enable_video_transcoding:', enable_video_transcoding);
                     return on_error('No available video format');
                 }
 
-                subInfo.video && subInfo.video.parameters && subInfo.video.parameters.resolution && (resolution = subInfo.video.parameters.resolution);
-                subInfo.video && subInfo.video.parameters && subInfo.video.parameters.framerate && (framerate = subInfo.video.parameters.framerate);
-                subInfo.video && subInfo.video.parameters && subInfo.video.parameters.bitrate && (bitrate = subInfo.video.parameters.bitrate);
-                subInfo.video && subInfo.video.parameters && subInfo.video.parameters.keyFrameInterval && (keyFrameInterval = subInfo.video.parameters.keyFrameInterval);
+                mediaInfo.video && mediaInfo.video.parameters && mediaInfo.video.parameters.resolution && (resolution = mediaInfo.video.parameters.resolution);
+                mediaInfo.video && mediaInfo.video.parameters && mediaInfo.video.parameters.framerate && (framerate = mediaInfo.video.parameters.framerate);
+                mediaInfo.video && mediaInfo.video.parameters && mediaInfo.video.parameters.bitrate && (bitrate = mediaInfo.video.parameters.bitrate);
+                mediaInfo.video && mediaInfo.video.parameters && mediaInfo.video.parameters.keyFrameInterval && (keyFrameInterval = mediaInfo.video.parameters.keyFrameInterval);
             }
 
-            if ((subInfo.audio && !audio_format) || (subInfo.video && !video_format)) {
+            if ((mediaInfo.audio && !audio_format) || (mediaInfo.video && !video_format)) {
                 log.error('No proper audio/video format');
                 return on_error('No proper audio/video format');
             }
@@ -1542,7 +1543,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                         on_ok('ok');
 
                         //FIXME: It is better to notify subscription connection to request key-frame.
-                        if (subInfo.video && (subInfo.video.from !== videoStream)) {
+                        if (mediaInfo.video && (mediaInfo.video.from !== videoStream)) {
                             forceKeyFrame(videoStream);
                         }
                     } else {
@@ -1618,14 +1619,14 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
 
             var doSubscribe = function () {
                 var audio_stream, video_stream;
-                if (subInfo.audio) {
-                    log.debug('require audio track of stream:', subInfo.audio.from);
-                    getAudioStream(subInfo.audio.from, audio_format, terminal_id, function (streamID) {
+                if (mediaInfo.audio) {
+                    log.debug('require audio track of stream:', mediaInfo.audio.from);
+                    getAudioStream(mediaInfo.audio.from, audio_format, terminal_id, function (streamID) {
                         audio_stream = streamID;
                         log.debug('Got audio stream:', audio_stream);
-                        if (subInfo.video) {
-                            log.debug('require video track of stream:', subInfo.video.from);
-                            getVideoStream(subInfo.video.from, video_format, resolution, framerate, bitrate, keyFrameInterval, subInfo.video.simulcastRid, function (streamID) {
+                        if (mediaInfo.video) {
+                            log.debug('require video track of stream:', mediaInfo.video.from);
+                            getVideoStream(mediaInfo.video.from, video_format, resolution, framerate, bitrate, keyFrameInterval, mediaInfo.video.simulcastRid, function (streamID) {
                                 video_stream = streamID;
                                 log.debug('Got video stream:', video_stream);
                                 spread2LocalNode(audio_stream, video_stream, function () {
@@ -1648,9 +1649,9 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                             });
                         }
                     }, finaly_error);
-                } else if (subInfo.video) {
-                    log.debug('require video track of stream:', subInfo.video.from);
-                    getVideoStream(subInfo.video.from, video_format, resolution, framerate, bitrate, keyFrameInterval, subInfo.video.simulcastRid, function (streamID) {
+                } else if (mediaInfo.video) {
+                    log.debug('require video track of stream:', mediaInfo.video.from);
+                    getVideoStream(mediaInfo.video.from, video_format, resolution, framerate, bitrate, keyFrameInterval, mediaInfo.video.simulcastRid, function (streamID) {
                         video_stream = streamID;
                         spread2LocalNode(undefined, video_stream, function () {
                             linkup(undefined, video_stream);
@@ -1659,6 +1660,8 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                             finaly_error(error_reason);
                         });
                     }, finaly_error);
+                } else if (subInfo.data) {
+                    // TODO: Spread data streams.
                 } else {
                     log.debug('No audio or video is required.');
                     finaly_error('No audio or video is required.');
@@ -1670,7 +1673,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                 doSubscribe();
             }, on_error);
         } else {
-            log.error('streams do not exist or are insufficient. subInfo:', subInfo);
+            log.error('streams do not exist or are insufficient. mediaInfo:', mediaInfo);
             on_error('streams do not exist or are insufficient');
         }
     };

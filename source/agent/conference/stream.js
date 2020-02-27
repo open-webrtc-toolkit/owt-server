@@ -76,11 +76,12 @@ var config = {};
 /* Stream object in conference */
 class Stream {
 
-  constructor(id, type, media, info) {
+  constructor(id, type, media, data, info) {
     this.id = id;
     this.type = type;
     this.info = info;
     this.media = this._constructMedia(media);
+    this.data = data;
   }
 
   _upgradeMediaIfNeeded(media) {
@@ -231,9 +232,9 @@ class Stream {
 
 class ForwardStream extends Stream {
 
-  constructor(id, media, info, locality) {
+  constructor(id, media, data, info, locality) {
     info.inViews = [];
-    super(id, 'forward', media, info);
+    super(id, 'forward', media, data, info);
     this.locality = locality;
   }
 

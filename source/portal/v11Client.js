@@ -78,7 +78,7 @@ var V11Client = function(clientId, sigConnection, portal) {
   };
 
   const validateSubReq = (subReq) => {
-    if (!subReq.media || !(subReq.media.audio || subReq.media.video)) {
+    if ((!subReq.media && !subReq.data) || (subReq.media && !subReq.media.audio && !subReq.media.video)) {
       return Promise.reject('Bad subscription request');
     }
     return requestData.validate('subscription-request', subReq);
@@ -94,11 +94,11 @@ var V11Client = function(clientId, sigConnection, portal) {
   const validateSOAC = (SOAC) => {
     return validateId('session id', SOAC.id)
       .then(() => {
-        if (SOAC.signaling.type === 'offer'
-            || SOAC.signaling.type === 'answer'
-            || SOAC.signaling.type === 'candidate'
-            || SOAC.signaling.type === 'removed-candidates'
-            || SOAC.signaling.type === 'p2p-quic-parameters') {
+        if (SOAC.signaling.type === 'offer' ||
+          SOAC.signaling.type === 'answer' ||
+          SOAC.signaling.type === 'candidate' ||
+          SOAC.signaling.type === 'removed-candidates' ||
+          SOAC.signaling.type === 'quic-p2p-parameters') {
           return Promise.resolve(SOAC);
         } else {
           return Promise.reject('Invalid signaling type');
@@ -173,7 +173,11 @@ var V11Client = function(clientId, sigConnection, portal) {
       var subscription_id = Math.round(Math.random() * 1000000000000000000) + '';
       return validateSubReq(subReq)
         .then((req) => {
-          req.type = 'webrtc';//FIXME: For backend compatibility with v3.4 clients.
+          if (req.transport && req.transport.type == 'quic-p2p') {
+            req.type = 'quic';
+          } else {
+            req.type = 'webrtc';//FIXME: For backend compatibility with v3.4 clients.
+          }
           return portal.subscribe(clientId, subscription_id, req);
         }).then((result) => {
           safeCall(callback, 'ok', {id: subscription_id});
