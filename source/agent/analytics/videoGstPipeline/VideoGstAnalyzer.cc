@@ -199,7 +199,6 @@ int VideoGstAnalyzer::addElementMany() {
     sink = gst_bin_get_by_name (GST_BIN (pipeline), "appsink");
     if (!sink) {
         ELOG_ERROR("There is no appsink in pipeline\n");
-        return -1;
     }
 
     g_signal_connect (source, "need-data", G_CALLBACK (start_feed), this);
