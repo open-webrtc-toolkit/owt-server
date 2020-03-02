@@ -31,7 +31,10 @@ b. Start analytics agent container
 	If analytics and owt container are running on the same device, just leave below rabbit host to localhost, otherwise, set analytics rabbit host to rabbitmq server address (We will start rabbitmq server by default in OWT container, so in most cases please set this rabbit.host to OWT server address)
 	[rabbit]
 	host = "172.32.1.254" #default: "localhost"
-	make sure that models can be found in analytics agent container, follow https://github.com/opencv/open_model_zoo/blob/master/tools/downloader/README.md to download OpenVINO pre-trained models. you can configure related model parameters in /home/analytics_agent/plugin.cfg
+	make sure that models can be found in analytics agent container. Follow steps below to download OpenVINO pre-trained models:
+        1) Download source code package in  https://github.com/opencv/open_model_zoo/releases/tag/2019_R3.1
+        2) Follow open_model_zoo-2019_R3.1/tools/downloader/README.md to download OpenVINO pre-trained models.
+        you can configure related model parameters in /home/analytics_agent/plugin.cfg
 c. Compile pipeline share library
 	Follow README in /home/analytics_agent/plugins on analytics container to compile pipeline share library, you can follow the README to build your own GStreamer pipeline.
 
