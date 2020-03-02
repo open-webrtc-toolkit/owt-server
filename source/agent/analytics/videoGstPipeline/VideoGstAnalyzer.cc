@@ -97,14 +97,14 @@ void VideoGstAnalyzer::clearPipeline()
  
     }
 
-bool VideoGstAnalyzer::createPipeline() {
+int VideoGstAnalyzer::createPipeline() {
 
     loop = g_main_loop_new(NULL, FALSE);
 
     pipelineHandle = dlopen(libraryName.c_str(), RTLD_LAZY);
     if (pipelineHandle == nullptr) {
         ELOG_ERROR_T("Failed to open the plugin.(%s)", libraryName.c_str());
-        return false;
+        return -1;
     }
 
     createPlugin = (rva_create_t*)dlsym(pipelineHandle, "CreatePipeline");
@@ -113,14 +113,14 @@ bool VideoGstAnalyzer::createPipeline() {
     if (createPlugin == nullptr || destroyPlugin == nullptr) {
         ELOG_ERROR_T("Failed to get plugin interface.");
         dlclose(pipelineHandle);
-        return false;
+        return -1;
     }
 
     pipeline_ = createPlugin();
     if (pipeline_ == nullptr) {
         ELOG_ERROR_T("Failed to create the plugin.");
         dlclose(pipelineHandle);
-        return false;
+        return -1;
     }
 
     std::unordered_map<std::string, std::string> plugin_config_map = {
@@ -134,8 +134,8 @@ bool VideoGstAnalyzer::createPipeline() {
     pipeline = pipeline_->InitializePipeline();
 
     if (!pipeline) {
-        ELOG_ERROR("pipeline could not be created\n");
-        return false;
+        ELOG_ERROR("pipeline Initialization failed\n");
+        return -1;
     }
 
     m_bus = gst_pipeline_get_bus(GST_PIPELINE(pipeline));
@@ -143,7 +143,7 @@ bool VideoGstAnalyzer::createPipeline() {
  
     gst_object_unref(m_bus);
 
-    return true;
+    return 0;
 };
 
 gboolean VideoGstAnalyzer::push_data (gpointer data) {
@@ -187,8 +187,14 @@ void VideoGstAnalyzer::new_sample_from_sink (GstElement * source, gpointer data)
 }
 
 int VideoGstAnalyzer::addElementMany() {
-    if(pipeline_)
-        pipeline_->LinkElements();
+    if(pipeline_){
+        rvaStatus status;
+        status = pipeline_->LinkElements();
+        if(status != RVA_ERR_OK) {
+           ELOG_ERROR("Link element failed with rvastatus:%d\n",status);
+           return -1; 
+        }
+    }
 
     source = gst_bin_get_by_name (GST_BIN (pipeline), "appsource");
     if (!source) {

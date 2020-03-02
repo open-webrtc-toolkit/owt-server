@@ -105,14 +105,17 @@ createInternalConnection(connectionId, direction, internalOpt) {
                keyFrameInterval, 'bitrate:',bitrate);
       
       this.engine.setOutputParam(codec,resolution,framerate,bitrate,keyFrameInterval,algo,pluginName);
-      if(this.engine.createPipeline() === false) {
+      if(this.engine.createPipeline() < 0) {
         return Promise.reject('Create pipeline failed');
       }
 
       streamInfo.media.video.bitrate = bitrate;
       this.onStreamGenerated(options.controller, newStreamId, streamInfo);
 
-      this.engine.addElementMany();;
+      if(this.engine.addElementMany() < 0) {
+        return Promise.reject('Link element failed');
+      }
+
       this.connectionclose = () => {
           this.onStreamDestroyed(options.controller, newStreamId);
       }

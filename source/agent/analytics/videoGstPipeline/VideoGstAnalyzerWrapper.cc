@@ -77,7 +77,9 @@ void VideoGstAnalyzer::createPipeline(const FunctionCallbackInfo<Value>& args){
   VideoGstAnalyzer* obj = ObjectWrap::Unwrap<VideoGstAnalyzer>(args.Holder());
   mcu::VideoGstAnalyzer* me = obj->me;
 
-  me->createPipeline();
+  int result = me->createPipeline();
+
+  args.GetReturnValue().Set(Number::New(isolate, result));
 }
 
 void VideoGstAnalyzer::clearPipeline(const FunctionCallbackInfo<Value>& args){
@@ -129,7 +131,10 @@ void VideoGstAnalyzer::addElementMany(const FunctionCallbackInfo<Value>& args){
   VideoGstAnalyzer* obj = ObjectWrap::Unwrap<VideoGstAnalyzer>(args.Holder());
   mcu::VideoGstAnalyzer* me = obj->me;
 
-  me->addElementMany();
+
+  int result = me->addElementMany();
+
+  args.GetReturnValue().Set(Number::New(isolate, result));
 }
 
 void VideoGstAnalyzer::setPlaying(const FunctionCallbackInfo<Value>& args){
