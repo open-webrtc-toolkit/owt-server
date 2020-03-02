@@ -170,7 +170,7 @@ void VideoGstAnalyzer::new_sample_from_sink (GstElement * source, gpointer data)
     ELOG_DEBUG("Got new sample from sink\n");
     VideoGstAnalyzer* pStreamObj = static_cast<VideoGstAnalyzer*>(data);
     GstSample *sample;
-    GstBuffer *app_buffer, *buffer;
+    GstBuffer *buffer;
 
     /* get the sample from appsink */
     sample = gst_app_sink_pull_sample (GST_APP_SINK (pStreamObj->sink));
@@ -180,7 +180,7 @@ void VideoGstAnalyzer::new_sample_from_sink (GstElement * source, gpointer data)
     gst_buffer_map (buffer, &map, GST_MAP_READ);
     
     for ( auto& x: pStreamObj->m_internalout)
-        x->onFrame(map.data, map.size);
+        x->onFrame(map.data, pStreamObj->width, pStreamObj->height, map.size);
 
     gst_buffer_unmap(buffer, &map);
     gst_sample_unref(sample);

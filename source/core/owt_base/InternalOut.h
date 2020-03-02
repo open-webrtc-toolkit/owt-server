@@ -19,7 +19,7 @@ public:
     virtual ~InternalOut();
 
     void onFrame(const Frame&);
-    void onFrame(uint8_t *buffer, uint32_t length);
+    void onFrame(uint8_t *buffer, int width, int height, uint32_t length);
     void setPad(GstPad *pad);
     void onTransportData(char*, int len);
     void onTransportError() { }

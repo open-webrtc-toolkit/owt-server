@@ -33,15 +33,15 @@ void InternalOut::onFrame(const Frame& frame)
     m_transport->sendData(sendBuffer, header_len + 1, reinterpret_cast<char*>(const_cast<uint8_t*>(frame.payload)), frame.length);
 }
 
-void InternalOut::onFrame(uint8_t *buffer, uint32_t length)
+void InternalOut::onFrame(uint8_t *buffer, int width, int height, uint32_t length)
 {
     Frame outFrame;
     memset(&outFrame, 0, sizeof(outFrame));
 
     outFrame.format = FRAME_FORMAT_H264;
     outFrame.length = length;
-    outFrame.additionalInfo.video.width = 1440;
-    outFrame.additionalInfo.video.height = 810;
+    outFrame.additionalInfo.video.width = width;
+    outFrame.additionalInfo.video.height = height;
     if(m_frameCount == 0)
        outFrame.additionalInfo.video.isKeyFrame = true; 
     outFrame.timeStamp = (m_frameCount++) * 1000 / 30 * 90;
