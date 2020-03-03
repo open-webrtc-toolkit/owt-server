@@ -42,6 +42,16 @@ config.rabbit = config.rabbit || {};
 config.rabbit.host = config.rabbit.host || 'localhost';
 config.rabbit.port = config.rabbit.port || 5672;
 
+// Parse portal hostname and ip_address variables from ENV.
+if (config.portal.ip_address.indexOf('$') == 0) {
+    config.portal.ip_address = process.env[config.portal.ip_address.substr(1)];
+    log.info('ENV: config.portal.ip_address=' + config.portal.ip_address);
+}
+if (config.portal.hostname.indexOf('$') == 0) {
+    config.portal.hostname = process.env[config.portal.hostname.substr(1)];
+    log.info('ENV: config.portal.hostname=' + config.portal.hostname);
+}
+
 global.config = config;
 
 
