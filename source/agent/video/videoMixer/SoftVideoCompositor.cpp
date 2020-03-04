@@ -201,26 +201,26 @@ bool SoftInput::isActive(void)
     return m_active;
 }
 
-void SoftInput::pushInput(webrtc::VideoFrame *videoFrame)
+void SoftInput::pushInput(const owt_base::Frame& frame)
 {
+    assert(frame.format == owt_base::FRAME_FORMAT_I420);
+    webrtc::VideoFrame* videoFrame = reinterpret_cast<webrtc::VideoFrame*>(frame.payload);
+
     {
         boost::unique_lock<boost::shared_mutex> lock(m_mutex);
         if (!m_active)
             return;
     }
 
-    if (isHEVCMCTSVideoResolution(videoFrame->width(), videoFrame->height())) {
-        rtc::scoped_refptr<webrtc::VideoFrameBuffer> srcI420Buffer = videoFrame->video_frame_buffer();
-        {
-            boost::unique_lock<boost::shared_mutex> lock(m_mutex);
-            if (m_active) {
-                m_busyFrame.reset(new webrtc::VideoFrame(srcI420Buffer, webrtc::kVideoRotation_0, videoFrame->timestamp_us()));
-            }
+    {
+        boost::unique_lock<boost::shared_mutex> lock(m_mutex);
+        if (m_active) {
+            m_busyFrame.reset(new webrtc::VideoFrame(*videoFrame));
         }
-
         return;
     }
 
+#if 0
     rtc::scoped_refptr<webrtc::I420Buffer> dstBuffer = m_bufferManager->getFreeBuffer(videoFrame->width(), videoFrame->height());
     if (!dstBuffer) {
         ELOG_ERROR("No free buffer");
@@ -238,6 +238,7 @@ void SoftInput::pushInput(webrtc::VideoFrame *videoFrame)
         if (m_active)
             m_busyFrame.reset(new webrtc::VideoFrame(dstBuffer, webrtc::kVideoRotation_0, 0));
     }
+#endif
 }
 
 boost::shared_ptr<VideoFrame> SoftInput::popInput()
@@ -411,23 +412,17 @@ void SoftFrameGenerator::onTimeout()
     }
 
     if (hasValidOutput) {
-        rtc::scoped_refptr<webrtc::VideoFrameBuffer> compositeBuffer = generateFrame();
-        if (compositeBuffer) {
-            webrtc::VideoFrame compositeFrame(
-                    compositeBuffer,
-                    webrtc::kVideoRotation_0,
-                    m_clock->TimeInMilliseconds()
-                    );
-            compositeFrame.set_timestamp(compositeFrame.timestamp_us() * kMsToRtpTimestamp);
-
+        boost::shared_ptr<webrtc::VideoFrame> compositeFrame = generateFrame();
+        if (compositeFrame) {
             owt_base::Frame frame;
             memset(&frame, 0, sizeof(frame));
             frame.format = owt_base::FRAME_FORMAT_I420;
-            frame.payload = reinterpret_cast<uint8_t*>(&compositeFrame);
+            frame.payload = reinterpret_cast<uint8_t*>(compositeFrame.get());
             frame.length = 0; // unused.
-            frame.timeStamp = compositeFrame.timestamp();
-            frame.additionalInfo.video.width = compositeFrame.width();
-            frame.additionalInfo.video.height = compositeFrame.height();
+            frame.timeStamp = compositeFrame->timestamp();
+            frame.orig_timeStamp = frame.timeStamp;
+            frame.additionalInfo.video.width = compositeFrame->width();
+            frame.additionalInfo.video.height = compositeFrame->height();
 
             m_textDrawer->drawFrame(frame);
 
@@ -438,8 +433,8 @@ void SoftFrameGenerator::onTimeout()
                         continue;
 
                     for (auto it = m_outputs[i].begin(); it != m_outputs[i].end(); ++it) {
-                        ELOG_TRACE_T("+++deliverFrame(%d), dst(%p), fps(%d), timestamp(%d)"
-                                , m_counter, it->dest, m_maxSupportedFps / (i + 1), frame.timeStamp / 90);
+                        ELOG_TRACE_T("+++deliverFrame(%d), dst(%p), fps(%d), timestamp_ms(%u), timestamp(%u)"
+                                , m_counter, it->dest, m_maxSupportedFps / (i + 1), frame.timeStamp / 90, frame.timeStamp);
 
                         it->dest->onFrame(frame);
                     }
@@ -451,7 +446,7 @@ void SoftFrameGenerator::onTimeout()
     m_counter = (m_counter + 1) % m_counterMax;
 }
 
-rtc::scoped_refptr<webrtc::VideoFrameBuffer> SoftFrameGenerator::generateFrame()
+boost::shared_ptr<webrtc::VideoFrame> SoftFrameGenerator::generateFrame()
 {
     reconfigureIfNeeded();
     return layout();
@@ -533,7 +528,7 @@ void SoftFrameGenerator::layout_regions(SoftFrameGenerator *t, rtc::scoped_refpt
     }
 }
 
-rtc::scoped_refptr<webrtc::VideoFrameBuffer> SoftFrameGenerator::layout()
+boost::shared_ptr<webrtc::VideoFrame> SoftFrameGenerator::layout()
 {
     rtc::scoped_refptr<webrtc::I420Buffer> compositeBuffer = m_bufferManager->getFreeBuffer(m_size.width, m_size.height);
     if (!compositeBuffer) {
@@ -541,13 +536,9 @@ rtc::scoped_refptr<webrtc::VideoFrameBuffer> SoftFrameGenerator::layout()
         return NULL;
     }
 
-    if (isHEVCMCTSVideoResolution(m_size.width, m_size.height)) {
-        if (m_layout.size() == 1) {
-            boost::shared_ptr<webrtc::VideoFrame> inputFrame = m_owner->getInputFrame(m_layout.front().input);
-            if (inputFrame && inputFrame->width() == (int32_t)m_size.width && inputFrame->height() == (int32_t)m_size.height) {
-                return inputFrame->video_frame_buffer();
-            }
-        }
+    if (m_layout.size() == 1) {
+        boost::shared_ptr<webrtc::VideoFrame> inputFrame = m_owner->getInputFrame(m_layout.front().input);
+        return boost::make_shared<webrtc::VideoFrame>(*inputFrame);
     }
 
     // Set the background color
@@ -593,7 +584,18 @@ rtc::scoped_refptr<webrtc::VideoFrameBuffer> SoftFrameGenerator::layout()
         layout_regions(this, compositeBuffer, m_layout);
     }
 
-    return compositeBuffer;
+    int64_t timestamp_ms = m_clock->TimeInMilliseconds();
+
+    boost::shared_ptr<webrtc::VideoFrame> video_frame =
+        boost::make_shared<webrtc::VideoFrame>(
+                compositeBuffer,
+                timestamp_ms * 1000 / 90,
+                timestamp_ms,
+                webrtc::kVideoRotation_0
+                );
+    video_frame->set_ntp_time_ms(timestamp_ms);
+
+    return video_frame;
 }
 
 void SoftFrameGenerator::reconfigureIfNeeded()
@@ -687,10 +689,7 @@ bool SoftVideoCompositor::unsetAvatar(int input)
 
 void SoftVideoCompositor::pushInput(int input, const Frame& frame)
 {
-    assert(frame.format == owt_base::FRAME_FORMAT_I420);
-    webrtc::VideoFrame* i420Frame = reinterpret_cast<webrtc::VideoFrame*>(frame.payload);
-
-    m_inputs[input]->pushInput(i420Frame);
+    m_inputs[input]->pushInput(frame);
 }
 
 bool SoftVideoCompositor::addOutput(const uint32_t width, const uint32_t height, const uint32_t framerateFPS, owt_base::FrameDestination *dst)

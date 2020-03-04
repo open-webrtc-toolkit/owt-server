@@ -13,6 +13,8 @@
 
 #include "MediaUtilities.h"
 
+#include "ltrace.h"
+
 namespace owt_base {
 
 DEFINE_LOGGER(SVTHEVCEncoder, "owt.SVTHEVCEncoder");
@@ -71,7 +73,7 @@ bool SVTHEVCEncoder::initEncoder(uint32_t width, uint32_t height, uint32_t frame
 {
     //m_hevc_encoder->setDebugDump(true);
 
-    m_encoderReady = m_hevc_encoder->init(width, height, frameRate, bitrateKbps, keyFrameIntervalSeconds, 0, 0);
+    m_encoderReady = m_hevc_encoder->init(width, height, frameRate, bitrateKbps, keyFrameIntervalSeconds, 1, 8);
     if (m_encoderReady) {
         m_sendThread = boost::thread(&SVTHEVCEncoder::sendLoop, this);
         m_sendThreadExited = false;
@@ -144,6 +146,8 @@ void SVTHEVCEncoder::onFrame(const Frame& frame)
     boost::shared_lock<boost::shared_mutex> lock(m_mutex);
     int32_t ret;
 
+    LTRACE_ASYNC_BEGIN("SVTHEVCEncoder", frame.timeStamp);
+
     if (m_dest == NULL) {
         return;
     }
@@ -194,18 +198,23 @@ void SVTHEVCEncoder::fillPacketDone(boost::shared_ptr<SVTHEVCEncodedPacket> enco
     outFrame.payload    = encoded_pkt->data;
     outFrame.length     = encoded_pkt->length;
     outFrame.timeStamp = (m_encoded_frame_count++) * 1000 / m_frameRate * 90;
+    outFrame.orig_timeStamp = encoded_pkt->pts;
     outFrame.additionalInfo.video.width         = m_width;
     outFrame.additionalInfo.video.height        = m_height;
     outFrame.additionalInfo.video.isKeyFrame    = encoded_pkt->isKey;
 
-    ELOG_TRACE_T("deliverFrame, %s, %dx%d(%s), length(%d)",
+    ELOG_TRACE_T("deliverFrame, %s, %dx%d(%s), length(%d), timestamp_ms(%u), timestamp(%u)",
             getFormatStr(outFrame.format),
             outFrame.additionalInfo.video.width,
             outFrame.additionalInfo.video.height,
             outFrame.additionalInfo.video.isKeyFrame ? "key" : "delta",
-            outFrame.length);
+            outFrame.length,
+            outFrame.timeStamp / 90,
+            outFrame.timeStamp);
 
     m_dest->onFrame(outFrame);
+
+    LTRACE_ASYNC_END("SVTHEVCEncoder", outFrame.orig_timeStamp);
 }
 
 void SVTHEVCEncoder::sendLoop()
