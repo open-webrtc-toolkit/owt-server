@@ -79,12 +79,17 @@ struct Frame {
     uint8_t*        payload;
     uint32_t        length;
     uint32_t        timeStamp;
+    uint32_t        orig_timeStamp;
     MediaSpecInfo   additionalInfo;
 };
 
 inline bool isHEVCMCTSVideoResolution(uint32_t width, uint32_t height) {
+#if 0
     return (width = 3840 && height == 2048)
         || (width = 7680 && height == 3840);
+#endif
+
+    return false;
 }
 
 inline FrameFormat getFormat(const std::string& codec) {

@@ -84,7 +84,7 @@ void SVTHEVCEncoderBase::initDefaultParameters()
     // GOP Structure
     m_encParameters.intraPeriodLength               = 255;
     m_encParameters.intraRefreshType                = 0;
-    m_encParameters.hierarchicalLevels              = 0;
+    m_encParameters.hierarchicalLevels              = 3;
 
     m_encParameters.predStructure                   = 0;
     m_encParameters.baseLayerSwitchMode             = 0;
@@ -288,8 +288,7 @@ bool SVTHEVCEncoderBase::sendFrame(const Frame& frame)
         case FRAME_FORMAT_I420: {
             webrtc::VideoFrame *videoFrame = reinterpret_cast<webrtc::VideoFrame*>(frame.payload);
             rtc::scoped_refptr<webrtc::VideoFrameBuffer> videoBuffer = videoFrame->video_frame_buffer();
-            return sendVideoBuffer(videoBuffer, videoFrame->timestamp_us(), videoFrame->timestamp_us());
-            break;
+            return sendVideoBuffer(videoBuffer, videoFrame->timestamp_us(), videoFrame->timestamp());
         }
 
         default:

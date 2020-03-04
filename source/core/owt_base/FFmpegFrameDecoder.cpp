@@ -7,6 +7,8 @@
 
 #include "FFmpegFrameDecoder.h"
 
+#include "ltrace.h"
+
 namespace owt_base {
 
 DEFINE_LOGGER(FFmpegFrameDecoder, "owt.FFmpegFrameDecoder");
@@ -151,6 +153,8 @@ void FFmpegFrameDecoder::onFrame(const Frame& frame)
 {
     int ret;
 
+    LTRACE_ASYNC_BEGIN("FFmpegFrameDecoder", frame.timeStamp);
+
     if (m_needKeyFrame) {
         if (!frame.additionalInfo.video.isKeyFrame)
             return;
@@ -204,6 +208,8 @@ void FFmpegFrameDecoder::onFrame(const Frame& frame)
             isCroppedBuf = true;
         }
 
+        video_frame->set_ntp_time_ms(video_frame->timestamp());
+
         {
             Frame frame;
             memset(&frame, 0, sizeof(frame));
@@ -211,14 +217,19 @@ void FFmpegFrameDecoder::onFrame(const Frame& frame)
             frame.payload = reinterpret_cast<uint8_t*>(video_frame);
             frame.length = 0;
             frame.timeStamp = m_decFrame->pts;
+            frame.orig_timeStamp = frame.timeStamp;
             frame.additionalInfo.video.width = video_frame->width();
             frame.additionalInfo.video.height = video_frame->height();
 
-            ELOG_TRACE_T("deliverFrame, %dx%d, timeStamp %d",
+            ELOG_TRACE_T("deliverFrame, %dx%d, timeStamp_ms %u, timeStamp %u",
                     frame.additionalInfo.video.width,
                     frame.additionalInfo.video.height,
-                    frame.timeStamp / 90);
+                    frame.timeStamp / 90,
+                    frame.timeStamp);
+
             deliverFrame(frame);
+
+            LTRACE_ASYNC_END("FFmpegFrameDecoder", frame.timeStamp);
 
             if(isCroppedBuf)
                 delete video_frame;

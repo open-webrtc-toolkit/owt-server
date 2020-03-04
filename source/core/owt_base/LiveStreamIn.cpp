@@ -12,6 +12,8 @@
 
 #include "MediaUtilities.h"
 
+#include "ltrace.h"
+
 static inline int64_t timeRescale(uint32_t time, AVRational in, AVRational out)
 {
     return av_rescale_q(time, in, out);
@@ -928,8 +930,11 @@ void LiveStreamIn::receiveLoop()
             m_avPacket.dts = timeRescale(m_avPacket.dts, video_st->time_base, m_msTimeBase) + m_timstampOffset;
             m_avPacket.pts = timeRescale(m_avPacket.pts, video_st->time_base, m_msTimeBase) + m_timstampOffset;
 
-            ELOG_TRACE_T("Receive video frame packet, dts %ld, size %d"
-                    , m_avPacket.dts, m_avPacket.size);
+            LTRACE_ASYNC_BEGIN("owt-server", timeRescale(m_avPacket.dts, m_msTimeBase, m_videoTimeBase));
+            LTRACE_ASYNC_BEGIN("StreamIn", timeRescale(m_avPacket.dts, m_msTimeBase, m_videoTimeBase));
+
+            ELOG_TRACE_T("Receive video frame packet, dts %ld, pts %ld, size %d"
+                    , m_avPacket.dts, m_avPacket.pts, m_avPacket.size);
 
             if (filterVBS(video_st, &m_avPacket)) {
                 filterPS(video_st, &m_avPacket);
@@ -1241,17 +1246,21 @@ void LiveStreamIn::deliverVideoFrame(AVPacket *pkt)
     frame.payload = reinterpret_cast<uint8_t*>(pkt->data);
     frame.length = pkt->size;
     frame.timeStamp = timeRescale(pkt->dts, m_msTimeBase, m_videoTimeBase);
+    frame.orig_timeStamp = frame.timeStamp;
     frame.additionalInfo.video.width = m_videoWidth;
     frame.additionalInfo.video.height = m_videoHeight;
     frame.additionalInfo.video.isKeyFrame = (pkt->flags & AV_PKT_FLAG_KEY);
-    deliverFrame(frame);
 
-    ELOG_TRACE_T("deliver video frame, timestamp %ld(%ld), size %4d, %s"
-            , timeRescale(frame.timeStamp, m_videoTimeBase, m_msTimeBase)
-            , pkt->dts
+    ELOG_TRACE_T("deliver video frame, timestamp_ms %u, timestamp %u, size %4d, %s"
+            , frame.timeStamp / 90
+            , frame.timeStamp
             , frame.length
             , (pkt->flags & AV_PKT_FLAG_KEY) ? "key" : "non-key"
             );
+
+    deliverFrame(frame);
+
+    LTRACE_ASYNC_END("StreamIn", frame.timeStamp);
 }
 
 void LiveStreamIn::deliverAudioFrame(AVPacket *pkt)
@@ -1266,12 +1275,13 @@ void LiveStreamIn::deliverAudioFrame(AVPacket *pkt)
     frame.additionalInfo.audio.sampleRate = m_audioSampleRate;
     frame.additionalInfo.audio.channels = m_audioChannels;
     frame.additionalInfo.audio.nbSamples = frame.length / frame.additionalInfo.audio.channels /2;
-    deliverFrame(frame);
 
-    ELOG_TRACE_T("deliver audio frame, timestamp %ld(%ld), size %4d"
-            , timeRescale(frame.timeStamp, m_audioTimeBase, m_msTimeBase)
-            , pkt->dts
+    ELOG_TRACE_T("deliver audio frame, timestamp_ms %u, timestamp %u, size %4d"
+            , frame.timeStamp / 90
+            , frame.timeStamp
             , frame.length);
+
+    deliverFrame(frame);
 }
 
 void LiveStreamIn::onDeliverFrame(JitterBuffer *jitterBuffer, AVPacket *pkt)

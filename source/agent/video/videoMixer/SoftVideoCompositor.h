@@ -63,7 +63,7 @@ public:
     void setActive(bool active);
     bool isActive(void);
 
-    void pushInput(webrtc::VideoFrame *videoFrame);
+    void pushInput(const owt_base::Frame& frame);
     boost::shared_ptr<webrtc::VideoFrame> popInput();
 
 private:
@@ -113,8 +113,9 @@ public:
     void onTimeout() override;
 
 protected:
-    rtc::scoped_refptr<webrtc::VideoFrameBuffer> generateFrame();
-    rtc::scoped_refptr<webrtc::VideoFrameBuffer> layout();
+    boost::shared_ptr<webrtc::VideoFrame> generateFrame();
+    boost::shared_ptr<webrtc::VideoFrame> layout();
+
     static void layout_regions(SoftFrameGenerator *t, rtc::scoped_refptr<webrtc::I420Buffer> compositeBuffer, const LayoutSolution &regions);
 
     void reconfigureIfNeeded();

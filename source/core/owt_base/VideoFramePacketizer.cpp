@@ -7,6 +7,8 @@
 #include <rtputils.h>
 #include <boost/make_shared.hpp>
 
+#include "ltrace.h"
+
 namespace owt_base {
 
 // To make it consistent with the webrtc library, we allow packets to be transmitted
@@ -270,6 +272,8 @@ void VideoFramePacketizer::onFrame(const Frame& inFrame)
 {
     Frame frame = inFrame;
 
+    LTRACE_ASYNC_BEGIN("VideoFramePacketizer", frame.orig_timeStamp);
+
 #ifdef _ENABLE_HEVC_TILES_MERGER_
     if (frame.format == FRAME_FORMAT_HEVC_MCTS) {
         if (!m_tilesMerger)
@@ -386,6 +390,9 @@ void VideoFramePacketizer::onFrame(const Frame& inFrame)
           m_rtpRtcp->SendOutgoingData(webrtc::kVideoFrameKey, H265_90000_PT, timeStamp, timeStamp / 90, frame.payload, frame_length, &frag_info, &h, &transport_frame_id_out);
         }
     }
+
+    LTRACE_ASYNC_END("VideoFramePacketizer", frame.orig_timeStamp);
+    LTRACE_ASYNC_END("owt-server", frame.orig_timeStamp);
 }
 
 void VideoFramePacketizer::onVideoSourceChanged()

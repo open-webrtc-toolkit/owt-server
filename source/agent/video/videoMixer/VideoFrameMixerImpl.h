@@ -157,7 +157,7 @@ inline bool VideoFrameMixerImpl::addInput(int input, owt_base::FrameFormat forma
         decoder.reset(new owt_base::MsdkFrameDecoder());
 #endif
 
-    if (owt_base::isHEVCMCTSVideoResolution(m_rootSize.width, m_rootSize.height))
+    if (m_rootSize.width * m_rootSize.height > 1920 * 1080)
         if (!decoder && (format == owt_base::FRAME_FORMAT_H265 || format == owt_base::FRAME_FORMAT_H264))
             decoder.reset(new owt_base::FFmpegFrameDecoder());
 
