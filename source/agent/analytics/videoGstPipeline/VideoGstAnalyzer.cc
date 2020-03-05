@@ -13,7 +13,7 @@ namespace mcu {
 
 DEFINE_LOGGER(VideoGstAnalyzer, "mcu.VideoGstAnalyzer");
 
-GMainLoop* VideoGstAnalyzer::loop = g_main_loop_new(NULL,FALSE);
+GMainLoop* VideoGstAnalyzer::loop = NULL;
 
 VideoGstAnalyzer::VideoGstAnalyzer() {
     ELOG_INFO("Init");
