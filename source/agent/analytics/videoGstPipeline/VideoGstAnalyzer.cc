@@ -69,14 +69,9 @@ gboolean VideoGstAnalyzer::StreamEventCallBack(GstBus *bus, GstMessage *message,
             break;
         }
         case GST_MESSAGE_STATE_CHANGED:{
-            ELOG_DEBUG("State change\n");
             GstState old_state, new_state, pending_state;
             gst_message_parse_state_changed(message, &old_state, &new_state, &pending_state);
             ELOG_DEBUG("State change from %d to %d, play:%d \n",old_state, new_state, GST_STATE_PAUSED);
-            if(new_state == GST_STATE_PLAYING || new_state == GST_STATE_PAUSED) {
-                ELOG_DEBUG("Create debug dot file\n");
-                //GST_DEBUG_BIN_TO_DOT_FILE_WITH_TS(GST_BIN(pStreamObj->pipeline),GST_DEBUG_GRAPH_SHOW_ALL, "play");
-            }
             break;
         }
         default:
@@ -98,8 +93,6 @@ void VideoGstAnalyzer::clearPipeline()
     }
 
 int VideoGstAnalyzer::createPipeline() {
-
-    loop = g_main_loop_new(NULL, FALSE);
 
     pipelineHandle = dlopen(libraryName.c_str(), RTLD_LAZY);
     if (pipelineHandle == nullptr) {
@@ -138,6 +131,8 @@ int VideoGstAnalyzer::createPipeline() {
         return -1;
     }
 
+    loop = g_main_loop_new(NULL, FALSE);
+
     m_bus = gst_pipeline_get_bus(GST_PIPELINE(pipeline));
     m_bus_watch_id = gst_bus_add_watch(m_bus, StreamEventCallBack, this);
  
@@ -145,12 +140,6 @@ int VideoGstAnalyzer::createPipeline() {
 
     return 0;
 };
-
-gboolean VideoGstAnalyzer::push_data (gpointer data) {
-    VideoGstAnalyzer* pStreamObj = static_cast<VideoGstAnalyzer*>(data);
-    pStreamObj->m_internalin->setPushData(true);
-    return true;
-}
 
 void VideoGstAnalyzer::start_feed (GstElement * source, guint size, gpointer data)
 {
@@ -188,8 +177,7 @@ void VideoGstAnalyzer::new_sample_from_sink (GstElement * source, gpointer data)
 
 int VideoGstAnalyzer::addElementMany() {
     if(pipeline_){
-        rvaStatus status;
-        status = pipeline_->LinkElements();
+        rvaStatus status = pipeline_->LinkElements();
         if(status != RVA_ERR_OK) {
            ELOG_ERROR("Link element failed with rvastatus:%d\n",status);
            return -1; 
