@@ -40,7 +40,7 @@ class AnalyticsAgent extends BaseAgent {
 createInternalConnection(connectionId, direction, internalOpt) {
     internalOpt.minport = global.config.internal.minport;
     internalOpt.maxport = global.config.internal.maxport;
-    if(direction == 'in'){
+    if (direction == 'in') {
       this.engine.emitListenTo(internalOpt.minport,internalOpt.maxport);
       portInfo = this.engine.getListeningPort();
     }
@@ -105,12 +105,17 @@ createInternalConnection(connectionId, direction, internalOpt) {
                keyFrameInterval, 'bitrate:',bitrate);
       
       this.engine.setOutputParam(codec,resolution,framerate,bitrate,keyFrameInterval,algo,pluginName);
-      this.engine.createPipeline();
+      if (this.engine.createPipeline() < 0) {
+        return Promise.reject('Create pipeline failed');
+      }
 
       streamInfo.media.video.bitrate = bitrate;
       this.onStreamGenerated(options.controller, newStreamId, streamInfo);
 
-      this.engine.addElementMany();;
+      if (this.engine.addElementMany() < 0) {
+        return Promise.reject('Link element failed');
+      }
+
       this.connectionclose = () => {
           this.onStreamDestroyed(options.controller, newStreamId);
       }
@@ -121,7 +126,7 @@ createInternalConnection(connectionId, direction, internalOpt) {
   // override
   unsubscribe(connectionId) {
     log.debug('unsubscribe:', connectionId);
-    if(this.outputs[connectionId]){
+    if (this.outputs[connectionId]) {
       var iConn;
       log.debug('disconnect connection id:', connectionId);
       iConn = this.connections.getConnection(connectionId);
@@ -137,11 +142,11 @@ createInternalConnection(connectionId, direction, internalOpt) {
   // override
   linkup(connectionId, audioFrom, videoFrom) {
     log.debug('linkup:', connectionId, audioFrom, videoFrom);
-    if(this.inputs[connectionId]) {
+    if (this.inputs[connectionId]) {
       this.engine.setPlaying();
     }
 
-    if(this.outputs[connectionId]){
+    if (this.outputs[connectionId]) {
       var iConn;
       log.debug('linkup with connection id:', connectionId);
       iConn = this.connections.getConnection(connectionId);

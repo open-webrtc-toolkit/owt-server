@@ -118,8 +118,8 @@ rvaStatus MyPipeline::LinkElements() {
 
     GstCaps* encodecaps = gst_caps_new_simple("video/x-h264",
 		"stream-format", G_TYPE_STRING, "byte-stream",
-		"width", G_TYPE_INT, 640,
-		"height", G_TYPE_INT, 480,
+		"width", G_TYPE_INT, inputwidth,
+		"height", G_TYPE_INT, inputheight,
                 "profile", G_TYPE_STRING, "constrained-baseline", NULL);
 
     
