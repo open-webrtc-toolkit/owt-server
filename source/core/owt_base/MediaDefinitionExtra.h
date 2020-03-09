@@ -2,8 +2,10 @@
  * mediadefinitions.h
  */
 
-#ifndef MEDIADEFINITIONSOLD_H_
-#define MEDIADEFINITIONSOLD_H_
+#ifndef MEDIADEFINITIONSEXTRA_H_
+#define MEDIADEFINITIONSEXTRA_H_
+
+#include <MediaDefinitions.h>
 
 namespace erizoExtra {
 
@@ -60,6 +62,8 @@ public:
   }
   ;
 };
+
+
 
 } /* namespace erizo */
 

@@ -6,7 +6,7 @@
 #define VideoFrameConstructor_h
 
 #include "MediaFramePipeline.h"
-#include "WebRTCTransport.h"
+// #include "WebRTCTransport.h"
 
 #include <boost/scoped_ptr.hpp>
 #include <MediaDefinitions.h>
@@ -14,13 +14,7 @@
 
 #include <JobTimer.h>
 
-#include <rtc_base/task_queue.h>
-#include <call/call.h>
-#include <api/task_queue/default_task_queue_factory.h>
-#include <api/video_codecs/video_codec.h>
-#include <api/video_codecs/video_decoder.h>
-#include <api/video_codecs/video_decoder_factory.h>
-
+#include <RtcAdapter.h>
 
 namespace owt_base {
 
@@ -38,9 +32,9 @@ class VideoFrameConstructor : public erizo::MediaSink,
                               public erizo::FeedbackSource,
                               public FrameSource,
                               public JobTimerListener,
-                              public rtc::VideoSinkInterface<webrtc::VideoFrame>,
-                              public webrtc::VideoDecoderFactory,
-                              public webrtc::Transport {
+                              public rtc_adapter::AdapterFrameListener,
+                              public rtc_adapter::AdapterStatsListener,
+                              public rtc_adapter::AdapterDataListener {
 
 public:
     struct Config {
@@ -58,53 +52,24 @@ public:
     // Implements the JobTimerListener.
     void onTimeout();
 
-    // Implements the webrtc::VideoDecoderFactory interface.
-    std::vector<webrtc::SdpVideoFormat> GetSupportedFormats() const override;
-    std::unique_ptr<webrtc::VideoDecoder> CreateVideoDecoder(
-      const webrtc::SdpVideoFormat& format) override;
-
-    // Implements rtc::VideoSinkInterface<VideoFrame>.
-    void OnFrame(const webrtc::VideoFrame& video_frame) override;
-
     // Implements the FrameSource interfaces.
     void onFeedback(const FeedbackMsg& msg) override;
 
-    // Implements webrtc::Transport
-    bool SendRtp(const uint8_t* packet,
-                 size_t length,
-                 const webrtc::PacketOptions& options) override;
-    bool SendRtcp(const uint8_t* packet, size_t length) override;
+    // Implements the AdapterFrameListener interfaces.
+    void onAdapterFrame(const Frame& frame) override;
+    // Implements the AdapterStatsListener interfaces.
+    void onAdapterStats(const rtc_adapter::AdapterStats& stats) override;
+    // Implements the AdapterDataListener interfaces.
+    void onAdapterData(char* data, int len) override;
 
     int32_t RequestKeyFrame();
 
     bool setBitrate(uint32_t kbps);
 
 private:
-    class AdaptorDecoder : public webrtc::VideoDecoder {
-      public:
-        AdaptorDecoder(VideoFrameConstructor* src): m_src(src) {}
-
-        int32_t InitDecode(const webrtc::VideoCodec* config,
-                           int32_t number_of_cores) override;
-
-        int32_t Decode(const webrtc::EncodedImage& input,
-                       bool missing_frames,
-                       int64_t render_time_ms) override;
-
-        int32_t RegisterDecodeCompleteCallback(
-            webrtc::DecodedImageCallback* callback) override { return 0; }
-
-        int32_t Release() override { return 0; }
-      private:
-        VideoFrameConstructor* m_src;
-        webrtc::VideoCodecType m_codec;
-        std::unique_ptr<uint8_t[]> m_frameBuffer;
-        uint32_t m_bufferSize;
-    };
+    Config m_config;
 
     void maybeCreateReceiveVideo(uint32_t ssrc);
-
-    Config m_config;
 
     // Implement erizo::MediaSink
     int deliverAudioData_(std::shared_ptr<erizo::DataPacket> audio_packet) override;
@@ -116,28 +81,19 @@ private:
     bool m_enableDump;
     uint32_t m_ssrc;
 
-    // Video Statistics collected in decoder thread
-    FrameFormat m_format;
-    uint16_t m_width;
-    uint16_t m_height;
-
     erizo::MediaSource* m_transport;
     boost::shared_mutex m_transportMutex;
     boost::scoped_ptr<JobTimer> m_feedbackTimer;
     uint32_t m_pendingKeyFrameRequests;
-    std::atomic<bool> m_isRequestingKeyFrame;
 
     VideoInfoListener* m_videoInfoListener;
-    std::unique_ptr<WebRTCTransport<erizoExtra::VIDEO>> m_videoTransport;
+    // std::unique_ptr<WebRTCTransport<erizoExtra::VIDEO>> m_videoTransport;
 
     // Temporary buffer for dump
     char buf[1500];
 
-    std::unique_ptr<webrtc::TaskQueueFactory> m_taskQueueFactory;
-    std::unique_ptr<webrtc::RtcEventLog> m_eventLog;
-    std::shared_ptr<webrtc::Call> m_call;
-    std::shared_ptr<rtc::TaskQueue> m_taskQueue;
-    webrtc::VideoReceiveStream* m_videoRecvStream = nullptr;
+    std::shared_ptr<rtc_adapter::RtcAdapter> m_rtcAdapter;
+    rtc_adapter::VideoReceiveAdapter* m_videoReceive;
 };
 
 } // namespace owt_base

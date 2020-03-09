@@ -4,11 +4,11 @@
 
 #include "AudioFramePacketizer.h"
 #include "AudioUtilitiesNew.h"
-#include "WebRTCTaskRunner.h"
+// #include "WebRTCTaskRunner.h"
 
-#include <rtc_base/logging.h>
+// #include <rtc_base/logging.h>
 
-using namespace webrtc;
+using namespace rtc_adapter;
 
 namespace owt_base {
 
@@ -20,30 +20,26 @@ AudioFramePacketizer::AudioFramePacketizer()
     , m_lastOriginSeqNo(0)
     , m_seqNo(0)
     , m_ssrc(0)
-    , m_ssrc_generator(SsrcGenerator::GetSsrcGenerator())
+    , m_rtcAdapter(RtcAdapterFactory::CreateRtcAdapter())
 {
     audio_sink_ = nullptr;
-    m_ssrc = m_ssrc_generator->CreateSsrc();
-    m_ssrc_generator->RegisterSsrc(m_ssrc);
-    m_audioTransport.reset(new WebRTCTransport<erizoExtra::AUDIO>(this, nullptr));
-    m_taskRunner.reset(new owt_base::WebRTCTaskRunner("AudioFramePacketizer"));
-    m_taskRunner->Start();
     init();
 }
 
 AudioFramePacketizer::~AudioFramePacketizer()
 {
     close();
-    m_taskRunner->Stop();
-    m_ssrc_generator->ReturnSsrc(m_ssrc);
-    boost::unique_lock<boost::shared_mutex> lock(m_rtpRtcpMutex);
+    if (m_audioSend) {
+        m_rtcAdapter->destoryAudioSender(m_audioSend);
+        m_audioSend = nullptr;
+    }
 }
 
 void AudioFramePacketizer::bindTransport(erizo::MediaSink* sink)
 {
     boost::unique_lock<boost::shared_mutex> lock(m_transport_mutex);
     audio_sink_ = sink;
-    audio_sink_->setAudioSinkSSRC(m_rtpRtcp->SSRC());
+    audio_sink_->setAudioSinkSSRC(m_audioSend->ssrc());
     erizo::FeedbackSource* fbSource = audio_sink_->getFeedbackSource();
     if (fbSource)
         fbSource->setFeedbackSink(this);
@@ -59,9 +55,11 @@ void AudioFramePacketizer::unbindTransport()
 
 int AudioFramePacketizer::deliverFeedback_(std::shared_ptr<erizo::DataPacket> data_packet)
 {
-    boost::shared_lock<boost::shared_mutex> lock(m_rtpRtcpMutex);
-    m_rtpRtcp->IncomingRtcpPacket(reinterpret_cast<uint8_t*>(data_packet->data), data_packet->length);
-    return data_packet->length;
+    if (m_audioSend) {
+        m_audioSend->onRtcpData(data_packet->data, data_packet->length);
+        return data_packet->length;
+    }
+    return 0;
 }
 
 void AudioFramePacketizer::receiveRtpData(char* buf, int len, erizoExtra::DataType type, uint32_t channelId)
@@ -86,99 +84,45 @@ void AudioFramePacketizer::onFrame(const Frame& frame)
     if (!audio_sink_) {
         return;
     }
+    lock1.unlock();
 
     if (frame.length <= 0)
         return;
 
     if (frame.format != m_frameFormat) {
         m_frameFormat = frame.format;
-        setSendCodec(m_frameFormat);
     }
 
-    if (frame.additionalInfo.audio.isRtpPacket) { // FIXME: Temporarily use Frame to carry rtp-packets due to the premature AudioFrameConstructor implementation.
-        updateSeqNo(frame.payload);
-        audio_sink_->deliverAudioData(std::make_shared<erizo::DataPacket>(0, reinterpret_cast<char*>(frame.payload), frame.length, erizo::AUDIO_PACKET));
-        return;
-    }
-    lock1.unlock();
 
-    int payloadType = getAudioPltype(frame.format);
-    if (payloadType == INVALID_PT)
-        return;
-
-    boost::shared_lock<boost::shared_mutex> lock(m_rtpRtcpMutex);
-    if (!m_rtpRtcp->OnSendingRtpFrame(frame.timeStamp, -1, payloadType, false)) {
-        RTC_DLOG(LS_WARNING) << "OnSendingRtpFrame return false";
-        return;
-    }
-    const uint32_t rtp_timestamp = frame.timeStamp + m_rtpRtcp->StartTimestamp();
-    // TODO: The frame type information is lost. We treat every frame a kAudioFrameSpeech frame for now.
-    if (!m_senderAudio->SendAudio(webrtc::AudioFrameType::kAudioFrameSpeech, payloadType, rtp_timestamp,
-                                  frame.payload, frame.length)) {
-        RTC_DLOG(LS_ERROR) << "ChannelSend::SendData() failed to send data to RTP/RTCP module";
-    }
+    m_audioSend->onFrame(frame);
 }
 
 bool AudioFramePacketizer::init()
 {
-    m_clock = Clock::GetRealTimeClock();
-    m_eventLog = std::make_unique<webrtc::RtcEventLogNull>();
-
-    RtpRtcp::Configuration configuration;
-    configuration.clock = m_clock;
-    configuration.audio = true;  // Audio.
-    configuration.receiver_only = false;
-    configuration.outgoing_transport = m_audioTransport.get();
-    configuration.event_log = m_eventLog.get();
-    configuration.local_media_ssrc = m_ssrc;//rtp_config.ssrcs[i];
-
-    m_rtpRtcp = RtpRtcp::Create(configuration);
-    m_rtpRtcp->SetSendingStatus(true);
-    m_rtpRtcp->SetSendingMediaStatus(true);
-    m_rtpRtcp->SetRTCPStatus(RtcpMode::kReducedSize);
-    // Set NACK.
-    m_rtpRtcp->SetStorePacketsStatus(true, 600);
-
-    m_senderAudio = std::make_unique<RTPSenderAudio>(
-        configuration.clock, m_rtpRtcp->RtpSender());
-    m_taskRunner->RegisterModule(m_rtpRtcp.get());
-
-    return true;
+    if (!m_audioSend) {
+        // Create Send audio Stream
+        rtc_adapter::RtcAdapter::Config sendConfig;
+        sendConfig.rtp_listener = this;
+        sendConfig.stats_listener = this;
+        m_audioSend = m_rtcAdapter->createAudioSender(sendConfig);
+        return true;
+    }
+    return false;
 }
 
-bool AudioFramePacketizer::setSendCodec(FrameFormat format)
+void AudioFramePacketizer::onAdapterStats(const AdapterStats& stats) {}
+
+void AudioFramePacketizer::onAdapterData(char* data, int len)
 {
-    CodecInst codec;
-
-    if (!getAudioCodecInst(m_frameFormat, codec))
-        return false;
-
-    boost::shared_lock<boost::shared_mutex> lock(m_rtpRtcpMutex);
-    m_rtpRtcp->RegisterSendPayloadFrequency(codec.pltype, codec.plfreq);
-    m_senderAudio->RegisterAudioPayload("audio", codec.pltype,
-                                        codec.plfreq, codec.channels, 0);
-    return true;
+    boost::shared_lock<boost::shared_mutex> lock(m_transport_mutex);
+    if (audio_sink_) {
+        audio_sink_->deliverAudioData(std::make_shared<erizo::DataPacket>(0, data, len, erizo::AUDIO_PACKET));
+    }
 }
 
 void AudioFramePacketizer::close()
 {
     unbindTransport();
-    m_taskRunner->DeRegisterModule(m_rtpRtcp.get());
-}
-
-void AudioFramePacketizer::updateSeqNo(uint8_t* rtp) {
-    uint16_t originSeqNo = *(reinterpret_cast<uint16_t*>(&rtp[2]));
-    if ((m_lastOriginSeqNo == m_seqNo) && (m_seqNo == 0)) {
-    } else {
-        uint16_t step = ((originSeqNo < m_lastOriginSeqNo) ? (UINT16_MAX - m_lastOriginSeqNo + originSeqNo + 1) : (originSeqNo - m_lastOriginSeqNo));
-        if ((step == 1) || (step > 10)) {
-          m_seqNo += 1;
-        } else {
-          m_seqNo += step;
-        }
-    }
-    m_lastOriginSeqNo = originSeqNo;
-    *(reinterpret_cast<uint16_t*>(&rtp[2])) = htons(m_seqNo);
 }
 
 int AudioFramePacketizer::sendPLI() {
