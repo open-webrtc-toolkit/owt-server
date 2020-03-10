@@ -41,7 +41,6 @@ c. Compile pipeline share library
 If analytics agent is deployed on VCAA card and VPU is used(in detect_pipeline in analytics_agent/plugins/samples), launch hddldaemon VCAA card  before running analytics agent on container.
 
 
-
 Then launch analytics agent with following command in /home:
 ./bin/daemon.sh start analytics-agent
 
