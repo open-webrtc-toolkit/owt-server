@@ -39,7 +39,7 @@ rvaStatus MyPipeline::PipelineConfig(std::unordered_map<std::string, std::string
 
     std::unordered_map<std::string,std::string>::const_iterator name = params.find ("pipelinename");
     if ( name == params.end() )
-        std::cout << "inputframerate is not found" << std::endl;
+        std::cout << "pipeline name is not found" << std::endl;
     else
         pipelinename = name->second;
 
@@ -61,7 +61,6 @@ GstElement * MyPipeline::InitializePipeline() {
     decodebin = gst_element_factory_make("avdec_h264","decode");
     postproc = gst_element_factory_make("videoconvert","postproc");
     detect = gst_element_factory_make("gvadetect","detect"); 
-    counter = gst_element_factory_make("gvafpscounter","counter"); 
     watermark = gst_element_factory_make("gvawatermark","rate");
     converter = gst_element_factory_make("videoconvert","convert");
     encoder = gst_element_factory_make("x264enc","encoder");

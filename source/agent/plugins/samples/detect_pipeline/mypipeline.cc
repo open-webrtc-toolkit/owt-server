@@ -40,7 +40,7 @@ rvaStatus MyPipeline::PipelineConfig(std::unordered_map<std::string, std::string
 
     std::unordered_map<std::string,std::string>::const_iterator name = params.find ("pipelinename");
     if ( name == params.end() )
-        std::cout << "inputframerate is not found" << std::endl;
+        std::cout << "pipeline is not found" << std::endl;
     else
         pipelinename = name->second;
 
@@ -118,22 +118,19 @@ rvaStatus MyPipeline::LinkElements() {
     g_object_set(G_OBJECT(videorate),"max-rate", inferenceframerate, NULL);
     g_object_set(G_OBJECT(postproc),"brightness", 0.0001, NULL);
 
-    g_object_set(G_OBJECT(detect),"inference-id", "dtc", NULL);
-    g_object_set(G_OBJECT(detect),"device", device.c_str(), NULL);
-    g_object_set(G_OBJECT(detect),"model",model.c_str(), NULL);
-    g_object_set(G_OBJECT(detect),"cpu-streams", 12, NULL);
-    g_object_set(G_OBJECT(detect),"nireq", 24, NULL);
-    g_object_set(G_OBJECT(detect),"pre-proc", "vaapi", NULL);
-    //g_object_set(G_OBJECT(detect),"every-nth-frame", 5, NULL);
+    g_object_set(G_OBJECT(detect),"device", device.c_str(),
+            "model",model.c_str(),
+            "cpu-streams", 12,
+            "nireq", 24,
+            "pre-proc", "vaapi",
+            "inference-id", "dtc", NULL);
 
     
     g_object_set(G_OBJECT(fakesink),"async", false, NULL);
 
     gst_bin_add_many(GST_BIN (pipeline), source,decodebin,videorate,postproc,h264parse,detect,counter,fakesink, NULL);
-    //gst_bin_add_many(GST_BIN (pipeline), source,decodebin,videorate,postproc,h264parse,detect,counter,fakesink, NULL);
 
     if (gst_element_link_many(source,h264parse,decodebin,videorate,NULL) != TRUE) {
-    //if (gst_element_link_many(source,h264parse,decodebin,postproc,NULL) != TRUE) {
         std::cout << "Elements source,decodebin could not be linked." << std::endl;
         gst_object_unref(pipeline);
         return RVA_ERR_LINK;
