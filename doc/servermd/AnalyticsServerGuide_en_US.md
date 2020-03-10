@@ -78,7 +78,7 @@ Download open model zoo package from <https://github.com/opencv/open_model_zoo/r
 #tar zxf 2019_R3.1.tar.gz
 #cd open_model_zoo-2019_R3.1/tools/downloader
 ````
-Then follow  Model Downloader<tools/downloader/README.md> to install open model zoo download dependencies and download models.
+Then follow  Model Downloader<tools/downloader/README.md> to install open model zoo downloading dependencies and download models.
 
 
 ### Build analytics plugin
@@ -167,24 +167,29 @@ Refresh the test page and your local stream should be published to MCU.
 On the page, drop down from “video from” and select the remote stream you would like to analyze.
 
 
-Make sure face detection plugin has been installed. The source code of face detection plugin is under ````dist/analytics_agent/plugins/samples/face_detection_plugin/````, you can modify the implementatio if neccessary.
+Make sure face detection with cpu plugin has been installed. The source code of face detection plugin is under ````dist/analytics_agent/plugins/samples/cpu_pipeline/````, you can modify the implementatio if neccessary.
 
 
-Check ````analytics_agent/plugin.cfg````， The plugin ID for face detection with CPU is ````b849f44bee074b08bf3e627f3fc927c9````, so on the page, in "Analytics" configuration group, input the plugin ID in "analytics id" 
-edit control, that is,  ````b849f44bee074b08bf3e627f3fc927c9```` without any extra spaces, and press "startAnalytics" button. The stream you selected will be analyzed, with annotation on the faces in the stream.
+Check ````analytics_agent/plugin.cfg````， The plugin ID for face detection with CPU is ````dc51138a8284436f873418a21ba8cfa9````, so on the page, in "pipelineID" input text, input the plugin ID in "analytics id" 
+edit control, that is,  ````dc51138a8284436f873418a21ba8cfa9```` without any extra spaces, and press "startAnalytics" button. The stream you selected will be analyzed, with annotation on the faces in the stream.
 
 ### Subscribe analyzed stream
 
 On the page and drop down from "subscribe video" and select the stream id with ````algorithmid+video from streamid```` and click subscribe, then analyzed stream will display on page.
 
-Note that if you do not add GStreamer plugin ````x264enc + appsink```` in your pipeline as sample detect_pipeline, analyzed stream will not be send back to OWT server so you cannot subscribe analyzed stream.  
+Note that if you do not add GStreamer plugin ````x264enc + appsink```` in your pipeline like sample detect_pipeline, analyzed stream will not be send back to OWT server so you cannot subscribe analyzed stream.  
 
+### Stop Analytics
+
+After you successfully start analytics, analytics id will be generated and the latest analytics id will display in ```analytics id:``` on page, then click ```stopAnalytics``` button on page to stop analytics. Or you can click ```listAnalytics``` button to list all started analytics id, and input the analytics id in ```analytics id:```, then click ```stopAnalytics``` button on page to stop analytics .
+
+Note that if you do not add GStreamer plugin ````x264enc + appsink```` in your pipeline like sample detect_pipeline, analyzed stream will not be send back to OWT server so you cannot subscribe analyzed stream.
 
 
 Develop and Deploy Your Own Media Analytics Plugins
 ===================================================
 
-MCU supports implementing your own medai analytics plugins and deploy them. Below are the detailed steps. You can also refer to dummy plugin(in  ````plugins/samples/sample_pipeline/````) or face detection plugin with CPU(````plugins/samples/cpu_pipeline/````)or face detection plugin with GPU and VPU(````plugins/samples/detect_pipeline/````) for more details.
+MCU supports implementing your own media analytics plugins and deploy them. Below are the detailed steps. You can also refer to dummy plugin(in  ````plugins/samples/sample_pipeline/````) or face detection plugin with CPU(````plugins/samples/cpu_pipeline/````)or face detection plugin with GPU and VPU(````plugins/samples/detect_pipeline/````) for more details.
 
 
 Develop Plugins
@@ -239,7 +244,7 @@ class rvaPipeline {
 };                                                                                  
 ````                                                                                                
 
-The main interfaces for a plugin implementation are ```PipelineConfig()```,  ````InitializePipeline()```` 和````LinkElements()````.
+The main interfaces for a plugin implementation are ```PipelineConfig()```,  ````InitializePipeline()```` and````LinkElements()````.
 
 In ````PipelineConfig()````implemntation，you should get the width, height and frame rate of input stream, and you will also get the algorithm name which is aligned with settings in ```plugin.cfg```, and you can use this algorithm name in ````LinkElements()```` to load pipeline settings such as inferencing model path, inference width and height, as well as configuring the device to decode and inference.
 
@@ -269,6 +274,25 @@ std::unordered_map<std::string,std::string>::const_iterator width = params.find 
     else
         pipelinename = name->second;
 ````	
+
+By default we will set 3 environment variables in bin/daemon.sh,  
+````
+cd ${OWT_HOME}/analytics_agent
+export LD_LIBRARY_PATH=./lib:${LD_LIBRARY_PATH}
+export PATH=./bin:/opt/intel/mediasdk/bin:${PATH}
+export CONFIGFILE_PATH=./plugin.cfg
+```` 
+Then we use toml parser to load parameters configured for each algorithm defined in ```plugin.cfg```, here is an example on how to pase toml file ```plugin.cfg``` and get defined parameters such as model path, inferencewidth, inferenceheight .etc.
+````
+const char* path = std::getenv("CONFIGFILE_PATH");
+const auto data = toml::parse(path);
+const auto& pipelineconfig = toml::find(data, pipelinename.c_str());
+const auto model = toml::find<std::string>(pipelineconfig, "modelpath");
+const auto inferencewidth = toml::find<std::int64_t>(pipelineconfig, "inferencewidth");
+const auto inferenceheight = toml::find<std::int64_t>(pipelineconfig, "inferenceheight");
+const auto inferenceframerate = toml::find<std::int64_t>(pipelineconfig, "inferenceframerate");
+const auto device = toml::find<std::string>(pipelineconfig, "device");
+````
 
 ````InitializePipeline()```` create elements and pipeline, and its prototype is：
 ````
