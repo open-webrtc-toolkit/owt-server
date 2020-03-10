@@ -379,7 +379,7 @@ RUN cd ${SERVER_PATH} && ./scripts/build.js -t mcu -r -c && \
 
 
 FROM ubuntu:18.04 AS owt-run
-LABEL Description="This is the base image for OWT Ubuntu 18.04 LTS"
+LABEL Description="This is the OWT image without analytics running environment"
 LABEL Vendor="Intel Corporation"
 WORKDIR /home
 
@@ -405,7 +405,7 @@ RUN mv /home/rabbitmq.config /etc/rabbitmq/ && chmod +x /home/start.sh && wget $
 
 
 FROM ubuntu:18.04 AS analytics-run
-LABEL Description="This is the base image for GSTREAMER & DLDT Ubuntu 18.04 LTS"
+LABEL Description="This is the analytics agent running environment"
 LABEL Vendor="Intel Corporation"
 WORKDIR /home
 
@@ -476,5 +476,83 @@ RUN wget ${GST_VIDEO_ANALYTICS_REPO} && \
         #cd /home/analytics_agent/plugins/samples && ls && source build_samples.sh && \ 
 	#cp build/intel64/Release/lib/libSamplePipeline.so /home/analytics_agent/lib/ && \
 	#cp build/intel64/Release/lib/libDetectPipeline.so /home/analytics_agent/lib/
+ENV GST_PLUGIN_PATH=/usr/lib/gst-video-analytics/
+
+FROM ubuntu:18.04 AS owt-run-all
+LABEL Description="This is the owt image containing analytics environment"
+LABEL Vendor="Intel Corporation"
+WORKDIR /home
+
+# Prerequisites
+RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y -q --no-install-recommends libxv1 libxcb-shm0 libxcb-shape0 libxcb-xfixes0 libsdl2-2.0-0 libasound2 libvdpau1 \
+libnuma1 libass9 libssl1.0.0 libglib2.0 libpango-1.0-0 libpangocairo-1.0-0 gobject-introspection libudev1 libx11-xcb1 libgl1-mesa-glx libxrandr2 libegl1-mesa \
+libpng16-16 libvisual-0.4-0 libtheora0 libcdparanoia0 libsoup2.4-1 libjpeg8 libjpeg-turbo8 python3 python3-pip python-yaml \
+libgtk2.0 clinfo \
+\
+libusb-1.0-0-dev libboost-all-dev libjson-c-dev \
+build-essential cmake ocl-icd-opencl-dev wget gcovr vim git gdb ca-certificates libssl-dev uuid-dev \
+rabbitmq-server mongodb libboost-system-dev libboost-thread-dev liblog4cxx-dev libglib2.0-0 libfreetype6-dev curl libgl1-mesa-dev libvdpau-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install
+COPY --from=dldt-build /home/build /
+COPY --from=gst-build /home/build /
+COPY --from=owt-build /home/owt-server/dist /home/owt
+COPY rabbitmq.config /home/
+COPY 4_3page/index.html /home/owt/extras/basic_example/public/
+COPY 4_3page/index.js /home/owt/extras/basic_example/public/scripts/
+COPY 4_3page/rest-sample.js /home/owt/extras/basic_example/public/scripts/
+COPY 4_3page/rest.js /home/owt/extras/basic_example/
+COPY 4_3page/samplertcservice.js /home/owt/extras/basic_example/
+COPY start-all.sh /home/start.sh
+
+RUN echo "\
+/usr/local/lib\n\
+/usr/lib/x86_64-linux-gnu/gstreamer-1.0\n\
+/opt/intel/dldt/inference-engine/lib/intel64/\n\
+/opt/intel/dldt/inference-engine/external/tbb/lib\n\
+/opt/intel/dldt/inference-engine/external/mkltiny_lnx/lib\n\
+/opt/intel/dldt/inference-engine/external/vpu/hddl/lib\n\
+/opt/intel/dldt/inference-engine/external/opencv/lib/" > /etc/ld.so.conf.d/opencv-dldt-gst.conf && ldconfig
+
+ENV PKG_CONFIG_PATH=/usr/lib/x86_64-linux-gnu/pkgconfig:/opt/intel/mediasdk/lib64/pkgconfig:${PKG_CONFIG_PATH}
+ENV InferenceEngine_DIR=/opt/intel/dldt/inference-engine/share
+ENV OpenCV_DIR=/opt/intel/dldt/inference-engine/external/opencv/cmake
+ENV LIBRARY_PATH=/opt/intel/mediasdk/lib64:/usr/lib:${LIBRARY_PATH}
+ENV PATH=/usr/bin:/opt/intel/mediasdk/bin:${PATH}
+
+ENV LIBVA_DRIVERS_PATH=/opt/intel/mediasdk/lib64
+ENV LIBVA_DRIVER_NAME=iHD
+ENV GST_VAAPI_ALL_DRIVERS=1
+ENV DISPLAY=:0.0
+ENV LD_LIBRARY_PATH=/opt/intel/dldt/inference-engine/external/hddl/lib
+ENV HDDL_INSTALL_DIR=/opt/intel/dldt/inference-engine/external/hddl
+
+ARG GIT_INFO
+ARG SOURCE_REV
+
+ARG GST_VIDEO_ANALYTICS_VER=0.6.1
+ARG GST_VIDEO_ANALYTICS_NAME=gst-video-analytics-${GST_VIDEO_ANALYTICS_VER}
+ARG GST_VIDEO_ANALYTICS_REPO=https://github.com/opencv/gst-video-analytics/archive/v${GST_VIDEO_ANALYTICS_VER}.tar.gz
+ARG ENABLE_PAHO_INSTALLATION=false
+ARG ENABLE_RDKAFKA_INSTALLATION=false
+
+RUN wget ${GST_VIDEO_ANALYTICS_REPO} && \
+    tar -zxvf v${GST_VIDEO_ANALYTICS_VER}.tar.gz && \
+    cd ${GST_VIDEO_ANALYTICS_NAME} && mkdir build && cd build && \
+    cmake \
+        -DCMAKE_INSTALL_PREFIX=/usr \
+        -DVERSION_PATCH=${SOURCE_REV} \
+        -DGIT_INFO=${GIT_INFO} \
+        -DBUILD_SHARED_LIBS=ON \
+        -DENABLE_PAHO_INSTALLATION=${ENABLE_PAHO_INSTALLATION} \
+        -DENABLE_RDKAFKA_INSTALLATION=${ENABLE_RDKAFKA_INSTALLATION} \
+        -DHAVE_VAAPI=ON \
+        .. \
+        && make -j $(nproc) \
+        && make install \
+        && echo "/usr/lib/gst-video-analytics" >> /etc/ld.so.conf.d/opencv-dldt-gst.conf && ldconfig && \
+        mv /home/rabbitmq.config /etc/rabbitmq/ && chmod +x /home/start.sh && \
+        rm -rf /home/${GST_VIDEO_ANALYTICS_NAME} && rm /home/v${GST_VIDEO_ANALYTICS_VER}.tar.gz
 ENV GST_PLUGIN_PATH=/usr/lib/gst-video-analytics/
 

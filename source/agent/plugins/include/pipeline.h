@@ -30,23 +30,32 @@ class rvaPipeline {
   */
   virtual rvaStatus PipelineClose() = 0;
   /**
-   @brief MCU will use this interface to fetch current applied params on the plugin.
+   @brief MCU will use this interface to fetch current applied params in the pipeline.
    @param params name-value pair will be returned to the MCU provided unordered_map.
    @return RVA_ERR_OK if params are successfull filled in, or empty param is provided. 
            Other return code if any failure.
   */
   virtual rvaStatus GetPipelineParams(std::unordered_map<std::string, std::string> &params) = 0; 
   /**
-   @brief MCU will use this interface to update params on the plugin.
+   @brief MCU will use this interface to update params in the pipeline.
    @param params name-value pair to be set.
    @return RVA_ERR_OK if params are successfull updated. 
            Other return code if any failure.
   */
   virtual rvaStatus SetPipelineParams(std::unordered_map<std::string, std::string> params) = 0;
 
-
+  /**
+   @brief MCU will use this interface to initiate elements in pipeline.
+   @return a new pipeline if elements and pipeline are successfully created.
+           Other return NULL if any failure.
+  */
   virtual GstElement * InitializePipeline() = 0;
 
+  /**
+   @brief MCU will use this interface to link elements in the pipeline.
+   @return RVA_ERR_OK if pipeline is successfull linked.
+           Other return code if any failure.
+  */
   virtual rvaStatus LinkElements() = 0;
 };
 
