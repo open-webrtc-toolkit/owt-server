@@ -66,6 +66,12 @@ module.exports.load = () => {
         process.exit(1);
       }
       item.ip_address = addr.ip;
+
+      // Parse webrtc ip_address variables from ENV.
+      if (item.replaced_ip_address && item.replaced_ip_address.indexOf('$') == 0) {
+        item.replaced_ip_address = process.env[item.replaced_ip_address.substr(1)];
+        console.log('ENV: config.webrtc.network_interfaces[' + item.name + '].replaced_ip_address=' + item.replaced_ip_address);
+      }
     });
 
     return config;
