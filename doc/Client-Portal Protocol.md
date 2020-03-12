@@ -369,7 +369,11 @@ This a format for client reconnects.
      transport: object(TransportOptions),
      attributes: object(ClientDefinedAttributes) | null
     }
+```
 
+A publication can send either media or data, but a QUIC *transport* channel can support multiple stream for both media and data. Setting `media:null` and `data:false` is meaningless, so it should be rejected by server. Protocol itself doesn't forbit to create WebRTC connection for data. However, SCTP data channel is not implemented at server side, so currently `data:true` is only support by QUIC transport channels. 
+
+```
   object(WebRTCMediaOptions)::
     {
       audio: {
@@ -565,7 +569,7 @@ This a format for client reconnects.
     object(TransportOptions)::
       {
         type: "webrtc" | "quic-p2p",
-        id: string(transportId) | null,  // null will result to create a new transport channel.
+        id: string(transportId) | null,  // null will result to create a new transport channel. Always be null if transport type is webrtc because webrtc agent doesn't support multiple transceivers on a single PeerConnection at this time.
       }
 
     object(P2PQuicParametersMessage)::
@@ -608,15 +612,8 @@ This a format for client reconnects.
   object(SessionProgress)::
     {
      id: string(SessionId), /* StreamId returned in publishing or SubscriptionId returned in subscribing*/
-     status: "soac" | "ready" | "error",
-     data: object(RecorderInfo)/*If status equals “ready” and session is for recording*/ )
+     status: "ready" | "error"
     }
-
-    object(RecorderInfo)::
-      {
-       host: string(HostnameOrIPOfRecorder),
-       file: string(FullPathNameOfRecordedFile)
-      }
 
 # 4. Examples
 
