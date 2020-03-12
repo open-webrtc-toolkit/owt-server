@@ -6,7 +6,8 @@
 const Connections = require('./connections');
 const InternalConnectionFactory = require('./InternalConnectionFactory');
 const logger = require('../logger').logger;
-const QuicConnection = require('./quicConnection');
+const P2PQuicTransport = require('./p2p/p2pQuicTransport');
+const P2PQuicStream = require('./p2p/p2pQuicStream');
 const log = logger.getLogger('QuicNode');
 const addon = require('./build/Release/quic');
 
@@ -23,10 +24,28 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
     var connections = new Connections;
     var internalConnFactory = new InternalConnectionFactory;
     const pubSubMap = new Map();  // Key is publication, value is an array of subscription array
+    const transportChannels = new Map();  // Key is transport ID, value is QuicTransport instance.
 
     var notifyStatus = (controller, sessionId, direction, status) => {
         rpcClient.remoteCast(controller, 'onSessionProgress', [sessionId, direction, status]);
     };
+
+    const createQuicStream=function(transportId, streamId, direction, options, callback){
+        let tc;
+        if(transportId){
+            if (!transportChannels.has(transportId)) {
+                return callback('callback', {type: 'failed', reason: 'Invalid transport ID.'});
+            }
+            tc = transportChannels.get(options.transport.id);
+        } else {
+            transportId = Math.round(Math.random() * 1000000000000000000) + '';
+            tc = new P2PQuicTransport(transportId, (status) => {
+                notifyStatus(options.controller, connectionId, direction, status);
+            });
+            transportChannels.set(transportId, tc);
+        }
+        return tc.getOrCreateQuicStream(streamId);
+    }
 
     const createQuicConnection = function (connectionId, direction, options) {
         var connection = new QuicConnection(connectionId, function (status) {
@@ -85,20 +104,10 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
             break;
         case 'quic-p2p':
             log.debug("New P2P QUIC connection.");
-            conn = createQuicConnection(connectionId, 'in', options);
-            pubSubMap.set(connectionId, []);
-            // Forward data from publication to subscriptions.
-            /*
-                conn.ondata=(data)=>{
-                    log.debug('conn.ondata');
-                    if(pubSubMap.has(connectionId)){
-                        log.debug('pubSubMap has connectionID.');
-                        for(const sub of pubSubMap.get(connectionId)){
-                            log.debug('Writing data.'+data);
-                            sub.write(data);
-                        }
-                    }
-                }*/
+            conn = createQuicStream(options.transport.id, connectionId, 'in', options, callback);
+            if (!conn) {
+                return;
+            }
             break;
         default:
             log.error('Connection type invalid:' + connectionType);

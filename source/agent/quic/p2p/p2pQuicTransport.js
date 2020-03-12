@@ -5,10 +5,12 @@
 /*global require*/
 'use strict';
 const logger = require('../logger').logger;
-const log = logger.getLogger('QuicConnection');
+const log = logger.getLogger('P2PQuicConnection');
 const addon = require('./build/Release/quic');
+const P2PQuicStreams = require('./p2pQuicStream.js');
 
-module.exports = class QuicConnection {
+module.exports = class P2PQuicTransport {
+  // `senderCallback` is a signaling sender.
   constructor(id, sendCallback) {
     Object.defineProperty(this, 'id', {
       configurable: false,
@@ -20,8 +22,7 @@ module.exports = class QuicConnection {
     this._send = sendCallback;
     this._isFirstCandidate = true;
     this._quicStream = null;
-    this._source = null;  // Notify |_source| when a outbound stream is created. Assuming mutiplexing is not enabled, so there is only one outbound stream.
-    this._destination = null;
+    this._p2pQuicStreams = new Map(); // P2PQuicStreams used by agent.
 
     this._iceTransport.onicecandidate = (event) => {
       if (this._isFirstCandidate) {
@@ -34,13 +35,9 @@ module.exports = class QuicConnection {
       });
     };
     this._quicTransport.onbidirectionalstream = (stream) => {
+      // QuicStream doesn't expose its ID as a property to JavaScript layer. We
+      // signal it as the first message of a stream.
       log.debug('quicTransport onbidirectionalstream. '+ JSON.stringify(stream));
-      this._quicStream = stream;
-      if (this._destination) {
-        const dest = this._destination;
-        this._destination = null;
-        this.addDestination(undefined, dest);
-      }
       stream.ondata = data => {
         if (typeof this.ondata === 'function') {
           this.ondata.apply(this, [data]);
@@ -52,14 +49,6 @@ module.exports = class QuicConnection {
     }
     log.debug('Construct a QuicConnection.');
   };
-
-  write(data) {
-    if (this._quicStream) {
-      this._quicStream.write({data: data});
-    } else {
-      log.error('Stream is not created.');
-    }
-  }
 
   onSignalling(message) {
     log.debug('On signaling message to QUIC connection: ' + JSON.stringify(
@@ -103,30 +92,11 @@ module.exports = class QuicConnection {
     return this;
   }
 
-  // Assumimg mutiplexing is not enabled.
-  // This implemention looks ugly, and it needs to be refined in the future. The main reason is stream may not ready when this method is called.
-  addDestination(track, dest) {
-    // connections.js calls this API syn
-    log.debug('addDestination.');
-    // Ignore |track| because this connection is a data channel.
-    if (this._quicStream) {
-      log.debug('Quic stream add Destination ' + JSON.stringify(dest));
-      if(dest._quicStream){
-        this._quicStream.addDestination(dest._quicStream);
-        log.debug('Added destination.');
-      }
-    } else {
-      this._destination = dest;
-      log.debug('this._quicStream is null.');
+  getOrCreateQuicStream(streamId) {
+    if (this._p2pQuicStreams.has(streamId)) {
+      return this._p2pQuicStreams.get(streamId);
     }
-    dest.onbidirectionalstream = (stream) => {
-      log.debug('dest.onbidirectionalstream');
-      this.addDestination(undefined, dest);
-    };
-  }
-
-  addSource(source) {
-    this._source = source;
+    log.error('Create a new QUIC stream at server side is not implemented.');
   }
 
   _sendIceParameters() {
