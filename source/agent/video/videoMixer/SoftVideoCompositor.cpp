@@ -538,7 +538,7 @@ boost::shared_ptr<webrtc::VideoFrame> SoftFrameGenerator::layout()
 
     if (m_layout.size() == 1) {
         boost::shared_ptr<webrtc::VideoFrame> inputFrame = m_owner->getInputFrame(m_layout.front().input);
-        return boost::make_shared<webrtc::VideoFrame>(*inputFrame);
+        return inputFrame;
     }
 
     // Set the background color
