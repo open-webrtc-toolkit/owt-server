@@ -5,10 +5,7 @@
 #ifndef VideoFramePacketizer_h
 #define VideoFramePacketizer_h
 
-// #include "WebRTCTaskRunner.h"
-// #include "WebRTCTransport.h"
 #include "MediaFramePipeline.h"
-// #include "SsrcGenerator.h"
 
 #include <MediaDefinitions.h>
 #include <MediaDefinitionExtra.h>
@@ -29,7 +26,6 @@ namespace owt_base {
 class VideoFramePacketizer : public FrameDestination,
                              public erizo::MediaSource,
                              public erizo::FeedbackSink,
-                             public erizoExtra::RTPDataReceiver,
                              public rtc_adapter::AdapterFeedbackListener,
                              public rtc_adapter::AdapterStatsListener,
                              public rtc_adapter::AdapterDataListener {
@@ -46,7 +42,7 @@ public:
     void bindTransport(erizo::MediaSink* sink);
     void unbindTransport();
     void enable(bool enabled);
-    // uint32_t getSsrc() { return m_ssrc; }
+    uint32_t getSsrc() { return m_ssrc; }
 
     // Implements FrameDestination.
     void onFrame(const Frame&);
@@ -55,11 +51,8 @@ public:
     // Implements erizo::MediaSource.
     int sendFirPacket();
 
-    // Implements RTPDataReceiver.
-    void receiveRtpData(char*, int len, erizoExtra::DataType, uint32_t channelId);
-
     // Implements the AdapterFeedbackListener interfaces.
-    void onFeedback(const FeedbackMsg& msg) = 0;
+    void onFeedback(const FeedbackMsg& msg) override;
     // Implements the AdapterStatsListener interfaces.
     void onAdapterStats(const rtc_adapter::AdapterStats& stats) override;
     // Implements the AdapterDataListener interfaces.
@@ -75,19 +68,16 @@ private:
     int sendPLI();
 
     bool m_enabled;
-    bool m_enableDump;
-    bool m_keyFrameArrived;
     bool m_selfRequestKeyframe;
 
     FrameFormat m_frameFormat;
     uint16_t m_frameWidth;
     uint16_t m_frameHeight;
+    uint32_t m_ssrc;
 
     boost::shared_mutex m_transportMutex;
 
     uint16_t m_sendFrameCount;
-    int64_t m_timeStampOffset;
-
     std::shared_ptr<rtc_adapter::RtcAdapter> m_rtcAdapter;
     rtc_adapter::VideoSendAdapter* m_videoSend;
 };

@@ -6,11 +6,11 @@
 #define VideoFrameConstructor_h
 
 #include "MediaFramePipeline.h"
-// #include "WebRTCTransport.h"
 
 #include <boost/scoped_ptr.hpp>
 #include <MediaDefinitions.h>
 #include <MediaDefinitionExtra.h>
+#include <logger.h>
 
 #include <JobTimer.h>
 
@@ -35,6 +35,7 @@ class VideoFrameConstructor : public erizo::MediaSink,
                               public rtc_adapter::AdapterFrameListener,
                               public rtc_adapter::AdapterStatsListener,
                               public rtc_adapter::AdapterDataListener {
+    DECLARE_LOGGER();
 
 public:
     struct Config {
@@ -78,7 +79,6 @@ private:
     void close();
 
     bool m_enabled;
-    bool m_enableDump;
     uint32_t m_ssrc;
 
     erizo::MediaSource* m_transport;
@@ -87,10 +87,6 @@ private:
     uint32_t m_pendingKeyFrameRequests;
 
     VideoInfoListener* m_videoInfoListener;
-    // std::unique_ptr<WebRTCTransport<erizoExtra::VIDEO>> m_videoTransport;
-
-    // Temporary buffer for dump
-    char buf[1500];
 
     std::shared_ptr<rtc_adapter::RtcAdapter> m_rtcAdapter;
     rtc_adapter::VideoReceiveAdapter* m_videoReceive;

@@ -37,6 +37,8 @@ public:
     // Implement VideoSendAdapter
     void onFrame(const owt_base::Frame&) override;
     int onRtcpData(char* data, int len) override;
+    void reset() override;
+
     uint32_t ssrc() { return m_ssrc; }
 
     // Implement webrtc::Transport
@@ -53,7 +55,6 @@ public:
 
 private:
     bool init();
-    void reset();
 
     bool m_enableDump;
     RtcAdapter::Config m_config;

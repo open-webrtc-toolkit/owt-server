@@ -47,6 +47,7 @@ public:
     virtual void onFrame(const owt_base::Frame&) = 0;
     virtual int onRtcpData(char* data, int len) = 0;
     virtual uint32_t ssrc() = 0;
+    virtual void reset() = 0;
 };
 
 class AudioReceiveAdapter {

@@ -164,7 +164,6 @@ bool VideoSendAdapterImpl::init()
     configuration.retransmission_rate_limiter = m_retransmissionRateLimiter.get();
     configuration.local_media_ssrc = m_ssrc;//rtp_config.ssrcs[i];
 
-
     m_rtpRtcp = webrtc::RtpRtcp::Create(configuration);
     m_rtpRtcp->SetSendingStatus(true);
     m_rtpRtcp->SetSendingMediaStatus(true);

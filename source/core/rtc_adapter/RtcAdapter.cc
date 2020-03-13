@@ -75,28 +75,38 @@ VideoReceiveAdapter* RtcAdapterImpl::createVideoReceiver(const Config& config) {
     return new VideoReceiveAdapterImpl(this, config);
 }
 
-void RtcAdapterImpl::destoryVideoReceiver(VideoReceiveAdapter* video_recv_adaptor) {
-    // delete video_recv_adaptor;
+void RtcAdapterImpl::destoryVideoReceiver(VideoReceiveAdapter* video_recv_adapter) {
+    VideoReceiveAdapterImpl* impl = static_cast<VideoReceiveAdapterImpl*>(video_recv_adapter);
+    delete impl;
 }
 
 VideoSendAdapter* RtcAdapterImpl::createVideoSender(const Config& config)  {
     return new VideoSendAdapterImpl(this, config);
 }
-void RtcAdapterImpl::destoryVideoSender(VideoSendAdapter* video_send_adaptor) {
-    // delete video_send_adaptor;
+void RtcAdapterImpl::destoryVideoSender(VideoSendAdapter* video_send_adapter) {
+    VideoSendAdapterImpl* impl = static_cast<VideoSendAdapterImpl*>(video_send_adapter);
+    delete impl;
 }
 
 AudioReceiveAdapter* RtcAdapterImpl::createAudioReceiver(const Config& config) {
     return nullptr;
 }
-void RtcAdapterImpl::destoryAudioReceiver(AudioReceiveAdapter* audio_recv_adaptor) {}
+void RtcAdapterImpl::destoryAudioReceiver(AudioReceiveAdapter* audio_recv_adapter) {}
 
 AudioSendAdapter* RtcAdapterImpl::createAudioSender(const Config& config) {
     return new AudioSendAdapterImpl(this, config);
 }
 
-void RtcAdapterImpl::destoryAudioSender(AudioSendAdapter* audio_send_adaptor) {
-    // delete audio_send_adaptor;
+void RtcAdapterImpl::destoryAudioSender(AudioSendAdapter* audio_send_adapter) {
+    AudioSendAdapterImpl* impl = static_cast<AudioSendAdapterImpl*>(audio_send_adapter);
+    delete impl;
 }
+
+RtcAdapter* RtcAdapterFactory::CreateRtcAdapter() {
+    return new RtcAdapterImpl();
+}
+
+void RtcAdapterFactory::DestroyRtcAdapter(RtcAdapter* adapter) {}
+
 
 } // namespace rtc_adapter

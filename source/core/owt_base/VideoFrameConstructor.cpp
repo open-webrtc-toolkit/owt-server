@@ -5,10 +5,6 @@
 #include "VideoFrameConstructor.h"
 
 #include <rtputils.h>
-// #include <common_types.h>
-// #include <modules/video_coding/timing.h>
-// #include <modules/video_coding/include/video_error_codes.h>
-// #include <rtc_base/time_utils.h>
 #include <random>
 #include <future>
 
@@ -16,48 +12,50 @@ using namespace rtc_adapter;
 
 namespace owt_base {
 
-const uint32_t kBufferSize = 8192;
+DEFINE_LOGGER(VideoFrameConstructor, "owt.VideoFrameConstructor");
 
 VideoFrameConstructor::VideoFrameConstructor(VideoInfoListener* vil, uint32_t transportccExtId)
     : m_enabled(true)
-    , m_enableDump(false)
     , m_ssrc(0)
     , m_transport(nullptr)
     , m_pendingKeyFrameRequests(0)
     , m_videoInfoListener(vil)
     , m_rtcAdapter(RtcAdapterFactory::CreateRtcAdapter())
+    , m_videoReceive(nullptr)
 {
     m_config.transport_cc = transportccExtId;
+    m_feedbackTimer.reset(new JobTimer(1, this));
 }
 
 VideoFrameConstructor::VideoFrameConstructor(
     VideoFrameConstructor* base,
     VideoInfoListener* vil, uint32_t transportccExtId)
     : m_enabled(true)
-    , m_enableDump(false)
     , m_ssrc(0)
     , m_transport(nullptr)
     , m_pendingKeyFrameRequests(0)
     , m_videoInfoListener(vil)
+    , m_videoReceive(nullptr)
 {
     m_config.transport_cc = transportccExtId;
     assert(base);
+    m_feedbackTimer.reset(new JobTimer(1, this));
     m_rtcAdapter = base->m_rtcAdapter;
 }
 
 VideoFrameConstructor::~VideoFrameConstructor()
 {
-    // m_feedbackTimer->stop();
+    m_feedbackTimer->stop();
     unbindTransport();
     if (m_videoReceive) {
         m_rtcAdapter->destoryVideoReceiver(m_videoReceive);
+        m_rtcAdapter.reset();
         m_videoReceive = nullptr;
     }
 }
 
 void VideoFrameConstructor::maybeCreateReceiveVideo(uint32_t ssrc) {
     if (!m_videoReceive) {
-        // RTC_DLOG(LS_INFO) << "Create VideoReceiveStream with SSRC: " << ssrc;
         // Create Receive Video Stream
         rtc_adapter::RtcAdapter::Config recvConfig;
         recvConfig.ssrc = ssrc;
@@ -72,7 +70,6 @@ void VideoFrameConstructor::maybeCreateReceiveVideo(uint32_t ssrc) {
 
 void VideoFrameConstructor::bindTransport(erizo::MediaSource* source, erizo::FeedbackSink* fbSink)
 {
-    // ELOG_INFO("bindTransport source %p fbsink %p this %p", source, fbSink, this);
     boost::unique_lock<boost::shared_mutex> lock(m_transportMutex);
     m_transport = source;
     m_transport->setVideoSink(this);
@@ -154,7 +151,6 @@ int VideoFrameConstructor::deliverVideoData_(std::shared_ptr<erizo::DataPacket> 
         m_ssrc = head->getSSRC();
         maybeCreateReceiveVideo(m_ssrc);
     }
-
     if (m_videoReceive) {
         m_videoReceive->onRtpData(video_packet->data, video_packet->length);
     }

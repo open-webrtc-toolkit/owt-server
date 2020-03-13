@@ -4,9 +4,7 @@
 
 #include "AudioFramePacketizer.h"
 #include "AudioUtilitiesNew.h"
-// #include "WebRTCTaskRunner.h"
 
-// #include <rtc_base/logging.h>
 
 using namespace rtc_adapter;
 
@@ -21,6 +19,7 @@ AudioFramePacketizer::AudioFramePacketizer()
     , m_seqNo(0)
     , m_ssrc(0)
     , m_rtcAdapter(RtcAdapterFactory::CreateRtcAdapter())
+    , m_audioSend(nullptr)
 {
     audio_sink_ = nullptr;
     init();
@@ -31,6 +30,7 @@ AudioFramePacketizer::~AudioFramePacketizer()
     close();
     if (m_audioSend) {
         m_rtcAdapter->destoryAudioSender(m_audioSend);
+        m_rtcAdapter.reset();
         m_audioSend = nullptr;
     }
 }
@@ -93,8 +93,9 @@ void AudioFramePacketizer::onFrame(const Frame& frame)
         m_frameFormat = frame.format;
     }
 
-
-    m_audioSend->onFrame(frame);
+    if (m_audioSend) {
+        m_audioSend->onFrame(frame);
+    }
 }
 
 bool AudioFramePacketizer::init()
@@ -105,6 +106,7 @@ bool AudioFramePacketizer::init()
         sendConfig.rtp_listener = this;
         sendConfig.stats_listener = this;
         m_audioSend = m_rtcAdapter->createAudioSender(sendConfig);
+        m_ssrc = m_audioSend->ssrc();
         return true;
     }
     return false;

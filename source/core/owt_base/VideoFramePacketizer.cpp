@@ -23,16 +23,14 @@ VideoFramePacketizer::VideoFramePacketizer(
     bool selfRequestKeyframe,
     uint32_t transportccExtId)
     : m_enabled(true)
-    , m_enableDump(false)
-    , m_keyFrameArrived(false)
     , m_selfRequestKeyframe(selfRequestKeyframe)
     , m_frameFormat(FRAME_FORMAT_UNKNOWN)
     , m_frameWidth(0)
     , m_frameHeight(0)
-    // , m_ssrc(0)
+    , m_ssrc(0)
     , m_sendFrameCount(0)
-    , m_timeStampOffset(0)
     , m_rtcAdapter(RtcAdapterFactory::CreateRtcAdapter())
+    , m_videoSend(nullptr)
 {
     video_sink_ = nullptr;
     init(enableRed, enableUlpfec, enableTransportcc, transportccExtId);
@@ -43,6 +41,7 @@ VideoFramePacketizer::~VideoFramePacketizer()
     close();
     if (m_videoSend) {
         m_rtcAdapter->destoryVideoSender(m_videoSend);
+        m_rtcAdapter.reset();
         m_videoSend = nullptr;
     }
 }
@@ -65,6 +64,7 @@ bool VideoFramePacketizer::init(bool enableRed, bool enableUlpfec, bool enableTr
         sendConfig.rtp_listener = this;
         sendConfig.stats_listener = this;
         m_videoSend = m_rtcAdapter->createVideoSender(sendConfig);
+        m_ssrc = m_videoSend->ssrc();
         return true;
     }
 
@@ -93,25 +93,17 @@ void VideoFramePacketizer::enable(bool enabled)
 {
     m_enabled = enabled;
     if (m_enabled) {
-        FeedbackMsg feedback = {.type = VIDEO_FEEDBACK, .cmd = REQUEST_KEY_FRAME};
-        deliverFeedbackMsg(feedback);
-        m_keyFrameArrived = false;
         m_sendFrameCount = 0;
-        m_timeStampOffset = 0;
+        if (m_videoSend) {
+            m_videoSend->reset();
+        }
     }
-}
-
-int VideoFramePacketizer::deliverFeedback_(std::shared_ptr<erizo::DataPacket> data_packet)
-{
-    m_videoSend->onRtcpData(data_packet->data, data_packet->length);
-    return data_packet->length;
 }
 
 void VideoFramePacketizer::onFeedback(const FeedbackMsg& msg)
 {
     deliverFeedbackMsg(msg);
 }
-
 
 void VideoFramePacketizer::onAdapterStats(const AdapterStats& stats) {}
 
@@ -122,25 +114,13 @@ void VideoFramePacketizer::onAdapterData(char* data, int len)
         return;
     }
 
-    assert(type == erizoExtra::VIDEO);
-    // ELOG_WARN("receiveRtpData %p", buf);
     video_sink_->deliverVideoData(std::make_shared<erizo::DataPacket>(0, data, len, erizo::VIDEO_PACKET));
 }
 
 void VideoFramePacketizer::onFrame(const Frame& frame)
 {
-    ELOG_DEBUG("onFrame, format:%d, length:%d", frame.format, frame.length);
     if (!m_enabled) {
         return;
-    }
-
-    if (!m_keyFrameArrived) {
-        if (!frame.additionalInfo.video.isKeyFrame) {
-            // ELOG_DEBUG("Key frame has not arrived, send key-frame-request.");
-            FeedbackMsg feedback = {.type = VIDEO_FEEDBACK, .cmd = REQUEST_KEY_FRAME};
-            deliverFeedbackMsg(feedback);
-            return;
-        }
     }
 
     if (m_selfRequestKeyframe) {
@@ -165,7 +145,9 @@ void VideoFramePacketizer::onFrame(const Frame& frame)
 
 void VideoFramePacketizer::onVideoSourceChanged()
 {
-    m_keyFrameArrived = false;
+    if (m_videoSend) {
+        m_videoSend->reset();
+    }
 }
 
 int VideoFramePacketizer::sendFirPacket()
@@ -178,6 +160,15 @@ int VideoFramePacketizer::sendFirPacket()
 void VideoFramePacketizer::close()
 {
     unbindTransport();
+}
+
+int VideoFramePacketizer::deliverFeedback_(std::shared_ptr<erizo::DataPacket> data_packet)
+{
+    if (m_videoSend) {
+        m_videoSend->onRtcpData(data_packet->data, data_packet->length);
+        return data_packet->length;
+    }
+    return 0;
 }
 
 int VideoFramePacketizer::sendPLI() {

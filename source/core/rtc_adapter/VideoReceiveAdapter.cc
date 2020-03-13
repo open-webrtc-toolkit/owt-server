@@ -159,12 +159,11 @@ VideoReceiveAdapterImpl::~VideoReceiveAdapterImpl() {
     std::promise<int> p;
     std::future<int> f = p.get_future();
     taskQueue()->PostTask([this, &p]() {
-        if (call()) {
-            if (m_videoRecvStream) {
-                m_videoRecvStream->Stop();
-                call()->DestroyVideoReceiveStream(m_videoRecvStream);
-                m_videoRecvStream = nullptr;
-            }
+        if (m_videoRecvStream) {
+            RTC_DLOG(LS_INFO) << "Destroy VideoReceiveStream with SSRC: " << m_config.ssrc;
+            m_videoRecvStream->Stop();
+            call()->DestroyVideoReceiveStream(m_videoRecvStream);
+            m_videoRecvStream = nullptr;
         }
         p.set_value(0);
     });
@@ -175,8 +174,8 @@ void VideoReceiveAdapterImpl::OnFrame(const webrtc::VideoFrame& video_frame) {}
 
 void VideoReceiveAdapterImpl::CreateReceiveVideo() {
     taskQueue()->PostTask([this]() {
-        if (call() && !m_videoRecvStream) {
-            RTC_DLOG(LS_INFO) << "Create VideoReceiveStream with SSRC: " << m_config.ssrc;
+        if (!m_videoRecvStream) {
+            RTC_LOG(LS_INFO) << "Create VideoReceiveStream with SSRC: " << m_config.ssrc;
             // Create Receive Video Stream
             webrtc::VideoReceiveStream::Config default_config(this);
             default_config.rtp.local_ssrc = kLocalSsrc;
@@ -184,7 +183,7 @@ void VideoReceiveAdapterImpl::CreateReceiveVideo() {
             default_config.rtp.remote_ssrc = m_config.ssrc;
             default_config.rtp.red_payload_type = RED_90000_PT;
             if (m_config.transport_cc) {
-                RTC_DLOG(LS_INFO) << "TransportSequenceNumber Extension Enabled";
+                RTC_LOG(LS_INFO) << "TransportSequenceNumber Extension Enabled";
                 default_config.rtp.transport_cc = true;
                 default_config.rtp.extensions.emplace_back(
                     webrtc::RtpExtension::kTransportSequenceNumberUri, m_config.transport_cc);
@@ -270,12 +269,10 @@ int VideoReceiveAdapterImpl::onRtpData(char* data, int len) {
     std::shared_ptr<DataPacket> wp =
         std::make_shared<DataPacket>(data, len);
     taskQueue()->PostTask([this, wp]() {
-        if (call()) {
-            call()->Receiver()->DeliverPacket(
-                webrtc::MediaType::VIDEO,
-                rtc::CopyOnWriteBuffer(wp->data, wp->length),
-                rtc::TimeUTCMicros());
-        }
+        call()->Receiver()->DeliverPacket(
+            webrtc::MediaType::VIDEO,
+            rtc::CopyOnWriteBuffer(wp->data, wp->length),
+            rtc::TimeUTCMicros());
     });
     return len;
 }
