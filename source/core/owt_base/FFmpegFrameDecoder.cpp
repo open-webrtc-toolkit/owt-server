@@ -124,10 +124,8 @@ bool FFmpegFrameDecoder::init(FrameFormat format)
         return false;
     }
 
-    m_decCtx->active_thread_type = FF_THREAD_FRAME;
     m_decCtx->thread_type = FF_THREAD_FRAME;
     m_decCtx->thread_count = 16;
-
     m_decCtx->get_buffer2 = AVGetBuffer;
     m_decCtx->opaque = this;
     ret = avcodec_open2(m_decCtx, dec , NULL);
