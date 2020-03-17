@@ -20,6 +20,9 @@
 #include <modules/rtp_rtcp/include/rtp_rtcp.h>
 #include <modules/rtp_rtcp/include/rtp_rtcp_defines.h>
 #include <modules/rtp_rtcp/source/rtp_sender_video.h>
+#include <api/transport/network_control.h>
+#include <api/transport/field_trial_based_config.h>
+#include <call/rtp_transport_controller_send_interface.h>
 
 #include <rtc_base/random.h>
 #include <rtc_base/rate_limiter.h>
@@ -29,7 +32,8 @@ namespace rtc_adapter {
 
 class VideoSendAdapterImpl : public VideoSendAdapter,
                              public webrtc::Transport,
-                             public webrtc::RtcpIntraFrameObserver {
+                             public webrtc::RtcpIntraFrameObserver,
+                             public webrtc::TargetTransferRateObserver {
 public:
     VideoSendAdapterImpl(CallOwner* owner, const RtcAdapter::Config& config);
     ~VideoSendAdapterImpl();
@@ -52,6 +56,9 @@ public:
     void OnReceivedSLI(uint32_t ssrc, uint8_t picture_id) {}
     void OnReceivedRPSI(uint32_t ssrc, uint64_t picture_id) {}
     void OnLocalSsrcChanged(uint32_t old_ssrc, uint32_t new_ssrc) {}
+
+    //Implements webrtc::TargetTransferRateObjserver
+    void OnTargetTransferRate(webrtc::TargetTransferRate) override;
 
 private:
     bool init();
@@ -83,6 +90,8 @@ private:
     std::unique_ptr<webrtc::RtcEventLog> m_eventLog;
     std::unique_ptr<webrtc::RTPSenderVideo> m_senderVideo;
     std::unique_ptr<webrtc::FieldTrialBasedConfig> m_fieldTrialConfig;
+    std::unique_ptr<webrtc::TaskQueueFactory> m_taskQueueFactory;
+    std::unique_ptr<webrtc::RtpTransportControllerSendInterface> m_transportControllerSend;
 
     // Listeners
     AdapterFeedbackListener* m_feedbackListener;
