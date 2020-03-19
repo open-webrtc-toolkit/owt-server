@@ -180,7 +180,7 @@ After editing the configuration file, you should run `./initcert.js` inside each
 | DTLS-SRTP | webrtc_agent/agent.toml |
 | management-console HTTPS | management_console/management_console.toml |
 
-For OWT sample application's certificate configuration, please follow the instruction file 'README.md' located at Release-<Version>/extras/basic_example/.
+For OWT sample application's certificate configuration, please follow the instruction file 'README.md' located at Release-<Version>/apps/current_app/.
 
 ### 2.3.8 Launch the OWT server as single node {#Conferencesection2_3_8}
 To launch the OWT server on one machine, follow steps below:
@@ -277,7 +277,7 @@ Follow the steps below to set up a OWT server cluster:
 
         cd Release-<Version>/
         bin/daemon.sh start app
-   > **Note**: You can also deploy the sample application server on separated machine, follow instructions at Release-<Version>/extras/basic_example/README.md
+   > **Note**: You can also deploy the sample application server on separated machine, follow instructions at Release-<Version>/apps/current_app/README.md
 
 7. Choose machines to run cluster-managers. These machines do not need to be visible to clients, but should be visible to management-api and all workers.
 8. Edit the configurations of cluster-manager in Release-<Version>/cluster_manager/cluster_manager.toml.
@@ -738,7 +738,7 @@ Only super service user can access runtime configuration. Current management con
 ## 4.1 Introduction {#Conferencesection4_1}
 The OWT sample application server is a Web application demo that shows how to host audio/video conference services powered by the Open WebRTC Toolkit. The sample application server is based on OWT runtime components. Refer to [Section 2](#Conferencesection2) of this guide, for system requirements and launch/stop instructions.
 
-The source code of the sample application is in Release-<Version>/extras/basic_example/.
+The source code of the sample application is in Release-<Version>/apps/current_app/.
 
 This section explains how to start a conference and then connect to a conference using different qualifiers, such as a specific video resolution.
 

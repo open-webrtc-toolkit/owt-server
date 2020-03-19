@@ -6,7 +6,7 @@ module.exports = function (config) {
       'dependencies/adapter-7.0.0.js',
       'dependencies/jquery-3.2.1.min.js',
       'dependencies/socket.io.js',
-      '../dist/extras/basic_example/public/scripts/owt.js',
+      '../dist/apps/current_app/public/scripts/owt.js',
       'test/restJsCase.js',
     ],
     protocol: 'http:',

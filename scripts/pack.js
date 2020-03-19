@@ -20,7 +20,7 @@ optParser.addOption('e', 'encrypt', 'boolean', 'Whether encrypt during pack (Eg.
 optParser.addOption('d', 'debug', 'boolean', '(Disabled)');
 optParser.addOption('o', 'addon-debug', 'boolean', 'Whether pack debug addon (Eg. pack.js -t webrtc-agent -o)');
 optParser.addOption('f', 'full', 'boolean', 'Whether perform a full pack (--full is the equalivation of pack.js -t all -r -i)');
-optParser.addOption('s', 'sample-path', 'string', 'Specify sample path (Eg. pack.js -t all -s ${samplePath})');
+optParser.addOption('p', 'app-path', 'string', 'Specify app path (Eg. pack.js -t all --app-path ${appPath})');
 optParser.addOption('a', 'archive', 'string', 'Specify archive name (Eg. pack.js -t all -a ${archiveName})');
 optParser.addOption('n', 'node-module-path', 'string', 'Specify shared-node-module directory');
 optParser.addOption('c', 'copy-module-path', 'string', 'Specify copy node modules directory');
@@ -596,24 +596,36 @@ function packScripts() {
   execSync(`chmod +x ${binDir}/\*.sh`);
 }
 
-function packSamples() {
-  if (!options['sample-path']) return;
+function packApps() {
+  if (!options['app-path']) return;
   chdir(originCwd);
-  var samplePath = options['sample-path'];
-  if (!fs.existsSync(samplePath)) {
-    console.log(`\x1b[31mError: ${samplePath} does not exist\x1b[0m`);
+  var appPath = options['app-path'];
+  if (!fs.existsSync(appPath)) {
+    console.log(`\x1b[31mError: ${appPath} does not exist\x1b[0m`);
     return;
   }
-  execSync(`rm -rf ${distDir}/extras`);
-  execSync(`mkdir -p ${distDir}/extras`);
-  execSync(`cp -a ${samplePath} ${distDir}/extras/basic_example`);
+  execSync(`rm -rf ${distDir}/apps`);
+  execSync(`mkdir -p ${distDir}/apps`);
+  console.log('\x1b[32mApps folder created in :', distDir, '\x1b[0m');
+  execSync(`cp -a ${appPath} ${distDir}/apps/current_app`);
 
-  const certScript = `${distDir}/extras/basic_example/initcert.js`;
+  // Look in the app's package.json to see what file to use for main.js
+  var jsonTXT = execSync(`cat ${distDir}/apps/current_app/package.json`);
+  var appJSON = JSON.parse(jsonTXT)["main"];
+
+  if (!appJSON === undefined) {
+    console.log("\x1b[31mError: No main js file for the app\x1b[0m");
+    return;
+  } else {
+    // Make a soft link to the main JS file node.js should call
+    execSync(`ln -sf ${distDir}/apps/current_app/${appJSON} ${distDir}/apps/current_app/main.js`);
+  }
+  const certScript = `${distDir}/apps/current_app/initcert.js`;
   if (fs.existsSync(certScript))
     execSync(`chmod +x ${certScript}`);
 
   if (options['install-module']) {
-    chdir(`${distDir}/extras/basic_example`);
+    chdir(`${distDir}/apps/current_app`);
     execSync('npm install' + npmInstallOption);
   }
 }
@@ -635,7 +647,7 @@ getTargets()
   .then(cleanIfRepack)
   .then(processTargets)
   .then(packScripts)
-  .then(packSamples)
+  .then(packApps)
   .then(archive)
   .then(() => {
     console.log('\x1b[32mWork finished in directory:', distDir, '\x1b[0m');
