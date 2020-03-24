@@ -9,18 +9,32 @@ services:
         - http_proxy
         - https_proxy
     image: owt-server
-  owt-server-conference:
+
+  # Copy the requested app to the owt-server image
+  owt-server-conference-install:
     build:
-      context: .
-      dockerfile: Dockerfile-conference
+      context: ${LOCAL_APP_PATH}
+      dockerfile: "${LOCAL_APP_PATH}/${LOCAL_APP_FOLDER}/Dockerfile"
       args:
         - http_proxy
         - https_proxy
-    image: owt-server-conference
+    image: owt-server-conference-install
+    depends_on:
+      - owt-server
+
+  # Build the server image and install the app
+  owt-server-conference-build:
+    build:
+      context: ${LOCAL_APP_PATH}
+      dockerfile: "${DOCKERFILE_PATH}/Dockerfile-conference"
+      args:
+        - http_proxy
+        - https_proxy
+    image: "${DOCKER_IMG_NAME}"
     network_mode: host
     ports:
       - "3004:3004"
     command: sh -c "service mongodb start && service rabbitmq-server start \
                     && cd /owt-server/dist/bin && ./init-all.sh && ./start-all.sh && sleep infinity"
     depends_on:
-      - owt-server
+      -  owt-server-conference-install

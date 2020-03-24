@@ -184,8 +184,8 @@ case $startStop in
         echo $! > ${pid}
         ;;
       app )
-        cd ${OWT_HOME}/extras/basic_example/
-        nohup nice -n ${OWT_NICENESS} node samplertcservice.js \
+        cd ${OWT_HOME}/apps/current_app/
+        nohup nice -n ${OWT_NICENESS} node main.js \
           > "${stdout}" 2>&1 </dev/null &
         echo $! > ${pid}
         ;;

@@ -27,7 +27,7 @@ The media server can be built on following platforms:
 ### Instructions
 In the root of the repository:
 1. Build native components: `scripts/build.js -t all --check`.
-2. Pack built components and js files: `scripts/pack.js -t all --install-module --sample-path ${webrtc-javascript-sdk-sample-conference-dist}`.
+2. Pack built components and js files: `scripts/pack.js -t all --install-module --app-path ${webrtc-javascript-sdk-sample-conference-dist}`.
 
 The ${webrtc-javascript-sdk-sample-conference-dist} is built from owt-javascript-sdk, e.g. `~/owt-client-javascript/dist/sample/conference`, see https://github.com/open-webrtc-toolkit/owt-client-javascript for details.
 
@@ -41,6 +41,13 @@ In the repository root, run following commands to start media server on single m
 
 ## Where to find API documents
 See "doc/servermd/Server.md" and "doc/servermd/RESTAPI.md".
+
+## Build a Docker image with your app
+Run the build_server.sh script located in docker/conference. It has one required flag, -p, which should contain the filepath of your app. Optional flags are -i for the final Docker image name, and -n
+which will make the Docker build run with --no-cache. An example usecase..
+```
+./docker/conference/build_server.sh -p ~/my_app -i myapp_img
+```
 
 ## How to contribute
 We warmly welcome community contributions to Open WebRTC Toolkit Media Server repository. If you are willing to contribute your features and ideas to OWT, follow the process below:
