@@ -6,7 +6,6 @@
 #include <AdapterInternalDefinitions.h>
 #include <VideoReceiveAdapter.h>
 #include <VideoSendAdapter.h>
-// #include <AudioReceiveAdapter.h>
 #include <AudioSendAdapter.h>
 
 #include <memory>

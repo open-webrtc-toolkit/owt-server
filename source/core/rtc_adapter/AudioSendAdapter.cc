@@ -59,23 +59,24 @@ void AudioSendAdapterImpl::onFrame(const Frame& frame) {
         if (m_rtpListener) {
             m_rtpListener->onAdapterData(reinterpret_cast<char*>(frame.payload), frame.length);
         }
-        return;
-    }
 
-    int payloadType = getAudioPltype(frame.format);
-    if (payloadType == INVALID_PT)
-        return;
-
-    boost::shared_lock<boost::shared_mutex> lock(m_rtpRtcpMutex);
-    if (!m_rtpRtcp->OnSendingRtpFrame(frame.timeStamp, -1, payloadType, false)) {
-        RTC_DLOG(LS_WARNING) << "OnSendingRtpFrame return false";
-        return;
-    }
-    const uint32_t rtp_timestamp = frame.timeStamp + m_rtpRtcp->StartTimestamp();
-    // TODO: The frame type information is lost. We treat every frame a kAudioFrameSpeech frame for now.
-    if (!m_senderAudio->SendAudio(webrtc::AudioFrameType::kAudioFrameSpeech, payloadType, rtp_timestamp,
-                                  frame.payload, frame.length)) {
-        RTC_DLOG(LS_ERROR) << "ChannelSend::SendData() failed to send data to RTP/RTCP module";
+    } else {
+        int payloadType = getAudioPltype(frame.format);
+        if (payloadType != INVALID_PT) {
+            boost::shared_lock<boost::shared_mutex> lock(m_rtpRtcpMutex);
+            if (m_rtpRtcp->OnSendingRtpFrame(frame.timeStamp, -1, payloadType, false)) {
+                const uint32_t rtp_timestamp = frame.timeStamp + m_rtpRtcp->StartTimestamp();
+                // TODO: The frame type information is lost.
+                // We treat every frame a kAudioFrameSpeech frame for now.
+                if (!m_senderAudio->SendAudio(webrtc::AudioFrameType::kAudioFrameSpeech,
+                                              payloadType, rtp_timestamp,
+                                              frame.payload, frame.length)) {
+                    RTC_DLOG(LS_ERROR) << "ChannelSend failed to send data to RTP/RTCP module";
+                }
+            } else {
+                RTC_DLOG(LS_WARNING) << "OnSendingRtpFrame return false";
+            }
+        }
     }
 }
 

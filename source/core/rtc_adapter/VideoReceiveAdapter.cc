@@ -103,27 +103,29 @@ int32_t VideoReceiveAdapterImpl::AdapterDecoder::Decode(const webrtc::EncodedIma
         }
         // Check video update
         if (m_parent->m_statsListener) {
+            bool statsChanged = false;
             if (format != m_parent->m_format) {
-                // Format update
+                // Update format
+                m_parent->m_format = format;
+                statsChanged = true;
             }
-            if (encodedImage._encodedWidth != 0 &&
-                    m_parent->m_width != encodedImage._encodedWidth) {
-                m_parent->m_width = encodedImage._encodedWidth;
-                notifyStats = true;
-            };
-            if (encodedImage._encodedHeight != 0 &&
-                    m_parent->m_height != encodedImage._encodedHeight) {
-                m_parent->m_height = encodedImage._encodedHeight;
-                notifyStats = true;
-            };
-            if (notifyStats) {
+            if (encodedImage._encodedWidth != 0 && encodedImage._encodedHeight != 0) {
+                if ((m_parent->m_width != encodedImage._encodedWidth) ||
+                    (m_parent->m_height != encodedImage._encodedHeight)) {
+                    // Update width and height
+                    m_parent->m_width = encodedImage._encodedWidth;
+                    m_parent->m_height = encodedImage._encodedHeight;
+                    statsChanged = true;
+                }
+            }
+            if (statsChanged) {
+                // Notify the stats
                 AdapterStats stats = {
                     m_parent->m_width,
                     m_parent->m_height,
                     m_parent->m_format,
                     0
                 };
-                // RTC_DLOG(LS_INFO) << "Video update:";
                 m_parent->m_statsListener->onAdapterStats(stats);
             }
         }
@@ -278,6 +280,7 @@ int VideoReceiveAdapterImpl::onRtpData(char* data, int len) {
 }
 
 bool VideoReceiveAdapterImpl::SendRtp(const uint8_t* data, size_t len, const webrtc::PacketOptions& options) {
+    RTC_LOG(LS_WARNING) << "VideoReceiveAdapterImpl SendRtp called";
     return true;
 }
 

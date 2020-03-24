@@ -25,10 +25,10 @@ public:
 };
 
 struct AdapterStats {
-    int width;
-    int height;
-    owt_base::FrameFormat format;
-    int estimatedBandwidth;
+    int width = 0;
+    int height = 0;
+    owt_base::FrameFormat format = owt_base::FRAME_FORMAT_UNKNOWN;
+    int estimatedBandwidth = 0;
 };
 
 class AdapterStatsListener {
