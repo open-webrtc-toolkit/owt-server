@@ -2,11 +2,11 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-#include <RtcAdapter.h>
 #include <AdapterInternalDefinitions.h>
+#include <AudioSendAdapter.h>
+#include <RtcAdapter.h>
 #include <VideoReceiveAdapter.h>
 #include <VideoSendAdapter.h>
-#include <AudioSendAdapter.h>
 
 #include <memory>
 
@@ -30,7 +30,8 @@ public:
 
     // Implement CallOwner
     std::shared_ptr<webrtc::Call> call() override { return m_call; }
-    std::shared_ptr<webrtc::TaskQueueFactory> taskQueueFactory() override {
+    std::shared_ptr<webrtc::TaskQueueFactory> taskQueueFactory() override
+    {
         return m_taskQueueFactory;
     }
     std::shared_ptr<rtc::TaskQueue> taskQueue() override { return m_taskQueue; }
@@ -48,17 +49,18 @@ private:
 RtcAdapterImpl::RtcAdapterImpl()
     : m_taskQueueFactory(webrtc::CreateDefaultTaskQueueFactory())
     , m_taskQueue(std::make_shared<rtc::TaskQueue>(m_taskQueueFactory->CreateTaskQueue(
-        "CallTaskQueue",
-        webrtc::TaskQueueFactory::Priority::NORMAL)))
-    , m_eventLog(std::make_shared<webrtc::RtcEventLogNull>()) {
-
+          "CallTaskQueue",
+          webrtc::TaskQueueFactory::Priority::NORMAL)))
+    , m_eventLog(std::make_shared<webrtc::RtcEventLogNull>())
+{
 }
 
-RtcAdapterImpl::~RtcAdapterImpl() {
-
+RtcAdapterImpl::~RtcAdapterImpl()
+{
 }
 
-void RtcAdapterImpl::initCall() {
+void RtcAdapterImpl::initCall()
+{
     m_taskQueue->PostTask([this]() {
         // Initialize call
         if (!m_call) {
@@ -69,43 +71,50 @@ void RtcAdapterImpl::initCall() {
     });
 }
 
-VideoReceiveAdapter* RtcAdapterImpl::createVideoReceiver(const Config& config) {
+VideoReceiveAdapter* RtcAdapterImpl::createVideoReceiver(const Config& config)
+{
     initCall();
     return new VideoReceiveAdapterImpl(this, config);
 }
 
-void RtcAdapterImpl::destoryVideoReceiver(VideoReceiveAdapter* video_recv_adapter) {
+void RtcAdapterImpl::destoryVideoReceiver(VideoReceiveAdapter* video_recv_adapter)
+{
     VideoReceiveAdapterImpl* impl = static_cast<VideoReceiveAdapterImpl*>(video_recv_adapter);
     delete impl;
 }
 
-VideoSendAdapter* RtcAdapterImpl::createVideoSender(const Config& config)  {
+VideoSendAdapter* RtcAdapterImpl::createVideoSender(const Config& config)
+{
     return new VideoSendAdapterImpl(this, config);
 }
-void RtcAdapterImpl::destoryVideoSender(VideoSendAdapter* video_send_adapter) {
+void RtcAdapterImpl::destoryVideoSender(VideoSendAdapter* video_send_adapter)
+{
     VideoSendAdapterImpl* impl = static_cast<VideoSendAdapterImpl*>(video_send_adapter);
     delete impl;
 }
 
-AudioReceiveAdapter* RtcAdapterImpl::createAudioReceiver(const Config& config) {
+AudioReceiveAdapter* RtcAdapterImpl::createAudioReceiver(const Config& config)
+{
     return nullptr;
 }
 void RtcAdapterImpl::destoryAudioReceiver(AudioReceiveAdapter* audio_recv_adapter) {}
 
-AudioSendAdapter* RtcAdapterImpl::createAudioSender(const Config& config) {
+AudioSendAdapter* RtcAdapterImpl::createAudioSender(const Config& config)
+{
     return new AudioSendAdapterImpl(this, config);
 }
 
-void RtcAdapterImpl::destoryAudioSender(AudioSendAdapter* audio_send_adapter) {
+void RtcAdapterImpl::destoryAudioSender(AudioSendAdapter* audio_send_adapter)
+{
     AudioSendAdapterImpl* impl = static_cast<AudioSendAdapterImpl*>(audio_send_adapter);
     delete impl;
 }
 
-RtcAdapter* RtcAdapterFactory::CreateRtcAdapter() {
+RtcAdapter* RtcAdapterFactory::CreateRtcAdapter()
+{
     return new RtcAdapterImpl();
 }
 
 void RtcAdapterFactory::DestroyRtcAdapter(RtcAdapter* adapter) {}
-
 
 } // namespace rtc_adapter

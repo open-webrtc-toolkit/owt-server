@@ -4,13 +4,13 @@
 
 #include "VideoSendAdapter.h"
 #include "MediaUtilities.h"
-#include <rtputils.h>
-#include <api/video_codecs/video_codec.h>
-#include <api/video/video_codec_type.h>
 #include <api/rtc_event_log/rtc_event_log.h>
-#include <modules/rtp_rtcp/source/rtp_video_header.h>
+#include <api/video/video_codec_type.h>
+#include <api/video_codecs/video_codec.h>
 #include <modules/include/module_common_types.h>
+#include <modules/rtp_rtcp/source/rtp_video_header.h>
 #include <rtc_base/logging.h>
+#include <rtputils.h>
 
 using namespace owt_base;
 
@@ -20,24 +20,25 @@ namespace rtc_adapter {
 // in up to 2 times max video bitrate if the bandwidth estimate allows it.
 static const int TRANSMISSION_MAXBITRATE_MULTIPLIER = 2;
 
-static int getNextNaluPosition(uint8_t *buffer, int buffer_size, bool &is_aud_or_sei) {
+static int getNextNaluPosition(uint8_t* buffer, int buffer_size, bool& is_aud_or_sei)
+{
     if (buffer_size < 4) {
         return -1;
     }
     is_aud_or_sei = false;
-    uint8_t *head = buffer;
-    uint8_t *end = buffer + buffer_size - 4;
+    uint8_t* head = buffer;
+    uint8_t* end = buffer + buffer_size - 4;
     while (head < end) {
         if (head[0]) {
             head++;
             continue;
         }
         if (head[1]) {
-            head +=2;
+            head += 2;
             continue;
         }
         if (head[2]) {
-            head +=3;
+            head += 3;
             continue;
         }
         if (head[3] != 0x01) {
@@ -54,10 +55,11 @@ static int getNextNaluPosition(uint8_t *buffer, int buffer_size, bool &is_aud_or
 }
 
 #define MAX_NALS_PER_FRAME 128
-static int dropAUDandSEI(uint8_t* framePayload, int frameLength) {
-    uint8_t *origin_pkt_data = framePayload;
+static int dropAUDandSEI(uint8_t* framePayload, int frameLength)
+{
+    uint8_t* origin_pkt_data = framePayload;
     int origin_pkt_length = frameLength;
-    uint8_t *head = origin_pkt_data;
+    uint8_t* head = origin_pkt_data;
 
     std::vector<int> nal_offset;
     std::vector<bool> nal_type_is_aud_or_sei;
@@ -67,39 +69,39 @@ static int dropAUDandSEI(uint8_t* framePayload, int frameLength) {
     int sc_positions_length = 0;
     int sc_position = 0;
     while (sc_positions_length < MAX_NALS_PER_FRAME) {
-         int nalu_position = getNextNaluPosition(origin_pkt_data + sc_position,
-              origin_pkt_length - sc_position, is_aud_or_sei);
-         if (nalu_position < 0) {
-             break;
-         }
-         sc_position += nalu_position;
-         nal_offset.push_back(sc_position); //include start code.
-         sc_position += 4;
-         sc_positions_length++;
-         if (is_aud_or_sei) {
-             has_aud_or_sei = true;
-             nal_type_is_aud_or_sei.push_back(true);
-         } else {
-             nal_type_is_aud_or_sei.push_back(false);
-         }
+        int nalu_position = getNextNaluPosition(origin_pkt_data + sc_position,
+            origin_pkt_length - sc_position, is_aud_or_sei);
+        if (nalu_position < 0) {
+            break;
+        }
+        sc_position += nalu_position;
+        nal_offset.push_back(sc_position); //include start code.
+        sc_position += 4;
+        sc_positions_length++;
+        if (is_aud_or_sei) {
+            has_aud_or_sei = true;
+            nal_type_is_aud_or_sei.push_back(true);
+        } else {
+            nal_type_is_aud_or_sei.push_back(false);
+        }
     }
     if (sc_positions_length == 0 || !has_aud_or_sei)
         return frameLength;
     // Calculate size of each NALs
     for (unsigned int count = 0; count < nal_offset.size(); count++) {
-       if (count + 1 == nal_offset.size()) {
-           nal_size.push_back(origin_pkt_length - nal_offset[count]);
-       } else {
-           nal_size.push_back(nal_offset[count+1] - nal_offset[count]);
-       }
+        if (count + 1 == nal_offset.size()) {
+            nal_size.push_back(origin_pkt_length - nal_offset[count]);
+        } else {
+            nal_size.push_back(nal_offset[count + 1] - nal_offset[count]);
+        }
     }
     // remove in place the AUD NALs
     int new_size = 0;
     for (unsigned int i = 0; i < nal_offset.size(); i++) {
-       if (!nal_type_is_aud_or_sei[i]) {
-           memmove(head + new_size, head + nal_offset[i], nal_size[i]);
-           new_size += nal_size[i];
-       }
+        if (!nal_type_is_aud_or_sei[i]) {
+            memmove(head + new_size, head + nal_offset[i], nal_size[i]);
+            new_size += nal_size[i];
+        }
     }
     return new_size;
 }
@@ -132,7 +134,8 @@ VideoSendAdapterImpl::VideoSendAdapterImpl(
     , m_timeStampOffset(0)
     , m_feedbackListener(config.feedback_listener)
     , m_rtpListener(config.rtp_listener)
-    , m_statsListener(config.stats_listener) {
+    , m_statsListener(config.stats_listener)
+{
     m_ssrc = m_ssrcGenerator->CreateSsrc();
     m_ssrcGenerator->RegisterSsrc(m_ssrc);
     m_taskRunner.reset(new owt_base::WebRTCTaskRunner("VideoSendAdapterImpl"));
@@ -140,7 +143,8 @@ VideoSendAdapterImpl::VideoSendAdapterImpl(
     init();
 }
 
-VideoSendAdapterImpl::~VideoSendAdapterImpl() {
+VideoSendAdapterImpl::~VideoSendAdapterImpl()
+{
     m_taskRunner->DeRegisterModule(m_rtpRtcp.get());
     m_taskRunner->Stop();
     m_ssrcGenerator->ReturnSsrc(m_ssrc);
@@ -162,7 +166,7 @@ bool VideoSendAdapterImpl::init()
     configuration.intra_frame_callback = this;
     configuration.event_log = m_eventLog.get();
     configuration.retransmission_rate_limiter = m_retransmissionRateLimiter.get();
-    configuration.local_media_ssrc = m_ssrc;//rtp_config.ssrcs[i];
+    configuration.local_media_ssrc = m_ssrc; //rtp_config.ssrcs[i];
 
     m_rtpRtcp = webrtc::RtpRtcp::Create(configuration);
     m_rtpRtcp->SetSendingStatus(true);
@@ -196,19 +200,21 @@ bool VideoSendAdapterImpl::init()
     return true;
 }
 
-void VideoSendAdapterImpl::reset() {
+void VideoSendAdapterImpl::reset()
+{
     m_keyFrameArrived = false;
     m_timeStampOffset = 0;
 }
 
-void VideoSendAdapterImpl::onFrame(const Frame& frame) {
+void VideoSendAdapterImpl::onFrame(const Frame& frame)
+{
     using namespace webrtc;
 
     if (!m_keyFrameArrived) {
         if (!frame.additionalInfo.video.isKeyFrame) {
             RTC_DLOG(LS_INFO) << "Key frame has not arrived, send key-frame-request.";
             if (m_feedbackListener) {
-                FeedbackMsg feedback = {.type = VIDEO_FEEDBACK, .cmd = REQUEST_KEY_FRAME};
+                FeedbackMsg feedback = {.type = VIDEO_FEEDBACK, .cmd = REQUEST_KEY_FRAME };
                 m_feedbackListener->onFeedback(feedback);
             }
             return;
@@ -221,7 +227,7 @@ void VideoSendAdapterImpl::onFrame(const Frame& frame) {
     }
 
     // Recalculate timestamp for stream substitution
-    uint32_t timeStamp = frame.timeStamp + m_timeStampOffset;//kMsToRtpTimestamp * m_clock->TimeInMilliseconds();
+    uint32_t timeStamp = frame.timeStamp + m_timeStampOffset; //kMsToRtpTimestamp * m_clock->TimeInMilliseconds();
     webrtc::RTPVideoHeader h;
     memset(&h, 0, sizeof(webrtc::RTPVideoHeader));
 
@@ -233,8 +239,7 @@ void VideoSendAdapterImpl::onFrame(const Frame& frame) {
         m_frameHeight = frame.additionalInfo.video.height;
     }
 
-    h.frame_type = frame.additionalInfo.video.isKeyFrame ?
-        VideoFrameType::kVideoFrameKey : VideoFrameType::kVideoFrameDelta;
+    h.frame_type = frame.additionalInfo.video.isKeyFrame ? VideoFrameType::kVideoFrameKey : VideoFrameType::kVideoFrameDelta;
     // h.rotation = image.rotation_;
     // h.content_type = image.content_type_;
     // h.playout_delay = image.playout_delay_;
@@ -290,8 +295,7 @@ void VideoSendAdapterImpl::onFrame(const Frame& frame) {
         int sc_len = 0;
         RTPFragmentationHeader frag_info;
 
-        h.codec = (frame.format == FRAME_FORMAT_H264)?
-            webrtc::VideoCodecType::kVideoCodecH264 : webrtc::VideoCodecType::kVideoCodecH265;
+        h.codec = (frame.format == FRAME_FORMAT_H264) ? webrtc::VideoCodecType::kVideoCodecH264 : webrtc::VideoCodecType::kVideoCodecH265;
         while (buffer_length > 0) {
             nalu_found_length = findNALU(buffer_start, buffer_length, &nalu_start_offset, &nalu_end_offset, &sc_len);
             if (nalu_found_length < 0) {
@@ -335,7 +339,8 @@ void VideoSendAdapterImpl::onFrame(const Frame& frame) {
     }
 }
 
-int VideoSendAdapterImpl::onRtcpData(char* data, int len) {
+int VideoSendAdapterImpl::onRtcpData(char* data, int len)
+{
     boost::shared_lock<boost::shared_mutex> lock(m_rtpRtcpMutex);
     if (m_rtpRtcp) {
         m_rtpRtcp->IncomingRtcpPacket(reinterpret_cast<uint8_t*>(data), len);
@@ -345,8 +350,9 @@ int VideoSendAdapterImpl::onRtcpData(char* data, int len) {
 }
 
 bool VideoSendAdapterImpl::SendRtp(const uint8_t* data,
-             size_t length,
-             const webrtc::PacketOptions& options) {
+    size_t length,
+    const webrtc::PacketOptions& options)
+{
     if (m_rtpListener) {
         m_rtpListener->onAdapterData(
             reinterpret_cast<char*>(const_cast<uint8_t*>(data)), length);
@@ -355,7 +361,8 @@ bool VideoSendAdapterImpl::SendRtp(const uint8_t* data,
     return false;
 }
 
-bool VideoSendAdapterImpl::SendRtcp(const uint8_t* data, size_t length) {
+bool VideoSendAdapterImpl::SendRtcp(const uint8_t* data, size_t length)
+{
     const RTCPHeader* chead = reinterpret_cast<const RTCPHeader*>(data);
     uint8_t packetType = chead->getPacketType();
     if (packetType == RTCP_Sender_PT) {
@@ -368,10 +375,11 @@ bool VideoSendAdapterImpl::SendRtcp(const uint8_t* data, size_t length) {
     return false;
 }
 
-void VideoSendAdapterImpl::OnReceivedIntraFrameRequest(uint32_t ssrc) {
+void VideoSendAdapterImpl::OnReceivedIntraFrameRequest(uint32_t ssrc)
+{
     RTC_DLOG(LS_INFO) << "onReceivedIntraFrameRequest.";
     if (m_feedbackListener) {
-        FeedbackMsg feedback = {.type = VIDEO_FEEDBACK, .cmd = REQUEST_KEY_FRAME};
+        FeedbackMsg feedback = {.type = VIDEO_FEEDBACK, .cmd = REQUEST_KEY_FRAME };
         m_feedbackListener->onFeedback(feedback);
     }
 }

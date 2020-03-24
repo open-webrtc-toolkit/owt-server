@@ -5,7 +5,6 @@
 #include "AudioFramePacketizer.h"
 #include "AudioUtilitiesNew.h"
 
-
 using namespace rtc_adapter;
 
 namespace owt_base {
@@ -73,7 +72,6 @@ void AudioFramePacketizer::receiveRtpData(char* buf, int len, erizoExtra::DataTy
     audio_sink_->deliverAudioData(std::make_shared<erizo::DataPacket>(0, buf, len, erizo::AUDIO_PACKET));
 }
 
-
 void AudioFramePacketizer::onFrame(const Frame& frame)
 {
     if (!m_enabled) {
@@ -127,8 +125,8 @@ void AudioFramePacketizer::close()
     unbindTransport();
 }
 
-int AudioFramePacketizer::sendPLI() {
+int AudioFramePacketizer::sendPLI()
+{
     return 0;
 }
-
 }

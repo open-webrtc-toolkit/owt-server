@@ -5,9 +5,9 @@
 #ifndef RTC_ADAPTER_ADAPTER_INTERNAL_DEFINITIONS_H_
 #define RTC_ADAPTER_ADAPTER_INTERNAL_DEFINITIONS_H_
 
-#include <rtc_base/task_queue.h>
-#include <call/call.h>
 #include <api/task_queue/task_queue_factory.h>
+#include <call/call.h>
+#include <rtc_base/task_queue.h>
 
 namespace rtc_adapter {
 

@@ -12,8 +12,8 @@ namespace owt_base {
 DEFINE_LOGGER(AudioFrameConstructor, "owt.AudioFrameConstructor");
 
 AudioFrameConstructor::AudioFrameConstructor()
-  : m_enabled(true)
-  , m_transport(nullptr)
+    : m_enabled(true)
+    , m_transport(nullptr)
 {
     sink_fb_source_ = this;
 }
@@ -50,12 +50,12 @@ int AudioFrameConstructor::deliverVideoData_(std::shared_ptr<erizo::DataPacket> 
 int AudioFrameConstructor::deliverAudioData_(std::shared_ptr<erizo::DataPacket> audio_packet)
 {
     if (audio_packet->length <= 0)
-      return 0;
+        return 0;
 
     FrameFormat frameFormat;
     Frame frame;
     memset(&frame, 0, sizeof(frame));
-    RTPHeader* head = (RTPHeader*) (audio_packet->data);
+    RTPHeader* head = (RTPHeader*)(audio_packet->data);
 
     frameFormat = getAudioFrameFormat(head->getPayloadType());
     if (frameFormat == FRAME_FORMAT_UNKNOWN)
@@ -85,12 +85,13 @@ void AudioFrameConstructor::onFeedback(const FeedbackMsg& msg)
     }
 }
 
-int AudioFrameConstructor::deliverEvent_(erizo::MediaEventPtr event){
+int AudioFrameConstructor::deliverEvent_(erizo::MediaEventPtr event)
+{
     return 0;
 }
 
-void AudioFrameConstructor::close(){
+void AudioFrameConstructor::close()
+{
     unbindTransport();
 }
-
 }

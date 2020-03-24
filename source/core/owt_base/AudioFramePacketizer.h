@@ -9,11 +9,11 @@
 
 #include <logger.h>
 
+#include <MediaDefinitionExtra.h>
+#include <MediaDefinitions.h>
 #include <boost/scoped_ptr.hpp>
 #include <boost/shared_ptr.hpp>
 #include <boost/thread/shared_mutex.hpp>
-#include <MediaDefinitions.h>
-#include <MediaDefinitionExtra.h>
 
 #include <RtcAdapter.h>
 
@@ -36,7 +36,7 @@ public:
 
     void bindTransport(erizo::MediaSink* sink);
     void unbindTransport();
-    void enable(bool enabled) {m_enabled = enabled;}
+    void enable(bool enabled) { m_enabled = enabled; }
     uint32_t getSsrc() { return m_ssrc; }
 
     // Implements FrameDestination.
@@ -71,6 +71,5 @@ private:
     std::shared_ptr<rtc_adapter::RtcAdapter> m_rtcAdapter;
     rtc_adapter::AudioSendAdapter* m_audioSend;
 };
-
 }
 #endif /* AudioFramePacketizer_h */

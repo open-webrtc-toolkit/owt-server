@@ -7,8 +7,8 @@
 
 #include "MediaFramePipeline.h"
 
-#include <MediaDefinitions.h>
 #include <MediaDefinitionExtra.h>
+#include <MediaDefinitions.h>
 
 #include <boost/scoped_ptr.hpp>
 #include <boost/shared_ptr.hpp>
@@ -33,10 +33,10 @@ class VideoFramePacketizer : public FrameDestination,
 
 public:
     VideoFramePacketizer(bool enableRed,
-                         bool enableUlpfec,
-                         bool enableTransportcc = true,
-                         bool selfRequestKeyframe = false,
-                         uint32_t transportccExt = 0);
+        bool enableUlpfec,
+        bool enableTransportcc = true,
+        bool selfRequestKeyframe = false,
+        uint32_t transportccExt = 0);
     ~VideoFramePacketizer();
 
     void bindTransport(erizo::MediaSink* sink);
@@ -81,6 +81,5 @@ private:
     std::shared_ptr<rtc_adapter::RtcAdapter> m_rtcAdapter;
     rtc_adapter::VideoSendAdapter* m_videoSend;
 };
-
 }
 #endif /* EncodedVideoFrameSender_h */

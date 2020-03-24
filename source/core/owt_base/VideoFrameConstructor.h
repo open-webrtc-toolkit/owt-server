@@ -7,9 +7,9 @@
 
 #include "MediaFramePipeline.h"
 
-#include <boost/scoped_ptr.hpp>
-#include <MediaDefinitions.h>
 #include <MediaDefinitionExtra.h>
+#include <MediaDefinitions.h>
+#include <boost/scoped_ptr.hpp>
 #include <logger.h>
 
 #include <JobTimer.h>

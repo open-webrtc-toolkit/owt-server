@@ -5,19 +5,19 @@
 #ifndef RTC_ADAPTER_AUDIO_SEND_ADAPTER_
 #define RTC_ADAPTER_AUDIO_SEND_ADAPTER_
 
-#include <RtcAdapter.h>
 #include <AdapterInternalDefinitions.h>
+#include <RtcAdapter.h>
 
 #include "MediaFramePipeline.h"
 #include "SsrcGenerator.h"
 #include "WebRTCTaskRunner.h"
 
+#include <api/rtc_event_log/rtc_event_log.h>
 #include <boost/scoped_ptr.hpp>
 #include <boost/shared_ptr.hpp>
 #include <boost/thread/shared_mutex.hpp>
 #include <modules/rtp_rtcp/include/rtp_rtcp.h>
 #include <modules/rtp_rtcp/source/rtp_sender_audio.h>
-#include <api/rtc_event_log/rtc_event_log.h>
 
 namespace rtc_adapter {
 
@@ -27,7 +27,7 @@ namespace rtc_adapter {
 class AudioSendAdapterImpl : public AudioSendAdapter,
                              public webrtc::Transport {
 public:
-    AudioSendAdapterImpl(CallOwner* owner,  const RtcAdapter::Config& config);
+    AudioSendAdapterImpl(CallOwner* owner, const RtcAdapter::Config& config);
     ~AudioSendAdapterImpl();
 
     // Implement AudioSendAdapter
@@ -37,8 +37,8 @@ public:
 
     // Implement webrtc::Transport
     bool SendRtp(const uint8_t* packet,
-                 size_t length,
-                 const webrtc::PacketOptions& options) override;
+        size_t length,
+        const webrtc::PacketOptions& options) override;
     bool SendRtcp(const uint8_t* packet, size_t length) override;
 
 private:
@@ -59,7 +59,7 @@ private:
     uint32_t m_ssrc;
     owt_base::SsrcGenerator* const m_ssrc_generator;
 
-    webrtc::Clock *m_clock;
+    webrtc::Clock* m_clock;
     std::unique_ptr<webrtc::RtcEventLog> m_eventLog;
     std::unique_ptr<webrtc::RTPSenderAudio> m_senderAudio;
 
@@ -68,6 +68,5 @@ private:
     AdapterDataListener* m_rtpListener;
     AdapterStatsListener* m_statsListener;
 };
-
 }
 #endif /* RTC_ADAPTER_AUDIO_SEND_ADAPTER_ */

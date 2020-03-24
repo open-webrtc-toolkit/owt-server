@@ -5,15 +5,15 @@
 #ifndef RTC_ADAPTER_VIDEO_RECEIVE_ADAPTER_
 #define RTC_ADAPTER_VIDEO_RECEIVE_ADAPTER_
 
-#include <RtcAdapter.h>
 #include <AdapterInternalDefinitions.h>
+#include <RtcAdapter.h>
 
-#include <rtc_base/task_queue.h>
-#include <call/call.h>
 #include <api/task_queue/default_task_queue_factory.h>
 #include <api/video_codecs/video_codec.h>
 #include <api/video_codecs/video_decoder.h>
 #include <api/video_codecs/video_decoder_factory.h>
+#include <call/call.h>
+#include <rtc_base/task_queue.h>
 
 namespace rtc_adapter {
 
@@ -22,7 +22,7 @@ class VideoReceiveAdapterImpl : public VideoReceiveAdapter,
                                 public webrtc::VideoDecoderFactory,
                                 public webrtc::Transport {
 public:
-    VideoReceiveAdapterImpl(CallOwner* owner,  const RtcAdapter::Config& config);
+    VideoReceiveAdapterImpl(CallOwner* owner, const RtcAdapter::Config& config);
     virtual ~VideoReceiveAdapterImpl();
     // Implement VideoReceiveAdapter
     int onRtpData(char* data, int len) override;
@@ -34,31 +34,34 @@ public:
     // Implements the webrtc::VideoDecoderFactory interface.
     std::vector<webrtc::SdpVideoFormat> GetSupportedFormats() const override;
     std::unique_ptr<webrtc::VideoDecoder> CreateVideoDecoder(
-      const webrtc::SdpVideoFormat& format) override;
+        const webrtc::SdpVideoFormat& format) override;
 
     // Implements webrtc::Transport
     bool SendRtp(const uint8_t* packet,
-                 size_t length,
-                 const webrtc::PacketOptions& options) override;
+        size_t length,
+        const webrtc::PacketOptions& options) override;
     bool SendRtcp(const uint8_t* packet, size_t length) override;
 
 private:
     class AdapterDecoder : public webrtc::VideoDecoder {
-      public:
-        AdapterDecoder(VideoReceiveAdapterImpl* parent): m_parent(parent) {}
+    public:
+        AdapterDecoder(VideoReceiveAdapterImpl* parent)
+            : m_parent(parent)
+        {
+        }
 
         int32_t InitDecode(const webrtc::VideoCodec* config,
-                           int32_t number_of_cores) override;
+            int32_t number_of_cores) override;
 
         int32_t Decode(const webrtc::EncodedImage& input,
-                       bool missing_frames,
-                       int64_t render_time_ms) override;
+            bool missing_frames,
+            int64_t render_time_ms) override;
 
         int32_t RegisterDecodeCompleteCallback(
             webrtc::DecodedImageCallback* callback) override { return 0; }
 
         int32_t Release() override { return 0; }
-      private:
+    private:
         VideoReceiveAdapterImpl* m_parent;
         webrtc::VideoCodecType m_codec;
         std::unique_ptr<uint8_t[]> m_frameBuffer;
@@ -67,10 +70,12 @@ private:
 
     void CreateReceiveVideo();
 
-    std::shared_ptr<webrtc::Call> call() {
+    std::shared_ptr<webrtc::Call> call()
+    {
         return m_owner ? m_owner->call() : nullptr;
     }
-    std::shared_ptr<rtc::TaskQueue> taskQueue() {
+    std::shared_ptr<rtc::TaskQueue> taskQueue()
+    {
         return m_owner ? m_owner->taskQueue() : nullptr;
     }
 

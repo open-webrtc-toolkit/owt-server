@@ -4,9 +4,9 @@
 
 #include "VideoFrameConstructor.h"
 
-#include <rtputils.h>
-#include <random>
 #include <future>
+#include <random>
+#include <rtputils.h>
 
 using namespace rtc_adapter;
 
@@ -54,7 +54,8 @@ VideoFrameConstructor::~VideoFrameConstructor()
     }
 }
 
-void VideoFrameConstructor::maybeCreateReceiveVideo(uint32_t ssrc) {
+void VideoFrameConstructor::maybeCreateReceiveVideo(uint32_t ssrc)
+{
     if (!m_videoReceive) {
         // Create Receive Video Stream
         rtc_adapter::RtcAdapter::Config recvConfig;
@@ -92,7 +93,8 @@ void VideoFrameConstructor::enable(bool enabled)
     RequestKeyFrame();
 }
 
-int32_t VideoFrameConstructor::RequestKeyFrame() {
+int32_t VideoFrameConstructor::RequestKeyFrame()
+{
     if (!m_enabled) {
         return 0;
     }
@@ -108,23 +110,26 @@ bool VideoFrameConstructor::setBitrate(uint32_t kbps)
     return true;
 }
 
-void VideoFrameConstructor::onAdapterFrame(const Frame& frame) {
+void VideoFrameConstructor::onAdapterFrame(const Frame& frame)
+{
     deliverFrame(frame);
 }
 
-void VideoFrameConstructor::onAdapterStats(const AdapterStats& stats) {
+void VideoFrameConstructor::onAdapterStats(const AdapterStats& stats)
+{
     if (m_videoInfoListener) {
         std::ostringstream json_str;
         json_str.str("");
         json_str << "{\"video\": {\"parameters\": {\"resolution\": {"
-                    << "\"width\":" << stats.width << ", "
-                    << "\"height\":" << stats.height
-                    << "}}}}";
+                 << "\"width\":" << stats.width << ", "
+                 << "\"height\":" << stats.height
+                 << "}}}}";
         m_videoInfoListener->onVideoInfo(json_str.str().c_str());
     }
 }
 
-void VideoFrameConstructor::onAdapterData(char* data, int len) {
+void VideoFrameConstructor::onAdapterData(char* data, int len)
+{
     // Data come from video receive stream is RTCP
     if (fb_sink_) {
         fb_sink_->deliverFeedback(
@@ -154,7 +159,7 @@ int VideoFrameConstructor::deliverVideoData_(std::shared_ptr<erizo::DataPacket> 
     if (m_videoReceive) {
         m_videoReceive->onRtpData(video_packet->data, video_packet->length);
     }
-    
+
     return video_packet->length;
 }
 
@@ -186,12 +191,13 @@ void VideoFrameConstructor::onFeedback(const FeedbackMsg& msg)
     }
 }
 
-int VideoFrameConstructor::deliverEvent_(erizo::MediaEventPtr event){
+int VideoFrameConstructor::deliverEvent_(erizo::MediaEventPtr event)
+{
     return 0;
 }
 
-void VideoFrameConstructor::close(){
+void VideoFrameConstructor::close()
+{
     unbindTransport();
 }
-
 }

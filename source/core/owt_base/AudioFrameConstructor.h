@@ -7,10 +7,9 @@
 
 #include "MediaFramePipeline.h"
 
-#include <logger.h>
+#include <MediaDefinitionExtra.h>
 #include <MediaDefinitions.h>
- #include <MediaDefinitionExtra.h>
-
+#include <logger.h>
 
 namespace owt_base {
 
@@ -29,7 +28,7 @@ public:
 
     void bindTransport(erizo::MediaSource* source, erizo::FeedbackSink* fbSink);
     void unbindTransport();
-    void enable(bool enabled) {m_enabled = enabled;}
+    void enable(bool enabled) { m_enabled = enabled; }
 
     // Implements the FrameSource interfaces.
     void onFeedback(const FeedbackMsg& msg);
@@ -45,6 +44,5 @@ private:
     int deliverEvent_(erizo::MediaEventPtr event) override;
     void close();
 };
-
 }
 #endif /* AudioFrameConstructor_h */

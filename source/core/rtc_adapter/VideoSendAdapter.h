@@ -5,25 +5,25 @@
 #ifndef RTC_ADAPTER_VIDEO_SEND_ADAPTER_
 #define RTC_ADAPTER_VIDEO_SEND_ADAPTER_
 
-#include <RtcAdapter.h>
 #include <AdapterInternalDefinitions.h>
+#include <RtcAdapter.h>
 
 #include <boost/scoped_ptr.hpp>
 #include <boost/shared_ptr.hpp>
 #include <boost/thread/shared_mutex.hpp>
 
-#include "WebRTCTaskRunner.h"
 #include "MediaFramePipeline.h"
 #include "SsrcGenerator.h"
+#include "WebRTCTaskRunner.h"
 
+#include <api/transport/field_trial_based_config.h>
 #include <modules/rtp_rtcp/include/rtp_rtcp.h>
 #include <modules/rtp_rtcp/include/rtp_rtcp_defines.h>
 #include <modules/rtp_rtcp/source/rtp_sender_video.h>
-#include <api/transport/field_trial_based_config.h>
 
 #include <rtc_base/random.h>
-#include <rtc_base/time_utils.h>
 #include <rtc_base/rate_limiter.h>
+#include <rtc_base/time_utils.h>
 
 namespace rtc_adapter {
 
@@ -31,7 +31,7 @@ class VideoSendAdapterImpl : public VideoSendAdapter,
                              public webrtc::Transport,
                              public webrtc::RtcpIntraFrameObserver {
 public:
-    VideoSendAdapterImpl(CallOwner* owner,  const RtcAdapter::Config& config);
+    VideoSendAdapterImpl(CallOwner* owner, const RtcAdapter::Config& config);
     ~VideoSendAdapterImpl();
 
     // Implement VideoSendAdapter
@@ -43,15 +43,15 @@ public:
 
     // Implement webrtc::Transport
     bool SendRtp(const uint8_t* packet,
-                 size_t length,
-                 const webrtc::PacketOptions& options) override;
+        size_t length,
+        const webrtc::PacketOptions& options) override;
     bool SendRtcp(const uint8_t* packet, size_t length) override;
 
     // Implements webrtc::RtcpIntraFrameObserver.
     void OnReceivedIntraFrameRequest(uint32_t ssrc);
-    void OnReceivedSLI(uint32_t ssrc, uint8_t picture_id) { }
-    void OnReceivedRPSI(uint32_t ssrc, uint64_t picture_id) { }
-    void OnLocalSsrcChanged(uint32_t old_ssrc, uint32_t new_ssrc) { }
+    void OnReceivedSLI(uint32_t ssrc, uint8_t picture_id) {}
+    void OnReceivedRPSI(uint32_t ssrc, uint64_t picture_id) {}
+    void OnLocalSsrcChanged(uint32_t old_ssrc, uint32_t new_ssrc) {}
 
 private:
     bool init();
@@ -77,7 +77,7 @@ private:
 
     boost::shared_mutex m_transportMutex;
 
-    webrtc::Clock *m_clock;
+    webrtc::Clock* m_clock;
     int64_t m_timeStampOffset;
 
     std::unique_ptr<webrtc::RtcEventLog> m_eventLog;
@@ -90,7 +90,6 @@ private:
     AdapterDataListener* m_rtpListener;
     AdapterStatsListener* m_statsListener;
 };
-
 }
 
 #endif /* RTC_ADAPTER_VIDEO_SEND_ADAPTER_ */
