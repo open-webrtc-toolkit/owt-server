@@ -15,7 +15,8 @@
   "engine": {
     "node": "8.15.0"
   },
-  "bin": "server.js",
+  "main": "api.js",
+  "bin": "api.js",
   "pkg": {
     "assets": [
       "node_modules*"

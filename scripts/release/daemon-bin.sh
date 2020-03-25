@@ -177,7 +177,7 @@ case $startStop in
         ;;
       app )
         cd ${OWT_HOME}/apps/current_app/
-        nohup nice -n ${OWT_NICENESS} node main.js \
+        nohup nice -n ${OWT_NICENESS} node . \
           > "${stdout}" 2>&1 </dev/null &
         echo $! > ${pid}
         ;;
