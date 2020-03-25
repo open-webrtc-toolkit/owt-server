@@ -619,7 +619,7 @@ function packApps() {
   } else {
     // Make a soft link to the main JS file node.js should call
     if (appJSON !== 'main.js')
-      execSync(`ln -sf ${distDir}/apps/current_app/${appJSON} ${distDir}/apps/current_app/main.js`);
+      execSync(`ln -srf ${distDir}/apps/current_app/${appJSON} ${distDir}/apps/current_app/main.js`);
   }
   const certScript = `${distDir}/apps/current_app/initcert.js`;
   if (fs.existsSync(certScript))
