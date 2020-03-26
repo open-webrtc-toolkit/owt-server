@@ -14,7 +14,9 @@ ENV APP_PATH=${IMG_APP_PATH}
 RUN apt-get update
 
 # Install utils
-RUN apt-get install -y ca-certificates git lsb-release mongodb nodejs npm sudo wget
+RUN apt-get install -y ca-certificates git lsb-release mongodb nodejs curl sudo wget
+# Get latest NPM
+RUN curl -L https://www.npmjs.com/install.sh | sh
 
 RUN npm install -g grunt-cli node-gyp
 
