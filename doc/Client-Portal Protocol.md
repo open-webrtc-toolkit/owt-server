@@ -249,7 +249,7 @@ This a format for client reconnects.
           object(PublicationInfo):
             {
              owner: string(ParticipantId),
-             type: "webrtc" | "streaming" | "sip" | "quic-p2p",
+             type: "webrtc" | "streaming" | "sip" | "quic",
              inViews: [String(ViewLabel)],
              attributes: object(ClientDefinedAttributes)
             }
@@ -538,7 +538,7 @@ A publication can send either media or data, but a QUIC *transport* channel can 
   object(SOACMessage)::
     {
      id: string(transportId), /* Transport ID returned in publishing or subscribing*/
-     signaling: object(OfferAnswer) | object(CandidateMessage) | object(RemovedCandidatesMessage) | object(P2PQuicParametersMessage)
+     signaling: object(OfferAnswer) | object(CandidateMessage) | object(RemovedCandidatesMessage)
     }
 
     object(OfferAnswer)::
@@ -568,25 +568,8 @@ A publication can send either media or data, but a QUIC *transport* channel can 
 
     object(TransportOptions)::
       {
-        type: "webrtc" | "quic-p2p",
+        type: "webrtc" | "quic",
         id: string(transportId) | null,  // null will result to create a new transport channel. Always be null if transport type is webrtc because webrtc agent doesn't support multiple transceivers on a single PeerConnection at this time.
-      }
-
-    object(P2PQuicParametersMessage)::
-      {
-       type: "quic-p2p-parameters",
-       clientTransportParameters: object(P2PQuicClientParametersMessage) | undefined,
-       serverTransportParameters: object(P2PQuicServerParametersMessage) | undefined
-      }
-
-    object(P2PQuicClientParametersMessage)::
-      {
-        quicKey: arrayBuffer(Key),
-        iceParameters: object(IceParameters)
-      }
-    object(P2PQuicServerParametersMessage)::
-      {
-        iceParameters: object(IceParameters)
       }
 
     object(IceParameters)::
@@ -604,7 +587,7 @@ A publication can send either media or data, but a QUIC *transport* channel can 
     {
       id: string(transportId),
       status: "soac" | "ready" | "error",
-      data: object(OfferAnswer) | object(CandidateMessage) | object(P2PQuicParametersMessage) /*If status equals “soac”*/
+      data: object(OfferAnswer) | object(CandidateMessage)  /*If status equals “soac”*/
           | (undefined/*If status equals “ready” and session is NOT for recording*/
           | string(Reason)/*If status equals “error”*/
     }
@@ -621,7 +604,7 @@ This section provides a few examples of signaling messages for specific purposes
 
 ## 4.1 Forward data through data channel over QUIC
 
-An endpoint is joined the meeting, and it wants to publish a data stream over a newly created QUIC transport channel.
+An endpoint is joined the meeting, and it wants to publish a data stream over a QUIC transport channel.
 
 Step 1: Client sends a "publish" request.
 
@@ -629,7 +612,7 @@ Step 1: Client sends a "publish" request.
 {
   media: null,
   data: true,
-  transport: {type: 'quic-p2p'}
+  transport: {type: 'quic'}
 }
 ```
 
@@ -637,45 +620,9 @@ Step 2: Receive a response from server.
 
 ```
 {
-  transportId: 'b1ff706f-7352-4d02-a6dc-dc840fb3963e'
-  publicationId: '91e24705-1d49-4cdd-bd4a-d461445637c4'
+  transportId: undefined,
+  publicationId: '91e247051d494cddbd4ad461445637c4'
 }
 ```
 
-Step 3: Send client QUIC transport parameters.
-
-```
-{
-  id: 'b1ff706f-7352-4d02-a6dc-dc840fb3963e',
-  signaling: {
-    type: "quic-p2p-parameters",
-    clientTransportParameters: {
-      quicKey: 'key',
-      iceParameters: {
-        usernameFragment: 'userfrag',
-        password: 'password'
-      }
-    }
-  }
-}
-```
-
-Step 4: Receive server QUIC transport paramters.
-
-```
-{
-  id: ''
-  status: 'soac',
-  data: {
-  type: "quic-p2p-parameters",
-  serverTransportParameters:   {
-    iceParameters: {
-      usernameFragment: 'userfrag',
-      password: 'password'
-    }
-  }
-  }
-}
-```
-
-Step 5: Receive transport ready and session ready from server.
+Step 3: Create a new QuicTransport or get an existing QuicTransport, then create a new BidirectionalStream or SendStream. Write data to stream. The URL of QuicTransport should be included in token. QuicTransport is shared by all media streams, data streams and signaling which belong to the same client.
