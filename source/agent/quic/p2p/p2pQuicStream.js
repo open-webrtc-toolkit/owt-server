@@ -4,9 +4,9 @@
 
 /*global require*/
 'use strict';
-const logger = require('../logger').logger;
+const logger = require('../../logger').logger;
 const log = logger.getLogger('P2PQuicStream');
-const addon = require('./build/Release/quic');
+const addon = require('../build/Release/quic');
 
 module.exports = class P2PQuicStream {
   // `senderCallback` is a signaling sender.

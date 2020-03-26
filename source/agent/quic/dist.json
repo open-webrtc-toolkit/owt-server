@@ -27,9 +27,15 @@
       "folders": {
           "quic": [
               "index.js",
-              "quicConnection.js",
               "../connections.js",
               "../InternalConnectionFactory.js"
+          ],
+          "quic/p2p": [
+              "p2p/p2pQuicStream.js",
+              "p2p/p2pQuicTransport.js"
+          ],
+          "quic/webtransport": [
+              "webtransport/quicTransportServer.js"
           ],
           "cert": [
               "../../../cert/.owt.keystore"

@@ -4,9 +4,9 @@
 
 /*global require*/
 'use strict';
-const logger = require('../logger').logger;
+const logger = require('../../logger').logger;
 const log = logger.getLogger('P2PQuicConnection');
-const addon = require('./build/Release/quic');
+const addon = require('../build/Release/quic');
 const P2PQuicStreams = require('./p2pQuicStream.js');
 
 module.exports = class P2PQuicTransport {

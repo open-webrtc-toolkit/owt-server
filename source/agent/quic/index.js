@@ -8,13 +8,17 @@ const InternalConnectionFactory = require('./InternalConnectionFactory');
 const logger = require('../logger').logger;
 const P2PQuicTransport = require('./p2p/p2pQuicTransport');
 const P2PQuicStream = require('./p2p/p2pQuicStream');
+const QuicTransportServer=require('./webtransport/quicTransportServer');
 const log = logger.getLogger('QuicNode');
-const addon = require('./build/Release/quic');
+const addon = require('./build/Debug/quic');
 
 log.info('QUIC transport node.')
 
 const threadPool = new addon.ThreadPool(global.config.quic.num_workers || 24);
 threadPool.start();
+
+const quicTransportServer=new QuicTransportServer();
+quicTransportServer.start();
 
 module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
     var that = {
@@ -102,8 +106,8 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
             if (conn)
                 conn.connect(options);
             break;
-        case 'quic-p2p':
-            log.debug("New P2P QUIC connection.");
+        case 'quic':
+            log.debug("New QUIC connection.");
             conn = createQuicStream(options.transport.id, connectionId, 'in', options, callback);
             if (!conn) {
                 return;

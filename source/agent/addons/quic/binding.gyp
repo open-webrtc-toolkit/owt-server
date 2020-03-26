@@ -16,6 +16,7 @@
       "QuicFactory.cc",
       'IceConnectionAdapter.cc',
       'QuicStream.cc',
+      'QuicTransportServer.cc',
       #'../webrtc/webrtcLib/erizo/src/erizo/LibNiceConnection.cpp',
       '../../webrtc/webrtcLib/ThreadPool.cc',
       '../../webrtc/webrtcLib/IOThreadPool.cc',
