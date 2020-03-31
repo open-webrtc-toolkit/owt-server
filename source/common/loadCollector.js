@@ -20,6 +20,10 @@ var cpuCollector = function (period, onLoad) {
         var cpus = os.cpus();
         var idle = 0;
         var total = 0;
+        if (!cpus || !olds) {
+            log.error('cpus is undefiend.');
+            return;
+        }
         for (let i = begin; i <= end; i++) {
             for (let key in cpus[i].times) {
                 let diff = cpus[i].times[key] - olds[i].times[key];
