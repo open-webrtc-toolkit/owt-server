@@ -337,6 +337,7 @@ install_node() {
   echo -e "\x1b[32mInstalling node ${NODE_VERSION}...\x1b[0m"
   nvm install ${NODE_VERSION}
   nvm use ${NODE_VERSION}
+  nvm alias default ${NODE_VERSION}
 }
 
 install_node_tools() {
