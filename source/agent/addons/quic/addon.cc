@@ -2,7 +2,7 @@
 #include "RTCIceTransport.h"
 #include "RTCIceCandidate.h"
 #include "RTCQuicTransport.h"
-#include "QuicStream.h"
+#include "RTCQuicStream.h"
 #include "QuicTransportServer.h"
 #include "../../webrtc/webrtcLib/ThreadPool.h"
 #include "../../webrtc/webrtcLib/IOThreadPool.h"
@@ -18,7 +18,7 @@ void InitAll(Handle<Object> exports)
     RTCIceTransport::Init(exports);
     RTCIceCandidate::Init(exports);
     //RTCCertificate::Init(exports);
-    QuicStream::Init(exports);
+    RTCQuicStream::Init(exports);
     QuicTransportServer::Init(exports);
 }
 

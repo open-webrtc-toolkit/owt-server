@@ -4,8 +4,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#ifndef WEBRTC_QUICSTREAM_H_
-#define WEBRTC_QUICSTREAM_H_
+#ifndef WEBRTC_RTCQUICSTREAM_H_
+#define WEBRTC_RTCQUICSTREAM_H_
 
 #include <vector>
 #include <logger.h>
@@ -15,8 +15,8 @@
 
 // Node.js addon of BidirectionalStream.
 // https://w3c.github.io/webrtc-quic/webtransport.html#bidirectional-stream*
-// Name it as QuicStream since it is a QUIC implementation of BidirectionalStream.
-class QuicStream : public Nan::ObjectWrap, owt::quic::P2PQuicStreamInterface::Delegate {
+// Name it as RTCQuicStream since it is a QUIC implementation of BidirectionalStream.
+class RTCQuicStream : public Nan::ObjectWrap, owt::quic::P2PQuicStreamInterface::Delegate {
     DECLARE_LOGGER();
 
 public:
@@ -29,8 +29,8 @@ protected:
     virtual void OnDataReceived(std::vector<uint8_t> data, bool fin) override;
 
 private:
-    explicit QuicStream(owt::quic::P2PQuicStreamInterface* p2pQuicStream);
-    virtual ~QuicStream();
+    explicit RTCQuicStream(owt::quic::P2PQuicStreamInterface* p2pQuicStream);
+    virtual ~RTCQuicStream();
     static NAN_METHOD(newInstance);
     static NAN_METHOD(write);
     static NAUV_WORK_CB(onDataCallback);
@@ -42,4 +42,4 @@ private:
     std::queue<std::vector<uint8_t>> m_dataToBeNotified;
 };
 
-#endif // WEBRTC_QUICSTREAM_H_
+#endif // WEBRTC_RTCQUICSTREAM_H_

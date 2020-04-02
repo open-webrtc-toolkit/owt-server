@@ -7,7 +7,7 @@
 #include "RTCQuicTransport.h"
 #include "IceConnectionAdapter.h"
 #include "QuicFactory.h"
-#include "QuicStream.h"
+#include "RTCQuicStream.h"
 #include "owt/quic/quic_definitions.h"
 #include "owt/quic/quic_transport_factory.h"
 
@@ -198,7 +198,7 @@ NAUV_WORK_CB(RTCQuicTransport::onStreamCallback)
         return;
     std::lock_guard<std::mutex> lock(obj->m_onStreamMutex);
     while (!obj->m_unnotifiedStreams.empty()) {
-        v8::Local<v8::Object> stream = QuicStream::newInstance(obj->m_unnotifiedStreams.front());
+        v8::Local<v8::Object> stream = RTCQuicStream::newInstance(obj->m_unnotifiedStreams.front());
         Nan::MaybeLocal<v8::Value> onEvent = Nan::Get(obj->handle(), Nan::New<v8::String>("onbidirectionalstream").ToLocalChecked());
         if (!onEvent.IsEmpty()) {
             ELOG_DEBUG("onEvent is not empty.")

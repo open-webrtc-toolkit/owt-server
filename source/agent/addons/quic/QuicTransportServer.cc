@@ -7,6 +7,7 @@
 #include "QuicTransportServer.h"
 #include "QuicFactory.h"
 #include "owt/quic/quic_transport_factory.h"
+#include "owt/quic/quic_transport_session_interface.h"
 
 using v8::Function;
 using v8::FunctionTemplate;
@@ -22,6 +23,7 @@ DEFINE_LOGGER(QuicTransportServer, "QuicTransportServer");
 QuicTransportServer::QuicTransportServer(int port)
     : m_quicServer(QuicFactory::getQuicTransportFactory()->CreateQuicTransportServer(port, "", "", ""))
 {
+    m_quicServer->SetVisitor(this);
     ELOG_DEBUG("QuicTransportServer::QuicTransportServer");
 }
 
@@ -64,4 +66,14 @@ NAN_METHOD(QuicTransportServer::start)
 
 NAN_METHOD(QuicTransportServer::stop)
 {
+}
+
+void QuicTransportServer::OnEnded()
+{
+    ELOG_DEBUG("QuicTransport server ended.");
+}
+
+void QuicTransportServer::OnSession(owt::quic::QuicTransportSessionInterface* session)
+{
+    ELOG_DEBUG("New session created.");
 }

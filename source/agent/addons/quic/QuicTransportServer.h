@@ -12,13 +12,17 @@
 #include <nan.h>
 #include <thread>
 
-class QuicTransportServer : public Nan::ObjectWrap {
+class QuicTransportServer : public Nan::ObjectWrap, owt::quic::QuicTransportServerInterface::Visitor {
     DECLARE_LOGGER();
 
 public:
     static NAN_MODULE_INIT(Init);
 
 protected:
+    // Implements owt::quic::QuicTransportServerInterface::Visitor.
+    void OnEnded() override;
+    void OnSession(owt::quic::QuicTransportSessionInterface*) override;
+
     QuicTransportServer() = delete;
     explicit QuicTransportServer(int port);
     static NAN_METHOD(newInstance);
