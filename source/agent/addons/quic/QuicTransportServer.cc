@@ -76,4 +76,10 @@ void QuicTransportServer::OnEnded()
 void QuicTransportServer::OnSession(owt::quic::QuicTransportSessionInterface* session)
 {
     ELOG_DEBUG("New session created.");
+    session->SetVisitor(this);
+}
+
+void QuicTransportServer::OnIncomingStream(owt::quic::QuicTransportStreamInterface*)
+{
+    ELOG_DEBUG("OnIncomingStream");
 }
