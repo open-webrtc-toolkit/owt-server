@@ -572,11 +572,6 @@ A publication can send either media or data, but a QUIC *transport* channel can 
         id: string(transportId) | null,  // null will result to create a new transport channel. Always be null if transport type is webrtc because webrtc agent doesn't support multiple transceivers on a single PeerConnection at this time.
       }
 
-    object(IceParameters)::
-      {
-        usernameFragment: string(UsernameFragment),
-        password: string(Password)
-      }
 **ResponseData**: undefined if **ResponseStatus** is “ok”.
 ### 3.3.15 Participant Receives Session Progress
 **NotificationName**: “progress”<br>
