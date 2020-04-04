@@ -81,10 +81,10 @@ pause "Installing Node.js ... [press Enter]"
 install_node
 
 if [ "$DISABLE_NONFREE" = "true" ]; then
-  pause "Nonfree libraries disabled: aac transcoding unavailable."
+  pause "Nonfree libraries disabled: aac transcoding unavailable. [press Enter]"
   install_mediadeps
 else
-  pause "Nonfree libraries enabled (DO NOT redistribute these libraries!!); to disable nonfree please use the \`--disable-nonfree' option."
+  pause "Nonfree libraries enabled (DO NOT redistribute these libraries!!); to disable nonfree please use the \`--disable-nonfree' option. [press Enter]"
   install_mediadeps_nonfree
 fi
 
