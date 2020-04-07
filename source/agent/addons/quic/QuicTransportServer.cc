@@ -6,6 +6,7 @@
 
 #include "QuicTransportServer.h"
 #include "QuicFactory.h"
+#include "QuicTransportStream.h"
 #include "owt/quic/quic_transport_factory.h"
 #include "owt/quic/quic_transport_session_interface.h"
 
@@ -75,11 +76,16 @@ void QuicTransportServer::OnEnded()
 
 void QuicTransportServer::OnSession(owt::quic::QuicTransportSessionInterface* session)
 {
-    ELOG_DEBUG("New session created.");
-    session->SetVisitor(this);
+    ELOG_DEBUG("New session created. Connection ID: %s.", session->ConnectionId());
+    std::unique_ptr<QuicTransportConnection> connection = std::make_unique<QuicTransportConnection>(session);
+    session->SetVisitor(connection.get());
+    m_unauthenticatedConnections.push_back(std::move(connection));
 }
 
-void QuicTransportServer::OnIncomingStream(owt::quic::QuicTransportStreamInterface*)
+void QuicTransportServer::onAuthentication(const std::string& id)
 {
-    ELOG_DEBUG("OnIncomingStream");
+}
+
+void QuicTransportServer::onClose()
+{
 }

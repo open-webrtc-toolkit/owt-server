@@ -15,12 +15,19 @@ class QuicTransportStream : public owt::quic::QuicTransportStreamInterface::Visi
     DECLARE_LOGGER();
 
 public:
+    class Visitor {
+        virtual void onEnded() = 0;
+    };
     // `sessionId` is the ID of publication or subscription, NOT the ID of QUIC session.
-    explicit QuicTransportStream(const std::string& sessionId, const std::string& userId);
+    explicit QuicTransportStream(owt::quic::QuicTransportStreamInterface* stream);
+
+protected:
+    // Overrides owt::quic::QuicTransportStreamInterface::Visitor.
+    void OnCanRead() override;
+    void OnCanWrite() override;
 
 private:
-    const std::string m_sessionId;
-    const std::string m_userId;
+    owt::quic::QuicTransportStreamInterface* m_stream;
 };
 
 #endif

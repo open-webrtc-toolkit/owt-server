@@ -18,6 +18,7 @@
       'RTCQuicStream.cc',
       'QuicTransportStream.cc',
       'QuicTransportServer.cc',
+      'QuicTransportConnection.cc',
       #'../webrtc/webrtcLib/erizo/src/erizo/LibNiceConnection.cpp',
       '../../webrtc/webrtcLib/ThreadPool.cc',
       '../../webrtc/webrtcLib/IOThreadPool.cc',

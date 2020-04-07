@@ -8,8 +8,15 @@
 
 DEFINE_LOGGER(QuicTransportStream, "QuicTransportStream");
 
-QuicTransportStream::QuicTransportStream(const std::string& sessionId, const std::string& userId)
-    : m_sessionId(sessionId)
-    , m_userId(userId)
+QuicTransportStream::QuicTransportStream(owt::quic::QuicTransportStreamInterface* stream)
+    : m_stream(stream)
 {
+}
+
+void QuicTransportStream::OnCanRead(){
+    ELOG_DEBUG("On can read.");
+}
+
+void QuicTransportStream::OnCanWrite(){
+    ELOG_DEBUG("On can write.");
 }
