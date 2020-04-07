@@ -21,7 +21,8 @@ pipeline {
                 podTemplate(name: 'pack-server-ubuntu', label: 'pack-mcu-server-ubuntu',
                 volumes: [
         	    persistentVolumeClaim(claimName: 'stability-package',mountPath: '/root/stabilityPackage',readOnly: false),
-        	    persistentVolumeClaim(claimName: 'ubuntu-package',mountPath: '/root/ubuntu_package',readOnly: false)
+        	    persistentVolumeClaim(claimName: 'ubuntu-package',mountPath: '/root/ubuntu_package',readOnly: false),
+                    persistentVolumeClaim(claimName: 'webrtc79ubuntu',mountPath: '/root/owt-server/third_party/webrtc-m79',readOnly: false)
         	    ],
                 containers: [
                     containerTemplate(name: 'pack-on-ubuntu-server', image: "$env.ubuntu_build_images", ttyEnabled: true, alwaysPullImage: true, privileged: true, resourceRequestCpu: '5000m', resourceLimitCpu: '6000m', network: 'host', command: 'cat')
@@ -39,7 +40,7 @@ pipeline {
             options { timeout(time:40,unit:'MINUTES') }
             when {
               expression {
-                currentBuild.result == null || currentBuild.result == 'SUCCESS' 
+                currentBuild.result == null || currentBuild.result == 'SUCCESS'
               }
             }
             parallel {
