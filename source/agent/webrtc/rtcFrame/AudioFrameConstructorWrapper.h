@@ -5,11 +5,8 @@
 #ifndef AUDIOFRAMECONSTRUCTORWRAPPER_H
 #define AUDIOFRAMECONSTRUCTORWRAPPER_H
 
-#include "MediaDefinitions.h"
+#include "MediaWrapper.h"
 #include <AudioFrameConstructor.h>
-#include <WebRtcConnection.h>
-#include "WebRtcConnection.h"
-#include "MediaStream.h"
 #include <node.h>
 #include <node_object_wrap.h>
 #include <nan.h>

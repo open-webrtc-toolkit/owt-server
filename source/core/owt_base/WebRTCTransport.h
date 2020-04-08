@@ -8,8 +8,9 @@
 #include <MediaDefinitions.h>
 #include <MediaDefinitionExtra.h>
 #include <rtputils.h>
-#include <webrtc/common_types.h>
-#include <webrtc/api/call/transport.h>
+#include <common_types.h>
+#include <api/call/transport.h>
+#include <rtc_base/location.h>
 
 namespace owt_base {
 
@@ -46,7 +47,6 @@ inline bool WebRTCTransport<dataType>::SendRtp(const uint8_t* data, size_t len, 
         m_rtpReceiver->receiveRtpData(reinterpret_cast<char*>(const_cast<uint8_t*>(data)), len, dataType, 0);
         ret = len;
     }
-
     return ret;
 }
 
@@ -64,9 +64,7 @@ inline bool WebRTCTransport<dataType>::SendRtcp(const uint8_t* data, size_t len)
         }
         return ret;
     }
-
-    erizo::packetType p = (dataType == erizoExtra::AUDIO) ? erizo::AUDIO_PACKET : erizo::VIDEO_PACKET;
-    return fb_sink_ ? fb_sink_->deliverFeedback(std::make_shared<erizo::DataPacket>(0, reinterpret_cast<char*>(const_cast<uint8_t*>(data)), len, p)) : 0;
+    return 0;
 }
 
 }

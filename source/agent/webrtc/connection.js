@@ -30,7 +30,7 @@
 const { EventEmitter } = require('events');
 const path = require('path');
 
-const addon = require('../webrtcLib/build/Release/webrtc');
+const addon = require('../rtcConn/build/Release/rtcConn');
 
 const cipher = require('../cipher');
 const logger = require('../logger').logger;

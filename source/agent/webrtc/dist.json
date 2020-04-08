@@ -43,8 +43,12 @@
         "libdist": "lib",
         "addons": [
             {
-                "folder": "webrtcLib",
-                "name": "webrtc"
+                "folder": "rtcConn",
+                "name": "rtcConn"
+            },
+            {
+                "folder": "rtcFrame",
+                "name": "rtcFrame"
             },
             {
                 "folder": "../addons/internalIO",

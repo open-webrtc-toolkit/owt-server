@@ -10,6 +10,8 @@
 #include <node_object_wrap.h>
 #include <string>
 
+#include "MediaWrapper.h"
+
 /*
  * Wrapper class of sip_gateway::SipCallConnection
  *
@@ -17,7 +19,7 @@
  * Receives media from the WebRTC client and retransmits it to Sip client,
  * or receives media from Sip client and retransmits it to the WebRTC client.
  */
-class SipCallConnection : public node::ObjectWrap {
+class SipCallConnection : public MediaFilter {
  public:
   static void Init(v8::Local<v8::Object> exports);
   sip_gateway::SipCallConnection* me;
