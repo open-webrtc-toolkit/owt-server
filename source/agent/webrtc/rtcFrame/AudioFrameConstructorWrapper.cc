@@ -61,11 +61,9 @@ NAN_METHOD(AudioFrameConstructor::bindTransport) {
   AudioFrameConstructor* obj = Nan::ObjectWrap::Unwrap<AudioFrameConstructor>(info.Holder());
   owt_base::AudioFrameConstructor* me = obj->me;
 
-  WebRtcConnection* param = Nan::ObjectWrap::Unwrap<WebRtcConnection>(Nan::To<v8::Object>(info[0]).ToLocalChecked());
-  auto wr = std::shared_ptr<erizo::WebRtcConnection>(param->me).get();
+  MediaFilter* param = Nan::ObjectWrap::Unwrap<MediaFilter>(Nan::To<v8::Object>(info[0]).ToLocalChecked());
+  erizo::MediaSource* source = param->msource;
 
-  //MediaSink* param = Nan::ObjectWrap::Unwrap<MediaSink>(args[0]->ToObject());
-  erizo::MediaSource* source = wr;
   me->bindTransport(source, source->getFeedbackSink());
 }
 

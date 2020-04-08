@@ -4,10 +4,12 @@
 
 'use strict';
 var SipGateway = require('../sipIn/build/Release/sipIn');
-var AudioFrameConstructor = SipGateway.AudioFrameConstructor;
-var VideoFrameConstructor = SipGateway.VideoFrameConstructor;
-var AudioFramePacketizer = SipGateway.AudioFramePacketizer;
-var VideoFramePacketizer = SipGateway.VideoFramePacketizer;
+var frameAddon = require('../rtcFrame/build/Release/rtcFrame.node');
+var AudioFrameConstructor = frameAddon.AudioFrameConstructor;
+var AudioFramePacketizer = frameAddon.AudioFramePacketizer;
+var VideoFrameConstructor = frameAddon.VideoFrameConstructor;
+var VideoFramePacketizer = frameAddon.VideoFramePacketizer;
+
 var path = require('path');
 var logger = require('../logger').logger;
 var log = logger.getLogger('SipCallConnection');
@@ -38,13 +40,15 @@ exports.SipCallConnection = function (spec, onMediaUpdate) {
         audioFramePacketizer.bindTransport(sip_callConnection);
     }
     if (video) {
-        videoFrameConstructor = new VideoFrameConstructor();
-        videoFrameConstructor.bindTransport(sip_callConnection);
-        videoFrameConstructor.addEventListener('mediaInfo', function (mediaUpdate) {
+        videoFrameConstructor = new VideoFrameConstructor(function (mediaUpdate) {
             onMediaUpdate(peerURI, 'in', mediaUpdate);
         });
+        videoFrameConstructor.bindTransport(sip_callConnection);
 
-        videoFramePacketizer = new VideoFramePacketizer(support_red, support_ulpfec);
+        const transportExt = 0;
+        const selfRequestKeyFrame = true;
+        videoFramePacketizer = new VideoFramePacketizer(
+            support_red, support_ulpfec, transportExt, selfRequestKeyFrame);
         videoFramePacketizer.bindTransport(sip_callConnection);
     }
 

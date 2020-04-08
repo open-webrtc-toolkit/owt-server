@@ -3,7 +3,8 @@
 
 #include <nan.h>
 #include <WebRtcConnection.h>
-#include "MediaDefinitions.h"
+
+#include "MediaWrapper.h"
 // #include "OneToManyProcessor.h"
 
 #include <queue>
@@ -29,7 +30,7 @@ class StatCallWorker : public Nan::AsyncWorker {
  * A WebRTC Connection. This class represents a WebRtcConnection that can be established with other peers via a SDP negotiation
  * it comprises all the necessary ICE and SRTP components.
  */
-class WebRtcConnection : public MediaSink, public erizo::WebRtcConnectionEventListener,
+class WebRtcConnection : public MediaFilter, public erizo::WebRtcConnectionEventListener,
   public erizo::WebRtcConnectionStatsListener {
  public:
     static NAN_MODULE_INIT(Init);

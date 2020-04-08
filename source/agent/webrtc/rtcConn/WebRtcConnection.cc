@@ -376,6 +376,7 @@ NAN_METHOD(WebRtcConnection::New) {
     obj->me = std::make_shared<erizo::WebRtcConnection>(worker, io_worker, wrtcId, iceConfig,
                                                         rtp_mappings, ext_mappings, obj);
     obj->msink = obj->me.get();
+    obj->msource = obj->me.get();
     uv_async_init(uv_default_loop(), &obj->async_, &WebRtcConnection::eventsCallback);
     uv_async_init(uv_default_loop(), &obj->asyncStats_, &WebRtcConnection::statsCallback);
     obj->Wrap(info.This());
