@@ -20,7 +20,7 @@ var cpuCollector = function (period, onLoad) {
         var cpus = os.cpus();
         var idle = 0;
         var total = 0;
-        if (!cpus || !olds) {
+        if (!cpus) {
             log.error('cpus is undefiend.');
             return;
         }
