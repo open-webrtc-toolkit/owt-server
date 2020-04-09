@@ -98,7 +98,7 @@ case $startStop in
     case ${command} in
       management-api )
         cd ${OWT_HOME}/management_api
-        nohup nice -n ${OWT_NICENESS} node api.js \
+        nohup nice -n ${OWT_NICENESS} node . \
           > "${stdout}" 2>&1 </dev/null &
         echo $! > ${pid}
         ;;
@@ -184,8 +184,8 @@ case $startStop in
         echo $! > ${pid}
         ;;
       app )
-        cd ${OWT_HOME}/extras/basic_example/
-        nohup nice -n ${OWT_NICENESS} node samplertcservice.js \
+        cd ${OWT_HOME}/apps/current_app/
+        nohup nice -n ${OWT_NICENESS} node . \
           > "${stdout}" 2>&1 </dev/null &
         echo $! > ${pid}
         ;;

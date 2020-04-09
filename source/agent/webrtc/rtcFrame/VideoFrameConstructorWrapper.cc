@@ -38,8 +38,13 @@ NAN_MODULE_INIT(VideoFrameConstructor::Init) {
 NAN_METHOD(VideoFrameConstructor::New) {
   if (info.IsConstructCall()) {
     VideoFrameConstructor* obj = new VideoFrameConstructor();
-    int transportccExt = (info.Length() == 2) ? info[1]->IntegerValue() : -1;
-    if (transportccExt > 0) {
+    int transportccExt = (info.Length() >= 2) ? info[1]->IntegerValue() : -1;
+    VideoFrameConstructor* base_wrapper = (info.Length() == 3)
+      ? Nan::ObjectWrap::Unwrap<VideoFrameConstructor>(Nan::To<v8::Object>(info[2]).ToLocalChecked())
+      : nullptr;
+    if (base_wrapper) {
+      obj->me = new owt_base::VideoFrameConstructor(base_wrapper->me, obj, transportccExt);
+    } else if (transportccExt > 0) {
       obj->me = new owt_base::VideoFrameConstructor(obj, transportccExt);
     } else {
       obj->me = new owt_base::VideoFrameConstructor(obj);
@@ -74,11 +79,8 @@ NAN_METHOD(VideoFrameConstructor::bindTransport) {
   VideoFrameConstructor* obj = Nan::ObjectWrap::Unwrap<VideoFrameConstructor>(info.Holder());
   owt_base::VideoFrameConstructor* me = obj->me;
 
-  MediaStream* param = Nan::ObjectWrap::Unwrap<MediaStream>(Nan::To<v8::Object>(info[0]).ToLocalChecked());
-  auto wr = std::shared_ptr<erizo::MediaStream>(param->me).get();
-
-  //MediaSink* param = Nan::ObjectWrap::Unwrap<MediaSink>(args[0]->ToObject());
-  erizo::MediaSource* source = wr;
+  MediaFilter* param = Nan::ObjectWrap::Unwrap<MediaFilter>(Nan::To<v8::Object>(info[0]).ToLocalChecked());
+  erizo::MediaSource* source = param->msource;
 
   me->bindTransport(source, source->getFeedbackSink());
 }

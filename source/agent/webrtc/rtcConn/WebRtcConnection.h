@@ -32,7 +32,7 @@
 #include <nan.h>
 #include <WebRtcConnection.h>
 #include <MediaStream.h>
-#include "MediaDefinitions.h"
+// #include "MediaDefinitions.h"
 // #include "OneToManyProcessor.h"
 
 #include <queue>
@@ -45,7 +45,7 @@
  * A WebRTC Connection. This class represents a WebRtcConnection that can be established with other peers via a SDP negotiation
  * it comprises all the necessary ICE and SRTP components.
  */
-class WebRtcConnection : public MediaSink, public erizo::WebRtcConnectionEventListener {
+class WebRtcConnection : public Nan::ObjectWrap, public erizo::WebRtcConnectionEventListener {
  public:
     static NAN_MODULE_INIT(Init);
 

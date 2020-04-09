@@ -3,11 +3,12 @@
 // SPDX-License-Identifier: Apache-2.0
 
 'use strict';
-var webrtcAddon = require('../webrtcLib/build/Release/webrtc');
-var AudioFrameConstructor = webrtcAddon.AudioFrameConstructor;
-var VideoFrameConstructor = webrtcAddon.VideoFrameConstructor;
-var AudioFramePacketizer = webrtcAddon.AudioFramePacketizer;
-var VideoFramePacketizer = webrtcAddon.VideoFramePacketizer;
+
+var addon = require('../rtcFrame/build/Release/rtcFrame.node');
+var AudioFrameConstructor = addon.AudioFrameConstructor;
+var AudioFramePacketizer = addon.AudioFramePacketizer;
+var VideoFrameConstructor = addon.VideoFrameConstructor;
+var VideoFramePacketizer = addon.VideoFramePacketizer;
 
 var path = require('path');
 var logger = require('../logger').logger;
@@ -24,11 +25,10 @@ const {
   getLegacySimulcastInfo,
   hasCodec,
   getExtId,
+  filterExt,
   addAudioSSRC,
   addVideoSSRC,
 } = require('./sdp');
-
-var addon = require('../webrtcLib/build/Release/webrtc');
 
 const TransportSeqNumUri =
     'http://www.ietf.org/id/draft-holmer-rmcat-transport-wide-cc-extensions-01';
@@ -184,6 +184,10 @@ module.exports = function (spec, on_status, on_mediaUpdate) {
           const vSsrc = videoFramePacketizer.ssrc();
           message = addVideoSSRC(message, vSsrc);
         }
+        if (isSimulcast) {
+          // TODO: enable transport-cc for simulcast if bandwidth works
+          // message = filterExt(message, TransportSeqNumUri);
+        }
         log.debug('Answer SDP', message);
         on_status({type: 'answer', sdp: message});
 
@@ -220,7 +224,7 @@ module.exports = function (spec, on_status, on_mediaUpdate) {
               info: JSON.parse(mediaUpdate)
             };
             on_mediaUpdate(JSON.stringify(data));
-          }, transportSeqNumExt);
+          }, transportSeqNumExt, videoFrameConstructor);
           simulcastConstructors.push(vfc);
           const simStream = new WrtcStream({
             audioFramePacketizer,
@@ -292,10 +296,9 @@ module.exports = function (spec, on_status, on_mediaUpdate) {
 
   var processLegacySimulcast = function (sdp) {
     // Process legacy simulcast info for Safari
-    log.debug('Process legacy simulcast');
     const simInfo = getLegacySimulcastInfo(sdp);
     if (simInfo.length > 1 && video) {
-      isSimulcast = true;
+      log.debug('Process legacy simulcast');
       stream = new WrtcStream({
         audioFrameConstructor,
         videoFrameConstructor,
@@ -318,7 +321,7 @@ module.exports = function (spec, on_status, on_mediaUpdate) {
             info: JSON.parse(mediaUpdate)
           };
           on_mediaUpdate(JSON.stringify(data));
-        }, transportSeqNumExt);
+        }, transportSeqNumExt, videoFrameConstructor);
         simulcastConstructors.push(vfc);
         const simStream = new WrtcStream({
           audioFramePacketizer,
@@ -337,12 +340,19 @@ module.exports = function (spec, on_status, on_mediaUpdate) {
 
   var setupTransport = function (sdp) {
     if (direction === 'in') {
+      const simulcastInfo = getSimulcastInfo(sdp);
+      const legacySimInfo = getLegacySimulcastInfo(sdp);
+      transportSeqNumExt = getExtId(sdp, TransportSeqNumUri);
+      if (simulcastInfo.length > 0 || legacySimInfo.length > 1) {
+        isSimulcast = true;
+        // transportSeqNumExt = 0;
+      }
+
       if (audio) {
         audioFrameConstructor = new AudioFrameConstructor();
         audioFrameConstructor.bindTransport(wrtc.getMediaStream(wrtcId));
       }
       if (video) {
-        transportSeqNumExt = getExtId(sdp, TransportSeqNumUri);
         videoFrameConstructor = new VideoFrameConstructor(on_mediaUpdate, transportSeqNumExt);
         videoFrameConstructor.bindTransport(wrtc.getMediaStream(wrtcId));
       }
@@ -352,10 +362,6 @@ module.exports = function (spec, on_status, on_mediaUpdate) {
       }
       const aSsrc = getAudioSsrc(sdp);
       const vSsrc = getVideoSsrcList(sdp);
-      const simulcastInfo = getSimulcastInfo(sdp);
-      if (simulcastInfo.length > 0) {
-        isSimulcast = true;
-      }
       log.debug('SDP ssrc:', aSsrc, vSsrc);
       wrtc.setRemoteSsrc(aSsrc, vSsrc, '');
       wrtc.setSimulcastInfo(simulcastInfo);

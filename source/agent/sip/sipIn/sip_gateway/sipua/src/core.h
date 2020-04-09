@@ -89,6 +89,8 @@ int  audio_send_digit(struct audio *a, char key);
 void audio_sdp_attr_decode(struct audio *a);
 // int  audio_print_rtpstat(struct re_printf *pf, const struct audio *au);
 void audio_send(struct audio *a, uint8_t *data, size_t len);
+int get_audio_counter(const struct audio *a);
+void reset_audio_counter(struct audio *a);
 
 
 /*
@@ -303,6 +305,7 @@ int  stream_jbuf_stat(struct re_printf *pf, const struct stream *s);
 void stream_hold(struct stream *s, bool hold);
 void stream_set_srate(struct stream *s, uint32_t srate_tx, uint32_t srate_rx);
 void stream_send_fir(struct stream *s, bool pli);
+void stream_send_rtcpfb(struct stream *s, struct mbuf *mb);
 void stream_reset(struct stream *s);
 void stream_set_bw(struct stream *s, uint32_t bps);
 int  stream_debug(struct re_printf *pf, const struct stream *s);
@@ -350,7 +353,11 @@ void video_sdp_attr_decode(struct video *v);
 int  video_print(struct re_printf *pf, const struct video *v);
 
 void video_send(struct video *v, uint8_t *data, size_t len);
+void video_rtcpfb_send(struct video *v, uint8_t *data, size_t len);
 void video_fir(struct video *v);
+int get_video_counter(const struct video *video);
+void reset_video_counter(struct video *video);
+
 
 
 /** Defines a SIP User Agent object */

@@ -7,10 +7,7 @@
 #endif
 
 #include "AudioFramePacketizerWrapper.h"
-#include "MediaDefinitions.h"
-#include "WebRtcConnection.h"
-#include "MediaStream.h"
-#include <WebRtcConnection.h>
+#include "MediaWrapper.h"
 
 using namespace v8;
 
@@ -63,10 +60,8 @@ void AudioFramePacketizer::bindTransport(const FunctionCallbackInfo<Value>& args
   AudioFramePacketizer* obj = ObjectWrap::Unwrap<AudioFramePacketizer>(args.Holder());
   owt_base::AudioFramePacketizer* me = obj->me;
 
-  MediaStream* param = Nan::ObjectWrap::Unwrap<MediaStream>(Nan::To<v8::Object>(args[0]).ToLocalChecked());
-  auto wr = std::shared_ptr<erizo::MediaStream>(param->me).get();
-
-  erizo::MediaSink* transport = wr;
+  MediaFilter* param = Nan::ObjectWrap::Unwrap<MediaFilter>(Nan::To<v8::Object>(args[0]).ToLocalChecked());
+  erizo::MediaSink* transport = param->msink;
 
   me->bindTransport(transport);
 }

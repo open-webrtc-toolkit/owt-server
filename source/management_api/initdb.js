@@ -20,7 +20,7 @@ var cipher = require('./cipher');
 
 var dirName = !process.pkg ? __dirname : path.dirname(process.execPath);
 var configFile = path.join(dirName, 'management_api.toml');
-var sampleServiceFile = path.resolve(dirName, '../extras/basic_example/samplertcservice.js');
+var sampleServiceFile = path.resolve(dirName, '../apps/current_app/main.js');
 
 function prepareDB(next) {
   if (fs.existsSync(cipher.astore)) {

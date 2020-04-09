@@ -422,7 +422,20 @@ exports.getExtId = function (sdp, extUri) {
       }
     }
   }
-  return -1;
+  return 0;
+};
+
+exports.filterExt = function (sdp, uri) {
+  const sdpObj = transform.parse(sdp);
+  for (const media of sdpObj.media) {
+    if (Array.isArray(media.ext)) {
+      media.ext = media.ext.filter(ext => ext.uri !== uri);
+    }
+    if (Array.isArray(media.rtcpFb)) {
+      media.rtcpFb = media.rtcpFb.filter(fb => fb.type !== 'transport-cc');
+    }
+  }
+  return transform.write(sdpObj);
 };
 
 exports.processOffer = function (sdp, preference = {}, direction) {

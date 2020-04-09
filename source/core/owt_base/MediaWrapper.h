@@ -12,12 +12,20 @@ class MediaSink : public Nan::ObjectWrap {
     erizo::MediaSink* msink;
 };
 
-
 /*
  * Wrapper class of erizo::MediaSource
  */
 class MediaSource : public Nan::ObjectWrap {
  public:
+    erizo::MediaSource* msource;
+};
+
+/*
+ * Wrapper class of both erizo::MediaSink and erizo::MediaSource
+ */
+class MediaFilter : public Nan::ObjectWrap {
+ public:
+    erizo::MediaSink* msink;
     erizo::MediaSource* msource;
 };
 

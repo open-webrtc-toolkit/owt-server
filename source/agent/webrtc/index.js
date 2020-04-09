@@ -13,7 +13,7 @@ var logger = require('../logger').logger;
 // Logger
 var log = logger.getLogger('WebrtcNode');
 
-var addon = require('../webrtcLib/build/Release/webrtc');
+var addon = require('../rtcConn/build/Release/rtcConn.node');
 
 var threadPool = new addon.ThreadPool(global.config.webrtc.num_workers || 24);
 threadPool.start();

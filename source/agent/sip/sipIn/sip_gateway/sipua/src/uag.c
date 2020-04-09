@@ -423,10 +423,8 @@ struct ua *uag_find(const struct uag *uag, const struct pl *cuser)
 		return ua;
 	else if (0 == pl_casecmp(cuser, &ua->acc->luri.user))
 		return ua;
-    else
-    	return NULL;
-
-	return NULL;
+  else
+    return NULL;
 }
 
 
