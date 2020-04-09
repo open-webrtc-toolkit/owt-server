@@ -25,7 +25,7 @@ RUN cd /tmp && tar -zxf MediaStack.tar.gz && cd MediaStack && ./install_media.sh
 RUN rm /tmp/MediaStack.tar.gz && rm -rf /tmp/MediaStack
 ENV MFX_HOME=/opt/intel/mediasdk
 
-RUN git clone https://github.com/open-webrtc-toolkit/owt-server.git
+RUN git clone https://github.com/open-webrtc-toolkit/owt-server.git --depth=1
 RUN mkdir -p ${APP_PATH}
 
 WORKDIR /owt-server
