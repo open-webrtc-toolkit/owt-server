@@ -28,6 +28,6 @@ void QuicTransportConnection::OnIncomingStream(owt::quic::QuicTransportStreamInt
     m_unassociatedStreams.push_back(std::move(quicStream));
 }
 
-void QuicTransportConnection::onEnded(){
-
+void QuicTransportConnection::onEnded()
+{
 }

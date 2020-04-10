@@ -13,10 +13,21 @@ QuicTransportStream::QuicTransportStream(owt::quic::QuicTransportStreamInterface
 {
 }
 
-void QuicTransportStream::OnCanRead(){
+void QuicTransportStream::OnCanRead()
+{
     ELOG_DEBUG("On can read.");
 }
 
-void QuicTransportStream::OnCanWrite(){
+void QuicTransportStream::OnCanWrite()
+{
     ELOG_DEBUG("On can write.");
+}
+
+void QuicTransportStream::Write(uint8_t* data, size_t length)
+{
+    m_stream->Write(data, length);
+}
+
+void QuicTransportStream::Close(){
+    m_stream->Close();
 }

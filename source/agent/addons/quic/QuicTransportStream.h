@@ -20,6 +20,8 @@ public:
     };
     // `sessionId` is the ID of publication or subscription, NOT the ID of QUIC session.
     explicit QuicTransportStream(owt::quic::QuicTransportStreamInterface* stream);
+    void Write(uint8_t* data, size_t length);
+    void Close();
 
 protected:
     // Overrides owt::quic::QuicTransportStreamInterface::Visitor.
