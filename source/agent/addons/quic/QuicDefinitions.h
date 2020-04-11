@@ -25,16 +25,4 @@ enum class QuicTransportState : uint8_t {
     Failed
 };
 
-// https://w3c.github.io/webrtc-pc/#dom-rtcdtlsfingerprint
-struct RTCDtlsFingerprint {
-    std::string algorithm;
-    std::string value;
-};
-
-// https://w3c.github.io/webrtc-quic/#dom-rtcquicparameters
-struct RTCQuicParameters {
-    std::string role;
-    std::vector<RTCDtlsFingerprint> fingerprints;
-};
-
 #endif
