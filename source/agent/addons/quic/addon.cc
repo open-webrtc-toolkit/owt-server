@@ -3,9 +3,9 @@
 
 using namespace v8;
 
-void InitAll(Handle<Object> exports)
+NAN_MODULE_INIT(InitAll)
 {
-    QuicTransportServer::Init(exports);
+    QuicTransportServer::Init(target);
 }
 
 NODE_MODULE(addon, InitAll)

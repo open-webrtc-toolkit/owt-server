@@ -38,7 +38,7 @@ NAN_MODULE_INIT(QuicTransportServer::Init)
     Nan::SetPrototypeMethod(tpl, "start", start);
     Nan::SetPrototypeMethod(tpl, "stop", stop);
 
-    s_constructor.Reset(tpl->GetFunction());
+    s_constructor.Reset(Nan::GetFunction(tpl).ToLocalChecked());
     Nan::Set(target, Nan::New("QuicTransportServer").ToLocalChecked(), Nan::GetFunction(tpl).ToLocalChecked());
 }
 
