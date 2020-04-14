@@ -216,6 +216,10 @@ var rpcPublic = {
     var notifyFail = (err) => {};
     socketio_server && socketio_server.notify(participantId, event, data).catch(notifyFail);
     callback('callback', 'ok');
+  },
+  broadcast: function(excludeList, event, data, callback) {
+    socketio_server && socketio_server.broadcast(excludeList, event, data);
+    callback('callback', 'ok');
   }
 };
 
