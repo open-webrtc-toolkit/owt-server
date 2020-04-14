@@ -600,7 +600,7 @@ var Conference = function (rpcClient, selfRpcId) {
       let excludes = (to === 'others') ? [from] : [];
       let portals = new Set();
       for (let ppt of participants) {
-        portals.add(ppt.getPortal);
+        portals.add(ppt.getPortal());
       }
       portals.forEach((portal) => {
         rpcReq.broadcast(portal, excludes, event, data);
