@@ -455,6 +455,15 @@ var SocketIOServer = function(spec, portal, observer) {
     }
   };
 
+  that.broadcast = function(excludeList, event, data) {
+    log.debug('broadcast exclude:', excludeList, 'event:', event, 'data:', data);
+    for (let clientId in clients) {
+      if (!excludeList.includes(clientId)) {
+        clients[clientId].notify(event, data);
+      }
+    }
+  }
+
   that.drop = function(participantId) {
     if (participantId === 'all') {
       for(var pid in clients) {

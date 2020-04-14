@@ -134,7 +134,7 @@ describe('rpcRequest.terminate', function() {
    });
 });
 
-describe('rpcRequest.getRoomConfig/onSessionSignaling/mediaOnOff/sendMsg/dropUser', function() {
+describe('rpcRequest.getRoomConfig/onSessionSignaling/mediaOnOff/sendMsg/broadcast/dropUser', function() {
   it('Should succeed if rpcChannel.makeRPC succeeds.', function() {
     var mockRpcChannel = sinon.createStubInstance(rpcChannel);
     mockRpcChannel.makeRPC = sinon.stub();
@@ -145,6 +145,7 @@ describe('rpcRequest.getRoomConfig/onSessionSignaling/mediaOnOff/sendMsg/dropUse
     var mediaOnOff = req.mediaOnOff('rpcIdOfWorkerNode', 'sessionId', 'video', 'in', 'off');
     var onSessionSignaling = req.onSessionSignaling('rpcIdOfWorkerNode', 'sessionId', 'soacObj');
     var sendMsg = req.sendMsg('rpcIdOfPortal', 'participantId', 'event-name', 'msgObj');
+    var broadcast = req.broadcast('rpcIdOfPortal', ['participantId'], 'event-name', 'msgObj');
     var dropUser = req.dropUser('rpcIdOfPortal', 'participantId');
 
 
@@ -153,10 +154,11 @@ describe('rpcRequest.getRoomConfig/onSessionSignaling/mediaOnOff/sendMsg/dropUse
       expect(mediaOnOff).to.become('ok-or-data'),
       expect(onSessionSignaling).to.become('ok-or-data'),
       expect(sendMsg).to.become('ok-or-data'),
+      expect(broadcast).to.become('ok-or-data'),
       expect(dropUser).to.become('ok-or-data')
       ])
       .then(function() {
-        expect(mockRpcChannel.makeRPC.callCount).to.equal(5);
+        expect(mockRpcChannel.makeRPC.callCount).to.equal(6);
       });
   });
 
@@ -170,6 +172,7 @@ describe('rpcRequest.getRoomConfig/onSessionSignaling/mediaOnOff/sendMsg/dropUse
     var mediaOnOff = req.mediaOnOff('rpcIdOfWorkerNode', 'sessionId', 'video', 'in', 'off');
     var onSessionSignaling = req.onSessionSignaling('rpcIdOfWorkerNode', 'sessionId', 'soacObj');
     var sendMsg = req.sendMsg('rpcIdOfPortal', 'participantId', 'event-name', 'msgObj');
+    var broadcast = req.broadcast('rpcIdOfPortal', ['participantId'], 'event-name', 'msgObj');
     var dropUser = req.dropUser('rpcIdOfPortal', 'participantId');
 
     return Promise.all([
@@ -177,10 +180,11 @@ describe('rpcRequest.getRoomConfig/onSessionSignaling/mediaOnOff/sendMsg/dropUse
       expect(mediaOnOff).to.be.rejectedWith('timeout-or-error'),
       expect(onSessionSignaling).to.be.rejectedWith('timeout-or-error'),
       expect(sendMsg).to.be.rejectedWith('timeout-or-error'),
+      expect(broadcast).to.be.rejectedWith('timeout-or-error'),
       expect(dropUser).to.be.rejectedWith('timeout-or-error')
       ])
       .then(function() {
-        expect(mockRpcChannel.makeRPC.callCount).to.equal(5);
+        expect(mockRpcChannel.makeRPC.callCount).to.equal(6);
       });
   });
 });
