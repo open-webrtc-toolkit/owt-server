@@ -599,12 +599,14 @@ var Conference = function (rpcClient, selfRpcId) {
       // Broadcast message to portal
       let excludes = (to === 'others') ? [from] : [];
       let portals = new Set();
-      for (let ppt of participants) {
-        portals.add(ppt.getPortal());
+      for (let pptId in participants) {
+        portals.add(participants[pptId].getPortal());
       }
       portals.forEach((portal) => {
-        rpcReq.broadcast(portal, excludes, event, data);
-      }
+        if (portal) {
+          rpcReq.broadcast(portal, excludes, msg, data);
+        }
+      });
     } else {
       sendMsgTo(to, msg, data);
     }
