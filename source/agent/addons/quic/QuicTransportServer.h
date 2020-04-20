@@ -10,6 +10,7 @@
 #include "QuicTransportConnection.h"
 #include "owt/quic/quic_transport_server_interface.h"
 #include <logger.h>
+#include <mutex>
 #include <nan.h>
 #include <string>
 #include <thread>
@@ -19,7 +20,7 @@ class QuicTransportServer : public Nan::ObjectWrap, owt::quic::QuicTransportServ
     DECLARE_LOGGER();
 
 public:
-    static NAN_MODULE_INIT(Init);
+    static NAN_MODULE_INIT(init);
 
 protected:
     // Overrides owt::quic::QuicTransportServerInterface::Visitor.
@@ -33,15 +34,18 @@ protected:
 
     QuicTransportServer() = delete;
     explicit QuicTransportServer(int port);
+
+private:
     static NAN_METHOD(newInstance);
     static NAN_METHOD(start);
     static NAN_METHOD(stop);
+    static NAUV_WORK_CB(onConnectionCallback);
 
     std::unique_ptr<owt::quic::QuicTransportServerInterface> m_quicServer;
-    // Key is user ID, value is it's QUIC transport connection.
-    std::unordered_map<std::string, std::unique_ptr<QuicTransportConnection>> m_connections;
-    // Move to `m_connections` after authentication.
-    std::vector<std::unique_ptr<QuicTransportConnection>> m_unauthenticatedConnections;
+
+    uv_async_t m_asyncOnConnection;
+    std::mutex m_connectionQueueMutex;
+    std::queue<owt::quic::QuicTransportSessionInterface*> m_connectionsToBeNotified;
 
     static Nan::Persistent<v8::Function> s_constructor;
 };

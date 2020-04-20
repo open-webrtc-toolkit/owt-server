@@ -8,12 +8,20 @@ const logger = require('../logger').logger;
 const log = logger.getLogger('QuicTransportServer');
 const addon = require('./build/Debug/quic');
 
-module.exports = class QuicTransportServer {
-  constructor(port){
-    this.server=new addon.QuicTransportServer(port);
+/* Every QUIC agent is a QuicTransportServer which accepts QuicTransport
+ * connections from clients.
+ *
+ * Events:
+ * ended - Server is ended. All Connections will be stopped.
+ * streamadded - A new stream is added, and ready to be attached to a stream
+ * pipeline. Argument: a string for publication or subscription ID.
+ */
+module.exports = class QuicTransportServer extends EventEmitter {
+  constructor(port) {
+    this.server = new addon.QuicTransportServer(port);
   }
 
-  start(){
+  start() {
     this.server.start();
   }
 };

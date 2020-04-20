@@ -7,14 +7,18 @@
 #ifndef QUIC_QUICTRANSPORTCONNECTION_H_
 #define QUIC_QUICTRANSPORTCONNECTION_H_
 
-#include "owt/quic/quic_transport_session_interface.h"
-#include "QuicTransportStream.h"
-#include <logger.h>
 #include <memory>
+#include <mutex>
 #include <unordered_map>
 #include <vector>
 
-class QuicTransportConnection : public owt::quic::QuicTransportSessionInterface::Visitor, QuicTransportStream::Visitor {
+#include <logger.h>
+#include <nan.h>
+
+#include "QuicTransportStream.h"
+#include "owt/quic/quic_transport_session_interface.h"
+
+class QuicTransportConnection : public Nan::ObjectWrap, public owt::quic::QuicTransportSessionInterface::Visitor, QuicTransportStream::Visitor {
     DECLARE_LOGGER();
 
 public:
@@ -24,8 +28,16 @@ public:
         // Connection is closed.
         virtual void onClose() = 0;
     };
-    explicit QuicTransportConnection(owt::quic::QuicTransportSessionInterface* session);
+    explicit QuicTransportConnection();
+    ~QuicTransportConnection();
     void setVisitor(Visitor* visitor);
+    static v8::Local<v8::Object> newInstance(owt::quic::QuicTransportSessionInterface* session);
+
+    static NAN_MODULE_INIT(init);
+    static NAN_METHOD(newInstance);
+    static NAUV_WORK_CB(onStreamCallback);
+
+    static Nan::Persistent<v8::Function> s_constructor;
 
 protected:
     // Overrides owt::quic::QuicTransportSessionInterface::Visitor.
@@ -41,6 +53,10 @@ private:
     std::unordered_map<std::string, std::unique_ptr<QuicTransportStream>> m_streams;
     // Move to `m_streams` after associate with a publication or subscription.
     std::vector<std::unique_ptr<QuicTransportStream>> m_unassociatedStreams;
+
+    uv_async_t m_asyncOnStream;
+    std::mutex m_streamQueueMutex;
+    std::queue<owt::quic::QuicTransportStreamInterface*> m_streamsToBeNotified;
 };
 
 #endif

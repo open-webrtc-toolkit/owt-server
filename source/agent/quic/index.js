@@ -6,9 +6,8 @@
 const Connections = require('./connections');
 const InternalConnectionFactory = require('./InternalConnectionFactory');
 const logger = require('../logger').logger;
-const P2PQuicTransport = require('./p2p/p2pQuicTransport');
-const P2PQuicStream = require('./p2p/p2pQuicStream');
 const QuicTransportServer=require('./webtransport/quicTransportServer');
+const QuicTransportStreamPipeline=require('./webtransport/quicTransportStreamPipeline');
 const log = logger.getLogger('QuicNode');
 const addon = require('./build/Debug/quic');
 
@@ -27,42 +26,39 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
     };
     var connections = new Connections;
     var internalConnFactory = new InternalConnectionFactory;
-    const pubSubMap = new Map();  // Key is publication, value is an array of subscription array
-    const transportChannels = new Map();  // Key is transport ID, value is QuicTransport instance.
+    const incomingStreamPipelines =
+        new Map();  // Key is publication ID, value is stream pipeline.
+    const outgoingStreamPipeline =
+        new Map();  // Key is subscription ID, value is stream pipeline.
 
     var notifyStatus = (controller, sessionId, direction, status) => {
         rpcClient.remoteCast(controller, 'onSessionProgress', [sessionId, direction, status]);
     };
 
-    const createQuicStream=function(transportId, streamId, direction, options, callback){
-        let tc;
-        if(transportId){
-            if (!transportChannels.has(transportId)) {
-                return callback('callback', {type: 'failed', reason: 'Invalid transport ID.'});
-            }
-            tc = transportChannels.get(options.transport.id);
-        } else {
-            transportId = Math.round(Math.random() * 1000000000000000000) + '';
-            tc = new P2PQuicTransport(transportId, (status) => {
-                notifyStatus(options.controller, connectionId, direction, status);
-            });
-            transportChannels.set(transportId, tc);
-        }
-        return tc.getOrCreateQuicStream(streamId);
-    }
-
-    const createQuicConnection = function (connectionId, direction, options) {
-        var connection = new QuicConnection(connectionId, function (status) {
-            notifyStatus(options.controller, connectionId, direction, status);
-        });
-
-        return connection;
+    const createStreamPipeline =
+        function(streamId, direction, options, callback) {
+      // Client is expected to create a QuicTransport before sending publish or
+      // subscription requests.
+      const streamPipeline = new streamPipeline(streamId);
+      // If an stream pipeline already exists, just replace the old.
+      let pipelineMap;
+      if (direction === 'in') {
+        pipelineMap = incomingStreamPipelines;
+      } else {
+        pipelineMap = outgoingStreamPipeline;
+      }
+      if (pipelineMap.has(streamId)) {
+        return callback(
+            'callback',
+            {type: 'failed', reason: 'Pipeline for ' + streamId + ' exists.'});
+      }
+      pipelineMap.set(streamId, streamPipeline);
     };
 
-    var onSuccess = function (callback) {
-        return function(result) {
-            callback('callback', result);
-        };
+    var onSuccess = function(callback) {
+      return function(result) {
+        callback('callback', result);
+      };
     };
 
     var onError = function (callback) {
@@ -89,11 +85,6 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
 
     // functions: publish, unpublish, subscribe, unsubscribe, linkup, cutoff
     that.publish = function(connectionId, connectionType, options, callback) {
-        if (connectionType == 'quic') {
-            if (options.transport && options.transport.type) {
-                connectionType = options.transport.type;
-            }
-        }
         log.debug('publish, connectionId:', connectionId, 'connectionType:', connectionType, 'options:', options);
         if (connections.getConnection(connectionId)) {
             return callback('callback', {type: 'failed', reason: 'Connection already exists:'+connectionId});
@@ -108,7 +99,7 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
             break;
         case 'quic':
             log.debug("New QUIC connection.");
-            conn = createQuicStream(options.transport.id, connectionId, 'in', options, callback);
+            conn = createStreamPipeline(connectionId, 'in', options, callback);
             if (!conn) {
                 return;
             }

@@ -28,7 +28,7 @@ QuicTransportServer::QuicTransportServer(int port)
     ELOG_DEBUG("QuicTransportServer::QuicTransportServer");
 }
 
-NAN_MODULE_INIT(QuicTransportServer::Init)
+NAN_MODULE_INIT(QuicTransportServer::init)
 {
     Local<FunctionTemplate> tpl = Nan::New<FunctionTemplate>(newInstance);
     tpl->SetClassName(Nan::New("QuicTransportServer").ToLocalChecked());
@@ -54,6 +54,7 @@ NAN_METHOD(QuicTransportServer::newInstance)
     // Default port number is not specified in https://tools.ietf.org/html/draft-vvv-webtransport-quic-01.
     QuicTransportServer* obj = new QuicTransportServer(7700);
     obj->Wrap(info.This());
+    uv_async_init(uv_default_loop(), &obj->m_asyncOnConnection, &QuicTransportServer::onConnectionCallback);
     info.GetReturnValue().Set(info.This());
 }
 
@@ -67,6 +68,40 @@ NAN_METHOD(QuicTransportServer::start)
 
 NAN_METHOD(QuicTransportServer::stop)
 {
+    QuicTransportServer* obj = Nan::ObjectWrap::Unwrap<QuicTransportServer>(info.Holder());
+    if (!uv_is_closing(reinterpret_cast<uv_handle_t*>(&obj->m_asyncOnConnection))) {
+        uv_close(reinterpret_cast<uv_handle_t*>(&obj->m_asyncOnConnection), NULL);
+    }
+}
+
+NAUV_WORK_CB(QuicTransportServer::onConnectionCallback)
+{
+    ELOG_DEBUG("On connection callback.");
+    Nan::HandleScope scope;
+    QuicTransportServer* obj = reinterpret_cast<QuicTransportServer*>(async->data);
+    if (obj == nullptr || obj->m_connectionsToBeNotified.empty()) {
+        return;
+    }
+    std::lock_guard<std::mutex> lock(obj->m_connectionQueueMutex);
+    while (!obj->m_connectionsToBeNotified.empty()) {
+        v8::Local<v8::Object> connection = QuicTransportConnection::newInstance(obj->m_connectionsToBeNotified.front());
+        QuicTransportConnection* con = Nan::ObjectWrap::Unwrap<QuicTransportConnection>(connection);
+        obj->m_connectionsToBeNotified.front()->SetVisitor(con);
+        Nan::MaybeLocal<v8::Value> onEvent = Nan::Get(obj->handle(), Nan::New<v8::String>("onconnection").ToLocalChecked());
+        if (!onEvent.IsEmpty()) {
+            v8::Local<v8::Value> onEventLocal = onEvent.ToLocalChecked();
+            if (onEventLocal->IsFunction()) {
+                v8::Local<v8::Function> eventCallback = onEventLocal.As<Function>();
+                Nan::AsyncResource* resource = new Nan::AsyncResource(Nan::New<v8::String>("OnConnectionEventCallback").ToLocalChecked());
+                Local<Value> args[] = { connection };
+                ELOG_DEBUG("Run in async scope.");
+                resource->runInAsyncScope(Nan::GetCurrentContext()->Global(), eventCallback, 1, args);
+            }
+        } else {
+            ELOG_DEBUG("onEvent is empty");
+        }
+        obj->m_connectionsToBeNotified.pop();
+    }
 }
 
 void QuicTransportServer::OnEnded()
@@ -77,9 +112,12 @@ void QuicTransportServer::OnEnded()
 void QuicTransportServer::OnSession(owt::quic::QuicTransportSessionInterface* session)
 {
     ELOG_DEBUG("New session created. Connection ID: %s.", session->ConnectionId());
-    std::unique_ptr<QuicTransportConnection> connection = std::make_unique<QuicTransportConnection>(session);
-    session->SetVisitor(connection.get());
-    m_unauthenticatedConnections.push_back(std::move(connection));
+    {
+        std::lock_guard<std::mutex> lock(m_connectionQueueMutex);
+        m_connectionsToBeNotified.push(session);
+    }
+    m_asyncOnConnection.data = this;
+    uv_async_send(&m_asyncOnConnection);
 }
 
 void QuicTransportServer::onAuthentication(const std::string& id)

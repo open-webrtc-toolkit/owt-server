@@ -35,11 +35,6 @@
     'include_dirs': [
       "<!(node -e \"require('nan')\")",
       'conn_handler',
-      '../webrtc/webrtcLib/erizo/src/erizo',
-      '../../../../third_party/licode/erizo/src/erizo',
-      '../../../../third_party/licode/erizo/src/erizo/lib',
-      '../../../../third_party/licode/erizo/src/erizo/thread',
-      '../../../../third_party/licode/erizo/src/erizo/stats',
       '../../../core/common',
       '../../../core/owt_base',
       '../../../../build/libdeps/build/include',
@@ -60,10 +55,9 @@
     'libraries': [
       '-ldl',
       '-llog4cxx',
-      '-lboost_thread',
-      '-lboost_system',
-      '-lnice',
       '-lowt_quic_transport',
+      '-lboost_system',
+      '-lboost_thread',
     ],
   }]
 }
