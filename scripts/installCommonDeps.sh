@@ -149,12 +149,13 @@ install_openssl(){
   $INCR_INSTALL && [[ ! -z $LIST_LIBS ]] && echo "openssl already installed." && return 0
 
   if [ -d $LIB_DIR ]; then
+    local SSL_BASE_VERSION="1.0.2"
     local SSL_VERSION="1.0.2t"
     cd $LIB_DIR
     rm -f ./build/lib/libssl.*
     rm -f ./build/lib/libcrypto.*
     rm -rf openssl-1*
-    wget -c http://www.openssl.org/source/openssl-${SSL_VERSION}.tar.gz
+    wget -c http://www.openssl.org/source/old/${SSL_BASE_VERSION}/openssl-${SSL_VERSION}.tar.gz
     tar xf openssl-${SSL_VERSION}.tar.gz
     cd openssl-${SSL_VERSION}
     ./config no-ssl3 --prefix=$PREFIX_DIR -fPIC
