@@ -250,7 +250,7 @@ var Conference = function (rpcClient, selfRpcId) {
           });
         });
     } else if (direction === 'out') {
-      return addSubscription(sessionId, sessionInfo.locality, sessioninfo.transport, sessionInfo.media, sessionInfo.data, sessionInfo.info
+      return addSubscription(sessionId, sessionInfo.locality, sessionInfo.transport, sessionInfo.media, sessionInfo.data, sessionInfo.info
         ).then(() => {
           if (sessionInfo.info && sessionInfo.info.type !== 'webrtc') {
             if (sessionInfo.info.location) {
@@ -738,6 +738,7 @@ var Conference = function (rpcClient, selfRpcId) {
 
     const isAudioPubPermitted = !!participants[info.owner].isPublishPermitted('audio');
     const subArgs = subscription.toRoomCtrlSubArgs();
+    const subInfo = { transport : transport, media : media, data : dataSpec };
     const subs = subArgs.map(subArg => new Promise((resolve, reject) => {
         if (roomController) {
             const subInfo = { transport : transport, media : subArg.media, data : subArg.data };
