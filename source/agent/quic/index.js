@@ -9,12 +9,9 @@ const logger = require('../logger').logger;
 const QuicTransportServer=require('./webtransport/quicTransportServer');
 const QuicTransportStreamPipeline=require('./webtransport/quicTransportStreamPipeline');
 const log = logger.getLogger('QuicNode');
-const addon = require('./build/Debug/quic');
+const addon = require('./build/Release/quic');
 
 log.info('QUIC transport node.')
-
-const threadPool = new addon.ThreadPool(global.config.quic.num_workers || 24);
-threadPool.start();
 
 const quicTransportServer=new QuicTransportServer();
 quicTransportServer.start();

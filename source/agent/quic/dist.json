@@ -35,7 +35,8 @@
               "p2p/p2pQuicTransport.js"
           ],
           "quic/webtransport": [
-              "webtransport/quicTransportServer.js"
+              "webtransport/quicTransportServer.js",
+              "webtransport/quicTransportStreamPipeline.js"
           ],
           "cert": [
               "../../../cert/.owt.keystore"

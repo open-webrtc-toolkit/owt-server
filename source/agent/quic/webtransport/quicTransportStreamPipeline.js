@@ -4,9 +4,9 @@
 
 /*global require*/
 'use strict';
-const logger = require('../logger').logger;
+const logger = require('../../logger').logger;
 const log = logger.getLogger('QuicTransportStreamPipeline');
-const addon = require('./build/Debug/quic');
+const addon = require('../build/Release/quic');
 
 /* `QuicTransportStreamPipeline` is pipeline for a publication or a subscription
  * to send or receive data through a QUIC stream. The pipeline might be created

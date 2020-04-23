@@ -4,9 +4,10 @@
 
 /*global require*/
 'use strict';
-const logger = require('../logger').logger;
+const EventEmitter = require('events');
+const logger = require('../../logger').logger;
 const log = logger.getLogger('QuicTransportServer');
-const addon = require('./build/Debug/quic');
+const addon = require('../build/Release/quic');
 
 /* Every QUIC agent is a QuicTransportServer which accepts QuicTransport
  * connections from clients.
@@ -18,10 +19,25 @@ const addon = require('./build/Debug/quic');
  */
 module.exports = class QuicTransportServer extends EventEmitter {
   constructor(port) {
-    this.server = new addon.QuicTransportServer(port);
+    super();
+    this._server = new addon.QuicTransportServer(port);
+    this._connections = new Map(); // Key is user ID.
+    this._streams = new Map(); // Key is content session ID.
+    this._unAuthenticatedConnections = []; // When it's authenticated, it will be moved to this.connections.
+    this._unAssociatedStreams=[];  // No content session ID assgined to them.
+    this._server.onconnection = (connection) => {
+      this._unAuthenticatedConnections.push(connection);
+      connection.onincomingstream = (stream) => {
+        this._unAssociatedStreams.push(stream);
+        stream.oncontentsessionid = (id) => {
+          console.log('New stream for session ' + id);
+        }
+        console.log('New incoming stream.');
+      }
+    }
   }
 
   start() {
-    this.server.start();
+    this._server.start();
   }
 };
