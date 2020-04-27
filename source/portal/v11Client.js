@@ -6,6 +6,7 @@
 
 var log = require('./logger').logger.getLogger('V11Client');
 var requestData = require('./requestDataValidator');
+const { v4: uuid } = require('uuid');
 
 var idPattern = /^[0-9a-zA-Z\-]+$/;
 function isValidIdString(str) {
@@ -125,7 +126,7 @@ var V11Client = function(clientId, sigConnection, portal) {
         return safeCall(callback, 'error', 'Illegal request');
       }
 
-      var stream_id = Math.round(Math.random() * 1000000000000000000) + '';
+      var stream_id = uuid().replace(/-/g,'');
       return validatePubReq(pubReq)
         .then((req) => {
           if (pubReq.transport && pubReq.transport.type == 'quic-p2p') {
@@ -170,7 +171,7 @@ var V11Client = function(clientId, sigConnection, portal) {
         return safeCall(callback, 'error', 'Illegal request');
       }
 
-      var subscription_id = Math.round(Math.random() * 1000000000000000000) + '';
+      var subscription_id = uuid().replace(/-/g,'');
       return validateSubReq(subReq)
         .then((req) => {
           if (req.transport && req.transport.type == 'quic-p2p') {
