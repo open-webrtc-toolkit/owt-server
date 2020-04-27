@@ -13,6 +13,7 @@
       '../../../../core/owt_base/FFmpegFrameDecoder.cpp',
       '../../../../core/owt_base/FrameProcesser.cpp',
       '../../../../core/owt_base/FFmpegDrawText.cpp',
+      '../../../../core/common/JobTimer.cpp',
     ],
     'cflags_cc': [
         '-Wall',

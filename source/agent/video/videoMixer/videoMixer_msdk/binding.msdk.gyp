@@ -18,6 +18,7 @@
       '../../../../core/owt_base/MsdkFrame.cpp',
       '../../../../core/owt_base/MsdkScaler.cpp',
       '../../../../core/owt_base/FastCopy.cpp',
+      '../../../../core/common/JobTimer.cpp',
       '../../../../../third_party/mediasdk/samples/sample_common/src/base_allocator.cpp',
       '../../../../../third_party/mediasdk/samples/sample_common/src/vaapi_allocator.cpp',
     ],
