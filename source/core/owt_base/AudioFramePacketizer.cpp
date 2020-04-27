@@ -5,7 +5,7 @@
 #include "AudioFramePacketizer.h"
 #include "AudioUtilities.h"
 
-#include "WebRTCTaskRunner.h"
+#include "TaskRunnerPool.h"
 
 using namespace webrtc;
 
@@ -25,15 +25,13 @@ AudioFramePacketizer::AudioFramePacketizer()
     m_ssrc = m_ssrc_generator->CreateSsrc();
     m_ssrc_generator->RegisterSsrc(m_ssrc);
     m_audioTransport.reset(new WebRTCTransport<erizoExtra::AUDIO>(this, nullptr));
-    m_taskRunner.reset(new owt_base::WebRTCTaskRunner("AudioFramePacketizer"));
-    m_taskRunner->Start();
+    m_taskRunner = TaskRunnerPool::GetInstance().GetTaskRunner();
     init();
 }
 
 AudioFramePacketizer::~AudioFramePacketizer()
 {
     close();
-    m_taskRunner->Stop();
     m_ssrc_generator->ReturnSsrc(m_ssrc);
     SsrcGenerator::ReturnSsrcGenerator();
     boost::unique_lock<boost::shared_mutex> lock(m_rtpRtcpMutex);
