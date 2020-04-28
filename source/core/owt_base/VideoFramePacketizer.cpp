@@ -21,7 +21,7 @@ VideoFramePacketizer::VideoFramePacketizer(
     bool selfRequestKeyframe,
     uint32_t transportccExtId)
     : m_enabled(true)
-    , m_enableDump(true)
+    , m_enableDump(false)
     , m_keyFrameArrived(false)
     , m_selfRequestKeyframe(selfRequestKeyframe)
     , m_frameFormat(FRAME_FORMAT_UNKNOWN)

@@ -135,8 +135,6 @@ rvaStatus MyPipeline::LinkElements() {
 
     g_object_set(G_OBJECT(detect),"device", device.c_str(),
 		    "model",model.c_str(),
-		    "cpu-streams", 12,
-		    "nireq", 24,
 		    "inference-id", "dtc", NULL);
 
 

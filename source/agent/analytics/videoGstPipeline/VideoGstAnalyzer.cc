@@ -189,7 +189,7 @@ int VideoGstAnalyzer::addElementMany() {
 
     source = gst_bin_get_by_name (GST_BIN (pipeline), "appsource");
     if (!source) {
-        ELOG_ERROR("appsrc in pipeline does not be created\n");
+        ELOG_ERROR("appsrc in pipeline is not created\n");
         return -1;
     }
 
@@ -219,7 +219,6 @@ void VideoGstAnalyzer::main_loop_thread(gpointer data){
 }
 
 void VideoGstAnalyzer::setState(GstState newstate) {
-    ELOG_ERROR("Change pipeline state to %d\n", newstate);
     ret = gst_element_set_state(pipeline, newstate);
     if (ret == GST_STATE_CHANGE_FAILURE) {
         ELOG_ERROR("Unable to set the pipeline to the PLAYING state.\n");
@@ -260,12 +259,10 @@ void VideoGstAnalyzer::addOutput(int connectionID, owt_base::InternalOut* out) {
             GstElement *encoder = gst_bin_get_by_name (GST_BIN (pipeline), "encoder");
             encoder_pad = gst_element_get_static_pad(encoder, "src");
             out->setPad(encoder_pad);
-            ELOG_ERROR("Set encoder pad to internal output\n");
         }
 
         m_internalout.push_back(out);
         if(!addlistener) {
-            ELOG_ERROR("Connect signal to sink\n");
             g_object_set (G_OBJECT (sink), "emit-signals", TRUE, "sync", FALSE, NULL);
             g_signal_connect (sink, "new-sample", G_CALLBACK (new_sample_from_sink), this);
             addlistener = true;
