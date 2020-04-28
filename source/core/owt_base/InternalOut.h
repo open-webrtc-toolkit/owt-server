@@ -19,16 +19,20 @@ public:
     virtual ~InternalOut();
 
     void onFrame(const Frame&);
+#ifdef BUILD_FOR_GST_ANALYTICS
     void onFrame(uint8_t *buffer, int width, int height, uint32_t length);
     void setPad(GstPad *pad);
+#endif
     void onTransportData(char*, int len);
     void onTransportError() { }
     void onTransportConnected() { }
 
 private:
     boost::shared_ptr<owt_base::RawTransportInterface> m_transport;
+#ifdef BUILD_FOR_GST_ANALYTICS
     int m_frameCount;
     GstPad *encoder_pad;
+#endif
 };
 
 } /* namespace owt_base */

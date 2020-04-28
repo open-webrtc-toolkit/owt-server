@@ -21,7 +21,7 @@ VideoFramePacketizer::VideoFramePacketizer(
     bool selfRequestKeyframe,
     uint32_t transportccExtId)
     : m_enabled(true)
-    , m_enableDump(false)
+    , m_enableDump(true)
     , m_keyFrameArrived(false)
     , m_selfRequestKeyframe(selfRequestKeyframe)
     , m_frameFormat(FRAME_FORMAT_UNKNOWN)
@@ -169,7 +169,7 @@ void VideoFramePacketizer::OnNetworkChanged(const uint32_t target_bitrate, const
 }
 
 
-static int getNextNaluPosition(uint8_t *buffer, int buffer_size, bool &is_aud_or_sei) {
+static int getNextNaluPosition(uint8_t *buffer, int buffer_size, bool &is_aud_or_sei, bool &is_key_frame) {
     if (buffer_size < 4) {
         return -1;
     }
@@ -197,6 +197,10 @@ static int getNextNaluPosition(uint8_t *buffer, int buffer_size, bool &is_aud_or
             is_aud_or_sei = true;
         }
 
+        if (((head[4] & 0x1F) == 5) || ((head[4] & 0x1F) == 7)) {
+            is_key_frame = true;
+        }
+
         return static_cast<int>(head - buffer);
     }
     return -1;
@@ -211,13 +215,13 @@ static int dropAUDandSEI(uint8_t* framePayload, int frameLength) {
     std::vector<int> nal_offset;
     std::vector<bool> nal_type_is_aud_or_sei;
     std::vector<int> nal_size;
-    bool is_aud_or_sei = false, has_aud_or_sei = false;
+    bool is_aud_or_sei = false, has_aud_or_sei = false, is_key_frame = false;
 
     int sc_positions_length = 0;
     int sc_position = 0;
     while (sc_positions_length < MAX_NALS_PER_FRAME) {
          int nalu_position = getNextNaluPosition(origin_pkt_data + sc_position,
-              origin_pkt_length - sc_position, is_aud_or_sei);
+              origin_pkt_length - sc_position, is_aud_or_sei, is_key_frame);
          if (nalu_position < 0) {
              break;
          }
@@ -274,7 +278,9 @@ void VideoFramePacketizer::onFrame(const Frame& frame)
     }
 
     if (!m_keyFrameArrived) {
-        if (!frame.additionalInfo.video.isKeyFrame) {
+        bool is_aud_or_sei = false, is_key_frame = false;
+        getNextNaluPosition(frame.payload, frame.length,is_aud_or_sei,is_key_frame);
+        if (!is_key_frame) {
             ELOG_DEBUG("Key frame has not arrived, send key-frame-request.");
             FeedbackMsg feedback = {.type = VIDEO_FEEDBACK, .cmd = REQUEST_KEY_FRAME};
             deliverFeedbackMsg(feedback);
