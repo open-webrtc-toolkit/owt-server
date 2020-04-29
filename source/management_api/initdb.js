@@ -18,9 +18,15 @@ var path = require('path');
 var db;
 var cipher = require('./cipher');
 
+var CONFIG_NAME = 'management_api.toml';
+var SAMPLE_RELATED_PATH = '../apps/current_app/';
+var DEFAULT_SAMPLE_ENTRY = 'samplertcservice.js';
+
 var dirName = !process.pkg ? __dirname : path.dirname(process.execPath);
-var configFile = path.join(dirName, 'management_api.toml');
-var sampleServiceFile = path.resolve(dirName, '../apps/current_app/main.js');
+var configFile = path.resolve(dirName, CONFIG_NAME);
+var samplePackageJson = path.resolve(dirName, SAMPLE_RELATED_PATH, 'package.json');
+var sampleEntryName = (require(samplePackageJson).main || DEFAULT_SAMPLE_ENTRY);
+var sampleServiceFile = path.resolve(dirName, SAMPLE_RELATED_PATH, sampleEntryName);
 
 function prepareDB(next) {
   if (fs.existsSync(cipher.astore)) {
