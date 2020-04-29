@@ -18,18 +18,17 @@ pipeline {
         stage('Build package') {
             options { timeout(time:30,unit:'MINUTES') }
             steps {
-                podTemplate(name: 'pack-server', label: 'pack-mcu-server',
+                podTemplate(name: "pack-server-centos-"+env.GIT_BRANCH, label: "pack-server-centos-"+env.GIT_BRANCH,
                 volumes: [
-                persistentVolumeClaim(claimName: 'stability-package',mountPath: '/root/stabilityPackage',readOnly: false),
                 persistentVolumeClaim(claimName: 'centos-package',mountPath: '/root/centos_package',readOnly: false),
                 persistentVolumeClaim(claimName: 'webrtc79',mountPath: '/root/owt-server/third_party/webrtc-m79',readOnly: false)
               ],
                 containers: [
-                    containerTemplate(name: 'pack-on-centos-server', image: "$env.centos_build_images",  ttyEnabled: true, alwaysPullImage: true, privileged: true, resourceRequestCpu: '5000m', resourceLimitCpu: '6000m', network: 'host', command: 'cat')
+                    containerTemplate(name: 'build-images', image: "$env.centos_build_images",  ttyEnabled: true, alwaysPullImage: true, privileged: true, resourceRequestCpu: '5000m', resourceLimitCpu: '6000m', command: 'cat')
                 ]){
-                    node ('pack-mcu-server') {
-                      container ('pack-on-centos-server') {
-                        sh "/root/startRun.sh $env.gitlab_username $env.gitlab_password centos build owt-server $env.GIT_BRANCH $env.GIT_COMMIT $env.CHANGE_ID"
+                    node ("pack-server-centos-"+env.GIT_BRANCH) {
+                      container ('build-images') {
+                      sh "/root/startRun.sh * * centos build owt-server $env.GIT_BRANCH $env.GIT_COMMIT $env.CHANGE_ID"
                       }
                     }
                 }
@@ -46,22 +45,17 @@ pipeline {
             parallel {
                 stage('ConferenceClient API 1') {
                     steps {
-                        podTemplate(name: 'api-test-server', label: 'api-test-server', cloud: 'kubernetes',
+                        podTemplate(name: 'api-server-centos--'+env.GIT_BRANCH, label: 'api-server-centos-'+env.GIT_BRANCH, cloud: 'kubernetes',
                          volumes: [
                               persistentVolumeClaim(claimName: 'centos-package', mountPath: '/root/centos_package', readOnly: false),
-                              persistentVolumeClaim(claimName: 'audio-lib', mountPath: '/root/audio_lib',readOnly: false),
-                              persistentVolumeClaim(claimName: 'recording-lib', mountPath: '/root/recording_lib',readOnly: false),
-                              persistentVolumeClaim(claimName: 'sip-lib', mountPath: '/root/sip_lib',readOnly: false),
-                              persistentVolumeClaim(claimName: 'streaming-lib', mountPath: '/root/streaming_lib', readOnly: false),
-                              persistentVolumeClaim(claimName: 'video-lib', mountPath: '/root/video_lib',readOnly: false),
                               persistentVolumeClaim(claimName: 'centos-log', mountPath: '/root/centos_log', readOnly: false)
                               ],
                          containers: [
-                            containerTemplate(name: 'api-test-server', image: "$env.centos_test_images",  ttyEnabled: true, alwaysPullImage: true, privileged: true, resourceRequestCpu: '2000m', resourceLimitCpu: '6000m',resourceLimitMemory: '9.0Gi', resourceRequestMemory: '8.0Gi', network: 'host', command: 'cat'),
+                            containerTemplate(name: 'test-images', image: "$env.centos_test_images",  ttyEnabled: true, alwaysPullImage: true, privileged: true,resourceRequestCpu: '3000m', resourceLimitCpu: '4000m', resourceRequestMemory: '2.0Gi', resourceLimitMemory: '3.0Gi', command: 'cat'),
                             ]) {
-                            node('api-test-server') {
-                                container('api-test-server') {
-                                    sh "/root/startRun.sh $env.gitlab_username $env.gitlab_password centos test ${env.GIT_COMMIT} ConferenceClient_API_1"
+                            node('api-server-centos-'+env.GIT_BRANCH) {
+                                container('test-images') {
+                                    sh "/root/startRun.sh * * centos test ${env.GIT_COMMIT} ConferenceClient_API_1"
                                 }
                             }
                         }
@@ -70,46 +64,17 @@ pipeline {
 
                 stage('ConferenceClient API 2') {
                     steps {
-                        podTemplate(name:'subscribe-test-server', label: 'subscribe-test-server', cloud: 'kubernetes',
+                        podTemplate(name:'rest-server-centos-'+env.GIT_BRANCH, label: 'rest-server-centos-'+env.GIT_BRANCH, cloud: 'kubernetes',
                         volumes: [
                               persistentVolumeClaim(claimName: 'centos-package', mountPath: '/root/centos_package', readOnly: false),
-                              persistentVolumeClaim(claimName: 'audio-lib', mountPath: '/root/audio_lib',readOnly: false),
-                              persistentVolumeClaim(claimName: 'recording-lib', mountPath: '/root/recording_lib',readOnly: false),
-                              persistentVolumeClaim(claimName: 'sip-lib', mountPath: '/root/sip_lib',readOnly: false),
-                              persistentVolumeClaim(claimName: 'streaming-lib', mountPath: '/root/streaming_lib', readOnly: false),
-                              persistentVolumeClaim(claimName: 'video-lib', mountPath: '/root/video_lib',readOnly: false),
                               persistentVolumeClaim(claimName: 'centos-log', mountPath: '/root/centos_log', readOnly: false)
                               ],
                         containers: [
-                            containerTemplate(name: 'subscribe-test-server', image: "$env.centos_test_images",  ttyEnabled: true, alwaysPullImage: true, privileged: true, resourceRequestCpu: '2000m', resourceLimitCpu: '6000m',resourceLimitMemory: '9.0Gi', resourceRequestMemory: '8.0Gi', network: 'host', command: 'cat'),
+                            containerTemplate(name: 'test-images', image: "$env.centos_test_images",  ttyEnabled: true, alwaysPullImage: true, privileged: true, resourceRequestCpu: '3000m', resourceLimitCpu: '4000m', resourceRequestMemory: '2.0Gi', resourceLimitMemory: '3.0Gi', command: 'cat'),
                             ]) {
-                            node('subscribe-test-server') {
-                                container('subscribe-test-server') {
-                                    sh "/root/startRun.sh $env.gitlab_username $env.gitlab_password centos test ${env.GIT_COMMIT} ConferenceClient_API_2"
-                                }
-                            }
-                        }
-                    }
-                }
-
-                stage('ConferenceClient API 3') {
-                    steps {
-                        podTemplate(name:'simucast-test-server', label: 'simucast-test-server', cloud: 'kubernetes',
-                        volumes: [
-                              persistentVolumeClaim(claimName: 'centos-package', mountPath: '/root/centos_package', readOnly: false),
-                              persistentVolumeClaim(claimName: 'audio-lib', mountPath: '/root/audio_lib',readOnly: false),
-                              persistentVolumeClaim(claimName: 'recording-lib', mountPath: '/root/recording_lib',readOnly: false),
-                              persistentVolumeClaim(claimName: 'sip-lib', mountPath: '/root/sip_lib',readOnly: false),
-                              persistentVolumeClaim(claimName: 'streaming-lib', mountPath: '/root/streaming_lib', readOnly: false),
-                              persistentVolumeClaim(claimName: 'video-lib', mountPath: '/root/video_lib',readOnly: false),
-                              persistentVolumeClaim(claimName: 'centos-log', mountPath: '/root/centos_log', readOnly: false)
-                              ],
-                        containers: [
-                            containerTemplate(name: 'simucast-test-server', image: "$env.centos_test_images",  ttyEnabled: true, alwaysPullImage: true, privileged: true, resourceRequestCpu: '2000m', resourceLimitCpu: '6000m',resourceLimitMemory: '9.0Gi', resourceRequestMemory: '8.0Gi', network: 'host', command: 'cat'),
-                            ]) {
-                            node('simucast-test-server') {
-                                container('simucast-test-server') {
-                                    sh "/root/startRun.sh $env.gitlab_username $env.gitlab_password centos test ${env.GIT_COMMIT} ConferenceClient_API_3"
+                            node('rest-server-centos-'+env.GIT_BRANCH) {
+                                container('test-images') {
+                                    sh "/root/startRun.sh * * centos test ${env.GIT_COMMIT} ConferenceClient_API_2"
                                 }
                             }
                         }
