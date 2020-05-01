@@ -13,8 +13,6 @@
 #include <mutex>
 #include <string>
 
-// QuicTransportStream is expected to implement ReadableStream and WriteableStream. But we only implement the most essential APIs at first. It works in flowing mode only.
-// As QuicTransportStream doesn't implement EventEmitter, caller should bind event handler as `onevent=func` instead of `on('event', func)`.
 class QuicTransportStream : public Nan::ObjectWrap, public owt::quic::QuicTransportStreamInterface::Visitor {
     DECLARE_LOGGER();
 
@@ -46,7 +44,7 @@ private:
     void MaybeReadContentSessionId();
 
     owt::quic::QuicTransportStreamInterface* m_stream;
-    std::string m_contentSessionId;
+    std::vector<uint8_t> m_contentSessionId;
     bool m_receivedContentSessionId;
 
     uv_async_t m_asyncOnContentSessionId;

@@ -30,9 +30,8 @@ module.exports = class QuicTransportServer extends EventEmitter {
       connection.onincomingstream = (stream) => {
         this._unAssociatedStreams.push(stream);
         stream.oncontentsessionid = (id) => {
-          console.log('New stream for session ' + id);
+          console.log('New stream for session ' + new Uint8Array(id));
         }
-        console.log('New incoming stream.');
       }
     }
   }

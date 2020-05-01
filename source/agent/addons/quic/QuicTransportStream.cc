@@ -25,7 +25,7 @@ QuicTransportStream::QuicTransportStream()
 }
 QuicTransportStream::QuicTransportStream(owt::quic::QuicTransportStreamInterface* stream)
     : m_stream(stream)
-    , m_contentSessionId("")
+    , m_contentSessionId()
     , m_receivedContentSessionId(false)
 {
 }
@@ -98,10 +98,8 @@ void QuicTransportStream::MaybeReadContentSessionId()
         }
         uint8_t* data = new uint8_t[uuidSizeInByte];
         m_stream->Read(data, uuidSizeInByte);
-        m_contentSessionId = std::string(data, data + uuidSizeInByte);
-        delete[] data;
+        m_contentSessionId = std::vector<uint8_t>(data, data + uuidSizeInByte);
         m_receivedContentSessionId = true;
-        ELOG_INFO("Content session ID: %s", m_contentSessionId);
         m_asyncOnContentSessionId.data = this;
         uv_async_send(&m_asyncOnContentSessionId);
     }
@@ -120,7 +118,7 @@ NAUV_WORK_CB(QuicTransportStream::onContentSessionId)
         if (onEventLocal->IsFunction()) {
             v8::Local<v8::Function> eventCallback = onEventLocal.As<Function>();
             Nan::AsyncResource* resource = new Nan::AsyncResource(Nan::New<v8::String>("oncontentsessionid").ToLocalChecked());
-            Local<Value> args[] = { Nan::New(obj->m_contentSessionId).ToLocalChecked() };
+            Local<Value> args[]={Nan::CopyBuffer((char*)obj->m_contentSessionId.data(),uuidSizeInByte).ToLocalChecked()};
             resource->runInAsyncScope(Nan::GetCurrentContext()->Global(), eventCallback, 1, args);
         }
     }
