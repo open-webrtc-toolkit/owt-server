@@ -1,0 +1,381 @@
+From c36dda234136b8e55e0db608bdc3956761e3a921 Mon Sep 17 00:00:00 2001
+From: Andrea <Trisfald@users.noreply.github.com>
+Date: Tue, 20 Feb 2018 17:55:46 +0100
+Subject: [PATCH] Use OpenSSL API for DTLS retransmissions (#1145)
+
+---
+ erizo/src/erizo/DtlsTransport.cpp              | 90 +++++++++++++-------------
+ erizo/src/erizo/DtlsTransport.h                | 22 +++----
+ erizo/src/erizo/dtls/DtlsClient.cpp            |  4 ++
+ erizo/src/erizo/dtls/DtlsSocket.cpp            | 22 +++++++
+ erizo/src/erizo/dtls/DtlsSocket.h              |  4 ++
+ erizo/src/test/log4cxx.properties              |  2 +-
+ erizo_controller/erizoAgent/log4cxx.properties |  2 +-
+ spine/log4cxx.properties                       |  2 +-
+ test/log4cxx.properties                        |  2 +-
+ 9 files changed, 90 insertions(+), 60 deletions(-)
+
+diff --git a/erizo/src/erizo/DtlsTransport.cpp b/erizo/src/erizo/DtlsTransport.cpp
+index 62dfa1e..1719e5e 100644
+--- a/erizo/src/erizo/DtlsTransport.cpp
++++ b/erizo/src/erizo/DtlsTransport.cpp
+@@ -13,60 +13,59 @@
+ #include "./LibNiceConnection.h"
+ // #include "./NicerConnection.h"
+ 
+-using erizo::Resender;
++using erizo::TimeoutChecker;
+ using erizo::DtlsTransport;
+ using dtls::DtlsSocketContext;
+ 
+ DEFINE_LOGGER(DtlsTransport, "DtlsTransport");
+-DEFINE_LOGGER(Resender, "Resender");
++DEFINE_LOGGER(TimeoutChecker, "TimeoutChecker");
+ 
+ using std::memcpy;
+ 
+ static std::mutex dtls_mutex;
+ 
+-Resender::Resender(DtlsTransport* transport, dtls::DtlsSocketContext* ctx)
++TimeoutChecker::TimeoutChecker(DtlsTransport* transport, dtls::DtlsSocketContext* ctx)
+     : transport_(transport), socket_context_(ctx),
+-      resend_seconds_(kInitialSecsPerResend), max_resends_(kMaxResends),
++      check_seconds_(kInitialSecsPerTimeoutCheck), max_checks_(kMaxTimeoutChecks),
+       scheduled_task_{std::make_shared<ScheduledTaskReference>()} {
+ }
+ 
+-Resender::~Resender() {
++TimeoutChecker::~TimeoutChecker() {
+   cancel();
+ }
+ 
+-void Resender::cancel() {
++void TimeoutChecker::cancel() {
+   transport_->getWorker()->unschedule(scheduled_task_);
+ }
+ 
+-void Resender::scheduleResend(packetPtr packet) {
+-  ELOG_DEBUG("message: Scheduling a new resender");
++void TimeoutChecker::scheduleCheck() {
++  ELOG_TRACE("message: Scheduling a new TimeoutChecker");
+   transport_->getWorker()->unschedule(scheduled_task_);
+-  resend_seconds_ = kInitialSecsPerResend;
+-  packet_ = packet;
+-  transport_->writeDtlsPacket(socket_context_, packet_);
++  check_seconds_ = kInitialSecsPerTimeoutCheck;
+   if (transport_->getTransportState() != TRANSPORT_READY) {
+     scheduleNext();
+   }
+ }
+ 
+-void Resender::resend() {
+-  if (transport_ != nullptr) {
+-    if (max_resends_-- > 0) {
+-      ELOG_DEBUG("%s message: Resending DTLS message", transport_->toLog());
+-      transport_->writeDtlsPacket(socket_context_, packet_);
+-      scheduleNext();
+-    } else {
+-      ELOG_DEBUG("%s message: DTLS timeout", transport_->toLog());
+-      transport_->onHandshakeFailed(socket_context_, "Dtls Timeout on Resender");
+-    }
+-  }
+-}
+-
+-void Resender::scheduleNext() {
++void TimeoutChecker::scheduleNext() {
+   scheduled_task_ = transport_->getWorker()->scheduleFromNow([this]() {
+-    this->resend();
+-  }, std::chrono::seconds(resend_seconds_));
+-  resend_seconds_ = resend_seconds_ * 2;
++      if (transport_->getTransportState() == TRANSPORT_READY) {
++        return;
++      }
++      if (transport_ != nullptr) {
++        if (max_checks_-- > 0) {
++          ELOG_DEBUG("Handling dtls timeout, checks left: %d", max_checks_);
++          if (socket_context_) {
++            std::lock_guard<std::mutex> guard(dtls_mutex);
++            socket_context_->handleTimeout();
++          }
++          scheduleNext();
++        } else {
++          ELOG_DEBUG("%s message: DTLS timeout", transport_->toLog());
++          transport_->onHandshakeFailed(socket_context_, "Dtls Timeout on TimeoutChecker");
++        }
++      }
++  }, std::chrono::seconds(check_seconds_));
+ }
+ 
+ DtlsTransport::DtlsTransport(MediaType med, const std::string &transport_name, const std::string& connection_id,
+@@ -115,9 +114,9 @@ DtlsTransport::DtlsTransport(MediaType med, const std::string &transport_name, c
+     } else {
+       ice_.reset(LibNiceConnection::create(this, iceConfig_));
+     }
+-    rtp_resender_.reset(new Resender(this, dtlsRtp.get()));
++    rtp_timeout_checker_.reset(new TimeoutChecker(this, dtlsRtp.get()));
+     if (!rtcp_mux) {
+-      rtcp_resender_.reset(new Resender(this, dtlsRtcp.get()));
++      rtcp_timeout_checker_.reset(new TimeoutChecker(this, dtlsRtcp.get()));
+     }
+     ELOG_DEBUG("%s message: created", toLog());
+   }
+@@ -137,6 +136,12 @@ void DtlsTransport::start() {
+ void DtlsTransport::close() {
+   ELOG_DEBUG("%s message: closing", toLog());
+   running_ = false;
++  if (rtp_timeout_checker_) {
++    rtp_timeout_checker_->cancel();
++  }
++  if (rtcp_timeout_checker_) {
++    rtcp_timeout_checker_->cancel();
++  }
+   ice_->close();
+   if (dtlsRtp) {
+     dtlsRtp->close();
+@@ -144,12 +149,6 @@ void DtlsTransport::close() {
+   if (dtlsRtcp) {
+     dtlsRtcp->close();
+   }
+-  if (rtp_resender_) {
+-    rtp_resender_->cancel();
+-  }
+-  if (rtcp_resender_) {
+-    rtcp_resender_->cancel();
+-  }
+   this->state_ = TRANSPORT_FINISHED;
+   ELOG_DEBUG("%s message: closed", toLog());
+ }
+@@ -168,15 +167,9 @@ void DtlsTransport::onIceData(packetPtr packet) {
+     ELOG_DEBUG("%s message: Received DTLS message, transportName: %s, componentId: %u",
+                toLog(), transport_name.c_str(), component_id);
+     if (component_id == 1) {
+-      if (rtp_resender_.get() != NULL) {
+-        rtp_resender_->cancel();
+-      }
+       std::lock_guard<std::mutex> guard(dtls_mutex);
+       dtlsRtp->read(reinterpret_cast<unsigned char*>(data), len);
+     } else {
+-      if (rtcp_resender_.get() != NULL) {
+-        rtcp_resender_->cancel();
+-      }
+       std::lock_guard<std::mutex> guard(dtls_mutex);
+       dtlsRtcp->read(reinterpret_cast<unsigned char*>(data), len);
+     }
+@@ -271,9 +264,9 @@ void DtlsTransport::onDtlsPacket(DtlsSocketContext *ctx, const unsigned char* da
+   packetPtr packet = std::make_shared<DataPacket>(component_id, data, len);
+ 
+   if (is_rtcp) {
+-    rtcp_resender_->scheduleResend(packet);
++    writeDtlsPacket(dtlsRtcp.get(), packet);
+   } else {
+-    rtp_resender_->scheduleResend(packet);
++    writeDtlsPacket(dtlsRtp.get(), packet);
+   }
+ 
+   ELOG_DEBUG("%s message: Sending DTLS message, transportName: %s, componentId: %d",
+@@ -292,6 +285,13 @@ void DtlsTransport::onHandshakeCompleted(DtlsSocketContext *ctx, std::string cli
+   boost::mutex::scoped_lock lock(sessionMutex_);
+   std::string temp;
+ 
++  if (rtp_timeout_checker_.get() != NULL) {
++    rtp_timeout_checker_->cancel();
++  }
++  if (rtcp_timeout_checker_.get() != NULL) {
++    rtcp_timeout_checker_->cancel();
++  }
++
+   if (isServer_) {  // If we are server, we swap the keys
+     ELOG_DEBUG("%s message: swapping keys, isServer: %d", toLog(), isServer_);
+     clientKey.swap(serverKey);
+@@ -360,10 +360,12 @@ void DtlsTransport::updateIceStateSync(IceState state, IceConnection *conn) {
+     if (!isServer_ && dtlsRtp && !dtlsRtp->started) {
+       ELOG_INFO("%s message: DTLSRTP Start, transportName: %s", toLog(), transport_name.c_str());
+       dtlsRtp->start();
++      rtp_timeout_checker_->scheduleCheck();
+     }
+     if (!isServer_ && dtlsRtcp != NULL && !dtlsRtcp->started) {
+       ELOG_DEBUG("%s message: DTLSRTCP Start, transportName: %s", toLog(), transport_name.c_str());
+       dtlsRtcp->start();
++      rtcp_timeout_checker_->scheduleCheck();
+     }
+   }
+ }
+diff --git a/erizo/src/erizo/DtlsTransport.h b/erizo/src/erizo/DtlsTransport.h
+index e621c48..e2caa1b 100644
+--- a/erizo/src/erizo/DtlsTransport.h
++++ b/erizo/src/erizo/DtlsTransport.h
+@@ -15,7 +15,7 @@
+ 
+ namespace erizo {
+ class SrtpChannel;
+-class Resender;
++class TimeoutChecker;
+ class DtlsTransport : dtls::DtlsReceiver, public Transport {
+   DECLARE_LOGGER();
+ 
+@@ -51,21 +51,20 @@ class DtlsTransport : dtls::DtlsReceiver, public Transport {
+   boost::scoped_ptr<SrtpChannel> srtp_, srtcp_;
+   bool readyRtp, readyRtcp;
+   bool isServer_;
+-  std::unique_ptr<Resender> rtcp_resender_, rtp_resender_;
++  std::unique_ptr<TimeoutChecker> rtcp_timeout_checker_, rtp_timeout_checker_;
+   packetPtr p_;
+ };
+ 
+-class Resender {
++class TimeoutChecker {
+   DECLARE_LOGGER();
+ 
+-  // These values follow recommendations from section 4.2.4.1 in https://tools.ietf.org/html/rfc4347
+-  const unsigned int kMaxResends = 6;
+-  const unsigned int kInitialSecsPerResend = 1;
++  const unsigned int kMaxTimeoutChecks = 15;
++  const unsigned int kInitialSecsPerTimeoutCheck = 1;
+ 
+  public:
+-  Resender(DtlsTransport* transport, dtls::DtlsSocketContext* ctx);
+-  virtual ~Resender();
+-  void scheduleResend(packetPtr packet);
++  TimeoutChecker(DtlsTransport* transport, dtls::DtlsSocketContext* ctx);
++  virtual ~TimeoutChecker();
++  void scheduleCheck();
+   void cancel();
+ 
+  private:
+@@ -75,9 +74,8 @@ class Resender {
+  private:
+   DtlsTransport* transport_;
+   dtls::DtlsSocketContext* socket_context_;
+-  packetPtr packet_;
+-  unsigned int resend_seconds_;
+-  unsigned int max_resends_;
++  unsigned int check_seconds_;
++  unsigned int max_checks_;
+   std::shared_ptr<ScheduledTaskReference> scheduled_task_;
+ };
+ }  // namespace erizo
+diff --git a/erizo/src/erizo/dtls/DtlsClient.cpp b/erizo/src/erizo/dtls/DtlsClient.cpp
+index 6b92f9a..cec456f 100644
+--- a/erizo/src/erizo/dtls/DtlsClient.cpp
++++ b/erizo/src/erizo/dtls/DtlsClient.cpp
+@@ -334,6 +334,10 @@ int createCert(const std::string& pAor, int expireDays, int keyLen, X509*& outCe
+       }
+     }
+ 
++    void DtlsSocketContext::handleTimeout() {
++      mSocket->handleTimeout();
++    }
++
+     void DtlsSocketContext::handshakeCompleted() {
+       char fprint[100];
+       SRTP_PROTECTION_PROFILE *srtp_profile;
+diff --git a/erizo/src/erizo/dtls/DtlsSocket.cpp b/erizo/src/erizo/dtls/DtlsSocket.cpp
+index 8d9d106..dc1eefa 100644
+--- a/erizo/src/erizo/dtls/DtlsSocket.cpp
++++ b/erizo/src/erizo/dtls/DtlsSocket.cpp
+@@ -250,6 +250,28 @@ void DtlsSocket::computeFingerprint(X509 *cert, char *fingerprint) {
+   }
+ }
+ 
++void DtlsSocket::handleTimeout() {
++  (void) BIO_reset(mInBio);
++  (void) BIO_reset(mOutBio);
++  if (DTLSv1_handle_timeout(mSsl) > 0) {
++    ELOG_DEBUG("Dtls timeout occurred!");
++
++    // See what was written
++    unsigned char *outBioData;
++    int outBioLen = BIO_get_mem_data(mOutBio, &outBioData);
++    if (outBioLen > DTLS_MTU) {
++      ELOG_WARN("message: BIO data bigger than MTU - packet could be lost, outBioLen %u, MTU %u",
++          outBioLen, DTLS_MTU);
++    }
++
++    // If mOutBio is now nonzero-length, then we need to write the
++    // data to the network. TODO(pedro): warning, MTU issues!
++    if (outBioLen) {
++      mSocketContext->write(outBioData, outBioLen);
++    }
++  }
++}
++
+ // TODO(pedro): assert(0) into exception, as elsewhere
+ void DtlsSocket::createSrtpSessionPolicies(srtp_policy_t& outboundPolicy, srtp_policy_t& inboundPolicy) {
+   assert(mHandshakeCompleted);
+diff --git a/erizo/src/erizo/dtls/DtlsSocket.h b/erizo/src/erizo/dtls/DtlsSocket.h
+index dc47eab..a6d7115 100644
+--- a/erizo/src/erizo/dtls/DtlsSocket.h
++++ b/erizo/src/erizo/dtls/DtlsSocket.h
+@@ -103,6 +103,8 @@ class DtlsSocket {
+   // extracted from the DTLS handshake process
+   void createSrtpSessionPolicies(srtp_policy_t& outboundPolicy, srtp_policy_t& inboundPolicy);  // NOLINT
+ 
++  void handleTimeout();
++
+  private:
+   // Causes an immediate handshake iteration to happen, which will retransmit the handshake
+   void forceRetransmit();
+@@ -153,6 +155,8 @@ class DtlsSocketContext {
+   void setDtlsSocket(DtlsSocket *sock) {mSocket = sock;}
+   std::string getFingerprint();
+ 
++  void handleTimeout();
++
+   enum PacketType { rtp, dtls, stun, unknown};
+ 
+ 
+diff --git a/erizo/src/test/log4cxx.properties b/erizo/src/test/log4cxx.properties
+index 85352a6..4e4c591 100644
+--- a/erizo/src/test/log4cxx.properties
++++ b/erizo/src/test/log4cxx.properties
+@@ -12,7 +12,7 @@ log4j.appender.A1.layout.ConversionPattern=%d  - %p [%t] %c - %m%n
+ log4j.logger.DtlsTransport=ERROR
+ log4j.logger.LibNiceConnection=ERROR
+ log4j.logger.OneToManyProcessor=ERROR
+-log4j.logger.Resender=ERROR
++log4j.logger.TimeoutChecker=ERROR
+ log4j.logger.SdpInfo=ERROR
+ log4j.logger.SrtpChannel=ERROR
+ log4j.logger.Stats=ERROR
+diff --git a/erizo_controller/erizoAgent/log4cxx.properties b/erizo_controller/erizoAgent/log4cxx.properties
+index a0866ec..8b6472c 100644
+--- a/erizo_controller/erizoAgent/log4cxx.properties
++++ b/erizo_controller/erizoAgent/log4cxx.properties
+@@ -13,7 +13,7 @@ log4j.logger.DtlsTransport=DEBUG
+ log4j.logger.LibNiceConnection=DEBUG
+ log4j.logger.NicerConnection=DEBUG
+ log4j.logger.OneToManyProcessor=WARN
+-log4j.logger.Resender=WARN
++log4j.logger.TimeoutChecker=WARN
+ log4j.logger.SdpInfo=WARN
+ log4j.logger.SrtpChannel=WARN
+ log4j.logger.Stats=WARN
+diff --git a/spine/log4cxx.properties b/spine/log4cxx.properties
+index 9fdd04e..cb0a2ad 100644
+--- a/spine/log4cxx.properties
++++ b/spine/log4cxx.properties
+@@ -13,7 +13,7 @@ log4j.logger.DtlsTransport=WARN
+ log4j.logger.LibNiceConnection=WARN
+ log4j.logger.NicerConnection=WARN
+ log4j.logger.OneToManyProcessor=WARN
+-log4j.logger.Resender=WARN
++log4j.logger.TimeoutChecker=WARN
+ log4j.logger.SdpInfo=WARN
+ log4j.logger.SrtpChannel=WARN
+ log4j.logger.Stats=WARN
+diff --git a/test/log4cxx.properties b/test/log4cxx.properties
+index e7dfc17..e5570c7 100644
+--- a/test/log4cxx.properties
++++ b/test/log4cxx.properties
+@@ -15,7 +15,7 @@ log4j.logger.SrtpChannel=WARN
+ log4j.logger.SdpInfo=WARN
+ log4j.logger.LibNiceConnection=WARN
+ log4j.logger.DtlsTransport=WARN
+-log4j.logger.Resender=WARN
++log4j.logger.TimeoutChecker=WARN
+ log4j.logger.SdesTransport=WARN
+ log4j.logger.Stats=WARN
+ 
+-- 
+2.7.4
+
