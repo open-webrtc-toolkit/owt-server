@@ -437,13 +437,16 @@ var SocketIOServer = function(spec, portal, observer) {
     }
   };
 
-  that.broadcast = function(participants, event, data) {
-    log.debug('broadcast participants:', participants, 'event:', event, 'data:', data);
-    for (let clientId in clients) {
-      if (participants.includes(clientId)) {
-        clients[clientId].notify(event, data);
-      }
-    }
+  that.broadcast = function(controller, excludeList, event, data) {
+    log.debug('broadcast controller:', controller, 'exclude:', excludeList, 'event:', event, 'data:', data);
+    portal.getParticipantsByController('node', controller)
+      .then(function (receivers) {
+        for (let clientId of receivers) {
+          if (!excludeList.includes(clientId)) {
+            clients[clientId].notify(event, data);
+          }
+        }
+      });
   }
 
   that.drop = function(participantId) {

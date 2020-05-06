@@ -145,7 +145,7 @@ describe('rpcRequest.getRoomConfig/onSessionSignaling/mediaOnOff/sendMsg/broadca
     var mediaOnOff = req.mediaOnOff('rpcIdOfWorkerNode', 'sessionId', 'video', 'in', 'off');
     var onSessionSignaling = req.onSessionSignaling('rpcIdOfWorkerNode', 'sessionId', 'soacObj');
     var sendMsg = req.sendMsg('rpcIdOfPortal', 'participantId', 'event-name', 'msgObj');
-    var broadcast = req.broadcast('rpcIdOfPortal', ['participantId'], 'event-name', 'msgObj');
+    var broadcast = req.broadcast('rpcIdOfPortal', 'controller', ['participantId'], 'event-name', 'msgObj');
     var dropUser = req.dropUser('rpcIdOfPortal', 'participantId');
 
 
@@ -172,7 +172,7 @@ describe('rpcRequest.getRoomConfig/onSessionSignaling/mediaOnOff/sendMsg/broadca
     var mediaOnOff = req.mediaOnOff('rpcIdOfWorkerNode', 'sessionId', 'video', 'in', 'off');
     var onSessionSignaling = req.onSessionSignaling('rpcIdOfWorkerNode', 'sessionId', 'soacObj');
     var sendMsg = req.sendMsg('rpcIdOfPortal', 'participantId', 'event-name', 'msgObj');
-    var broadcast = req.broadcast('rpcIdOfPortal', ['participantId'], 'event-name', 'msgObj');
+    var broadcast = req.broadcast('rpcIdOfPortal', 'controller', ['participantId'], 'event-name', 'msgObj');
     var dropUser = req.dropUser('rpcIdOfPortal', 'participantId');
 
     return Promise.all([
