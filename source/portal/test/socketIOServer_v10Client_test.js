@@ -760,7 +760,7 @@ describe('Notifying events to clients.', function() {
       client.emit('login', jsLoginInfo, function(status, resp) {
         mockPortal.join = null;
         expect(status).to.equal('ok');
-        server.broadcast(['excludeClient'], 'broadcast-event', 'broadcast-data');
+        server.broadcast([client.id], 'broadcast-event', 'broadcast-data');
       });
     });
   });

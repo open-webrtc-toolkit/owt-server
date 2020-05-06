@@ -242,8 +242,8 @@ var rpcPublic = {
       callback('callback', 'error', 'Invalid token for WebTransport.');
     }
   },
-  broadcast: function(excludeList, event, data, callback) {
-    socketio_server && socketio_server.broadcast(excludeList, event, data);
+  broadcast: function(participants, event, data, callback) {
+    socketio_server && socketio_server.broadcast(participants, event, data);
     callback('callback', 'ok');
   }
 };
