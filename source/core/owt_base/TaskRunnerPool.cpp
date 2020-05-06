@@ -6,7 +6,7 @@
 
 namespace owt_base {
 
-constexpr int kPoolSize = 4;
+constexpr int kTaskRunnerPoolSize = 4;
 
 TaskRunnerPool& TaskRunnerPool::GetInstance()
 {
@@ -24,7 +24,7 @@ boost::shared_ptr<WebRTCTaskRunner> TaskRunnerPool::GetTaskRunner()
 
 TaskRunnerPool::TaskRunnerPool()
     : m_nextRunner(0)
-    , m_taskRunners(kPoolSize)
+    , m_taskRunners(kTaskRunnerPoolSize)
 {
     for (size_t i = 0; i < m_taskRunners.size(); i++) {
         m_taskRunners[i].reset(new WebRTCTaskRunner("TaskRunner"));
