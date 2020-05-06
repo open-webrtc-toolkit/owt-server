@@ -16,14 +16,20 @@ pipeline {
 
     stages {
         stage('Build package') {
-            options { timeout(time:20,unit:'MINUTES') }
+            options { timeout(time:30,unit:'MINUTES') }
             steps {
-                podTemplate(name: 'pack-server-ubuntu', label: 'pack-mcu-server-ubuntu', containers: [
-                    containerTemplate(name: 'pack-on-ubuntu-server', image: "$env.JS_MCU_BUILD_UBUNTU",  ttyEnabled: true, alwaysPullImage: true, privileged: true, resourceRequestCpu: '5000m', resourceLimitCpu: '6000m', network: 'host', command: 'cat')
+                podTemplate(name: 'pack-server-ubuntu-'+env.GIT_BRANCH, label: 'pack-server-ubuntu-'+env.GIT_BRANCH,
+                volumes: [
+        	    persistentVolumeClaim(claimName: 'stability-package',mountPath: '/root/stabilityPackage',readOnly: false),
+        	    persistentVolumeClaim(claimName: 'ubuntu-package',mountPath: '/root/ubuntu_package',readOnly: false),
+                    persistentVolumeClaim(claimName: 'webrtc79ubuntu',mountPath: '/root/owt-server/third_party/webrtc-m79',readOnly: false)
+        	    ],
+                containers: [
+                    containerTemplate(name: 'build-images', image: "$env.ubuntu_build_images43x", ttyEnabled: true, alwaysPullImage: true, privileged: true, resourceRequestCpu: '5000m', resourceLimitCpu: '6600m' , resourceRequestMemory: '3.0Gi', resourceLimitMemory: '4.0Gi', command: 'cat')
                 ]){
-                    node ('pack-mcu-server-ubuntu') {
-                      container ('pack-on-ubuntu-server') {
-                        sh "/root/packMCUInDocker.sh software $env.GIT_COMMIT $env.GIT_BRANCH $env.CHANGE_ID"
+                    node ('pack-server-ubuntu-'+env.GIT_BRANCH) {
+                      container ('build-images') {
+                        sh "/root/startRun.sh * * ubuntu build owt-server $env.GIT_BRANCH $env.GIT_COMMIT $env.CHANGE_ID"
                       }
                     }
                 }
@@ -34,41 +40,49 @@ pipeline {
             options { timeout(time:40,unit:'MINUTES') }
             when {
               expression {
-                currentBuild.result == null || currentBuild.result == 'SUCCESS' 
+                currentBuild.result == null || currentBuild.result == 'SUCCESS'
               }
             }
             parallel {
-                stage('API test') {
+                stage('ConferenceClient API 1') {
                     steps {
-                        podTemplate(name: 'api-test-server-ubuntu', label: 'api-test-server-ubuntu', cloud: 'kubernetes', containers: [
-                            containerTemplate(name: 'api-test-server-ubuntu', image: "$env.JSMCU_TEST_IMAGE_UBUNTU",  ttyEnabled: true, alwaysPullImage: true, privileged: true, resourceRequestCpu: '7000m', resourceLimitCpu: '8000m',resourceLimitMemory: '9.0Gi', resourceRequestMemory: '8.0Gi', network: 'host', command: 'cat'),
-                            ]) {
-                            node('api-test-server-ubuntu') {
-                                container('api-test-server-ubuntu') {
-                                    sh "ls -al"
-                                    sh "pwd"
-                                    sh "/root/start.sh ${env.GIT_COMMIT}1 ConferenceClient_api"
+                        podTemplate(name: 'api-server-ubuntu-'+env.GIT_BRANCH, label: 'api-server-ubuntu-'+env.GIT_BRANCH, cloud: 'kubernetes',
+                        volumes: [
+                        persistentVolumeClaim(claimName: 'ubuntu-package',mountPath: '/root/ubuntu_package',readOnly: false),
+                        persistentVolumeClaim(claimName: 'ubuntu-log',mountPath: '/root/ubuntu_log',readOnly: false)
+                        ],
+                        containers: [
+                            containerTemplate(name: 'test-images', image: "$env.ubuntu_test_images43x",  ttyEnabled: true, alwaysPullImage: true, privileged: true, resourceRequestCpu: '3000m', resourceLimitCpu: '4000m', resourceRequestMemory: '2.0Gi', resourceLimitMemory: '3.0Gi', command: 'cat'),                            ]) {
+                            node('api-server-ubuntu-'+env.GIT_BRANCH) {
+                                container('test-images') {
+                                    sh "/root/startRun.sh * * ubuntu test ${env.GIT_COMMIT} ConferenceClient_API_1"
                                 }
                             }
                         }
                     }
                 }
 
-                stage('Subscribe test') {
+                stage('ConferenceClient API 2') {
                     steps {
-                        podTemplate(name:'subscribe-test-server-ubuntu', label: 'subscribe-test-server-ubuntu', cloud: 'kubernetes',containers: [
-                            containerTemplate(name: 'subscribe-test-server-ubuntu', image: "$env.JSMCU_TEST_IMAGE_UBUNTU",  ttyEnabled: true, alwaysPullImage: true, privileged: true, resourceRequestCpu: '7000m', resourceLimitCpu: '8000m',resourceLimitMemory: '9.0Gi', resourceRequestMemory: '8.0Gi', network: 'host', command: 'cat'),
+                        podTemplate(name:'rest-server-ubuntu-'+env.GIT_BRANCH, label: 'rest-server-ubuntu-'+env.GIT_BRANCH, cloud: 'kubernetes',
+                        volumes: [
+                        persistentVolumeClaim(claimName: 'ubuntu-package',mountPath: '/root/ubuntu_package',readOnly: false),
+                        persistentVolumeClaim(claimName: 'ubuntu-log',mountPath: '/root/ubuntu_log',readOnly: false)
+                        ],
+                        containers: [
+                            containerTemplate(name: 'test-images', image: "$env.ubuntu_test_images43x",  ttyEnabled: true, alwaysPullImage: true, privileged: true, resourceRequestCpu: '3000m', resourceLimitCpu: '4000m', resourceRequestMemory: '2.0Gi', resourceLimitMemory: '3.0Gi',  command: 'cat'),
                             ]) {
-                            node('subscribe-test-server-ubuntu') {
-                                container('subscribe-test-server-ubuntu') {
-                                    sh "ls -al"
-                                    sh "pwd"
-                                    sh "/root/start.sh ${env.GIT_COMMIT}2 ConferenceClient_subscribe"
+                            node('rest-server-ubuntu-'+env.GIT_BRANCH) {
+                                container('test-images') {
+                                    sh "/root/startRun.sh * * ubuntu test ${env.GIT_COMMIT} ConferenceClient_API_2"
                                 }
                             }
                         }
                     }
                 }
+
+              
+
             }
         }
     }
@@ -82,7 +96,7 @@ pipeline {
         success {
             script {
                 if ("${GIT_BRANCH}" == 'master') {
-                   sh "curl ${env.checkServerUrl}/copyNightly/0${GIT_COMMIT}/0"
+                   sh "curl ${env.checkServerUrl}/copyNightly/${GIT_COMMIT}/owt-server/0"
         }
         }
             setBuildStatus("Build succeeded", "SUCCESS");
@@ -92,4 +106,6 @@ pipeline {
         }
     }
 }
+
+
 
