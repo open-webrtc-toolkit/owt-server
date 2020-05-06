@@ -437,10 +437,10 @@ var SocketIOServer = function(spec, portal, observer) {
     }
   };
 
-  that.broadcast = function(excludeList, event, data) {
-    log.debug('broadcast exclude:', excludeList, 'event:', event, 'data:', data);
+  that.broadcast = function(participants, event, data) {
+    log.debug('broadcast participants:', participants, 'event:', event, 'data:', data);
     for (let clientId in clients) {
-      if (!excludeList.includes(clientId)) {
+      if (participants.includes(clientId)) {
         clients[clientId].notify(event, data);
       }
     }

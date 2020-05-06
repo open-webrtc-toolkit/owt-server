@@ -597,15 +597,24 @@ var Conference = function (rpcClient, selfRpcId) {
     log.debug('sendMsg, from:', from, 'to:', to, 'msg:', msg, 'data:', data);
     if (to === 'all' || to === 'others') {
       // Broadcast message to portal
-      let excludes = (to === 'others') ? [from] : [];
-      let portals = new Set();
+      let portalReceivers = new Map();
       for (let pptId in participants) {
-        portals.add(participants[pptId].getPortal());
-      }
-      portals.forEach((portal) => {
-        if (portal) {
-          rpcReq.broadcast(portal, excludes, msg, data);
+        if (to === 'others' && pptId === from) {
+          // Skip sender self
+          continue;
         }
+        let portal = participants[pptId].getPortal();
+        if (portal) {
+          if (!portalReceivers.has(portal)) {
+            portalReceivers.set(portal, [pptId]);
+          } else {
+            portalReceivers.get(portal).push(pptId);
+          }
+        }
+      }
+
+      portalReceivers.forEach((receivers, portal) => {
+        rpcReq.broadcast(portal, receivers, msg, data);
       });
     } else {
       sendMsgTo(to, msg, data);
