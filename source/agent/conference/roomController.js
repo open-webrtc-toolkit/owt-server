@@ -66,6 +66,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
     var mix_views = {};
 
     /*
+    Since there is no definition for `terminal`. (https://github.com/open-webrtc-toolkit/owt-server/issues/469) I guess a terminal is a node that connects an input with one or many outputs.
     terminals = {terminalID: {owner: ParticipantID | Room's mix stream Id(for amixer and vmixer),
                   type: 'webrtc' | 'streaming' | 'recording' | 'sip' | 'amixer' | 'axcoder' | 'vmixer' | 'vxcoder',
                   locality: {agent: AgentRpcID, node: NodeRpcID},

@@ -19,9 +19,22 @@ const addon = require('../build/Release/quic');
  * `AVStreamIn`.
  */
 module.exports = class QuicTransportStreamPipeline {
-  constructor(contentSessionId) {
+  constructor(contentSessionId, updateStatus) {
     // `contentSessionId` is the ID of publication or subscription.
     this._contentSessionId = contentSessionId;
     this._quicStream = null;
+    this._notifiedReady = false;
+
+    this.quicStream = function (stream) {
+      this._quicStream = stream;
+      if (!this._notifiedReady) {
+        updateStatus({
+          type: 'ready',
+          audio: false,
+          video: false,
+          simulcast: false
+        });
+      }
+    };
   }
 };

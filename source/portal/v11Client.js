@@ -129,7 +129,7 @@ var V11Client = function(clientId, sigConnection, portal) {
       var stream_id = uuid().replace(/-/g,'');
       return validatePubReq(pubReq)
         .then((req) => {
-          if (pubReq.transport && pubReq.transport.type == 'quic-p2p') {
+          if (pubReq.transport && pubReq.transport.type == 'quic') {
             req.type = 'quic';
           } else {
             req.type = 'webrtc'; //FIXME: For backend compatibility with v3.4 clients.
@@ -174,7 +174,7 @@ var V11Client = function(clientId, sigConnection, portal) {
       var subscription_id = uuid().replace(/-/g,'');
       return validateSubReq(subReq)
         .then((req) => {
-          if (req.transport && req.transport.type == 'quic-p2p') {
+          if (req.transport && req.transport.type == 'quic') {
             req.type = 'quic';
           } else {
             req.type = 'webrtc';//FIXME: For backend compatibility with v3.4 clients.

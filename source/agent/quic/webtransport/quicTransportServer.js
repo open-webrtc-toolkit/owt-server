@@ -30,7 +30,9 @@ module.exports = class QuicTransportServer extends EventEmitter {
       connection.onincomingstream = (stream) => {
         this._unAssociatedStreams.push(stream);
         stream.oncontentsessionid = (id) => {
-          console.log('New stream for session ' + new Uint8Array(id));
+          console.log('New stream for session ' + this._uuidBytesToString(new Uint8Array(id)));
+          stream.contentSessionId=this._uuidBytesToString(new Uint8Array(id));
+          this.emit('streamadded', stream);
         }
       }
     }
@@ -39,4 +41,17 @@ module.exports = class QuicTransportServer extends EventEmitter {
   start() {
     this._server.start();
   }
+
+  _uuidBytesToString(uuidBytes) {
+    if (uuidBytes.length != 16) {
+      log.error('Invalid UUID.');
+      return;
+    }
+    let s = '';
+    for (let hex of uuidBytes) {
+      const str=hex.toString(16);
+      s += str.padStart(2, '0');
+    }
+    return s;
+  };
 };

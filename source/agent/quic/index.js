@@ -13,9 +13,6 @@ const addon = require('./build/Release/quic');
 
 log.info('QUIC transport node.')
 
-const quicTransportServer=new QuicTransportServer();
-quicTransportServer.start();
-
 module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
     var that = {
       agentID: parentRpcId,
@@ -32,11 +29,22 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
         rpcClient.remoteCast(controller, 'onSessionProgress', [sessionId, direction, status]);
     };
 
+    const quicTransportServer = new QuicTransportServer();
+    quicTransportServer.start();
+    quicTransportServer.on('streamadded', (stream) => {
+        const conn = connections.getConnection(stream.contentSessionId);
+        if (conn) {
+            conn.connection.quicStream(stream);
+        }
+    });
+
     const createStreamPipeline =
         function(streamId, direction, options, callback) {
       // Client is expected to create a QuicTransport before sending publish or
       // subscription requests.
-      const streamPipeline = new streamPipeline(streamId);
+      const streamPipeline = new QuicTransportStreamPipeline(streamId, status=>{
+        notifyStatus(options.controller, streamId, direction, status)
+      });
       // If an stream pipeline already exists, just replace the old.
       let pipelineMap;
       if (direction === 'in') {
@@ -50,6 +58,7 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
             {type: 'failed', reason: 'Pipeline for ' + streamId + ' exists.'});
       }
       pipelineMap.set(streamId, streamPipeline);
+      return streamPipeline;
     };
 
     var onSuccess = function(callback) {
@@ -108,8 +117,6 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
             log.error('Create connection failed', connectionId, connectionType);
             return callback('callback', {type: 'failed', reason: 'Create Connection failed'});
         }
-
-        log.debug('QUIC add connection.');
         connections.addConnection(connectionId, connectionType, options.controller, conn, 'in')
         .then(onSuccess(callback), onError(callback));
     };

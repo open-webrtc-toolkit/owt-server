@@ -1,9 +1,9 @@
 [agent]
 #Max processes that agent can run
-maxProcesses = 13 #default: 13
+maxProcesses = 1 #default: 13
 
 #Number of precesses that agent runs when it starts. 1 <= prerunProcesses <= maxProcesses.
-prerunProcesses = 2 #default: 2
+prerunProcesses = 1 #default: 2
 
 
 [cluster]
