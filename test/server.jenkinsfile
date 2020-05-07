@@ -93,7 +93,7 @@ pipeline {
         success {
             script {
                 if ("${GIT_BRANCH}" == 'master') {
-                   sh "curl ${env.checkServerUrl}/copyNightly/${GIT_COMMIT}/owt-server/1"
+                   sh "curl ${env.checkServerUrl}/copyNightly/0${GIT_COMMIT}/owt-server/1"
         }
         }
             setBuildStatus("Build succeeded", "SUCCESS");
