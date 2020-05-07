@@ -119,6 +119,7 @@ module.exports.create = function(spec, rpcReq, on_session_established, on_sessio
     var session_info = {
       locality: session.locality,
       media: media,
+      data: session.options.data,
       info: info
     };
 
