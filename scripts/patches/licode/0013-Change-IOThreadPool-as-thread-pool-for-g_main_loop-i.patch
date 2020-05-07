@@ -1,48 +1,48 @@
-From 5061bfb2fd2664f75d413e9c96c377ac783cd9ab Mon Sep 17 00:00:00 2001
+From 1fc452af1db0052f536612bde9649d2aae00cccd Mon Sep 17 00:00:00 2001
 From: Chen Li1 <li1.chen@intel.com>
 Date: Fri, 24 Apr 2020 10:42:27 +0800
 Subject: [PATCH] Change IOThreadPool as thread pool for g_main_loop in
  LibNiceConnection
 
 ---
- erizo/src/erizo/DtlsTransport.cpp     |  9 ++----
- erizo/src/erizo/LibNiceConnection.cpp | 33 +++++---------------
+ erizo/src/erizo/DtlsTransport.cpp     |  8 ++---
+ erizo/src/erizo/LibNiceConnection.cpp | 26 +++++-----------
  erizo/src/erizo/LibNiceConnection.h   |  6 ++--
- erizo/src/erizo/thread/IOWorker.cpp   | 59 +++++++++++++----------------------
- erizo/src/erizo/thread/IOWorker.h     | 11 ++++---
- 5 files changed, 42 insertions(+), 76 deletions(-)
+ erizo/src/erizo/thread/IOWorker.cpp   | 56 +++++++++++------------------------
+ erizo/src/erizo/thread/IOWorker.h     | 11 +++----
+ 5 files changed, 38 insertions(+), 69 deletions(-)
 
 diff --git a/erizo/src/erizo/DtlsTransport.cpp b/erizo/src/erizo/DtlsTransport.cpp
-index 1719e5e..f57024b 100644
+index a11533a..8a6539e 100644
 --- a/erizo/src/erizo/DtlsTransport.cpp
 +++ b/erizo/src/erizo/DtlsTransport.cpp
-@@ -108,12 +108,9 @@ DtlsTransport::DtlsTransport(MediaType med, const std::string &transport_name, c
+@@ -107,12 +107,8 @@ DtlsTransport::DtlsTransport(MediaType med, const std::string &transport_name, c
      iceConfig_.ice_components = comps;
      iceConfig_.username = username;
      iceConfig_.password = password;
 -    if (iceConfig_.use_nicer) {
 -      // ice_ = NicerConnection::create(io_worker_, this, iceConfig_);
--      ice_.reset(LibNiceConnection::create(this, iceConfig_));
+-      ice_.reset(LibNiceConnection::create(iceConfig_));
 -    } else {
--      ice_.reset(LibNiceConnection::create(this, iceConfig_));
+-      ice_.reset(LibNiceConnection::create(iceConfig_));
 -    }
 +    // We only use libnice connection
-+    ice_.reset(LibNiceConnection::create(this, iceConfig_, io_worker_));
-+
++    ice_.reset(LibNiceConnection::create(iceConfig_, io_worker_));
      rtp_timeout_checker_.reset(new TimeoutChecker(this, dtlsRtp.get()));
      if (!rtcp_mux) {
        rtcp_timeout_checker_.reset(new TimeoutChecker(this, dtlsRtcp.get()));
 diff --git a/erizo/src/erizo/LibNiceConnection.cpp b/erizo/src/erizo/LibNiceConnection.cpp
-index bc0bf07..7f12802 100644
+index 2f1d3cc..4718f5d 100644
 --- a/erizo/src/erizo/LibNiceConnection.cpp
 +++ b/erizo/src/erizo/LibNiceConnection.cpp
-@@ -61,12 +61,14 @@ void cb_new_selected_pair(NiceAgent *agent, guint stream_id, guint component_id,
+@@ -60,12 +60,15 @@ void cb_new_selected_pair(NiceAgent *agent, guint stream_id, guint component_id,
+   conn->updateComponentState(component_id, IceState::READY);
  }
  
- LibNiceConnection::LibNiceConnection(boost::shared_ptr<LibNiceInterface> libnice, IceConnectionListener* listener,
--    const IceConfig& ice_config)
-+    const IceConfig& ice_config, std::shared_ptr<IOWorker> worker)
-   : IceConnection{listener, ice_config},
+-LibNiceConnection::LibNiceConnection(boost::shared_ptr<LibNiceInterface> libnice, const IceConfig& ice_config)
++LibNiceConnection::LibNiceConnection(boost::shared_ptr<LibNiceInterface> libnice, const IceConfig& ice_config,
++  std::shared_ptr<IOWorker> worker)
+   : IceConnection{ice_config},
 -    lib_nice_{libnice}, agent_{NULL}, loop_{NULL}, candsDelivered_{0}, receivedLastCandidate_{false} {
 +    lib_nice_{libnice}, agent_{NULL}, context_{NULL}, loop_{NULL}, candsDelivered_{0}, receivedLastCandidate_{false} {
    #if !GLIB_CHECK_VERSION(2, 35, 0)
@@ -53,22 +53,10 @@ index bc0bf07..7f12802 100644
  }
  
  LibNiceConnection::~LibNiceConnection() {
-@@ -80,33 +82,15 @@ void LibNiceConnection::close() {
+@@ -91,21 +94,11 @@ void LibNiceConnection::close() {
+     ELOG_DEBUG("%s message: interrupt thread to close, this: %p", toLog(), this);
+     m_Thread_.interrupt();
    }
-   ELOG_DEBUG("%s message:closing", toLog());
-   this->updateIceState(IceState::FINISHED);
--  if (loop_ != NULL) {
--    ELOG_DEBUG("%s message:main loop quit", toLog());
--    g_main_loop_quit(loop_);
--  }
-   cond_.notify_one();
-   listener_ = NULL;
-   boost::system_time const timeout = boost::get_system_time() + boost::posix_time::milliseconds(5);
-   ELOG_DEBUG("%s message: m_thread join, this: %p", toLog(), this);
--  if (!m_Thread_.timed_join(timeout)) {
--    ELOG_DEBUG("%s message: interrupt thread to close, this: %p", toLog(), this);
--    m_Thread_.interrupt();
--  }
 -  if (loop_ != NULL) {
 -    ELOG_DEBUG("%s message:Unrefing loop", toLog());
 -    g_main_loop_unref(loop_);
@@ -87,7 +75,7 @@ index bc0bf07..7f12802 100644
    ELOG_DEBUG("%s message: closed, this: %p", toLog(), this);
  }
  
-@@ -144,13 +128,10 @@ void LibNiceConnection::start() {
+@@ -143,13 +136,10 @@ void LibNiceConnection::start() {
      if (this->checkIceState() != INITIAL) {
        return;
      }
@@ -101,7 +89,7 @@ index bc0bf07..7f12802 100644
      GValue controllingMode = { 0 };
      g_value_init(&controllingMode, G_TYPE_BOOLEAN);
      g_value_set_boolean(&controllingMode, false);
-@@ -252,7 +233,7 @@ void LibNiceConnection::mainLoop() {
+@@ -251,7 +241,7 @@ void LibNiceConnection::mainLoop() {
    if (agent_ == NULL || loop_ == NULL) {
      return;
    }
@@ -110,19 +98,19 @@ index bc0bf07..7f12802 100644
    ELOG_DEBUG("%s message: finished g_main_loop, this: %p", toLog(), this);
  }
  
-@@ -474,8 +455,8 @@ void LibNiceConnection::setReceivedLastCandidate(bool hasReceived) {
+@@ -472,8 +462,8 @@ void LibNiceConnection::setReceivedLastCandidate(bool hasReceived) {
    this->receivedLastCandidate_ = hasReceived;
  }
  
--LibNiceConnection* LibNiceConnection::create(IceConnectionListener *listener, const IceConfig& ice_config) {
--  return new LibNiceConnection(boost::shared_ptr<LibNiceInterface>(new LibNiceInterfaceImpl()), listener, ice_config);
-+LibNiceConnection* LibNiceConnection::create(IceConnectionListener *listener, const IceConfig& ice_config, std::shared_ptr<IOWorker> worker) {
-+  return new LibNiceConnection(boost::shared_ptr<LibNiceInterface>(new LibNiceInterfaceImpl()), listener, ice_config, worker);
+-LibNiceConnection* LibNiceConnection::create(const IceConfig& ice_config) {
+-  return new LibNiceConnection(boost::shared_ptr<LibNiceInterface>(new LibNiceInterfaceImpl()), ice_config);
++LibNiceConnection* LibNiceConnection::create(const IceConfig& ice_config, std::shared_ptr<IOWorker> worker) {
++  return new LibNiceConnection(boost::shared_ptr<LibNiceInterface>(new LibNiceInterfaceImpl()), ice_config, worker);
  }
  
  bool LibNiceConnection::removeRemoteCandidates() {
 diff --git a/erizo/src/erizo/LibNiceConnection.h b/erizo/src/erizo/LibNiceConnection.h
-index 7bb7cd4..9d34c3f 100644
+index 19f62fa..2b78168 100644
 --- a/erizo/src/erizo/LibNiceConnection.h
 +++ b/erizo/src/erizo/LibNiceConnection.h
 @@ -17,6 +17,7 @@
@@ -133,37 +121,39 @@ index 7bb7cd4..9d34c3f 100644
  
  typedef struct _NiceAgent NiceAgent;
  typedef struct _GMainContext GMainContext;
-@@ -42,7 +43,7 @@ class LibNiceConnection : public IceConnection {
+@@ -41,7 +42,8 @@ class LibNiceConnection : public IceConnection {
+   DECLARE_LOGGER();
  
   public:
-   LibNiceConnection(boost::shared_ptr<LibNiceInterface> libnice, IceConnectionListener* listener,
--    const IceConfig& ice_config);
+-  LibNiceConnection(boost::shared_ptr<LibNiceInterface> libnice, const IceConfig& ice_config);
++  LibNiceConnection(boost::shared_ptr<LibNiceInterface> libnice,
 +    const IceConfig& ice_config, std::shared_ptr<IOWorker> worker);
  
    virtual ~LibNiceConnection();
    /**
-@@ -63,7 +64,8 @@ class LibNiceConnection : public IceConnection {
+@@ -62,7 +64,7 @@ class LibNiceConnection : public IceConnection {
  
    bool removeRemoteCandidates() override;
  
--  static LibNiceConnection* create(IceConnectionListener *listener, const IceConfig& ice_config);
-+  static LibNiceConnection* create(IceConnectionListener *listener,
-+    const IceConfig& ice_config, std::shared_ptr<IOWorker> worker);
+-  static LibNiceConnection* create(const IceConfig& ice_config);
++  static LibNiceConnection* create(const IceConfig& ice_config, std::shared_ptr<IOWorker> worker);
  
   private:
    void mainLoop();
 diff --git a/erizo/src/erizo/thread/IOWorker.cpp b/erizo/src/erizo/thread/IOWorker.cpp
-index 93dcc28..7528f8d 100644
+index 05dceef..faaa491 100644
 --- a/erizo/src/erizo/thread/IOWorker.cpp
 +++ b/erizo/src/erizo/thread/IOWorker.cpp
-@@ -1,16 +1,10 @@
+@@ -1,18 +1,10 @@
  #include "thread/IOWorker.h"
  
--// extern "C" {
--// #include <r_errors.h>
--// #include <async_wait.h>
--// #include <async_timer.h>
--// }
+-/*
+-extern "C" {
+-#include <r_errors.h>
+-#include <async_wait.h>
+-#include <async_timer.h>
+-}
+-*/
 -
  #include <chrono>  // NOLINT
  
@@ -174,52 +164,50 @@ index 93dcc28..7528f8d 100644
  }
  
  IOWorker::~IOWorker() {
-@@ -23,44 +17,35 @@ void IOWorker::start() {
+@@ -25,46 +17,34 @@ void IOWorker::start() {
  }
  
  void IOWorker::start(std::shared_ptr<std::promise<void>> start_promise) {
--  // if (started_.exchange(true)) {
--  //   return;
--  // }
-+  if (started_.exchange(true)) {
-+    return;
-+  }
+-  /*
+   if (started_.exchange(true)) {
+     return;
+   }
  
--  // thread_ = std::unique_ptr<std::thread>(new std::thread([this, start_promise] {
--  //   start_promise->set_value();
--  //   while (!closed_) {
--  //     int events;
--  //     struct timeval towait = {0, 100000};
--  //     struct timeval tv;
--  //     int r = NR_async_event_wait2(&events, &towait);
--  //     if (r == R_EOD) {
--  //       std::this_thread::sleep_for(std::chrono::milliseconds(10));
--  //     }
--  //     gettimeofday(&tv, 0);
--  //     NR_async_timer_update_time(&tv);
--  //     std::vector<Task> tasks;
--  //     {
--  //       std::unique_lock<std::mutex> lock(task_mutex_);
--  //       tasks.swap(tasks_);
--  //     }
--  //     for (Task &task : tasks) {
--  //       task();
--  //     }
--  //   }
--  // }));
--}
+-  thread_ = std::unique_ptr<std::thread>(new std::thread([this, start_promise] {
+-    start_promise->set_value();
+-    while (!closed_) {
+-      int events;
+-      struct timeval towait = {0, 100000};
+-      struct timeval tv;
+-      int r = NR_async_event_wait2(&events, &towait);
+-      if (r == R_EOD) {
+-        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+-      }
+-      gettimeofday(&tv, 0);
+-      NR_async_timer_update_time(&tv);
+-      std::vector<Task> tasks;
+-      {
+-        std::unique_lock<std::mutex> lock(task_mutex_);
+-        tasks.swap(tasks_);
 +  if (!context_ && !loop_) {
 +    context_ = g_main_context_new();
 +    loop_ = g_main_loop_new(context_, FALSE);
- 
--void IOWorker::task(Task f) {
--  std::unique_lock<std::mutex> lock(task_mutex_);
--  tasks_.push_back(f);
 +    thread_ = std::unique_ptr<std::thread>(new std::thread([this, start_promise] {
 +      start_promise->set_value();
 +      if (!this->closed_ && this->loop_) {
 +        g_main_loop_run(this->loop_);
-+      }
+       }
+-      for (Task &task : tasks) {
+-        task();
+-      }
+-    }
+-  }));
+-  */
+-}
+-
+-void IOWorker::task(Task f) {
+-  std::unique_lock<std::mutex> lock(task_mutex_);
+-  tasks_.push_back(f);
 +    }));
 +  }
  }
