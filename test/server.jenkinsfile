@@ -54,7 +54,7 @@ pipeline {
                             ]) {
                             node('api-server-centos-'+env.GIT_BRANCH) {
                                 container('test-images') {
-                                    sh "/root/startRun.sh * * centos test ${env.GIT_COMMIT} ConferenceClient_API_1"
+                                    sh "/root/startRun.sh * * centos test ${env.GIT_COMMIT} ConferenceClient_API_1 $env.GIT_BRANCH"
                                 }
                             }
                         }
@@ -73,7 +73,7 @@ pipeline {
                             ]) {
                             node('rest-server-centos-'+env.GIT_BRANCH) {
                                 container('test-images') {
-                                    sh "/root/startRun.sh * * centos test ${env.GIT_COMMIT} ConferenceClient_API_2"
+                                    sh "/root/startRun.sh * * centos test ${env.GIT_COMMIT} ConferenceClient_API_2 $env.GIT_BRANCH"
                                 }
                             }
                         }
@@ -91,8 +91,8 @@ pipeline {
         }
         success {
             script {
-                if ("${GIT_BRANCH}" == 'master') {
-                   sh "curl ${env.checkServerUrl}/copyNightly/${GIT_COMMIT}/owt-server/1"
+                if ("${GIT_BRANCH}" == '4.3.x') {
+                   sh "curl ${env.checkServerUrl}/copyNightly/0${GIT_COMMIT}/owt-server/1"
         }
         }
             setBuildStatus("Build succeeded", "SUCCESS");
