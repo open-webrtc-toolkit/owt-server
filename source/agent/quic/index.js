@@ -104,7 +104,6 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
                 conn.connect(options);
             break;
         case 'quic':
-            log.debug("New QUIC connection.");
             conn = createStreamPipeline(connectionId, 'in', options, callback);
             if (!conn) {
                 return;
@@ -155,15 +154,13 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
                 if (conn)
                     conn.connect(options);//FIXME: May FAIL here!!!!!
                 break;
-            case 'webrtc':
-            case 'quic-p2p':
-                log.debug("New QUIC connection.");
-                conn = createQuicConnection(connectionId, 'out', options);
-                if(!pubSubMap.has(options.data.from)){
-                    return callback('callback', {type: 'failed', reason: 'Invalid data source.'});
+            case 'quic':
+                conn = createStreamPipeline(connectionId, 'out', options, callback);
+                const stream = quicTransportServer.createSendStream('id', connectionId);
+                log.info(stream);
+                if (!conn) {
+                    return;
                 }
-                log.debug('Add subscription to '+options.data.from);
-                pubSubMap.get(options.data.from).push(conn);
                 break;
             default:
                 log.error('Connection type invalid:' + connectionType);
@@ -212,22 +209,6 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
     that.cutoff = function (connectionId, callback) {
         log.debug('cutoff, connectionId:', connectionId);
         connections.cutoffConnection(connectionId).then(onSuccess(callback), onError(callback));
-    };
-
-    that.onSessionSignaling = function (connectionId, msg, callback) {
-        log.debug('quic onSessionSignaling, connection id:', connectionId, 'msg:', msg);
-        var conn = connections.getConnection(connectionId);
-        if (conn) {
-            if (conn.type === 'quic-p2p') {
-                conn.connection.onSignalling(msg);
-                callback('callback', 'ok');
-            } else {
-                log.info('signaling on non-quic connection');
-                callback('callback', 'error', 'signaling on non-quic connection');
-            }
-        } else {
-          callback('callback', 'error', 'Connection does NOT exist:' + connectionId);
-        }
     };
 
     that.mediaOnOff = function (connectionId, track, direction, action, callback) {

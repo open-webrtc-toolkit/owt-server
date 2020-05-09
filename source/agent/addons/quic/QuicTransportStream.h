@@ -31,6 +31,7 @@ public:
     static NAN_MODULE_INIT(init);
     static NAN_METHOD(newInstance);
     static NAUV_WORK_CB(onContentSessionId);
+    static NAUV_WORK_CB(onData);  // TODO: Move to pipe.
 
     static Nan::Persistent<v8::Function> s_constructor;
 
@@ -42,12 +43,14 @@ protected:
 private:
     // Try to read content session ID from data buffered.
     void MaybeReadContentSessionId();
+    void SignalOnData();
 
     owt::quic::QuicTransportStreamInterface* m_stream;
     std::vector<uint8_t> m_contentSessionId;
     bool m_receivedContentSessionId;
 
     uv_async_t m_asyncOnContentSessionId;
+    uv_async_t m_asyncOnData;
 };
 
 #endif

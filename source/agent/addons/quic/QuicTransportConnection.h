@@ -35,6 +35,7 @@ public:
 
     static NAN_MODULE_INIT(init);
     static NAN_METHOD(newInstance);
+    static NAN_METHOD(createBidirectionalStream);
     static NAUV_WORK_CB(onStreamCallback);
 
     static Nan::Persistent<v8::Function> s_constructor;

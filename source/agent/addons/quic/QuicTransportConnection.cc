@@ -39,7 +39,7 @@ NAN_MODULE_INIT(QuicTransportConnection::init)
     Local<ObjectTemplate> instanceTpl = tpl->InstanceTemplate();
     instanceTpl->SetInternalFieldCount(1);
 
-    // Nan::SetPrototypeMethod(tpl, "start", start);
+    Nan::SetPrototypeMethod(tpl, "createBidirectionalStream", createBidirectionalStream);
 
     s_constructor.Reset(Nan::GetFunction(tpl).ToLocalChecked());
     Nan::Set(target, Nan::New("QuicTransportConnection").ToLocalChecked(), Nan::GetFunction(tpl).ToLocalChecked());
@@ -112,4 +112,12 @@ NAUV_WORK_CB(QuicTransportConnection::onStreamCallback)
         }
         obj->m_streamsToBeNotified.pop();
     }
+}
+
+NAN_METHOD(QuicTransportConnection::createBidirectionalStream){
+    QuicTransportConnection* obj = Nan::ObjectWrap::Unwrap<QuicTransportConnection>(info.Holder());
+    auto stream=obj->m_session->CreateBidirectionalStream();
+    ELOG_INFO("Got bidirectional stream.");
+    v8::Local<v8::Object> streamObject = QuicTransportStream::newInstance(stream);
+    info.GetReturnValue().Set(streamObject);
 }

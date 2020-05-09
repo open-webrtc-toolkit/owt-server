@@ -8,6 +8,7 @@ const EventEmitter = require('events');
 const logger = require('../../logger').logger;
 const log = logger.getLogger('QuicTransportServer');
 const addon = require('../build/Release/quic');
+const zeroUuid = '00000000000000000000000000000000';
 
 /* Every QUIC agent is a QuicTransportServer which accepts QuicTransport
  * connections from clients.
@@ -24,15 +25,25 @@ module.exports = class QuicTransportServer extends EventEmitter {
     this._connections = new Map(); // Key is user ID.
     this._streams = new Map(); // Key is content session ID.
     this._unAuthenticatedConnections = []; // When it's authenticated, it will be moved to this.connections.
-    this._unAssociatedStreams=[];  // No content session ID assgined to them.
+    this._unAssociatedStreams = []; // No content session ID assgined to them.
     this._server.onconnection = (connection) => {
       this._unAuthenticatedConnections.push(connection);
       connection.onincomingstream = (stream) => {
-        this._unAssociatedStreams.push(stream);
         stream.oncontentsessionid = (id) => {
-          console.log('New stream for session ' + this._uuidBytesToString(new Uint8Array(id)));
-          stream.contentSessionId=this._uuidBytesToString(new Uint8Array(id));
-          this.emit('streamadded', stream);
+          const streamId = this._uuidBytesToString(new Uint8Array(id))
+          stream.contentSessionId = streamId;
+          if (streamId === zeroUuid) {
+            // Signaling stream. Connect to portal in the future. For now, we use it for authentication.
+          } else {
+            this.emit('streamadded', stream);
+          }
+        }
+        stream.ondata=(data)=>{
+          if (stream.contentSessionId === zeroUuid) {
+            connection.userId = data.toString('utf8');
+            this._connections.set('id', connection);
+            log.info('User ID: ' + connection.userId);
+          }
         }
       }
     }
@@ -40,6 +51,22 @@ module.exports = class QuicTransportServer extends EventEmitter {
 
   start() {
     this._server.start();
+  }
+
+  async createSendStream(userId, contentSessionId) {
+    userId = 'id';
+    if (!this._connections.has(userId)) {
+      return;
+    }
+    const stream = this._connections.get(userId).createBidirectionalStream();
+    log.info('Stream: ' + JSON.stringify(stream));
+    stream.write(contentSessionId);
+    this._streams.set(contentSessionId, stream);
+    return stream;
+  }
+
+  _authenticate(){
+    // TODO: Send token to nuve for authentication.
   }
 
   _uuidBytesToString(uuidBytes) {

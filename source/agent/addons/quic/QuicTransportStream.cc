@@ -35,6 +35,9 @@ QuicTransportStream::~QuicTransportStream()
     if (!uv_is_closing(reinterpret_cast<uv_handle_t*>(&m_asyncOnContentSessionId))) {
         uv_close(reinterpret_cast<uv_handle_t*>(&m_asyncOnContentSessionId), NULL);
     }
+    if (!uv_is_closing(reinterpret_cast<uv_handle_t*>(&m_asyncOnData))) {
+        uv_close(reinterpret_cast<uv_handle_t*>(&m_asyncOnData), NULL);
+    }
     m_stream->SetVisitor(nullptr);
 }
 
@@ -43,6 +46,8 @@ void QuicTransportStream::OnCanRead()
     ELOG_DEBUG("Readable size: %d", (int)m_stream->ReadableBytes());
     if (!m_receivedContentSessionId) {
         MaybeReadContentSessionId();
+    } else {
+        SignalOnData();
     }
     ELOG_DEBUG("On can read.");
 }
@@ -74,24 +79,27 @@ NAN_METHOD(QuicTransportStream::newInstance)
     QuicTransportStream* obj = new QuicTransportStream();
     obj->Wrap(info.This());
     uv_async_init(uv_default_loop(), &obj->m_asyncOnContentSessionId, &QuicTransportStream::onContentSessionId);
+    uv_async_init(uv_default_loop(), &obj->m_asyncOnData, &QuicTransportStream::onData);
     info.GetReturnValue().Set(info.This());
 }
 
 v8::Local<v8::Object> QuicTransportStream::newInstance(owt::quic::QuicTransportStreamInterface* stream)
 {
     Local<Object> streamObject = Nan::NewInstance(Nan::New(QuicTransportStream::s_constructor)).ToLocalChecked();
+    ELOG_DEBUG("Created stream obj");
     QuicTransportStream* obj = Nan::ObjectWrap::Unwrap<QuicTransportStream>(streamObject);
     obj->m_stream = stream;
+    ELOG_DEBUG("Before MaybeReadContentSessionId");
     obj->MaybeReadContentSessionId();
+    ELOG_DEBUG("After MaybeReadContentSessionId");
     return streamObject;
 }
 
 void QuicTransportStream::MaybeReadContentSessionId()
 {
-    ELOG_DEBUG("Readable size: %d", (int)m_stream->ReadableBytes());
     if (!m_receivedContentSessionId) {
         // Match to a content session.
-        if (m_stream->ReadableBytes() < uuidSizeInByte) {
+        if (m_stream->ReadableBytes() > 0 && m_stream->ReadableBytes() < uuidSizeInByte) {
             ELOG_ERROR("No enough data to get content session ID.");
             m_stream->Close();
             return;
@@ -102,6 +110,32 @@ void QuicTransportStream::MaybeReadContentSessionId()
         m_receivedContentSessionId = true;
         m_asyncOnContentSessionId.data = this;
         uv_async_send(&m_asyncOnContentSessionId);
+        if (m_stream->ReadableBytes() > 0) {
+            SignalOnData();
+        }
+    }
+}
+
+NAUV_WORK_CB(QuicTransportStream::onData){
+    ELOG_DEBUG("QuicTransportStream::onData");
+    Nan::HandleScope scope;
+    QuicTransportStream* obj = reinterpret_cast<QuicTransportStream*>(async->data);
+    if (obj == nullptr) {
+        return;
+    }
+    Nan::MaybeLocal<v8::Value> onEvent = Nan::Get(obj->handle(), Nan::New<v8::String>("ondata").ToLocalChecked());
+    if (!onEvent.IsEmpty()) {
+        v8::Local<v8::Value> onEventLocal = onEvent.ToLocalChecked();
+        if (onEventLocal->IsFunction()) {
+            v8::Local<v8::Function> eventCallback = onEventLocal.As<Function>();
+            Nan::AsyncResource* resource = new Nan::AsyncResource(Nan::New<v8::String>("ondata").ToLocalChecked());
+            auto readableBytes = obj->m_stream->ReadableBytes();
+            ELOG_DEBUG("Readable bytes: %d", readableBytes);
+            uint8_t* buffer = new uint8_t[readableBytes]; // Use a shared buffer instead to reduce performance cost on new.
+            obj->m_stream->Read(buffer, readableBytes);
+            Local<Value> args[] = { Nan::NewBuffer((char*)buffer, readableBytes).ToLocalChecked() };
+            resource->runInAsyncScope(Nan::GetCurrentContext()->Global(), eventCallback, 1, args);
+        }
     }
 }
 
@@ -122,4 +156,10 @@ NAUV_WORK_CB(QuicTransportStream::onContentSessionId)
             resource->runInAsyncScope(Nan::GetCurrentContext()->Global(), eventCallback, 1, args);
         }
     }
+}
+
+void QuicTransportStream::SignalOnData()
+{
+    m_asyncOnData.data = this;
+    uv_async_send(&m_asyncOnData);
 }
