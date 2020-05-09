@@ -19,6 +19,7 @@ optParser.addOption('d', 'debug', 'boolean', 'Whether build debug addon (Please 
 optParser.addOption('v', 'verbose', 'boolean', 'Whether use verbose level in building');
 optParser.addOption('r', 'rebuild', 'boolean', 'Whether clean before build');
 optParser.addOption('c', 'check', 'boolean', 'Whether check after build');
+optParser.addOption('j', 'jobs', 'string', 'Number of concurrent build jobs');
 
 const options = optParser.parseArgs(process.argv);
 
@@ -97,7 +98,7 @@ function constructBuildEnv() {
 }
 
 // Common build commands
-var cpuCount = os.cpus().length;
+var cpuCount = (Number(options.jobs) || os.cpus().length);
 logLevel = options.verbose ? 'verbose' : 'error';
 rebuildArgs = ['node-gyp', 'rebuild', `-j ${cpuCount}`, '--loglevel=' + logLevel];
 configureArgs = ['node-gyp', 'configure', '--loglevel=' + logLevel];
