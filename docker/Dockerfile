@@ -14,9 +14,7 @@ ENV APP_PATH=${IMG_APP_PATH}
 RUN apt-get update
 
 # Install utils
-RUN apt-get install -y ca-certificates git lsb-release mongodb nodejs npm sudo wget
-
-RUN npm install -g grunt-cli node-gyp
+RUN apt-get install -y ca-certificates git lsb-release mongodb sudo wget
 
 # Keep proxy environment for sudo
 RUN bash -c "echo \"Defaults env_keep = \\\"http_proxy https_proxy no_proxy \\\"\" >> /etc/sudoers"
@@ -35,6 +33,14 @@ RUN  git config --global user.email "you@example.com" && \
   git config --global user.name "Your Name"
 
 RUN ./scripts/installDepsUnattended.sh
+
+# Set up ENV variables for nodejs and npm so they can be used from Dockerfiles
+ENV NVM_DIR /root/.nvm
+RUN bash -c 'source $NVM_DIR/nvm.sh && nvm use default && export NODE_VERSION="$(nvm current)"'
+ENV NODE_PATH $NVM_DIR/$NODE_VERSION/lib/node_modules
+ENV PATH $NVM_DIR/versions/node/$NODE_VERSION/bin:$PATH
+
+RUN npm install -g grunt-cli node-gyp
 
 # Set workpath to where the app should be installed for the next step of the multibuild
 WORKDIR ${APP_PATH}
