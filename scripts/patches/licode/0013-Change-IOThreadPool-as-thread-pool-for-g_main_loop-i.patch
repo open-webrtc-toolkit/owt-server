@@ -1,4 +1,4 @@
-From 1fc452af1db0052f536612bde9649d2aae00cccd Mon Sep 17 00:00:00 2001
+From d36d0cece07bf2160d3f945f5977854644429ce7 Mon Sep 17 00:00:00 2001
 From: Chen Li1 <li1.chen@intel.com>
 Date: Fri, 24 Apr 2020 10:42:27 +0800
 Subject: [PATCH] Change IOThreadPool as thread pool for g_main_loop in
@@ -6,11 +6,11 @@ Subject: [PATCH] Change IOThreadPool as thread pool for g_main_loop in
 
 ---
  erizo/src/erizo/DtlsTransport.cpp     |  8 ++---
- erizo/src/erizo/LibNiceConnection.cpp | 26 +++++-----------
+ erizo/src/erizo/LibNiceConnection.cpp | 30 +++++--------------
  erizo/src/erizo/LibNiceConnection.h   |  6 ++--
  erizo/src/erizo/thread/IOWorker.cpp   | 56 +++++++++++------------------------
  erizo/src/erizo/thread/IOWorker.h     | 11 +++----
- 5 files changed, 38 insertions(+), 69 deletions(-)
+ 5 files changed, 38 insertions(+), 73 deletions(-)
 
 diff --git a/erizo/src/erizo/DtlsTransport.cpp b/erizo/src/erizo/DtlsTransport.cpp
 index a11533a..8a6539e 100644
@@ -32,7 +32,7 @@ index a11533a..8a6539e 100644
      if (!rtcp_mux) {
        rtcp_timeout_checker_.reset(new TimeoutChecker(this, dtlsRtcp.get()));
 diff --git a/erizo/src/erizo/LibNiceConnection.cpp b/erizo/src/erizo/LibNiceConnection.cpp
-index 2f1d3cc..4718f5d 100644
+index 2f1d3cc..3c4d777 100644
 --- a/erizo/src/erizo/LibNiceConnection.cpp
 +++ b/erizo/src/erizo/LibNiceConnection.cpp
 @@ -60,12 +60,15 @@ void cb_new_selected_pair(NiceAgent *agent, guint stream_id, guint component_id,
@@ -53,7 +53,18 @@ index 2f1d3cc..4718f5d 100644
  }
  
  LibNiceConnection::~LibNiceConnection() {
-@@ -91,21 +94,11 @@ void LibNiceConnection::close() {
+@@ -79,10 +82,6 @@ void LibNiceConnection::close() {
+   }
+   ELOG_DEBUG("%s message:closing", toLog());
+   this->updateIceState(IceState::FINISHED);
+-  if (loop_ != NULL) {
+-    ELOG_DEBUG("%s message:main loop quit", toLog());
+-    g_main_loop_quit(loop_);
+-  }
+   cond_.notify_one();
+   listener_.reset();
+   boost::system_time const timeout = boost::get_system_time() + boost::posix_time::milliseconds(5);
+@@ -91,21 +90,11 @@ void LibNiceConnection::close() {
      ELOG_DEBUG("%s message: interrupt thread to close, this: %p", toLog(), this);
      m_Thread_.interrupt();
    }
@@ -75,7 +86,7 @@ index 2f1d3cc..4718f5d 100644
    ELOG_DEBUG("%s message: closed, this: %p", toLog(), this);
  }
  
-@@ -143,13 +136,10 @@ void LibNiceConnection::start() {
+@@ -143,13 +132,10 @@ void LibNiceConnection::start() {
      if (this->checkIceState() != INITIAL) {
        return;
      }
@@ -89,7 +100,7 @@ index 2f1d3cc..4718f5d 100644
      GValue controllingMode = { 0 };
      g_value_init(&controllingMode, G_TYPE_BOOLEAN);
      g_value_set_boolean(&controllingMode, false);
-@@ -251,7 +241,7 @@ void LibNiceConnection::mainLoop() {
+@@ -251,7 +237,7 @@ void LibNiceConnection::mainLoop() {
    if (agent_ == NULL || loop_ == NULL) {
      return;
    }
@@ -98,7 +109,7 @@ index 2f1d3cc..4718f5d 100644
    ELOG_DEBUG("%s message: finished g_main_loop, this: %p", toLog(), this);
  }
  
-@@ -472,8 +462,8 @@ void LibNiceConnection::setReceivedLastCandidate(bool hasReceived) {
+@@ -472,8 +458,8 @@ void LibNiceConnection::setReceivedLastCandidate(bool hasReceived) {
    this->receivedLastCandidate_ = hasReceived;
  }
  
