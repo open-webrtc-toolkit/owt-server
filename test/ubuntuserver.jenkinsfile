@@ -54,7 +54,7 @@ pipeline {
                             containerTemplate(name: 'test-images', image: "$env.ubuntu_test_images",  ttyEnabled: true, alwaysPullImage: true, privileged: true, resourceRequestCpu: '3000m', resourceLimitCpu: '4000m', resourceRequestMemory: '2.0Gi', resourceLimitMemory: '3.0Gi', command: 'cat'),                            ]) {
                             node('api-server-ubuntu-'+env.GIT_BRANCH) {
                                 container('test-images') {
-                                    sh "/root/startRun.sh * * ubuntu test ${env.GIT_COMMIT} ConferenceClient_API_1"
+                                    sh "/root/startRun.sh * * ubuntu test ${env.GIT_COMMIT} ConferenceClient_API_1 $env.GIT_BRANCH"
                                 }
                             }
                         }
@@ -73,7 +73,7 @@ pipeline {
                             ]) {
                             node('rest-server-ubuntu-'+env.GIT_BRANCH) {
                                 container('test-images') {
-                                    sh "/root/startRun.sh * * ubuntu test ${env.GIT_COMMIT} ConferenceClient_API_2"
+                                    sh "/root/startRun.sh * * ubuntu test ${env.GIT_COMMIT} ConferenceClient_API_2 $env.GIT_BRANCH"
                                 }
                             }
                         }
@@ -95,7 +95,7 @@ pipeline {
         success {
             script {
                 if ("${GIT_BRANCH}" == 'master') {
-                   sh "curl ${env.checkServerUrl}/copyNightly/${GIT_COMMIT}/owt-server/0"
+                   sh "curl ${env.checkServerUrl}/copyNightly/0${GIT_COMMIT}/owt-server/0"
         }
         }
             setBuildStatus("Build succeeded", "SUCCESS");
