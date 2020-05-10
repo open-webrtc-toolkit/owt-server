@@ -37,7 +37,7 @@ exports.get = function (serviceId, callback) {
  * Delete Service.
  */
 exports.delete = function (serviceId, callback) {
-  Service.remove({_id: serviceId}, function(err, ret) {
+  Service.deleteOne({_id: serviceId}, function(err, ret) {
     if (ret.n === 0) serviceId = null;
     callback(err, serviceId);
   });

@@ -167,7 +167,7 @@ exports.get = function (serviceId, roomId, callback) {
  * Delete Room. Removes a determined room from the data base.
  */
 exports.delete = function (serviceId, roomId, callback) {
-  Room.remove({_id: roomId}, function(err0) {
+  Room.deleteOne({_id: roomId}, function(err0) {
     Service.findByIdAndUpdate(serviceId, { '$pull' : { 'rooms' : roomId } },
       function (err1, service) {
         if (err1) console.log('Pull rooms fail:', err1.message);
