@@ -1,0 +1,90 @@
+From d16d2169a14f7df87891236cf66ca3ac188ec50d Mon Sep 17 00:00:00 2001
+From: Chen Li1 <li1.chen@intel.com>
+Date: Thu, 22 Aug 2019 15:32:20 +0800
+Subject: [PATCH] Start checking after remote candidates received
+
+---
+ agent/agent.c     | 1 +
+ agent/component.c | 2 ++
+ agent/component.h | 1 +
+ agent/conncheck.c | 6 ++++--
+ 4 files changed, 8 insertions(+), 2 deletions(-)
+
+diff --git a/agent/agent.c b/agent/agent.c
+index a71dc0b..94b3ac8 100644
+--- a/agent/agent.c
++++ b/agent/agent.c
+@@ -2279,6 +2279,7 @@ _set_remote_candidates_locked (NiceAgent *agent, Stream *stream,
+  for (i = candidates; i && added >= 0; i = i->next) {
+    NiceCandidate *d = (NiceCandidate*) i->data;
+ 
++   component->remote_candidate_received = true;
+    if (nice_address_is_valid (&d->addr) == TRUE) {
+      gboolean res =
+          priv_add_remote_candidate (agent,
+diff --git a/agent/component.c b/agent/component.c
+index cd5db9a..2121e67 100644
+--- a/agent/component.c
++++ b/agent/component.c
+@@ -63,6 +63,7 @@ component_new (guint id)
+   component->state = NICE_COMPONENT_STATE_DISCONNECTED;
+   component->restart_candidate = NULL;
+   component->tcp = NULL;
++  component->remote_candidate_received = false;
+ 
+   return component;
+ }
+@@ -221,6 +222,7 @@ component_restart (Component *cmp)
+   g_slist_free (cmp->incoming_checks);
+   cmp->incoming_checks = NULL;
+ 
++  cmp->remote_candidate_received = false;
+   /* note: component state managed by agent */
+ 
+   return TRUE;
+diff --git a/agent/component.h b/agent/component.h
+index 577dbfe..47da7be 100644
+--- a/agent/component.h
++++ b/agent/component.h
+@@ -125,6 +125,7 @@ struct _Component
+   gboolean tcp_readable;
+   guint min_port;
+   guint max_port;
++  gboolean remote_candidate_received;
+ };
+ 
+ Component *
+diff --git a/agent/conncheck.c b/agent/conncheck.c
+index 476afa7..bc2c736 100644
+--- a/agent/conncheck.c
++++ b/agent/conncheck.c
+@@ -945,6 +945,8 @@ void conn_check_remote_candidates_set(NiceAgent *agent)
+ {
+   GSList *i, *j, *k, *l, *m, *n;
+ 
++  nice_debug ("Agent %p: conn_check_remote_candidates_set", agent);
++
+   for (i = agent->streams; i ; i = i->next) {
+     Stream *stream = i->data;
+     for (j = stream->conncheck_list; j ; j = j->next) {
+@@ -2943,7 +2945,7 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, Stream *stream,
+       if (stream->initial_binding_request_received != TRUE)
+         agent_signal_initial_binding_request_received (agent, stream);
+ 
+-      if (component->remote_candidates && remote_candidate == NULL) {
++      if (component->remote_candidate_received && remote_candidate == NULL) {
+ 	nice_debug ("Agent %p : No matching remote candidate for incoming check ->"
+             "peer-reflexive candidate.", agent);
+ 	remote_candidate = discovery_learn_remote_peer_reflexive_candidate (
+@@ -2957,7 +2959,7 @@ gboolean conn_check_handle_inbound_stun (NiceAgent *agent, Stream *stream,
+       priv_reply_to_conn_check (agent, stream, component, remote_candidate,
+           from, socket, rbuf_len, rbuf, use_candidate);
+ 
+-      if (component->remote_candidates == NULL) {
++      if (!component->remote_candidate_received) {
+         /* case: We've got a valid binding request to a local candidate
+          *       but we do not yet know remote credentials nor
+          *       candidates. As per sect 7.2 of ICE (ID-19), we send a reply
+-- 
+2.7.4
+
