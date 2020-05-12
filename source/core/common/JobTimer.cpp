@@ -55,6 +55,7 @@ void JobTimer::stop()
         m_isClosing = true;
         m_isRunning = false;
     }
+    m_timer->wait();
 }
 
 void JobTimer::onTimeout(const boost::system::error_code& ec)
