@@ -55,7 +55,11 @@ void JobTimer::stop()
         m_isClosing = true;
         m_isRunning = false;
     }
-    m_timer->wait();
+    boost::system::error_code ec;
+    m_timer->wait(ec);
+    if (ec) {
+        // Ignore error during stop
+    }
 }
 
 void JobTimer::onTimeout(const boost::system::error_code& ec)
