@@ -10,14 +10,36 @@
 namespace {
 
 // Global thread for timing
-boost::asio::io_service g_service;
-boost::asio::io_service::work g_work(g_service);
-boost::scoped_ptr<boost::thread> g_timingThread;
+class ServiceThread {
+public:
+    ServiceThread()
+    : m_service{}
+    , m_work{m_service}
+    , m_thread{new boost::thread(boost::bind(&boost::asio::io_service::run, &m_service))} {}
+
+    ~ServiceThread()
+    {
+        m_service.stop();
+        m_thread->join();
+    }
+
+    boost::asio::io_service& service()
+    {
+        return m_service;
+    }
+
+private:
+    boost::asio::io_service m_service;
+    boost::asio::io_service::work m_work;
+    boost::scoped_ptr<boost::thread> m_thread;
+};
+
+boost::scoped_ptr<ServiceThread> g_timingThread;
 std::once_flag g_startOnce;
 
 void startTimingThread()
 {
-    g_timingThread.reset(new boost::thread(boost::bind(&boost::asio::io_service::run, &g_service)));
+    g_timingThread.reset(new ServiceThread());
 }
 
 }
@@ -30,7 +52,8 @@ JobTimer::JobTimer(unsigned int frequency, JobTimerListener* listener)
 {
     // Start the global thread once
     std::call_once(g_startOnce, startTimingThread);
-    m_timer.reset(new boost::asio::deadline_timer(g_service, boost::posix_time::milliseconds(m_interval)));
+    m_timer.reset(new boost::asio::deadline_timer(
+        g_timingThread->service(), boost::posix_time::milliseconds(m_interval)));
     m_timer->async_wait(boost::bind(&JobTimer::onTimeout, this, boost::asio::placeholders::error));
 }
 
