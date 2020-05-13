@@ -1,18 +1,19 @@
-From 0f7f6840092b83c226d3bee9da69e63988f0516d Mon Sep 17 00:00:00 2001
+From 845dd075efe48cfbc516fd26c17585ccec30c86c Mon Sep 17 00:00:00 2001
 From: Chen Li1 <li1.chen@intel.com>
-Date: Wed, 26 Dec 2018 12:25:48 +0800
-Subject: [PATCH 15/16] Add FeedbackGenerator for audio packets
+Date: Wed, 13 May 2020 13:47:38 +0800
+Subject: [PATCH] Add FeedbackGenerator for audio packets
 
 ---
- erizo/src/erizo/WebRtcConnection.cpp               |  4 +--
+ erizo/src/erizo/MediaStream.cpp                    |  4 +--
+ erizo/src/erizo/WebRtcConnection.cpp               |  2 +-
  .../erizo/rtp/RtcpFeedbackGenerationHandler.cpp    | 34 ++++++++++++----------
- 2 files changed, 21 insertions(+), 17 deletions(-)
+ 3 files changed, 22 insertions(+), 18 deletions(-)
 
-diff --git a/erizo/src/erizo/WebRtcConnection.cpp b/erizo/src/erizo/WebRtcConnection.cpp
-index 8cd38e3..d7c3760 100644
---- a/erizo/src/erizo/WebRtcConnection.cpp
-+++ b/erizo/src/erizo/WebRtcConnection.cpp
-@@ -22,7 +22,7 @@
+diff --git a/erizo/src/erizo/MediaStream.cpp b/erizo/src/erizo/MediaStream.cpp
+index 4327c6f..b51bc32 100644
+--- a/erizo/src/erizo/MediaStream.cpp
++++ b/erizo/src/erizo/MediaStream.cpp
+@@ -25,7 +25,7 @@
  // #include "rtp/FecReceiverHandler.h"
  #include "rtp/RtcpProcessorHandler.h"
  // #include "rtp/RtpRetransmissionHandler.h"
@@ -21,17 +22,30 @@ index 8cd38e3..d7c3760 100644
  // #include "rtp/RtpPaddingRemovalHandler.h"
  // #include "rtp/StatsHandler.h"
  // #include "rtp/SRPacketHandler.h"
-@@ -337,7 +337,7 @@ void WebRtcConnection::initializePipeline() {
-   // pipeline_->addFront(PliPacerHandler());
-   // pipeline_->addFront(BandwidthEstimationHandler());
-   // pipeline_->addFront(RtpPaddingRemovalHandler());
--  // pipeline_->addFront(RtcpFeedbackGenerationHandler());
-+  pipeline_->addFront(RtcpFeedbackGenerationHandler());
-   // pipeline_->addFront(RtpRetransmissionHandler());
-   // pipeline_->addFront(SRPacketHandler());
-   // pipeline_->addFront(SenderBandwidthEstimationHandler());
+@@ -369,7 +369,7 @@ void MediaStream::initializePipeline() {
+     pipeline_->addFront(std::make_shared<BandwidthEstimationHandler>());
+   }
+   // pipeline_->addFront(std::make_shared<RtpPaddingRemovalHandler>());
+-  // pipeline_->addFront(std::make_shared<RtcpFeedbackGenerationHandler>());
++  pipeline_->addFront(std::make_shared<RtcpFeedbackGenerationHandler>());
+   // pipeline_->addFront(std::make_shared<RtpRetransmissionHandler>());
+   // pipeline_->addFront(std::make_shared<SRPacketHandler>());
+   // pipeline_->addFront(std::make_shared<SenderBandwidthEstimationHandler>());
+diff --git a/erizo/src/erizo/WebRtcConnection.cpp b/erizo/src/erizo/WebRtcConnection.cpp
+index 824d16e..eb97d36 100644
+--- a/erizo/src/erizo/WebRtcConnection.cpp
++++ b/erizo/src/erizo/WebRtcConnection.cpp
+@@ -25,7 +25,7 @@
+ // #include "rtp/FecReceiverHandler.h"
+ #include "rtp/RtcpProcessorHandler.h"
+ // #include "rtp/RtpRetransmissionHandler.h"
+-// #include "rtp/RtcpFeedbackGenerationHandler.h"
++#include "rtp/RtcpFeedbackGenerationHandler.h"
+ // #include "rtp/RtpPaddingRemovalHandler.h"
+ // #include "rtp/StatsHandler.h"
+ // #include "rtp/SRPacketHandler.h"
 diff --git a/erizo/src/erizo/rtp/RtcpFeedbackGenerationHandler.cpp b/erizo/src/erizo/rtp/RtcpFeedbackGenerationHandler.cpp
-index 2ea8932..4b29b2f 100644
+index 23d695e..0499f95 100644
 --- a/erizo/src/erizo/rtp/RtcpFeedbackGenerationHandler.cpp
 +++ b/erizo/src/erizo/rtp/RtcpFeedbackGenerationHandler.cpp
 @@ -74,6 +74,10 @@ void RtcpFeedbackGenerationHandler::notifyUpdate() {
@@ -49,37 +63,37 @@ index 2ea8932..4b29b2f 100644
      return;
    }
    // TODO(pedro) detect if nacks are enabled here with the negotiated SDP scanning the rtp_mappings
--  std::vector<uint32_t> video_ssrc_list = connection_->getVideoSourceSSRCList();
+-  std::vector<uint32_t> video_ssrc_list = stream_->getVideoSourceSSRCList();
 -  std::for_each(video_ssrc_list.begin(), video_ssrc_list.end(), [this] (uint32_t video_ssrc) {
 -    if (video_ssrc != 0) {
 -      auto video_generator = std::make_shared<RtcpGeneratorPair>();
 -      generators_map_[video_ssrc] = video_generator;
 -      auto video_rr = std::make_shared<RtcpRrGenerator>(video_ssrc, VIDEO_PACKET, clock_);
 -      video_generator->rr_generator = video_rr;
--      ELOG_DEBUG("%s, message: Initialized video rrGenerator, ssrc: %u", connection_->toLog(), video_ssrc);
+-      ELOG_DEBUG("%s, message: Initialized video rrGenerator, ssrc: %u", stream_->toLog(), video_ssrc);
 -      if (nacks_enabled_) {
--        ELOG_DEBUG("%s, message: Initialized video nack generator, ssrc %u", connection_->toLog(), video_ssrc);
+-        ELOG_DEBUG("%s, message: Initialized video nack generator, ssrc %u", stream_->toLog(), video_ssrc);
 -        auto video_nack = std::make_shared<RtcpNackGenerator>(video_ssrc, clock_);
 -        video_generator->nack_generator = video_nack;
 -      }
 -    }
 -  });
-+  // std::vector<uint32_t> video_ssrc_list = connection_->getVideoSourceSSRCList();
++  // std::vector<uint32_t> video_ssrc_list = stream_->getVideoSourceSSRCList();
 +  // std::for_each(video_ssrc_list.begin(), video_ssrc_list.end(), [this] (uint32_t video_ssrc) {
 +  //   if (video_ssrc != 0) {
 +  //     auto video_generator = std::make_shared<RtcpGeneratorPair>();
 +  //     generators_map_[video_ssrc] = video_generator;
 +  //     auto video_rr = std::make_shared<RtcpRrGenerator>(video_ssrc, VIDEO_PACKET, clock_);
 +  //     video_generator->rr_generator = video_rr;
-+  //     ELOG_DEBUG("%s, message: Initialized video rrGenerator, ssrc: %u", connection_->toLog(), video_ssrc);
++  //     ELOG_DEBUG("%s, message: Initialized video rrGenerator, ssrc: %u", stream_->toLog(), video_ssrc);
 +  //     if (nacks_enabled_) {
-+  //       ELOG_DEBUG("%s, message: Initialized video nack generator, ssrc %u", connection_->toLog(), video_ssrc);
++  //       ELOG_DEBUG("%s, message: Initialized video nack generator, ssrc %u", stream_->toLog(), video_ssrc);
 +  //       auto video_nack = std::make_shared<RtcpNackGenerator>(video_ssrc, clock_);
 +  //       video_generator->nack_generator = video_nack;
 +  //     }
 +  //   }
 +  // });
-   uint32_t audio_ssrc = connection_->getAudioSourceSSRC();
+   uint32_t audio_ssrc = stream_->getAudioSourceSSRC();
    if (audio_ssrc != 0) {
      auto audio_generator = std::make_shared<RtcpGeneratorPair>();
 -- 
