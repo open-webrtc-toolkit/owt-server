@@ -30,6 +30,7 @@ public:
 
     static NAN_MODULE_INIT(init);
     static NAN_METHOD(newInstance);
+    static NAN_METHOD(write);
     static NAUV_WORK_CB(onContentSessionId);
     static NAUV_WORK_CB(onData);  // TODO: Move to pipe.
 

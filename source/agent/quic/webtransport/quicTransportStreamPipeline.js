@@ -28,6 +28,7 @@ module.exports = class QuicTransportStreamPipeline {
     this.quicStream = function (stream) {
       this._quicStream = stream;
       if (!this._notifiedReady) {
+        log.info('Notify quic stream is ready.');
         updateStatus({
           type: 'ready',
           audio: false,

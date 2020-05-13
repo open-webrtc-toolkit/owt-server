@@ -157,7 +157,7 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
             case 'quic':
                 conn = createStreamPipeline(connectionId, 'out', options, callback);
                 const stream = quicTransportServer.createSendStream('id', connectionId);
-                log.info(stream);
+                conn.quicStream(stream);
                 if (!conn) {
                     return;
                 }

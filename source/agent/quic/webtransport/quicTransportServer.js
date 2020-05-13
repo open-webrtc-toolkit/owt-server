@@ -53,14 +53,17 @@ module.exports = class QuicTransportServer extends EventEmitter {
     this._server.start();
   }
 
-  async createSendStream(userId, contentSessionId) {
+  createSendStream(userId, contentSessionId) {
     userId = 'id';
     if (!this._connections.has(userId)) {
+      log.error('No QUIC transport for '+userId);
       return;
     }
     const stream = this._connections.get(userId).createBidirectionalStream();
     log.info('Stream: ' + JSON.stringify(stream));
-    stream.write(contentSessionId);
+    const uuidBytes=this._uuidStringToUint8Array(contentSessionId);
+    log.info('Data: '+uuidBytes);
+    stream.write(uuidBytes, uuidBytes.length);
     this._streams.set(contentSessionId, stream);
     return stream;
   }
@@ -81,4 +84,17 @@ module.exports = class QuicTransportServer extends EventEmitter {
     }
     return s;
   };
+
+  _uuidStringToUint8Array(uuidString) {
+    if (uuidString.length != 32) {
+      log.error('Invalid UUID.');
+      return;
+    }
+    const uuidArray = new Uint8Array(16);
+    for (let i = 0; i < 16; i++) {
+      uuidArray[i] = parseInt(uuidString.substring(i * 2, i * 2 + 2), 16);
+    }
+    console.log(uuidArray);
+    return uuidArray;
+  }
 };

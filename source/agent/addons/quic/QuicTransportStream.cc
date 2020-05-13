@@ -64,7 +64,7 @@ NAN_MODULE_INIT(QuicTransportStream::init)
     Local<ObjectTemplate> instanceTpl = tpl->InstanceTemplate();
     instanceTpl->SetInternalFieldCount(1);
 
-    // Nan::SetPrototypeMethod(tpl, "start", start);
+    Nan::SetPrototypeMethod(tpl, "write", write);
 
     s_constructor.Reset(Nan::GetFunction(tpl).ToLocalChecked());
     Nan::Set(target, Nan::New("QuicTransportStream").ToLocalChecked(), Nan::GetFunction(tpl).ToLocalChecked());
@@ -83,15 +83,27 @@ NAN_METHOD(QuicTransportStream::newInstance)
     info.GetReturnValue().Set(info.This());
 }
 
+NAN_METHOD(QuicTransportStream::write){
+    if(info.Length()<2){
+        Nan::ThrowTypeError("Data is not provided.");
+        return;
+    }
+    QuicTransportStream* obj = Nan::ObjectWrap::Unwrap<QuicTransportStream>(info.Holder());
+    uint8_t* buffer=(uint8_t*)node::Buffer::Data(info[0]->ToObject());
+    unsigned int length = info[1]->Uint32Value();
+    ELOG_INFO("Before write");
+    obj->m_stream->Write(buffer, length);
+    ELOG_INFO("After write");
+    info.GetReturnValue().Set(info.This());
+}
+
 v8::Local<v8::Object> QuicTransportStream::newInstance(owt::quic::QuicTransportStreamInterface* stream)
 {
     Local<Object> streamObject = Nan::NewInstance(Nan::New(QuicTransportStream::s_constructor)).ToLocalChecked();
     ELOG_DEBUG("Created stream obj");
     QuicTransportStream* obj = Nan::ObjectWrap::Unwrap<QuicTransportStream>(streamObject);
     obj->m_stream = stream;
-    ELOG_DEBUG("Before MaybeReadContentSessionId");
     obj->MaybeReadContentSessionId();
-    ELOG_DEBUG("After MaybeReadContentSessionId");
     return streamObject;
 }
 

@@ -117,7 +117,6 @@ NAUV_WORK_CB(QuicTransportConnection::onStreamCallback)
 NAN_METHOD(QuicTransportConnection::createBidirectionalStream){
     QuicTransportConnection* obj = Nan::ObjectWrap::Unwrap<QuicTransportConnection>(info.Holder());
     auto stream=obj->m_session->CreateBidirectionalStream();
-    ELOG_INFO("Got bidirectional stream.");
     v8::Local<v8::Object> streamObject = QuicTransportStream::newInstance(stream);
     info.GetReturnValue().Set(streamObject);
 }
