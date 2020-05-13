@@ -4,7 +4,7 @@
 
 #include "AudioSendAdapter.h"
 #include "AudioUtilitiesNew.h"
-#include "WebRTCTaskRunner.h"
+#include "TaskRunnerPool.h"
 
 #include <rtc_base/logging.h>
 #include <rtputils.h>
@@ -27,15 +27,13 @@ AudioSendAdapterImpl::AudioSendAdapterImpl(CallOwner* owner, const RtcAdapter::C
 {
     m_ssrc = m_ssrc_generator->CreateSsrc();
     m_ssrc_generator->RegisterSsrc(m_ssrc);
-    m_taskRunner.reset(new owt_base::WebRTCTaskRunner("AudioSendAdapterImpl"));
-    m_taskRunner->Start();
+    m_taskRunner = TaskRunnerPool::GetInstance().GetTaskRunner();
     init();
 }
 
 AudioSendAdapterImpl::~AudioSendAdapterImpl()
 {
     close();
-    m_taskRunner->Stop();
     m_ssrc_generator->ReturnSsrc(m_ssrc);
     boost::unique_lock<boost::shared_mutex> lock(m_rtpRtcpMutex);
 }
