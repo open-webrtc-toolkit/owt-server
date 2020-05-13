@@ -6,7 +6,7 @@
 
 namespace owt_base {
 
-constexpr int kTaskRunnerPoolSize = 4;
+static constexpr int kTaskRunnerPoolSize = 4;
 
 TaskRunnerPool& TaskRunnerPool::GetInstance()
 {
