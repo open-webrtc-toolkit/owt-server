@@ -10,14 +10,14 @@
 namespace {
 
 // Global thread for timing
-class ServiceThread {
+class IOServiceThread {
 public:
-    ServiceThread()
+    IOServiceThread()
     : m_service{}
     , m_work{m_service}
     , m_thread{new boost::thread(boost::bind(&boost::asio::io_service::run, &m_service))} {}
 
-    ~ServiceThread()
+    ~IOServiceThread()
     {
         m_service.stop();
         m_thread->join();
@@ -34,12 +34,12 @@ private:
     boost::scoped_ptr<boost::thread> m_thread;
 };
 
-boost::scoped_ptr<ServiceThread> g_timingThread;
+boost::scoped_ptr<IOServiceThread> g_timingThread;
 std::once_flag g_startOnce;
 
 void startTimingThread()
 {
-    g_timingThread.reset(new ServiceThread());
+    g_timingThread.reset(new IOServiceThread());
 }
 
 }
