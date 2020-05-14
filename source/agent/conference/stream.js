@@ -288,7 +288,8 @@ class ForwardStream extends Stream {
         id: this.id,
         locality: this.locality,
         type: this.info.type,
-        media
+        media,
+        data: this.data
       }];
     }
   }

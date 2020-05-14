@@ -605,7 +605,7 @@ var Conference = function (rpcClient, selfRpcId) {
     if (info.type === 'webrtc') {
       const pubs = pubArgs.map(pubArg => new Promise((resolve, reject) => {
         roomController && roomController.publish(
-          pubArg.owner, pubArg.id, pubArg.locality, pubArg.media, pubArg.type, resolve, reject);
+          pubArg.owner, pubArg.id, pubArg.locality, {media:pubArg.media, data:pubArg.data}, pubArg.type, resolve, reject);
       }));
       return Promise.all(pubs).then(() => {
         if (participants[info.owner]) {

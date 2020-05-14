@@ -105,46 +105,29 @@ module.exports = function Connections () {
         return Promise.resolve('ok');
     };
 
-
-    that.linkupConnection = function (connectionId, audioFrom, videoFrom) {
-        log.debug('linkup, connectionId:', connectionId, ', audioFrom:', audioFrom, ', videoFrom:', videoFrom);
+    that.linkupConnection = function(connectionId, audioFrom, videoFrom, dataFrom) {
+        log.debug('linkup, connectionId:', connectionId, ', audioFrom:', audioFrom, ', videoFrom:', videoFrom, ', dataFrom: ', dataFrom);
         if (!connectionId || !connections[connectionId]) {
             log.error('Subscription does not exist:' + connectionId);
             return Promise.reject('Subscription does not exist:' + connectionId);
         }
 
-        if (audioFrom && connections[audioFrom] === undefined) {
-            log.error('Audio stream does not exist:' + audioFrom);
-            return Promise.reject({type: 'failed', reason: 'Audio stream does not exist:' + audioFrom});
-        }
+        const conn = connections[connectionId];
 
-        if (videoFrom && connections[videoFrom] === undefined) {
-            log.error('Video stream does not exist:' + videoFrom);
-            return Promise.reject({type: 'failed', reason: 'Video stream does not exist:' + videoFrom});
-        }
-
-        var conn = connections[connectionId];
-
-        if (audioFrom) {
-            var dest = conn.connection.receiver('audio');
-            if (dest) {
-                connections[audioFrom].connection.addDestination('audio', dest);
-                connections[connectionId].audioFrom = audioFrom;
-            } else {
-                return Promise.reject({type: 'failed', reason: 'Destination connection(audio) is not ready'});
+        for (const [name, from] in { 'audio' : audioFrom, 'video' : videoFrom, 'data' : dataFrom }) {
+            if (from && !connections[from]) {
+                log.error(name + ' stream does not exist:' + from);
+                return Promise.reject({ type : 'failed', reason : name + ' stream does not exist:' + from });
+            }
+            if (from) {
+                const dest = conn.connection.receiver(name);
+                if (!dest) {
+                    return Promise.reject({ type : 'failed', reason : 'Destination connection(' + name + ') is not ready' });
+                }
+                connections[from].connection.addDestination(name, dest);
+                connections[connectionId][name + 'From'] = from;
             }
         }
-
-        if (videoFrom) {
-            var dest = conn.connection.receiver('video');
-            if (dest) {
-                connections[videoFrom].connection.addDestination('video', dest);
-                connections[connectionId].videoFrom = videoFrom;
-            } else {
-                return Promise.reject({type: 'failed', reason: 'Destination connection(video) is not ready'});
-            }
-        }
-
         return Promise.resolve('ok');
     };
 

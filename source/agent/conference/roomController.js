@@ -400,9 +400,10 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
             audio = ((streams[stream_id].audio && target_node_type !== 'vmixer' && target_node_type !== 'vxcoder') ? true : false),
             video = ((streams[stream_id].video && target_node_type !== 'amixer' && target_node_type !== 'axcoder') ? true : false),
             spread_id = stream_id + '@' + target_node;
+        const data = streams[stream_id].data;
 
-        if (!audio && !video) {
-            return on_error('Cannot spread stream without audio/video.');
+        if (!audio && !video && !data) {
+            return on_error('Cannot spread stream without audio, video or data.');
         }
 
         if (original_node === target_node) {
@@ -1094,7 +1095,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
 
     // This function would be called by getMediaPreference,
     // which is defined before it, so do not declare with the 'var = '
-    function formatStr (fmt) {
+    function formatStr(fmt) {
         var format_str = (fmt.codec || '');
         fmt.sampleRate && (format_str = format_str + '_' + fmt.sampleRate);
         fmt.channelNum && (format_str = format_str + '_' + fmt.channelNum);
@@ -1413,17 +1414,18 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
         log.debug('publish, participantId: ', participantId, 'streamId:', streamId, 'accessNode:', accessNode.node, 'streamInfo:', JSON.stringify(streamInfo), ' origin is:', origin);
         if (streams[streamId] === undefined) {
             var terminal_id = pubTermId(participantId, streamId);
-            var terminal_owner = (streamType === 'webrtc' || streamType === 'sip') ? participantId : room_id + '-' + randomId();
+            var terminal_owner = (streamType === 'webrtc' || streamType === 'sip' || streamType === 'quic') ? participantId : room_id + '-' + randomId();
             newTerminal(terminal_id, streamType, terminal_owner, accessNode, streamInfo.origin, function () {
                 streams[streamId] = {owner: terminal_id,
-                                     audio: streamInfo.audio ? {format: formatStr(streamInfo.audio),
+                                     audio: streamInfo.media.audio ? {format: formatStr(streamInfo.media.audio),
                                                                 subscribers: [],
                                                                 status: 'active'} : undefined,
-                                     video: streamInfo.video ? {format: formatStr(streamInfo.video),
-                                                                resolution: streamInfo.video.resolution,
-                                                                framerate: streamInfo.video.framerate,
+                                     video: streamInfo.media.video ? {format: formatStr(streamInfo.media.video),
+                                                                resolution: streamInfo.media.video.resolution,
+                                                                framerate: streamInfo.media.video.framerate,
                                                                 subscribers: [],
                                                                 status: 'active'} : undefined,
+                                     data: streamInfo.data,
                                      spread: []
                                      };
                 terminals[terminal_id].published.push(streamId);
@@ -1521,26 +1523,29 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                 on_error(error_reason);
             };
 
-            var finally_ok = function (audioStream, videoStream) {
+            const createMapForSources=function(audioStreamId, videoStreamId, dataStreamId){
+                const sourceMap=new Map();
+                sourceMap['audio']=audioStreamId;
+                sourceMap['video']=videoStreamId;
+                sourceMap['data']=dataStreamId
+                return sourceMap;
+            }
+
+            var finally_ok = function (audioStream, videoStream, dataStream) {
                 return function () {
                     if (terminals[terminal_id] &&
                         (!audioStream || streams[audioStream]) &&
-                        (!videoStream || streams[videoStream])) {
-                        log.debug('subscribe ok, audioStream:', audioStream, 'videoStream', videoStream);
+                        (!videoStream || streams[videoStream]) &&
+                        (!dataStream || streams[dataStream])) {
 
                         terminals[terminal_id].subscribed[subscriptionId] = {};
-                        if (audioStream) {
-                            streams[audioStream].audio.subscribers = streams[audioStream].audio.subscribers || [];
-                            streams[audioStream].audio.subscribers.push(terminal_id);
-                            terminals[terminal_id].subscribed[subscriptionId].audio = audioStream;
+                        for(cosnt [kind, streamId] of createMapForSources(audioStream,videoStream,dataStream)){
+                            if(from){
+                                streams[streamId][kind].subscriber=streams[streamId][kind].subscribers||[];
+                                streams[streamId][kind].subscribers.push(terminal_id);
+                                terminals[terminal_id].subscribed[subscriptionId].audio = streamId;
+                            }
                         }
-
-                        if (videoStream) {
-                            streams[videoStream].video.subscribers = streams[videoStream].video.subscribers || [];
-                            streams[videoStream].video.subscribers.push(terminal_id);
-                            terminals[terminal_id].subscribed[subscriptionId].video = videoStream;
-                        }
-
                         on_ok('ok');
 
                         //FIXME: It is better to notify subscription connection to request key-frame.
@@ -1555,15 +1560,15 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                 };
             };
 
-            var linkup = function (audioStream, videoStream) {
-                log.debug('linkup, subscriber:', terminal_id, 'audioStream:', audioStream, 'videoStream:', videoStream);
-                if (terminals[terminal_id] && (!audioStream || streams[audioStream]) && (!videoStream || streams[videoStream])) {
+            var linkup = function (audioStream, videoStream, dataStream) {
+                log.debug('linkup, subscriber:', terminal_id, 'audioStream:', audioStream, 'videoStream:', videoStream, ', dataStream: ', dataStream);
+                if (terminals[terminal_id] && (!audioStream || streams[audioStream]) && (!videoStream || streams[videoStream]) && (!dataStream||streams[dataStream])) {
                     makeRPC(
                         rpcClient,
                         terminals[terminal_id].locality.node,
                         'linkup',
-                        [subscriptionId, audioStream, videoStream],
-                        finally_ok(audioStream, videoStream),
+                        [subscriptionId, audioStream, videoStream, dataStream],
+                        finally_ok(audioStream, videoStream, dataStream),
                         function (reason) {
                             audioStream && recycleTemporaryAudio(audioStream);
                             videoStream && recycleTemporaryVideo(videoStream);
@@ -1576,9 +1581,20 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                 }
             };
 
-            var spread2LocalNode = function (audioStream, videoStream, on_spread_ok, on_spread_error) {
-                log.debug('spread2LocalNode, subscriber:', terminal_id, 'audioStream:', audioStream, 'videoStream:', videoStream);
-                if (terminals[terminal_id] && (audioStream !== undefined || videoStream !== undefined)) {
+            var spread2LocalNode = function (audioStream, videoStream, dataStream, on_spread_ok, on_spread_error) {
+                log.debug('spread2LocalNode, subscriber:', terminal_id, 'audioStream:', audioStream, 'videoStream:', videoStream, ', dataStream: ', dataStream);
+                if (terminals[terminal_id] && dataStream) {
+                    const target_node = terminals[terminal_id].locality.node;
+                    const target_node_type = terminals[terminal_id].type;
+                    spreadStream(dataStream, target_node, target_node_type, () => {
+                        if (streams[dataStream] && terminals[terminal_id]) {
+                            on_spread_ok();
+                        } else {
+                            shrinkStream(dataStream, target_node);
+                            on_spread_error('Terminal or stream early left.');
+                        }
+                    }, on_error);
+                } else if (terminals[terminal_id] && (audioStream !== undefined || videoStream !== undefined || dataStream !== undefined)) {
                     var target_node = terminals[terminal_id].locality.node,
                         target_node_type = terminals[terminal_id].type;
 
@@ -1630,7 +1646,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                             getVideoStream(mediaInfo.video.from, video_format, resolution, framerate, bitrate, keyFrameInterval, mediaInfo.video.simulcastRid, function (streamID) {
                                 video_stream = streamID;
                                 log.debug('Got video stream:', video_stream);
-                                spread2LocalNode(audio_stream, video_stream, function () {
+                                spread2LocalNode(audio_stream, video_stream, undefined, function () {
                                     linkup(audio_stream, video_stream);
                                 }, function (error_reason) {
                                     recycleTemporaryVideo(video_stream);
@@ -1642,7 +1658,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                                 finaly_error(error_reason);
                             });
                         } else {
-                            spread2LocalNode(audio_stream, undefined, function () {
+                            spread2LocalNode(audio_stream, undefined, undefined, function () {
                                 linkup(audio_stream, undefined);
                             }, function (error_reason) {
                                 recycleTemporaryAudio(audio_stream);
@@ -1654,7 +1670,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                     log.debug('require video track of stream:', mediaInfo.video.from);
                     getVideoStream(mediaInfo.video.from, video_format, resolution, framerate, bitrate, keyFrameInterval, mediaInfo.video.simulcastRid, function (streamID) {
                         video_stream = streamID;
-                        spread2LocalNode(undefined, video_stream, function () {
+                        spread2LocalNode(undefined, video_stream, undefined, function () {
                             linkup(undefined, video_stream);
                         }, function (error_reason) {
                             recycleTemporaryVideo(video_stream);
@@ -1662,7 +1678,14 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                         });
                     }, finaly_error);
                 } else if (subInfo.data) {
-                    // TODO: Spread data streams.
+                    const dataStreamId=subInfo.data.from;
+                    log.debug('Require data track of stream: ', dataStreamId);
+                    spread2LocalNode(undefined, undefined, dataStreamId, ()=>{
+                        linkup(undefined, undefined, dataStreamId)
+                    }, (error_reason)=>{
+                        log.error('Spread to local node for data failed: '+error_reason)
+                        finaly_error(error_reason);
+                    });
                 } else {
                     log.debug('No audio or video is required.');
                     finaly_error('No audio or video is required.');
