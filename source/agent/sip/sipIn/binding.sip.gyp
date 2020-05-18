@@ -17,6 +17,7 @@
       '../../../core/owt_base/VideoFrameConstructor.cpp',
       '../../../core/owt_base/VideoFramePacketizer.cpp',
       '../../../core/owt_base/SsrcGenerator.cc',
+      '../../../core/owt_base/TaskRunnerPool.cc',
       '../../../core/common/JobTimer.cpp',
       '../../../core/rtc_adapter/VieReceiver.cc',
       '../../../core/rtc_adapter/VieRemb.cc' #20150508
