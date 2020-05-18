@@ -114,7 +114,7 @@ module.exports = function Connections () {
 
         const conn = connections[connectionId];
 
-        for (const [name, from] in { 'audio' : audioFrom, 'video' : videoFrom, 'data' : dataFrom }) {
+        for (const [name, from] of new Map([['audio', audioFrom], ['video', videoFrom], ['data', dataFrom]])) {
             if (from && !connections[from]) {
                 log.error(name + ' stream does not exist:' + from);
                 return Promise.reject({ type : 'failed', reason : name + ' stream does not exist:' + from });

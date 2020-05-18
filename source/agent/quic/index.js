@@ -190,20 +190,6 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
     that.linkup = function (connectionId, audioFrom, videoFrom, dataFrom, callback) {
         log.debug('linkup.');
         connections.linkupConnection(connectionId, audioFrom, videoFrom, dataFrom).then(onSuccess(callback), onError(callback));
-        return;
-        // Rename |videoFrom| to |dataFrom| for data stream. |audioFrom| is always undefined here.
-        // Consider to add |dataFrom|.
-        log.debug('linkup, connectionId:', connectionId, 'dataFrom:', dataFrom);
-        const publicationConn=connections.getConnection(dataFrom);
-        const subscriptionConn=connections.getConnection(connectionId);
-        if(!publicationConn||!subscriptionConn){
-            log.error('Invalid subscription request.');
-            return;
-        }
-        if (!pubSubMap.has(publicationConn)) {
-            pubSubMap.set(publicationConn, []);
-        }
-        pubSubMap.get(publicationConn).push(subscriptionConn);
     };
 
     that.cutoff = function (connectionId, callback) {

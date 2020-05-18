@@ -27,6 +27,7 @@ QuicTransportStream::QuicTransportStream(owt::quic::QuicTransportStreamInterface
     : m_stream(stream)
     , m_contentSessionId()
     , m_receivedContentSessionId(false)
+    , m_isPiped(false)
 {
 }
 
@@ -43,13 +44,11 @@ QuicTransportStream::~QuicTransportStream()
 
 void QuicTransportStream::OnCanRead()
 {
-    ELOG_DEBUG("Readable size: %d", (int)m_stream->ReadableBytes());
     if (!m_receivedContentSessionId) {
         MaybeReadContentSessionId();
     } else {
         SignalOnData();
     }
-    ELOG_DEBUG("On can read.");
 }
 
 void QuicTransportStream::OnCanWrite()
@@ -65,6 +64,8 @@ NAN_MODULE_INIT(QuicTransportStream::init)
     instanceTpl->SetInternalFieldCount(1);
 
     Nan::SetPrototypeMethod(tpl, "write", write);
+    Nan::SetPrototypeMethod(tpl, "addDestination", addDestination);
+    //Nan::SetPrototypeMethod(tpl, "write", write);
 
     s_constructor.Reset(Nan::GetFunction(tpl).ToLocalChecked());
     Nan::Set(target, Nan::New("QuicTransportStream").ToLocalChecked(), Nan::GetFunction(tpl).ToLocalChecked());
@@ -91,16 +92,32 @@ NAN_METHOD(QuicTransportStream::write){
     QuicTransportStream* obj = Nan::ObjectWrap::Unwrap<QuicTransportStream>(info.Holder());
     uint8_t* buffer=(uint8_t*)node::Buffer::Data(info[0]->ToObject());
     unsigned int length = info[1]->Uint32Value();
-    ELOG_INFO("Before write");
     obj->m_stream->Write(buffer, length);
-    ELOG_INFO("After write");
     info.GetReturnValue().Set(info.This());
+}
+
+NAN_METHOD(QuicTransportStream::addDestination)
+{
+    QuicTransportStream* obj = Nan::ObjectWrap::Unwrap<QuicTransportStream>(info.Holder());
+    if (info.Length() != 1) {
+        Nan::ThrowTypeError("Invalid argument length for addDestination.");
+        return;
+    }
+    // TODO: Check if info[0] is an Nan wrapped object.
+    auto framePtr = Nan::ObjectWrap::Unwrap<QuicTransportStream>(info[0]->ToObject());
+    // void* ptr = info[0]->ToObject()->GetAlignedPointerFromInternalField(0);
+    // auto framePtr=static_cast<owt_base::FrameDestination*>(ptr);
+    obj->addDataDestination(framePtr);
+    obj->m_isPiped = true;
+}
+
+NAN_METHOD(QuicTransportStream::removeDestination)
+{
 }
 
 v8::Local<v8::Object> QuicTransportStream::newInstance(owt::quic::QuicTransportStreamInterface* stream)
 {
     Local<Object> streamObject = Nan::NewInstance(Nan::New(QuicTransportStream::s_constructor)).ToLocalChecked();
-    ELOG_DEBUG("Created stream obj");
     QuicTransportStream* obj = Nan::ObjectWrap::Unwrap<QuicTransportStream>(streamObject);
     obj->m_stream = stream;
     obj->MaybeReadContentSessionId();
@@ -129,7 +146,6 @@ void QuicTransportStream::MaybeReadContentSessionId()
 }
 
 NAUV_WORK_CB(QuicTransportStream::onData){
-    ELOG_DEBUG("QuicTransportStream::onData");
     Nan::HandleScope scope;
     QuicTransportStream* obj = reinterpret_cast<QuicTransportStream*>(async->data);
     if (obj == nullptr) {
@@ -172,6 +188,33 @@ NAUV_WORK_CB(QuicTransportStream::onContentSessionId)
 
 void QuicTransportStream::SignalOnData()
 {
-    m_asyncOnData.data = this;
-    uv_async_send(&m_asyncOnData);
+    if(!m_isPiped){
+        m_asyncOnData.data = this;
+        uv_async_send(&m_asyncOnData);
+        return;
+    }
+
+    auto readableBytes = m_stream->ReadableBytes();
+    uint8_t* buffer = new uint8_t[readableBytes];
+    owt_base::Frame frame;
+    frame.format = owt_base::FRAME_FORMAT_DATA;
+    frame.length = readableBytes;
+    frame.payload = buffer;
+    m_stream->Read(frame.payload, readableBytes);
+    deliverFrame(frame);
+}
+
+void QuicTransportStream::onFeedback(const owt_base::FeedbackMsg&)
+{
+    // No feedbacks righ now.
+}
+
+void QuicTransportStream::onFrame(const owt_base::Frame& frame)
+{
+    m_stream->Write(frame.payload, frame.length);
+}
+
+void QuicTransportStream::onVideoSourceChanged()
+{
+    // Do nothing.
 }
