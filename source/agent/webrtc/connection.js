@@ -57,7 +57,7 @@ class Connection extends EventEmitter {
     this.id = id;
     this.threadPool = threadPool;
     this.ioThreadPool = ioThreadPool;
-    this.mediaConfiguration = 'default';
+    this.mediaConfiguration = options.isPublisher ? 'in' : 'out';
     this.mediaStreams = new Map();
     this.initialized = false;
     this.options = options;
@@ -69,12 +69,12 @@ class Connection extends EventEmitter {
     this.wrtc = this._createWrtc();
   }
 
-  _getMediaConfiguration(mediaConfiguration = 'default') {
-    if (mediaConfig && mediaConfig.default) {
-        return JSON.stringify(mediaConfig.default);
+  _getMediaConfiguration(name = 'default') {
+    if (mediaConfig && mediaConfig[name]) {
+        return JSON.stringify(mediaConfig[name]);
     } else {
       log.warn(
-        'message: Bad media config file. You need to specify a default codecConfiguration.'
+        `Bad media config file. You need to specify a ${name} codecConfiguration.`
       );
       return JSON.stringify({});
     }

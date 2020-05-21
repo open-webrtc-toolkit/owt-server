@@ -177,10 +177,9 @@ NAN_METHOD(MediaStream::New) {
 
     bool is_publisher = info[5]->BooleanValue();
 
-    std::shared_ptr<erizo::Worker> worker = thread_pool->me->getLessUsedWorker();
-
     MediaStream* obj = new MediaStream();
-    obj->me = std::make_shared<erizo::MediaStream>(worker, wrtc, wrtc_id, stream_label, is_publisher);
+    // Share worker with WebRtcConnection
+    obj->me = std::make_shared<erizo::MediaStream>(wrtc->getWorker(), wrtc, wrtc_id, stream_label, is_publisher);
     obj->msink = obj->me.get();
     obj->id_ = wrtc_id;
     obj->label_ = stream_label;
