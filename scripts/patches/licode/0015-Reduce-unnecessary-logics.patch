@@ -1,0 +1,83 @@
+From 2989c0ebc2a1ced997ffa7455cc26ee92f5f47a7 Mon Sep 17 00:00:00 2001
+From: Chen Li1 <li1.chen@intel.com>
+Date: Thu, 21 May 2020 11:08:09 +0800
+Subject: [PATCH] Reduce unnecessary logics
+
+---
+ erizo/src/erizo/LibNiceConnection.cpp | 6 ------
+ erizo/src/erizo/MediaStream.cpp       | 4 ++--
+ erizo/src/erizo/WebRtcConnection.cpp  | 5 ++---
+ erizo/src/erizo/thread/Worker.cpp     | 2 +-
+ 4 files changed, 5 insertions(+), 12 deletions(-)
+
+diff --git a/erizo/src/erizo/LibNiceConnection.cpp b/erizo/src/erizo/LibNiceConnection.cpp
+index 3c4d777..64d834d 100644
+--- a/erizo/src/erizo/LibNiceConnection.cpp
++++ b/erizo/src/erizo/LibNiceConnection.cpp
+@@ -84,12 +84,6 @@ void LibNiceConnection::close() {
+   this->updateIceState(IceState::FINISHED);
+   cond_.notify_one();
+   listener_.reset();
+-  boost::system_time const timeout = boost::get_system_time() + boost::posix_time::milliseconds(5);
+-  ELOG_DEBUG("%s message: m_thread join, this: %p", toLog(), this);
+-  if (!m_Thread_.timed_join(timeout)) {
+-    ELOG_DEBUG("%s message: interrupt thread to close, this: %p", toLog(), this);
+-    m_Thread_.interrupt();
+-  }
+   if (agent_ != NULL) {
+     ELOG_DEBUG("%s message: unrefing agent", toLog());
+     g_object_unref(agent_);
+diff --git a/erizo/src/erizo/MediaStream.cpp b/erizo/src/erizo/MediaStream.cpp
+index 4327c6f..c988d5d 100644
+--- a/erizo/src/erizo/MediaStream.cpp
++++ b/erizo/src/erizo/MediaStream.cpp
+@@ -203,7 +203,7 @@ bool MediaStream::setRemoteSdp(std::shared_ptr<SdpInfo> sdp) {
+ 
+   initializePipeline();
+ 
+-  initializeStats();
++  // initializeStats();
+ 
+   return true;
+ }
+@@ -354,7 +354,7 @@ void MediaStream::initializePipeline() {
+   pipeline_->addService(packet_buffer_);
+ 
+   pipeline_->addFront(std::make_shared<PacketReader>(this));
+-  pipeline_->addFront(WoogeenHandler(this));
++  pipeline_->addFront(std::make_shared<WoogeenHandler>(this));
+ 
+   // pipeline_->addFront(std::make_shared<RtcpProcessorHandler>());
+   // pipeline_->addFront(std::make_shared<FecReceiverHandler>());
+diff --git a/erizo/src/erizo/WebRtcConnection.cpp b/erizo/src/erizo/WebRtcConnection.cpp
+index 824d16e..a5b801a 100644
+--- a/erizo/src/erizo/WebRtcConnection.cpp
++++ b/erizo/src/erizo/WebRtcConnection.cpp
+@@ -760,9 +760,8 @@ WebRTCEvent WebRtcConnection::getCurrentState() {
+ }
+ 
+ void WebRtcConnection::write(std::shared_ptr<DataPacket> packet) {
+-  asyncTask([packet] (std::shared_ptr<WebRtcConnection> connection) {
+-    connection->syncWrite(packet);
+-  });
++  // Called from MediaStream's sendPacketAsync, they share some worker
++  syncWrite(packet);
+ }
+ 
+ void WebRtcConnection::syncWrite(std::shared_ptr<DataPacket> packet) {
+diff --git a/erizo/src/erizo/thread/Worker.cpp b/erizo/src/erizo/thread/Worker.cpp
+index 5fc7983..3353ec9 100644
+--- a/erizo/src/erizo/thread/Worker.cpp
++++ b/erizo/src/erizo/thread/Worker.cpp
+@@ -34,7 +34,7 @@ Worker::~Worker() {
+ }
+ 
+ void Worker::task(Task f) {
+-  service_.post(f);
++  service_.dispatch(f);
+ }
+ 
+ void Worker::start() {
+-- 
+2.7.4
+
