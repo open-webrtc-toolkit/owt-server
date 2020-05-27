@@ -98,8 +98,7 @@ var V11Client = function(clientId, sigConnection, portal) {
         if (SOAC.signaling.type === 'offer' ||
           SOAC.signaling.type === 'answer' ||
           SOAC.signaling.type === 'candidate' ||
-          SOAC.signaling.type === 'removed-candidates' ||
-          SOAC.signaling.type === 'quic-p2p-parameters') {
+          SOAC.signaling.type === 'removed-candidates') {
           return Promise.resolve(SOAC);
         } else {
           return Promise.reject('Invalid signaling type');

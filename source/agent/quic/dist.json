@@ -30,16 +30,15 @@
               "../connections.js",
               "../InternalConnectionFactory.js"
           ],
-          "quic/p2p": [
-              "p2p/p2pQuicStream.js",
-              "p2p/p2pQuicTransport.js"
-          ],
           "quic/webtransport": [
               "webtransport/quicTransportServer.js",
               "webtransport/quicTransportStreamPipeline.js"
           ],
           "cert": [
               "../../../cert/.owt.keystore"
+          ],
+          "data_access": [
+            "../../data_access/*"
           ]
       }
   },

@@ -15,11 +15,13 @@
     "AmqpClient": "INFO",
     "WorkingJS": "INFO",
     "NodeManager": "INFO",
-    "QuicNode": "INFO",
+    "QuicNode": "DEBUG",
     "Connection": "WARN",
     "WorkingAgent": "INFO",
-    "Connections": "INFO",
+    "Connections": "DEBUG",
     "InternalConnectionFactory": "INFO",
-    "QuicConnection": "DEBUG"
+    "QuicConnection": "DEBUG",
+    "QuicTransportServer": "DEBUG",
+    "QuicTransportStreamPipeline": "DEBUG"
   }
 }

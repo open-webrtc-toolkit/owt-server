@@ -1594,7 +1594,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                             on_spread_error('Terminal or stream early left.');
                         }
                     }, on_error);
-                } else if (terminals[terminal_id] && (audioStream !== undefined || videoStream !== undefined || dataStream !== undefined)) {
+                } else if (terminals[terminal_id] && (audioStream !== undefined || videoStream !== undefined)) {
                     var target_node = terminals[terminal_id].locality.node,
                         target_node_type = terminals[terminal_id].type;
 

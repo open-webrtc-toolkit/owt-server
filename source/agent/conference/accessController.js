@@ -152,7 +152,7 @@ module.exports.create = function(spec, rpcReq, on_session_established, on_sessio
       onReady(sessionId, status);
     } else if (status.type === 'failed') {
       onFailed(sessionId, status.reason);
-    } else if (status.type === 'offer' || status.type === 'answer' || status.type === 'candidate' || status.type === 'quic-p2p-parameters') {
+    } else if (status.type === 'offer' || status.type === 'answer' || status.type === 'candidate') {
       onSignaling(sessionId, status);
     } else {
       log.error('Irrispective status:' + status.type);

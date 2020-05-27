@@ -221,7 +221,7 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
         log.debug('mediaOnOff, connection id:', connectionId, 'track:', track, 'direction:', direction, 'action:', action);
         var conn = connections.getConnection(connectionId);
         if (conn) {
-            if (conn.type === 'quic-p2p') {//NOTE: Only webrtc connection supports media-on-off
+            if (conn.type === 'quic') {//NOTE: Only webrtc connection supports media-on-off
                 conn.connection.onTrackControl(track,
                                                 direction,
                                                 action,
