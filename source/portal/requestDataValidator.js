@@ -71,7 +71,8 @@ const PublicationRequest = {
         'transport': {
           type: 'object',
           properties: {
-            'type': {type: 'string'}
+            'type': {type: 'string'},
+            'id': {type: 'string'},
           },
           additionalProperties: false,
         }
@@ -180,7 +181,8 @@ const SubscriptionRequest = {
         'transport': {
           type: 'object',
           properties: {
-            'type': {type: 'string'}
+            'type': {type: 'string'},
+            'id': {type: 'string'},
           },
         },
       },

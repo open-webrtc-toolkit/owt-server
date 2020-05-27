@@ -107,6 +107,10 @@ var V11Client = function(clientId, sigConnection, portal) {
       });
   };
 
+  const uuidWithoutDash = function() {
+    return uuid().replace(/-/g, '');
+  };
+
   const listenAt = (socket) => {
     socket.on('text', function(textReq, callback) {
       if(!that.inRoom){
@@ -126,17 +130,22 @@ var V11Client = function(clientId, sigConnection, portal) {
         return safeCall(callback, 'error', 'Illegal request');
       }
 
-      var stream_id = uuid().replace(/-/g,'');
+      var stream_id = uuidWithoutDash();
+      let transport_id;
       return validatePubReq(pubReq)
         .then((req) => {
           if (pubReq.transport && pubReq.transport.type == 'quic') {
             req.type = 'quic';
+            if (!req.transport.id) {
+                req.transport.id = uuidWithoutDash();
+            }
+            transport_id = req.transport.id;
           } else {
             req.type = 'webrtc'; //FIXME: For backend compatibility with v3.4 clients.
           }
           return portal.publish(clientId, stream_id, req);
         }).then((result) => {
-          safeCall(callback, 'ok', {id: stream_id});
+          safeCall(callback, 'ok', {id: stream_id, transportId: transport_id});
         }).catch(onError('publish', callback));
     });
 
@@ -172,16 +181,21 @@ var V11Client = function(clientId, sigConnection, portal) {
       }
 
       var subscription_id = uuid().replace(/-/g,'');
+      let transport_id;
       return validateSubReq(subReq)
         .then((req) => {
           if (req.transport && req.transport.type == 'quic') {
             req.type = 'quic';
+            if (!req.transport.id) {
+              req.transport.id = uuidWithoutDash();
+            }
+            transport_id = req.transport.id;
           } else {
             req.type = 'webrtc';//FIXME: For backend compatibility with v3.4 clients.
           }
           return portal.subscribe(clientId, subscription_id, req);
         }).then((result) => {
-          safeCall(callback, 'ok', {id: subscription_id});
+          safeCall(callback, 'ok', {id: subscription_id, transportId: transport_id});
         }).catch(onError('subscribe', callback));
     });
 

@@ -2,6 +2,18 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+// QUIC agent starts a QUIC transport server which listens incoming QUIC
+// connections. After a new QUIC connection is established, it waits for a
+// transport ID transmitted through signaling stream(content session ID is 0).
+// Transport ID is issued by portal. QUIC agent gets authorized transport ID
+// from |options| of publication and subscription.
+// QuicStreamPipeline is 1:1 mapped to a publication or a subscription. But the
+// QuicStream associated with QuicStreamPipeline could be a QuicStream instance
+// or |undefined|, which means QuicStream is not ready at this moment. It also
+// allows updating its associated QuicStream to a new one.
+// publish, unpublish, subscribe, unsubscribe, linkup, cutoff are required by
+// all agents. AFAIK, there is no documentation about these interfaces.
+
 'use strict';
 const Connections = require('./connections');
 const InternalConnectionFactory = require('./InternalConnectionFactory');
@@ -34,7 +46,13 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
     quicTransportServer.on('streamadded', (stream) => {
         const conn = connections.getConnection(stream.contentSessionId);
         if (conn) {
+            // TODO: verify transport ID.
             conn.connection.quicStream(stream);
+        } else {
+          log.warn(
+              'Cannot find a pipeline for QUIC stream. Content session ID: ' +
+              stream.contentSessionId);
+          stream.close();
         }
     });
 
@@ -104,6 +122,7 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
                 conn.connect(options);
             break;
         case 'quic':
+            quicTransportServer.addTransportId(options.transport.id);
             conn = createStreamPipeline(connectionId, 'in', options, callback);
             if (!conn) {
                 return;
@@ -155,8 +174,9 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
                     conn.connect(options);//FIXME: May FAIL here!!!!!
                 break;
             case 'quic':
+                quicTransportServer.addTransportId(options.transport.id);
                 conn = createStreamPipeline(connectionId, 'out', options, callback);
-                const stream = quicTransportServer.createSendStream('id', connectionId);
+                const stream = quicTransportServer.createSendStream(options.transport.id, connectionId);
                 conn.quicStream(stream);
                 if (!conn) {
                     return;
