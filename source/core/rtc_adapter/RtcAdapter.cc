@@ -7,10 +7,31 @@
 #include <RtcAdapter.h>
 #include <VideoReceiveAdapter.h>
 #include <VideoSendAdapter.h>
+#include <thread/ProcessThreadProxy.h>
+#include <thread/StaticTaskQueueFactory.h>
 
 #include <memory>
+#include <mutex>
+
+#include <system_wrappers/include/clock.h>
 
 namespace rtc_adapter {
+
+namespace {
+
+std::once_flag g_startOnce;
+std::unique_ptr<webrtc::ProcessThread> g_moduleThread;
+std::unique_ptr<webrtc::ProcessThread> g_pacerThread;
+
+void initCallThreads()
+{
+    g_moduleThread = webrtc::ProcessThread::Create("ModuleProcessThread");
+    g_pacerThread = webrtc::ProcessThread::Create("PacerThread");
+    g_moduleThread->Start();
+    g_pacerThread->Start();
+}
+
+}
 
 class RtcAdapterImpl : public RtcAdapter,
                        public CallOwner {
@@ -47,7 +68,7 @@ private:
 };
 
 RtcAdapterImpl::RtcAdapterImpl()
-    : m_taskQueueFactory(webrtc::CreateDefaultTaskQueueFactory())
+    : m_taskQueueFactory(createStaticTaskQueueFactory())
     , m_taskQueue(std::make_shared<rtc::TaskQueue>(m_taskQueueFactory->CreateTaskQueue(
           "CallTaskQueue",
           webrtc::TaskQueueFactory::Priority::NORMAL)))
@@ -66,7 +87,15 @@ void RtcAdapterImpl::initCall()
         if (!m_call) {
             webrtc::Call::Config call_config(m_eventLog.get());
             call_config.task_queue_factory = m_taskQueueFactory.get();
-            m_call.reset(webrtc::Call::Create(call_config));
+            // Initialize global threads once
+            std::call_once(g_startOnce, initCallThreads);
+            std::unique_ptr<webrtc::ProcessThread> moduleThreadProxy =
+                std::make_unique<ProcessThreadProxy>(g_moduleThread.get());
+            std::unique_ptr<webrtc::ProcessThread> pacerThreadProxy =
+                std::make_unique<ProcessThreadProxy>(g_pacerThread.get());
+            m_call.reset(webrtc::Call::Create(
+                call_config, webrtc::Clock::GetRealTimeClock(),
+                std::move(moduleThreadProxy), std::move(pacerThreadProxy)));
         }
     });
 }

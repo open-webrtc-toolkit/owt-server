@@ -8,7 +8,6 @@
 #include <AdapterInternalDefinitions.h>
 #include <RtcAdapter.h>
 
-#include <api/task_queue/default_task_queue_factory.h>
 #include <api/video_codecs/video_codec.h>
 #include <api/video_codecs/video_decoder.h>
 #include <api/video_codecs/video_decoder_factory.h>
