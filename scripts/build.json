@@ -130,6 +130,7 @@
         "path" : "source/agent/addons/resourceUtil"
     },
     "quic" : {
-        "path" : "source/agent/addons/quic"
+        "path" : "source/agent/addons/quic",
+        "description": "QUIC agent supports WebTransport - QuicTransport connections. Experimental feature."
     }
 }
