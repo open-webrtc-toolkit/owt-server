@@ -225,7 +225,7 @@ void RawTransport<prot>::listenTo(uint32_t minPort, uint32_t maxPort)
                 m_socket.tcp.acceptor->open(tcp::v4());
                 m_socket.tcp.acceptor->bind(tcp::endpoint(tcp::v4(), port), ec);
 
-                if (ec != boost::system::errc::address_in_use) {
+                if (ec.value() != boost::system::errc::address_in_use) {
                     break;
                 }
                 if (m_socket.tcp.acceptor->is_open()) {
