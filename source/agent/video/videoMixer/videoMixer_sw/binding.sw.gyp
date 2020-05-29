@@ -14,6 +14,7 @@
       '../../../../core/owt_base/FFmpegFrameDecoder.cpp',
       '../../../../core/owt_base/FFmpegDrawText.cpp',
       '../../../../core/owt_base/SVTHEVCEncoder.cpp',
+      '../../../../core/common/JobTimer.cpp',
     ],
     'cflags_cc': [
         '-Wall',

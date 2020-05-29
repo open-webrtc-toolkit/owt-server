@@ -4,6 +4,8 @@
 
 #include "VideoSendAdapter.h"
 #include "MediaUtilities.h"
+#include "TaskRunnerPool.h"
+
 #include <api/rtc_event_log/rtc_event_log.h>
 #include <api/video/video_codec_type.h>
 #include <api/video_codecs/video_codec.h>
@@ -138,15 +140,13 @@ VideoSendAdapterImpl::VideoSendAdapterImpl(
 {
     m_ssrc = m_ssrcGenerator->CreateSsrc();
     m_ssrcGenerator->RegisterSsrc(m_ssrc);
-    m_taskRunner.reset(new owt_base::WebRTCTaskRunner("VideoSendAdapterImpl"));
-    m_taskRunner->Start();
+    m_taskRunner = TaskRunnerPool::GetInstance().GetTaskRunner();
     init();
 }
 
 VideoSendAdapterImpl::~VideoSendAdapterImpl()
 {
     m_taskRunner->DeRegisterModule(m_rtpRtcp.get());
-    m_taskRunner->Stop();
     m_ssrcGenerator->ReturnSsrc(m_ssrc);
     boost::unique_lock<boost::shared_mutex> lock(m_rtpRtcpMutex);
 }

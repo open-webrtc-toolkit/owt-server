@@ -11,6 +11,7 @@
       '<(source_rel_dir)/core/owt_base/VideoFrameConstructor.cpp',
       '<(source_rel_dir)/core/owt_base/VideoFramePacketizer.cpp',
       '<(source_rel_dir)/core/owt_base/MediaFramePipeline.cpp',
+      '<(source_rel_dir)/core/common/JobTimer.cpp',
       'AudioFrameConstructorWrapper.cc',
       'AudioFramePacketizerWrapper.cc',
       'VideoFrameConstructorWrapper.cc',
@@ -69,6 +70,7 @@
         '<(source_rel_dir)/core/rtc_adapter/AudioSendAdapter.cc',
         '<(source_rel_dir)/core/owt_base/SsrcGenerator.cc',
         '<(source_rel_dir)/core/owt_base/AudioUtilitiesNew.cpp',
+        '<(source_rel_dir)/core/owt_base/TaskRunnerPool.cpp',
     ],
     'cflags_cc': ['-DWEBRTC_POSIX', '-DWEBRTC_LINUX', '-DLINUX', '-DNOLINUXIF', '-DNO_REG_RPC=1', '-DHAVE_VFPRINTF=1', '-DRETSIGTYPE=void', '-DNEW_STDIO', '-DHAVE_STRDUP=1', '-DHAVE_STRLCPY=1', '-DHAVE_LIBM=1', '-DHAVE_SYS_TIME_H=1', '-DTIME_WITH_SYS_TIME_H=1', '-DOWT_ENABLE_H265', '-D_LIBCPP_ABI_UNSTABLE', '-DNDEBUG'],
     'include_dirs': [
