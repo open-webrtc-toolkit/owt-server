@@ -64,7 +64,7 @@ JobTimer::~JobTimer()
 
 void JobTimer::start()
 {
-    // Keep the legacy interface work
+    // Keep the legacy interface working
     if (!m_isRunning) {
         m_isRunning = true;
     }
