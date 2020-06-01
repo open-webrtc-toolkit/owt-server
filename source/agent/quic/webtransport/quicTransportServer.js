@@ -7,7 +7,6 @@
 const EventEmitter = require('events');
 const logger = require('../../logger').logger;
 const log = logger.getLogger('QuicTransportServer');
-const addon = require('../build/Release/quic');
 const zeroUuid = '00000000000000000000000000000000';
 
 /* Every QUIC agent is a QuicTransportServer which accepts QuicTransport
@@ -19,7 +18,7 @@ const zeroUuid = '00000000000000000000000000000000';
  * pipeline. Argument: a string for publication or subscription ID.
  */
 module.exports = class QuicTransportServer extends EventEmitter {
-  constructor(port) {
+  constructor(addon, port) {
     super();
     this._server = new addon.QuicTransportServer(port);
     this._connections = new Map(); // Key is transport ID.

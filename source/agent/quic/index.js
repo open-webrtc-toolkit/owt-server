@@ -41,7 +41,7 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
         rpcClient.remoteCast(controller, 'onSessionProgress', [sessionId, direction, status]);
     };
 
-    const quicTransportServer = new QuicTransportServer();
+    const quicTransportServer = new QuicTransportServer(addon);
     quicTransportServer.start();
     quicTransportServer.on('streamadded', (stream) => {
         const conn = connections.getConnection(stream.contentSessionId);

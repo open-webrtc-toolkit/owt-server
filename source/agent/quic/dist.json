@@ -34,11 +34,11 @@
               "webtransport/quicTransportServer.js",
               "webtransport/quicTransportStreamPipeline.js"
           ],
+          "quic/webtransport/test": [
+              "webtransport/test/quicTransportServerTest.js"
+          ],
           "cert": [
               "../../../cert/.owt.keystore"
-          ],
-          "data_access": [
-            "../../data_access/*"
           ]
       }
   },
