@@ -51,7 +51,7 @@ public:
     TaskQueueProxy(webrtc::TaskQueueBase* taskQueue)
         : m_taskQueue(taskQueue), m_sp(std::make_shared<int>(1))
     {
-        RTC_DCHECK(m_taskQueue);
+        RTC_CHECK(m_taskQueue);
     }
     ~TaskQueueProxy() override = default;
 
