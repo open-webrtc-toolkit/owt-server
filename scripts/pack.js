@@ -431,6 +431,7 @@ function isLibAllowed(libSrc) {
     'lib360SCVP'
   ];
   if (!options['archive'] || options['with-ffmpeg']) {
+    whiteList.push('libsrt');
     whiteList.push('libav');
     whiteList.push('libsw');
   }

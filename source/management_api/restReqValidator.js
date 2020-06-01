@@ -125,6 +125,42 @@ const StreamingInRequest = {
   }
 };
 
+const StreamingInSRTRequest = {
+  type: 'object',
+  properties: {
+    'type': { 'const': 'streaming' },
+    'connection': { $ref: '#/definitions/StreamingInConnectionOptions' },
+    'media': { $ref: '#/definitions/StreamingInMediaOptions' },
+    'attributes': { type: 'object' }
+  },
+  additionalProperties: false,
+  required: ['type', 'connection', 'media'],
+
+  definitions: {
+    'StreamingInConnectionOptions': {
+      type: 'object',
+      properties: {
+        url: { type: 'string' },
+        mode: { enum: ['listener', 'caller', 'rendezvous'], 'default': 'listener' }, //optional, default: "tcp"
+        latency: { type: 'number', 'default': 0 },     //optional, default: 0\
+        listentimeout: { type: 'number', 'default': 30}  //optional, default:30
+      },
+      additionalProperties: false,
+      required: ['mode']
+    },
+
+    'StreamingInMediaOptions': {
+      type: 'object',
+      properties: {
+        'audio': { enum: ['auto', true, false] },
+        'video': { enum: ['auto', true, false] }
+      },
+      additionalProperties: false,
+      required: ['audio', 'video']
+    }
+  }
+};
+
 const StreamUpdate = {
   type: 'array',
   items: {$ref: '#/definitions/StreamInfoUpdate'},
@@ -564,6 +600,7 @@ const SipCallUpdate = {
 var validators = {
   'participant-update': generateValidator(ParticipantUpdate),
   'streamingIn-req': generateValidator(StreamingInRequest),
+  'streamingInSRT-req': generateValidator(StreamingInSRTRequest),
   'stream-update': generateValidator(StreamUpdate),
   'serverSideSub-req': generateValidator(ServerSideSubscriptionRequest),
   'subscription-update': generateValidator(SubscriptionUpdate),
