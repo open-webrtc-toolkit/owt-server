@@ -39,6 +39,7 @@ init_software()
     ${ROOT}/management_api/init.sh
     ${ROOT}/webrtc_agent/install_deps.sh
     ${ROOT}/video_agent/install_deps.sh
+    ${ROOT}/streaming_agent/install_ffmpeg.sh --enable-srt
     ${ROOT}/video_agent/init.sh
     copy_video_libs
   else
