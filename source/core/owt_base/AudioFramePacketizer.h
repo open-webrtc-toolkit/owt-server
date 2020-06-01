@@ -68,6 +68,7 @@ private:
     uint16_t m_seqNo;
     uint32_t m_ssrc;
 
+    boost::shared_mutex m_adapterMutex;
     std::shared_ptr<rtc_adapter::RtcAdapter> m_rtcAdapter;
     rtc_adapter::AudioSendAdapter* m_audioSend;
 };

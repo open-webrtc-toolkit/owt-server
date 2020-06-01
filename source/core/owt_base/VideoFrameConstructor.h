@@ -88,6 +88,7 @@ private:
 
     VideoInfoListener* m_videoInfoListener;
 
+    boost::shared_mutex m_adapterMutex;
     std::shared_ptr<rtc_adapter::RtcAdapter> m_rtcAdapter;
     rtc_adapter::VideoReceiveAdapter* m_videoReceive;
 };

@@ -76,6 +76,7 @@ private:
     uint32_t m_ssrc;
 
     boost::shared_mutex m_transportMutex;
+    boost::shared_mutex m_adapterMutex;
 
     uint16_t m_sendFrameCount;
     std::shared_ptr<rtc_adapter::RtcAdapter> m_rtcAdapter;

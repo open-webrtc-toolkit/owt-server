@@ -27,6 +27,7 @@ AudioFramePacketizer::AudioFramePacketizer()
 AudioFramePacketizer::~AudioFramePacketizer()
 {
     close();
+    boost::unique_lock<boost::shared_mutex> lock(m_adapterMutex);
     if (m_audioSend) {
         m_rtcAdapter->destoryAudioSender(m_audioSend);
         m_rtcAdapter.reset();
@@ -38,7 +39,7 @@ void AudioFramePacketizer::bindTransport(erizo::MediaSink* sink)
 {
     boost::unique_lock<boost::shared_mutex> lock(m_transport_mutex);
     audio_sink_ = sink;
-    audio_sink_->setAudioSinkSSRC(m_audioSend->ssrc());
+    audio_sink_->setAudioSinkSSRC(m_ssrc);
     erizo::FeedbackSource* fbSource = audio_sink_->getFeedbackSource();
     if (fbSource)
         fbSource->setFeedbackSink(this);
@@ -54,6 +55,7 @@ void AudioFramePacketizer::unbindTransport()
 
 int AudioFramePacketizer::deliverFeedback_(std::shared_ptr<erizo::DataPacket> data_packet)
 {
+    boost::shared_lock<boost::shared_mutex> lock(m_adapterMutex);
     if (m_audioSend) {
         m_audioSend->onRtcpData(data_packet->data, data_packet->length);
         return data_packet->length;
@@ -78,12 +80,6 @@ void AudioFramePacketizer::onFrame(const Frame& frame)
         return;
     }
 
-    boost::shared_lock<boost::shared_mutex> lock1(m_transport_mutex);
-    if (!audio_sink_) {
-        return;
-    }
-    lock1.unlock();
-
     if (frame.length <= 0)
         return;
 
@@ -91,6 +87,7 @@ void AudioFramePacketizer::onFrame(const Frame& frame)
         m_frameFormat = frame.format;
     }
 
+    boost::shared_lock<boost::shared_mutex> lock(m_adapterMutex);
     if (m_audioSend) {
         m_audioSend->onFrame(frame);
     }
