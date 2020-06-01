@@ -400,7 +400,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
             audio = ((streams[stream_id].audio && target_node_type !== 'vmixer' && target_node_type !== 'vxcoder') ? true : false),
             video = ((streams[stream_id].video && target_node_type !== 'amixer' && target_node_type !== 'axcoder') ? true : false),
             spread_id = stream_id + '@' + target_node;
-        const data = streams[stream_id].data;
+        const data = !!streams[stream_id].data;
 
         if (!audio && !video && !data) {
             return on_error('Cannot spread stream without audio, video or data.');
@@ -491,6 +491,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                             publisher: publisher,
                             audio: (audio ? {codec: streams[stream_id].audio.format} : false),
                             video: (video ? {codec: streams[stream_id].video.format} : false),
+                            data: data,
                             ip: from.ip,
                             port: from.port,
                         }
@@ -520,15 +521,15 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
             log.debug('internally publish/subscribe ok');
 
             // Linkup after publish/subscribe ready
-            return new Promise(function (resolve, reject) {
+            return new Promise(function(resolve, reject) {
                 makeRPC(
                     rpcClient,
                     original_node,
                     'linkup',
-                    [spread_id, audio ? stream_id : undefined, video ? stream_id : undefined],
+                    [ spread_id, audio ? stream_id : undefined, video ? stream_id : undefined, data ? stream_id : undefined ],
                     resolve,
                     reject);
-                });
+            });
         }).then(function () {
             if (streams[stream_id]) {
                 log.debug('internally linkup ok');

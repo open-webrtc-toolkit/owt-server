@@ -818,7 +818,7 @@ module.exports = function (rpcC, selfRpcId, parentRpcId, clusterWorkerIP) {
         }
     };
 
-    that.linkup = function (connectionId, audioFrom, videoFrom, callback) {
+    that.linkup = function (connectionId, audioFrom, videoFrom, dataFrom, callback) {
         log.debug('linkup, connectionId:', connectionId, ', audioFrom:', audioFrom, ', videoFrom:', videoFrom);
 
         if (audioFrom && streams[audioFrom] === undefined) {

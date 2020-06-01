@@ -12,7 +12,7 @@
 // or |undefined|, which means QuicStream is not ready at this moment. It also
 // allows updating its associated QuicStream to a new one.
 // publish, unpublish, subscribe, unsubscribe, linkup, cutoff are required by
-// all agents. AFAIK, there is no documentation about these interfaces.
+// all agents. They are defined in base-agent.js.
 
 'use strict';
 const Connections = require('./connections');
