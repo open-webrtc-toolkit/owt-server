@@ -39,7 +39,6 @@ VideoFramePacketizer::VideoFramePacketizer(
 VideoFramePacketizer::~VideoFramePacketizer()
 {
     close();
-    boost::unique_lock<boost::shared_mutex> lock(m_adapterMutex);
     if (m_videoSend) {
         m_rtcAdapter->destoryVideoSender(m_videoSend);
         m_rtcAdapter.reset();
@@ -76,7 +75,7 @@ void VideoFramePacketizer::bindTransport(erizo::MediaSink* sink)
 {
     boost::unique_lock<boost::shared_mutex> lock(m_transportMutex);
     video_sink_ = sink;
-    video_sink_->setVideoSinkSSRC(m_ssrc);
+    video_sink_->setVideoSinkSSRC(m_videoSend->ssrc());
     erizo::FeedbackSource* fbSource = video_sink_->getFeedbackSource();
     if (fbSource)
         fbSource->setFeedbackSink(this);
@@ -95,7 +94,6 @@ void VideoFramePacketizer::enable(bool enabled)
     m_enabled = enabled;
     if (m_enabled) {
         m_sendFrameCount = 0;
-        boost::shared_lock<boost::shared_mutex> lock(m_adapterMutex);
         if (m_videoSend) {
             m_videoSend->reset();
         }
@@ -140,7 +138,6 @@ void VideoFramePacketizer::onFrame(const Frame& frame)
         }
     }
 
-    boost::shared_lock<boost::shared_mutex> lock(m_adapterMutex);
     if (m_videoSend) {
         m_videoSend->onFrame(frame);
     }
@@ -148,7 +145,6 @@ void VideoFramePacketizer::onFrame(const Frame& frame)
 
 void VideoFramePacketizer::onVideoSourceChanged()
 {
-    boost::shared_lock<boost::shared_mutex> lock(m_adapterMutex);
     if (m_videoSend) {
         m_videoSend->reset();
     }
@@ -168,7 +164,6 @@ void VideoFramePacketizer::close()
 
 int VideoFramePacketizer::deliverFeedback_(std::shared_ptr<erizo::DataPacket> data_packet)
 {
-    boost::shared_lock<boost::shared_mutex> lock(m_adapterMutex);
     if (m_videoSend) {
         m_videoSend->onRtcpData(data_packet->data, data_packet->length);
         return data_packet->length;

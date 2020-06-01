@@ -47,7 +47,6 @@ VideoFrameConstructor::~VideoFrameConstructor()
 {
     m_feedbackTimer->stop();
     unbindTransport();
-    boost::unique_lock<boost::shared_mutex> lock(m_adapterMutex);
     if (m_videoReceive) {
         m_rtcAdapter->destoryVideoReceiver(m_videoReceive);
         m_rtcAdapter.reset();
@@ -57,7 +56,6 @@ VideoFrameConstructor::~VideoFrameConstructor()
 
 void VideoFrameConstructor::maybeCreateReceiveVideo(uint32_t ssrc)
 {
-    boost::unique_lock<boost::shared_mutex> lock(m_adapterMutex);
     if (!m_videoReceive) {
         // Create Receive Video Stream
         rtc_adapter::RtcAdapter::Config recvConfig;
@@ -100,7 +98,6 @@ int32_t VideoFrameConstructor::RequestKeyFrame()
     if (!m_enabled) {
         return 0;
     }
-    boost::shared_lock<boost::shared_mutex> lock(m_adapterMutex);
     if (m_videoReceive) {
         m_videoReceive->requestKeyFrame();
     }
@@ -159,7 +156,6 @@ int VideoFrameConstructor::deliverVideoData_(std::shared_ptr<erizo::DataPacket> 
         m_ssrc = head->getSSRC();
         maybeCreateReceiveVideo(m_ssrc);
     }
-    boost::shared_lock<boost::shared_mutex> lock(m_adapterMutex);
     if (m_videoReceive) {
         m_videoReceive->onRtpData(video_packet->data, video_packet->length);
     }
