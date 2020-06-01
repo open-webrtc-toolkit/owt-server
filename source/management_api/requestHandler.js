@@ -228,6 +228,38 @@ exports.addStreamingIn = function (roomId, pubReq, callback) {
     });
 };
 
+exports.addStreamingInSRT = function (roomId, pubReq, callback) {
+  return validateId('Room ID', roomId)
+    .then((ok) => {
+      log.info("validateId ok");
+      return validateReq('streamingInSRT-req', pubReq);
+    }).then((ok) => {
+      log.info("validate request ok");
+      return getRoomController(roomId);
+    }).then((controller) => {
+      return controller;
+    }, (e) => {
+      log.info("validateId failed");
+      if (e === 'Room is inactive') {
+        return scheduleRoomController(roomId);
+      } else {
+        return Promise.reject('Validation failed');
+      }
+    }).then((controller) => {
+      log.info("Get controller ok and call Rpc to controller:", controller);
+      rpc.callRpc(controller, 'addStreamingInSRT', [roomId, pubReq], {callback: function (result) {
+        if (result === 'error' || result === 'timeout') {
+          log.info("call addStreamingSRT error or timeout");
+          callback('error');
+        } else {
+          callback(result);
+        }
+      }}, 90 * 1000);
+    }).catch((err) => {
+      callback('error');
+    });
+};
+
 exports.controlStream = function (roomId, stream, cmds, callback) {
   return validateId('Room ID', roomId)
     .then((ok) => {

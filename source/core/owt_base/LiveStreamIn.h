@@ -230,7 +230,7 @@ private:
 
     std::ostringstream m_AsyncEvent;
 
-    bool isRtsp() {return (m_url.compare(0, 7, "rtsp://") == 0);}
+    bool isRtsp() {return (m_url.compare(0, 7, "rtsp://") == 0 || m_url.compare(0, 6, "srt://") == 0);}
     bool isFileInput() {return (m_url.compare(0, 7, "file://") == 0
             || m_url.compare(0, 1, "/") == 0 || m_url.compare(0, 1, ".") == 0);}
 
