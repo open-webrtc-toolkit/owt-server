@@ -106,9 +106,6 @@
     "webrtc-frame": {
         "path" : "source/agent/webrtc/rtcFrame"
     },
-    "webrtc" : {
-        "path" : "source/agent/webrtc/webrtcLib"
-    },
     "sip" : {
         "path" : "source/agent/sip/sipIn",
         "gyp" : "binding.sip.gyp"
