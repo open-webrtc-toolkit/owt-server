@@ -107,8 +107,10 @@ class StaticTaskQueueFactory final : public webrtc::TaskQueueFactory {
                 "rtp_send_controller", webrtc::TaskQueueFactory::Priority::NORMAL);
 
         if (name == absl::string_view("CallTaskQueue")) {
-            return std::unique_ptr<webrtc::TaskQueueBase, webrtc::TaskQueueDeleter>(
-                new TaskQueueProxy(callTaskQueue.get()));
+            return defaultTaskQueueFactory->CreateTaskQueue(
+                "CallTaskQueue", webrtc::TaskQueueFactory::Priority::NORMAL);
+            // return std::unique_ptr<webrtc::TaskQueueBase, webrtc::TaskQueueDeleter>(
+            //     new TaskQueueProxy(callTaskQueue.get()));
         } else if (name == absl::string_view("DecodingQueue")) {
             return std::unique_ptr<webrtc::TaskQueueBase, webrtc::TaskQueueDeleter>(
                 new TaskQueueProxy(decodingQueue.get()));
