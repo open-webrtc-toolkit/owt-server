@@ -93,9 +93,13 @@ void RtcAdapterImpl::initCall()
                 std::make_unique<ProcessThreadProxy>(g_moduleThread.get());
             std::unique_ptr<webrtc::ProcessThread> pacerThreadProxy =
                 std::make_unique<ProcessThreadProxy>(g_pacerThread.get());
+            // m_call.reset(webrtc::Call::Create(
+            //     call_config, webrtc::Clock::GetRealTimeClock(),
+            //     std::move(moduleThreadProxy), std::move(pacerThreadProxy)));
             m_call.reset(webrtc::Call::Create(
                 call_config, webrtc::Clock::GetRealTimeClock(),
-                std::move(moduleThreadProxy), std::move(pacerThreadProxy)));
+                webrtc::ProcessThread::Create("ModuleProcessThread"),
+                webrtc::ProcessThread::Create("PacerThread")));
         }
     });
 }
