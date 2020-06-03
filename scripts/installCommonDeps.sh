@@ -118,6 +118,8 @@ install_libnice014(){
     patch -p1 < $PATHNAME/patches/libnice014-agentlock-plus.patch
     patch -p1 < $PATHNAME/patches/libnice014-removecandidate.patch
     patch -p1 < $PATHNAME/patches/libnice014-keepalive.patch
+    patch -p1 < $PATHNAME/patches/libnice014-startcheck.patch
+    patch -p1 < $PATHNAME/patches/libnice014-closelock.patch
     PKG_CONFIG_PATH=$PREFIX_DIR"/lib/pkgconfig":$PREFIX_DIR"/lib64/pkgconfig":$PKG_CONFIG_PATH ./configure --prefix=$PREFIX_DIR && make -s V= && make install
     cd $CURRENT_DIR
   else
@@ -238,9 +240,6 @@ install_licode(){
   git reset --hard $COMMIT
   # APPLY PATCH
   git am $PATHNAME/patches/licode/*.patch
-  # Cherry-pick upstream fix - Use OpenSSL API for DTLS retransmissions (#1145)
-  # from https://github.com/lynckia/licode/commit/71b38f9bf1d582d5afb1dca8f390c281dbe8ae43
-  git cherry-pick "71b38f9bf1d582d5afb1dca8f390c281dbe8ae43"
 
   popd >/dev/null
   popd >/dev/null

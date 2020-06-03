@@ -6,6 +6,7 @@
       'MediaFrameMulticasterWrapper.cc',
       '../../../core/owt_base/MediaFrameMulticaster.cpp',
       '../../../core/owt_base/MediaFramePipeline.cpp',
+      '../../../core/common/JobTimer.cpp',
     ],
     'include_dirs': ['$(CORE_HOME)/common',
                       '$(CORE_HOME)/owt_base'],
