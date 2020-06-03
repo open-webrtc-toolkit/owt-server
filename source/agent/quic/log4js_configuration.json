@@ -10,18 +10,18 @@
     }
   ],
   "levels": {
-    "ClusterWorker": "INFO",
-    "LoadCollector": "INFO",
-    "AmqpClient": "INFO",
-    "WorkingJS": "INFO",
-    "NodeManager": "INFO",
-    "QuicNode": "DEBUG",
+    "ClusterWorker": "WARN",
+    "LoadCollector": "WARN",
+    "AmqpClient": "WARN",
+    "WorkingJS": "WARN",
+    "NodeManager": "WARN",
+    "QuicNode": "INFO",
     "Connection": "WARN",
-    "WorkingAgent": "INFO",
-    "Connections": "DEBUG",
-    "InternalConnectionFactory": "INFO",
-    "QuicConnection": "DEBUG",
-    "QuicTransportServer": "DEBUG",
-    "QuicTransportStreamPipeline": "DEBUG"
+    "WorkingAgent": "WARN",
+    "Connections": "WARN",
+    "InternalConnectionFactory": "WARN",
+    "QuicConnection": "WARN",
+    "QuicTransportServer": "WARN",
+    "QuicTransportStreamPipeline": "WARN"
   }
 }

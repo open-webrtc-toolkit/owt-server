@@ -51,16 +51,8 @@
     },
     "mcu-quic": {
         "include":[
-            "video-mixer-sw",
-            "video-transcoder-sw",
-            "video-analyzer-sw",
-            "internal-io",
-            "logger",
-            "media-frame-multicaster",
-            "audio",
-            "webrtc-quic",
-            "avstream",
-            "sip"
+            "mcu",
+            "quic"
         ]
     },
     "video-mixer-sw" : {

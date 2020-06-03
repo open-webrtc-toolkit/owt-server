@@ -38,6 +38,7 @@
       '../../../core/common',
       '../../../core/owt_base',
       '../../../../build/libdeps/build/include',
+      # TODO: Fix it when CI for QUIC SDK is ready.
       '/home/jianjunz/code/quic/src/owt/quic_transport/api',
       '<!@(pkg-config glib-2.0 --cflags-only-I | sed s/-I//g)',
     ],

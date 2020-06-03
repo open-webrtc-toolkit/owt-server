@@ -48,26 +48,6 @@ module.exports.load = () => {
       config.internal.ip_address = addr.ip;
     }
 
-    config.webrtc = config.webrtc || {};
-    config.webrtc.stunserver = config.webrtc.stunserver || '';
-    config.webrtc.stunport = config.webrtc.stunport || 0;
-    config.webrtc.minport = config.webrtc.minport || 0;
-    config.webrtc.maxport = config.webrtc.maxport || 0;
-    config.webrtc.keystorePath = config.webrtc.keystorePath || '';
-    config.webrtc.num_workers = config.webrtc.num_workers || 24;
-    config.webrtc.use_nicer = config.webrtc.use_nicer || false;
-    config.webrtc.io_workers = config.webrtc.io_workers || 1;
-    config.webrtc.network_interfaces = config.webrtc.network_interfaces || [];
-
-    config.webrtc.network_interfaces.forEach(item => {
-      let addr = networkHelper.getAddress(item.name);
-      if (!addr) {
-        console.error("Can't get webrtc IP address");
-        process.exit(1);
-      }
-      item.ip_address = addr.ip;
-    });
-
     return config;
   } catch (e) {
     console.error('Parsing config error on line ' + e.line + ', column ' + e.column + ': ' + e.message);

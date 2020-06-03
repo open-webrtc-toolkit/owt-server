@@ -53,6 +53,13 @@ describe('Test QuicTransportServer.', () => {
      });
 
   it('Test UUID convertions.',
-     () => {
+     (done) => {
+       const uuidString0='';
+       const uuidString1='';
+       const uuidString2='';
+       const uuidArray0='';
+       const uuidArray1='';
+       const uuidArray2='';
+       done();
      });
 });

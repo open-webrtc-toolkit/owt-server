@@ -55,15 +55,3 @@ network_interfaces = []  # default: []
 
 keystorePath = "./cert/certificate.pfx"
 #note, this won't work with all versions of libnice. With 0 all the available ports are used
-
-# ICE port range
-maxport = 0 #default: 0
-minport = 0 #default: 0
-
-#STUN server IP address and port to be used by the server.
-#if "" is used, the address is discovered locally
-stunport = 0 #default: 0
-stunserver = "" #default: ""
-
-#ThreadPool worker numbers for peer connection
-num_workers = 24 #default: 24
