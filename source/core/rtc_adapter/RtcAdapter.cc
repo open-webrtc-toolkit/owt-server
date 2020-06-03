@@ -96,10 +96,11 @@ void RtcAdapterImpl::initCall()
             // m_call.reset(webrtc::Call::Create(
             //     call_config, webrtc::Clock::GetRealTimeClock(),
             //     std::move(moduleThreadProxy), std::move(pacerThreadProxy)));
-            m_call.reset(webrtc::Call::Create(
-                call_config, webrtc::Clock::GetRealTimeClock(),
-                webrtc::ProcessThread::Create("ModuleProcessThread"),
-                webrtc::ProcessThread::Create("PacerThread")));
+            // m_call.reset(webrtc::Call::Create(
+            //     call_config, webrtc::Clock::GetRealTimeClock(),
+            //     webrtc::ProcessThread::Create("ModuleProcessThread"),
+            //     webrtc::ProcessThread::Create("PacerThread")));
+            m_call.reset(webrtc::Call::Create(call_config));
         }
     });
 }
