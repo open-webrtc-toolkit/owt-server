@@ -88,11 +88,11 @@ void RtcAdapterImpl::initCall()
             webrtc::Call::Config call_config(m_eventLog.get());
             call_config.task_queue_factory = m_taskQueueFactory.get();
             // Initialize global threads once
-            std::call_once(g_startOnce, initCallThreads);
-            std::unique_ptr<webrtc::ProcessThread> moduleThreadProxy =
-                std::make_unique<ProcessThreadProxy>(g_moduleThread.get());
-            std::unique_ptr<webrtc::ProcessThread> pacerThreadProxy =
-                std::make_unique<ProcessThreadProxy>(g_pacerThread.get());
+            // std::call_once(g_startOnce, initCallThreads);
+            // std::unique_ptr<webrtc::ProcessThread> moduleThreadProxy =
+            //     std::make_unique<ProcessThreadProxy>(g_moduleThread.get());
+            // std::unique_ptr<webrtc::ProcessThread> pacerThreadProxy =
+            //     std::make_unique<ProcessThreadProxy>(g_pacerThread.get());
             // m_call.reset(webrtc::Call::Create(
             //     call_config, webrtc::Clock::GetRealTimeClock(),
             //     std::move(moduleThreadProxy), std::move(pacerThreadProxy)));
