@@ -112,15 +112,15 @@ class StaticTaskQueueFactory final : public webrtc::TaskQueueFactory {
             return std::unique_ptr<webrtc::TaskQueueBase, webrtc::TaskQueueDeleter>(
                 new TaskQueueProxy(callTaskQueue.get()));
         } else if (name == absl::string_view("DecodingQueue")) {
-            return defaultTaskQueueFactory->CreateTaskQueue(
-                "CallTaskQueue", priority);
-            // return std::unique_ptr<webrtc::TaskQueueBase, webrtc::TaskQueueDeleter>(
-            //     new TaskQueueProxy(decodingQueue.get()));
+            // return defaultTaskQueueFactory->CreateTaskQueue(
+                // "CallTaskQueue", priority);
+            return std::unique_ptr<webrtc::TaskQueueBase, webrtc::TaskQueueDeleter>(
+                new TaskQueueProxy(decodingQueue.get()));
         } else if (name == absl::string_view("rtp_send_controller")) {
-            return defaultTaskQueueFactory->CreateTaskQueue(
-                "CallTaskQueue", priority);
-            // return std::unique_ptr<webrtc::TaskQueueBase, webrtc::TaskQueueDeleter>(
-            //     new TaskQueueProxy(rtpSendCtrlQueue.get()));
+            // return defaultTaskQueueFactory->CreateTaskQueue(
+                // "CallTaskQueue", priority);
+            return std::unique_ptr<webrtc::TaskQueueBase, webrtc::TaskQueueDeleter>(
+                new TaskQueueProxy(rtpSendCtrlQueue.get()));
         } else {
             // Return dummy task queue for other names like "IncomingVideoStream"
             RTC_DLOG(LS_INFO) << "Dummy TaskQueue for " << name;
