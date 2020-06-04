@@ -17,6 +17,11 @@ const zeroUuid = '00000000000000000000000000000000';
  * streamadded - A new stream is added, and ready to be attached to a stream
  * pipeline. Argument: a string for publication or subscription ID.
  */
+
+// Connection will be closed if no transport ID is received after
+// `authenticationTimeout` seconds.
+const authenticationTimeout = 10;
+
 module.exports = class QuicTransportServer extends EventEmitter {
   constructor(addon, port) {
     super();
@@ -28,6 +33,12 @@ module.exports = class QuicTransportServer extends EventEmitter {
     this._assignedTransportIds = []; // Transport channels assigned to this server.
     this._server.onconnection = (connection) => {
       this._unAuthenticatedConnections.push(connection);
+      setTimeout(() => {
+        // Must be authenticated in `authenticationTimeout` seconds.
+        if (!connection.transportId) {
+          connection.close();
+        }
+      }, authenticationTimeout * 1000);
       connection.onincomingstream = (stream) => {
         stream.oncontentsessionid = (id) => {
           const streamId = this._uuidBytesToString(new Uint8Array(id))
@@ -46,11 +57,17 @@ module.exports = class QuicTransportServer extends EventEmitter {
             this.emit('streamadded', stream);
           }
         };
-        stream.ondata=(data)=>{
+        stream.ondata = (data) => {
           if (stream.contentSessionId === zeroUuid) {
-            connection.transportId = data.toString('utf8');
+            const transportId = data.toString('utf8');
+            if (!this._assignedTransportIds.includes(transportId)) {
+              log.info(JSON.stringify(connection));
+              connection.close();
+            }
+            connection.transportId = transportId;
+            stream.transportId = transportId;
             this._connections.set(connection.transportId, connection);
-            log.info('Transport ID: ' + connection.transportId);
+            log.info('New connection for transport ID: ' + transportId);
           }
         }
       }
@@ -110,7 +127,6 @@ module.exports = class QuicTransportServer extends EventEmitter {
     for (let i = 0; i < 16; i++) {
       uuidArray[i] = parseInt(uuidString.substring(i * 2, i * 2 + 2), 16);
     }
-    console.log(uuidArray);
     return uuidArray;
   }
 };
