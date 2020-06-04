@@ -132,7 +132,7 @@ class StaticTaskQueueFactory final : public webrtc::TaskQueueFactory {
 
 std::unique_ptr<webrtc::TaskQueueFactory> createStaticTaskQueueFactory()
 {
-    return webrtc::CreateDefaultTaskQueueFactory();
+    return std::unique_ptr<webrtc::TaskQueueFactory>(new StaticTaskQueueFactory());
 }
 
 } // namespace rtc_adapter
