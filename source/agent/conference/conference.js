@@ -872,8 +872,8 @@ var Conference = function (rpcClient, selfRpcId) {
             audio: my_role_def[0].publish.audio
           },
           subscribe: {
-            video: my_role_def[0].subscribe.video
-            audio: my_role_def[0].subscribe.audio,
+            video: my_role_def[0].subscribe.video,
+            audio: my_role_def[0].subscribe.audio
           }
         };
 
