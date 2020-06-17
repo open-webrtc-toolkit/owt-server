@@ -164,7 +164,7 @@ RUN git config --global user.email "you@example.com" && \
     git clone --depth=1 -b ${OWT_BRANCH} ${OWTSERVER_REPO} && \
 
     # Install node modules for owt
-    npm install -g --loglevel error node-gyp grunt-cli underscore jsdoc && \
+    npm install -g --loglevel error node-gyp@6.1.0 grunt-cli underscore jsdoc && \
     cd owt-server && npm install nan && \
 
     # Get openh264 for owt
