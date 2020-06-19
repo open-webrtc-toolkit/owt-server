@@ -50,6 +50,7 @@ protected:
     // Overrides owt::quic::QuicTransportStreamInterface::Visitor.
     void OnCanRead() override;
     void OnCanWrite() override;
+    void OnFinRead() override;
 
 private:
     // Try to read content session ID from data buffered.

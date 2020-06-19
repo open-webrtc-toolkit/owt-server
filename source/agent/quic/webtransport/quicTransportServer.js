@@ -38,14 +38,16 @@ module.exports = class QuicTransportServer extends EventEmitter {
         if (!connection.transportId) {
           connection.close();
         }
-      }, authenticationTimeout * 1000);
+      }, authenticationTimeout * 100000);
       connection.onincomingstream = (stream) => {
+        log.info('New incoming stream.');
         stream.oncontentsessionid = (id) => {
           const streamId = this._uuidBytesToString(new Uint8Array(id))
           stream.contentSessionId = streamId;
           stream.transportId = connection.transportId;
           if (streamId === zeroUuid) {
             // Signaling stream. Waiting for transport ID.
+            log.info('Zero content session ID.');
           } else if (!connection.transportId) {
             log.error(
                 'Stream ' + streamId +
@@ -60,6 +62,7 @@ module.exports = class QuicTransportServer extends EventEmitter {
         stream.ondata = (data) => {
           if (stream.contentSessionId === zeroUuid) {
             const transportId = data.toString('utf8');
+            log.info('Received new transport ID: '+transportId);
             if (!this._assignedTransportIds.includes(transportId)) {
               log.info(JSON.stringify(connection));
               connection.close();

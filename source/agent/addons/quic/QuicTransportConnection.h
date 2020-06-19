@@ -43,6 +43,7 @@ public:
 protected:
     // Overrides owt::quic::QuicTransportSessionInterface::Visitor.
     void OnIncomingStream(owt::quic::QuicTransportStreamInterface*) override;
+    void OnCanCreateNewOutgoingStream(bool unidirectional) override { }
 
     // Overrides QuicTransportStream::Visitor.
     void onEnded() override;

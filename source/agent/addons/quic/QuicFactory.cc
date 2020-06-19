@@ -15,7 +15,7 @@ std::once_flag getQuicFactoryOnce;
 std::shared_ptr<QuicFactory> QuicFactory::s_quicFactory = nullptr;
 
 QuicFactory::QuicFactory()
-    : m_quicTransportFactory(std::make_shared<owt::quic::QuicTransportFactory>())
+    : m_quicTransportFactory(std::shared_ptr<owt::quic::QuicTransportFactory>(owt::quic::QuicTransportFactory::Create()))
 {
     ELOG_DEBUG("QuicFactory ctor.");
 }

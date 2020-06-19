@@ -56,6 +56,11 @@ void QuicTransportStream::OnCanWrite()
     ELOG_DEBUG("On can write.");
 }
 
+void QuicTransportStream::OnFinRead()
+{
+    ELOG_DEBUG("On FIN read.");
+}
+
 NAN_MODULE_INIT(QuicTransportStream::init)
 {
     Local<FunctionTemplate> tpl = Nan::New<FunctionTemplate>(newInstance);
