@@ -7,11 +7,14 @@
 #include "IOThreadPool.h"
 #include "MediaStream.h"
 
+#include <dtls/DtlsSocket.h>
+
 #include <node.h>
 
 using namespace v8;
 
 void InitAll(Handle<Object> exports) {
+  dtls::DtlsSocketContext::Init();
   WebRtcConnection::Init(exports);
   MediaStream::Init(exports);
   ThreadPool::Init(exports);
