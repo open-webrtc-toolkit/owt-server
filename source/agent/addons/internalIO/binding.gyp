@@ -15,8 +15,6 @@
     ],
     'include_dirs': [
       '/usr/include/gstreamer-1.0',
-      '/usr/include/glib-2.0',
-      '/usr/lib/x86_64-linux-gnu/glib-2.0/include',
       '$(CORE_HOME)/common',
       '$(CORE_HOME)/owt_base',
       '$(CORE_HOME)/../../build/libdeps/build/include'
@@ -30,7 +28,7 @@
       '-lusrsctp'
     ],
     # 'INET', 'INET6' flags must be added for usrsctp lib, otherwise the arguments of receive callback would shift
-    'cflags_cc': ['-DINET', '-DINET6','-DBUILD_FOR_GST_ANALYTICS'],
+    'cflags_cc': ['-DINET', '-DINET6','-DBUILD_FOR_GST_ANALYTICS', '<!@(pkg-config --cflags glib-2.0)'],
     #'cflags_cc': ['-DINET', '-DINET6'],
     'conditions': [
       [ 'OS=="mac"', {

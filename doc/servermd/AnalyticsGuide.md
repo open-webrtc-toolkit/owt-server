@@ -71,13 +71,13 @@ docker build --target owt-run-all -t gst-owt-all:run \
 ````
 
 ### Download models for analytics
-Download open model zoo package from <https://github.com/opencv/open_model_zoo/releases/tag/2019_R3.1> and uncompress file:
+Download open model zoo package from <https://github.com/opencv/open_model_zoo/releases/tag/2020.3> and uncompress file:
 ````
-#wget https://github.com/opencv/open_model_zoo/archive/2019_R3.1.tar.gz
-#tar zxf 2019_R3.1.tar.gz
-#cd open_model_zoo-2019_R3.1/tools/downloader
+#wget https://github.com/opencv/open_model_zoo/archive/2020.3.tar.gz
+#tar zxf 2020.3.tar.gz
+#cd open_model_zoo-2020.3/tools/downloader
 ````
-Follow  Model Downloader guide (open_model_zoo-2019_R3.1/tools/downloader/README.md) to install dependencies for downloading open model zoo and then download models.
+Follow  Model Downloader guide (open_model_zoo-2020.3/tools/downloader/README.md) to install dependencies for downloading open model zoo and then download models.
 
 
 ### Build analytics pipeline

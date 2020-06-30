@@ -370,7 +370,7 @@ RUN git config --global user.email "you@example.com" && \
 
     # Get js client sdk for owt
 RUN cd /home && git clone ${OWT_SDK_REPO} && \
-    cd owt-client-javascript/scripts && npm install -g grunt-cli node-gyp && npm install && grunt
+    cd owt-client-javascript/scripts && npm install -g grunt-cli node-gyp@6.1.0 && npm install && grunt
  
     #Build and pack owt
 RUN cd ${SERVER_PATH} && ./scripts/build.js -t mcu -r -c && \
