@@ -81,5 +81,8 @@
     },
     "logger" : {
         "path" : "source/agent/addons/logger"
+    },
+    "audio-ranker" : {
+        "path" : "source/agent/addons/audioRanker"
     }
 }

@@ -7,15 +7,24 @@
 
 #include <rtputils.h>
 
+#include <webrtc/modules/rtp_rtcp/source/rtp_packet.h>
+#include <webrtc/modules/rtp_rtcp/source/rtp_packet_received.h>
+#include <webrtc/modules/rtp_rtcp/source/rtp_header_extensions.h>
+
+
 namespace owt_base {
 
 DEFINE_LOGGER(AudioFrameConstructor, "owt.AudioFrameConstructor");
+
+// TODO: Get the extension ID from SDP
+constexpr uint8_t kAudioLevelExtensionId = 1;
 
 AudioFrameConstructor::AudioFrameConstructor()
   : m_enabled(true)
   , m_transport(nullptr)
 {
     sink_fb_source_ = this;
+    m_extensions.Register<webrtc::AudioLevel>(kAudioLevelExtensionId);
 }
 
 AudioFrameConstructor::~AudioFrameConstructor()
@@ -69,6 +78,19 @@ int AudioFrameConstructor::deliverAudioData_(std::shared_ptr<erizo::DataPacket> 
     frame.length = audio_packet->length;
     frame.timeStamp = head->getTimestamp();
     frame.additionalInfo.audio.isRtpPacket = 1;
+
+    webrtc::RtpPacketReceived rtp_packet(&m_extensions);
+    if(rtp_packet.Parse(frame.payload, frame.length)) {
+        ELOG_WARN("parse success");
+
+        uint8_t audio_level = 0;
+        bool voice = false;
+        if (rtp_packet.GetExtension<webrtc::AudioLevel>(&voice, &audio_level)) {
+            frame.additionalInfo.audio.audioLevel = audio_level;
+            frame.additionalInfo.audio.voice = voice;
+            ELOG_WARN("Has audio level extension %u, %d", audio_level, voice);
+        }
+    }
 
     if (m_enabled) {
         deliverFrame(frame);

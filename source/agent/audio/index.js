@@ -9,6 +9,8 @@ var InternalOut = internalIO.Out;
 var MediaFrameMulticaster = require('../mediaFrameMulticaster/build/Release/mediaFrameMulticaster');
 var AudioMixer = require('../audioMixer/build/Release/audioMixer');
 
+var { SelectiveMixer } = require('./SelectiveMixer');
+
 var logger = require('../logger').logger;
 
 // Logger
@@ -112,7 +114,11 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
     };
 
     var initEngine = function (config, belongToRoom, ctrlr, callback) {
-        engine = new AudioMixer(JSON.stringify(config));
+        if (view) {
+            engine = new SelectiveMixer(3, JSON.stringify(config));
+        } else {
+            engine = new AudioMixer(JSON.stringify(config));
+        }
         belong_to_room = belongToRoom;
         controller = ctrlr;
 
