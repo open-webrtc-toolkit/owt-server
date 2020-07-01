@@ -28,7 +28,7 @@ pipeline {
                 ]){
                     node ('pack-mcu-server') {
                       container ('pack-on-centos-server') {
-                        sh "/root/startRun.sh $env.gitlab_username $env.gitlab_password centos build owt-server $env.GIT_BRANCH $env.GIT_COMMIT $env.CHANGE_ID"
+                       // sh "/root/startRun.sh $env.gitlab_username $env.gitlab_password centos build owt-server $env.GIT_BRANCH $env.GIT_COMMIT $env.CHANGE_ID"
                       }
                     }
                 }
@@ -60,7 +60,7 @@ pipeline {
                             ]) {
                             node('api-test-server') {
                                 container('api-test-server') {
-                                    sh "/root/startRun.sh $env.gitlab_username $env.gitlab_password centos test ${env.GIT_COMMIT} ConferenceClient_API_1"
+                                   // sh "/root/startRun.sh $env.gitlab_username $env.gitlab_password centos test ${env.GIT_COMMIT} ConferenceClient_API_1"
                                 }
                             }
                         }
@@ -84,7 +84,7 @@ pipeline {
                             ]) {
                             node('subscribe-test-server') {
                                 container('subscribe-test-server') {
-                                    sh "/root/startRun.sh $env.gitlab_username $env.gitlab_password centos test ${env.GIT_COMMIT} ConferenceClient_API_2"
+                                   // sh "/root/startRun.sh $env.gitlab_username $env.gitlab_password centos test ${env.GIT_COMMIT} ConferenceClient_API_2"
                                 }
                             }
                         }
@@ -108,7 +108,7 @@ pipeline {
                             ]) {
                             node('simucast-test-server') {
                                 container('simucast-test-server') {
-                                    sh "/root/startRun.sh $env.gitlab_username $env.gitlab_password centos test ${env.GIT_COMMIT} ConferenceClient_API_3"
+                                    //sh "/root/startRun.sh $env.gitlab_username $env.gitlab_password centos test ${env.GIT_COMMIT} ConferenceClient_API_3"
                                 }
                             }
                         }
@@ -119,17 +119,7 @@ pipeline {
     }
 
     post {
-        always {
-            script {
-                sh "curl -H \"Content-Type: application/json\" -X POST --data '{\"commit_id\":\"'$GIT_COMMIT'\",\"job_path\":\"'${env.MCU_CHECK_PATH}'\",\"job_name\":\"'$JOB_BASE_NAME'\",\"build_num\":\"'$BUILD_NUMBER'\",\"os_version\":\"'$env.CENTOS_VERSION'\"}' '${env.checkServerUrl}'/runServer/MCU_BUILD_STEPS"
-            }
-        }
         success {
-            script {
-                if ("${GIT_BRANCH}" == 'master') {
-                   sh "curl ${env.checkServerUrl}/copyNightly/${GIT_COMMIT}/owt-server/1"
-        }
-        }
             setBuildStatus("Build succeeded", "SUCCESS");
         }
         failure {
@@ -137,4 +127,5 @@ pipeline {
         }
     }
 }
+
 
