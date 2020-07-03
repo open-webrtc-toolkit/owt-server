@@ -45,7 +45,7 @@ index ba6c3af..5d7cf97 100644
  }
 +#else
 +void ssl_thread_id(CRYPTO_THREADID *id) {  // NOLINT
-+    CRYPTO_THREADID_set_numeric(id, (unsigned long)std::hash<std::thread::id>()(std::this_thread::get_id());  // NOLINT
++    CRYPTO_THREADID_set_numeric(id, (unsigned long)std::hash<std::thread::id>()(std::this_thread::get_id()));  // NOLINT
 +}
 +#endif
 +#endif
