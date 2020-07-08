@@ -420,7 +420,7 @@ function isLibAllowed(libSrc) {
 
   const whiteList = [
     'rtcadapter',
-    'libssl',
+    'libssl.so.1.1',
     'libcrypto',
     'libnice',
     'libSvtHevcEnc',
