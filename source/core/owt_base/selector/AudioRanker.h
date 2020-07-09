@@ -42,8 +42,16 @@ public:
         std::string ownerId() { return m_ownerId; }
         uint64_t lastUpdateTime() { return m_lastUpdateTime; }
 
-        void setLinkedOutput(FrameDestination* output) { m_linkedOutput = output; }
-        FrameDestination* linkedOutput() { return m_linkedOutput; }
+        void setLinkedOutput(FrameDestination* output)
+        {
+            boost::mutex::scoped_lock lock(m_mutex);
+            m_linkedOutput = output;
+        }
+        FrameDestination* linkedOutput()
+        {
+            boost::mutex::scoped_lock lock(m_mutex);
+            return m_linkedOutput;
+        }
         void setIter(std::multimap<int, std::shared_ptr<AudioLevelProcessor>>::iterator it)
         { m_iter = it; }
         std::multimap<int, std::shared_ptr<AudioLevelProcessor>>::iterator iter() { return m_iter; }
@@ -55,10 +63,11 @@ public:
         std::string m_ownerId;
         uint64_t m_lastUpdateTime;
         std::multimap<int, std::shared_ptr<AudioLevelProcessor>>::iterator m_iter;
+        boost::mutex m_mutex;
         FrameDestination* m_linkedOutput;
     };
 
-    AudioRanker(Visitor* visitor, bool detectMute = true, int minChangeInterval = 200);
+    AudioRanker(Visitor* visitor, bool detectMute = true, uint32_t minChangeInterval = 200);
     virtual ~AudioRanker();
 
     // Append output to the top K
@@ -71,11 +80,12 @@ public:
     void updateInput(std::string streamId, int level);
 
 private:
-    void privUpdateInput(std::string streamId, int level);
+    void privUpdateInput(std::string streamId, int level, bool triggerChange = true);
     void triggerRankChange();
 
     bool m_detectMute;
-    int m_minChangeInterval;
+    bool m_stashChange;
+    uint32_t m_minChangeInterval;
     uint64_t m_lastChangeTime;
     std::vector<FrameDestination*> m_unlinkedOutputs;
     std::unordered_map<FrameDestination*, int> m_outputIndexes;
@@ -86,6 +96,7 @@ private:
 
     std::shared_ptr<IOService> m_service;
 
+    std::vector<std::pair<std::string, std::string>> m_lastUpdates;
     Visitor* m_visitor;
 };
 

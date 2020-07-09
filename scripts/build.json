@@ -84,5 +84,8 @@
     },
     "audio-ranker" : {
         "path" : "source/agent/addons/audioRanker"
+    },
+    "audio-ranker-test" : {
+        "path" : "source/agent/addons/audioRanker/test"
     }
 }
