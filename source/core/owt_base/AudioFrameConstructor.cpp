@@ -81,15 +81,16 @@ int AudioFrameConstructor::deliverAudioData_(std::shared_ptr<erizo::DataPacket> 
 
     webrtc::RtpPacketReceived rtp_packet(&m_extensions);
     if(rtp_packet.Parse(frame.payload, frame.length)) {
-        ELOG_WARN("parse success");
-
         uint8_t audio_level = 0;
         bool voice = false;
         if (rtp_packet.GetExtension<webrtc::AudioLevel>(&voice, &audio_level)) {
             frame.additionalInfo.audio.audioLevel = audio_level;
             frame.additionalInfo.audio.voice = voice;
-            ELOG_WARN("Has audio level extension %u, %d", audio_level, voice);
+        } else {
+            ELOG_DEBUG("No audio level extension %u, %d", audio_level, voice);
         }
+    } else {
+        ELOG_DEBUG("RtpPacket parse fail");
     }
 
     if (m_enabled) {

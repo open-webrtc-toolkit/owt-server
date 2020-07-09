@@ -29,6 +29,7 @@ class SelectiveMixer {
             this.ranker.addOutput(this.topK[i]);
         }
         this.currentRank = Array(k).fill('');
+        log.debug('Init with K:', k);
     }
 
     _onRankChange(jsonChanges) {

@@ -114,8 +114,9 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
     };
 
     var initEngine = function (config, belongToRoom, ctrlr, callback) {
-        if (view) {
-            engine = new SelectiveMixer(3, JSON.stringify(config));
+        var topK = global.config.mix.top_k;
+        if (view && topK > 0) {
+            engine = new SelectiveMixer(topK, JSON.stringify(config));
         } else {
             engine = new AudioMixer(JSON.stringify(config));
         }
