@@ -29,6 +29,7 @@
       '../../../core/owt_base',
       '../../../core/rtc_adapter',
       '../../../../third_party/licode/erizo/src/erizo',
+      '../../../../third_party/licode/erizo/src/erizo/rtp',
       '../../../../third_party/webrtc/src',
     ],
     'libraries': [
