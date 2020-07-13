@@ -8,6 +8,7 @@
             "logger",
             "media-frame-multicaster",
             "audio",
+            "audio-ranker",
             "webrtc",
             "avstream",
             "sip"
@@ -21,6 +22,7 @@
             "logger",
             "media-frame-multicaster",
             "audio",
+            "audio-ranker",
             "webrtc",
             "avstream",
             "sip"
