@@ -60,7 +60,7 @@ class SelectiveMixer {
         }
         for (let i of pendingAddIndexes) {
             // Re-add top K with updated owner/streamId/codec
-            streamId = changes[i][0];
+            let streamId = changes[i][0];
             if (this.inputs.has(streamId)) {
                 let { owner, codec } = this.inputs.get(streamId);
                 log.debug('Mixer addInput:', owner, streamId, codec, i);
