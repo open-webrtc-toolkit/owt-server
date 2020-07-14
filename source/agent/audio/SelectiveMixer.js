@@ -12,6 +12,8 @@ const logger = require('../logger').logger;
 const log = logger.getLogger('SelectiveMixer');
 
 const DEFAULT_K = 3;
+const DETECT_MUTE = false;
+const CHANGE_INTERVAL = 200;
 
 class SelectiveMixer {
 
@@ -21,7 +23,7 @@ class SelectiveMixer {
         this.inputs = new Map();
         this.mixer = new AudioMixer(config);
         this.ranker = new AudioRanker(
-            this._onRankChange.bind(this), false, 100);
+            this._onRankChange.bind(this), DETECT_MUTE, CHANGE_INTERVAL);
         this.topK = [];
         for (let i = 0; i < k; i++) {
             let multicaster = new MediaFrameMulticaster();
@@ -82,9 +84,11 @@ class SelectiveMixer {
         log.debug('removeInput:', owner, streamId);
         if (this.inputs.delete(streamId)) {
             this.ranker.removeInput(streamId);
-            this.mixer.removeInput(owner, streamId);
             let i = this.currentRank.indexOf(streamId);
-            this.currentRank[i] = '';
+            if (i >= 0) {
+                this.mixer.removeInput(owner, streamId);
+                this.currentRank[i] = '';
+            }
         } else {
             log.warn(`Remove non-add input ${streamId}`);
         }
@@ -109,7 +113,9 @@ class SelectiveMixer {
     }
 
     setInputActive(owner, streamId, active) {
-        this.mixer.setInputActive(owner, streamId, active);
+        if (this.currentRank.indexOf(streamId) >= 0) {
+            this.mixer.setInputActive(owner, streamId, active);
+        }
     }
 
     close() {
