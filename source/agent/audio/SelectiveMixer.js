@@ -43,6 +43,7 @@ class SelectiveMixer {
             return;
         }
 
+        let pendingAddIndexes = [];
         for (let i = 0; i < this.currentRank.length; i++) {
             if (this.currentRank[i] !== changes[i][0]) {
                 // Remove previous input
@@ -54,17 +55,21 @@ class SelectiveMixer {
                 } else if (streamId !== '') {
                     log.warn('Unknown stream ID', streamId);
                 }
-                // Re-add top K with updated owner/streamId/codec
-                streamId = changes[i][0];
-                if (this.inputs.has(streamId)) {
-                    let { owner, codec } = this.inputs.get(streamId);
-                    log.debug('Mixer addInput:', owner, streamId, codec, i);
-                    this.mixer.addInput(owner, streamId, codec, this.topK[i].source());
-                } else if (streamId !== '') {
-                    log.warn('Unknown stream ID', streamId);
-                }
+                pendingAddIndexes.push(i);
             }
         }
+        for (let i of pendingAddIndexes) {
+            // Re-add top K with updated owner/streamId/codec
+            streamId = changes[i][0];
+            if (this.inputs.has(streamId)) {
+                let { owner, codec } = this.inputs.get(streamId);
+                log.debug('Mixer addInput:', owner, streamId, codec, i);
+                this.mixer.addInput(owner, streamId, codec, this.topK[i].source());
+            } else if (streamId !== '') {
+                log.warn('Unknown stream ID', streamId);
+            }
+        }
+
         this.currentRank = changes.map(pair => pair[0]);
     }
 
