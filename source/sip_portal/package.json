@@ -5,7 +5,7 @@
     "amqp": "*",
     "log4js": "^1.1.1",
     "toml": "*",
-    "mongoose": "^4.13.6",
+    "mongoose": "^5.9.6",
     "fraction.js": "*"
   },
   "bin": "sip_portal.js",
