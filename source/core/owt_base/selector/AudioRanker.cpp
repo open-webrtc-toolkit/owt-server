@@ -50,10 +50,9 @@ void AudioRanker::addOutput(FrameDestination* output)
             m_others.erase(it);
             newIt->second->setLinkedOutput(output);
             newIt->second->setIter(newIt);
-
-            ELOG_DEBUG("triggerRankChange when addOutput");
-            triggerRankChange();
         }
+        ELOG_DEBUG("triggerRankChange when addOutput");
+        triggerRankChange();
     });
 }
 

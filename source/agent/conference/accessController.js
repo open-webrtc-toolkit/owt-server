@@ -272,6 +272,34 @@ module.exports.create = function(spec, rpcReq, onSessionEstablished, onSessionAb
     return rpcReq.mediaOnOff(session.locality.node, sessionId, track, session.direction, onOff);
   };
 
+  that.addLocalAudioRank = function(sessionId, owner, audioNode) {
+    log.debug('addLocalAudioRank:', sessionId, owner, audioNode);
+
+    if (!sessions[sessionId]) {
+      return Promise.reject('Session does NOT exist');
+    }
+    var session = sessions[sessionId];
+    if (session.options.type !== 'webrtc') {
+      return Promise.reject('Session does NOT support addLocalAudioRank');
+    }
+
+    return rpcReq.addLocalAudioRank(session.locality.node, sessionId, owner, audioNode);
+  };
+
+  that.removeLocalAudioRank = function(sessionId, audioNode) {
+    log.debug('removeLocalAudioRank:', sessionId, audioNode);
+
+    if (!sessions[sessionId]) {
+      return Promise.reject('Session does NOT exist');
+    }
+    var session = sessions[sessionId];
+    if (session.options.type !== 'webrtc') {
+      return Promise.reject('Session does NOT support removeLocalAudioRank');
+    }
+
+    return rpcReq.removeLocalAudioRank(session.locality.node, sessionId, audioNode);
+  };
+
   that.onFaultDetected = function (faultType, faultId) {
     for (var session_id in sessions) {
       var locality = sessions[session_id].locality;

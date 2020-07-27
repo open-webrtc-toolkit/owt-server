@@ -16,6 +16,7 @@
     "WorkingJS": "INFO",
     "NodeManager": "INFO",
     "WebrtcNode": "INFO",
+    "LocalAudioRank": "INFO",
     "WrtcConnection": "WARN",
     "WorkingAgent": "INFO",
     "Connections": "INFO",

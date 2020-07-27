@@ -51,6 +51,9 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
         // For internal SCTP connection creation
         internalConnFactory = new InternalConnectionFactory;
 
+    // Key: streamId, Value: { codec, owner, originId, conn }
+    var mutableAudios = new Map();
+
     var addInput = function (stream_id, owner, codec, options, on_ok, on_error) {
         if (engine) {
             var conn = internalConnFactory.fetch(stream_id, 'in');
@@ -192,6 +195,39 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
             return callback('callback', 'error', 'can not publish a stream to audio engine without proper audio codec');
         }
 
+        if (options.audio.codec === 'unknown') {
+            // Setup connection for ranked audio
+            const conn = internalConnFactory.fetch(stream_id, 'in');
+            if (!conn) {
+                return callback('callback', 'error', 'Create internal connection for unknown codec failed.');
+            }
+            conn.connect(options);
+
+            if (!mutableAudios.has(stream_id)) {
+                const initialAudio = {
+                    codec: undefined,
+                    owner: '',
+                    originId: '',
+                    conn
+                };
+                mutableAudios.set(stream_id, initialAudio);
+            } else {
+                const audioInfo = mutableAudios.get(stream_id);
+                if (!audioInfo.conn) {
+                    audioInfo.conn = conn;
+                    if (audioInfo.codec) {
+                        // This stream has mapped real audio
+                        if (!engine.addInput(audioInfo.owner, stream_id, audioInfo.codec, conn)) {
+                            log.warn('Failed to add mutable audio to engine:', stream_id);
+                        }
+                    }
+                } else {
+                    log.warn('Duplicate publish conn for audio:', stream_id);
+                }
+            }
+            return callback('callback', 'ok');
+        }
+
         if (inputs[stream_id] === undefined) {
             addInput(stream_id, options.publisher, options.audio.codec, options, function () {
                 callback('callback', 'ok');
@@ -307,6 +343,49 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
             log.error('Unknown service type to init an audio node:', service);
             callback('callback', 'error', 'Unknown service type to init an audio node.');
         }
+    };
+
+    function formatStr (fmt) {
+        if (!fmt) {
+            return fmt;
+        }
+        var format_str = (fmt.codec || '');
+        fmt.sampleRate && (format_str = format_str + '_' + fmt.sampleRate);
+        fmt.channelNum && (format_str = format_str + '_' + fmt.channelNum);
+        fmt.profile && (format_str = format_str + '_' + fmt.profile);
+        return format_str;
+    };
+
+    that.onRankChange = function (rankChanges) {
+        log.info('onRankChange:', rankChanges);
+        rankChanges.forEach(change => {
+            let {id, owner, originId, codec} = change;
+            codec = formatStr(codec);
+            if (mutableAudios.has(id)) {
+                const oldInfo = mutableAudios.get(id);
+                if (oldInfo.conn && oldInfo.originId !== originId) {
+                    if (oldInfo.codec) {
+                        // Remove previous input
+                        engine.removeInput(oldInfo.owner, id);
+                    }
+                    if (codec) {
+                        // Add new input
+                        if (!engine.addInput(owner, id, codec, oldInfo.conn)) {
+                            log.warn('Failed addInput to engine during rank change:', id);
+                        }
+                    }
+                }
+                const newInfo = {
+                    owner,
+                    originId,
+                    codec,
+                    conn: oldInfo.conn
+                };
+                mutableAudios.set(id, newInfo);
+            } else {
+                mutableAudios.set(id, {owner, originId, codec});
+            }
+        });
     };
 
     that.close = function() {
