@@ -12,7 +12,7 @@ const logger = require('../logger').logger;
 const log = logger.getLogger('SelectiveMixer');
 
 const DEFAULT_K = 3;
-const DETECT_MUTE = false;
+const DETECT_MUTE = true;
 const CHANGE_INTERVAL = 200;
 
 class SelectiveMixer {

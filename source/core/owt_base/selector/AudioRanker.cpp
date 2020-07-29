@@ -11,7 +11,7 @@ using std::string;
 using std::vector;
 
 // Treat streams without frames in a certain period as muted
-static constexpr uint64_t kNoFrameThreshold = 200;
+static constexpr uint64_t kNoFrameThreshold = 600;
 static constexpr int kRankChangeInterval = 200;
 
 DEFINE_LOGGER(AudioRanker, "owt.AudioRanker");
@@ -50,10 +50,9 @@ void AudioRanker::addOutput(FrameDestination* output)
             m_others.erase(it);
             newIt->second->setLinkedOutput(output);
             newIt->second->setIter(newIt);
-
-            ELOG_DEBUG("triggerRankChange when addOutput");
-            triggerRankChange();
         }
+        ELOG_DEBUG("triggerRankChange when addOutput");
+        triggerRankChange();
     });
 }
 
