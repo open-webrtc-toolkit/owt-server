@@ -265,7 +265,7 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
         log.debug('addLocalAudioRank:', connectionId, audioNode);
         var conn = connections.getConnection(connectionId);
         if (conn && conn.direction === 'in') {
-            if (conn.type === 'webrtc') {
+            if (conn.type === 'webrtc' && global.config.webrtc.top_audio_num > 0) {
                 let audioCodec = conn.connection.format('audio');
                 if (audioCodec) {
                     let rankedIds = [];
@@ -290,7 +290,7 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
                     callback('callback', 'error', 'addLocalAudioRank on non-audio connection');
                 }
             } else {
-                callback('callback', 'error', 'addLocalAudioRank on non-webrtc connection');
+                callback('callback', 'error', 'addLocalAudioRank not supported');
             }
         } else {
           callback('callback', 'error', 'Connection does NOT exist:' + connectionId);

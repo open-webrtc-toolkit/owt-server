@@ -73,7 +73,7 @@ class LocalAudioRank {
         let changes = JSON.parse(jsonChanges);
         // Get rank difference
         if (changes.length !== this.currentRank.length) {
-            log.warn('Changes number not equal to K');
+            log.info('Changes number not equal to K');
             return;
         }
 
