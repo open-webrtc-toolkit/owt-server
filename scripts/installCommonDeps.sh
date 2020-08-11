@@ -150,13 +150,14 @@ install_openssl(){
   $INCR_INSTALL && [[ ! -z $LIST_LIBS ]] && echo "openssl already installed." && return 0
 
   if [ -d $LIB_DIR ]; then
-    local SSL_BASE_VERSION="1.0.2"
-    local SSL_VERSION="1.0.2t"
+    local SSL_BASE_VERSION="1.1.1"
+    local SSL_VERSION="1.1.1g"
     cd $LIB_DIR
     rm -f ./build/lib/libssl.*
     rm -f ./build/lib/libcrypto.*
     rm -rf openssl-1*
-    wget -c http://www.openssl.org/source/old/${SSL_BASE_VERSION}/openssl-${SSL_VERSION}.tar.gz
+
+    wget -c https://www.openssl.org/source/openssl-${SSL_VERSION}.tar.gz
     tar xf openssl-${SSL_VERSION}.tar.gz
     cd openssl-${SSL_VERSION}
     ./config no-ssl3 --prefix=$PREFIX_DIR -fPIC
@@ -326,6 +327,7 @@ install_libsrtp2(){
 
   if [ -d $LIB_DIR ]; then
     cd $LIB_DIR
+    rm -rf libsrtp-2.1.0
     curl -o libsrtp-2.1.0.tar.gz https://codeload.github.com/cisco/libsrtp/tar.gz/v2.1.0
     tar -zxvf libsrtp-2.1.0.tar.gz
     cd libsrtp-2.1.0
@@ -381,7 +383,7 @@ install_libre() {
     rm -rf re
     git clone https://github.com/creytiv/re.git
     pushd re >/dev/null
-    git checkout v0.4.16
+    git checkout v0.5.0
     make SYSROOT_ALT=${PREFIX_DIR} RELEASE=1
     make install SYSROOT_ALT=${PREFIX_DIR} RELEASE=1 PREFIX=${PREFIX_DIR}
     popd >/dev/null
