@@ -9,12 +9,13 @@ namespace owt_base {
 MediaFrameMulticaster::MediaFrameMulticaster()
     : m_pendingKeyFrameRequests(0)
 {
-    m_feedbackTimer.reset(new JobTimer(1, this));
+    m_feedbackTimer = SharedJobTimer::GetSharedFrequencyTimer(1);
+    m_feedbackTimer->addListener(this);
 }
 
 MediaFrameMulticaster::~MediaFrameMulticaster()
 {
-    m_feedbackTimer->stop();
+    m_feedbackTimer->removeListener(this);
 }
 
 void MediaFrameMulticaster::onFeedback(const FeedbackMsg& msg)
