@@ -64,6 +64,8 @@ private:
     private:
         VideoReceiveAdapterImpl* m_parent;
         webrtc::VideoCodecType m_codec;
+        uint16_t m_width;
+        uint16_t m_height;
         std::unique_ptr<uint8_t[]> m_frameBuffer;
         uint32_t m_bufferSize;
     };
