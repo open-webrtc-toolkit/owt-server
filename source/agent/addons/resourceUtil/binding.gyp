@@ -7,11 +7,9 @@
       './ResourceUtil.cc',
     ],
     'include_dirs': [
-      '/usr/include/glib-2.0',
-      '/usr/lib/x86_64-linux-gnu/glib-2.0/include',
+      '/opt/intel/openvino/deployment_tools/inference_engine/include',
       '$(CORE_HOME)/common',
-      '$(CORE_HOME)/owt_base',
-      '/opt/intel/dldt/inference-engine/include/'
+      '$(CORE_HOME)/owt_base'
     ],
     # 'include_dirs': [ '..',
     #                   '$(CORE_HOME)/common',
@@ -24,7 +22,7 @@
       '-lgobject-2.0',
       '-lglib-2.0',
       '-llog4cxx',
-      '-L/opt/intel/dldt/inference-engine/lib/intel64/',
+      '-L/opt/intel/openvino/deployment_tools/inference_engine/lib/intel64',
       '-linference_engine',
       # '-llog4cxx',
       # '-L$(CORE_HOME)/../../build/libdeps/build/lib',
@@ -32,7 +30,7 @@
     ],
     # 'INET', 'INET6' flags must be added for usrsctp lib, otherwise the arguments of receive callback would shift
     #'cflags_cc': ['-DINET', '-DINET6', '-DBUILD_FOR_RTSPSOURCE'],
-    'cflags_cc': ['-DINET', '-DINET6'],
+    'cflags_cc': ['-DINET', '-DINET6', '<!@(pkg-config --cflags glib-2.0)'],
     'conditions': [
       [ 'OS=="mac"', {
         'xcode_settings': {
