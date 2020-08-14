@@ -71,7 +71,7 @@ GstElement * MyPipeline::InitializePipeline() {
 
 
     if (!detect){
-        std::cout << "detect element coule not be created" << std::endl;
+        std::cout << "detect element could not be created" << std::endl;
         return NULL;
     }
 

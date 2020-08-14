@@ -864,10 +864,10 @@ For usage of media analytics REST API, refer to the REST API document.
 ### 6.1.2 Building Existing Plugins {#Conferencesection6_1_2}
 A few sample plugins are shipped with OWT server. After you build and install OWT server, the source of those analytics plugins will be placed under analytics_agent/plugins/ directory.
 
-Before you build those plugins, you need to install Intel Distribution of OpenVINO 2018 R5 from [https://software.intel.com/en-us/openvino-toolkit/](https://software.intel.com/en-us/openvino-toolkit/). After installation, make sure you go to /opt/intel/computer_vision_sdk/install_dependencies/ directory, and run:
+Before you build those plugins, you need to install Intel Distribution of OpenVINO 2020 3 from [https://software.intel.com/en-us/openvino-toolkit/](https://software.intel.com/en-us/openvino-toolkit/). After installation, make sure you go to /opt/intel/computer_vision_sdk/install_dependencies/ directory, and run:
     sudo -E ./install_NEO_OCL_driver.sh
 
-Intel Distribution of OpenVINO 2018 R5 will require Intel Core 6th to 8th Generation with Intel HD graphics or Iris(Pro) graphics for inferencing on GPU with OpenCL as the backend. The supported OSes are Ubuntu 16.04 and higher, or CentOS 7.4 or higher. Make sure your hardware/software configuration is correct before building and deploying the sample plugins.
+Intel Distribution of OpenVINO 2020 3 will require Intel Core 6th to 10th Generation with Intel HD graphics or Iris(Pro) graphics for inferencing on GPU with OpenCL as the backend. The supported OSes are Ubuntu 18.04 and higher, or CentOS 7.6 or higher. Make sure your hardware/software configuration is correct before building and deploying the sample plugins.
 
 To build the plugins, simply go to analytics_agent/plugins/sample directory, and run:
     ./build_samples.sh
