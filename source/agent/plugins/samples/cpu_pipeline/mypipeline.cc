@@ -85,7 +85,6 @@ GstElement * MyPipeline::InitializePipeline() {
 
 rvaStatus MyPipeline::LinkElements() {
     gboolean link_ok;
-    GstCaps *postprocsrccaps, *postprocsinkcaps;
     const char* path = std::getenv("CONFIGFILE_PATH");
     const auto data = toml::parse(path);
     const auto& pipelineconfig = toml::find(data, pipelinename.c_str());
@@ -103,8 +102,6 @@ rvaStatus MyPipeline::LinkElements() {
     std::cout << "input height is:" << inputheight << std::endl;
     std::cout << "input framerate is:" << inputframerate << std::endl;
 
-    postprocsinkcaps = gst_caps_from_string("video/x-raw(memory:VASurface),format=NV12");
-    postprocsrccaps = gst_caps_from_string("video/x-raw(memory:VASurface),format=NV12");
 
     GstCaps* inputcaps = gst_caps_new_simple("video/x-h264",
                 "format", G_TYPE_STRING, "avc",
@@ -138,8 +135,6 @@ rvaStatus MyPipeline::LinkElements() {
 
     g_object_set(G_OBJECT(detect),"device", device.c_str(),
 		    "model",model.c_str(),
-		    "cpu-streams", 12,
-		    "nireq", 24,
 		    "inference-id", "dtc", NULL);
 
 
