@@ -17,7 +17,7 @@ DEFINE_LOGGER(QuicTransportStream, "QuicTransportStream");
 
 Nan::Persistent<v8::Function> QuicTransportStream::s_constructor;
 
-const int uuidSizeInByte = 16;
+const int uuidSizeInBytes = 16;
 
 QuicTransportStream::QuicTransportStream()
     : QuicTransportStream(nullptr)
@@ -70,7 +70,6 @@ NAN_MODULE_INIT(QuicTransportStream::init)
 
     Nan::SetPrototypeMethod(tpl, "write", write);
     Nan::SetPrototypeMethod(tpl, "addDestination", addDestination);
-    //Nan::SetPrototypeMethod(tpl, "write", write);
 
     s_constructor.Reset(Nan::GetFunction(tpl).ToLocalChecked());
     Nan::Set(target, Nan::New("QuicTransportStream").ToLocalChecked(), Nan::GetFunction(tpl).ToLocalChecked());
@@ -89,13 +88,14 @@ NAN_METHOD(QuicTransportStream::newInstance)
     info.GetReturnValue().Set(info.This());
 }
 
-NAN_METHOD(QuicTransportStream::write){
-    if(info.Length()<2){
+NAN_METHOD(QuicTransportStream::write)
+{
+    if (info.Length() < 2) {
         Nan::ThrowTypeError("Data is not provided.");
         return;
     }
     QuicTransportStream* obj = Nan::ObjectWrap::Unwrap<QuicTransportStream>(info.Holder());
-    uint8_t* buffer=(uint8_t*)node::Buffer::Data(info[0]->ToObject());
+    uint8_t* buffer = (uint8_t*)node::Buffer::Data(info[0]->ToObject());
     unsigned int length = info[1]->Uint32Value();
     obj->m_stream->Write(buffer, length);
     info.GetReturnValue().Set(info.This());
@@ -133,14 +133,14 @@ void QuicTransportStream::MaybeReadContentSessionId()
 {
     if (!m_receivedContentSessionId) {
         // Match to a content session.
-        if (m_stream->ReadableBytes() > 0 && m_stream->ReadableBytes() < uuidSizeInByte) {
+        if (m_stream->ReadableBytes() > 0 && m_stream->ReadableBytes() < uuidSizeInBytes) {
             ELOG_ERROR("No enough data to get content session ID.");
             m_stream->Close();
             return;
         }
-        uint8_t* data = new uint8_t[uuidSizeInByte];
-        m_stream->Read(data, uuidSizeInByte);
-        m_contentSessionId = std::vector<uint8_t>(data, data + uuidSizeInByte);
+        uint8_t* data = new uint8_t[uuidSizeInBytes];
+        m_stream->Read(data, uuidSizeInBytes);
+        m_contentSessionId = std::vector<uint8_t>(data, data + uuidSizeInBytes);
         m_receivedContentSessionId = true;
         m_asyncOnContentSessionId.data = this;
         uv_async_send(&m_asyncOnContentSessionId);
@@ -150,7 +150,8 @@ void QuicTransportStream::MaybeReadContentSessionId()
     }
 }
 
-NAUV_WORK_CB(QuicTransportStream::onData){
+NAUV_WORK_CB(QuicTransportStream::onData)
+{
     Nan::HandleScope scope;
     QuicTransportStream* obj = reinterpret_cast<QuicTransportStream*>(async->data);
     if (obj == nullptr) {
@@ -185,7 +186,7 @@ NAUV_WORK_CB(QuicTransportStream::onContentSessionId)
         if (onEventLocal->IsFunction()) {
             v8::Local<v8::Function> eventCallback = onEventLocal.As<Function>();
             Nan::AsyncResource* resource = new Nan::AsyncResource(Nan::New<v8::String>("oncontentsessionid").ToLocalChecked());
-            Local<Value> args[]={Nan::CopyBuffer((char*)obj->m_contentSessionId.data(),uuidSizeInByte).ToLocalChecked()};
+            Local<Value> args[] = { Nan::CopyBuffer((char*)obj->m_contentSessionId.data(), uuidSizeInBytes).ToLocalChecked() };
             resource->runInAsyncScope(Nan::GetCurrentContext()->Global(), eventCallback, 1, args);
         }
     }
@@ -193,7 +194,7 @@ NAUV_WORK_CB(QuicTransportStream::onContentSessionId)
 
 void QuicTransportStream::SignalOnData()
 {
-    if(!m_isPiped){
+    if (!m_isPiped) {
         m_asyncOnData.data = this;
         uv_async_send(&m_asyncOnData);
         return;

@@ -18,8 +18,9 @@
 const Connections = require('./connections');
 const InternalConnectionFactory = require('./InternalConnectionFactory');
 const logger = require('../logger').logger;
-const QuicTransportServer=require('./webtransport/quicTransportServer');
-const QuicTransportStreamPipeline=require('./webtransport/quicTransportStreamPipeline');
+const QuicTransportServer = require('./webtransport/quicTransportServer');
+const QuicTransportStreamPipeline =
+    require('./webtransport/quicTransportStreamPipeline');
 const log = logger.getLogger('QuicNode');
 const addon = require('./build/Release/quic');
 
@@ -34,7 +35,7 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
     var internalConnFactory = new InternalConnectionFactory;
     const incomingStreamPipelines =
         new Map();  // Key is publication ID, value is stream pipeline.
-    const outgoingStreamPipeline =
+    const outgoingStreamPipelines =
         new Map();  // Key is subscription ID, value is stream pipeline.
 
     var notifyStatus = (controller, sessionId, direction, status) => {
@@ -68,7 +69,7 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
       if (direction === 'in') {
         pipelineMap = incomingStreamPipelines;
       } else {
-        pipelineMap = outgoingStreamPipeline;
+        pipelineMap = outgoingStreamPipelines;
       }
       if (pipelineMap.has(streamId)) {
         return callback(

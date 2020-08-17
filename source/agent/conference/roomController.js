@@ -1524,13 +1524,13 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                 on_error(error_reason);
             };
 
-            const createMapForSources=function(audioStreamId, videoStreamId, dataStreamId){
-                const sourceMap=new Map();
-                sourceMap['audio']=audioStreamId;
-                sourceMap['video']=videoStreamId;
-                sourceMap['data']=dataStreamId
+            const createMapForSources = function(audioStreamId, videoStreamId, dataStreamId) {
+                const sourceMap = new Map();
+                sourceMap['audio'] = audioStreamId;
+                sourceMap['video'] = videoStreamId;
+                sourceMap['data'] = dataStreamId;
                 return sourceMap;
-            }
+            };
 
             var finally_ok = function (audioStream, videoStream, dataStream) {
                 return function () {
@@ -1540,9 +1540,9 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                         (!dataStream || streams[dataStream])) {
 
                         terminals[terminal_id].subscribed[subscriptionId] = {};
-                        for(cosnt [kind, streamId] of createMapForSources(audioStream,videoStream,dataStream)){
-                            if(from){
-                                streams[streamId][kind].subscriber=streams[streamId][kind].subscribers||[];
+                        for (const [kind, streamId] of createMapForSources(audioStream, videoStream, dataStream)) {
+                            if (from) {
+                                streams[streamId][kind].subscriber = streams[streamId][kind].subscribers || [];
                                 streams[streamId][kind].subscribers.push(terminal_id);
                                 terminals[terminal_id].subscribed[subscriptionId].audio = streamId;
                             }
