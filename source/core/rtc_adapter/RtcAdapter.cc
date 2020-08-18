@@ -17,22 +17,6 @@
 
 namespace rtc_adapter {
 
-namespace {
-
-// std::once_flag g_startOnce;
-// std::unique_ptr<webrtc::ProcessThread> g_moduleThread;
-// std::unique_ptr<webrtc::ProcessThread> g_pacerThread;
-
-// void initCallThreads()
-// {
-//     g_moduleThread = webrtc::ProcessThread::Create("ModuleProcessThread");
-//     g_pacerThread = webrtc::ProcessThread::Create("PacerThread");
-//     g_moduleThread->Start();
-//     g_pacerThread->Start();
-// }
-
-}
-
 class RtcAdapterImpl : public RtcAdapter,
                        public CallOwner {
 public:
@@ -87,26 +71,10 @@ void RtcAdapterImpl::initCall()
         if (!m_call) {
             webrtc::Call::Config call_config(m_eventLog.get());
             call_config.task_queue_factory = m_taskQueueFactory.get();
-            // Initialize global threads once
-            // std::call_once(g_startOnce, initCallThreads);
-
-            static std::unique_ptr<webrtc::ProcessThread> g_moduleThread =
-                webrtc::ProcessThread::Create("ModuleProcessThread");
-            static std::unique_ptr<webrtc::ProcessThread> g_pacerThread =
-                webrtc::ProcessThread::Create("PacerThread");
-
-            std::unique_ptr<webrtc::ProcessThread> moduleThreadProxy =
-                std::make_unique<ProcessThreadProxy>(g_moduleThread.get());
-            std::unique_ptr<webrtc::ProcessThread> pacerThreadProxy =
-                std::make_unique<ProcessThreadProxy>(g_pacerThread.get());
             m_call.reset(webrtc::Call::Create(
                 call_config, webrtc::Clock::GetRealTimeClock(),
-                std::move(moduleThreadProxy), std::move(pacerThreadProxy)));
-            // m_call.reset(webrtc::Call::Create(
-            //     call_config, webrtc::Clock::GetRealTimeClock(),
-            //     webrtc::ProcessThread::Create("ModuleProcessThread"),
-            //     webrtc::ProcessThread::Create("PacerThread")));
-            // m_call.reset(webrtc::Call::Create(call_config));
+                webrtc::ProcessThread::Create("ModuleProcessThread"),
+                webrtc::ProcessThread::Create("PacerThread")));
         }
     });
 }
