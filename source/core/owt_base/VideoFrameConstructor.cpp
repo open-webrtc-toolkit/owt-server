@@ -40,7 +40,8 @@ VideoFrameConstructor::VideoFrameConstructor(
 {
     m_config.transport_cc = transportccExtId;
     assert(base);
-    m_feedbackTimer.reset(new JobTimer(1, this));
+    m_feedbackTimer = SharedJobTimer::GetSharedFrequencyTimer(1);
+    m_feedbackTimer->addListener(this);
     m_rtcAdapter = base->m_rtcAdapter;
 }
 
