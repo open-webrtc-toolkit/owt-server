@@ -19,7 +19,7 @@ pipeline {
             options { timeout(time:30,unit:'MINUTES') }
             steps {
                 podTemplate(name: 'pack-server-ubuntu', label: 'pack-mcu-server-ubuntu', containers: [
-                    containerTemplate(name: 'pack-on-ubuntu-server', image: "$env.JS_MCU_BUILD_UBUNTU42x",  ttyEnabled: true, alwaysPullImage: true, privileged: true, resourceRequestCpu: '5000m', resourceLimitCpu: '6000m', network: 'host', command: 'cat')
+                    containerTemplate(name: 'pack-on-ubuntu-server', image: "$env.JS_MCU_BUILD_UBUNTU42x",  ttyEnabled: true, alwaysPullImage: true, privileged: true, resourceRequestCpu: '5000m', resourceLimitCpu: '6000m',  command: 'cat')
                 ]){
                     node ('pack-mcu-server-ubuntu') {
                       container ('pack-on-ubuntu-server') {
@@ -41,7 +41,7 @@ pipeline {
                 stage('API test') {
                     steps {
                         podTemplate(name: 'api-test-server-ubuntu', label: 'api-test-server-ubuntu', cloud: 'kubernetes', containers: [
-                            containerTemplate(name: 'api-test-server-ubuntu', image: "$env.JSMCU_TEST_IMAGE_UBUNTU42x",  ttyEnabled: true, alwaysPullImage: true, privileged: true, resourceRequestCpu: '7000m', resourceLimitCpu: '8000m',resourceLimitMemory: '9.0Gi', resourceRequestMemory: '8.0Gi', network: 'host', command: 'cat'),
+                            containerTemplate(name: 'api-test-server-ubuntu', image: "$env.JSMCU_TEST_IMAGE_UBUNTU42x",  ttyEnabled: true, alwaysPullImage: true, privileged: true, resourceRequestCpu: '7000m', resourceLimitCpu: '8000m',resourceLimitMemory: '9.0Gi', resourceRequestMemory: '8.0Gi', command: 'cat'),
                             ]) {
                             node('api-test-server-ubuntu') {
                                 container('api-test-server-ubuntu') {
@@ -57,7 +57,7 @@ pipeline {
                 stage('Subscribe test') {
                     steps {
                         podTemplate(name:'subscribe-test-server-ubuntu', label: 'subscribe-test-server-ubuntu', cloud: 'kubernetes',containers: [
-                            containerTemplate(name: 'subscribe-test-server-ubuntu', image: "$env.JSMCU_TEST_IMAGE_UBUNTU42x",  ttyEnabled: true, alwaysPullImage: true, privileged: true, resourceRequestCpu: '7000m', resourceLimitCpu: '8000m',resourceLimitMemory: '9.0Gi', resourceRequestMemory: '8.0Gi', network: 'host', command: 'cat'),
+                            containerTemplate(name: 'subscribe-test-server-ubuntu', image: "$env.JSMCU_TEST_IMAGE_UBUNTU42x",  ttyEnabled: true, alwaysPullImage: true, privileged: true, resourceRequestCpu: '7000m', resourceLimitCpu: '8000m',resourceLimitMemory: '9.0Gi', resourceRequestMemory: '8.0Gi', command: 'cat'),
                             ]) {
                             node('subscribe-test-server-ubuntu') {
                                 container('subscribe-test-server-ubuntu') {
