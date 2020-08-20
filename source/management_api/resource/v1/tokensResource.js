@@ -101,13 +101,20 @@ var generateToken = function (currentRoom, authData, origin, callback) {
         }
 
         token.secure = ec.ssl;
-        if (ec.hostname !== '') {
+        if (ec.via_address !== '') {
+            token.host = ec.via_address;
+        }
+        else if (ec.hostname !== '') {
             token.host = ec.hostname;
         } else {
             token.host = ec.ip;
         }
 
-        token.host += ':' + ec.port;
+        if (ec.via_port !== 0) {
+            token.host += ':' + ec.via_port;
+        } else {
+            token.host += ':' + ec.port;
+	}
 
         dataAccess.token.create(token, function(id) {
             getTokenString(id, token)
