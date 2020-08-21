@@ -21,8 +21,7 @@ config.portal = config.portal || {};
 config.portal.ip_address = config.portal.ip_address || '';
 config.portal.hostname = config.portal.hostname|| '';
 config.portal.port = config.portal.port || 8080;
-config.portal.via_address = config.portal.via_address || '';
-config.portal.via_port = config.portal.via_port || 0;
+config.portal.via_host = config.portal.via_host || '';
 config.portal.ssl = config.portal.ssl || false;
 config.portal.force_tls_v12 = config.portal.force_tls_v12 || false;
 config.portal.reconnection_ticket_lifetime = config.portal.reconnection_ticket_lifetime || 600;
@@ -53,13 +52,9 @@ if (config.portal.hostname.indexOf('$') == 0) {
     config.portal.hostname = process.env[config.portal.hostname.substr(1)];
     log.info('ENV: config.portal.hostname=' + config.portal.hostname);
 }
-if(process.env.owt_via_address != undefined) {
-    config.portal.via_address = process.env.owt_via_address;
-    log.info('ENV: config.portal.via_address=' + config.portal.via_address);
-}
-if(process.env.owt_via_port != undefined) {
-    config.portal.via_port = process.env.owt_via_port;
-    log.info('ENV: config.portal.via_port=' + config.portal.via_port);
+if(process.env.owt_via_host !== undefined) {
+    config.portal.via_host = process.env.owt_via_host;
+    log.info('ENV: config.portal.via_address=' + config.portal.via_host);
 }
 
 global.config = config;
@@ -146,8 +141,7 @@ var joinCluster = function (on_ok) {
               info: {ip: ip_address,
                      hostname: config.portal.hostname,
                      port: config.portal.port,
-                     via_address: config.portal.via_address,
-                     via_port: config.portal.via_port,
+                     via_host: config.portal.via_host,
                      ssl: config.portal.ssl,
                      state: 2,
                      max_load: config.cluster.max_load,
