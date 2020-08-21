@@ -340,7 +340,7 @@ var Conference = function (rpcClient, selfRpcId) {
     }
   };
 
-  var initRoom = function(roomId) {
+  var initRoom = function(roomId, origin) {
     if (is_initializing) {
       return new Promise(function(resolve, reject) {
         var interval = setInterval(function() {
@@ -376,6 +376,7 @@ var Conference = function (rpcClient, selfRpcId) {
                   rpcClient: rpcClient,
                   room: roomId,
                   config: room_config,
+		  origin: origin,
                   selfRpcId: selfRpcId
                 },
                 function onOk(rmController) {
@@ -396,6 +397,7 @@ var Conference = function (rpcClient, selfRpcId) {
                     var mixed_stream_info = Stream.createMixStream(room_id, viewSettings, room_config.mediaOut, av_capability);
 
                     streams[mixed_stream_id] = mixed_stream_info;
+                    streams[mixed_stream_id].info.origin = origin;
                     log.debug('Mixed stream info:', mixed_stream_info);
                     room_config.notifying.streamChange &&
                       sendMsg('room', 'all', 'stream', {id: mixed_stream_id, status: 'add', data: Stream.toPortalFormat(mixed_stream_info)});
@@ -406,7 +408,7 @@ var Conference = function (rpcClient, selfRpcId) {
                                                        user: 'admin',
                                                        role: 'admin',
                                                        portal: undefined,
-                                                       origin: {isp: 'isp', region: 'region'},//FIXME: hard coded.
+                                                       origin: origin,
                                                        permission: {
                                                         subscribe: {audio: true, video: true},
                                                         publish: {audio: true, video: true}
@@ -598,9 +600,10 @@ var Conference = function (rpcClient, selfRpcId) {
     }
 
     var isReadded = !!(streams[id] && !streams[id].isInConnecting);
-
+    var origin = streams[id].info.origin;
+    info.origin = origin;
     return new Promise((resolve, reject) => {
-      roomController && roomController.publish(info.owner, id, locality, media, info.type, function() {
+      roomController && roomController.publish(info.owner, id, locality, media, info.type, origin, function() {
         if (participants[info.owner]) {
           var st = Stream.createForwardStream(id, media, info, room_config);
           st.info.inViews = [];
@@ -733,6 +736,7 @@ var Conference = function (rpcClient, selfRpcId) {
           };
         }
       }
+      media.origin = streams[media.video.from].info.origin;
     }
 
     if (media.audio) {
@@ -745,6 +749,7 @@ var Conference = function (rpcClient, selfRpcId) {
       media.audio.format = (media.audio.format || source.format);
       mediaSpec.audio.format = media.audio.format;
       mediaSpec.audio.status = (media.audio.status || 'active');
+      media.origin = streams[media.audio.from].info.origin;
     }
 
     const isAudioPubPermitted = !!participants[info.owner].isPublishPermitted('audio'); 
@@ -851,7 +856,7 @@ var Conference = function (rpcClient, selfRpcId) {
   that.join = function(roomId, participantInfo, callback) {
     log.debug('participant:', participantInfo, 'join room:', roomId);
     var permission;
-    return initRoom(roomId)
+    return initRoom(roomId, participantInfo.origin)
       .then(function() {
         log.debug('room_config.participantLimit:', room_config.participantLimit, 'current participants count:', Object.keys(participants).length);
         if (room_config.participantLimit > 0 && (Object.keys(participants).length >= room_config.participantLimit + 1)) {
@@ -1006,7 +1011,8 @@ var Conference = function (rpcClient, selfRpcId) {
         }
       }
 
-      initiateStream(streamId, {owner: participantId, type: pubInfo.type});
+      var origin = participants[participantId].getOrigin();
+      initiateStream(streamId, {owner: participantId, type: pubInfo.type, origin: origin});
       return accessController.initiate(participantId, streamId, 'in', participants[participantId].getOrigin(), pubInfo, format_preference)
       .then((result) => {
         callback('callback', result);
@@ -1796,8 +1802,12 @@ var Conference = function (rpcClient, selfRpcId) {
     log.debug('addStreamingIn, roomId:', roomId, 'pubInfo:', JSON.stringify(pubInfo));
 
     if (pubInfo.type === 'streaming') {
+      var origin = { isp:'isp', region:'region'};
+        if(pubInfo.connection.origin != null) {
+          origin = pubInfo.connection.origin;
+        }
       var stream_id = Math.round(Math.random() * 1000000000000000000) + '';
-      return initRoom(roomId)
+      return initRoom(roomId, origin)
       .then(() => {
         if (room_config.inputLimit >= 0 && (room_config.inputLimit <= currentInputCount())) {
           return Promise.reject('Too many inputs');
@@ -1811,8 +1821,8 @@ var Conference = function (rpcClient, selfRpcId) {
           return Promise.reject('Video is forbiden');
         }
 
-        initiateStream(stream_id, {owner: 'admin', type: pubInfo.type});
-        return accessController.initiate('admin', stream_id, 'in', participants['admin'].getOrigin(), pubInfo);
+        initiateStream(stream_id, {owner: 'admin', type: pubInfo.type, origin: origin});
+        return accessController.initiate('admin', stream_id, 'in', origin, pubInfo);
       }).then((result) => {
         return 'ok';
       }).then(() => {
@@ -2082,7 +2092,8 @@ var Conference = function (rpcClient, selfRpcId) {
 
     if (subDesc.type === 'streaming' || subDesc.type === 'recording' || subDesc.type === 'analytics') {
       var subscription_id = Math.round(Math.random() * 1000000000000000000) + '';
-      return initRoom(roomId)
+      var origin = {isp: 'isp', region: 'region'};
+      return initRoom(roomId, origin)
       .then(() => {
         if (subDesc.media.audio && !room_config.mediaOut.audio.length) {
           return Promise.reject('Audio is forbiden');

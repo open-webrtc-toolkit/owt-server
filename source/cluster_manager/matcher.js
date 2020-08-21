@@ -68,6 +68,33 @@ var webrtcMatcher = function () {
     };
 };
 
+var streamingMatcher = function () {
+    this.match = function (preference, workers, candidates) {
+        var result = [],
+            found_sweet = false;
+        for (var i in candidates) {
+            var id = candidates[i];
+            var capacity = workers[id].info.capacity;
+            if (is_isp_applicable(capacity.isps, preference.isp)) {
+                if (is_region_suited(capacity.regions, preference.region)) {
+                    if (!found_sweet) {
+                        found_sweet = true;
+                        result = [id];
+                    } else {
+                        result.push(id);
+                    }
+                } else {
+                    if (!found_sweet) {
+                        result.push(id);
+                    }
+                }
+            }
+        }
+        return result;
+    };
+};
+
+
 var videoMatcher = function () {
     this.match = function (preference, workers, candidates) {
         if (!preference || !preference.video)
@@ -81,7 +108,10 @@ var videoMatcher = function () {
             });
             return (count === listB.length);
         };
-        var result = candidates.filter(function(cid) {
+
+        var result = [],
+	    found_sweet = false;
+        var availableCandidates = candidates.filter(function(cid) {
             var capacity = workers[cid].info.capacity;
             var encodeOk = false;
             var decodeOk = false;
@@ -97,6 +127,25 @@ var videoMatcher = function () {
             }
             return (encodeOk && decodeOk);
         });
+
+        for (var i in availableCandidates) {
+            var id = availableCandidates[i];
+            var capacity = workers[id].info.capacity;
+            if (is_isp_applicable(capacity.isps, preference.origin.isp)) {
+                if (is_region_suited(capacity.regions, preference.origin.region)) {
+                    if (!found_sweet) {
+                        found_sweet = true;
+                        result = [id];
+                    } else {
+                        result.push(id);
+                    }
+                } else {
+                    if (!found_sweet) {
+                        result.push(id);
+                    }
+                }
+            }
+        }
         return result;
     };
 };
@@ -124,7 +173,31 @@ var generalMatcher = function () {
     };
 };
 
-var audioMatcher = generalMatcher;
+var audioMatcher = function () {
+    this.match = function (preference, workers, candidates) {
+        var result = [],
+            found_sweet = false;
+        for (var i in candidates) {
+            var id = candidates[i];
+            var capacity = workers[id].info.capacity;
+            if (is_isp_applicable(capacity.isps, preference.origin.isp)) {
+                if (is_region_suited(capacity.regions, preference.origin.region)) {
+                    if (!found_sweet) {
+                        found_sweet = true;
+                        result = [id];
+                    } else {
+                        result.push(id);
+                    }
+                } else {
+                    if (!found_sweet) {
+                        result.push(id);
+                    }
+                }
+            }
+        }
+        return result;
+    };
+};
 
 exports.create = function (purpose) {
     switch (purpose) {
@@ -137,7 +210,7 @@ exports.create = function (purpose) {
         case 'recording':
             return new generalMatcher();
         case 'streaming':
-            return new generalMatcher();
+            return new streamingMatcher();
         case 'sip':
             return new generalMatcher();
         case 'audio':
