@@ -100,21 +100,25 @@ var generateToken = function (currentRoom, authData, origin, callback) {
             return;
         }
 
-        token.secure = ec.ssl;
-        if (ec.via_address !== '') {
-            token.host = ec.via_address;
-        }
-        else if (ec.hostname !== '') {
-            token.host = ec.hostname;
-        } else {
-            token.host = ec.ip;
-        }
+	if(ec.via_host !== '') {
+            if(ec.via_host.indexOf('https') == 0) {
+                token.secure = true;
+                token.host = ec.via_host.substr(8);
+            } else {
+                token.secure = false;
+                token.host = ec.via_host.substr(7);
+            }
 
-        if (ec.via_port !== 0) {
-            token.host += ':' + ec.via_port;
         } else {
+            token.secure = ec.ssl;
+            if (ec.hostname !== '') {
+                token.host = ec.hostname;
+            } else {
+                token.host = ec.ip;
+            }
+
             token.host += ':' + ec.port;
-	}
+        }
 
         dataAccess.token.create(token, function(id) {
             getTokenString(id, token)
