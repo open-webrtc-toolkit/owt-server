@@ -127,7 +127,7 @@ private:
 
     erizo::MediaSource* m_transport;
     boost::shared_mutex m_transport_mutex;
-    boost::scoped_ptr<JobTimer> m_feedbackTimer;
+    std::shared_ptr<SharedJobTimer> m_feedbackTimer;
     uint32_t m_pendingKeyFrameRequests;
 
     ////////////// NEW INTERFACE ///////////
