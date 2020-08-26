@@ -48,10 +48,9 @@ minport = 0 #default: 0
 
 #########################################################################################
 [quic]
-#The network inferface all peer-connections will be established through. All network interfaces in the system will be adopted if this item is not specified or specified with an empty array.
-##Valid value is an array of objects that has two properties: name and replaced_ip_address. name is the name of network interface that will be used, replaced_ip_address is the IP address used for replacing the internal IP address in locally generated SDP's and ICE candidates during establishing the peer-connection(useful when behind NATs). replaced_ip_address is optional, if it is not specified, IP address from corresponding network interface will not be replaced.
-#Example of valid value: [{name = "eth1"}, {name = "eth2", replaced_ip_address = "192.0.2.2"}].
-network_interfaces = []  # default: []
-
+# Key store path doesn't work right now.
 keystorePath = "./cert/certificate.pfx"
-#note, this won't work with all versions of libnice. With 0 all the available ports are used
+
+# Port of QUIC agent is going to listen on. Default port for WebTransport is not defined in WebTransport spec. We will update it when it's defined.
+minport = 7700 #default: 7700
+# maxport = 7799 #default: 7799

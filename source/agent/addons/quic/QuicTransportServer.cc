@@ -21,8 +21,12 @@ Nan::Persistent<v8::Function> QuicTransportServer::s_constructor;
 
 DEFINE_LOGGER(QuicTransportServer, "QuicTransportServer");
 
-QuicTransportServer::QuicTransportServer(int port)
-    : m_quicServer(QuicFactory::getQuicTransportFactory()->CreateQuicTransportServer(port, "", "", ""))
+// TODO: Certificate and key path is hard coded here. Read them from toml file later.
+const std::string certPath = "/tmp/certs/leaf_cert.pem";
+const std::string keyPath = "/tmp/certs/leaf_cert.pkcs8";
+
+QuicTransportServer::QuicTransportServer(int port, const std::string& certPath, const std::string& keyPath)
+    : m_quicServer(QuicFactory::getQuicTransportFactory()->CreateQuicTransportServer(port, certPath.c_str(), keyPath.c_str()))
 {
     m_quicServer->SetVisitor(this);
     ELOG_DEBUG("QuicTransportServer::QuicTransportServer");
@@ -52,7 +56,8 @@ NAN_METHOD(QuicTransportServer::newInstance)
         return Nan::ThrowTypeError("Port is required.");
     }
     // Default port number is not specified in https://tools.ietf.org/html/draft-vvv-webtransport-quic-01.
-    QuicTransportServer* obj = new QuicTransportServer(7700);
+    int minPort = info[0]->IntegerValue();
+    QuicTransportServer* obj = new QuicTransportServer(minPort, certPath, keyPath);
     obj->Wrap(info.This());
     uv_async_init(uv_default_loop(), &obj->m_asyncOnConnection, &QuicTransportServer::onConnectionCallback);
     info.GetReturnValue().Set(info.This());

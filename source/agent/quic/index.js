@@ -27,22 +27,23 @@ const addon = require('./build/Release/quic');
 log.info('QUIC transport node.')
 
 module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
-    var that = {
+    const that = {
       agentID: parentRpcId,
       clusterIP: clusterWorkerIP
     };
-    var connections = new Connections;
-    var internalConnFactory = new InternalConnectionFactory;
+    const connections = new Connections;
+    const internalConnFactory = new InternalConnectionFactory;
     const incomingStreamPipelines =
         new Map();  // Key is publication ID, value is stream pipeline.
     const outgoingStreamPipelines =
         new Map();  // Key is subscription ID, value is stream pipeline.
 
-    var notifyStatus = (controller, sessionId, direction, status) => {
+    const notifyStatus = (controller, sessionId, direction, status) => {
         rpcClient.remoteCast(controller, 'onSessionProgress', [sessionId, direction, status]);
     };
 
-    const quicTransportServer = new QuicTransportServer(addon);
+    const quicTransportServer =
+        new QuicTransportServer(addon, global.config.quic.minport);
     quicTransportServer.start();
     quicTransportServer.on('streamadded', (stream) => {
         const conn = connections.getConnection(stream.contentSessionId);
