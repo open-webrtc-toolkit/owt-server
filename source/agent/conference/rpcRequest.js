@@ -78,6 +78,14 @@ var RpcRequest = function(rpcChannel) {
     return rpcChannel.makeRPC(sipNode, 'endCall', [sipCallId]);
   };
 
+  that.addLocalAudioRank = function(accessNode, sessionId, owner, audioNode) {
+    return rpcChannel.makeRPC(accessNode, 'addLocalAudioRank', [sessionId, owner, audioNode]);
+  };
+
+  that.removeLocalAudioRank = function(accessNode, sessionId, audioNode) {
+    return rpcChannel.makeRPC(accessNode, 'removeLocalAudioRank', [sessionId, audioNode]);
+  };
+
   return that;
 };
 

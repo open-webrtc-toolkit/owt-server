@@ -1536,7 +1536,7 @@ var Conference = function (rpcClient, selfRpcId) {
       return Promise.resolve('ok');
     }
 
-    return new Promise((resolve, reject) => {
+    const controllerMix = (resolve, reject) => {
       roomController.mix(streamId, toView, function() {
         if (streams[streamId].info.inViews.indexOf(toView) === -1) {
           streams[streamId].info.inViews.push(toView);
@@ -1546,7 +1546,36 @@ var Conference = function (rpcClient, selfRpcId) {
         log.info('roomController.mix failed, reason:', reason);
         reject(reason);
       });
-    });
+    };
+
+    if (streams[streamId].info.type === 'webrtc' && !streams[streamId].media.video) {
+      log.debug('Select audio at local node:', streamId);
+      const audioNode = roomController.getMixerNode(toView, 'audio');
+      return accessController.addLocalAudioRank(streamId, streams[streamId].info.owner, audioNode)
+        .then((ret) => {
+          if (ret && ret.locality && Array.isArray(ret.rank)) {
+            const rankedMedia = {audio: {codec: 'unknown'}};
+            ret.rank.forEach(rankedId => {
+              roomController.publish('admin', rankedId, ret.locality, rankedMedia, 'webrtc', function() {
+                roomController.mix(rankedId, toView, function() {
+                  log.debug('Controller mix ranked audio ok:', rankedId);
+                }, function(reason) {
+                  log.warn('Controller mix fail for ranked audio:', reason);
+                });
+              }, function(reason) {
+                log.warn('Controller publish fail for ranked audio:', reason);
+              });
+            });
+          } else {
+            log.warn('Wrong return format for addLocalAudioRank:', ret);
+          }
+        }).catch((e) => {
+          log.debug('RPC addLocalAudioRank fail:', e);
+          return new Promise(controllerMix);
+        });
+    } else {
+      return new Promise(controllerMix);
+    }
   };
 
   const unmix = function(streamId, fromView) {
@@ -1554,7 +1583,7 @@ var Conference = function (rpcClient, selfRpcId) {
       return Promise.reject('Stream is NOT ready');
     }
 
-    return new Promise((resolve, reject) => {
+    const controllerUnmix = (resolve, reject) => {
       roomController.unmix(streamId, fromView, function() {
         streams[streamId].info.inViews.splice(streams[streamId].info.inViews.indexOf(fromView), 1);
         resolve('ok');
@@ -1562,7 +1591,18 @@ var Conference = function (rpcClient, selfRpcId) {
         log.info('roomController.unmix failed, reason:', reason);
         reject(reason);
       });
-    });
+    };
+
+    if (streams[streamId].info.type === 'webrtc' && !streams[streamId].media.video) {
+      const audioNode = roomController.getMixerNode(toView, 'audio');
+      return accessController.removeLocalAudioRank(streamId, audioNode)
+        .catch((e) => {
+          log.debug('RPC removeLocalAudioRank fail:', e);
+          return new Promise(controllerUnmix);
+        });
+    } else {
+      return new Promise(controllerUnmix);
+    }
   };
 
   const setStreamMute = function(streamId, track, muted) {

@@ -8,6 +8,7 @@ var path = require('path');
 var WrtcConnection = require('./wrtcConnection');
 var Connections = require('./connections');
 var InternalConnectionFactory = require('./InternalConnectionFactory');
+var { LocalAudioRank } = require('./LocalAudioRank');
 var logger = require('../logger').logger;
 
 // Logger
@@ -29,6 +30,10 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
     };
     var connections = new Connections;
     var internalConnFactory = new InternalConnectionFactory;
+    // Key: audioNode, Value: LocalAudioRank
+    var localRanks = new Map();
+    // Key: connectionId, Value: [ audioNode ]
+    var bindingAudio = new Map();
 
     var notifyStatus = (controller, sessionId, direction, status) => {
         rpcClient.remoteCast(controller, 'onSessionProgress', [sessionId, direction, status]);
@@ -36,6 +41,11 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
 
     var notifyMediaUpdate = (controller, sessionId, direction, mediaUpdate) => {
         rpcClient.remoteCast(controller, 'onMediaUpdate', [sessionId, direction, JSON.parse(mediaUpdate)]);
+    };
+
+    var notifyAudioRankChange = (audioNode, rankChange) => {
+        log.debug('notifyAudioRankChange', audioNode, rankChange);
+        rpcClient.remoteCast(audioNode, 'onRankChange', [rankChange]);
     };
 
     var createWebRTCConnection = function (connectionId, direction, options, callback) {
@@ -70,6 +80,19 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
                 callback('callback', reason);
             }
         };
+    };
+
+    var clearBindingAudio = function (connectionId) {
+        if (bindingAudio.has(connectionId)) {
+            bindingAudio.get(connectionId).forEach(audioNode => {
+                if (localRanks.has(audioNode)) {
+                    localRanks.get(audioNode).removeLocalAudio(connectionId);
+                } else {
+                    log.warn('No audioNode to clear:', audioNode);
+                }
+            });
+            bindingAudio.delete(connectionId);
+        }
     };
 
     that.createInternalConnection = function (connectionId, direction, internalOpt, callback) {
@@ -109,6 +132,7 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
             return callback('callback', {type: 'failed', reason: 'Create Connection failed'});
         }
 
+        bindingAudio.set(connectionId, []);
         connections.addConnection(connectionId, connectionType, options.controller, conn, 'in')
         .then(onSuccess(callback), onError(callback));
     };
@@ -120,6 +144,7 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
             if (conn && conn.type === 'internal') {
                 internalConnFactory.destroy(connectionId, 'in');
             } else if (conn) {
+                clearBindingAudio(connectionId);
                 conn.connection.close();
             }
             callback('callback', 'ok');
@@ -236,6 +261,69 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
         }
     };
 
+    that.addLocalAudioRank = function (connectionId, owner, audioNode, callback) {
+        log.debug('addLocalAudioRank:', connectionId, audioNode);
+        var conn = connections.getConnection(connectionId);
+        if (conn && conn.direction === 'in') {
+            if (conn.type === 'webrtc' && global.config.webrtc.top_audio_num > 0) {
+                let audioCodec = conn.connection.format('audio');
+                if (audioCodec) {
+                    let rankedIds = [];
+                    if (!localRanks.has(audioNode)) {
+                        log.debug('Init LocalAudioRank:', audioNode);
+                        localRanks.set(audioNode,
+                            new LocalAudioRank(3, audioNode, notifyAudioRankChange));
+                        localRanks.get(audioNode).rank().forEach(item => {
+                            rankedIds.push(item.id);
+                            log.debug('Top K stream for audioNode:', item.id, item.conn, audioNode);
+                            connections.addConnection(item.id, 'ranked-audio', null, item.conn, 'in')
+                                .catch(e => log.warn('Adding rank audio conn:', e));
+                        });
+                    }
+                    const localRank = localRanks.get(audioNode);
+                    if (localRank.addLocalAudio(connectionId, owner, conn.connection/**/, audioCodec)) {
+                        bindingAudio.get(connectionId).push(audioNode);
+                    }
+                    const locality = {agent: parentRpcId, node: selfRpcId};
+                    callback('callback', {locality, rank: rankedIds});
+                } else {
+                    callback('callback', 'error', 'addLocalAudioRank on non-audio connection');
+                }
+            } else {
+                callback('callback', 'error', 'addLocalAudioRank not supported');
+            }
+        } else {
+          callback('callback', 'error', 'Connection does NOT exist:' + connectionId);
+        }
+    };
+
+    that.removeLocalAudioRank = function (connectionId, audioNode, callback) {
+        log.debug('removeLocalAudioRank:', connectionId, audioNode);
+        var conn = connections.getConnection(connectionId);
+        if (conn && conn.direction === 'in') {
+            if (conn.type === 'webrtc') {
+                let audioCodec = conn.connection.format('audio');
+                if (audioCodec) {
+                    if (localRanks.has(audioNode)) {
+                        const localRank = localRanks.get(audioNode);
+                        if (localRank.removeLocalAudio(connectionId)) {
+                            // Do nothing
+                        }
+                        callback('callback', 'ok');
+                    } else {
+                        callback('callback', 'error', 'removeLocalAudioRank on non-init audio node');
+                    }
+                } else {
+                    callback('callback', 'error', 'removeLocalAudioRank on non-audio connection');
+                }
+            } else {
+                callback('callback', 'error', 'removeLocalAudioRank on non-webrtc connection');
+            }
+        } else {
+          callback('callback', 'error', 'Connection does NOT exist:' + connectionId);
+        }
+    };
+
     that.close = function() {
         log.debug('close called');
         var connIds = connections.getIds();
@@ -245,6 +333,7 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
             if (conn && conn.type === 'internal') {
                 internalConnFactory.destroy(connectionId, conn.direction);
             } else if (conn) {
+                clearBindingAudio(connectionId);
                 conn.connection.close();
             }
         }

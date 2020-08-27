@@ -7,15 +7,26 @@
 
 #include <rtputils.h>
 
+#include <webrtc/modules/rtp_rtcp/source/rtp_packet.h>
+#include <webrtc/modules/rtp_rtcp/source/rtp_packet_received.h>
+#include <webrtc/modules/rtp_rtcp/source/rtp_header_extensions.h>
+
+#include <RtpHeaders.h>
+
+
 namespace owt_base {
 
 DEFINE_LOGGER(AudioFrameConstructor, "owt.AudioFrameConstructor");
+
+// TODO: Get the extension ID from SDP
+constexpr uint8_t kAudioLevelExtensionId = 1;
 
 AudioFrameConstructor::AudioFrameConstructor()
   : m_enabled(true)
   , m_transport(nullptr)
 {
     sink_fb_source_ = this;
+    m_extensions.Register<webrtc::AudioLevel>(kAudioLevelExtensionId);
 }
 
 AudioFrameConstructor::~AudioFrameConstructor()
@@ -47,6 +58,52 @@ int AudioFrameConstructor::deliverVideoData_(std::shared_ptr<erizo::DataPacket> 
     return 0;
 }
 
+class AudioLevel {
+ public:
+  uint32_t ext_info:8;
+  uint8_t al_data:8;
+
+  inline uint8_t getId() {
+    return ext_info >> 4;
+  }
+  inline uint8_t getLength() {
+    return (ext_info & 0x0F);
+  }
+  inline bool getVoice() {
+    return (al_data & 0x80) != 0;
+  }
+  inline uint8_t getLevel() {
+    return al_data & 0x7F;
+  }
+};
+
+AudioLevel* parseAudioLevel(std::shared_ptr<erizo::DataPacket> p) {
+    const erizo::RtpHeader* head = reinterpret_cast<const erizo::RtpHeader*>(p->data);
+    AudioLevel* ret = nullptr;
+    if (head->getExtension()) {
+        uint16_t totalExtLength = head->getExtLength();
+        if (head->getExtId() == 0xBEDE) {
+            char* extBuffer = (char*)&head->extensions;  // NOLINT
+            uint8_t extByte = 0;
+            uint16_t currentPlace = 1;
+            uint8_t extId = 0;
+            uint8_t extLength = 0;
+            while (currentPlace < (totalExtLength*4)) {
+                extByte = (uint8_t)(*extBuffer);
+                extId = extByte >> 4;
+                extLength = extByte & 0x0F;
+                if (extId == kAudioLevelExtensionId) {
+                    ret = reinterpret_cast<AudioLevel*>(extBuffer);
+                    break;
+                }
+                extBuffer = extBuffer + extLength + 2;
+                currentPlace = currentPlace + extLength + 2;
+            }
+        }
+    }
+    return ret;
+}
+
 int AudioFrameConstructor::deliverAudioData_(std::shared_ptr<erizo::DataPacket> audio_packet)
 {
     if (audio_packet->length <= 0)
@@ -69,6 +126,15 @@ int AudioFrameConstructor::deliverAudioData_(std::shared_ptr<erizo::DataPacket> 
     frame.length = audio_packet->length;
     frame.timeStamp = head->getTimestamp();
     frame.additionalInfo.audio.isRtpPacket = 1;
+
+    AudioLevel* audioLevel = parseAudioLevel(audio_packet);
+    if (audioLevel) {
+        frame.additionalInfo.audio.audioLevel = audioLevel->getLevel();
+        frame.additionalInfo.audio.voice = audioLevel->getVoice();
+        ELOG_DEBUG("Has audio level extension %u, %d", audioLevel->getLevel(), audioLevel->getVoice());
+    } else {
+        ELOG_DEBUG("No audio level extension");
+    }
 
     if (m_enabled) {
         deliverFrame(frame);

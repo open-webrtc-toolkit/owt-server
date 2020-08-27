@@ -28,6 +28,7 @@
             "webrtc": [
                 "index.js",
                 "wrtcConnection.js",
+                "LocalAudioRank.js",
                 "../connections.js",
                 "../InternalConnectionFactory.js"
             ],
@@ -50,6 +51,14 @@
             {
                 "folder": "../addons/logger",
                 "name": "logger"
+            },
+            {
+                "folder": "../addons/mediaFrameMulticaster",
+                "name": "mediaFrameMulticaster"
+            },
+            {
+                "folder": "../addons/audioRanker",
+                "name": "audioRanker"
             }
         ]
     },

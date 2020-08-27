@@ -10,7 +10,38 @@
 
 using namespace v8;
 
+Persistent<Function> MulticasterSource::constructor;
+
+MulticasterSource::MulticasterSource() {};
+MulticasterSource::~MulticasterSource() {};
+
+void MulticasterSource::Init(Handle<Object> exports, Handle<Object> module) {
+  Isolate* isolate = exports->GetIsolate();
+
+  // Constructor for FrameSource
+  Local<FunctionTemplate> tpl = FunctionTemplate::New(isolate, New);
+  tpl->SetClassName(String::NewFromUtf8(isolate, "MulticasterSource"));
+  tpl->InstanceTemplate()->SetInternalFieldCount(1);
+
+  constructor.Reset(isolate, tpl->GetFunction());
+}
+
+void MulticasterSource::New(const FunctionCallbackInfo<Value>& args) {
+  Isolate* isolate = Isolate::GetCurrent();
+  HandleScope scope(isolate);
+
+  if (args.Length() > 0) {
+    MediaFrameMulticaster* parent = ObjectWrap::Unwrap<MediaFrameMulticaster>(args[0]->ToObject());
+    MulticasterSource* obj = new MulticasterSource();
+    obj->me = parent->me;
+    obj->src = obj->me;
+    obj->Wrap(args.This());
+    args.GetReturnValue().Set(args.This());
+  }
+}
+
 Persistent<Function> MediaFrameMulticaster::constructor;
+
 MediaFrameMulticaster::MediaFrameMulticaster() {};
 MediaFrameMulticaster::~MediaFrameMulticaster() {};
 
@@ -24,9 +55,13 @@ void MediaFrameMulticaster::Init(Handle<Object> exports, Handle<Object> module) 
   NODE_SET_PROTOTYPE_METHOD(tpl, "close", close);
   NODE_SET_PROTOTYPE_METHOD(tpl, "addDestination", addDestination);
   NODE_SET_PROTOTYPE_METHOD(tpl, "removeDestination", removeDestination);
+  NODE_SET_PROTOTYPE_METHOD(tpl, "source", source);
 
   constructor.Reset(isolate, tpl->GetFunction());
   module->Set(String::NewFromUtf8(isolate, "exports"), tpl->GetFunction());
+
+  // Init MulticasterSource
+  MulticasterSource::Init(exports, module);
 }
 
 void MediaFrameMulticaster::New(const FunctionCallbackInfo<Value>& args) {
@@ -87,5 +122,15 @@ void MediaFrameMulticaster::removeDestination(const FunctionCallbackInfo<Value>&
   } else if (track == "video") {
     me->removeVideoDestination(dest);
   }
+}
+
+void MediaFrameMulticaster::source(const FunctionCallbackInfo<Value>& args) {
+  Isolate* isolate = Isolate::GetCurrent();
+  HandleScope scope(isolate);
+
+  const int argc = 1;
+  v8::Local<v8::Value> argv[argc] = {args.Holder()};
+  v8::Local<v8::Function> cons = Nan::New(MulticasterSource::constructor);
+  args.GetReturnValue().Set(Nan::NewInstance(cons, 1, argv).ToLocalChecked());
 }
 

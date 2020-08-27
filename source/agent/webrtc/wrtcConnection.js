@@ -20,6 +20,8 @@ var addon = require('../webrtcLib/build/Release/webrtc');//require('./erizo/buil
 
 var h264ProfileOrder = ['E', 'H', 'M', 'B', 'CB']; //'H10', 'H42', 'H44', 'H10I', 'H42I', 'H44I', 'C44I'
 
+const TRANSPORT_CC_URI = 'http://www.ietf.org/id/draft-holmer-rmcat-transport-wide-cc-extensions-01';
+
 function createWrtc(id, threadPool, ioThreadPool, mediaConfiguration, ipAddresses) {
     var wrtc = new addon.WebRtcConnection(
         threadPool, ioThreadPool, id,
@@ -367,6 +369,9 @@ module.exports = function (spec, on_status, on_mediaUpdate) {
             if (mediaInfo.rtcpFb) {
                 mediaInfo.rtcpFb = mediaInfo.rtcpFb.filter((fb)=>(fb.type !== 'transport-cc'));
             }
+            if (mediaInfo.ext) {
+                mediaInfo.ext = mediaInfo.ext.filter((ext)=>(ext.uri !== TRANSPORT_CC_URI));
+            }
         });
         return transform.write(res);
     };
@@ -375,7 +380,7 @@ module.exports = function (spec, on_status, on_mediaUpdate) {
         var sdpObj = transform.parse(sdp);
         for (const mediaInfo of sdpObj.media) {
             for (const extInfo of mediaInfo.ext) {
-                if (extInfo.uri === 'http://www.ietf.org/id/draft-holmer-rmcat-transport-wide-cc-extensions-01') {
+                if (extInfo.uri === TRANSPORT_CC_URI) {
                     return extInfo.value;
                 }
             }
@@ -663,6 +668,19 @@ module.exports = function (spec, on_status, on_mediaUpdate) {
         return undefined;
     };
 
+    that.sender = function (track) {
+        if (audio && track === 'audio') {
+            return audioFrameConstructor;
+        }
+
+        if (video && track === 'video') {
+            return videoFrameConstructor;
+        }
+
+        log.error('sender error');
+        return undefined;
+    };
+
     that.setVideoBitrate = function (bitrateKBPS, on_ok, on_error) {
         if (video && videoFrameConstructor) {
             videoFrameConstructor.setBitrate(bitrateKBPS);
@@ -677,6 +695,16 @@ module.exports = function (spec, on_status, on_mediaUpdate) {
             videoFrameConstructor.requestKeyFrame();
         }
     };
+
+    that.format = function (track) {
+        if (audio_fmt && track === 'audio') {
+            return audio_fmt;
+        }
+        if (video_fmt && track === 'video') {
+            return video_fmt;
+        }
+        return false;
+    }
 
     var keystore = path.resolve(path.dirname(global.config.webrtc.keystorePath), cipher.kstore);
     cipher.unlock(cipher.k, keystore, function cb (err, passphrase) {

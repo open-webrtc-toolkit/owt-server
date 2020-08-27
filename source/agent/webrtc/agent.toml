@@ -69,3 +69,5 @@ stunserver = "" #default: ""
 num_workers = 24 #default: 24
 #Thread number for Libnice main loop
 io_workers = 8 #default: 8
+
+top_audio_num = 0 #default: 0

@@ -68,6 +68,8 @@ module.exports.load = () => {
       item.ip_address = addr.ip;
     });
 
+    config.webrtc.top_audio_num = config.webrtc.top_audio_num || 0;
+
     return config;
   } catch (e) {
     console.error('Parsing config error on line ' + e.line + ', column ' + e.column + ': ' + e.message);

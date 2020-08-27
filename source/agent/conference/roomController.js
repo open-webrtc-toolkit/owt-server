@@ -2255,6 +2255,14 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
         }
     };
 
+    that.getMixerNode = function (view, subMedia) {
+        var mNode = getSubMediaMixer(view, subMedia);
+        if (mNode) {
+            return terminals[mNode].locality.node;
+        }
+        return null;
+    };
+
     assert.equal(typeof on_init_ok, 'function');
     assert.equal(typeof on_init_failed, 'function');
     return initialize(on_init_ok, on_init_failed);
