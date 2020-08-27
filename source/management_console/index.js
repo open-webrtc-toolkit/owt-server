@@ -79,7 +79,7 @@ if (config.console.ssl) {
         err = e;
       }
     } else {
-      log.warn('Failed to setup secured server:', err);
+      console.warn('Failed to setup secured server:', err);
       return process.exit(1);
     }
   });
