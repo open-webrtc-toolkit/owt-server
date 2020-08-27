@@ -6,6 +6,7 @@
 
 #include <boost/thread.hpp>
 #include <mutex>
+#include <unordered_map>
 
 namespace {
 
@@ -64,8 +65,8 @@ JobTimer::~JobTimer()
 
 void JobTimer::start()
 {
-    // Keep the legacy interface work
-    if (!m_isRunning) { 
+    // Keep the legacy interface working
+    if (!m_isRunning) {
         m_isRunning = true;
     }
 }
@@ -89,9 +90,9 @@ void JobTimer::onTimeout(const boost::system::error_code& ec)
 {
     if (!ec) {
         if (!m_isClosing) {
-            handleJob();
             m_timer->expires_from_now(boost::posix_time::milliseconds(m_interval));
             m_timer->async_wait(boost::bind(&JobTimer::onTimeout, this, boost::asio::placeholders::error));
+            handleJob();
         }
     }
 }
@@ -100,4 +101,54 @@ void JobTimer::handleJob()
 {
     if (m_listener)
         m_listener->onTimeout();
+}
+
+SharedJobTimer::SharedJobTimer(unsigned int frequency)
+    : m_jobTimer(frequency, this)
+{
+    m_jobTimer.start();
+}
+
+SharedJobTimer::~SharedJobTimer()
+{
+    m_jobTimer.stop();
+}
+
+void SharedJobTimer::addListener(JobTimerListener* listener)
+{
+    if (listener) {
+        boost::mutex::scoped_lock lock(m_mutex);
+        m_listeners.insert(listener);
+    }
+}
+
+void SharedJobTimer::removeListener(JobTimerListener* listener)
+{
+    if (listener) {
+        boost::mutex::scoped_lock lock(m_mutex);
+        m_listeners.erase(listener);
+    }
+}
+
+void SharedJobTimer::onTimeout()
+{
+    boost::mutex::scoped_lock lock(m_mutex);
+    for (JobTimerListener* listener : m_listeners) {
+        listener->onTimeout();
+    }
+}
+
+std::shared_ptr<SharedJobTimer> SharedJobTimer::GetSharedFrequencyTimer(unsigned int frequency)
+{
+    static boost::mutex timersMutex;
+    static std::unordered_map<unsigned int, std::shared_ptr<SharedJobTimer>> sharedTimers;
+
+    boost::mutex::scoped_lock lock(timersMutex);
+    if (sharedTimers.count(frequency) > 0) {
+        return sharedTimers[frequency];
+    } else {
+        auto sharedTimer = std::make_shared<SharedJobTimer>(frequency);
+        sharedTimers.emplace(frequency, sharedTimer);
+        return sharedTimer;
+    }
 }
