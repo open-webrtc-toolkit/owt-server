@@ -1,0 +1,27 @@
+{
+  "name": "OWT-Server-Agent",
+  "version": "4.3.0",
+  "dependencies": {
+    "amqp": "*",
+    "log4js": "^1.1.1",
+    "node-getopt": "*",
+    "portfinder": "^1.0.28",
+    "toml": "*"
+  },
+  "devDependencies": {
+    "node-gyp": "*"
+  },
+  "engine": {
+    "node": "8.15.0"
+  },
+  "bin": "index.js",
+  "pkg": {
+    "assets": [
+      "node_modules*"
+    ],
+    "targets": [
+      "node8"
+    ]
+  }
+}
+
