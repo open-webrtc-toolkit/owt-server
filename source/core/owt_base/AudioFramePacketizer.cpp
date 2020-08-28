@@ -31,7 +31,8 @@ AudioFramePacketizer::AudioFramePacketizer()
 
 AudioFramePacketizer::~AudioFramePacketizer()
 {
-    close();
+    unbindTransport();
+    m_taskRunner->DeRegisterModule(m_rtpRtcp.get());
     m_ssrc_generator->ReturnSsrc(m_ssrc);
     SsrcGenerator::ReturnSsrcGenerator();
     boost::unique_lock<boost::shared_mutex> lock(m_rtpRtcpMutex);
