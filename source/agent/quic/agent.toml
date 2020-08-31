@@ -52,5 +52,4 @@ minport = 0 #default: 0
 keystorePath = "./cert/certificate.pfx"
 
 # Port of QUIC agent is going to listen on. Default port for WebTransport is not defined in WebTransport spec. We will update it when it's defined.
-minport = 7700 #default: 7700
-# maxport = 7799 #default: 7799
+port = 7700 #default: 7700

@@ -43,7 +43,7 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
     };
 
     const quicTransportServer =
-        new QuicTransportServer(addon, global.config.quic.minport);
+        new QuicTransportServer(addon, global.config.quic.port);
     quicTransportServer.start();
     quicTransportServer.on('streamadded', (stream) => {
         const conn = connections.getConnection(stream.contentSessionId);
