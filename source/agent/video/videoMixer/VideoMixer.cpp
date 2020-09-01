@@ -215,7 +215,7 @@ void VideoMixer::closeAll()
 
     auto it = m_inputs.begin();
     while (it != m_inputs.end()) {
-        m_frameMixer->removeInput(*it);
+        m_frameMixer->removeInput(*it++);
     }
     m_inputs.clear();
 
@@ -225,6 +225,7 @@ void VideoMixer::closeAll()
         while (it != m_outputs.end()) {
             int32_t index = it->second;
             m_frameMixer->removeOutput(index);
+            it++;
         }
         boost::upgrade_to_unique_lock<boost::shared_mutex> outputLock1(outputLock);
         m_outputs.clear();
