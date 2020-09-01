@@ -215,7 +215,8 @@ void VideoMixer::closeAll()
 
     auto it = m_inputs.begin();
     while (it != m_inputs.end()) {
-        m_frameMixer->removeInput(*it++);
+        m_frameMixer->removeInput(*it);
+        it++;
     }
     m_inputs.clear();
 
