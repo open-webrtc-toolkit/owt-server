@@ -69,11 +69,16 @@ void RtcAdapterImpl::initCall()
     m_taskQueue->PostTask([this]() {
         // Initialize call
         if (!m_call) {
+            static std::unique_ptr<webrtc::ProcessThread> g_moduleThread =
+                webrtc::ProcessThread::Create("ModuleProcessThread");
+            std::unique_ptr<webrtc::ProcessThread> moduleThreadProxy =
+                std::make_unique<ProcessThreadProxy>(g_moduleThread.get());
+
             webrtc::Call::Config call_config(m_eventLog.get());
             call_config.task_queue_factory = m_taskQueueFactory.get();
             m_call.reset(webrtc::Call::Create(
                 call_config, webrtc::Clock::GetRealTimeClock(),
-                webrtc::ProcessThread::Create("ModuleProcessThread"),
+                std::move(moduleThreadProxy),
                 webrtc::ProcessThread::Create("PacerThread")));
         }
     });
