@@ -23,9 +23,9 @@ const zeroUuid = '00000000000000000000000000000000';
 const authenticationTimeout = 10;
 
 module.exports = class QuicTransportServer extends EventEmitter {
-  constructor(addon, port) {
+  constructor(addon, port, pfxPath, password) {
     super();
-    this._server = new addon.QuicTransportServer(port);
+    this._server = new addon.QuicTransportServer(port, pfxPath, password);
     this._connections = new Map(); // Key is transport ID.
     this._streams = new Map(); // Key is content session ID.
     this._unAuthenticatedConnections = []; // When it's authenticated, it will be moved to this.connections.

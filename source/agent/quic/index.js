@@ -23,6 +23,8 @@ const QuicTransportStreamPipeline =
     require('./webtransport/quicTransportStreamPipeline');
 const log = logger.getLogger('QuicNode');
 const addon = require('./build/Release/quic');
+const cipher = require('../cipher');
+const path = require('path');
 
 log.info('QUIC transport node.')
 
@@ -42,20 +44,31 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
         rpcClient.remoteCast(controller, 'onSessionProgress', [sessionId, direction, status]);
     };
 
-    const quicTransportServer =
-        new QuicTransportServer(addon, global.config.quic.port);
-    quicTransportServer.start();
-    quicTransportServer.on('streamadded', (stream) => {
+    const keystore = path.resolve(path.dirname(global.config.quic.keystorePath), cipher.kstore);
+    log.info('before unlock');
+    cipher.unlock(cipher.k, keystore, (error, password) => {
+      log.info('unlocked.');
+      if (error) {
+        log.error('Failed to read certificate and key.');
+        return;
+      }
+      log.info('path is '+path.resolve(global.config.quic.keystorePath));
+      const quicTransportServer = new QuicTransportServer(
+          addon, global.config.quic.port, path.resolve(global.config.quic.keystorePath),
+          password);
+      quicTransportServer.start();
+      quicTransportServer.on('streamadded', (stream) => {
         const conn = connections.getConnection(stream.contentSessionId);
         if (conn) {
-            // TODO: verify transport ID.
-            conn.connection.quicStream(stream);
+          // TODO: verify transport ID.
+          conn.connection.quicStream(stream);
         } else {
           log.warn(
               'Cannot find a pipeline for QUIC stream. Content session ID: ' +
               stream.contentSessionId);
           stream.close();
         }
+      });
     });
 
     const createStreamPipeline =

@@ -33,7 +33,7 @@ protected:
     void onClose() override;
 
     QuicTransportServer() = delete;
-    explicit QuicTransportServer(int port, const std::string& certPath, const std::string& keyPath);
+    explicit QuicTransportServer(int port, const std::string& pfxPath, const std::string& password);
 
 private:
     static NAN_METHOD(newInstance);

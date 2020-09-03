@@ -38,6 +38,7 @@
               "webtransport/test/quicTransportServerTest.js"
           ],
           "cert": [
+              "../../../cert/certificate.pfx",
               "../../../cert/.owt.keystore"
           ]
       }
