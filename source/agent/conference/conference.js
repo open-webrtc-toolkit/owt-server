@@ -1803,9 +1803,9 @@ var Conference = function (rpcClient, selfRpcId) {
 
     if (pubInfo.type === 'streaming') {
       var origin = { isp:'isp', region:'region'};
-        if(pubInfo.connection.origin != null) {
+      if(pubInfo.connection.origin != null) {
           origin = pubInfo.connection.origin;
-        }
+      }
       var stream_id = Math.round(Math.random() * 1000000000000000000) + '';
       return initRoom(roomId, origin)
       .then(() => {

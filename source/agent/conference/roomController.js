@@ -905,8 +905,8 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
     var getAudioTranscoder = function (stream_id, on_ok, on_error) {
         findExistingAudioTranscoder(stream_id, on_ok, function () {
             var axcoder = randomId();
-            var terminalid = streams[stream_id].owner;
-            newTerminal(axcoder, 'axcoder', streams[stream_id].owner, false, terminals[terminalid].origin, function () {
+            var terminalId = streams[stream_id].owner;
+            newTerminal(axcoder, 'axcoder', streams[stream_id].owner, false, terminals[terminalId].origin, function () {
                 var on_failed = function (reason) {
                     makeRPC(
                         rpcClient,
@@ -1019,8 +1019,8 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
     var getVideoTranscoder = function (stream_id, on_ok, on_error) {
         findExistingVideoTranscoder(stream_id, on_ok, function () {
             var vxcoder = randomId();
-            var terminalid = streams[stream_id].owner;
-            newTerminal(vxcoder, 'vxcoder', streams[stream_id].owner, false, terminals[terminalid].origin, function () {
+            var terminalId = streams[stream_id].owner;
+            newTerminal(vxcoder, 'vxcoder', streams[stream_id].owner, false, terminals[terminalId].origin, function () {
                 var on_failed = function (error_reason) {
                     makeRPC(
                         rpcClient,
@@ -2139,7 +2139,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
         for (var sub_id in terminals[amixerId].subscribed) {
             var ast_id = terminals[amixerId].subscribed[sub_id].audio;
             inputs.push(ast_id);
-            log.debug('Aborting stream mixing:', ast_id); 
+            log.debug('Aborting stream mixing:', ast_id);
             unmixAudio(ast_id, view);
         }
         terminals[amixerId].subscribed = {};

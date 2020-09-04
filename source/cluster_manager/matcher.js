@@ -9,6 +9,7 @@ var logger = require('./logger').logger;
 var log = logger.getLogger('Matcher');
 
 var is_isp_applicable = function (supported_isps, preferred_isp) {
+    log.info("supported isps are:", supported_isps);
     return supported_isps.indexOf(preferred_isp) !== -1 || supported_isps.length === 0;
 };
 
@@ -16,59 +17,8 @@ var is_region_suited = function (supported_regions, preferred_region) {
     return supported_regions.indexOf(preferred_region) !== -1;
 };
 
-var portalMatcher = function () {
-    this.match = function (preference, workers, candidates) {
-        var result = [],
-            found_sweet = false;
-        for (var i in candidates) {
-            var id = candidates[i];
-            var capacity = workers[id].info.capacity;
-            if (is_isp_applicable(capacity.isps, preference.isp)) {
-                if (is_region_suited(capacity.regions, preference.region)) {
-                    if (!found_sweet) {
-                        found_sweet = true;
-                        result = [id];
-                    } else {
-                        result.push(id);
-                    }
-                } else {
-                    if (!found_sweet) {
-                        result.push(id);
-                    }
-                }
-            }
-        }
-        return result;
-    };
-};
 
 var webrtcMatcher = function () {
-    this.match = function (preference, workers, candidates) {
-        var result = [],
-            found_sweet = false;
-        for (var i in candidates) {
-            var id = candidates[i];
-            var capacity = workers[id].info.capacity;
-            if (is_isp_applicable(capacity.isps, preference.isp)) {
-                if (is_region_suited(capacity.regions, preference.region)) {
-                    if (!found_sweet) {
-                        found_sweet = true;
-                        result = [id];
-                    } else {
-                        result.push(id);
-                    }
-                } else {
-                    if (!found_sweet) {
-                        result.push(id);
-                    }
-                }
-            }
-        }
-        return result;
-    };
-};
-
-var streamingMatcher = function () {
     this.match = function (preference, workers, candidates) {
         var result = [],
             found_sweet = false;
@@ -131,6 +81,7 @@ var videoMatcher = function () {
         for (var i in availableCandidates) {
             var id = availableCandidates[i];
             var capacity = workers[id].info.capacity;
+	    console.log("Get video preference is:", preference.origin);
             if (is_isp_applicable(capacity.isps, preference.origin.isp)) {
                 if (is_region_suited(capacity.regions, preference.origin.region)) {
                     if (!found_sweet) {
@@ -173,31 +124,9 @@ var generalMatcher = function () {
     };
 };
 
-var audioMatcher = function () {
-    this.match = function (preference, workers, candidates) {
-        var result = [],
-            found_sweet = false;
-        for (var i in candidates) {
-            var id = candidates[i];
-            var capacity = workers[id].info.capacity;
-            if (is_isp_applicable(capacity.isps, preference.origin.isp)) {
-                if (is_region_suited(capacity.regions, preference.origin.region)) {
-                    if (!found_sweet) {
-                        found_sweet = true;
-                        result = [id];
-                    } else {
-                        result.push(id);
-                    }
-                } else {
-                    if (!found_sweet) {
-                        result.push(id);
-                    }
-                }
-            }
-        }
-        return result;
-    };
-};
+var audioMatcher = webrtcMatcher;
+var streamingMatcher = webrtcMatcher;
+var portalMatcher = webrtcMatcher;
 
 exports.create = function (purpose) {
     switch (purpose) {
