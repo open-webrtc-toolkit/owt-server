@@ -2191,7 +2191,7 @@ var Conference = function (rpcClient, selfRpcId) {
         }
 
         // Schedule preference for worker node
-        var accessPreference = Object.assign({}, participants['admin'].getOrigin());
+        var accessPreference = streams[subDesc.media.video.from].info.origin;
         if (subDesc.type === 'analytics') {
           // Schedule analytics agent according to the algorithm
           accessPreference.algorithm = subDesc.connection.algorithm;

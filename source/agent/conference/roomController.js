@@ -206,7 +206,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
         }
     };
 
-    var initView = function (view, viewSettings, origin, onInitOk, onInitError) {
+    var initView = function (view, viewSettings, onInitOk, onInitError) {
         if (!mix_views[view]) {
             onInitError('Mix view does not exist');
             return;
@@ -243,6 +243,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                     mixer: audio_mixer,
                     supported_formats: supportedAudio.codecs
                 };
+		log.info("init mixer audio:", mix_views[view].audio, " view:",view);
 
                 if (viewSettings.video) {
                     // Initialize video
@@ -276,7 +277,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
         );
     };
 
-    var initialize = function (origin, on_ok, on_error) {
+    var initialize = function (on_ok, on_error) {
         log.debug('initialize room', room_id);
 
         // Mix stream ID is room ID followed by view index
@@ -292,7 +293,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
 
                     // Save view init promises
                     viewProcessed.push(new Promise(function(resolve, reject) {
-                        initView(viewLabel, viewSettings, origin,
+                        initView(viewLabel, viewSettings,
                             function onOk() {
                                 log.debug('init ok for view:', viewLabel);
                                 resolve(viewLabel);
@@ -364,6 +365,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                     .then(function(locality) {
                         terminals[terminal_id] = {
                             owner: owner,
+			                origin: origin,
                             type: terminal_type,
                             locality: locality,
                             published: [],
@@ -618,7 +620,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
         return null;
     };
 
-    var mixAudio = function (stream_id, view, origin, on_ok, on_error) {
+    var mixAudio = function (stream_id, view, on_ok, on_error) {
         log.debug('to mix audio of stream:', stream_id, 'mixed view:', view);
         var audio_mixer = getSubMediaMixer(view, 'audio');
         if (streams[stream_id] && audio_mixer && terminals[audio_mixer]) {
@@ -626,7 +628,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                 spread_id = stream_id + '@' + target_node;
             spreadStream(stream_id, target_node, 'amixer', function() {
                 if (terminals[audio_mixer] && streams[stream_id]) {
-                    terminals[audio_mixer].subscribed[spread_id] = {audio: stream_id, origin: origin};
+                    terminals[audio_mixer].subscribed[spread_id] = {audio: stream_id};
                     (streams[stream_id].audio.subscribers.indexOf(audio_mixer) < 0) && streams[stream_id].audio.subscribers.push(audio_mixer);
                     on_ok();
                     if (streams[stream_id].audio.status === 'inactive') {
@@ -670,7 +672,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                 spread_id = stream_id + '@' + target_node;
             spreadStream(stream_id, target_node, 'vmixer', function() {
                 if (terminals[video_mixer] && streams[stream_id]) {
-                    terminals[video_mixer].subscribed[spread_id] = {video: stream_id, origin: origin};
+                    terminals[video_mixer].subscribed[spread_id] = {video: stream_id};
                     (streams[stream_id].video.subscribers.indexOf(video_mixer) < 0) && streams[stream_id].video.subscribers.push(video_mixer);
                     on_ok();
                     if (streams[stream_id].video.status === 'inactive') {
@@ -709,7 +711,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
     var mixStream = function (stream_id, view, on_ok, on_error) {
         log.debug('to mix stream:', stream_id, 'view:', view);
         if (streams[stream_id].audio) {
-            mixAudio(stream_id, view, origin, function () {
+            mixAudio(stream_id, view, function () {
                 if (streams[stream_id].video && getSubMediaMixer(view, 'video')) {
                     mixVideo(stream_id, view, on_ok, function (error_reason) {
                         unmixAudio(stream_id, view);
@@ -901,10 +903,11 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
         on_error();
     };
 
-    var getAudioTranscoder = function (stream_id, origin, on_ok, on_error) {
+    var getAudioTranscoder = function (stream_id, on_ok, on_error) {
         findExistingAudioTranscoder(stream_id, on_ok, function () {
             var axcoder = randomId();
-            newTerminal(axcoder, 'axcoder', streams[stream_id].owner, false, origin, function () {
+            var terminalid = streams[stream_id].owner;
+            newTerminal(axcoder, 'axcoder', streams[stream_id].owner, false, terminals[terminalid].origin, function () {
                 var on_failed = function (reason) {
                     makeRPC(
                         rpcClient,
@@ -925,7 +928,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                             spread_id = stream_id + '@' + target_node;
                         spreadStream(stream_id, target_node, 'axcoder', function () {
                             if (terminals[axcoder]) {
-                                terminals[axcoder].subscribed[spread_id] = {audio: stream_id, origin:origin};
+                                terminals[axcoder].subscribed[spread_id] = {audio: stream_id};
                                 streams[stream_id].audio.subscribers.push(axcoder);
                                 on_ok(axcoder);
                             } else {
@@ -938,8 +941,8 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
         });
     };
 
-    var getTranscodedAudio = function (audio_format, stream_id, origin, on_ok, on_error) {
-        getAudioTranscoder(stream_id, origin, function (axcoder) {
+    var getTranscodedAudio = function (audio_format, stream_id, on_ok, on_error) {
+        getAudioTranscoder(stream_id, function (axcoder) {
             findExistingTranscodedAudio(axcoder, audio_format, on_ok, function () {
                 spawnTranscodedAudio(axcoder, audio_format, on_ok, on_error);
             });
@@ -1014,10 +1017,11 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
         on_error();
     };
 
-    var getVideoTranscoder = function (stream_id, origin, on_ok, on_error) {
+    var getVideoTranscoder = function (stream_id, on_ok, on_error) {
         findExistingVideoTranscoder(stream_id, on_ok, function () {
             var vxcoder = randomId();
-            newTerminal(vxcoder, 'vxcoder', streams[stream_id].owner, false, origin, function () {
+            var terminalid = streams[stream_id].owner;
+            newTerminal(vxcoder, 'vxcoder', streams[stream_id].owner, false, terminals[terminalid].origin, function () {
                 var on_failed = function (error_reason) {
                     makeRPC(
                         rpcClient,
@@ -1038,7 +1042,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                             spread_id = stream_id + '@' + target_node;
                         spreadStream(stream_id, target_node, 'vxcoder', function () {
                             if (terminals[vxcoder]) {
-                                terminals[vxcoder].subscribed[spread_id] = {video: stream_id, origin: origin};
+                                terminals[vxcoder].subscribed[spread_id] = {video: stream_id};
                                 streams[stream_id].video.subscribers.push(vxcoder);
                                 on_ok(vxcoder);
                             } else {
@@ -1051,8 +1055,8 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
         });
     };
 
-    var getTranscodedVideo = function (format, resolution, framerate, bitrate, keyFrameInterval, stream_id, origin, on_ok, on_error) {
-        getVideoTranscoder(stream_id, origin, function (vxcoder) {
+    var getTranscodedVideo = function (format, resolution, framerate, bitrate, keyFrameInterval, stream_id, on_ok, on_error) {
+        getVideoTranscoder(stream_id, function (vxcoder) {
             findExistingTranscodedVideo(vxcoder, format, resolution, framerate, bitrate, keyFrameInterval, on_ok, function () {
                 spawnTranscodedVideo(vxcoder, format, resolution, framerate, bitrate, keyFrameInterval, on_ok, on_error);
             });
@@ -1142,7 +1146,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
         return format;
     };
 
-    var getAudioStream = function (stream_id, audio_format, subscriber, origin, on_ok, on_error) {
+    var getAudioStream = function (stream_id, audio_format, subscriber, on_ok, on_error) {
         log.debug('getAudioStream, stream:', stream_id, 'audio_format:', audio_format, 'subscriber:', subscriber, );
         var mixView = getViewOfMixStream(stream_id);
         if (mixView) {
@@ -1155,7 +1159,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                 if (streams[stream_id].audio.format === audio_format) {
                     on_ok(stream_id);
                 } else {
-                    getTranscodedAudio(audio_format, stream_id, origin, function (streamID) {
+                    getTranscodedAudio(audio_format, stream_id, function (streamID) {
                         on_ok(streamID);
                     }, on_error);
                 }
@@ -1221,7 +1225,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
         return !!streams[stream_id].video.rid;
     };
 
-    var getVideoStream = function (stream_id, format, resolution, framerate, bitrate, keyFrameInterval, simulcastRid, origin, on_ok, on_error) {
+    var getVideoStream = function (stream_id, format, resolution, framerate, bitrate, keyFrameInterval, simulcastRid, on_ok, on_error) {
         log.debug('getVideoStream, stream:', stream_id, 'format:', format, 'resolution:', resolution, 'framerate:', framerate,
                 'bitrate:', bitrate, 'keyFrameInterval', keyFrameInterval, 'simulcastRid', simulcastRid);
         var mixView = getViewOfMixStream(stream_id);
@@ -1244,7 +1248,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                 } else if (isVideoMatched(videoInfo, format, resolution, framerate, bitrate, keyFrameInterval)) {
                     on_ok(stream_id);
                 } else {
-                    getTranscodedVideo(format, resolution, framerate, bitrate, keyFrameInterval, stream_id, origin, function (streamID) {
+                    getTranscodedVideo(format, resolution, framerate, bitrate, keyFrameInterval, stream_id, function (streamID) {
                         on_ok(streamID);
                     }, on_error);
                 }
@@ -1405,7 +1409,6 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                                     streams[streamId].video.subscribers = streams[streamId].video.subscribers || [];
                                     streams[streamId].video.subscribers.push(t_id);
                                     terminals[t_id].subscribed[sub_id].video = streamId;
-                                    terminals[t_id].subscribed[sub_id].origin = {isp: 'isp', region: 'region'};
                                 }, function (reason) {
                                     log.warn('Failed in resuming video subscription:', sub_id, 'reason:', reason);
                                 });
@@ -1553,7 +1556,6 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                             streams[videoStream].video.subscribers = streams[videoStream].video.subscribers || [];
                             streams[videoStream].video.subscribers.push(terminal_id);
                             terminals[terminal_id].subscribed[subscriptionId].video = videoStream;
-                            terminals[terminal_id].subscribed[subscriptionId].origin = subInfo.origin;
                         }
 
                         on_ok('ok');
@@ -1637,12 +1639,12 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                 var audio_stream, video_stream;
                 if (subInfo.audio) {
                     log.debug('require audio track of stream:', subInfo.audio.from);
-                    getAudioStream(subInfo.audio.from, audio_format, terminal_id, subInfo.origin, function (streamID) {
+                    getAudioStream(subInfo.audio.from, audio_format, terminal_id, function (streamID) {
                         audio_stream = streamID;
                         log.debug('Got audio stream:', audio_stream);
                         if (subInfo.video) {
                             log.debug('require video track of stream:', subInfo.video.from);
-                            getVideoStream(subInfo.video.from, video_format, resolution, framerate, bitrate, keyFrameInterval, subInfo.video.simulcastRid, subInfo.origin, function (streamID) {
+                            getVideoStream(subInfo.video.from, video_format, resolution, framerate, bitrate, keyFrameInterval, subInfo.video.simulcastRid, function (streamID) {
                                 video_stream = streamID;
                                 log.debug('Got video stream:', video_stream);
                                 spread2LocalNode(audio_stream, video_stream, function () {
@@ -1667,7 +1669,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                     }, finaly_error);
                 } else if (subInfo.video) {
                     log.debug('require video track of stream:', subInfo.video.from);
-                    getVideoStream(subInfo.video.from, video_format, resolution, framerate, bitrate, keyFrameInterval, subInfo.video.simulcastRid, subInfo.origin, function (streamID) {
+                    getVideoStream(subInfo.video.from, video_format, resolution, framerate, bitrate, keyFrameInterval, subInfo.video.simulcastRid, function (streamID) {
                         video_stream = streamID;
                         spread2LocalNode(undefined, video_stream, function () {
                             linkup(undefined, video_stream);
@@ -1916,11 +1918,10 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
         }
 
         log.debug('rebuildVideoMixer, vmixerId:', vmixerId, 'view:', view);
-        var origin = {isp: 'isp', region: 'region'};
+        var origin = terminals[vmixerId].origin;
         for (var sub_id in terminals[vmixerId].subscribed) {
             var vst_id = terminals[vmixerId].subscribed[sub_id].video;
             inputs.push(vst_id);
-            origin = terminals[vmixerId].subscribed[sub_id].origin;
             log.debug('Abort stream mixing:', vst_id, " terminal subscribed are:", terminals[vmixerId].subscribed[sub_id]);
             unmixVideo(vst_id, view);
         }
@@ -1986,7 +1987,6 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                                                         streams[stream_id].video.subscribers = streams[stream_id].video.subscribers || [];
                                                         streams[stream_id].video.subscribers.push(t_id);
                                                         terminals[t_id].subscribed[sub_id].video = stream_id;
-                                                        terminals[t_id].subscribed[sub_id].origin = origin;
                                                     }, function (reason) {
                                                         log.warn('Failed in resuming video subscription. reason:', reason);
                                                     });
@@ -2019,11 +2019,10 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
         var input, outputs = [];
 
         log.debug('rebuildVideoTranscoder, vxcoderId:', vxcoderId, " terminals are:", terminals);
-        var origin = {isp: 'isp', region: 'region'};
+        var origin = terminals[vxcoderId].origin;
         for (var sub_id in terminals[vxcoderId].subscribed) {
             var vst_id = terminals[vxcoderId].subscribed[sub_id].video;
             input = vst_id;
-            origin = terminals[vxcoderId].subscribed[sub_id].origin;
             var i = streams[vst_id].video.subscribers.indexOf(vxcoderId);
             i > -1 && streams[vst_id].video.subscribers.splice(i, 1);
             shrinkStream(vst_id, old_locality.node);
@@ -2051,7 +2050,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                 return Promise.all(outputs.map(function (old_st) {
                     log.debug('Resuming video xcoder output:', old_st);
                     return new Promise(function (resolve, reject) {
-                        getTranscodedVideo(old_st.video.format, old_st.video.resolution, old_st.video.framerate, old_st.video.bitrate, old_st.video.kfi, input, origin, function(stream_id) {
+                        getTranscodedVideo(old_st.video.format, old_st.video.resolution, old_st.video.framerate, old_st.video.bitrate, old_st.video.kfi, input, function(stream_id) {
                             log.debug('Got new stream:', stream_id);
                             return Promise.all(old_st.spread.map(function(target_node) {
                                 return new Promise(function (res, rej) {
@@ -2077,7 +2076,6 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                                                         streams[stream_id].video.subscribers = streams[stream_id].video.subscribers || [];
                                                         streams[stream_id].video.subscribers.push(t_id);
                                                         terminals[t_id].subscribed[sub_id].video = stream_id;
-                                                        terminals[t_id].subscribed[sub_id].origin = origin;
                                                     }, function (reason) {
                                                         log.warn('Failed in resuming video subscription. reason:', reason);
                                                     });
@@ -2138,12 +2136,11 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
             }
         }
 
-        var origin = {isp: 'isp', region: 'region'};
+        var origin = terminals[amixerId].origin;
         for (var sub_id in terminals[amixerId].subscribed) {
             var ast_id = terminals[amixerId].subscribed[sub_id].audio;
             inputs.push(ast_id);
-            log.debug('Aborting stream mixing:', ast_id, " subscribe is:", terminals[amixerId].subscribed[sub_id]);
-            origin = terminals[amixerId].subscribed[sub_id].origin;
+            log.debug('Aborting stream mixing:', ast_id, " subscribe is:", terminals[amixerId].subscribed[sub_id]); 
             unmixAudio(ast_id, view);
         }
         terminals[amixerId].subscribed = {};
@@ -2210,7 +2207,6 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                                                             streams[stream_id].audio.subscribers = streams[stream_id].audio.subscribers || [];
                                                             streams[stream_id].audio.subscribers.push(t_id);
                                                             terminals[t_id].subscribed[sub_id].audio = stream_id;
-                                                            terminals[t_id].subscribed[sub_id].origin = origin;
                                                         }, function (reason) {
                                                             log.warn('Failed in resuming video subscription. reason:', reason);
                                                         });
@@ -2241,11 +2237,10 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
         var old_locality = terminals[axcoderId].locality;
         var input, outputs = [];
 
-        var origin = {isp: 'isp', region: 'region'};
+        var origin = terminals[axcoderId].origin;
         for (var sub_id in terminals[axcoderId].subscribed) {
             var vst_id = terminals[axcoderId].subscribed[sub_id].audio;
-            input = vst_id;
-            origin = terminals[axcoderId].subscribed[sub_id].origin;
+            input = vst_id; 
             var i = streams[vst_id].audio.subscribers.indexOf(axcoderId);
             i > -1 && streams[vst_id].audio.subscribers.splice(i, 1);
             shrinkStream(vst_id, old_locality.node);
@@ -2273,7 +2268,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                 return Promise.all(outputs.map(function (old_st) {
                     log.debug('Resuming audio xcoder output:', old_st);
                     return new Promise(function (resolve, reject) {
-                        getTranscodedAudio(old_st.audio.format, input, origin, function(stream_id) {
+                        getTranscodedAudio(old_st.audio.format, input, function(stream_id) {
                             log.debug('Got new stream:', stream_id);
                             return Promise.all(old_st.spread.map(function(target_node) {
                                 return new Promise(function (res, rej) {
@@ -2299,7 +2294,6 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                                                         streams[stream_id].audio.subscribers = streams[stream_id].audio.subscribers || [];
                                                         streams[stream_id].audio.subscribers.push(t_id);
                                                         terminals[t_id].subscribed[sub_id].audio = stream_id;
-                                                        terminals[t_id].subscribed[sub_id].origin = origin;
                                                     }, function (reason) {
                                                         log.warn('Failed in resuming audio subscription. reason:', reason);
                                                     });
@@ -2326,7 +2320,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
             });
     };
 
-    var onVideoFault = function (type, id, origin) {
+    var onVideoFault = function (type, id) {
         for (var terminal_id in terminals) {
             if (isImpacted(terminals[terminal_id].locality, type, id)) {
                 log.debug('Impacted terminal:', terminal_id, 'and its locality:', terminals[terminal_id].locality);
@@ -2339,7 +2333,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
         }
     };
 
-    var onAudioFault = function (type, id, origin) {
+    var onAudioFault = function (type, id) {
         for (var terminal_id in terminals) {
             if (isImpacted(terminals[terminal_id].locality, type, id)) {
                 log.debug('Impacted terminal:', terminal_id, 'and its locality:', terminals[terminal_id].locality);
@@ -2446,5 +2440,5 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
 
     assert.equal(typeof on_init_ok, 'function');
     assert.equal(typeof on_init_failed, 'function');
-    return initialize(origin, on_init_ok, on_init_failed);
+    return initialize(on_init_ok, on_init_failed);
 };
