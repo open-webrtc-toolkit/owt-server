@@ -376,7 +376,7 @@ var Conference = function (rpcClient, selfRpcId) {
                   rpcClient: rpcClient,
                   room: roomId,
                   config: room_config,
-		  origin: origin,
+                  origin: origin,
                   selfRpcId: selfRpcId
                 },
                 function onOk(rmController) {

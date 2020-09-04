@@ -243,7 +243,6 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                     mixer: audio_mixer,
                     supported_formats: supportedAudio.codecs
                 };
-		log.info("init mixer audio:", mix_views[view].audio, " view:",view);
 
                 if (viewSettings.video) {
                     // Initialize video
@@ -365,7 +364,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                     .then(function(locality) {
                         terminals[terminal_id] = {
                             owner: owner,
-			                origin: origin,
+                            origin: origin,
                             type: terminal_type,
                             locality: locality,
                             published: [],
@@ -1922,7 +1921,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
         for (var sub_id in terminals[vmixerId].subscribed) {
             var vst_id = terminals[vmixerId].subscribed[sub_id].video;
             inputs.push(vst_id);
-            log.debug('Abort stream mixing:', vst_id, " terminal subscribed are:", terminals[vmixerId].subscribed[sub_id]);
+            log.debug('Abort stream mixing:', vst_id);
             unmixVideo(vst_id, view);
         }
         terminals[vmixerId].subscribed = {};
@@ -2018,7 +2017,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
         var old_locality = terminals[vxcoderId].locality;
         var input, outputs = [];
 
-        log.debug('rebuildVideoTranscoder, vxcoderId:', vxcoderId, " terminals are:", terminals);
+        log.debug('rebuildVideoTranscoder, vxcoderId:', vxcoderId);
         var origin = terminals[vxcoderId].origin;
         for (var sub_id in terminals[vxcoderId].subscribed) {
             var vst_id = terminals[vxcoderId].subscribed[sub_id].video;
@@ -2140,7 +2139,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
         for (var sub_id in terminals[amixerId].subscribed) {
             var ast_id = terminals[amixerId].subscribed[sub_id].audio;
             inputs.push(ast_id);
-            log.debug('Aborting stream mixing:', ast_id, " subscribe is:", terminals[amixerId].subscribed[sub_id]); 
+            log.debug('Aborting stream mixing:', ast_id); 
             unmixAudio(ast_id, view);
         }
         terminals[amixerId].subscribed = {};
@@ -2240,7 +2239,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
         var origin = terminals[axcoderId].origin;
         for (var sub_id in terminals[axcoderId].subscribed) {
             var vst_id = terminals[axcoderId].subscribed[sub_id].audio;
-            input = vst_id; 
+            input = vst_id;
             var i = streams[vst_id].audio.subscribers.indexOf(axcoderId);
             i > -1 && streams[vst_id].audio.subscribers.splice(i, 1);
             shrinkStream(vst_id, old_locality.node);
