@@ -258,7 +258,7 @@ class Connection extends EventEmitter {
   }
 
   setRemoteSdp(sdp, streamId) {
-    this.wrtc.setRemoteSdp(sdp, this.id);
+    this.wrtc.setRemoteSdp(sdp, streamId || this.id);
   }
 
   setSimulcastInfo(simulcastInfo) {
