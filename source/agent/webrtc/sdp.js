@@ -148,7 +148,7 @@ function filterH264Payload(sdpObj, formatPreference = {}, direction) {
                 break;
               }
             }
-            if (direction === 'in') {
+            if (mediaInfo.direction === 'sendonly') {
               // For publish connection
               finalProfile = prf;
               selectedPayload = fmtp.payload;
@@ -491,3 +491,95 @@ exports.addVideoSSRC = function (sdp, ssrc) {
   }
   return transform.write(sdpObj);
 };
+
+exports.filterH264 = function (sdpObj, videoPreference = {}, mid) {
+  var removePayloads = [];
+  var selectedPayload = -1;
+  var preferred = null;
+  var optionals = [];
+  var finalProfile = null;
+  var firstPayload = -1;
+
+  if (videoPreference) {
+    preferred = videoPreference.preferred;
+    if (preferred && preferred.codec !== 'h264') {
+      preferred = null;
+    }
+    optionals = videoPreference.optional || [];
+    optionals = optionals.filter((fmt) => (fmt.codec === 'h264'));
+  }
+
+  const mediaInfo = sdpObj.media.find(media => media.mid === mid);
+  if (mediaInfo) {
+    var i, rtp, fmtp;
+    if (mediaInfo.type === 'video') {
+      for (i = 0; i < mediaInfo.rtp.length; i++) {
+        rtp = mediaInfo.rtp[i];
+        if (rtp.codec.toLowerCase() === 'h264') {
+          removePayloads.push(rtp.payload);
+        }
+      }
+
+      for (i = 0; i < mediaInfo.fmtp.length; i++) {
+        fmtp = mediaInfo.fmtp[i];
+        if (removePayloads.indexOf(fmtp.payload) > -1) {
+          // Skip packetization-mode=0
+          if (fmtp.config.indexOf('packetization-mode=0') > -1)
+            continue;
+
+          if (fmtp.config.indexOf('profile-level-id') >= 0) {
+            var params = transform.parseParams(fmtp.config);
+            var prf = translateProfile(params['profile-level-id'].toString());
+            if (firstPayload < 0) {
+              firstPayload = fmtp.payload;
+            }
+            if (preferred) {
+              if (!preferred.profile || preferred.profile === prf) {
+                // Use preferred profile
+                selectedPayload = fmtp.payload;
+                finalProfile = prf;
+                break;
+              }
+            }
+            if (mediaInfo.direction === 'sendonly') {
+              // For publish connection
+              finalProfile = prf;
+              selectedPayload = fmtp.payload;
+              break;
+            } else {
+              // For subscribe connection
+              if (optionals.findIndex((fmt) => (fmt.profile === prf)) > -1) {
+                finalProfile = prf;
+                selectedPayload = fmtp.payload;
+                break;
+              }
+            }
+          } else {
+            selectedPayload = fmtp.payload;
+          }
+        }
+      }
+
+      if (mediaInfo.direction === 'recvonly' && selectedPayload === -1) {
+        if (!global.config.webrtc.strict_profile_match && firstPayload > -1) {
+          log.warn('No matched H264 profiles');
+          selectedPayload = firstPayload;
+        }
+      }
+      if (selectedPayload > -1) {
+        i = removePayloads.indexOf(selectedPayload);
+        removePayloads.splice(i, 1);
+      }
+
+      // Remove non-selected h264 payload
+      mediaInfo.rtp = mediaInfo.rtp.filter((rtp) => {
+        return removePayloads.findIndex((pl) => (pl === rtp.payload)) === -1;
+      });
+      mediaInfo.fmtp = mediaInfo.fmtp.filter((fmtp) => {
+        return removePayloads.findIndex((pl) => (pl === fmtp.payload)) === -1;
+      });
+    }
+  }
+
+  return finalProfile;
+}

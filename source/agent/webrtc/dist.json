@@ -31,6 +31,7 @@
                 "connection.js",
                 "sdp.js",
                 "mediaConfig.js",
+                "SdpInfo.js",
                 "../connections.js",
                 "../InternalConnectionFactory.js"
             ],
