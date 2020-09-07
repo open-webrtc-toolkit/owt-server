@@ -36,4 +36,21 @@ private:
     boost::scoped_ptr<boost::asio::deadline_timer> m_timer;
 };
 
+class SharedJobTimer : public JobTimerListener {
+public:
+    SharedJobTimer(unsigned int frequency);
+    ~SharedJobTimer();
+
+    static std::shared_ptr<SharedJobTimer> GetSharedFrequencyTimer(unsigned int frequency);
+    void addListener(JobTimerListener* listener);
+    void removeListener(JobTimerListener* listener);
+
+    virtual void onTimeout() override;
+
+private:
+    JobTimer m_jobTimer;
+    boost::mutex m_mutex;
+    std::set<JobTimerListener*> m_listeners;
+};
+
 #endif

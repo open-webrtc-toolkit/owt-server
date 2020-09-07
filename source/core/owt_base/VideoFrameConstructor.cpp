@@ -24,7 +24,8 @@ VideoFrameConstructor::VideoFrameConstructor(VideoInfoListener* vil, uint32_t tr
     , m_videoReceive(nullptr)
 {
     m_config.transport_cc = transportccExtId;
-    m_feedbackTimer.reset(new JobTimer(1, this));
+    m_feedbackTimer = SharedJobTimer::GetSharedFrequencyTimer(1);
+    m_feedbackTimer->addListener(this);
 }
 
 VideoFrameConstructor::VideoFrameConstructor(
@@ -39,13 +40,14 @@ VideoFrameConstructor::VideoFrameConstructor(
 {
     m_config.transport_cc = transportccExtId;
     assert(base);
-    m_feedbackTimer.reset(new JobTimer(1, this));
+    m_feedbackTimer = SharedJobTimer::GetSharedFrequencyTimer(1);
+    m_feedbackTimer->addListener(this);
     m_rtcAdapter = base->m_rtcAdapter;
 }
 
 VideoFrameConstructor::~VideoFrameConstructor()
 {
-    m_feedbackTimer->stop();
+    m_feedbackTimer->removeListener(this);
     unbindTransport();
     if (m_videoReceive) {
         m_rtcAdapter->destoryVideoReceiver(m_videoReceive);
