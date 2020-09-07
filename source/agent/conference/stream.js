@@ -418,6 +418,9 @@ function toPortalFormat (internalStream) {
       delete videoInfo.alternative;
     }
   }
+  if(stream && stream.info && stream.info.origin) {
+    delete stream.info.origin;
+  }
   return stream;
 };
 

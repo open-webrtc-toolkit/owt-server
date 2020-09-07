@@ -2191,7 +2191,15 @@ var Conference = function (rpcClient, selfRpcId) {
         }
 
         // Schedule preference for worker node
-        var streamFrom = subDesc.media.video.from === undefined?subDesc.media.audio.from:subDesc.media.video.from;
+        var streamFrom = undefined;
+        if(subDesc.media.video && subDesc.media.video.from) {
+          streamFrom = subDesc.media.video.from;
+        } else if(subDesc.media.audio && subDesc.media.audio.from) {
+          streamFrom = subDesc.media.audio.from;
+        } else {
+          return Promise.reject('No video or audio source to process');
+        }
+
         var accessPreference = Object.assign({}, streams[streamFrom].info.origin);
         if (subDesc.type === 'analytics') {
           // Schedule analytics agent according to the algorithm
