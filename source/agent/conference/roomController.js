@@ -57,6 +57,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
         rpcClient = spec.rpcClient,
         config = spec.config,
         room_id = spec.room,
+	origin = spec.origin,
         selfRpcId = spec.selfRpcId,
         enable_audio_transcoding = config.transcoding && !!config.transcoding.audio,
         enable_video_transcoding = config.transcoding && !!config.transcoding.video,
@@ -214,7 +215,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
         // Media mixer initializer
         var mixStreamId = getMixStreamOfView(view);
         var initMixer = (mixerId, type, mixConfig) => new Promise(function(resolve, reject) {
-            newTerminal(mixerId, type, mixStreamId, false,
+            newTerminal(mixerId, type, mixStreamId, false, origin,
                 function onTerminalReady() {
                     log.debug('new terminal ok. terminal_id', mixerId, 'type:', type, 'view:', view, 'mixConfig:', mixConfig);
                     initMediaProcessor(mixerId, ['mixing', mixConfig, room_id, selfRpcId, view])
@@ -350,12 +351,12 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
         streams = {};
     };
 
-    var newTerminal = function (terminal_id, terminal_type, owner, preAssignedNode, on_ok, on_error) {
-        log.debug('newTerminal:', terminal_id, 'terminal_type:', terminal_type, 'owner:', owner);
+    var newTerminal = function (terminal_id, terminal_type, owner, preAssignedNode, origin, on_ok, on_error) {
+        log.debug('newTerminal:', terminal_id, 'terminal_type:', terminal_type, 'owner:', owner, " origin:", origin);
         if (terminals[terminal_id] === undefined) {
                 var purpose = (terminal_type === 'vmixer' || terminal_type === 'vxcoder') ? 'video'
                               : ((terminal_type === 'amixer' || terminal_type === 'axcoder') ? 'audio' : 'unknown');
-
+                mediaPreference.origin = origin;
                 var nodeLocality = (preAssignedNode ? Promise.resolve(preAssignedNode)
                                                : rpcReq.getWorkerNode(cluster, purpose, {room: room_id, task: terminal_id}, mediaPreference));
 
@@ -363,6 +364,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                     .then(function(locality) {
                         terminals[terminal_id] = {
                             owner: owner,
+                            origin: origin,
                             type: terminal_type,
                             locality: locality,
                             published: [],
@@ -903,7 +905,8 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
     var getAudioTranscoder = function (stream_id, on_ok, on_error) {
         findExistingAudioTranscoder(stream_id, on_ok, function () {
             var axcoder = randomId();
-            newTerminal(axcoder, 'axcoder', streams[stream_id].owner, false, function () {
+            var terminalId = streams[stream_id].owner;
+            newTerminal(axcoder, 'axcoder', streams[stream_id].owner, false, terminals[terminalId].origin, function () {
                 var on_failed = function (reason) {
                     makeRPC(
                         rpcClient,
@@ -1016,7 +1019,8 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
     var getVideoTranscoder = function (stream_id, on_ok, on_error) {
         findExistingVideoTranscoder(stream_id, on_ok, function () {
             var vxcoder = randomId();
-            newTerminal(vxcoder, 'vxcoder', streams[stream_id].owner, false, function () {
+            var terminalId = streams[stream_id].owner;
+            newTerminal(vxcoder, 'vxcoder', streams[stream_id].owner, false, terminals[terminalId].origin, function () {
                 var on_failed = function (error_reason) {
                     makeRPC(
                         rpcClient,
@@ -1422,12 +1426,12 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
         });
     };
 
-    that.publish = function (participantId, streamId, accessNode, streamInfo, streamType, on_ok, on_error) {
-        log.debug('publish, participantId: ', participantId, 'streamId:', streamId, 'accessNode:', accessNode.node, 'streamInfo:', JSON.stringify(streamInfo));
+    that.publish = function (participantId, streamId, accessNode, streamInfo, streamType, origin, on_ok, on_error) {
+        log.debug('publish, participantId: ', participantId, 'streamId:', streamId, 'accessNode:', accessNode.node, 'streamInfo:', JSON.stringify(streamInfo), ' origin is:', origin);
         if (streams[streamId] === undefined) {
             var terminal_id = pubTermId(participantId, streamId);
             var terminal_owner = (streamType === 'webrtc' || streamType === 'sip') ? participantId : room_id + '-' + randomId();
-            newTerminal(terminal_id, streamType, terminal_owner, accessNode, function () {
+            newTerminal(terminal_id, streamType, terminal_owner, accessNode, origin, function () {
                 streams[streamId] = {owner: terminal_id,
                                      audio: streamInfo.audio ? {format: formatStr(streamInfo.audio),
                                                                 subscribers: [],
@@ -1680,7 +1684,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
             };
 
             var terminal_owner = (((subType === 'webrtc' || subType === 'sip') && isAudioPubPermitted) ? participantId : room_id);
-            newTerminal(terminal_id, subType, terminal_owner, accessNode, function () {
+            newTerminal(terminal_id, subType, terminal_owner, accessNode, subInfo.origin, function () {
                 doSubscribe();
             }, on_error);
         } else {
@@ -1913,6 +1917,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
         }
 
         log.debug('rebuildVideoMixer, vmixerId:', vmixerId, 'view:', view);
+        var origin = terminals[vmixerId].origin;
         for (var sub_id in terminals[vmixerId].subscribed) {
             var vst_id = terminals[vmixerId].subscribed[sub_id].video;
             inputs.push(vst_id);
@@ -1936,7 +1941,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
             }
         });
         terminals[vmixerId].published = [];
-
+        mediaPreference.origin = origin;
         return rpcReq.getWorkerNode(cluster, 'video', {room: room_id, task: vmixerId}, mediaPreference)
             .then(function (locality) {
                 log.debug('Got new video mixer node:', locality);
@@ -2013,6 +2018,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
         var input, outputs = [];
 
         log.debug('rebuildVideoTranscoder, vxcoderId:', vxcoderId);
+        var origin = terminals[vxcoderId].origin;
         for (var sub_id in terminals[vxcoderId].subscribed) {
             var vst_id = terminals[vxcoderId].subscribed[sub_id].video;
             input = vst_id;
@@ -2129,6 +2135,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
             }
         }
 
+        var origin = terminals[amixerId].origin;
         for (var sub_id in terminals[amixerId].subscribed) {
             var ast_id = terminals[amixerId].subscribed[sub_id].audio;
             inputs.push(ast_id);
@@ -2154,6 +2161,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
         });
         terminals[amixerId].published = [];
 
+        mediaPreference.origin = origin;
         return rpcReq.getWorkerNode(cluster, 'audio', {room: room_id, task: amixerId}, mediaPreference)
             .then(function (locality) {
                 log.debug('Got new audio mixer node:', locality);
@@ -2228,6 +2236,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
         var old_locality = terminals[axcoderId].locality;
         var input, outputs = [];
 
+        var origin = terminals[axcoderId].origin;
         for (var sub_id in terminals[axcoderId].subscribed) {
             var vst_id = terminals[axcoderId].subscribed[sub_id].audio;
             input = vst_id;

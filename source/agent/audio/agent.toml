@@ -23,6 +23,14 @@ max_load = 0.85 #default: 0.85
 host = "localhost" #default: "localhost"
 port = 5672 #default: 5672
 
+[capacity]
+#The ISP list this agent is able to handle.
+#If the ISP list is set to be non-empty, only the creating token requests with preference.ips being matched with one element of this list will be scheduled to this agent.
+isps = [] #default: [], which means all ISPs.
+#The region list this agent prefers to handle
+#If the region list is set to be non-empty, the creating token requests with preference.region being matched with one element of this list will be priorly scheduled to this agent.
+regions = [] #default: [], which means all regions.
+
 [internal]
 #The IP address used for internal-cluster media spreading. Will use the IP got from the 'network_interface' item if 'ip_address' is not specified or equal to "".
 ip_address = "" #default: ""
