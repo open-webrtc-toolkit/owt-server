@@ -17,6 +17,36 @@
 
 namespace rtc_adapter {
 
+namespace {
+
+const uint32_t kModuleThreadsNum = 16;
+
+std::once_flag g_startOnce;
+std::vector<std::unique_ptr<webrtc::ProcessThread>> g_moduleThreads;
+
+void initModuleThreads()
+{
+    for (uint32_t i = 0; i < kModuleThreadsNum; i++) {
+        g_moduleThreads.push_back(webrtc::ProcessThread::Create("ModuleProcessThread"));
+        g_moduleThreads[i]->Start();
+    }
+}
+
+std::unique_ptr<webrtc::ProcessThread> getThreadProxy()
+{
+    // Initialize global threads once
+    std::call_once(g_startOnce, initModuleThreads);
+    uint32_t i = webrtc::Clock::GetRealTimeClock()->TimeInMilliseconds() %
+        kModuleThreadsNum;
+
+    std::unique_ptr<webrtc::ProcessThread> moduleThreadProxy =
+        std::make_unique<ProcessThreadProxy>(g_moduleThreads[i].get());
+
+    return moduleThreadProxy;
+}
+
+}
+
 class RtcAdapterImpl : public RtcAdapter,
                        public CallOwner {
 public:
@@ -69,10 +99,7 @@ void RtcAdapterImpl::initCall()
     m_taskQueue->PostTask([this]() {
         // Initialize call
         if (!m_call) {
-            static std::unique_ptr<webrtc::ProcessThread> g_moduleThread =
-                webrtc::ProcessThread::Create("ModuleProcessThread");
-            std::unique_ptr<webrtc::ProcessThread> moduleThreadProxy =
-                std::make_unique<ProcessThreadProxy>(g_moduleThread.get());
+            std::unique_ptr<webrtc::ProcessThread> moduleThreadProxy = getThreadProxy();
 
             webrtc::Call::Config call_config(m_eventLog.get());
             call_config.task_queue_factory = m_taskQueueFactory.get();
