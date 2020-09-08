@@ -5,11 +5,9 @@
 #ifndef VIDEOFRAMECONSTRUCTORWRAPPER_H
 #define VIDEOFRAMECONSTRUCTORWRAPPER_H
 
-#include "MediaDefinitions.h"
+#include "MediaWrapper.h"
 #include "../../addons/common/MediaFramePipelineWrapper.h"
 #include <VideoFrameConstructor.h>
-#include <WebRtcConnection.h>
-#include "WebRtcConnection.h"
 #include <node.h>
 #include <node_object_wrap.h>
 #include <nan.h>

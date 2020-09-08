@@ -3,11 +3,13 @@
 // SPDX-License-Identifier: Apache-2.0
 
 'use strict';
-var webrtcAddon = require('../webrtcLib/build/Release/webrtc');
-var AudioFrameConstructor = webrtcAddon.AudioFrameConstructor;
-var VideoFrameConstructor = webrtcAddon.VideoFrameConstructor;
-var AudioFramePacketizer = webrtcAddon.AudioFramePacketizer;
-var VideoFramePacketizer = webrtcAddon.VideoFramePacketizer;
+
+var addon = require('../rtcFrame/build/Release/rtcFrame.node');
+var AudioFrameConstructor = addon.AudioFrameConstructor;
+var AudioFramePacketizer = addon.AudioFramePacketizer;
+var VideoFrameConstructor = addon.VideoFrameConstructor;
+var VideoFramePacketizer = addon.VideoFramePacketizer;
+
 var path = require('path');
 var logger = require('../logger').logger;
 var cipher = require('../cipher');
@@ -16,7 +18,7 @@ var log = logger.getLogger('WrtcConnection');
 
 var transform = require('sdp-transform');
 
-var addon = require('../webrtcLib/build/Release/webrtc');//require('./erizo/build/Release/addon');
+var addon = require('../rtcConn/build/Release/rtcConn');
 
 var h264ProfileOrder = ['E', 'H', 'M', 'B', 'CB']; //'H10', 'H42', 'H44', 'H10I', 'H42I', 'H44I', 'C44I'
 

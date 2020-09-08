@@ -40,6 +40,12 @@
             "video-transcoder-msdk"
         ]
     },
+    "webrtc" : {
+        "include" : [
+            "webrtc-conn",
+            "webrtc-frame"
+        ]
+    },
     "video-mixer-sw" : {
         "path" : "source/agent/video/videoMixer/videoMixer_sw",
         "gyp" : "binding.sw.gyp"
@@ -72,8 +78,11 @@
     "audio" : {
         "path" : "source/agent/audio/audioMixer"
     },
-    "webrtc" : {
-        "path" : "source/agent/webrtc/webrtcLib"
+    "webrtc-conn" : {
+        "path" : "source/agent/webrtc/rtcConn"
+    },
+    "webrtc-frame": {
+        "path" : "source/agent/webrtc/rtcFrame"
     },
     "sip" : {
         "path" : "source/agent/sip/sipIn",

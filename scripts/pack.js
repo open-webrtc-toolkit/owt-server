@@ -399,6 +399,7 @@ function isLibAllowed(libSrc) {
     return false;
 
   const whiteList = [
+    'rtcadapter',
     'libnice',
     'libSvtHevcEnc',
     'libusrsctp',

@@ -3,17 +3,14 @@
 // SPDX-License-Identifier: Apache-2.0
 
 #include "SsrcGenerator.h"
-#include "webrtc/base/timeutils.h"
-#include "webrtc/base/checks.h"
+#include "rtc_base/time_utils.h"
+#include "rtc_base/checks.h"
 
 namespace owt_base {
 
 SsrcGenerator* SsrcGenerator::GetSsrcGenerator() {
-  return webrtc::GetStaticInstance<SsrcGenerator>(webrtc::kAddRef);
-}
-
-void SsrcGenerator::ReturnSsrcGenerator() {
-  webrtc::GetStaticInstance<SsrcGenerator>(webrtc::kRelease);
+  static SsrcGenerator inst;
+  return &inst;
 }
 
 uint32_t SsrcGenerator::CreateSsrc() {

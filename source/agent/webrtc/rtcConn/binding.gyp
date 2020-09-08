@@ -1,12 +1,12 @@
 {
   'targets': [{
-    'target_name': 'webrtc',
+    'target_name': 'rtcConn',
+    'variables': {
+      'source_rel_dir': '../../..', # relative source dir path
+      'source_abs_dir%': '<(module_root_dir)/../../..', # absolute source dir path
+    },
     'sources': [
       'addon.cc',
-      'AudioFrameConstructorWrapper.cc',
-      'AudioFramePacketizerWrapper.cc',
-      'VideoFrameConstructorWrapper.cc',
-      'VideoFramePacketizerWrapper.cc',
       'WebRtcConnection.cc',
       'ThreadPool.cc',
       'IOThreadPool.cc',
@@ -25,23 +25,20 @@
       'erizo/src/erizo/thread/Scheduler.cpp',
       'erizo/src/erizo/thread/ThreadPool.cpp',
       'erizo/src/erizo/thread/Worker.cpp',
+      'erizo/src/erizo/rtp/PacketBufferService.cpp',
+      'erizo/src/erizo/rtp/RtcpFeedbackGenerationHandler.cpp',
+      'erizo/src/erizo/rtp/RtcpForwarder.cpp',
+      'erizo/src/erizo/rtp/RtcpProcessorHandler.cpp',
+      'erizo/src/erizo/rtp/RtpUtils.cpp',
+      'erizo/src/erizo/rtp/QualityManager.cpp',
+      'erizo/src/erizo/rtp/RtpExtensionProcessor.cpp',
+      'erizo/src/erizo/rtp/RtcpFeedbackGenerationHandler.cpp',
+      'erizo/src/erizo/rtp/RtcpRrGenerator.cpp',
+      'erizo/src/erizo/rtp/RtcpNackGenerator.cpp',
       '<!@(find erizo/src/erizo/dtls -name "*.cpp")',
       '<!@(find erizo/src/erizo/dtls -name "*.c")',
       '<!@(find erizo/src/erizo/pipeline -name "*.cpp")',
-      '<!@(find erizo/src/erizo/rtp -name "*.cpp")',
-      '<!@(find erizo/src/erizo/stats  -name "*.cpp")',
-      '../../addons/common/NodeEventRegistry.cc',
-      '../../../core/owt_base/AudioFrameConstructor.cpp',
-      '../../../core/owt_base/AudioFramePacketizer.cpp',
-      '../../../core/owt_base/AudioUtilities.cpp',
-      '../../../core/owt_base/MediaFramePipeline.cpp',
-      '../../../core/owt_base/VideoFrameConstructor.cpp',
-      '../../../core/owt_base/VideoFramePacketizer.cpp',
-      '../../../core/owt_base/SsrcGenerator.cc',
-      '../../../core/owt_base/TaskRunnerPool.cc',
-      '../../../core/common/JobTimer.cpp',
-      '../../../core/rtc_adapter/VieReceiver.cc',
-      '../../../core/rtc_adapter/VieRemb.cc' #20150508
+      '<!@(find erizo/src/erizo/stats  -name "*.cpp")'
     ],
     'cflags_cc': ['-DWEBRTC_POSIX', '-DWEBRTC_LINUX', '-DLINUX', '-DNOLINUXIF', '-DNO_REG_RPC=1', '-DHAVE_VFPRINTF=1', '-DRETSIGTYPE=void', '-DNEW_STDIO', '-DHAVE_STRDUP=1', '-DHAVE_STRLCPY=1', '-DHAVE_LIBM=1', '-DHAVE_SYS_TIME_H=1', '-DTIME_WITH_SYS_TIME_H=1'],
     'include_dirs': [
@@ -54,15 +51,13 @@
       'erizo/src/erizo/rtp',
       'erizo/src/erizo/thread',
       'erizo/src/erizo/stats',
-      '../../../core/common',
-      '../../../core/owt_base',
-      '../../../core/rtc_adapter',
-      '../../../../third_party/webrtc/src',
-      '../../../../build/libdeps/build/include',
+      '<(source_rel_dir)/core/common',
+      '<(source_rel_dir)/core/owt_base',
+      '<(source_rel_dir)/../build/libdeps/build/include',
       '<!@(pkg-config glib-2.0 --cflags-only-I | sed s/-I//g)',
     ],
     'libraries': [
-      '-L$(CORE_HOME)/../../build/libdeps/build/lib',
+      '-L<(source_abs_dir)/../build/libdeps/build/lib',
       '-lsrtp2',
       '-lssl',
       '-ldl',
@@ -71,7 +66,7 @@
       '-lboost_thread',
       '-lboost_system',
       '-lnice',
-      '-L$(CORE_HOME)/../../third_party/webrtc', '-lwebrtc',
+      #'-L<(webrtc_abs_dir)', '-lwebrtc',
     ],
     'conditions': [
       [ 'OS=="mac"', {

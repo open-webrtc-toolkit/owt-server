@@ -6,9 +6,8 @@
 #define BUILDING_NODE_EXTENSION
 #endif
 
-#include "MediaDefinitions.h"
+#include "MediaWrapper.h"
 #include "VideoFramePacketizerWrapper.h"
-#include <WebRtcConnection.h>
 #include "WebRtcConnection.h"
 
 using namespace v8;
@@ -42,8 +41,11 @@ void VideoFramePacketizer::New(const FunctionCallbackInfo<Value>& args) {
   bool supportULPFEC = (args[1]->ToBoolean())->BooleanValue();
   VideoFramePacketizer* obj = new VideoFramePacketizer();
   int transportccExt = (args.Length() == 3) ? args[2]->IntegerValue() : -1;
+  bool selfRequestKeyframe = (args.Length() == 4) ? (args[3]->ToBoolean())->BooleanValue() : false;
   if (transportccExt > 0) {
     obj->me = new owt_base::VideoFramePacketizer(supportRED, supportULPFEC, true, false, transportccExt);
+  } else if (selfRequestKeyframe) {
+    obj->me = new owt_base::VideoFramePacketizer(supportRED, supportULPFEC, false, true);
   } else {
     obj->me = new owt_base::VideoFramePacketizer(supportRED, supportULPFEC);
   }
@@ -68,11 +70,8 @@ void VideoFramePacketizer::bindTransport(const FunctionCallbackInfo<Value>& args
   VideoFramePacketizer* obj = ObjectWrap::Unwrap<VideoFramePacketizer>(args.Holder());
   owt_base::VideoFramePacketizer* me = obj->me;
 
-  WebRtcConnection* param = Nan::ObjectWrap::Unwrap<WebRtcConnection>(Nan::To<v8::Object>(args[0]).ToLocalChecked());
-  auto wr = std::shared_ptr<erizo::WebRtcConnection>(param->me).get();
-
-  //MediaSink* param = Nan::ObjectWrap::Unwrap<MediaSink>(args[0]->ToObject());
-  erizo::MediaSink* transport = wr;
+  MediaFilter* param = Nan::ObjectWrap::Unwrap<MediaFilter>(Nan::To<v8::Object>(args[0]).ToLocalChecked());
+  erizo::MediaSink* transport = param->msink;
 
   me->bindTransport(transport);
 }

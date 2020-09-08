@@ -39,6 +39,10 @@
                 "name": "sipIn"
             },
             {
+                "folder": "../webrtc/rtcFrame",
+                "name": "rtcFrame"
+            },
+            {
                 "folder": "../addons/internalIO",
                 "name": "internalIO"
             },
