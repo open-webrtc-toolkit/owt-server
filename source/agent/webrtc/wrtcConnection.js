@@ -18,7 +18,7 @@ var log = logger.getLogger('WrtcConnection');
 
 var transform = require('sdp-transform');
 
-var addon = require('../webrtcLib/build/Release/webrtc');//require('./erizo/build/Release/addon');
+var addon = require('../rtcConn/build/Release/rtcConn');
 
 var h264ProfileOrder = ['E', 'H', 'M', 'B', 'CB']; //'H10', 'H42', 'H44', 'H10I', 'H42I', 'H44I', 'C44I'
 

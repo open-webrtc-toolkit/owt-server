@@ -4,7 +4,6 @@
 
 #include "VideoFramePacketizer.h"
 #include "MediaUtilities.h"
-#include "TaskRunnerPool.h"
 #include <rtputils.h>
 
 using namespace rtc_adapter;

@@ -11,6 +11,7 @@
       '<(source_rel_dir)/core/owt_base/VideoFrameConstructor.cpp',
       '<(source_rel_dir)/core/owt_base/VideoFramePacketizer.cpp',
       '<(source_rel_dir)/core/owt_base/MediaFramePipeline.cpp',
+      '<(source_rel_dir)/core/common/JobTimer.cpp',
       'AudioFrameConstructorWrapper.cc',
       'AudioFramePacketizerWrapper.cc',
       'VideoFrameConstructorWrapper.cc',
