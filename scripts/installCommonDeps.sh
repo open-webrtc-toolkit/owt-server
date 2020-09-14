@@ -341,7 +341,7 @@ install_libsrtp2(){
 }
 
 install_node() {
-  local NODE_VERSION="v8.15.0"
+  local NODE_VERSION="v10.21.0"
   echo -e "\x1b[32mInstalling nvm...\x1b[0m"
   NVM_DIR="${HOME}/.nvm"
 
