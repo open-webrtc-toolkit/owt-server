@@ -1,6 +1,6 @@
 {
   "name": "OWT-Server-Agent",
-  "version":"4.3.1",
+  "version":"4.2.0",
   "dependencies": {
     "amqp": "*",
     "log4js": "^1.1.1",
@@ -11,7 +11,7 @@
     "node-gyp": "*"
   },
   "engine": {
-    "node": "10.21.0"
+    "node": "8.15.0"
   },
   "bin": "index.js",
   "pkg": {
