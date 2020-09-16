@@ -28,7 +28,6 @@ void VideoGstAnalyzer::Init(Handle<Object> exports, Handle<Object> module) {
   NODE_SET_PROTOTYPE_METHOD(tpl, "createPipeline", createPipeline);
   NODE_SET_PROTOTYPE_METHOD(tpl, "clearPipeline", clearPipeline);
   NODE_SET_PROTOTYPE_METHOD(tpl, "emitListenTo", emitListenTo);
-  NODE_SET_PROTOTYPE_METHOD(tpl, "emitConnectTo", emitConnectTo);
   NODE_SET_PROTOTYPE_METHOD(tpl, "addElementMany", addElementMany);
   NODE_SET_PROTOTYPE_METHOD(tpl, "setPlaying", setPlaying);
   NODE_SET_PROTOTYPE_METHOD(tpl, "stopLoop", stopLoop);
@@ -104,25 +103,6 @@ void VideoGstAnalyzer::emitListenTo(const FunctionCallbackInfo<Value>& args){
 
   me->emitListenTo(minPort,maxPort);
 }
-
-void VideoGstAnalyzer::emitConnectTo(const FunctionCallbackInfo<Value>& args){
-  Isolate* isolate = Isolate::GetCurrent();
-  HandleScope scope(isolate);
-  VideoGstAnalyzer* obj = ObjectWrap::Unwrap<VideoGstAnalyzer>(args.Holder());
-  mcu::VideoGstAnalyzer* me = obj->me;
-
-  unsigned int connectionID;
-  connectionID = args[0]->Uint32Value();
-  
-  String::Utf8Value param0(args[1]->ToString());
-  std::string ip = std::string(*param0);
-
-  unsigned int remotePort;
-  remotePort = args[2]->Uint32Value();
-
-  me->emitConnectTo(connectionID, (char*)ip.c_str(),remotePort);
-}
-
 
 
 void VideoGstAnalyzer::addElementMany(const FunctionCallbackInfo<Value>& args){

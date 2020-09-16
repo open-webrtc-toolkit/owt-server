@@ -83,7 +83,6 @@ createInternalConnection(connectionId, direction, internalOpt) {
       const status = {type: 'ready', info: {algorithm: algo}};
       this.onStatus(options.controller, connectionId, 'out', status);
 
-      //const newStreamId = Math.random() * 1000000000000000000 + '';
       const newStreamId = algo + options.media.video.from;
       const streamInfo = {
           type: 'analytics',

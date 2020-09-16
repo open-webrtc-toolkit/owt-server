@@ -27,7 +27,6 @@ class VideoGstAnalyzer: public node::ObjectWrap{
   static void createPipeline(const v8::FunctionCallbackInfo<v8::Value>& args);
   static void clearPipeline(const v8::FunctionCallbackInfo<v8::Value>& args);
   static void emitListenTo(const v8::FunctionCallbackInfo<v8::Value>& args);
-  static void emitConnectTo(const v8::FunctionCallbackInfo<v8::Value>& args);
   static void setPlaying(const v8::FunctionCallbackInfo<v8::Value>& args);
   static void setOutputParam(const v8::FunctionCallbackInfo<v8::Value>& args);
   static void addElementMany(const v8::FunctionCallbackInfo<v8::Value>& args);

@@ -17,7 +17,6 @@ MyPipeline::MyPipeline() {
 }
 
 rvaStatus MyPipeline::PipelineConfig(std::unordered_map<std::string, std::string> params) {
-    std::cout << "In my plugin init." << std::endl;
 
     std::unordered_map<std::string,std::string>::const_iterator width = params.find ("inputwidth");
     if ( width == params.end() )

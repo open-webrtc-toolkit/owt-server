@@ -15,12 +15,65 @@ DEFINE_LOGGER(VideoGstAnalyzer, "mcu.VideoGstAnalyzer");
 
 GMainLoop* VideoGstAnalyzer::loop = NULL;
 
+inline bool isH264KeyFrame(uint8_t *data, size_t len)
+{
+    if (len < 5) {
+        //printf("Invalid len %ld\n", len);
+        return false;
+    }
+
+    if (data[0] != 0 || data[1] != 0 || data[2] != 0 || data[3] != 1) {
+        //printf("Invalid start code %d-%d-%d-%d\n", data[0], data[1], data[2], data[3]);
+        return false;
+    }
+
+    int nal_unit_type = data[4] & 0x1f;
+
+    if (nal_unit_type == 5 || nal_unit_type == 7) {
+        //printf("nal_unit_type %d, key_frame %d, len %ld\n", nal_unit_type, true, len);
+        return true;
+    } else if (nal_unit_type == 9) {
+        if (len < 6) {
+            //printf("Invalid len %ld\n", len);
+            return false;
+        }
+
+        int primary_pic_type = (data[5] >> 5) & 0x7;
+
+        //printf("nal_unit_type %d, primary_pic_type %d, key_frame %d, len %ld\n", nal_unit_type, primary_pic_type, (primary_pic_type == 0), len);
+        return (primary_pic_type == 0);
+    } else {
+        //printf("nal_unit_type %d, key_frame %d, len %ld\n", nal_unit_type, false, len);
+        return false;
+    }
+}
+
+inline bool isVp8KeyFrame(uint8_t *data, size_t len)
+{
+    if (len < 3) {
+        //printf("Invalid len %ld\n", len);
+        return false;
+    }
+
+    unsigned char *c = data;
+    unsigned int tmp = (c[2] << 16) | (c[1] << 8) | c[0];
+
+    int key_frame = tmp & 0x1;
+    //int version = (tmp >> 1) & 0x7;
+    //int show_frame = (tmp >> 4) & 0x1;
+    //int first_part_size = (tmp >> 5) & 0x7FFFF;
+
+    //printf("key_frame %d, len %ld\n", (key_frame == 0), len);
+    return (key_frame == 0);
+}
+
 VideoGstAnalyzer::VideoGstAnalyzer() {
     ELOG_INFO("Init");
     sourceid = 0;
     sink = NULL;
     fp = NULL;
     encoder_pad = NULL;
+    m_frameCount = 0;
 }
 
 VideoGstAnalyzer::~VideoGstAnalyzer() {
@@ -167,9 +220,21 @@ void VideoGstAnalyzer::new_sample_from_sink (GstElement * source, gpointer data)
 
     GstMapInfo map;
     gst_buffer_map (buffer, &map, GST_MAP_READ);
+
+    owt_base::Frame outFrame;
+    memset(&outFrame, 0, sizeof(outFrame));
+
+    outFrame.format = owt_base::FRAME_FORMAT_H264;
+    outFrame.length = map.size;
+    outFrame.additionalInfo.video.width = pStreamObj->width;
+    outFrame.additionalInfo.video.height = pStreamObj->height;
+    outFrame.additionalInfo.video.isKeyFrame = isH264KeyFrame(map.data, map.size);
+    outFrame.timeStamp = (pStreamObj->m_frameCount++) * 1000 / 30 * 90;
+
+    outFrame.payload = map.data;
     
     for ( auto& x: pStreamObj->m_internalout)
-        x->onFrame(map.data, pStreamObj->width, pStreamObj->height, map.size);
+        x->onFrame(outFrame);
 
     gst_buffer_unmap(buffer, &map);
     gst_sample_unref(sample);
@@ -238,16 +303,6 @@ void VideoGstAnalyzer::emitListenTo(int minPort, int maxPort) {
     m_internalin.reset(new InternalIn((GstAppSrc*)source, minPort, maxPort));  
 }
 
-void VideoGstAnalyzer::emitConnectTo(int connectionID, char* ip, int remotePort){
-    if (sink != nullptr){
-        ELOG_DEBUG("Connect to remote ip %s port %d with connetionID %d\n", ip, remotePort);
-        
-    }
-    else {
-        ELOG_ERROR("No appsink in the pipeline\n");
-    }
-}
-
 void VideoGstAnalyzer::addOutput(int connectionID, owt_base::InternalOut* out) {
     ELOG_DEBUG("Add analyzed stream back to OWT\n");
     if (sink != nullptr){
@@ -290,10 +345,6 @@ void VideoGstAnalyzer::setOutputParam(std::string codec, int width, int height,
     this->kfi = kfi;
     this->algo = algo;
     this->libraryName = libraryName;
-
-    std::cout << "setting param,codec=" << this->codec<<",width=" << this->width << ",height="
-         << this->height << ",framerate=" << this->framerate<<",bitrate=" << this->bitrate << ",kfi="
-         << this->kfi << ",algo=" << this->algo << ",pluginName=" << this->libraryName << std::endl;
 }
 
 }

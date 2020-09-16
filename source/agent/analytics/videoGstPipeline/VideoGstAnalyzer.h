@@ -16,6 +16,7 @@
 #include <InternalOut.h>
 #include "AnalyticsPipeline.h"
 #include <stdio.h>
+#include "MediaFramePipeline.h"
 
 namespace mcu {
 
@@ -29,8 +30,6 @@ public:
     int getListeningPort();
     void emitListenTo(int minPort,int maxPort);
     int setPlaying();
-
-    void emitConnectTo(int connectionID, char* ip, int remotePort);
 
     int addElementMany();
 
@@ -76,6 +75,7 @@ private:
     boost::thread m_playthread;
 
     int connectPort;
+    int m_frameCount;
 
     //param
     std::string codec;
