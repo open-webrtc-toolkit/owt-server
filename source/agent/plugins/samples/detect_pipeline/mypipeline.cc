@@ -66,7 +66,6 @@ GstElement * MyPipeline::InitializePipeline() {
     fakesink = gst_element_factory_make("fakesink","fake");
     videorate = gst_element_factory_make("videorate","rate");
 
-    /* Create the empty VideoGstAnalyzer */
     pipeline = gst_pipeline_new("detect-pipeline");
 
 

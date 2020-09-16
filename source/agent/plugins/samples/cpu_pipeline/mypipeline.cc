@@ -65,7 +65,6 @@ GstElement * MyPipeline::InitializePipeline() {
     encoder = gst_element_factory_make("x264enc","encoder");
     outsink = gst_element_factory_make("appsink","appsink");
 
-    /* Create the empty VideoGstAnalyzer */
     pipeline = gst_pipeline_new("cpu-pipeline");
 
 

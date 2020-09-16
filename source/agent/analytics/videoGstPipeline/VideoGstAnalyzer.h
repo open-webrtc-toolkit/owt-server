@@ -54,7 +54,7 @@ protected:
     static void main_loop_thread(gpointer);
     static GMainLoop *loop;
     static gboolean StreamEventCallBack(GstBus *bus, GstMessage *message, gpointer data);
-    void setState();
+    void setState(GstState newstate);
     boost::scoped_ptr<InternalIn> m_internalin;
     std::list<owt_base::InternalOut*> m_internalout;
     guint sourceid;
@@ -84,7 +84,7 @@ private:
     int width,height;
     int framerate,bitrate;
     int kfi; //keyFrameInterval
-    FILE *fp;
+    bool addlistener;
 };
 
 }

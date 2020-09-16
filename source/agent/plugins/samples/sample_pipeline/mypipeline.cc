@@ -69,7 +69,6 @@ GstElement * MyPipeline::InitializePipeline() {
         return NULL;
     }
 
-    /* Create the empty VideoGstAnalyzer */
     pipeline = gst_pipeline_new("sample-pipeline");
 
 
@@ -82,7 +81,6 @@ GstElement * MyPipeline::InitializePipeline() {
 } 
 
 rvaStatus MyPipeline::LinkElements() {
-    std::cout << "Link element in library. " << std::endl;
 	
     gboolean link_ok;
     GstCaps *postprocsrccaps, *postprocsinkcaps;

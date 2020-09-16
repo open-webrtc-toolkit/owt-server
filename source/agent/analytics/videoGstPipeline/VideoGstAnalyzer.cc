@@ -71,9 +71,9 @@ VideoGstAnalyzer::VideoGstAnalyzer() {
     ELOG_INFO("Init");
     sourceid = 0;
     sink = NULL;
-    fp = NULL;
     encoder_pad = NULL;
     m_frameCount = 0;
+    addlistener = false;
 }
 
 VideoGstAnalyzer::~VideoGstAnalyzer() {
@@ -82,6 +82,7 @@ VideoGstAnalyzer::~VideoGstAnalyzer() {
          destroyPlugin(pipeline_);
          dlclose(pipelineHandle);
     }
+    stopLoop();
 }
 
 gboolean VideoGstAnalyzer::StreamEventCallBack(GstBus *bus, GstMessage *message, gpointer data)
@@ -141,6 +142,7 @@ void VideoGstAnalyzer::clearPipeline()
             gst_object_unref(GST_OBJECT(pipeline));
             g_source_remove(m_bus_watch_id);
             g_main_loop_unref(loop);
+            gst_object_unref(m_bus);
         }
  
     }
@@ -181,6 +183,7 @@ int VideoGstAnalyzer::createPipeline() {
 
     if (!pipeline) {
         ELOG_ERROR("pipeline Initialization failed\n");
+        dlclose(pipelineHandle);
         return -1;
     }
 
@@ -280,8 +283,8 @@ void VideoGstAnalyzer::main_loop_thread(gpointer data){
     g_thread_exit(0);
 }
 
-void VideoGstAnalyzer::setState() {
-    ret = gst_element_set_state(pipeline, GST_STATE_PLAYING);
+void VideoGstAnalyzer::setState(GstState newstate) {
+    ret = gst_element_set_state(pipeline, newstate);
     if (ret == GST_STATE_CHANGE_FAILURE) {
         ELOG_ERROR("Unable to set the pipeline to the PLAYING state.\n");
         gst_object_unref(pipeline);
@@ -291,7 +294,7 @@ void VideoGstAnalyzer::setState() {
 
 int VideoGstAnalyzer::setPlaying() {
 
-    m_playthread = boost::thread(boost::bind(&VideoGstAnalyzer::setState, this));
+    setState(GST_STATE_PLAYING);
 
     m_thread = g_thread_create((GThreadFunc)main_loop_thread,NULL,TRUE,NULL);
 
@@ -306,15 +309,19 @@ void VideoGstAnalyzer::emitListenTo(int minPort, int maxPort) {
 void VideoGstAnalyzer::addOutput(int connectionID, owt_base::InternalOut* out) {
     ELOG_DEBUG("Add analyzed stream back to OWT\n");
     if (sink != nullptr){
+
         if(encoder_pad == nullptr) {
             GstElement *encoder = gst_bin_get_by_name (GST_BIN (pipeline), "encoder");
             encoder_pad = gst_element_get_static_pad(encoder, "src");
             out->setPad(encoder_pad);
-            ELOG_ERROR("Set encoder pad to internal output\n");
         }
+        //gst_pad_send_event(encoder_pad, gst_event_new_custom( GST_EVENT_CUSTOM_UPSTREAM, gst_structure_new( "GstForceKeyUnit", "all-headers", G_TYPE_BOOLEAN, TRUE, NULL)));
         m_internalout.push_back(out);
-        g_object_set (G_OBJECT (sink), "emit-signals", TRUE, "sync", FALSE, NULL);
-        g_signal_connect (sink, "new-sample", G_CALLBACK (new_sample_from_sink), this);
+        if(!addlistener) {
+            g_object_set (G_OBJECT (sink), "emit-signals", TRUE, "sync", FALSE, NULL);
+            g_signal_connect (sink, "new-sample", G_CALLBACK (new_sample_from_sink), this);
+            addlistener = true;
+        }
     } else {
         ELOG_ERROR("No appsink in pipeline\n");
     }
@@ -324,7 +331,6 @@ void VideoGstAnalyzer::addOutput(int connectionID, owt_base::InternalOut* out) {
 void VideoGstAnalyzer::disconnect(owt_base::InternalOut* out){
     ELOG_DEBUG("Disconnect remote connection\n");
     m_internalout.remove(out);
-    g_object_set (G_OBJECT (sink), "emit-signals", FALSE, "sync", FALSE, NULL);
 }
 
 int VideoGstAnalyzer::getListeningPort() {
