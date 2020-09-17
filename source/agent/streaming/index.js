@@ -284,7 +284,9 @@ module.exports = function(rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
         }
 
 
-        if (options.connection.type != 'srt') {
+        if ( options.connection && options.connection.type && options.connection.type === 'srt') {
+            log.debug("SRT will wait for ip and port to return");
+        } else {
             if (!conn) {
                 log.error('Create connection failed', connectionId);
                 return callback('callback', {
