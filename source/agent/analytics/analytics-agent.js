@@ -3,11 +3,9 @@
 const log = require('../logger').logger.getLogger('AnalyticsAgent');
 const BaseAgent = require('./base-agent');
 
-const VideoPipeline = require('../videoGstPipeline/build/Release/videoAnalyzer-pipeline');
+const VideoAnalyzer = require('../videoGstPipeline/build/Release/videoAnalyzer-pipeline');
 const EventEmitter = require('events').EventEmitter;
-const { getVideoParameterForAddon } = require('../mediaUtil');
-
-var portInfo = 0; 
+const { getVideoParameterForAddon } = require('../mediaUtil'); 
 
 class AnalyticsAgent extends BaseAgent {
   constructor(config) {
@@ -24,14 +22,7 @@ class AnalyticsAgent extends BaseAgent {
     // connectionId - dispatcher
     this.outputs = {};
 
-    var conf = {
-      'hardware': false,
-      'simulcast': false,
-      'crop': false,
-      'gaccplugin': false,
-      'MFE_timeout': 0
-    };
-    this.engine = new VideoPipeline(conf);
+    this.engine = new VideoAnalyzer();
 
     this.flag = 0;
   }
@@ -42,14 +33,13 @@ createInternalConnection(connectionId, direction, internalOpt) {
     internalOpt.maxport = global.config.internal.maxport;
     if (direction == 'in') {
       this.engine.emitListenTo(internalOpt.minport,internalOpt.maxport);
-      portInfo = this.engine.getListeningPort();
+      const portInfo = this.engine.getListeningPort();
+      // Create internal connection always success
+      return Promise.resolve({ip: global.config.internal.ip_address, port: portInfo});
     }
     else {
-      super.createInternalConnection(connectionId, direction, internalOpt);
+      return super.createInternalConnection(connectionId, direction, internalOpt);
     }
-    
-    // Create internal connection always success
-    return Promise.resolve({ip: global.config.internal.ip_address, port: portInfo});
   }
 
   // override
@@ -66,7 +56,8 @@ createInternalConnection(connectionId, direction, internalOpt) {
   unpublish(connectionId) {
     log.debug('unpublish:', connectionId);
     this.engine.clearPipeline();
-    return Promise.resolve('ok');
+    this.connectionclose();
+    return Promise.resolve("ok");
   }
 
   // override
@@ -77,49 +68,49 @@ createInternalConnection(connectionId, direction, internalOpt) {
        return super.subscribe(connectionId, connectionType, options);
     }
       
-      const videoFormat = options.connection.video.format;
-      const videoParameters = options.connection.video.parameters;
-      const algo = options.connection.algorithm;
-      const status = {type: 'ready', info: {algorithm: algo}};
-      this.onStatus(options.controller, connectionId, 'out', status);
+    const videoFormat = options.connection.video.format;
+    const videoParameters = options.connection.video.parameters;
+    const algo = options.connection.algorithm;
+    const status = {type: 'ready', info: {algorithm: algo}};
+    this.onStatus(options.controller, connectionId, 'out', status);
 
-      const newStreamId = algo + options.media.video.from;
-      const streamInfo = {
-          type: 'analytics',
-          media: {video: Object.assign({}, videoFormat, videoParameters)},
-          analyticsId: connectionId,
-          locality: {agent:this.agentId, node:this.rpcId},
-        };
+    const newStreamId = algo + options.media.video.from;
+    const streamInfo = {
+        type: 'analytics',
+        media: {video: Object.assign({}, videoFormat, videoParameters)},
+        analyticsId: connectionId,
+        locality: {agent:this.agentId, node:this.rpcId},
+      };
 
-      const pluginName = this.algorithms[algo].name;
-      let codec = videoFormat.codec;
-            if (videoFormat.profile) {
-              codec += '_' + videoFormat.profile;
-            }
-      codec = codec.toLowerCase();
-      const {resolution, framerate, keyFrameInterval, bitrate}
-              = getVideoParameterForAddon(options.connection.video);
+    const pluginName = this.algorithms[algo].name;
+    let codec = videoFormat.codec;
+          if (videoFormat.profile) {
+            codec += '_' + videoFormat.profile;
+          }
+    codec = codec.toLowerCase();
+    const {resolution, framerate, keyFrameInterval, bitrate}
+            = getVideoParameterForAddon(options.connection.video);
 
-      log.debug('resolution:',resolution,'framerate:',framerate,'keyFrameInterval:',
-               keyFrameInterval, 'bitrate:',bitrate);
-      
-      this.engine.setOutputParam(codec,resolution,framerate,bitrate,keyFrameInterval,algo,pluginName);
-      if (this.engine.createPipeline() < 0) {
-        return Promise.reject('Create pipeline failed');
-      }
+    log.debug('resolution:',resolution,'framerate:',framerate,'keyFrameInterval:',
+             keyFrameInterval, 'bitrate:',bitrate);
+    
+    this.engine.setOutputParam(codec,resolution,framerate,bitrate,keyFrameInterval,algo,pluginName);
+    if (this.engine.createPipeline() < 0) {
+      return Promise.reject('Create pipeline failed');
+    }
 
-      streamInfo.media.video.bitrate = bitrate;
-      this.onStreamGenerated(options.controller, newStreamId, streamInfo);
+    streamInfo.media.video.bitrate = bitrate;
+    this.onStreamGenerated(options.controller, newStreamId, streamInfo);
 
-      if (this.engine.addElementMany() < 0) {
-        return Promise.reject('Link element failed');
-      }
+    if (this.engine.addElementMany() < 0) {
+      return Promise.reject('Link element failed');
+    }
 
-      this.connectionclose = () => {
-          this.onStreamDestroyed(options.controller, newStreamId);
-      }
-      this.inputs[connectionId] = true;
-      return Promise.resolve();
+    this.connectionclose = () => {
+        this.onStreamDestroyed(options.controller, newStreamId);
+    }
+    this.inputs[connectionId] = true;
+    return Promise.resolve();
   }
 
   // override
@@ -134,7 +125,6 @@ createInternalConnection(connectionId, direction, internalOpt) {
         this.engine.disconnect(iConn.connection.receiver());
       }
     }
-    this.connectionclose();
     return super.unsubscribe(connectionId);
   }
 

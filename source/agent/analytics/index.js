@@ -98,7 +98,7 @@ module.exports = function (rpcClient, rpcId, agentId, clusterIp) {
   // RPC API
   return {
     createInternalConnection: function (connectionId, direction, internalOpt, callback) {
-     log.info('createInternalConnection,','connectionId:',connectionId,'direction:',direction,'internalOpt:',internalOpt,'callback:',callback);
+     log.debug('createInternalConnection,','connectionId:',connectionId,'direction:',direction,'internalOpt:',internalOpt,'callback:',callback);
       agent.createInternalConnection(connectionId, direction, internalOpt)
         .then(rpcSuccess(callback))
         .catch(rpcError(callback));
@@ -109,7 +109,7 @@ module.exports = function (rpcClient, rpcId, agentId, clusterIp) {
         .catch(rpcError(callback));
     },
     publish: function (connectionId, connectionType, options, callback) {
-     log.info('publish,connectionId:',connectionId,'connectionType:',connectionType,'options:',options,'callback:',callback);
+     log.debug('publish,connectionId:',connectionId,'connectionType:',connectionType,'options:',options,'callback:',callback);
       agent.publish(connectionId, connectionType, options)
         .then(rpcSuccess(callback))
         .catch(rpcError(callback));
@@ -121,7 +121,7 @@ module.exports = function (rpcClient, rpcId, agentId, clusterIp) {
         .catch(rpcError(callback));
     },
     subscribe: function (connectionId, connectionType, options, callback) {
-      log.info('subscribe,connectionId:',connectionId,'connectionType:',connectionType,'options:',options,'callback:',callback);
+      log.debug('subscribe,connectionId:',connectionId,'connectionType:',connectionType,'options:',options,'callback:',callback);
       agent.subscribe(connectionId, connectionType, options)
         .then(rpcSuccess(callback))
         .catch(rpcError(callback));
@@ -133,7 +133,6 @@ module.exports = function (rpcClient, rpcId, agentId, clusterIp) {
         .catch(rpcError(callback));
     },
     linkup: function (connectionId, audioFrom, videoFrom, callback) {
-      //log.info('linkup,','connectionId:',connectionId,'audioFrom:',audiofrom,'videoFrom:',videoFrom,'callback:',callback);
       log.debug('linkup,','connectionId:',connectionId,'videoFrom:',videoFrom,'callback:',callback);
       agent.linkup(connectionId, audioFrom, videoFrom)
         .then(rpcSuccess(callback))
