@@ -64,7 +64,7 @@ module.exports = function Connections () {
                 log.debug('remove video from:', videoFrom);
                 var dest = connections[connectionId].connection.receiver('video');
                 connections[videoFrom].connection.removeDestination('video', dest);
-                connections[connectionId].audioFrom = undefined;
+                connections[connectionId].videoFrom = undefined;
             }
         }
     };
