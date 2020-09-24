@@ -31,13 +31,14 @@ VideoFrameConstructor::VideoFrameConstructor(VideoInfoListener* vil, uint32_t tr
     m_videoTransport.reset(new WebRTCTransport<erizoExtra::VIDEO>(nullptr, nullptr));
     sink_fb_source_ = m_videoTransport.get();
     m_taskRunner = TaskRunnerPool::GetInstance().GetTaskRunner();
-    m_feedbackTimer.reset(new JobTimer(1, this));
+    m_feedbackTimer = SharedJobTimer::GetSharedFrequencyTimer(1);
+    m_feedbackTimer->addListener(this);
     init(transportccExtId);
 }
 
 VideoFrameConstructor::~VideoFrameConstructor()
 {
-    m_feedbackTimer->stop();
+    m_feedbackTimer->removeListener(this);
     m_remoteBitrateObserver->RemoveRembSender(m_rtpRtcp.get());
     m_videoReceiver->StopReceive();
 
