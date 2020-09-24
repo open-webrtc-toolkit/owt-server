@@ -9,41 +9,38 @@
     4.1 [Develop Pipelines](#Develop Pipelines)
     4.2 [Deploy Pipelines](#Deploy Pipelines)
 
-##1.Introduction
--------------
-In this document we introduce the media analytics functionality provided by Open WebRTC Toolkit (https://github.com/open-webrtc-toolkit/owt-server), namely OWT, and a step by step guide to implement your own media analytics pipeline with GStreamer and Intel Distribution of OpenVINO.
+## 1.Introduction
 
-###OWT Media Analytics Architecture
--------------
+In this document we introduce the media analytics functionality provided by [Open WebRTC Toolkit](https://github.com/open-webrtc-toolkit/owt-server), namely OWT, and a step by step guide to implement your own media analytics pipeline with GStreamer and Intel Distribution of OpenVINO.
+
+#### OWT Media Analytics Architecture
+
 The software block diagram of OWT Media Analytics：
 ![Analytics Arch](https://github.com/open-webrtc-toolkit/owt-server/blob/master/doc/servermd/AnalyticsFlow.jpg)
 OWT Server allows client applications to perform media analytics on any stream in the room with Analytics REST API, including the streams from WebRTC access node or SIP node, and streams from video mixing node. 
 A successful media analytics request will generate a new stream in the room, which can be subscribed, analyzed, recorded or mixed like other streams.
 
-###Process Model
--------------
+#### Process Model
+
 MCU will fork a new process for each analytics request by forming an integrated media analytics pipeline including decoder, pre-processor, video analyzer and encoder through GStreamer pipeline. Compressed bitstreams flow in/out of the media
 analytics pipeline through the common Internal In/Out infrastrcture provided by MCU.
 
 In current implementation, for each media analytics worker, only one media analaytics pipeline is allowed to be loaded. The GStreamer pipeline loaded by the analytics worker is controlled by the algorithm ID parameter in analytics
 REST request.
 
-##2.Install dependencies
-------------------
+## 2.Install dependencies
 
 System Requirement
-------------------
 
 Hardware： Intel(R) 6th - 8th generation Core(TM) platform, Intel(R) Xeon(R) E3-1200 v4 Family with C226 chipset, Intel(R) Xeon(R) E3-1200 and E3-1500 v5 Family with C236 chipset
 
 OS： CentOS 7.6 or Ubuntu 18.04
 
-###2.1 Install in Docker* image
-------------------
+### 2.1 Install in Docker* image
 
-Follow the binary.dockerfile from <https://github.com/open-webrtc-toolkit/owt-server/blob/master/docker/gst/binary.dockerfile> to install dependencies that needed to run OWT and analytics agent. 
+Follow the [binary.dockerfile] <https://github.com/open-webrtc-toolkit/owt-server/blob/master/docker/gst/binary.dockerfile> to install dependencies that needed to run OWT and analytics agent. 
 
-You can refer to <https://github.com/open-webrtc-toolkit/owt-server/blob/master/docker/gst/build_docker_image.sh> to build video analytics running image with OpenVINO and GStreamer installed:
+You can refer to [script]<https://github.com/open-webrtc-toolkit/owt-server/blob/master/docker/gst/build_docker_image.sh> to build video analytics running image with OpenVINO and GStreamer installed:
 ````
 cd owt-server/docker
 ./build_docker_image.sh openvino
@@ -56,15 +53,13 @@ docker cp Release-vxxx.tgz gst-analytics:/home/
 docker exec -it gst-analytics bash
 ````
 
-###2.2 Install on host machine
-------------------
+### 2.2 Install on host machine
 
-Besides basic OWT dependencies, analytics agent requires OpenVINO and GStreamer to do video analytics. Please refer to dlstreamer_gst install guide (https://github.com/openvinotoolkit/dlstreamer_gst/wiki/Install-Guide#install-on-host-machine) to install OpenVINO, gst-video-analytics plugins and related dependencies.
+Besides basic OWT dependencies, analytics agent requires OpenVINO and GStreamer to do video analytics. Please refer to [dlstreamer_gst install guide](https://github.com/openvinotoolkit/dlstreamer_gst/wiki/Install-Guide#install-on-host-machine) to install OpenVINO, gst-video-analytics plugins and related dependencies.
 
 ### 2.3 Download models for analytics
-------------------
 
-Download open model zoo package from <https://github.com/opencv/open_model_zoo/releases/tag/2020.4> and uncompress file in docker container or host machine:
+Download [open model zoo package]<https://github.com/opencv/open_model_zoo/releases/tag/2020.4> and uncompress file in docker container or host machine:
 ````
 #wget https://github.com/opencv/open_model_zoo/archive/2020.4.tar.gz
 #tar zxf 2020.4.tar.gz
@@ -73,9 +68,9 @@ Download open model zoo package from <https://github.com/opencv/open_model_zoo/r
 Follow  Model Downloader guide (open_model_zoo-2020.4/tools/downloader/README.md) to install dependencies and then download models.
 
 ## 3 Test Pipelines Shipped with Open WebRTC Toolkit
-------------------
+
 ### 3.1 Preparation
------------
+
 After all the dependencies are installed, you can follow commands below to build sample video analytics plugins in docker container or host machine:
 ````
 tar zxf Release-vxxx.tgz
@@ -116,10 +111,7 @@ You can specify different model path (downloaded from open model zoo) and other 
 
 Make sure you copy pipeline binaries to ````dist/analytics_agent/lib/````directory or the path specified in ````dist/analytics_agent/agent.toml````.
 
-
 ### 3.2 Start MCU
------------------------
-
 
 Start up MCU in Docker container:
 
@@ -134,13 +126,11 @@ cp /home/analyticspage/index.html apps/current_app/public/
 
 
 ### 3.3 Test Media Analytics Pipelines
-----------------------------
 
 Make sure the camera is accessible and start up Chrome browser on your desktop:````https://your_mcu_url:3004````
 There might be some security prompts about certificate issue. Select to trust those certificates. You might need to click the link in page: ````Click this for testing certificate and refresh````
 
 Refresh the test page and your local stream should be published to MCU.
-
 
 #### Start Analytics
 
@@ -165,13 +155,11 @@ After you successfully start analytics, analytics id will be generated and the l
 
 
 ## 4 Develop and Deploy Your Own Media Analytics Pipelines
-----------------------------
 
 MCU supports implementing your own media analytics pipelines and deploy them. Below are the detailed steps. You can also refer to dummy pipeline(in  ````plugins/samples/sample_pipeline/````) or face detection pipeline with CPU(````plugins/samples/cpu_pipeline/````)or face detection pipeline with GPU and VPU(````plugins/samples/detect_pipeline/````) for more details.
 
 
 ### 4.1 Develop Pipelines
----------------
 
 Pipeline exists in the format of an implementation class of ````rvaPipeline```` interface,  which will be built into an .so library. The defnition of ````rvaPipeline```` interface is under ````plugins/include/pipeline.h````.
 
@@ -321,7 +309,7 @@ Below we show the InitializePipeline implementation in cpu_pipeline pipeline wit
     pipeline = gst_pipeline_new("cpu-pipeline");
 ````
 
-The ````LinkElements```` interface set properties for elements in pipeline and link elements in pipeline. To check what properties each element has, please go to GStreamer documents, take ```gvadetect``` for example, you can refer to ```gvadetect doc```<https://github.com/openvinotoolkit/dlstreamer_gst/wiki/gvadetect>, and set gvadetect properties, you can follow:
+The ````LinkElements```` interface set properties for elements in pipeline and link elements in pipeline. To check what properties each element has, please go to GStreamer documents, take ```gvadetect``` for example, you can refer to [gvadetect doc]<https://github.com/openvinotoolkit/dlstreamer_gst/wiki/gvadetect>, and set gvadetect properties, you can follow:
 ````
 g_object_set(G_OBJECT(detect),"device", device.c_str(),
         "model",model.c_str(),
@@ -387,14 +375,11 @@ After you finish ````rvaPipeline```` interface implementation，Please include s
 DECLARE_PIPELINE(YourPipelineName)
 ````
 
-
 Here ````YourPipelineName```` must be the class name of your ````rvaPipeline```` implementation.
 
 Finally build and copy all binaries to the same directory where you put pipelines shipped with MCU, including the libaries your pipeline depends on that are not within ````LD_LIBRARY_PATH````.
 
-
 ### 4.2 Deploy Pipelines
---------------
 
 Like other pipelines shipped with MCU, you need to add an entry into ````dist/analytics_agent/plugin.cfg```` for your pipeline by generating a new UUID, using that to start a new section in ````plugin.cfg````.
 

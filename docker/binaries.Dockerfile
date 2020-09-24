@@ -611,7 +611,7 @@ ARG GIT_INFO
 ARG SOURCE_REV
 ARG DLSTREAM_SOURCE_REPO=https://github.com/openvinotoolkit/dlstreamer_gst.git
 
-#COPY  dlstreamer_gst gst-video-analytics
+COPY analyticspage /home/
 ARG ENABLE_PAHO_INSTALLATION=false
 ARG ENABLE_RDKAFKA_INSTALLATION=false
 ARG BUILD_TYPE=Release
