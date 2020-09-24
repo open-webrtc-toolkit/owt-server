@@ -105,19 +105,18 @@ rvaStatus MyPipeline::LinkElements() {
     postprocsrccaps = gst_caps_from_string("video/x-raw(memory:VASurface),format=NV12");
 
     GstCaps* inputcaps = gst_caps_new_simple("video/x-h264",
-                "format", G_TYPE_STRING, "avc",
-                "width", G_TYPE_INT, inputwidth,
-                "height", G_TYPE_INT, inputheight,
-                "framerate", GST_TYPE_FRACTION, inputframerate, 1, NULL);
+            "format", G_TYPE_STRING, "avc",
+            "width", G_TYPE_INT, inputwidth,
+            "height", G_TYPE_INT, inputheight,
+            "framerate", GST_TYPE_FRACTION, inputframerate, 1, NULL);
 
     g_object_set(source, "caps", inputcaps, NULL);
     gst_caps_unref (inputcaps);
 
     GstCaps* encodecaps = gst_caps_new_simple("video/x-h264",
-		"stream-format", G_TYPE_STRING, "byte-stream",
-		"width", G_TYPE_INT, inputwidth,
-		"height", G_TYPE_INT, inputheight,
-                "profile", G_TYPE_STRING, "constrained-baseline", NULL);
+		    "stream-format", G_TYPE_STRING, "byte-stream",
+
+            "profile", G_TYPE_STRING, "constrained-baseline", NULL);
 
     
     g_object_set(G_OBJECT(source),"is-live", true, NULL);
@@ -136,9 +135,7 @@ rvaStatus MyPipeline::LinkElements() {
 
     g_object_set(G_OBJECT(detect),"device", device.c_str(),
 		    "model",model.c_str(),
-		    "cpu-streams", 12,
-		    "nireq", 24,
-		    "inference-id", "dtc", NULL);
+		    "nireq", 24, NULL);
 
 
     gst_bin_add_many(GST_BIN (pipeline), source,decodebin,watermark,postproc,h264parse,detect,converter, encoder,outsink, NULL);

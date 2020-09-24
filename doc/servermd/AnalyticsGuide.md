@@ -4,8 +4,10 @@
     2.1 [Install in Docker* image](#Install in Docker* image)
     2.2 [Install on host machine](#Install on host machine)
     2.3 [Download models](#Download models)
-3. [Run sample pipelines in Open WebRTC Toolkit](#Run sample pipelines in Open WebRTC Toolkit)
+3. [Test Pipelines Shipped with Open WebRTC Toolkit](#Test Pipelines Shipped with Open WebRTC Toolkit)
 4. [Develop and Deploy Your Own Media Analytics Pipelines](#Develop and Deploy Your Own Media Analytics Pipelines)
+    4.1 [Develop Pipelines](#Develop Pipelines)
+    4.2 [Deploy Pipelines](#Deploy Pipelines)
 
 ##1.Introduction
 -------------
@@ -14,7 +16,7 @@ In this document we introduce the media analytics functionality provided by Open
 ###OWT Media Analytics Architecture
 -------------
 The software block diagram of OWT Media Analytics：
-![Analytics Arch](https://github.com/open-webrtc-toolkit/owt-server/blob/gst-analytics/doc/servermd/AnalyticsFlow.jpg)
+![Analytics Arch](https://github.com/open-webrtc-toolkit/owt-server/blob/master/doc/servermd/AnalyticsFlow.jpg)
 OWT Server allows client applications to perform media analytics on any stream in the room with Analytics REST API, including the streams from WebRTC access node or SIP node, and streams from video mixing node. 
 A successful media analytics request will generate a new stream in the room, which can be subscribed, analyzed, recorded or mixed like other streams.
 
@@ -36,76 +38,52 @@ Hardware： Intel(R) 6th - 8th generation Core(TM) platform, Intel(R) Xeon(R) E3
 
 OS： CentOS 7.6 or Ubuntu 18.04
 
-##Installation Steps
+###2.1 Install in Docker* image
 ------------------
 
-###2.1 Install in Docker* image
+Follow the binary.dockerfile from <https://github.com/open-webrtc-toolkit/owt-server/blob/master/docker/gst/binary.dockerfile> to install dependencies that needed to run OWT and analytics agent. 
 
-Follow the Dockerfile from <https://github.com/open-webrtc-toolkit/owt-server/blob/gst-analytics/docker/gst/Dockerfile> to check dependencies to compile OWT, run OWT and analytics agent. 
-
-You can refer to <https://github.com/open-webrtc-toolkit/owt-server/blob/gst-analytics/docker/gst/build_docker_image.sh> to build all 4 images we provide, or you can follow commands below to build a single image you need:
-
-- OWT compile docker environment, it will create an image containing all the dependencies to compile OWT. The generated image can be used to build and package OWT.
+You can refer to <https://github.com/open-webrtc-toolkit/owt-server/blob/master/docker/gst/build_docker_image.sh> to build video analytics running image with OpenVINO and GStreamer installed:
 ````
-docker build --target owt-build -t gst-owt:build \
-    --build-arg http_proxy=${HTTP_PROXY} \
-    --build-arg https_proxy=${HTTPS_PROXY} \
-    .
+cd owt-server/docker
+./build_docker_image.sh openvino
 ````
 
-- OWT running environment without analytics, it will create an image containing all the OWT running dependencies except analytics to run. This image can be used to deploy on host device while ```gst-analytics:run``` image deployed on VCAA cards.
+Then owt:openvino image will be created with all the video analytics needed software installed. Then you can launch the container and copy OWT package into the container:
 ````
-docker build --target owt-run -t gst-owt:run \
-    --build-arg http_proxy=${HTTP_PROXY} \
-    --build-arg https_proxy=${HTTPS_PROXY} \
-    .
-````
-
-- Only analytics agent running environment, it will create an image containing only analytics agent dependencies to run, this image can be used together with above ```gst-owt:run``` image in cluster deployment.
-````
-docker build --target analytics-run -t gst-analytics:run \
-    --build-arg http_proxy=${HTTP_PROXY} \
-    --build-arg https_proxy=${HTTPS_PROXY} \
-    .
-````
-
-- OWT running environment including analytics, it will create an image containing all the dependencies for OWT including analytics to run.
-````
-docker build --target owt-run-all -t gst-owt-all:run \
-    --build-arg http_proxy=${HTTP_PROXY} \
-    --build-arg https_proxy=${HTTPS_PROXY} \
-    .
+docker run -itd --net=host --name=gst-analytics owt:openvino bash
+docker cp Release-vxxx.tgz gst-analytics:/home/
+docker exec -it gst-analytics bash
 ````
 
 ###2.2 Install on host machine
-Please refer to dlstreamer_gst install guide (https://github.com/openvinotoolkit/dlstreamer_gst/wiki/Install-Guide#install-on-host-machine) to install OpenVINO, gst-video-analytics plugins and related dependencies.
+------------------
 
-### Download models for analytics
-Download open model zoo package from <https://github.com/opencv/open_model_zoo/releases/tag/2020.3> and uncompress file:
+Besides basic OWT dependencies, analytics agent requires OpenVINO and GStreamer to do video analytics. Please refer to dlstreamer_gst install guide (https://github.com/openvinotoolkit/dlstreamer_gst/wiki/Install-Guide#install-on-host-machine) to install OpenVINO, gst-video-analytics plugins and related dependencies.
+
+### 2.3 Download models for analytics
+------------------
+
+Download open model zoo package from <https://github.com/opencv/open_model_zoo/releases/tag/2020.4> and uncompress file in docker container or host machine:
 ````
-#wget https://github.com/opencv/open_model_zoo/archive/2020.3.tar.gz
-#tar zxf 2020.3.tar.gz
-#cd open_model_zoo-2020.3/tools/downloader
+#wget https://github.com/opencv/open_model_zoo/archive/2020.4.tar.gz
+#tar zxf 2020.4.tar.gz
+#cd open_model_zoo-2020.4/tools/downloader
 ````
-Follow  Model Downloader guide (open_model_zoo-2020.3/tools/downloader/README.md) to install dependencies for downloading open model zoo and then download models.
+Follow  Model Downloader guide (open_model_zoo-2020.4/tools/downloader/README.md) to install dependencies and then download models.
 
-
-### Build analytics pipeline
-
-After Docker image has been successfully created, run following steps to launch the container, take ```gst-owt-all``` as an example, assume that models downloaded from open model zoo are placed in models folder:
+## 3 Test Pipelines Shipped with Open WebRTC Toolkit
+------------------
+### 3.1 Preparation
+-----------
+After all the dependencies are installed, you can follow commands below to build sample video analytics plugins in docker container or host machine:
 ````
-#docker run -u root -v ~:/mnt -v /var/tmp:/var/tmp --privileged --net=host $(env | grep -E '_(proxy)=' | sed 's/^/-e /') --entrypoint bash -tid gst-owt-all:run
-
-#docker ps
-CONTAINER ID        IMAGE               COMMAND             CREATED             STATUS              PORTS               NAMES
-a1021ae56508        gst-owt-all:run   "bash"              29 seconds ago      Up 27 seconds                           silly_sammet
-
-#docker exec -it a1021ae56508 bash
-/home# ls /mnt/models/
-face-detection-retail-0004.bin  face-detection-retail-0004.xml
-/home# cd /home/owt/analytics_agent/plugins/samples
-/home/owt/analytics_agent/plugins/samples# ./build_samples.sh
+tar zxf Release-vxxx.tgz
+cd Release-vxxx/analytics_agent/plugins/samples
+./build_samples.sh
+cp build/intel64/Release/lib/lib* ../../lib/
 ````
+
 The script builds analytics pipelines, the output dynamic libraries for pipelines are under ````build/intel64/Release/lib/```` directory.
 
 |Pipeline library name        |             Functionality                       |
@@ -117,16 +95,8 @@ The script builds analytics pipelines, the output dynamic libraries for pipeline
 Copy all output library files to ````analytics_agent/lib/```` directory, or to path specified by ````analytics.libpath````section in ````dist/analytics_agent/agent.toml```` file, 
 which is by default ````dist/analytics_agent/pluginlibs/````directory.
 
-Test Pipelines Shipped with Open WebRTC Toolkit
-=============================================
-We introduce the usage of pipelines shipped with OWT here, using face detection with CPU as examples:
+In OWT server, the analytics algorithms and pipeline binaries are bound by ````dist/analytics_agent/plugin.cfg````configuration file. ````plugin.cfg````by default contains multiple mappings from algorithm to pipeline binaries, for example:
 
-Preparation
------------
-
-In OWT server, the analytics algorithms and pipeline binaries are bound by ````dist/analytics_agent/plugin.cfg````configuration file.
-
-````plugin.cfg````by default contains multiple mappings from algorithm to pipeline binaries, for example:
 ````
 [dc51138a8284436f873418a21ba8cfa9]
 description = 'detect plugin'
@@ -147,58 +117,60 @@ You can specify different model path (downloaded from open model zoo) and other 
 Make sure you copy pipeline binaries to ````dist/analytics_agent/lib/````directory or the path specified in ````dist/analytics_agent/agent.toml````.
 
 
-Start MCU
+### 3.2 Start MCU
 -----------------------
 
 
-Start up MCU:
+Start up MCU in Docker container:
 
 ````
-/home/start.sh
+cd Release-vxxx
+cp /home/analyticspage/index.js apps/current_app/public/scripts/ 
+cp /home/analyticspage/rest-sample.js apps/current_app/public/scripts/
+cp /home/analyticspage/index.html apps/current_app/public/
+./bin/init-all.sh --deps
+./bin/start-all.sh
 ````
 
 
-Test Media Analytics Pipelines
+### 3.3 Test Media Analytics Pipelines
 ----------------------------
 
-Make sure the camera is accessible and start up Chrome browser on your desktop:
-
-````https://your_mcu_url:3004````
-
+Make sure the camera is accessible and start up Chrome browser on your desktop:````https://your_mcu_url:3004````
 There might be some security prompts about certificate issue. Select to trust those certificates. You might need to click the link in page: ````Click this for testing certificate and refresh````
 
 Refresh the test page and your local stream should be published to MCU.
 
 
-### Start Analytics
+#### Start Analytics
 
 On the page, drop down from “video from” and select the remote stream you would like to analyze.
 
 
-Make sure face detection with cpu pipeline has been installed. The source code of face detection pipeline is under ````dist/analytics_agent/plugins/samples/cpu_pipeline/````, you can change the model path to try other detection models.
+Make sure face detection with cpu pipeline has been installed and model path has been configured correctly in ````analytics_agent/plugin.cfg````. The source code of face detection pipeline is under ````dist/analytics_agent/plugins/samples/cpu_pipeline/````, you can change the model path to try other detection models.
 
 
 Check ````analytics_agent/plugin.cfg````， The pipeline ID for face detection with CPU is ````dc51138a8284436f873418a21ba8cfa9````, so on the page, in "pipelineID" input text, input the pipeline ID in "analytics id" 
 edit control, that is,  ````dc51138a8284436f873418a21ba8cfa9```` without any extra spaces, and press "startAnalytics" button. The stream you selected will be analyzed, with annotation on the faces in the stream.
 
-### Subscribe analyzed stream
+#### Subscribe analyzed stream
 
 On the page and drop down from "subscribe video" and select the stream id with ````algorithmid+video from streamid```` and click subscribe, then analyzed stream will display on page.
 
 **Note that if you do not add GStreamer elements ````x264enc + appsink```` into your pipeline like sample detect_pipeline, analyzed stream will not be sent back to OWT server so you cannot subscribe analyzed stream.**
 
-### Stop Analytics
+#### Stop Analytics
 
 After you successfully start analytics, analytics id will be generated and the latest analytics id will display in ```analytics id:``` on page, then click ```stopAnalytics``` button on page to stop analytics. Or you can click ```listAnalytics``` button to list all started analytics id on Chrome console, and input the analytics id in ```analytics id:```, then click ```stopAnalytics``` button on page to stop analytics .
 
 
-Develop and Deploy Your Own Media Analytics Pipelines
-===================================================
+## 4 Develop and Deploy Your Own Media Analytics Pipelines
+----------------------------
 
 MCU supports implementing your own media analytics pipelines and deploy them. Below are the detailed steps. You can also refer to dummy pipeline(in  ````plugins/samples/sample_pipeline/````) or face detection pipeline with CPU(````plugins/samples/cpu_pipeline/````)or face detection pipeline with GPU and VPU(````plugins/samples/detect_pipeline/````) for more details.
 
 
-Develop Pipelines
+### 4.1 Develop Pipelines
 ---------------
 
 Pipeline exists in the format of an implementation class of ````rvaPipeline```` interface,  which will be built into an .so library. The defnition of ````rvaPipeline```` interface is under ````plugins/include/pipeline.h````.
@@ -247,14 +219,14 @@ class rvaPipeline {
            Other return code if any failure.
   */
   virtual rvaStatus LinkElements() = 0;
-};                                                                                  
-````                                                                                                
-
+};  
+````
 The main interfaces for a pipeline implementation are ```PipelineConfig()```,  ````InitializePipeline()```` and````LinkElements()````.
 
 In ````PipelineConfig()````implemntation，you should get the width, height and frame rate of input stream, and you will also get the algorithm name which is aligned with settings in ```plugin.cfg```, then you can use this algorithm name in ````LinkElements()```` to load pipeline settings such as inferencing model path, inference width and height, as well as configuring the device to decode and inference.
 
 The sample code of getting algorithm id and input stream info:
+
 ````
 std::unordered_map<std::string,std::string>::const_iterator width = params.find ("inputwidth");
     if ( width == params.end() )
@@ -279,7 +251,7 @@ std::unordered_map<std::string,std::string>::const_iterator width = params.find 
         std::cout << "pipeline name is not found" << std::endl;
     else
         pipelinename = name->second;
-````	
+````
 
 By default we will set 3 environment variables in bin/daemon.sh,  
 ````
@@ -287,7 +259,7 @@ cd ${OWT_HOME}/analytics_agent
 export LD_LIBRARY_PATH=./lib:${LD_LIBRARY_PATH}
 export PATH=./bin:/opt/intel/mediasdk/bin:${PATH}
 export CONFIGFILE_PATH=./plugin.cfg
-```` 
+````
 Then we use toml parser to load parameters configured for each algorithm defined in ```plugin.cfg```, here is an example on how to pase toml file ```plugin.cfg``` and get defined parameters such as model path, inferencewidth, inferenceheight .etc.
 ````
 const char* path = std::getenv("CONFIGFILE_PATH");
@@ -300,10 +272,12 @@ const auto inferenceframerate = toml::find<std::int64_t>(pipelineconfig, "infere
 const auto device = toml::find<std::string>(pipelineconfig, "device");
 ````
 
-````InitializePipeline()```` create elements and pipeline, and its prototype is：
+The API ````InitializePipeline()```` create elements and pipeline, and its prototype is：
 ````
 GstElement * InitializePipeline();
 ````
+Here are 2 pipelines:
+![pipeline examples](https://github.com/open-webrtc-toolkit/owt-server/blob/master/doc/servermd/AnalyticsPipeline.jpg)
 
 **Please follow rules below when adding elements to pipeline:**
 
@@ -313,7 +287,7 @@ GstElement * InitializePipeline();
 
 **3. If you want to send analyzed stream back to OWT server, the last element in pipeline should be ```appsink``` and the element name should be ```appsink```**
 
-You can create other GStreamer elements that will be used to process and analyze stream in the pipeline.
+You can customize  the pipeline by constructing different GStreamer elements to implement video analytics tasks of different purposes.
 
 Below we show the InitializePipeline implementation in cpu_pipeline pipeline with CPU to decode, inference and encode.
 
@@ -347,13 +321,11 @@ Below we show the InitializePipeline implementation in cpu_pipeline pipeline wit
     pipeline = gst_pipeline_new("cpu-pipeline");
 ````
 
-The ````LinkElements```` interface set properties for elements in pipeline and link elements in pipeline. To check what properties each element has, please go to GStreamer documents, take ```gvadetect``` for example, you can refer to ```gvadetect doc```<https://github.com/opencv/gst-video-analytics/wiki/gvadetect>, and set gvadetect properties, you can follow:
+The ````LinkElements```` interface set properties for elements in pipeline and link elements in pipeline. To check what properties each element has, please go to GStreamer documents, take ```gvadetect``` for example, you can refer to ```gvadetect doc```<https://github.com/openvinotoolkit/dlstreamer_gst/wiki/gvadetect>, and set gvadetect properties, you can follow:
 ````
 g_object_set(G_OBJECT(detect),"device", device.c_str(),
         "model",model.c_str(),
-        "cpu-streams", 12,
-        "nireq", 24,
-        "inference-id", "dtc", NULL);
+        "nireq", 24, NULL);
 ````
 In our example, device and model path are configured in ```plugin.cfg```, so you can use different devices and models to inference by adding different algorithm configuration in ```plugin.cfg```. You can also customize your own parameters in ```plugin.cfg``` and load them.
 
@@ -404,9 +376,7 @@ Here is an example on how to set caps between ```x264enc``` and ```outsink```:
 gboolean link_ok;
 GstCaps* encodecaps = gst_caps_new_simple("video/x-h264",
     "stream-format", G_TYPE_STRING, "byte-stream",
-    "width", G_TYPE_INT, inputwidth,
-    "height", G_TYPE_INT, inputheight,
-                "profile", G_TYPE_STRING, "constrained-baseline", NULL);
+    "profile", G_TYPE_STRING, "constrained-baseline", NULL);
 
 link_ok = gst_element_link_filtered (encoder, outsink, encodecaps);
 gst_caps_unref (encodecaps);
@@ -423,7 +393,7 @@ Here ````YourPipelineName```` must be the class name of your ````rvaPipeline````
 Finally build and copy all binaries to the same directory where you put pipelines shipped with MCU, including the libaries your pipeline depends on that are not within ````LD_LIBRARY_PATH````.
 
 
-Deploy Pipelines
+### 4.2 Deploy Pipelines
 --------------
 
 Like other pipelines shipped with MCU, you need to add an entry into ````dist/analytics_agent/plugin.cfg```` for your pipeline by generating a new UUID, using that to start a new section in ````plugin.cfg````.
@@ -434,4 +404,4 @@ bin/daemon.sh stop analytics-agent
 bin/daemon.sh start analytics-agent 
 ````
 
-You are refer to GStreamer documents for more elements to construct different pipelines with different purpose.
+You can refer to GStreamer documents for check elements of different usage to construct your own video analytics tasks.
