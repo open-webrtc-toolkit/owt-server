@@ -1,12 +1,11 @@
 ##### Table of Contents
------------------------
-1. [Introduction](#introduction)
-2. [Install dependencies](#dependencies)
-    2.1 [Install in Docker* image](#dependencies1)
-    2.2 [Install on host machine](#dependencies2)
-    2.3 [Download models](#dependencies3)
-3. [Test Pipelines Shipped with Open WebRTC Toolkit](#test)
-    3.1 [Install in Docker* image](#test1)
+1. [Introduction](#introduction) 
+2. [Install dependencies](#dependencies) 
+    2.1 [Install in Docker* image](#dependencies1) 
+    2.2 [Install on host machine](#dependencies2) 
+    2.3 [Download models](#dependencies3) 
+3. [Test Pipelines Shipped with Open WebRTC Toolkit](#test) 
+    3.1 [Install in Docker* image](#test1) 
     3.2 [Install on host machine](#test2)
     3.3 [Download models](#test3)
 4. [Develop and Deploy Your Own Media Analytics Pipelines](#develop)
@@ -42,9 +41,9 @@ OS： CentOS 7.6 or Ubuntu 18.04
 
 ### 2.1 Install in Docker* image<a name="dependencies1"></a>
 
-Follow the [binary.dockerfile] <https://github.com/open-webrtc-toolkit/owt-server/blob/master/docker/gst/binary.dockerfile> to install dependencies that needed to run OWT and analytics agent. 
+Follow the [binary.dockerfile](https://github.com/open-webrtc-toolkit/owt-server/blob/master/docker/gst/binary.dockerfile) to install dependencies that needed to run OWT and analytics agent. 
 
-You can refer to [script]<https://github.com/open-webrtc-toolkit/owt-server/blob/master/docker/gst/build_docker_image.sh> to build video analytics running image with OpenVINO and GStreamer installed:
+You can refer to [script](https://github.com/open-webrtc-toolkit/owt-server/blob/master/docker/gst/build_docker_image.sh) to build video analytics running image with OpenVINO and GStreamer installed:
 ````
 cd owt-server/docker
 ./build_docker_image.sh openvino
@@ -63,7 +62,7 @@ Besides basic OWT dependencies, analytics agent requires OpenVINO and GStreamer 
 
 ### 2.3 Download models for analytics<a name="dependencies3"></a>
 
-Download [open model zoo package]<https://github.com/opencv/open_model_zoo/releases/tag/2020.4> and uncompress file in docker container or host machine:
+Download [open model zoo package](https://github.com/opencv/open_model_zoo/releases/tag/2020.4) and uncompress file in docker container or host machine:
 ````
 #wget https://github.com/opencv/open_model_zoo/archive/2020.4.tar.gz
 #tar zxf 2020.4.tar.gz
@@ -313,7 +312,7 @@ Below we show the InitializePipeline implementation in cpu_pipeline pipeline wit
     pipeline = gst_pipeline_new("cpu-pipeline");
 ````
 
-The ````LinkElements```` interface set properties for elements in pipeline and link elements in pipeline. To check what properties each element has, please go to GStreamer documents, take ```gvadetect``` for example, you can refer to [gvadetect doc]<https://github.com/openvinotoolkit/dlstreamer_gst/wiki/gvadetect>, and set gvadetect properties, you can follow:
+The ````LinkElements```` interface set properties for elements in pipeline and link elements in pipeline. To check what properties each element has, please go to GStreamer documents, take ```gvadetect``` for example, you can refer to [gvadetect doc](https://github.com/openvinotoolkit/dlstreamer_gst/wiki/gvadetect), and set gvadetect properties, you can follow:
 ````
 g_object_set(G_OBJECT(detect),"device", device.c_str(),
         "model",model.c_str(),
