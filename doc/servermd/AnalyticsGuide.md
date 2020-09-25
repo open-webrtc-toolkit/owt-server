@@ -1,16 +1,16 @@
 ##### Table of Contents
-1. [Introduction](#introduction) 
-2. [Install dependencies](#dependencies) 
-    2.1 [Install in Docker* image](#dependencies1) 
-    2.2 [Install on host machine](#dependencies2) 
-    2.3 [Download models](#dependencies3) 
-3. [Test Pipelines Shipped with Open WebRTC Toolkit](#test) 
-    3.1 [Install in Docker* image](#test1) 
-    3.2 [Install on host machine](#test2)
-    3.3 [Download models](#test3)
-4. [Develop and Deploy Your Own Media Analytics Pipelines](#develop)
-    4.1 [Develop Pipelines](#develop1)
-    4.2 [Deploy Pipelines](#develop2)
+* 1.[Introduction](#introduction) 
+* 2.[Install dependencies](#dependencies) 
+  * 2.1[Install in Docker* image](#dependencies1) 
+  * 2.2[Install on host machine](#dependencies2) 
+  * 2.3[Download models](#dependencies3) 
+* 3.[Test Pipelines Shipped with Open WebRTC Toolkit](#test) 
+  * 3.1 [Install in Docker* image](#test1) 
+  * 3.2 [Install on host machine](#test2)
+  * 3.3 [Download models](#test3)
+* 4.[Develop and Deploy Your Own Media Analytics Pipelines](#develop)
+  * 4.1 [Develop Pipelines](#develop1)
+  * 4.2 [Deploy Pipelines](#develop2)
 
 ## 1.Introduction
 
