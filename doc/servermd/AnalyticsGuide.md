@@ -41,7 +41,7 @@ OS： CentOS 7.6 or Ubuntu 18.04
 
 ### 2.1 Install in Docker* image<a name="dependencies1"></a>
 
-Follow the [binary.dockerfile](https://github.com/open-webrtc-toolkit/owt-server/blob/master/docker/gst/binary.dockerfile) to install dependencies that needed to run OWT and analytics agent. 
+Follow the [gst-analytics.dockerfile](https://github.com/open-webrtc-toolkit/owt-server/blob/master/docker/gst/gst-analytics.dockerfile) to install dependencies that needed to run OWT and analytics agent. 
 
 You can refer to [script](https://github.com/open-webrtc-toolkit/owt-server/blob/master/docker/gst/build_docker_image.sh) to build video analytics running image with OpenVINO and GStreamer installed:
 ````

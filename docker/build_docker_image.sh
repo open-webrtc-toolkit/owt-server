@@ -18,7 +18,7 @@ if [ $build_type == "owt" ]; then
     .
 
 elif [ $build_type == "openvino" ]; then
-  dockerfile=binaries.Dockerfile
+  dockerfile=gst-analytics.Dockerfile
   docker build -f ${BASEDIR}/${dockerfile} -t owt:openvino \
     --build-arg http_proxy=${HTTP_PROXY} \
     --build-arg https_proxy=${HTTPS_PROXY} \
