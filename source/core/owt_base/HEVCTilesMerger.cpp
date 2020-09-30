@@ -391,11 +391,11 @@ void HEVCTilesMerger::onFrame(const Frame& frame, Frame *pOutFrame)
 
 void HEVCTilesMerger::setFoV(int32_t yaw, int32_t pitch) {
     boost::unique_lock<boost::shared_mutex> ulock(m_mutex);
-    ELOG_DEBUG("setFoV, yaw %d(%d), pitch %d", yaw, (yaw - 180), pitch);
+    ELOG_DEBUG("setFoV, yaw %d(%d), pitch %d(%d)", yaw, (yaw - 180), pitch, (pitch - 90));
 
-    if (m_yaw != (yaw - 180) || m_pitch != pitch) {
+    if (m_yaw != (yaw - 180) || m_pitch != (pitch - 90)) {
         m_yaw = (yaw - 180);
-        m_pitch = pitch;
+        m_pitch = (pitch - 90);
 
         m_fovUpdated = true;
     }

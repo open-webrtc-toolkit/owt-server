@@ -1,0 +1,404 @@
+From ac4971c902263171035f5da37822b34bc0175a94 Mon Sep 17 00:00:00 2001
+From: Jianhui Dai <jianhui.j.dai@intel.com>
+Date: Wed, 30 Sep 2020 01:58:02 +0000
+Subject: [PATCH] Implement RtcpFOVObserver
+
+---
+ webrtc/modules/rtp_rtcp/BUILD.gn                   |  2 +
+ webrtc/modules/rtp_rtcp/include/rtp_rtcp.h         |  1 +
+ webrtc/modules/rtp_rtcp/include/rtp_rtcp_defines.h | 16 +++-
+ .../rtp_rtcp/source/rtcp_packet/fov_feedback.cc    | 93 ++++++++++++++++++++++
+ .../rtp_rtcp/source/rtcp_packet/fov_feedback.h     | 55 +++++++++++++
+ webrtc/modules/rtp_rtcp/source/rtcp_receiver.cc    | 65 +++++++++++++++
+ webrtc/modules/rtp_rtcp/source/rtcp_receiver.h     | 16 ++++
+ webrtc/modules/rtp_rtcp/source/rtp_rtcp_impl.cc    |  1 +
+ 8 files changed, 248 insertions(+), 1 deletion(-)
+ create mode 100644 webrtc/modules/rtp_rtcp/source/rtcp_packet/fov_feedback.cc
+ create mode 100644 webrtc/modules/rtp_rtcp/source/rtcp_packet/fov_feedback.h
+
+diff --git a/webrtc/modules/rtp_rtcp/BUILD.gn b/webrtc/modules/rtp_rtcp/BUILD.gn
+index 0285c3e..7569f37 100644
+--- a/webrtc/modules/rtp_rtcp/BUILD.gn
++++ b/webrtc/modules/rtp_rtcp/BUILD.gn
+@@ -60,6 +60,8 @@ rtc_static_library("rtp_rtcp") {
+     "source/rtcp_packet/extended_reports.h",
+     "source/rtcp_packet/fir.cc",
+     "source/rtcp_packet/fir.h",
++    "source/rtcp_packet/fov_feedback.cc",
++    "source/rtcp_packet/fov_feedback.h",
+     "source/rtcp_packet/nack.cc",
+     "source/rtcp_packet/nack.h",
+     "source/rtcp_packet/pli.cc",
+diff --git a/webrtc/modules/rtp_rtcp/include/rtp_rtcp.h b/webrtc/modules/rtp_rtcp/include/rtp_rtcp.h
+index 10c947b..da1a99d 100644
+--- a/webrtc/modules/rtp_rtcp/include/rtp_rtcp.h
++++ b/webrtc/modules/rtp_rtcp/include/rtp_rtcp.h
+@@ -92,6 +92,7 @@ class RtpRtcp : public Module {
+     SendPacketObserver* send_packet_observer = nullptr;
+     RateLimiter* retransmission_rate_limiter = nullptr;
+     OverheadObserver* overhead_observer = nullptr;
++    RtcpFOVObserver* rtcp_fov_observer = nullptr;
+ 
+    private:
+     RTC_DISALLOW_COPY_AND_ASSIGN(Configuration);
+diff --git a/webrtc/modules/rtp_rtcp/include/rtp_rtcp_defines.h b/webrtc/modules/rtp_rtcp/include/rtp_rtcp_defines.h
+index ddfec4d..ebf1204 100644
+--- a/webrtc/modules/rtp_rtcp/include/rtp_rtcp_defines.h
++++ b/webrtc/modules/rtp_rtcp/include/rtp_rtcp_defines.h
+@@ -101,7 +101,8 @@ enum RTCPPacketType : uint32_t {
+   kRtcpXrReceiverReferenceTime = 0x40000,
+   kRtcpXrDlrrReportBlock = 0x80000,
+   kRtcpTransportFeedback = 0x100000,
+-  kRtcpXrTargetBitrate = 0x200000
++  kRtcpXrTargetBitrate = 0x200000,
++  kRtcpFOVFeedback = 0x400000
+ };
+ 
+ enum KeyFrameRequestMethod { kKeyFrameReqPliRtcp, kKeyFrameReqFirRtcp };
+@@ -361,6 +362,19 @@ class PacketFeedbackObserver {
+       const std::vector<PacketFeedback>& packet_feedback_vector) = 0;
+ };
+ 
++struct RtcpFOVInfo {
++    uint16_t seqnr;
++    uint16_t yaw;
++    uint16_t pitch;
++};
++
++class RtcpFOVObserver {
++ public:
++  virtual void OnReceivedFOVFeedback(RtcpFOVInfo &rtcp_fov_info) = 0;
++
++  virtual ~RtcpFOVObserver() {}
++};
++
+ class RtcpRttStats {
+  public:
+   virtual void OnRttUpdate(int64_t rtt) = 0;
+diff --git a/webrtc/modules/rtp_rtcp/source/rtcp_packet/fov_feedback.cc b/webrtc/modules/rtp_rtcp/source/rtcp_packet/fov_feedback.cc
+new file mode 100644
+index 0000000..d8cca00
+--- /dev/null
++++ b/webrtc/modules/rtp_rtcp/source/rtcp_packet/fov_feedback.cc
+@@ -0,0 +1,93 @@
++/*
++ *  Copyright (c) 2016 The WebRTC project authors. All Rights Reserved.
++ *
++ *  Use of this source code is governed by a BSD-style license
++ *  that can be found in the LICENSE file in the root of the source
++ *  tree. An additional intellectual property rights grant can be found
++ *  in the file PATENTS.  All contributing project authors may
++ *  be found in the AUTHORS file in the root of the source tree.
++ */
++
++#include "webrtc/modules/rtp_rtcp/source/rtcp_packet/fov_feedback.h"
++
++#include "webrtc/base/checks.h"
++#include "webrtc/base/logging.h"
++#include "webrtc/modules/rtp_rtcp/source/byte_io.h"
++#include "webrtc/modules/rtp_rtcp/source/rtcp_packet/common_header.h"
++
++namespace webrtc {
++namespace rtcp {
++constexpr uint8_t FOVFeedback::kFeedbackMessageType;
++// RFC 4585: Feedback format.
++// Common packet format:
++//
++//   0                   1                   2                   3
++//   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
++//  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
++//  |V=2|P|   FMT   |       PT      |          length               |
++//  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
++//  |                  SSRC of packet sender                        |
++//  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
++//  |             SSRC of media source                              |
++//  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
++//  :            Feedback Control Information (FCI)                 :
++//  :                                                               :
++// FOV Feedback (RFC xxxx).
++// The Feedback Control Information (FCI) for the FOV Feedback
++// FCI:
++//   0                   1                   2                   3
++//   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
++//  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
++//  |                              SSRC                             |
++//  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
++//  | Seq nr.                       | yaw                           |
++//  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
++//  | pitch                         | Reserved = 0                  |
++//  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
++bool FOVFeedback::Parse(const CommonHeader& packet) {
++  RTC_DCHECK_EQ(packet.type(), kPacketType);
++  RTC_DCHECK_EQ(packet.fmt(), kFeedbackMessageType);
++
++  if ((packet.payload_size_bytes() - kCommonFeedbackLength) != kFciLength) {
++    LOG(LS_WARNING) << "Invalid size for a valid FOVFeedback packet.";
++    return false;
++  }
++
++  ParseCommonFeedback(packet.payload());
++
++  const uint8_t* next_fci = packet.payload() + kCommonFeedbackLength;
++
++  seq_nr_ = ByteReader<uint16_t>::ReadBigEndian(next_fci);
++  yaw_ = ByteReader<uint16_t>::ReadBigEndian(next_fci + 2);
++  pitch_ = ByteReader<uint16_t>::ReadBigEndian(next_fci + 4);
++
++  return true;
++}
++
++bool FOVFeedback::Create(uint8_t* packet,
++                 size_t* index,
++                 size_t max_length,
++                 RtcpPacket::PacketReadyCallback* callback) const {
++  while (*index + BlockLength() > max_length) {
++    if (!OnBufferFull(packet, index, callback))
++      return false;
++  }
++  size_t index_end = *index + BlockLength();
++  CreateHeader(kFeedbackMessageType, kPacketType, HeaderLength(), packet,
++               index);
++  RTC_DCHECK_EQ(Psfb::media_ssrc(), 0);
++  CreateCommonFeedback(packet + *index);
++  *index += kCommonFeedbackLength;
++
++  constexpr uint32_t kReserved = 0;
++
++  ByteWriter<uint16_t>::WriteBigEndian(packet + *index, seq_nr_);
++  ByteWriter<uint16_t>::WriteBigEndian(packet + *index + 2, yaw_);
++  ByteWriter<uint16_t>::WriteBigEndian(packet + *index + 4, pitch_);
++  ByteWriter<uint16_t>::WriteBigEndian(packet + *index + 6, kReserved);
++
++  RTC_CHECK_EQ(*index, index_end);
++  return true;
++}
++}  // namespace rtcp
++}  // namespace webrtc
+diff --git a/webrtc/modules/rtp_rtcp/source/rtcp_packet/fov_feedback.h b/webrtc/modules/rtp_rtcp/source/rtcp_packet/fov_feedback.h
+new file mode 100644
+index 0000000..298e715
+--- /dev/null
++++ b/webrtc/modules/rtp_rtcp/source/rtcp_packet/fov_feedback.h
+@@ -0,0 +1,55 @@
++/*
++ *  Copyright (c) 2016 The WebRTC project authors. All Rights Reserved.
++ *
++ *  Use of this source code is governed by a BSD-style license
++ *  that can be found in the LICENSE file in the root of the source
++ *  tree. An additional intellectual property rights grant can be found
++ *  in the file PATENTS.  All contributing project authors may
++ *  be found in the AUTHORS file in the root of the source tree.
++ */
++
++#ifndef WEBRTC_MODULES_RTP_RTCP_SOURCE_RTCP_PACKET_FOV_FEEDBACK_H_
++#define WEBRTC_MODULES_RTP_RTCP_SOURCE_RTCP_PACKET_FOV_FEEDBACK_H_
++
++#include <vector>
++
++#include "webrtc/base/basictypes.h"
++#include "webrtc/modules/rtp_rtcp/source/rtcp_packet/psfb.h"
++
++namespace webrtc {
++namespace rtcp {
++class CommonHeader;
++// FOV Feedback (RFC xxxx).
++class FOVFeedback : public Psfb {
++ public:
++  static constexpr uint8_t kFeedbackMessageType = 8;
++
++  FOVFeedback() {}
++  ~FOVFeedback() override {}
++
++  // Parse assumes header is already parsed and validated.
++  bool Parse(const CommonHeader& packet);
++
++  void SetSeqNr(uint16_t seq_nr) {seq_nr_ = seq_nr;}
++  void SetFOV(uint16_t yaw, uint16_t pitch) {yaw_ = yaw; pitch_ = pitch;}
++
++  uint16_t seq_nr_;
++  uint16_t yaw_;
++  uint16_t pitch_;
++
++ protected:
++  bool Create(uint8_t* packet,
++              size_t* index,
++              size_t max_length,
++              RtcpPacket::PacketReadyCallback* callback) const override;
++
++ private:
++  static constexpr size_t kFciLength = 8;
++  size_t BlockLength() const override {
++    return kHeaderLength + kCommonFeedbackLength + kFciLength;
++  }
++
++};
++}  // namespace rtcp
++}  // namespace webrtc
++#endif  // WEBRTC_MODULES_RTP_RTCP_SOURCE_RTCP_PACKET_FOV_FEEDBACK_H_
+diff --git a/webrtc/modules/rtp_rtcp/source/rtcp_receiver.cc b/webrtc/modules/rtp_rtcp/source/rtcp_receiver.cc
+index b5e0d9a..26ecc5e 100644
+--- a/webrtc/modules/rtp_rtcp/source/rtcp_receiver.cc
++++ b/webrtc/modules/rtp_rtcp/source/rtcp_receiver.cc
+@@ -28,6 +28,7 @@
+ #include "webrtc/modules/rtp_rtcp/source/rtcp_packet/compound_packet.h"
+ #include "webrtc/modules/rtp_rtcp/source/rtcp_packet/extended_reports.h"
+ #include "webrtc/modules/rtp_rtcp/source/rtcp_packet/fir.h"
++#include "webrtc/modules/rtp_rtcp/source/rtcp_packet/fov_feedback.h"
+ #include "webrtc/modules/rtp_rtcp/source/rtcp_packet/nack.h"
+ #include "webrtc/modules/rtp_rtcp/source/rtcp_packet/pli.h"
+ #include "webrtc/modules/rtp_rtcp/source/rtcp_packet/rapid_resync_request.h"
+@@ -67,6 +68,7 @@ struct RTCPReceiver::PacketInformation {
+   uint32_t receiver_estimated_max_bitrate_bps = 0;
+   std::unique_ptr<rtcp::TransportFeedback> transport_feedback;
+   rtc::Optional<BitrateAllocation> target_bitrate_allocation;
++  std::unique_ptr<rtcp::FOVFeedback> fov_feedback;
+ };
+ 
+ // Structure for handing TMMBR and TMMBN rtcp messages (RFC5104, section 3.5.4).
+@@ -117,6 +119,39 @@ RTCPReceiver::RTCPReceiver(
+       rtcp_intra_frame_observer_(rtcp_intra_frame_observer),
+       transport_feedback_observer_(transport_feedback_observer),
+       bitrate_allocation_observer_(bitrate_allocation_observer),
++      rtcp_fov_observer_(nullptr),
++      main_ssrc_(0),
++      remote_ssrc_(0),
++      xr_rrtr_status_(false),
++      xr_rr_rtt_ms_(0),
++      last_received_rr_ms_(0),
++      last_increased_sequence_number_ms_(0),
++      stats_callback_(nullptr),
++      packet_type_counter_observer_(packet_type_counter_observer),
++      num_skipped_packets_(0),
++      last_skipped_packets_warning_ms_(clock->TimeInMilliseconds()) {
++  RTC_DCHECK(owner);
++  memset(&remote_sender_info_, 0, sizeof(remote_sender_info_));
++}
++
++RTCPReceiver::RTCPReceiver(
++    Clock* clock,
++    bool receiver_only,
++    RtcpPacketTypeCounterObserver* packet_type_counter_observer,
++    RtcpBandwidthObserver* rtcp_bandwidth_observer,
++    RtcpIntraFrameObserver* rtcp_intra_frame_observer,
++    TransportFeedbackObserver* transport_feedback_observer,
++    VideoBitrateAllocationObserver* bitrate_allocation_observer,
++    RtcpFOVObserver* rtcp_fov_observer,
++    ModuleRtpRtcp* owner)
++    : clock_(clock),
++      receiver_only_(receiver_only),
++      rtp_rtcp_(owner),
++      rtcp_bandwidth_observer_(rtcp_bandwidth_observer),
++      rtcp_intra_frame_observer_(rtcp_intra_frame_observer),
++      transport_feedback_observer_(transport_feedback_observer),
++      bitrate_allocation_observer_(bitrate_allocation_observer),
++      rtcp_fov_observer_(rtcp_fov_observer),
+       main_ssrc_(0),
+       remote_ssrc_(0),
+       xr_rrtr_status_(false),
+@@ -358,6 +393,9 @@ bool RTCPReceiver::ParseCompoundPacket(const uint8_t* packet_begin,
+           case rtcp::Fir::kFeedbackMessageType:
+             HandleFir(rtcp_block, packet_information);
+             break;
++          case rtcp::FOVFeedback::kFeedbackMessageType:
++            HandleFOVFeedback(rtcp_block, packet_information);
++            break;
+           case rtcp::Remb::kFeedbackMessageType:
+             HandlePsfbApp(rtcp_block, packet_information);
+             break;
+@@ -892,6 +930,22 @@ void RTCPReceiver::HandleTransportFeedback(
+   packet_information->transport_feedback = std::move(transport_feedback);
+ }
+ 
++void RTCPReceiver::HandleFOVFeedback(const CommonHeader& rtcp_block,
++                             PacketInformation* packet_information) {
++  std::unique_ptr<rtcp::FOVFeedback> fov_feedback(
++      new rtcp::FOVFeedback());
++
++  if (!fov_feedback->Parse(rtcp_block)) {
++    ++num_skipped_packets_;
++    return;
++  }
++
++  if (main_ssrc_ == fov_feedback->media_ssrc()) {
++    packet_information->packet_type_flags |= kRtcpFOVFeedback ;
++    packet_information->fov_feedback = std::move(fov_feedback);
++  }
++}
++
+ void RTCPReceiver::NotifyTmmbrUpdated() {
+   // Find bounding set.
+   std::vector<rtcp::TmmbItem> bounding =
+@@ -1002,6 +1056,17 @@ void RTCPReceiver::TriggerCallbacksFromRtcpPacket(
+         *packet_information.target_bitrate_allocation);
+   }
+ 
++  if (rtcp_fov_observer_ &&
++      packet_information.fov_feedback) {
++    RtcpFOVInfo rtcp_fov_info = {
++        packet_information.fov_feedback->seq_nr_,
++        packet_information.fov_feedback->yaw_,
++        packet_information.fov_feedback->pitch_,
++    };
++    rtcp_fov_observer_->OnReceivedFOVFeedback(
++        rtcp_fov_info);
++  }
++
+   if (!receiver_only_) {
+     rtc::CritScope cs(&feedbacks_lock_);
+     if (stats_callback_) {
+diff --git a/webrtc/modules/rtp_rtcp/source/rtcp_receiver.h b/webrtc/modules/rtp_rtcp/source/rtcp_receiver.h
+index 1c657a2..4b01535 100644
+--- a/webrtc/modules/rtp_rtcp/source/rtcp_receiver.h
++++ b/webrtc/modules/rtp_rtcp/source/rtcp_receiver.h
+@@ -57,6 +57,17 @@ class RTCPReceiver {
+                TransportFeedbackObserver* transport_feedback_observer,
+                VideoBitrateAllocationObserver* bitrate_allocation_observer,
+                ModuleRtpRtcp* owner);
++
++  RTCPReceiver(Clock* clock,
++               bool receiver_only,
++               RtcpPacketTypeCounterObserver* packet_type_counter_observer,
++               RtcpBandwidthObserver* rtcp_bandwidth_observer,
++               RtcpIntraFrameObserver* rtcp_intra_frame_observer,
++               TransportFeedbackObserver* transport_feedback_observer,
++               VideoBitrateAllocationObserver* bitrate_allocation_observer,
++               RtcpFOVObserver* rtcp_fov_observer,
++               ModuleRtpRtcp* owner);
++
+   virtual ~RTCPReceiver();
+ 
+   bool IncomingPacket(const uint8_t* packet, size_t packet_size);
+@@ -206,6 +217,10 @@ class RTCPReceiver {
+                                PacketInformation* packet_information)
+       EXCLUSIVE_LOCKS_REQUIRED(rtcp_receiver_lock_);
+ 
++  void HandleFOVFeedback(const rtcp::CommonHeader& rtcp_block,
++                               PacketInformation* packet_information)
++      EXCLUSIVE_LOCKS_REQUIRED(rtcp_receiver_lock_);
++
+   Clock* const clock_;
+   const bool receiver_only_;
+   ModuleRtpRtcp* const rtp_rtcp_;
+@@ -215,6 +230,7 @@ class RTCPReceiver {
+   RtcpIntraFrameObserver* const rtcp_intra_frame_observer_;
+   TransportFeedbackObserver* const transport_feedback_observer_;
+   VideoBitrateAllocationObserver* const bitrate_allocation_observer_;
++  RtcpFOVObserver* const rtcp_fov_observer_;
+ 
+   rtc::CriticalSection rtcp_receiver_lock_;
+   uint32_t main_ssrc_ GUARDED_BY(rtcp_receiver_lock_);
+diff --git a/webrtc/modules/rtp_rtcp/source/rtp_rtcp_impl.cc b/webrtc/modules/rtp_rtcp/source/rtp_rtcp_impl.cc
+index f77e59c..6d7db57 100644
+--- a/webrtc/modules/rtp_rtcp/source/rtp_rtcp_impl.cc
++++ b/webrtc/modules/rtp_rtcp/source/rtp_rtcp_impl.cc
+@@ -82,6 +82,7 @@ ModuleRtpRtcpImpl::ModuleRtpRtcpImpl(const Configuration& configuration)
+                      configuration.intra_frame_callback,
+                      configuration.transport_feedback_callback,
+                      configuration.bitrate_allocation_observer,
++                     configuration.rtcp_fov_observer,
+                      this),
+       clock_(configuration.clock),
+       audio_(configuration.audio),
+-- 
+1.8.3.1
+

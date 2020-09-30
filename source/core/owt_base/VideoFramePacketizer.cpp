@@ -419,6 +419,7 @@ bool VideoFramePacketizer::init(bool enableRed, bool enableUlpfec, bool enableTr
     configuration.event_log = &m_rtcEventLog;
     configuration.bandwidth_callback = m_bandwidthObserver.get();
     configuration.retransmission_rate_limiter = m_retransmissionRateLimiter.get();
+    configuration.rtcp_fov_observer = this;
     m_rtpRtcp.reset(RtpRtcp::CreateRtpRtcp(configuration));
     m_rtpRtcp->SetSSRC(m_ssrc);
 
@@ -458,6 +459,20 @@ void VideoFramePacketizer::setFoV(int32_t yaw, int32_t pitch) {
 #ifdef _ENABLE_HEVC_TILES_MERGER_
     if (m_tilesMerger)
         m_tilesMerger->setFoV(yaw, pitch);
+#endif
+}
+
+void VideoFramePacketizer::OnReceivedFOVFeedback(webrtc::RtcpFOVInfo &rtcp_fov_info) {
+    ELOG_INFO("OnReceivedFOVFeedback, seq_nr %d, yaw %d, pitch %d"
+        , rtcp_fov_info.seqnr
+        , rtcp_fov_info.yaw
+        , rtcp_fov_info.pitch);
+
+#ifdef _ENABLE_HEVC_TILES_MERGER_
+    if (m_tilesMerger)
+    {
+        m_tilesMerger->setFoV(rtcp_fov_info.yaw, rtcp_fov_info.pitch);
+    }
 #endif
 }
 
