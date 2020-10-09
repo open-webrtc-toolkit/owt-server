@@ -258,6 +258,7 @@ install_webrtc(){
   pushd src
   local COMMIT="c2aa290cfe4f63d5bfbb6540122a5e6bf2783187"
   git reset --hard $COMMIT
+  patch -p1 < $PATHNAME/patches/0001-Implement-RtcpFOVObserver.patch
   popd
   ./src/tools-woogeen/install.sh
   ./src/tools-woogeen/build.sh

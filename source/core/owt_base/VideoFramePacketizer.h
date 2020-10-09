@@ -40,7 +40,8 @@ class VideoFramePacketizer : public FrameDestination,
                              public erizo::FeedbackSink,
                              public erizoExtra::RTPDataReceiver,
                              public webrtc::BitrateObserver,
-                             public webrtc::RtcpIntraFrameObserver {
+                             public webrtc::RtcpIntraFrameObserver,
+                             public webrtc::RtcpFOVObserver {
     DECLARE_LOGGER();
 
 public:
@@ -79,6 +80,9 @@ public:
 
     // Implements webrtc::BitrateObserver.
     void OnNetworkChanged(const uint32_t target_bitrate, const uint8_t fraction_loss, const int64_t rtt);
+
+    // Implements webrtc::RtcpFOVObserver.
+    void OnReceivedFOVFeedback(webrtc::RtcpFOVInfo &rtcp_fov_info);
 
 private:
     bool init(bool enableRed, bool enableUlpfec, bool enableTransportcc, uint32_t transportccExt);
