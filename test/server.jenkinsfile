@@ -9,130 +9,27 @@ void setBuildStatus(String message, String state) {
 }
 
 pipeline {
-    agent any
-    options {
-        buildDiscarder(logRotator(numToKeepStr:'10', artifactNumToKeepStr:'10'))
-  }
+agent any
+   stages {
+      stage('Hello') {
+         steps {
+            echo '360-video starting:'
+                     sleep(10)
+            echo '360-video success'
+         }
 
-    stages {
-        stage('Build package') {
-            options { timeout(time:30,unit:'MINUTES') }
-            steps {
-                podTemplate(name: 'pack-server', label: 'pack-mcu-server',
-                volumes: [
-                persistentVolumeClaim(claimName: 'stability-package',mountPath: '/root/stabilityPackage',readOnly: false),
-                persistentVolumeClaim(claimName: 'centos-package',mountPath: '/root/centos_package',readOnly: false)
-              ],
-                containers: [
-                    containerTemplate(name: 'pack-on-centos-server', image: "$env.centos_build_images",  ttyEnabled: true, alwaysPullImage: true, privileged: true, resourceRequestCpu: '5000m', resourceLimitCpu: '6000m', network: 'host', command: 'cat')
-                ]){
-                    node ('pack-mcu-server') {
-                      container ('pack-on-centos-server') {
-                        sh "/root/startRun.sh $env.gitlab_username $env.gitlab_password centos build owt-server $env.GIT_BRANCH $env.GIT_COMMIT $env.CHANGE_ID"
-                      }
-                    }
-                }
-            }
-        }
+      }
+   }
 
-        stage('Start test') {
-            options { timeout(time:40,unit:'MINUTES') }
-            when {
-              expression {
-                currentBuild.result == null || currentBuild.result == 'SUCCESS' 
-              }
-            }
-            parallel {
-                stage('ConferenceClient API 1') {
-                    steps {
-                        podTemplate(name: 'api-test-server', label: 'api-test-server', cloud: 'kubernetes',
-                         volumes: [
-                              persistentVolumeClaim(claimName: 'centos-package', mountPath: '/root/centos_package', readOnly: false),
-                              persistentVolumeClaim(claimName: 'audio-lib', mountPath: '/root/audio_lib',readOnly: false),
-                              persistentVolumeClaim(claimName: 'recording-lib', mountPath: '/root/recording_lib',readOnly: false),
-                              persistentVolumeClaim(claimName: 'sip-lib', mountPath: '/root/sip_lib',readOnly: false),
-                              persistentVolumeClaim(claimName: 'streaming-lib', mountPath: '/root/streaming_lib', readOnly: false),
-                              persistentVolumeClaim(claimName: 'video-lib', mountPath: '/root/video_lib',readOnly: false),
-                              persistentVolumeClaim(claimName: 'centos-log', mountPath: '/root/centos_log', readOnly: false)
-                              ],
-                         containers: [
-                            containerTemplate(name: 'api-test-server', image: "$env.centos_test_images",  ttyEnabled: true, alwaysPullImage: true, privileged: true, resourceRequestCpu: '2000m', resourceLimitCpu: '6000m',resourceLimitMemory: '9.0Gi', resourceRequestMemory: '8.0Gi', network: 'host', command: 'cat'),
-                            ]) {
-                            node('api-test-server') {
-                                container('api-test-server') {
-                                    sh "/root/startRun.sh $env.gitlab_username $env.gitlab_password centos test ${env.GIT_COMMIT} ConferenceClient_API_1"
-                                }
-                            }
-                        }
-                    }
-                }
-
-                stage('ConferenceClient API 2') {
-                    steps {
-                        podTemplate(name:'subscribe-test-server', label: 'subscribe-test-server', cloud: 'kubernetes',
-                        volumes: [
-                              persistentVolumeClaim(claimName: 'centos-package', mountPath: '/root/centos_package', readOnly: false),
-                              persistentVolumeClaim(claimName: 'audio-lib', mountPath: '/root/audio_lib',readOnly: false),
-                              persistentVolumeClaim(claimName: 'recording-lib', mountPath: '/root/recording_lib',readOnly: false),
-                              persistentVolumeClaim(claimName: 'sip-lib', mountPath: '/root/sip_lib',readOnly: false),
-                              persistentVolumeClaim(claimName: 'streaming-lib', mountPath: '/root/streaming_lib', readOnly: false),
-                              persistentVolumeClaim(claimName: 'video-lib', mountPath: '/root/video_lib',readOnly: false),
-                              persistentVolumeClaim(claimName: 'centos-log', mountPath: '/root/centos_log', readOnly: false)
-                              ],
-                        containers: [
-                            containerTemplate(name: 'subscribe-test-server', image: "$env.centos_test_images",  ttyEnabled: true, alwaysPullImage: true, privileged: true, resourceRequestCpu: '2000m', resourceLimitCpu: '6000m',resourceLimitMemory: '9.0Gi', resourceRequestMemory: '8.0Gi', network: 'host', command: 'cat'),
-                            ]) {
-                            node('subscribe-test-server') {
-                                container('subscribe-test-server') {
-                                    sh "/root/startRun.sh $env.gitlab_username $env.gitlab_password centos test ${env.GIT_COMMIT} ConferenceClient_API_2"
-                                }
-                            }
-                        }
-                    }
-                }
-
-                stage('ConferenceClient API 3') {
-                    steps {
-                        podTemplate(name:'simucast-test-server', label: 'simucast-test-server', cloud: 'kubernetes',
-                        volumes: [
-                              persistentVolumeClaim(claimName: 'centos-package', mountPath: '/root/centos_package', readOnly: false),
-                              persistentVolumeClaim(claimName: 'audio-lib', mountPath: '/root/audio_lib',readOnly: false),
-                              persistentVolumeClaim(claimName: 'recording-lib', mountPath: '/root/recording_lib',readOnly: false),
-                              persistentVolumeClaim(claimName: 'sip-lib', mountPath: '/root/sip_lib',readOnly: false),
-                              persistentVolumeClaim(claimName: 'streaming-lib', mountPath: '/root/streaming_lib', readOnly: false),
-                              persistentVolumeClaim(claimName: 'video-lib', mountPath: '/root/video_lib',readOnly: false),
-                              persistentVolumeClaim(claimName: 'centos-log', mountPath: '/root/centos_log', readOnly: false)
-                              ],
-                        containers: [
-                            containerTemplate(name: 'simucast-test-server', image: "$env.centos_test_images",  ttyEnabled: true, alwaysPullImage: true, privileged: true, resourceRequestCpu: '2000m', resourceLimitCpu: '6000m',resourceLimitMemory: '9.0Gi', resourceRequestMemory: '8.0Gi', network: 'host', command: 'cat'),
-                            ]) {
-                            node('simucast-test-server') {
-                                container('simucast-test-server') {
-                                    sh "/root/startRun.sh $env.gitlab_username $env.gitlab_password centos test ${env.GIT_COMMIT} ConferenceClient_API_3"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-	}
-    }
 
     post {
-        always {
-            script {
-                sh "curl -H \"Content-Type: application/json\" -X POST --data '{\"commit_id\":\"'$GIT_COMMIT'\",\"job_path\":\"'${env.MCU_CHECK_PATH}'\",\"job_name\":\"'$JOB_BASE_NAME'\",\"build_num\":\"'$BUILD_NUMBER'\",\"os_version\":\"'$env.CENTOS_VERSION'\"}' '${env.checkServerUrl}'/runServer/MCU_BUILD_STEPS"
-            }
-        }
         success {
-            script {
-                if ("${GIT_BRANCH}" == 'master') {
-                   sh "curl ${env.checkServerUrl}/copyNightly/${GIT_COMMIT}/owt-server/1"
-        }
-        }
+
             setBuildStatus("Build succeeded", "SUCCESS");
         }
+
         failure {
+
             setBuildStatus("Build failed", "FAILURE");
         }
     }
