@@ -509,7 +509,8 @@ exports.filterH264 = function (sdpObj, videoPreference = {}, mid) {
     optionals = optionals.filter((fmt) => (fmt.codec === 'h264'));
   }
 
-  const mediaInfo = sdpObj.media.find(media => media.mid === mid);
+  const mediaInfo = sdpObj.media.find(
+    media => media.mid.toString() === mid.toString());
   if (mediaInfo) {
     var i, rtp, fmtp;
     if (mediaInfo.type === 'video') {

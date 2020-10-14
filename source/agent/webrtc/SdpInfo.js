@@ -19,18 +19,18 @@ class SdpInfo {
   constructor(str) {
     this.obj = transform.parse(str);
     this.obj.media.forEach((media, i) => {
-      if (!Number.isInteger(media.mid)) {
-        log.warn(`Media ${i} missing mid ${media.mid}`);
+      if (media.mid === undefined) {
+        log.warn(`Media ${i} missing mid`);
       }
     });
   }
 
   mids() {
-    return this.obj.media.map(mediaInfo => mediaInfo.mid);
+    return this.obj.media.map(mediaInfo => mediaInfo.mid.toString());
   }
 
   media(mid) {
-    const mediaInfo = this.obj.media.find(media => media.mid === mid);
+    const mediaInfo = this.obj.media.find(media => media.mid.toString() === mid);
     return (mediaInfo || null);
   }
 
@@ -42,7 +42,7 @@ class SdpInfo {
         rids = mediaInfo.rids.map(r => (r.id + ''));
       } else {
         // Assign [0,1...n] to legacy simulcast
-        const sim = getLegacySimulcast(mid);
+        const sim = this.getLegacySimulcast(mid);
         if (sim) {
           rids = sim.map((v, i) => (i + ''));
         }
@@ -97,7 +97,7 @@ class SdpInfo {
       return false;
     };
 
-    const mediaInfo = this.obj.media.find(media => media.mid === mid);
+    const mediaInfo = this.media(mid);
     if (mediaInfo && mediaInfo.type === 'audio') {
       let rtp, fmtp;
       // Keep payload order in m line
@@ -169,7 +169,7 @@ class SdpInfo {
     var codecMap = new Map();
     var payloadOrder = new Map();
 
-    const mediaInfo = this.obj.media.find(m => m.mid === mid);
+    const mediaInfo = this.media(mid);
     log.info('mediaInfo:', mediaInfo, mid);
     if (mediaInfo && mediaInfo.type == 'video') {
       let rtp, fmtp;
@@ -258,7 +258,7 @@ class SdpInfo {
   }
 
   getCredentials(mid) {
-    const mediaInfo = this.obj.media.find(m => m.mid === mid);
+    const mediaInfo = this.media(mid);
     if (mediaInfo) {
       return {
         iceUfrag: mediaInfo.iceUfrag,
@@ -279,15 +279,15 @@ class SdpInfo {
   }
 
   getMsidSemantic() {
-    return this.obj.msidSemantic.semantic;
+    return this.obj.msidSemantic;
   }
 
   setMsidSemantic(semantic) {
-    this.obj.msidSemantic.semantic = semantic;
+    this.obj.msidSemantic = semantic;
   }
 
   getCandidates(mid) {
-    const mediaInfo = this.obj.media.find(m => m.mid === mid);
+    const mediaInfo = this.media(mid);
     if (mediaInfo) {
       return mediaInfo.candidates;
     } else {
@@ -303,17 +303,19 @@ class SdpInfo {
 
   singleMediaSdp(mid) {
     const sdp = new SdpInfo(this.toString());
-    sdp.media = sdp.media.filter(m => m.mid === mid);
+    sdp.obj.media = sdp.obj.media.filter(m => m.mid.toString() === mid);
     return sdp;
   }
 
   mergeMedia(sdp) {
     const mids = this.mids();
+    const bundles = this.obj.groups.find(g => g.type === 'BUNDLE');
     sdp.obj.media.forEach(media => {
-      if (mids.indexOf(media.mid) >= 0) {
+      if (mids.indexOf(media.mid.toString()) >= 0) {
         log.warn(`Conflict MID ${mid} to merge`);
       } else {
         this.obj.media.push(media);
+        bundles.mids += ' ' + media.mid;
       }
     });
   }
@@ -329,11 +331,11 @@ class SdpInfo {
       }
     });
 
-    return diffMids;
+    return diffMids.map(m => m.toString());
   }
 
   getMediaSettings(mid) {
-    const mediaInfo = this.obj.media.find(m => m.mid === mid);
+    const mediaInfo = this.media(mid);
     if (!mediaInfo) {
       return null;  
     }
@@ -382,7 +384,7 @@ class SdpInfo {
 
   getLegacySimulcast(mid) {
     const simulcast = [];
-    const media = this.obj.media.find(m => m.mid === mid);
+    const media = this.media(mid);
     if (!media) {
       return null;  
     }
@@ -408,18 +410,29 @@ class SdpInfo {
   }
 
   setSsrcs(mid, ssrcs) {
-    const media = this.obj.media.find(m => m.mid === mid);
+    const media = this.media(mid);
     if (!media) {
-      return null;  
+      return null;
     }
 
+    const alphanum = '0123456789' +
+      'ABCDEFGHIJKLMNOPQRSTUVWXYZ' +
+      'abcdefghijklmnopqrstuvwxyz';
+    const msidLength = 10;
+    let msid = '';
+    for (let i = 0; i < msidLength; i++) {
+      msid += alphanum[Math.floor(Math.random() * alphanum.length)];
+    }
     const mtype = (media.type === 'audio') ? 'a' : 'v';
-    media.ssrcs = ssrcs.map((ssrc, i) => ({
+    // Only support one ssrc now
+    const ssrc = ssrcs[0];
+    media.ssrcs = [
       {id: ssrc, attribute: 'cname', value: 'o/i14u9pJrxRKAsu'},
-      {id: ssrc, attribute: 'msid', value: `${msid} ${mtype}${i}`},
+      {id: ssrc, attribute: 'msid', value: `${msid} ${mtype}0`},
       {id: ssrc, attribute: 'mslabel', value: msid},
-      {id: ssrc, attribute: 'label', value: `${msid}${mtype}${i}`},
-    }));
+      {id: ssrc, attribute: 'label', value: `${msid}${mtype}0`},
+    ];
+    log.warn('SSRC:', JSON.stringify(media.ssrcs));
   }
 
   answer() {

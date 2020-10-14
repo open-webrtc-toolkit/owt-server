@@ -251,7 +251,7 @@ class Connection extends EventEmitter {
       this.mediaStreams.get(id).close();
       this.mediaStreams.delete(id);
       log.debug(`removed mediaStreamId ${id}, remaining size ${this.getNumMediaStreams()}`);
-      this._maybeSendAnswer(CONN_SDP, id, true);
+      // this._maybeSendAnswer(CONN_SDP, id, true);
     } else {
       log.error(`message: Trying to remove mediaStream not found, id: ${id}`);
     }
@@ -267,6 +267,14 @@ class Connection extends EventEmitter {
 
   setRemoteSsrc(audioSsrc, videoSsrcList, label) {
     this.wrtc.setAudioSsrc(label, audioSsrc);
+    this.wrtc.setVideoSsrcList(label, videoSsrcList);
+  }
+
+  setAudioSsrc(label, audioSsrc) {
+    this.wrtc.setAudioSsrc(label, audioSsrc);
+  }
+
+  setVideoSsrcList(label, videoSsrcList) {
     this.wrtc.setVideoSsrcList(label, videoSsrcList);
   }
 

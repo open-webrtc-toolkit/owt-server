@@ -7,7 +7,7 @@
 const { EventEmitter } = require('events');
 
 const {
-  AudioFrameConstructor, = addon.AudioFrameConstructor;
+  AudioFrameConstructor,
   AudioFramePacketizer,
   VideoFrameConstructor,
   VideoFramePacketizer
@@ -51,16 +51,16 @@ class WrtcStream extends EventEmitter {
    * video: { format, ssrc, transportcc, red, ulpfec }
    */
   constructor(id, wrtc, direction, {audio, video}) {
+    super();
     this.id = id;
     this.wrtc = wrtc;
     this.direction = direction;
-    this.audioFormat = audio ? audio.format || null;
-    this.videoFormat = video ? video.format || null;
+    this.audioFormat = audio ? audio.format : null;
+    this.videoFormat = video ? video.format : null;
     this.audioFrameConstructor = null;
     this.audioFramePacketizer = null;
     this.videoFrameConstructor = null;
     this.videoFramePacketizer = null;
-    this.mid = decomposeId
 
     if (direction === 'in') {
       wrtc.addMediaStream(id, {label: id}, true);
@@ -68,14 +68,15 @@ class WrtcStream extends EventEmitter {
       if (audio) {
         this.audioFrameConstructor = new AudioFrameConstructor();
         this.audioFrameConstructor.bindTransport(wrtc.getMediaStream(id));
+        wrtc.setAudioSsrc(id, audio.ssrc);
       }
       if (video) {
         this.videoFrameConstructor = new VideoFrameConstructor(
           this._onMediaUpdate.bind(this), video.transportcc);
         this.videoFrameConstructor.bindTransport(wrtc.getMediaStream(id));
+        wrtc.setVideoSsrcList(id, [video.ssrc]);
       }
 
-      wrtc.setRemoteSsrc(audio.ssrc, [video.ssrc], id);
     } else {
       wrtc.addMediaStream(id, {label: id}, false);
 
@@ -224,11 +225,12 @@ class WrtcStream extends EventEmitter {
 
 
 module.exports = function (spec, on_status, on_track) {
-  var that = {},
+  var that = {};
   var wrtcId = spec.connectionId;
   var wrtc = null;
   var threadPool = spec.threadPool;
   var ioThreadPool = spec.ioThreadPool;
+  var networkInterfaces = spec.network_interfaces;
 
   var remoteSdp = null;
   var localSdp = null;
@@ -256,6 +258,7 @@ module.exports = function (spec, on_status, on_track) {
       if (op.operationId === operationId) {
         log.debug(`MID ${mid} for operation ${operationId} remove`);
         op.enabled = false;
+        destroyTransport(mid);
         ret = true;
       }
     });
@@ -294,11 +297,9 @@ module.exports = function (spec, on_status, on_track) {
       } else if (evt.type === 'ready') {
         log.debug('Connection ready, ', wrtc.wrtcId);
         on_status({
-          type: 'ready',
-          audio: audio_fmt ? audio_fmt : false,
-          video: video_fmt ? video_fmt : false,
-          simulcast: isSimulcast ? { video: true } : false
+          type: 'ready'
         });
+      }
     });
     wrtc.init(wrtcId);
   };
@@ -376,6 +377,8 @@ module.exports = function (spec, on_status, on_track) {
         log.warn(`Conflict trackId ${mid} for ${wrtcId}`);
       }
     }
+
+    return opSettings.operationId;
   };
 
   const destroyTransport = function (mid) {
@@ -419,7 +422,7 @@ module.exports = function (spec, on_status, on_track) {
       log.warn(`MID ${mid} in offer has conflict media type with operation`);
       return;
     }
-    if (operationMap.get(mid).enabled && (laterSdp.getMediaPort(mid) === 0)) {
+    if (operationMap.get(mid).enabled && (remoteSdp.getMediaPort(mid) === 0)) {
       log.warn(`MID ${mid} in offer has conflict port with operation (disabled)`);
       operationMap.get(mid).enabled = false;
     }
@@ -444,11 +447,18 @@ module.exports = function (spec, on_status, on_track) {
 
       // Check mid
       const mids = remoteSdp.mids();
+      let opId = null;
       for (const mid of mids) {
         processOfferMedia(mid);
         if (remoteSdp.getMediaPort(mid) !== 0) {
-          setupTransport(mid);
+          opId = setupTransport(mid);
         }
+      }
+      if (opId) {
+        on_track({
+          type: 'tracks-complete',
+          operationId: opId
+        });
       }
 
     } else {
@@ -477,16 +487,23 @@ module.exports = function (spec, on_status, on_track) {
         }
       }
 
+      let opId = null;
       for (let mid of addedMids) {
         processOfferMedia(mid);
         if (remoteSdp.getMediaPort(mid) !== 0) {
-          setupTransport(mid);
+          opId = setupTransport(mid);
         }
+      }
+      if (opId) {
+        on_track({
+          type: 'tracks-complete',
+          operationId: opId
+        });
       }
 
       for (let mid of removedMids) {
         // processOfferMedia(mid);
-        destroyTransport(mid);
+        // destroyTransport(mid);
       }
 
       // Produce answer

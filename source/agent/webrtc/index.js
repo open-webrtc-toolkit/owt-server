@@ -39,7 +39,7 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
     // Map { operationId => transportId }
     var mappingTransports = new Map();
     
-    var notifyStatus = function (controller, transportId, status) {
+    var notifyTransportStatus = function (controller, transportId, status) {
         rpcClient.remoteCast(controller, 'onTransportProgress', [transportId, status]);
     };
 
@@ -51,8 +51,8 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
      *  event: ('track-added' | 'track-removed' | 'track-updated'),
      *  trackId, mediaType, mediaFormat, active }
      */
-    var notifyTrackUpdate = function (controller, publicTrackId, updateInfo) {
-        rpcClient.remoteCast(controller, 'onTrackUpdate', [publicTrackId, updateInfo]);
+    var notifyTrackUpdate = function (controller, transportId, updateInfo) {
+        rpcClient.remoteCast(controller, 'onTrackUpdate', [transportId, updateInfo]);
     };
 
     var handleTrackInfo = function (transportId, trackInfo, controller) {
@@ -61,7 +61,7 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
         if (trackInfo.type === 'track-added') {
             // Generate public track ID
             const track = trackInfo.track;
-            publicTrackId = transportId + '/' + track.id;
+            publicTrackId = transportId + '-' + track.id;
             if (mediaTracks.has(publicTrackId)) {
                 log.error('Conflict public track id:', publicTrackId, transportId, track.id);
                 return;
@@ -73,13 +73,13 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
 
             // Bind media-update handler
             track.on('media-update', (jsonUpdate) => {
-                notifyMediaUpdate(controller, publicTrackId, track.direction, jsonUpdate);
+                notifyMediaUpdate(controller, publicTrackId, track.direction, JSON.parse(jsonUpdate));
             });
             // Notify controller
             const mediaType = track.format('audio') ? 'audio' : 'video';
             updateInfo = {
                 type: 'track-added',
-                trackId: track.id,
+                trackId: publicTrackId,
                 mediaType: track.format('audio') ? 'audio' : 'video',
                 mediaFormat: track.format(mediaType),
                 direction: track.direction,
@@ -88,7 +88,8 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
                 rid: trackInfo.rid,
                 active: true,
             };
-            notifyTrackUpdate(controller, publicTrackId, updateInfo);
+            log.warn('notifyTrackUpdate', controller, publicTrackId, updateInfo);
+            notifyTrackUpdate(controller, transportId, updateInfo);
 
         } else if (trackInfo.type === 'track-removed') {
             publicTrackId = mappingPublicId.get(transportId).get(trackInfo.trackId);
@@ -107,9 +108,16 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
             // Notify controller
             updateInfo = {
                 type: 'track-removed',
-                trackId: trackInfo.trackId,
+                trackId: publicTrackId,
             };
-            notifyTrackUpdate(controller, publicTrackId, updateInfo);
+            notifyTrackUpdate(controller, transportId, updateInfo);
+
+        } else if (trackInfo.type === 'tracks-complete') {
+            updateInfo = {
+                type: 'tracks-complete',
+                operationId: trackInfo.operationId
+            };
+            notifyTrackUpdate(controller, transportId, updateInfo);
         }
     };
 
@@ -119,17 +127,18 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
             return peerConnections.get(transportId);
         }
         var connection = new WrtcConnection({
-            connectionId: connectionId,
+            connectionId: transportId,
             threadPool: threadPool,
             ioThreadPool: ioThreadPool,
             network_interfaces: global.config.webrtc.network_interfaces
-        }, function onStatus(status) {
-            notifyStatus(controller, connectionId, status);
+        }, function onTransportStatus(status) {
+            notifyTransportStatus(controller, transportId, status);
         }, function onTrack(trackInfo) {
             handleTrackInfo(transportId, trackInfo, controller);
         });
 
         peerConnections.set(transportId, connection);
+        mappingPublicId.set(transportId, new Map());
         return connection;
     };
 
@@ -158,11 +167,12 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
     };
 
     that.createTransport = function (transportId, controller, callback) {
-        createWebRTCConnection(options.transportId, options.controller);
+        createWebRTCConnection(transportId, controller);
         callback('callback', 'ok');
     };
 
     that.destroyTransport = function (transportId, callback) {
+        log.debug('destroyTransport, transportId:', transportId);
         if (!peerConnections.has(transportId)) {
             callback('callback', 'error', 'Transport does not exists: ' + transportId);
             return;
@@ -322,7 +332,7 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
         log.debug('onTransportSignaling, connection id:', connectionId, 'msg:', msg);
         var conn = getWebRTCConnection(connectionId);
         if (conn) {
-            conn.connection.onSignalling(msg, connectionId);
+            conn.onSignalling(msg, connectionId);
             callback('callback', 'ok');
         } else {
           callback('callback', 'error', 'Connection does NOT exist:' + connectionId);
