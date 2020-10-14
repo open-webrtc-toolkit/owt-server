@@ -151,7 +151,7 @@ install_openssl(){
 
   if [ -d $LIB_DIR ]; then
     local SSL_BASE_VERSION="1.1.1"
-    local SSL_VERSION="1.1.1g"
+    local SSL_VERSION="1.1.1h"
     cd $LIB_DIR
     rm -f ./build/lib/libssl.*
     rm -f ./build/lib/libcrypto.*
