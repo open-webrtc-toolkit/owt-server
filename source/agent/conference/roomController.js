@@ -119,7 +119,6 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
             encode: config.mediaOut.video.format.map(formatStr),
             decode: config.mediaIn.video.map(formatStr)
         };
-        config.mediaOut.video.format
         config.views.forEach((view) => {
             if (view.video.format) {
                 capability.video.encode.push(formatStr(view.video.format));
@@ -1426,12 +1425,12 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
         });
     };
 
-    that.publish = function (participantId, streamId, accessNode, streamInfo, streamType, origin, on_ok, on_error) {
+    that.publish = function (participantId, streamId, accessNode, streamInfo, streamType, on_ok, on_error) {
         log.debug('publish, participantId: ', participantId, 'streamId:', streamId, 'accessNode:', accessNode.node, 'streamInfo:', JSON.stringify(streamInfo), ' origin is:', origin);
         if (streams[streamId] === undefined) {
             var terminal_id = pubTermId(participantId, streamId);
             var terminal_owner = (streamType === 'webrtc' || streamType === 'sip') ? participantId : room_id + '-' + randomId();
-            newTerminal(terminal_id, streamType, terminal_owner, accessNode, origin, function () {
+            newTerminal(terminal_id, streamType, terminal_owner, accessNode, streamInfo.origin, function () {
                 streams[streamId] = {owner: terminal_id,
                                      audio: streamInfo.audio ? {format: formatStr(streamInfo.audio),
                                                                 subscribers: [],
