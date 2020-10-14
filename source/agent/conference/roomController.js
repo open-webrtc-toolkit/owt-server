@@ -118,7 +118,6 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
             encode: config.mediaOut.video.format.map(formatStr),
             decode: config.mediaIn.video.map(formatStr)
         };
-        config.mediaOut.video.format
         config.views.forEach((view) => {
             if (view.video.format) {
                 capability.video.encode.push(formatStr(view.video.format));
