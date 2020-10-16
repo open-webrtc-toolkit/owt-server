@@ -18,6 +18,6 @@
     "postinstall" : "bash postinstall.sh"
   },
   "engine": {
-    "node": "8.15.0"
+    "node": "10.21.0"
   }
 }
