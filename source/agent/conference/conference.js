@@ -1844,6 +1844,61 @@ var Conference = function (rpcClient, selfRpcId) {
     }
   };
 
+  that.addStreamingInSRT = function(roomId, pubInfo, callback) {
+    pubInfo.connection.type = 'srt';
+    log.debug('addStreamingInSRT, roomId:', roomId, 'pubInfo:', JSON.stringify(pubInfo));
+
+    if (pubInfo.type === 'streaming') {
+      var stream_id = Math.round(Math.random() * 1000000000000000000) + '';
+      return initRoom(roomId)
+      .then(() => {
+        if (room_config.inputLimit >= 0 && (room_config.inputLimit <= currentInputCount())) {
+          return Promise.reject('Too many inputs');
+        }
+
+        if (pubInfo.media.audio && !room_config.mediaIn.audio.length) {
+          return Promise.reject('Audio is forbiden');
+        }
+
+        if (pubInfo.media.video && !room_config.mediaIn.video.length) {
+          return Promise.reject('Video is forbiden');
+        }
+
+        initiateStream(stream_id, {owner: 'admin', type: pubInfo.type});
+        return accessController.initiate('admin', stream_id, 'in', participants['admin'].getOrigin(), pubInfo);
+      }).then((result) => {
+	log.info("accessController initate success with result:", result);
+        callback('callback', result);
+        return 'ok';
+      }).then(() => {
+        return new Promise((resolve, reject) => {
+          var count = 0, wait = 1420;
+          var interval = setInterval(() => {
+            if (count > wait || !streams[stream_id]) {
+              clearInterval(interval);
+              accessController.terminate('admin', stream_id, 'Participant terminate');
+              removeStream(stream_id);
+              reject('Access timeout');
+            } else {
+              if (streams[stream_id] && !streams[stream_id].isInConnecting) {
+                clearInterval(interval);
+                resolve('ok');
+              } else {
+                count = count + 1;
+              }
+            }
+          }, 60);
+        });
+      }).catch((e) => {
+        callback('callback', 'error', e.message ? e.message : e);
+        removeStream(stream_id);
+        selfClean();
+      });
+    } else {
+      callback('callback', 'error', 'Invalid publication type');
+    }
+  };
+
   const getRational = (str) => {
     if (str === '0') {
       return {numerator: 0, denominator: 1};
@@ -2536,6 +2591,7 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
     getStreams: conference.getStreams,
     getStreamInfo: conference.getStreamInfo,
     addStreamingIn: conference.addStreamingIn,
+    addStreamingInSRT: conference.addStreamingInSRT,
     controlStream: conference.controlStream,
     deleteStream: conference.deleteStream,
     getSubscriptions: conference.getSubscriptions,
