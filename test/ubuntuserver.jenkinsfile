@@ -9,11 +9,16 @@ void setBuildStatus(String message, String state) {
 }
 
 pipeline {
-    agent any
-    options {
-        buildDiscarder(logRotator(numToKeepStr:'10', artifactNumToKeepStr:'10'))
-  }
+agent any
+   stages {
+      stage('Hello') {
+         steps {
+            echo 'uhd starting:'
+                     sleep(10)
+            echo 'uhd success'
+         }
 
+<<<<<<< HEAD
     stages {
         stage('Build package') {
             options { timeout(time:30,unit:'MINUTES') }
@@ -164,14 +169,15 @@ pipeline {
             }
         }
     }
+=======
+      }
+   }
+
+>>>>>>> update uhd
 
     post {
-        always {
-            script {
-                sh "curl -H \"Content-Type: application/json\" -X POST --data '{\"commit_id\":\"'$GIT_COMMIT'\",\"job_path\":\"'${env.MCU_CHECK_UBUNTU_PATH}'\",\"job_name\":\"'$JOB_BASE_NAME'\",\"build_num\":\"'$BUILD_NUMBER'\",\"os_version\":\"'$env.UBUTUN_VERSION'\"}' '${env.checkServerUrl}'/runServer/MCU_BUILD_STEPS"
-            }
-        }
         success {
+<<<<<<< HEAD
             script {
 <<<<<<< HEAD
                 if ("${GIT_BRANCH}" == '4.3.x') {
@@ -182,9 +188,14 @@ pipeline {
 >>>>>>> update jenkinsfile to match latest CI pipeline
         }
         }
+=======
+
+>>>>>>> update uhd
             setBuildStatus("Build succeeded", "SUCCESS");
         }
+
         failure {
+
             setBuildStatus("Build failed", "FAILURE");
         }
     }
