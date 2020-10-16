@@ -71,8 +71,14 @@ class WrtcStream extends EventEmitter {
         wrtc.setAudioSsrc(id, audio.ssrc);
       }
       if (video) {
-        this.videoFrameConstructor = new VideoFrameConstructor(
-          this._onMediaUpdate.bind(this), video.transportcc);
+        if (!wrtc.callBase) {
+          this.videoFrameConstructor = new VideoFrameConstructor(
+            this._onMediaUpdate.bind(this), video.transportcc);
+          wrtc.callBase = this.videoFrameConstructor;
+        } else {
+          this.videoFrameConstructor = new VideoFrameConstructor(
+            this._onMediaUpdate.bind(this), video.transportcc, wrtc.callBase);
+        }
         this.videoFrameConstructor.bindTransport(wrtc.getMediaStream(id));
         wrtc.setVideoSsrcList(id, [video.ssrc]);
       }
