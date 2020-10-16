@@ -408,6 +408,8 @@ function isLibAllowed(libSrc) {
     return false;
 
   const whiteList = [
+    'libssl.so.1.1',
+    'libcrypto',
     'libnice',
     'libSvtHevcEnc',
     'libusrsctp',
