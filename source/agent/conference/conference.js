@@ -453,6 +453,8 @@ var Conference = function (rpcClient, selfRpcId) {
       subscriptions = {};
       streams = {};
       participants = {};
+      selfCleanTimer && clearTimeout(selfCleanTimer);
+      selfCleanTimer = null;
       room_id = undefined;
     };
 
