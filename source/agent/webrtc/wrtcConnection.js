@@ -449,13 +449,16 @@ module.exports = function (spec, on_status, on_track) {
     if (!remoteSdp) {
       // First offer
       remoteSdp = new SdpInfo(sdp);
-      localSdp = remoteSdp.answer();
-
       // Check mid
       const mids = remoteSdp.mids();
-      let opId = null;
       for (const mid of mids) {
         processOfferMedia(mid);
+      }
+      localSdp = remoteSdp.answer();
+
+      // Setup transport
+      let opId = null;
+      for (const mid of mids) {
         if (remoteSdp.getMediaPort(mid) !== 0) {
           opId = setupTransport(mid);
         }
@@ -480,12 +483,16 @@ module.exports = function (spec, on_status, on_track) {
           // Add media
           const tempSdp = laterSdp.singleMediaSdp(cmid);
           remoteSdp.mergeMedia(tempSdp);
-          localSdp.mergeMedia(tempSdp.answer());
           addedMids.push(cmid);
         } else if (laterSdp.getMediaPort(cmid) === 0) {
           // Remove media
           remoteSdp.setMediaPort(cmid, 0);
           localSdp.setMediaPort(cmid, 0);
+          removedMids.push(cmid);
+        } else if (laterSdp.mediaDirection(cmid) === 'inactive') {
+          // Disable media
+          remoteSdp.media(cmid).direction = 'inactive';
+          localSdp.media(cmid).direction = 'inactive';
           removedMids.push(cmid);
         } else {
           // Unexpected
@@ -496,6 +503,7 @@ module.exports = function (spec, on_status, on_track) {
       let opId = null;
       for (let mid of addedMids) {
         processOfferMedia(mid);
+        localSdp.mergeMedia(remoteSdp.singleMediaSdp(mid).answer());
         if (remoteSdp.getMediaPort(mid) !== 0) {
           opId = setupTransport(mid);
         }

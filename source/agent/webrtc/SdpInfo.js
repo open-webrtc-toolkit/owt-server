@@ -170,7 +170,6 @@ class SdpInfo {
     var payloadOrder = new Map();
 
     const mediaInfo = this.media(mid);
-    log.info('mediaInfo:', mediaInfo, mid);
     if (mediaInfo && mediaInfo.type == 'video') {
       let rtp, fmtp;
       let payloads;
@@ -230,11 +229,11 @@ class SdpInfo {
 
     if (selectedPayload !== -1) {
       finalFmt = { codec: codecMap.get(selectedPayload) };
-      if (finalPrf) {
+      if (finalFmt.codec === 'h264' && finalPrf) {
         finalFmt.profile = finalPrf;
       }
     }
-    log.info('finalFmt video:', finalFmt);
+    log.debug('finalFmt video:', finalFmt);
     return finalFmt;
   }
 
@@ -327,6 +326,8 @@ class SdpInfo {
       if (!m2) {
         diffMids.push(m1.mid)
       } else if (m1.port !== m2.port) {
+        diffMids.push(m1.mid);
+      } else if (m1.direction !== m2.direction) {
         diffMids.push(m1.mid);
       }
     });
