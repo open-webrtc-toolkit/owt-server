@@ -25,7 +25,7 @@ class Transport {
 
   setup(locality) {
     this.locality = locality;
-    this.state = COMPLETED;
+    this.state = PENDING;
   }
 }
 
@@ -147,7 +147,14 @@ class RtcController extends EventEmitter {
     }
     const transport = this.transports.get(transportId);
     if (status.type === 'ready') {
+      transport.state = COMPLETED;
       this.emit('transport-established', transportId);
+      // Emit pending completed tracks
+      for (const [id, operation] of this.operations) {
+        if (operation.transportId === transportId) {
+          this.emit('session-established', operation);
+        }
+      }
     } else if (status.type === 'failed') {
       this.emit('transport-aborted', transportId, status.reason);
       // Destroy transport
@@ -222,7 +229,10 @@ class RtcController extends EventEmitter {
     } else if (info.type === 'tracks-complete') {
       const operation = this.operations.get(info.operationId);
       operation.state = COMPLETED;
-      this.emit('session-established', operation);
+      if (operation.transport.state === COMPLETED) {
+        // Only emit when transport is completed
+        this.emit('session-established', operation);
+      }
     }
   }
 
@@ -258,7 +268,7 @@ class RtcController extends EventEmitter {
 
     return this._createTransportIfNeeded(ownerId, sessionId, origin, transportId)
     .then(transport => {
-      if (transport.state !== COMPLETED) {
+      if (transport.state !== PENDING && transport.state !== COMPLETED) {
         return Promise.reject(`Transport ${transportId} is not ready`);
       }
       const locality = transport.locality;

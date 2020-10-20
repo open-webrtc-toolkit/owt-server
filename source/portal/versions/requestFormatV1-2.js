@@ -41,7 +41,7 @@ const PublicationRequest = {
         'transportId': { type: 'string' }
       },
       additionalProperties: false,
-      required: ['media', 'transportId']
+      required: ['media']
     }
   ],
 
@@ -77,7 +77,7 @@ const SubscriptionRequest = {
         'transportId': { type: 'string' }
       },
       additionalProperties: false,
-      required: ['media', 'transportId']
+      required: ['media']
     }
   ],
 

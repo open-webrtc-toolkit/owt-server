@@ -80,13 +80,19 @@ var Client = function(clientId, sigConnection, portal, version) {
         return safeCall(callback, 'error', 'Illegal request');
       }
 
+      //FIXME: move the id assignment to conference
       var stream_id = Math.round(Math.random() * 1000000000000000000) + '';
+      var transportId;
       return adapter.translateReq(ReqType.Pub, pubReq)
         .then((req) => {
           req.type = 'webrtc';//FIXME: For backend compatibility with v3.4 clients.
+          if (!req.transportId) {
+            req.transportId = stream_id;
+          }
+          transportId = req.transportId;
           return portal.publish(clientId, stream_id, req);
         }).then((result) => {
-          safeCall(callback, 'ok', {id: stream_id});
+          safeCall(callback, 'ok', {id: stream_id, transportId});
         }).catch(onError('publish', callback));
     });
 
@@ -121,13 +127,19 @@ var Client = function(clientId, sigConnection, portal, version) {
         return safeCall(callback, 'error', 'Illegal request');
       }
 
+      //FIXME: move the id assignment to conference
       var subscription_id = Math.round(Math.random() * 1000000000000000000) + '';
+      var transportId;
       return adapter.translateReq(ReqType.Sub, subReq)
         .then((req) => {
           req.type = 'webrtc';//FIXME: For backend compatibility with v3.4 clients.
+          if (!req.transportId) {
+            req.transportId = subscription_id;
+          }
+          transportId = req.transportId;
           return portal.subscribe(clientId, subscription_id, req);
         }).then((result) => {
-          safeCall(callback, 'ok', {id: subscription_id});
+          safeCall(callback, 'ok', {id: subscription_id, transportId});
         }).catch(onError('subscribe', callback));
     });
 

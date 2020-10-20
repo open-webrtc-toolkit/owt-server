@@ -182,7 +182,7 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
             .catch(e => log.warn('Unexpected error during track destroy:', e));
             mediaTracks.delete(publicTrackId);
             // Notify controller
-            updateInfo = {
+            const updateInfo = {
                 event: 'track-removed',
                 trackId: trackId,
             };
