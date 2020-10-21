@@ -158,22 +158,6 @@ This a format for client reconnects.
          views: [string(ViewLabel)],
          streams: [object(StreamInfo)],
          participants: [object(ParticipantInfo)]
-         transcodingCapability: {
-           audio: {
-             format: [object(AudioFormat)] | undefined
-           },
-           video: {
-             format: [object(VideoFormat)] | undefined,
-             parameters:
-               {
-                resolution: [object(Resolution)] | undefined,
-                framerate: [number(FramerateFPS)] | undefined,
-                bitrate: [number(BitrateKbps)] | [string(BitrateMultiple)] | undefined,
-                keyFrameInterval: [number(KeyFrameIntervalSecond)] | undefined
-               }
-               | undefined
-           }
-         }
         }
 
         object(StreamInfo)::
@@ -199,7 +183,18 @@ This a format for client reconnects.
                 parameters: undefined | object(VideoParameters),
                 status: "active" | "inactive" | undefined,
                 source: "mic" | "camera" | "screen-cast" | "raw-file" | "encoded-file" | undefined,
-                // sdpId: "mid" and "rid"
+                mid: string(mid) | undefined,
+                rid: string(rid) | undefined,
+                optional:
+                {
+                 format: [object(AudioFormat)] | [object(VideoFormat)] | undefined,
+                 parameters: {
+                  resolution: [object(Resolution)] | undefined,
+                  framerate: [number(FramerateFPS)] | undefined,
+                  bitrate: [number(BitrateKbps)] | [string(BitrateMultiple)] | undefined,
+                  keyFrameInterval: [number(KeyFrameIntervalSecond)] | undefined
+                 } | undefined,
+                } | undefined,
               }
 
               object(AudioFormat)::
@@ -347,9 +342,10 @@ This a format for client reconnects.
 
   object(PublicationRequest)::
     {
+     type: "webrtc" | "quic" | undefined, // "webrtc" if undefined
      media: object(WebRTCMediaOptions),
      attributes: object(ClientDefinedAttributes),
-     // transport
+     transportId: string(transportId)
     }
 
     object(WebRTCMediaOptions)::
@@ -359,8 +355,6 @@ This a format for client reconnects.
             type: "audio" | "video",
             mid: string(MID),
             source: "mic" | "screen-cast" | ... | "encoded-file",
-            // parameters: { resolution, framerate },
-            // formatPreference
           }
         ]
       }
@@ -419,8 +413,9 @@ This a format for client reconnects.
 
   object(SubscriptionRequest)::
     {
+     type: "webrtc" | "quic" | undefined, // "webrtc" if undefined
      media: object(MediaSubOptions),
-     // transport
+     transportId: string(TransportId)
     }
 
     object(MediaSubOptions)::
@@ -431,7 +426,6 @@ This a format for client reconnects.
             mid: string(MID),
             from: string(TrackID),
             parameters: object(VideoParametersSpecification) | undefined,
-            // formatPreference
           }
         ]
       }
