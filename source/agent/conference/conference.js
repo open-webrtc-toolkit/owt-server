@@ -906,7 +906,7 @@ var Conference = function (rpcClient, selfRpcId) {
       return callback('callback', 'error', 'Controllers are not ready');
     }
 
-    return rtcController.onClientSessionSignaling(sessionId, signaling)
+    return rtcController.onClientTransportSignaling(sessionId, signaling)
       .then((result) => {
         callback('callback', 'ok');
       }, (e) => {
