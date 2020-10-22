@@ -17,6 +17,31 @@
 
 namespace rtc_adapter {
 
+class RTCProcessThread {
+public:
+    RTCProcessThread(const char* task_name)
+    : m_processThread(webrtc::ProcessThread::Create(task_name))
+    {
+        m_processThread->Start();
+    }
+    ~RTCProcessThread()
+    {
+        m_processThread->Stop();
+    }
+
+    webrtc::ProcessThread* unwrap()
+    {
+        return m_processThread.get();
+    }
+private:
+    std::unique_ptr<webrtc::ProcessThread> m_processThread;
+};
+
+static std::unique_ptr<RTCProcessThread> g_moduleThread
+    = std::make_unique<RTCProcessThread>("ModuleProcessThread");
+static std::unique_ptr<RTCProcessThread> g_pacerThread
+    = std::make_unique<RTCProcessThread>("PacerThread");
+
 class RtcAdapterImpl : public RtcAdapter,
                        public CallOwner {
 public:
@@ -71,10 +96,15 @@ void RtcAdapterImpl::initCall()
         if (!m_call) {
             webrtc::Call::Config call_config(m_eventLog.get());
             call_config.task_queue_factory = m_taskQueueFactory.get();
+
+            std::unique_ptr<webrtc::ProcessThread> moduleThreadProxy =
+                std::make_unique<ProcessThreadProxy>(g_moduleThread->unwrap());
+            std::unique_ptr<webrtc::ProcessThread> pacerThreadProxy =
+                std::make_unique<ProcessThreadProxy>(g_pacerThread->unwrap());
             m_call.reset(webrtc::Call::Create(
                 call_config, webrtc::Clock::GetRealTimeClock(),
-                webrtc::ProcessThread::Create("ModuleProcessThread"),
-                webrtc::ProcessThread::Create("PacerThread")));
+                std::move(moduleThreadProxy),
+                std::move(pacerThreadProxy)));
         }
     });
 }
