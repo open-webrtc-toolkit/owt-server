@@ -61,6 +61,7 @@ class WrtcStream extends EventEmitter {
     this.audioFramePacketizer = null;
     this.videoFrameConstructor = null;
     this.videoFramePacketizer = null;
+    this.closed = false;
 
     if (direction === 'in') {
       wrtc.addMediaStream(id, {label: id}, true);
@@ -99,26 +100,38 @@ class WrtcStream extends EventEmitter {
   }
 
   close() {
-    // Stop media stream
-    this.wrtc.removeMediaStream(this.id);
+    if (this.closed) {
+      return;
+    }
+    this.closed = true;
     // Unbind transport
-    if (this.audioFrameConstructor) {
-      this.audioFrameConstructor.unbindTransport();
-      this.audioFrameConstructor.close();
-    }
-    if (this.videoFrameConstructor) {
-      this.videoFrameConstructor.unbindTransport();
-      this.videoFrameConstructor.close();
-    }
     if (this.audioFramePacketizer) {
       this.audioFramePacketizer.unbindTransport();
-      this.audioFramePacketizer.close();
     }
     if (this.videoFramePacketizer) {
       this.videoFramePacketizer.unbindTransport();
+    }
+    if (this.audioFrameConstructor) {
+      this.audioFrameConstructor.unbindTransport();
+    }
+    if (this.videoFrameConstructor) {
+      this.videoFrameConstructor.unbindTransport();
+    }
+    // Stop media stream
+    this.wrtc.removeMediaStream(this.id);
+    // Close
+    if (this.audioFramePacketizer) {
+      this.audioFramePacketizer.close();
+    }
+    if (this.videoFramePacketizer) {
       this.videoFramePacketizer.close();
     }
-
+    if (this.audioFrameConstructor) {
+      this.audioFrameConstructor.close();
+    }
+    if (this.videoFrameConstructor) {
+      this.videoFrameConstructor.close();
+    }
   }
 
   _onMediaUpdate(jsonUpdate) {
@@ -551,6 +564,12 @@ module.exports = function (spec, on_status, on_track) {
 
   that.close = function () {
     if (wrtc) {
+      if (wrtc.wrtc.getNumMediaStreams() > 0) {
+        log.warn('MediaStream remaining when closing');
+        trackMap.forEach(track => {
+          track.close();
+        });
+      }
       wrtc.wrtc.stop();
       wrtc.close();
       wrtc = undefined;

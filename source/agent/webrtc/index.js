@@ -94,7 +94,7 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
         } else if (trackInfo.type === 'track-removed') {
             publicTrackId = mappingPublicId.get(transportId).get(trackInfo.trackId);
             if (!mediaTracks.has(publicTrackId)) {
-                log.error('Non-exist public track id:', publicTrackId, transportId, track.id);
+                log.error('Non-exist public track id:', publicTrackId, transportId, trackInfo.trackId);
                 return;
             }
             connections.removeConnection(publicTrackId)
@@ -139,6 +139,7 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
 
         peerConnections.set(transportId, connection);
         mappingPublicId.set(transportId, new Map());
+        connection.controller = controller;
         return connection;
     };
 
@@ -180,12 +181,14 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
         mappingPublicId.get(transportId).forEach((publicTrackId, trackId) => {
             connections.removeConnection(publicTrackId)
             .catch(e => log.warn('Unexpected error during track destroy:', e));
+            mediaTracks.get(publicTrackId).close();
             mediaTracks.delete(publicTrackId);
             // Notify controller
             const updateInfo = {
                 event: 'track-removed',
                 trackId: trackId,
             };
+            const controller = peerConnections.get(transportId).controller
             notifyTrackUpdate(controller, publicTrackId, updateInfo);
         });
         mappingPublicId.delete(transportId);
@@ -394,6 +397,9 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
                 conn.connection.close();
             }
         }
+        this.peerConnections.forEach(pc => {
+            pc.close();
+        });
     };
 
     that.onFaultDetected = function (message) {
