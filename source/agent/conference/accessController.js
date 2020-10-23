@@ -228,7 +228,7 @@ module.exports.create = function(spec, rpcReq, onSessionEstablished, onSessionAb
                                direction,
                                options);
       })
-      .then(function() {
+      .then(function(result) {
         log.debug('Initiate ok, participantId:', participantId, 'sessionId:', sessionId);
         if (sessions[sessionId] === undefined) {
           log.debug('Session has been aborted, sessionId:', sessionId);
@@ -243,7 +243,7 @@ module.exports.create = function(spec, rpcReq, onSessionEstablished, onSessionAb
           return Promise.reject('Session has been aborted');
         }
         sessions[sessionId].state = 'connecting';
-        return 'ok';
+        return result;
       }, (e) => {
         delete sessions[sessionId];
         return Promise.reject(e.message ? e.message : e);
