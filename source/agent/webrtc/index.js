@@ -342,26 +342,27 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
         }
     };
 
-    that.mediaOnOff = function (connectionId, track, direction, action, callback) {
-        log.debug('mediaOnOff, connection id:', connectionId, 'track:', track, 'direction:', direction, 'action:', action);
-        var conn = connections.getConnection(connectionId);
+    that.mediaOnOff = function (connectionId, tracks, direction, action, callback) {
+        log.debug('mediaOnOff, connection id:', connectionId, 'tracks:', tracks, 'direction:', direction, 'action:', action);
+        var conn = getWebRTCConnection(connectionId);
+        var promises;
         if (conn) {
-            if (conn.type === 'webrtc') {//NOTE: Only webrtc connection supports media-on-off
-                conn.connection.onTrackControl(track,
-                                                direction,
-                                                action,
-                                                function () {
-                                                    callback('callback', 'ok');
-                                                }, function (error_reason) {
-                                                    log.info('trac control failed:', error_reason);
-                                                    callback('callback', 'error', error_reason);
-                                                });
-            } else {
-                log.info('mediaOnOff on non-webrtc connection');
-                callback('callback', 'error', 'mediaOnOff on non-webrtc connection');
-            }
+            promises = tracks.map(trackId => new Promise((resolve, reject) => {
+                if (mediaTracks.has(trackId)) {
+                    log.warn('got on off track:', trackId);
+                    mediaTracks.get(trackId).onTrackControl(
+                        'av', direction, action, resolve, reject);
+                } else {
+                    resolve();
+                }
+            }));
+            Promise.all(promises).then(() => {
+                callback('callback', 'ok');
+            }).catch(reason => {
+                callback('callback', 'error', reason);
+            });
         } else {
-          log.info('Connection does NOT exist:' + connectionId);
+          log.info('WebRTC Connection does NOT exist:' + connectionId);
           callback('callback', 'error', 'Connection does NOT exist:' + connectionId);
         }
     };
@@ -397,7 +398,7 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
                 conn.connection.close();
             }
         }
-        this.peerConnections.forEach(pc => {
+        peerConnections.forEach(pc => {
             pc.close();
         });
     };

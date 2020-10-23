@@ -196,31 +196,6 @@ class Connection extends EventEmitter {
           if (!this.ready) {
             this.ready = true;
             this.emit('status_event', {type: 'ready'}, newStatus);
-          } else if (mess && streamId) {
-            log.debug('message: simulcast, rid: ', streamId, mess);
-
-            const ssrc = parseInt(mess);
-            if (ssrc > 0) {
-              if (this.simulcastInfo) {
-                log.debug('sdp simulcast:', JSON.stringify(this.simulcastInfo));
-
-                if (!this.firstRid) {
-                  // first RID stream
-                  this.firstRid = streamId;
-                  this.wrtc.setVideoSsrcList('', [ssrc]);
-                  this.wrtc.setRemoteSdp(this.latestSdp, this.id);
-                  this.emit('status_event', {type: 'firstrid', rid: streamId, ssrc}, newStatus);
-                } else {
-                  // create stream
-                  this.addMediaStream(streamId, {label: streamId}, true);
-                  this.wrtc.setVideoSsrcList(streamId, [ssrc]);
-                  this.wrtc.setRemoteSdp(this.latestSdp, streamId);
-                  this.emit('status_event', {type: 'rid', rid: streamId, ssrc}, newStatus);
-                }
-              } else {
-                log.warn('No simulcast info RID:', streamId);
-              }
-            }
           }
           break;
       }

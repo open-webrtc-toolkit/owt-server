@@ -1387,23 +1387,24 @@ var Conference = function (rpcClient, selfRpcId) {
       return Promise.reject('Stream is Mixed');
     }
 
-    var audio = (track === 'audio' || track === 'av') ? true : false,
-        video = (track === 'video' || track === 'av') ? true : false,
-        status = (muted ? 'inactive' : 'active');
+    const audio = (track === 'audio' || track === 'av') ? true : false;
+    const video = (track === 'video' || track === 'av') ? true : false;
+    const status = muted ? 'inactive' : 'active';
 
-    if (audio && !streams[streamId].media.audio) {
-      return Promise.reject('Stream does NOT contain audio track');
+    const affectedTracks = streams[streamId].media.tracks
+      .filter(t => ((audio && t.type === 'audio') || (video && t.type === 'video')))
+      .map(t => t.id);
+
+    if (affectedTracks.length === 0) {
+      return Promise.reject('Stream does NOT contain valid track to mute/unmute');
     }
 
-    if (video && !streams[streamId].media.video) {
-      return Promise.reject('Stream does NOT contain video track');
-    }
-
-    return rtcController.setMute(streamId, track, muted)
+    return rtcController.setMute(streamId, affectedTracks, muted)
       .then(() => {
-        audio && (streams[streamId].media.audio.status = status);
-        video && (streams[streamId].media.video.status = status);
-        roomController.updateStream(streamId, track, status);
+        affectedTracks.forEach(trackId => {
+          streams[streamId].media.tracks.find(t => t.id === trackId).status = status;
+          roomController.updateStream(trackId, track, status);
+        });
         var updateFields = (track === 'av') ? ['audio.status', 'video.status'] : [track + '.status'];
         room_config.notifying.streamChange && updateFields.forEach((fieldData) => {
           sendMsg('room', 'all', 'stream', {status: 'update', id: streamId, data: {field: fieldData, value: status}});

@@ -365,13 +365,13 @@ NAN_METHOD(WebRtcConnection::removeMediaStream) {
   v8::String::Utf8Value param(Nan::To<v8::String>(info[0]).ToLocalChecked());
   std::string streamId = std::string(*param);
 
-  me->forEachMediaStream([streamId] (const std::shared_ptr<erizo::MediaStream> &media_stream) {
+  me->forEachMediaStream([me, streamId] (const std::shared_ptr<erizo::MediaStream> &media_stream) {
     if (media_stream->getId() == streamId) {
       std::future<void> future = stopAsync(media_stream);
       future.wait();
+      me->removeMediaStream(streamId);
     }
   });
-  me->removeMediaStream(streamId);
 }
 
 NAN_METHOD(WebRtcConnection::setAudioSsrc) {

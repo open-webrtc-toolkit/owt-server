@@ -114,7 +114,9 @@ bool VideoFrameConstructor::setBitrate(uint32_t kbps)
 
 void VideoFrameConstructor::onAdapterFrame(const Frame& frame)
 {
-    deliverFrame(frame);
+    if (m_enabled) {
+        deliverFrame(frame);
+    }
 }
 
 void VideoFrameConstructor::onAdapterStats(const AdapterStats& stats)

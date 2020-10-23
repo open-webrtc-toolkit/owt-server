@@ -130,6 +130,10 @@ class WrtcStream extends EventEmitter {
       this.audioFrameConstructor.close();
     }
     if (this.videoFrameConstructor) {
+      // TODO: seperate call and frame constructor in node wrapper
+      if (this.wrtc.callBase === this.videoFrameConstructor) {
+        this.wrtc.callBase = null;
+      }
       this.videoFrameConstructor.close();
     }
   }
@@ -199,26 +203,23 @@ class WrtcStream extends EventEmitter {
     if (track === 'av' || track === 'audio') {
       if (dir === 'in' && this.audioFrameConstructor) {
         this.audioFrameConstructor.enable(action === 'on');
-      } else if (dir === 'out' && this.audioFramePacketizer) {
-        this.audioFramePacketizer.enable(action === 'on');
-      } else {
-        onError('Ambiguous audio direction.');
-        return;
+        trackUpdate = true;
       }
-      trackUpdate = true;
+      if (dir === 'out' && this.audioFramePacketizer) {
+        this.audioFramePacketizer.enable(action === 'on');
+        trackUpdate = true;
+      }
     }
     if (track === 'av' || track === 'video') {
       if (dir === 'in' && this.videoFrameConstructor) {
         this.videoFrameConstructor.enable(action === 'on');
-      } else if (dir === 'out' && this.videoFramePacketizer) {
-        this.videoFramePacketizer.enable(action === 'on');
-      } else {
-        onError('Ambiguous video direction.');
-        return;
+        trackUpdate = true;
       }
-      trackUpdate = true;
+      if (dir === 'out' && this.videoFramePacketizer) {
+        this.videoFramePacketizer.enable(action === 'on');
+        trackUpdate = true;
+      }
     }
-
     if (trackUpdate) {
       onOk();
     } else {
@@ -564,7 +565,7 @@ module.exports = function (spec, on_status, on_track) {
 
   that.close = function () {
     if (wrtc) {
-      if (wrtc.wrtc.getNumMediaStreams() > 0) {
+      if (wrtc.getNumMediaStreams() > 0) {
         log.warn('MediaStream remaining when closing');
         trackMap.forEach(track => {
           track.close();

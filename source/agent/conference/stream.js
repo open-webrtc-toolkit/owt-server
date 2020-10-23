@@ -127,6 +127,11 @@ class Stream {
         });
       }
       return m;
+    } else {
+      // Filter valid tracks
+      media.tracks = media.tracks.filter(track => {
+        return (track.type && track.format);
+      });
     }
     return media;
   }
@@ -245,6 +250,9 @@ class ForwardStream extends Stream {
       } else {
         log.error(`Unexpected track type: ${track.type}`);
       }
+    }
+    if (this.media.tracks.length === 0) {
+      err = 'No valid tracks in stream';
     }
     return err;
   }
