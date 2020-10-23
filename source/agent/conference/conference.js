@@ -1353,16 +1353,24 @@ var Conference = function (rpcClient, selfRpcId) {
       return Promise.resolve('ok');
     }
 
-    return new Promise((resolve, reject) => {
-      roomController.mix(streamId, toView, function() {
-        if (streams[streamId].info.inViews.indexOf(toView) === -1) {
-          streams[streamId].info.inViews.push(toView);
-        }
-        resolve('ok');
-      }, function(reason) {
-        log.info('roomController.mix failed, reason:', reason);
-        reject(reason);
-      });
+    const trackIds = streams[streamId].media.tracks
+      .map(t => t.id).filter(id => !!id);
+    if (trackIds.length === 0) {
+      // Mix the no-track-id stream
+      trackIds.push(streamId);
+    }
+
+    const mixOps = trackIds.map(id => new Promise((resolve, reject) => {
+      roomController.mix(id, toView, resolve, reject);
+    }));
+    return Promise.all(mixOps).then(() => {
+      if (streams[streamId].info.inViews.indexOf(toView) === -1) {
+        streams[streamId].info.inViews.push(toView);
+      }
+      return Promise.resolve('ok');
+    }).catch(reason => {
+      log.info('roomController.mix failed, reason:', reason);
+      throw reason;
     });
   };
 
@@ -1371,14 +1379,22 @@ var Conference = function (rpcClient, selfRpcId) {
       return Promise.reject('Stream is NOT ready');
     }
 
-    return new Promise((resolve, reject) => {
-      roomController.unmix(streamId, fromView, function() {
-        streams[streamId].info.inViews.splice(streams[streamId].info.inViews.indexOf(fromView), 1);
-        resolve('ok');
-      }, function(reason) {
-        log.info('roomController.unmix failed, reason:', reason);
-        reject(reason);
-      });
+    const trackIds = streams[streamId].media.tracks
+      .map(t => t.id).filter(id => !!id);
+    if (trackIds.length === 0) {
+      // Mix the no-track-id stream
+      trackIds.push(streamId);
+    }
+
+    const unmixOps = trackIds.map(id => new Promise((resolve, reject) => {
+      roomController.unmix(id, fromView, resolve, reject);
+    }));
+    return Promise.all(unmixOps).then(() => {
+      streams[streamId].info.inViews.splice(streams[streamId].info.inViews.indexOf(fromView), 1);
+      return Promise.resolve('ok');
+    }).catch(reason => {
+      log.info('roomController.unmix failed, reason:', reason);
+      throw reason;
     });
   };
 
