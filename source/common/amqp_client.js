@@ -155,7 +155,7 @@ var rpcServer = function(bus, conn, id, methods, on_ready, on_failure) {
     }, on_failure);
 
     handler.close = function() {
-        request_q && request_q.destroy();
+        request_q && request_q.destroy({ifUnused : true});
         request_q = undefined;
         exc && exc.destroy(true);
         exc = undefined;

@@ -107,7 +107,12 @@ const StreamingInRequest = {
       properties: {
         url: { type: 'string' },
         transportProtocol: { enum: ['tcp', 'udp'], 'default': 'tcp' }, //optional, default: "tcp"
-        bufferSize: { type: 'number', 'default': 8192 }     //optional, default: 8192 bytes
+        bufferSize: { type: 'number', 'default': 8192 },     //optional, default: 8192 bytes
+        origin: {
+          isp: { type: 'string'},
+          region: { type: 'string'}
+        }
+
       },
       additionalProperties: false,
       required: ['url']

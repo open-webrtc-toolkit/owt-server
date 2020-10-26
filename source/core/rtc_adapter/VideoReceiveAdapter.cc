@@ -64,7 +64,6 @@ int32_t VideoReceiveAdapterImpl::AdapterDecoder::Decode(const webrtc::EncodedIma
 {
     RTC_DLOG(LS_VERBOSE) << "AdapterDecoder Decode";
     owt_base::FrameFormat format = FRAME_FORMAT_UNKNOWN;
-    bool notifyStats = false;
 
     switch (m_codec) {
     case webrtc::VideoCodecType::kVideoCodecVP8:
@@ -90,6 +89,11 @@ int32_t VideoReceiveAdapterImpl::AdapterDecoder::Decode(const webrtc::EncodedIma
         RTC_DLOG(LS_INFO) << "AdapterDecoder increase buffer size: " << m_bufferSize;
     }
 
+    if (encodedImage._encodedWidth > 0 && encodedImage._encodedHeight > 0) {
+        m_width = encodedImage._encodedWidth;
+        m_height = encodedImage._encodedHeight;
+    }
+
     memcpy(m_frameBuffer.get(), encodedImage.data(), encodedImage.size());
     Frame frame;
     memset(&frame, 0, sizeof(frame));
@@ -97,8 +101,8 @@ int32_t VideoReceiveAdapterImpl::AdapterDecoder::Decode(const webrtc::EncodedIma
     frame.payload = m_frameBuffer.get();
     frame.length = encodedImage.size();
     frame.timeStamp = encodedImage.Timestamp();
-    frame.additionalInfo.video.width = encodedImage._encodedWidth;
-    frame.additionalInfo.video.height = encodedImage._encodedHeight;
+    frame.additionalInfo.video.width = m_width;
+    frame.additionalInfo.video.height = m_height;
     frame.additionalInfo.video.isKeyFrame = (encodedImage._frameType == webrtc::VideoFrameType::kVideoFrameKey);
 
     if (m_parent) {
@@ -113,13 +117,11 @@ int32_t VideoReceiveAdapterImpl::AdapterDecoder::Decode(const webrtc::EncodedIma
                 m_parent->m_format = format;
                 statsChanged = true;
             }
-            if (encodedImage._encodedWidth != 0 && encodedImage._encodedHeight != 0) {
-                if ((m_parent->m_width != encodedImage._encodedWidth) || (m_parent->m_height != encodedImage._encodedHeight)) {
-                    // Update width and height
-                    m_parent->m_width = encodedImage._encodedWidth;
-                    m_parent->m_height = encodedImage._encodedHeight;
-                    statsChanged = true;
-                }
+            if ((m_parent->m_width != m_width) || (m_parent->m_height != m_height)) {
+                // Update width and height
+                m_parent->m_width = m_width;
+                m_parent->m_height = m_height;
+                statsChanged = true;
             }
             if (statsChanged) {
                 // Notify the stats

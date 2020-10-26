@@ -33,9 +33,9 @@ RUN wget -O - ${NICE_REPO} | tar xz && \
 
 
 # Build open ssl
-ARG OPENSSL_BASE="1.0.2"
-ARG OPENSSL_VER="1.0.2t"
-ARG OPENSSL_REPO=http://www.openssl.org/source/old/${OPENSSL_BASE}/openssl-${OPENSSL_VER}.tar.gz
+ARG OPENSSL_BASE="1.1.1"
+ARG OPENSSL_VER="1.1.1g"
+ARG OPENSSL_REPO=https://www.openssl.org/source/openssl-${OPENSSL_VER}.tar.gz
 
 RUN wget -O - ${OPENSSL_REPO} | tar xz && \
     cd openssl-${OPENSSL_VER} && \
@@ -46,7 +46,7 @@ RUN wget -O - ${OPENSSL_REPO} | tar xz && \
 
 
 # Build libre
-ARG LIBRE_VER="v0.4.16"
+ARG LIBRE_VER="v0.5.0"
 ARG LIBRE_REPO=https://github.com/creytiv/re.git
 
 RUN git clone ${LIBRE_REPO} && \
@@ -105,7 +105,7 @@ RUN cd /home/FFmpeg && \
 
 
 # Install node
-ARG NODE_VER=v8.15.0
+ARG NODE_VER=v10.21.0
 ARG NODE_REPO=https://nodejs.org/dist/${NODE_VER}/node-${NODE_VER}-linux-x64.tar.xz
 
 RUN wget ${NODE_REPO} && \
@@ -164,7 +164,7 @@ RUN git config --global user.email "you@example.com" && \
     git clone --depth=1 -b ${OWT_BRANCH} ${OWTSERVER_REPO} && \
 
     # Install node modules for owt
-    npm install -g --loglevel error node-gyp grunt-cli underscore jsdoc && \
+    npm install -g --loglevel error node-gyp@6.1.0 grunt-cli underscore jsdoc && \
     cd owt-server && npm install nan && \
 
     # Get openh264 for owt
@@ -215,7 +215,7 @@ WORKDIR /home
 
 # Prerequisites
 # Install node
-ARG NODE_VER=v8.15.0
+ARG NODE_VER=v10.21.0
 ARG NODE_REPO=https://nodejs.org/dist/${NODE_VER}/node-${NODE_VER}-linux-x64.tar.xz
 
 COPY --from=owt-build /home/owt-server/dist /home/owt
