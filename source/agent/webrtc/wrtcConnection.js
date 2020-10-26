@@ -258,6 +258,8 @@ module.exports = function (spec, on_status, on_track) {
   var operationMap = new Map();
   // composedId => WrtcStream
   var trackMap = new Map();
+  // operationId => msid
+  var msidMap = new Map();
 
   that.addTrackOperation = function (operationId, mid, type, sdpDirection, formatPreference) {
     var ret = false;
@@ -282,6 +284,9 @@ module.exports = function (spec, on_status, on_track) {
         ret = true;
       }
     });
+    if (msidMap.has(operationId)) {
+      msidMap.delete(operationId);
+    }
     return ret;
   };
 
@@ -382,7 +387,14 @@ module.exports = function (spec, on_status, on_track) {
           const ssrc = trackMap.get(mid).ssrc(mtype);
           if (ssrc) {
             log.debug(`Add ssrc ${ssrc} to ${mtype} in SDP for ${wrtcId}`);
-            localSdp.setSsrcs(mid, [ssrc]);
+            const opId = opSettings.operationId;
+            let msid = msidMap.get(opId);
+            if (msid) {
+              localSdp.setSsrcs(mid, [ssrc], msid);
+            } else {
+              msid = localSdp.setSsrcs(mid, [ssrc]);
+              msidMap.set(opId, msid);
+            }
           }
         }
         wrtc.setRemoteSdp(remoteSdp.singleMediaSdp(mid).toString(), mid);

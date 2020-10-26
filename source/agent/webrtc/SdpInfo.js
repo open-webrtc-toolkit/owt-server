@@ -410,20 +410,23 @@ class SdpInfo {
     }
   }
 
-  setSsrcs(mid, ssrcs) {
+  setSsrcs(mid, ssrcs, msid) {
     const media = this.media(mid);
     if (!media) {
       return null;
     }
-
-    const alphanum = '0123456789' +
-      'ABCDEFGHIJKLMNOPQRSTUVWXYZ' +
-      'abcdefghijklmnopqrstuvwxyz';
-    const msidLength = 10;
-    let msid = '';
-    for (let i = 0; i < msidLength; i++) {
-      msid += alphanum[Math.floor(Math.random() * alphanum.length)];
+    if (!msid) {
+      // Generate msid
+      const alphanum = '0123456789' +
+        'ABCDEFGHIJKLMNOPQRSTUVWXYZ' +
+        'abcdefghijklmnopqrstuvwxyz';
+      const msidLength = 10;
+      msid = '';
+      for (let i = 0; i < msidLength; i++) {
+        msid += alphanum[Math.floor(Math.random() * alphanum.length)];
+      }
     }
+
     const mtype = (media.type === 'audio') ? 'a' : 'v';
     // Only support one ssrc now
     const ssrc = ssrcs[0];
@@ -433,7 +436,8 @@ class SdpInfo {
       {id: ssrc, attribute: 'mslabel', value: msid},
       {id: ssrc, attribute: 'label', value: `${msid}${mtype}0`},
     ];
-    log.warn('SSRC:', JSON.stringify(media.ssrcs));
+    log.debug('Set SSRC:', mid, JSON.stringify(media.ssrcs));
+    return msid;
   }
 
   answer() {
