@@ -8,7 +8,7 @@
 #include <boost/scoped_ptr.hpp>
 #include <boost/shared_ptr.hpp>
 #include <logger.h>
-#include <JobTimer2.h>
+#include <JobTimer.h>
 #include <EventRegistry.h>
 
 #include <webrtc/modules/audio_conference_mixer/include/audio_conference_mixer.h>
