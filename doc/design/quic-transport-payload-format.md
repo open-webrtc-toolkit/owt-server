@@ -28,10 +28,4 @@ It may increase about 2% network cost.
 
 ## Authentication
 
-After creating a WebTransport, a stream with session 0 should be created for authentication. If signaling is transmitted over WebTransport, authentication follows the regular process defined by [Client-Portal Protocol](https://github.com/open-webrtc-toolkit/owt-server/blob/master/doc/Client-Portal%20Protocol.md). Otherwise, client sends a following message with UTF-8 encoding in JSON format to server.
-
-```webidl
-interface WebTransportLoginInfo {
-  attribute DOMString? token;  // Base64 encoded token.
-};
-```
+After creating a WebTransport, a stream with session 0 should be created for authentication. If signaling is transmitted over WebTransport, authentication follows the regular process defined by [Client-Portal Protocol](https://github.com/open-webrtc-toolkit/owt-server/blob/master/doc/Client-Portal%20Protocol.md). Otherwise, client sends a 128 bit length transport ID to the server.
