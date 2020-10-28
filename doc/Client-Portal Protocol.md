@@ -620,4 +620,4 @@ Step 2: Receive a response from server.
 }
 ```
 
-Step 3: Create a new QuicTransport or get an existing QuicTransport, then create a new BidirectionalStream or SendStream. Write data to stream. The URL of QuicTransport should be included in token. QuicTransport is shared by all media streams, data streams and signaling which belong to the same client.
+Step 3: Create a new WebTransport or get an existing WebTransport, then create a new BidirectionalStream or SendStream. Write data to stream. The URL of WebTransport should be included in token. WebTransport is shared by all media streams, data streams and signaling which belong to the same client.

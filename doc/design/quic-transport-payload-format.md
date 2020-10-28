@@ -1,6 +1,6 @@
 # QUIC Transport Payload and Message Format
 
-This post defines the payload and message format for data transmitted over [QuicTransport](https://wicg.github.io/web-transport/#quic-transport).
+This post defines the payload and message format for data transmitted over [WebTransport](https://w3c.github.io/webtransport/#web-transport).
 
 ## Streams
 
@@ -28,10 +28,10 @@ It may increase about 2% network cost.
 
 ## Authentication
 
-After creating a QuicTransport, a stream with session 0 should be created for authentication. If signaling is transmitted over QuicTransport, authentication follows the regular process defined by [Client-Portal Protocol](https://github.com/open-webrtc-toolkit/owt-server/blob/master/doc/Client-Portal%20Protocol.md). Otherwise, client sends a following message with UTF-8 encoding in JSON format to server.
+After creating a WebTransport, a stream with session 0 should be created for authentication. If signaling is transmitted over WebTransport, authentication follows the regular process defined by [Client-Portal Protocol](https://github.com/open-webrtc-toolkit/owt-server/blob/master/doc/Client-Portal%20Protocol.md). Otherwise, client sends a following message with UTF-8 encoding in JSON format to server.
 
 ```webidl
-interface QuicTransportLoginInfo {
+interface WebTransportLoginInfo {
   attribute DOMString? token;  // Base64 encoded token.
 };
 ```
