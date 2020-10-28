@@ -602,7 +602,7 @@ var Conference = function (rpcClient, selfRpcId) {
     const isReadded = !!(streams[id] && !streams[id].isInConnecting);
     const pubArgs = fwdStream.toRoomCtrlPubArgs();
     log.debug('PubArgs:', JSON.stringify(pubArgs));
-    if (info.type === 'webrtc') {
+    if (info.type === 'webrtc' || info.type === 'quic') {
       const pubs = pubArgs.map(pubArg => new Promise((resolve, reject) => {
         roomController && roomController.publish(
           pubArg.owner, pubArg.id, pubArg.locality, {media:pubArg.media, data:pubArg.data}, pubArg.type, resolve, reject);
