@@ -31,7 +31,11 @@ class AudioFramePacketizer : public FrameDestination,
     DECLARE_LOGGER();
 
 public:
-    AudioFramePacketizer();
+    struct Config {
+        std::string mid = "";
+        uint32_t midExtId = 0;
+    };
+    AudioFramePacketizer(Config& config);
     ~AudioFramePacketizer();
 
     void bindTransport(erizo::MediaSink* sink);
@@ -51,7 +55,7 @@ public:
     void onAdapterData(char* data, int len) override;
 
 private:
-    bool init();
+    bool init(Config& config);
     void close();
 
     // Implement erizo::FeedbackSink

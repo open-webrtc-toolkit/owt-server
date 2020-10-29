@@ -13,7 +13,10 @@ const {
 } = require('./sdp');
 
 const TransportCCUri =
-    'http://www.ietf.org/id/draft-holmer-rmcat-transport-wide-cc-extensions-01';
+  'http://www.ietf.org/id/draft-holmer-rmcat-transport-wide-cc-extensions-01';
+
+const MidUri =
+  'urn:ietf:params:rtp-hdrext:sdes:mid';
 
 class SdpInfo {
   constructor(str) {
@@ -378,6 +381,12 @@ class SdpInfo {
           }
         }
       }
+    }
+
+    const midExt = mediaInfo.ext.find(e => e.uri === MidUri);
+    if (midExt) {
+      settings[mediaInfo.type].mid = mid;
+      settings[mediaInfo.type].midExtId = midExt.value;
     }
 
     return settings;

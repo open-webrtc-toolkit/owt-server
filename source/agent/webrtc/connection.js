@@ -154,7 +154,7 @@ class Connection extends EventEmitter {
     this.sessionVersion = 0;
 
     this.wrtc.init((newStatus, mess, streamId) => {
-      log.info('message: WebRtcConnection status update, ' +
+      log.debug('message: WebRtcConnection status update, ' +
                'id: ' + this.id + ', status: ' + newStatus +
                 ', ' + logger.objectToLog(this.metadata) + mess);
       switch(newStatus) {

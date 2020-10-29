@@ -47,8 +47,8 @@ const { SdpInfo } = require('./SdpInfo.js');
 class WrtcStream extends EventEmitter {
 
   /*
-   * audio: { format, ssrc }
-   * video: { format, ssrc, transportcc, red, ulpfec }
+   * audio: { format, ssrc, mid, midExtId }
+   * video: { format, ssrc, mid, midExtId, transportcc, red, ulpfec }
    */
   constructor(id, wrtc, direction, {audio, video}) {
     super();
@@ -88,12 +88,12 @@ class WrtcStream extends EventEmitter {
       wrtc.addMediaStream(id, {label: id}, false);
 
       if (audio) {
-        this.audioFramePacketizer = new AudioFramePacketizer();
+        this.audioFramePacketizer = new AudioFramePacketizer(audio.mid, audio.midExtId);
         this.audioFramePacketizer.bindTransport(wrtc.getMediaStream(id));
       }
       if (video) {
         this.videoFramePacketizer = new VideoFramePacketizer(
-          video.red, video.ulpfec, video.transportcc);
+          video.red, video.ulpfec, video.transportcc, video.mid, video.midExtId);
         this.videoFramePacketizer.bindTransport(wrtc.getMediaStream(id));
       }
     }
@@ -521,8 +521,8 @@ module.exports = function (spec, on_status, on_track) {
           localSdp.media(cmid).direction = 'inactive';
           removedMids.push(cmid);
         } else {
-          // Unexpected
-          log.warn(`Unexpected MID ${cmid} change`);
+          // May be port or direction change
+          log.debug(`MID ${cmid} port or direction change`);
         }
       }
 
