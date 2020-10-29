@@ -72,8 +72,8 @@ VideoGstAnalyzer::VideoGstAnalyzer() {
     sourceid = 0;
     sink = NULL;
     encoder_pad = NULL;
-    m_frameCount = 0;
     addlistener = false;
+    m_frameCount = 0;
 }
 
 VideoGstAnalyzer::~VideoGstAnalyzer() {
@@ -235,9 +235,8 @@ void VideoGstAnalyzer::new_sample_from_sink (GstElement * source, gpointer data)
     outFrame.timeStamp = (pStreamObj->m_frameCount++) * 1000 / 30 * 90;
 
     outFrame.payload = map.data;
-    
-    for ( auto& x: pStreamObj->m_internalout)
-        x->onFrame(outFrame);
+
+    pStreamObj->m_gstinternalout->onFrame(outFrame);
 
     gst_buffer_unmap(buffer, &map);
     gst_sample_unref(sample);
@@ -303,20 +302,24 @@ int VideoGstAnalyzer::setPlaying() {
 
 void VideoGstAnalyzer::emitListenTo(int minPort, int maxPort) {
     ELOG_DEBUG("Listening\n");
-    m_internalin.reset(new InternalIn((GstAppSrc*)source, minPort, maxPort));  
+    m_internalin.reset(new GstInternalIn((GstAppSrc*)source, minPort, maxPort));  
 }
 
-void VideoGstAnalyzer::addOutput(int connectionID, owt_base::InternalOut* out) {
+void VideoGstAnalyzer::addOutput(int connectionID, owt_base::FrameDestination* out) {
     ELOG_DEBUG("Add analyzed stream back to OWT\n");
     if (sink != nullptr){
 
         if(encoder_pad == nullptr) {
             GstElement *encoder = gst_bin_get_by_name (GST_BIN (pipeline), "encoder");
             encoder_pad = gst_element_get_static_pad(encoder, "src");
-            out->setPad(encoder_pad);
+            if(m_gstinternalout == nullptr) {
+                m_gstinternalout.reset(new GstInternalOut());
+            }
+            m_gstinternalout->setPad(encoder_pad);
         }
         //gst_pad_send_event(encoder_pad, gst_event_new_custom( GST_EVENT_CUSTOM_UPSTREAM, gst_structure_new( "GstForceKeyUnit", "all-headers", G_TYPE_BOOLEAN, TRUE, NULL)));
-        m_internalout.push_back(out);
+        //m_internalout.push_back(out);
+        m_gstinternalout->addVideoDestination(out);
         if(!addlistener) {
             g_object_set (G_OBJECT (sink), "emit-signals", TRUE, "sync", FALSE, NULL);
             g_signal_connect (sink, "new-sample", G_CALLBACK (new_sample_from_sink), this);
@@ -328,9 +331,10 @@ void VideoGstAnalyzer::addOutput(int connectionID, owt_base::InternalOut* out) {
     
 }
 
-void VideoGstAnalyzer::disconnect(owt_base::InternalOut* out){
+void VideoGstAnalyzer::disconnect(owt_base::FrameDestination* out){
     ELOG_DEBUG("Disconnect remote connection\n");
-    m_internalout.remove(out);
+    //m_internalout.remove(out);
+    m_gstinternalout->removeVideoDestination(out);
 }
 
 int VideoGstAnalyzer::getListeningPort() {

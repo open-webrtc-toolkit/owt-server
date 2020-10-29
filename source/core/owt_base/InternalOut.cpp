@@ -14,9 +14,6 @@ InternalOut::InternalOut(const std::string& protocol, const std::string& dest_ip
         m_transport.reset(new owt_base::RawTransport<UDP>(this));
 
     m_transport->createConnection(dest_ip, dest_port);
-#ifdef BUILD_FOR_GST_ANALYTICS
-    encoder_pad = NULL;
-#endif
 }
 
 InternalOut::~InternalOut()
@@ -34,31 +31,11 @@ void InternalOut::onFrame(const Frame& frame)
     m_transport->sendData(sendBuffer, header_len + 1, reinterpret_cast<char*>(const_cast<uint8_t*>(frame.payload)), frame.length);
 }
 
-#ifdef BUILD_FOR_GST_ANALYTICS
-void InternalOut::setPad(GstPad *pad) {
-     encoder_pad = pad;
-}
-#endif
-
 void InternalOut::onTransportData(char* buf, int len)
 {
     switch (buf[0]) {
         case TDT_FEEDBACK_MSG:
-#ifdef BUILD_FOR_GST_ANALYTICS
-        {
-            FeedbackMsg* msg = reinterpret_cast<FeedbackMsg*>(buf + 1);
-            if(encoder_pad != nullptr) {
-                if(msg->type == VIDEO_FEEDBACK){
-                    gst_pad_send_event(encoder_pad, gst_event_new_custom( GST_EVENT_CUSTOM_UPSTREAM, gst_structure_new( "GstForceKeyUnit", "all-headers", G_TYPE_BOOLEAN, TRUE, NULL)));
-                }
-            }
-            else{
-                deliverFeedbackMsg(*(reinterpret_cast<FeedbackMsg*>(buf + 1)));
-            }
-        }
-#else
             deliverFeedbackMsg(*(reinterpret_cast<FeedbackMsg*>(buf + 1)));
-#endif
         default:
             break;
     }

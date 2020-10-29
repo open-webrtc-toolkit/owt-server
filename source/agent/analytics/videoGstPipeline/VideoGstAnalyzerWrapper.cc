@@ -142,7 +142,7 @@ void VideoGstAnalyzer::disconnect(const FunctionCallbackInfo<Value>& args){
   mcu::VideoGstAnalyzer* me = obj->me;
 
   InternalOut* param8 = ObjectWrap::Unwrap<InternalOut>(args[0]->ToObject());
-  owt_base::InternalOut* out = param8->out;
+  owt_base::FrameDestination* out = param8->out;
 
   me->disconnect(out);
 }
@@ -187,7 +187,7 @@ void VideoGstAnalyzer::addOutput(const FunctionCallbackInfo<Value>& args){
 
   index = args[0]->Uint32Value();
   InternalOut* param8 = ObjectWrap::Unwrap<InternalOut>(args[1]->ToObject());
-  owt_base::InternalOut* out = param8->out;
+  owt_base::FrameDestination* out = param8->out;
 
   me->addOutput(index, out);
 }

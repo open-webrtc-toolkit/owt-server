@@ -2,8 +2,8 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-#ifndef InternalIn_h
-#define InternalIn_h
+#ifndef GstInternalIn_h
+#define GstInternalIn_h
 
 #include <gst/gst.h>
 #include <gst/app/gstappsrc.h>
@@ -13,11 +13,11 @@
 #include "MediaFramePipeline.h"
 
 
-class InternalIn : public owt_base::RawTransportListener{
+class GstInternalIn : public owt_base::RawTransportListener{
     DECLARE_LOGGER();
 public:
-    InternalIn(GstAppSrc *data, unsigned int minPort = 0, unsigned int maxPort = 0);
-    virtual ~InternalIn();
+    GstInternalIn(GstAppSrc *data, unsigned int minPort = 0, unsigned int maxPort = 0);
+    virtual ~GstInternalIn();
 
     unsigned int getListeningPort();
 
@@ -37,4 +37,4 @@ private:
     boost::shared_ptr<owt_base::RawTransportInterface> m_transport;
 };
 
-#endif /* InternalIn_h */
+#endif /* GstInternalIn_h */

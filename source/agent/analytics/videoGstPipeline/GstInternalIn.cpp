@@ -2,13 +2,13 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-#include "InternalIn.h"
+#include "GstInternalIn.h"
 #include <gst/gst.h>
 #include <stdio.h>
 
 
-DEFINE_LOGGER(InternalIn, "InternalIn");
-InternalIn::InternalIn(GstAppSrc *data, unsigned int minPort, unsigned int maxPort)
+DEFINE_LOGGER(GstInternalIn, "GstInternalIn");
+GstInternalIn::GstInternalIn(GstAppSrc *data, unsigned int minPort, unsigned int maxPort)
 {
     m_transport.reset(new owt_base::RawTransport<owt_base::TCP>(this));
 
@@ -23,21 +23,21 @@ InternalIn::InternalIn(GstAppSrc *data, unsigned int minPort, unsigned int maxPo
 
 }
 
-InternalIn::~InternalIn()
+GstInternalIn::~GstInternalIn()
 {
     m_transport->close();
 }
 
-unsigned int InternalIn::getListeningPort()
+unsigned int GstInternalIn::getListeningPort()
 {
     return m_transport->getListeningPort();
 }
 
-void InternalIn::setPushData(bool status){
+void GstInternalIn::setPushData(bool status){
     m_start = status;
 }
 
-void InternalIn::onFeedback(const owt_base::FeedbackMsg& msg)
+void GstInternalIn::onFeedback(const owt_base::FeedbackMsg& msg)
 {
     char sendBuffer[512];
     sendBuffer[0] = owt_base::TDT_FEEDBACK_MSG;
@@ -45,7 +45,7 @@ void InternalIn::onFeedback(const owt_base::FeedbackMsg& msg)
     m_transport->sendData((char*)sendBuffer, sizeof(owt_base::FeedbackMsg) + 1);
 }
 
-void InternalIn::onTransportData(char* buf, int len)
+void GstInternalIn::onTransportData(char* buf, int len)
 {
     if(!m_start) {
         ELOG_INFO("Not start yet, stop pushing data to appsrc\n");

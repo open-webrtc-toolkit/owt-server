@@ -12,8 +12,8 @@
 #include <string>
 #include <boost/thread.hpp>
 #include <logger.h>
-#include "InternalIn.h"
-#include <InternalOut.h>
+#include "GstInternalIn.h"
+#include "GstInternalOut.h"
 #include "AnalyticsPipeline.h"
 #include <stdio.h>
 #include "MediaFramePipeline.h"
@@ -38,9 +38,9 @@ public:
 
     void stopLoop();
 
-    void disconnect(owt_base::InternalOut* out);
+    void disconnect(owt_base::FrameDestination* out);
 
-    void addOutput(int connectionID, owt_base::InternalOut* out);
+    void addOutput(int connectionID, owt_base::FrameDestination* out);
 
     static void pad_added_handler(GstElement *src, GstPad *new_pad, GstElement *data);
     static void on_pad_added (GstElement *element, GstPad *pad, gpointer data);
@@ -55,8 +55,9 @@ protected:
     static GMainLoop *loop;
     static gboolean StreamEventCallBack(GstBus *bus, GstMessage *message, gpointer data);
     void setState(GstState newstate);
-    boost::scoped_ptr<InternalIn> m_internalin;
-    std::list<owt_base::InternalOut*> m_internalout;
+    boost::scoped_ptr<GstInternalIn> m_internalin;
+    boost::scoped_ptr<GstInternalOut> m_gstinternalout;
+    //std::list<owt_base::InternalOut*> m_internalout;
     guint sourceid;
 
 private:

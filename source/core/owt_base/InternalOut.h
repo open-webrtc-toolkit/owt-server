@@ -5,9 +5,6 @@
 #ifndef InternalOut_h
 #define InternalOut_h
 
-#ifdef BUILD_FOR_GST_ANALYTICS
-#include <gst/gst.h>
-#endif
 #include "MediaFramePipeline.h"
 #include "RawTransport.h"
 
@@ -19,18 +16,13 @@ public:
     virtual ~InternalOut();
 
     void onFrame(const Frame&);
-#ifdef BUILD_FOR_GST_ANALYTICS
-    void setPad(GstPad *pad);
-#endif
+
     void onTransportData(char*, int len);
     void onTransportError() { }
     void onTransportConnected() { }
 
 private:
     boost::shared_ptr<owt_base::RawTransportInterface> m_transport;
-#ifdef BUILD_FOR_GST_ANALYTICS
-    GstPad *encoder_pad;
-#endif
 };
 
 } /* namespace owt_base */

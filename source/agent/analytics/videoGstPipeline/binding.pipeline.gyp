@@ -5,9 +5,10 @@
       './addon.cc',
       './VideoGstAnalyzerWrapper.cc',
       './VideoGstAnalyzer.cpp',
+      '../../../core/owt_base/MediaFramePipeline.cpp',
       '../../../core/owt_base/RawTransport.cpp',
-      '../../../core/owt_base/InternalOut.cpp',
-      './InternalIn.cpp',
+      './GstInternalOut.cpp',
+      './GstInternalIn.cpp',
     ],
     'include_dirs': [
       '/usr/include/gstreamer-1.0',
