@@ -5,7 +5,7 @@
 #ifndef VideoGstAnalyzerWRAPPER_H
 #define VideoGstAnalyzerWRAPPER_H
 
-#include "../../addons/common/GstInternalOutWrapper.h"
+#include "../../addons/common/MediaFramePipelineWrapper.h"
 #include "VideoGstAnalyzer.h"
 #include <node.h>
 #include <node_object_wrap.h>
