@@ -99,8 +99,8 @@ class Operation {
  * 'transport-signaling': (id, {type, ... })
  * Events for conference.js
  * trackData = {id, operationId, direction, mid, rid, type, format, active, from}
- * 'session-established': (id, [trackData])
- * 'session-updated': (id, trackData)
+ * 'session-established': (id, Operation)
+ * 'session-updated': (id, Operation)
  * 'session-aborted': (id, {operationId, direction, reason})
  */
 class RtcController extends EventEmitter {
@@ -310,10 +310,10 @@ class RtcController extends EventEmitter {
       return this.rpcReq.terminate(locality.node, sessionId, direction);
     }).then(() => {
       if (this.operations.has(sessionId)) {
-        this.operations.delete(sessionId);
         const owner = transport.owner;
         const abortData = { direction: operation.direction, owner, reason };
         this.emit('session-aborted', sessionId, abortData);
+        this.operations.delete(sessionId);
 
         let emptyTransport = true;
         for (const [id, op] of this.operations) {
@@ -328,6 +328,9 @@ class RtcController extends EventEmitter {
           return this.rpcReq.recycleWorkerNode(locality.agent, locality.node, taskConfig)
             .catch(reason => {
               log.debug(`AccessNode not recycled ${locality}, ${reason}`);
+            })
+            .then(() => {
+              this.transports.delete(transport.id);
             });
         }
       }

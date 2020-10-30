@@ -272,7 +272,14 @@ var Conference = function (rpcClient, selfRpcId) {
   var onSessionAborted = (participantId, sessionId, direction, reason) => {
     log.debug('onSessionAborted, participantId:', participantId, 'sessionId:', sessionId, 'direction:', direction, 'reason:', reason);
     if (reason !== 'Participant terminate') {
-      sendMsgTo(participantId, 'progress', {id: sessionId, status: 'error', data: reason});
+      const rtcSession = rtcController.getOperation(sessionId);
+      if (rtcSession) {
+        // Session progress
+        const transportId = rtcSession.transportId;
+        sendMsgTo(participantId, 'progress', {id: transportId, sessionId, status: 'error', data: reason});
+      } else {
+        sendMsgTo(participantId, 'progress', {id: sessionId, status: 'error', data: reason});
+      }
     }
 
     if (direction === 'in') {
@@ -292,10 +299,10 @@ var Conference = function (rpcClient, selfRpcId) {
     }
   };
 
-  var onLocalSessionSignaling = (participantId, sessionId, signaling) => {
-    log.debug('onLocalSessionSignaling, participantId:', participantId, 'sessionId:', sessionId, 'signaling:', signaling);
+  var onLocalSessionSignaling = (participantId, transportId, signaling) => {
+    log.debug('onLocalSessionSignaling, participantId:', participantId, 'transportId:', transportId, 'signaling:', signaling);
     if (participants[participantId]) {
-      sendMsgTo(participantId, 'progress', {id: sessionId, status: 'soac', data: signaling});
+      sendMsgTo(participantId, 'progress', {id: transportId, status: 'soac', data: signaling});
     }
   };
 
