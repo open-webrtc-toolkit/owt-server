@@ -13,7 +13,6 @@
 
 
 using namespace InferenceEngine;
-namespace mcu {
 
 class ResourceUtil{
 	DECLARE_LOGGER();
@@ -25,7 +24,5 @@ public:
 private:
 	Core ie;
 };
-
-}
 
 #endif //ResourceUtil_H

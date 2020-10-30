@@ -67,50 +67,58 @@ createInternalConnection(connectionId, direction, internalOpt) {
        this.outputs[connectionId] = true;
        return super.subscribe(connectionId, connectionType, options);
     }
-      
-    const videoFormat = options.connection.video.format;
-    const videoParameters = options.connection.video.parameters;
-    const algo = options.connection.algorithm;
-    const status = {type: 'ready', info: {algorithm: algo}};
-    this.onStatus(options.controller, connectionId, 'out', status);
 
-    const newStreamId = algo + options.media.video.from;
-    const streamInfo = {
-        type: 'analytics',
-        media: {video: Object.assign({}, videoFormat, videoParameters)},
-        analyticsId: connectionId,
-        locality: {agent:this.agentId, node:this.rpcId},
-      };
-
-    const pluginName = this.algorithms[algo].name;
-    let codec = videoFormat.codec;
-          if (videoFormat.profile) {
-            codec += '_' + videoFormat.profile;
-          }
-    codec = codec.toLowerCase();
-    const {resolution, framerate, keyFrameInterval, bitrate}
-            = getVideoParameterForAddon(options.connection.video);
-
-    log.debug('resolution:',resolution,'framerate:',framerate,'keyFrameInterval:',
-             keyFrameInterval, 'bitrate:',bitrate);
-    
-    this.engine.setOutputParam(codec,resolution,framerate,bitrate,keyFrameInterval,algo,pluginName);
-    if (this.engine.createPipeline() < 0) {
-      return Promise.reject('Create pipeline failed');
+    // check options
+    if (!this.algorithms[options.connection.algorithm]) {
+      return Promise.reject('Not valid algorithm');
     }
 
-    streamInfo.media.video.bitrate = bitrate;
-    this.onStreamGenerated(options.controller, newStreamId, streamInfo);
+    if(!this.inputs[connectionId]) {
+      const videoFormat = options.connection.video.format;
+      const videoParameters = options.connection.video.parameters;
+      const algo = options.connection.algorithm;
+      const status = {type: 'ready', info: {algorithm: algo}};
+      this.onStatus(options.controller, connectionId, 'out', status);
 
-    if (this.engine.addElementMany() < 0) {
-      return Promise.reject('Link element failed');
-    }
+      const newStreamId = algo + options.media.video.from;
+      const streamInfo = {
+          type: 'analytics',
+          media: {video: Object.assign({}, videoFormat, videoParameters)},
+          analyticsId: connectionId,
+          locality: {agent:this.agentId, node:this.rpcId},
+        };
 
-    this.connectionclose = () => {
-        this.onStreamDestroyed(options.controller, newStreamId);
+      const pluginName = this.algorithms[algo].name;
+      let codec = videoFormat.codec;
+            if (videoFormat.profile) {
+              codec += '_' + videoFormat.profile;
+            }
+      codec = codec.toLowerCase();
+      const {resolution, framerate, keyFrameInterval, bitrate}
+              = getVideoParameterForAddon(options.connection.video);
+
+      log.debug('resolution:',resolution,'framerate:',framerate,'keyFrameInterval:',
+               keyFrameInterval, 'bitrate:',bitrate);
+
+      this.engine.setOutputParam(codec,resolution,framerate,bitrate,keyFrameInterval,algo,pluginName);
+      if (this.engine.createPipeline() < 0) {
+        return Promise.reject('Create pipeline failed');
+      }
+
+      streamInfo.media.video.bitrate = bitrate;
+      this.onStreamGenerated(options.controller, newStreamId, streamInfo);
+
+      if (this.engine.addElementMany() < 0) {
+        return Promise.reject('Link element failed');
+      }
+
+      this.connectionclose = () => {
+          this.onStreamDestroyed(options.controller, newStreamId);
+      }
+      this.inputs[connectionId] = true;
+      return Promise.resolve();
     }
-    this.inputs[connectionId] = true;
-    return Promise.resolve();
+    return Promise.reject('Connection already exist: ' + connectionId);
   }
 
   // override

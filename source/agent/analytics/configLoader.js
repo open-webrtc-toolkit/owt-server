@@ -31,11 +31,11 @@ module.exports.load = () => {
     var resource = config.cluster.load_items;
     //In current environment, always report CPU resource
 
-    if (resource.toLowerCase().indexOf("gpu") != -1) {
+    if (resource.toLowerCase().indexOf("gpu") !== -1) {
       config.cluster.worker.load.item.gpu = true;
     }
 
-    if (resource.toLowerCase().indexOf("vpu") != -1) {
+    if (resource.toLowerCase().indexOf("vpu") !== -1) {
       config.cluster.worker.load.item.vpu = true;
     }
 

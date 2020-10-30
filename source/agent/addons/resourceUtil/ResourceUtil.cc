@@ -9,8 +9,6 @@
 
 using namespace InferenceEngine;
 
-namespace mcu {
-
 DEFINE_LOGGER(ResourceUtil, "mcu.media.ResourceUtil");
 
 ResourceUtil::ResourceUtil() {
@@ -31,4 +29,3 @@ float ResourceUtil::getVPUUtil() {
     return avg;
 }
 
-}
