@@ -106,7 +106,7 @@ module.exports = function (version) {
   validators[ReqType.Pub] = generateValidator(PublicationRequest);
   validators[ReqType.StreamCtrl] = generateValidator(StreamControlInfo);
   validators[ReqType.Sub] = generateValidator(SubscriptionRequest);
-  validators[ReqType.SubscriptionCtrl] = generateValidator(SubscriptionRequest);
+  validators[ReqType.SubscriptionCtrl] = generateValidator(SubscriptionControlInfo);
   validators[ReqType.Text] = validateTextReq;
   validators[ReqType.SOAC] = validateSOAC;
 

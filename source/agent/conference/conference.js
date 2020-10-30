@@ -645,8 +645,9 @@ var Conference = function (rpcClient, selfRpcId) {
     return new Promise((resolve, reject) => {
       if (streams[streamId]) {
         for (var sub_id in subscriptions) {
-          if ((subscriptions[sub_id].media.audio && (subscriptions[sub_id].media.audio.from === streamId))
-            || (subscriptions[sub_id].media.video && (subscriptions[sub_id].media.video.from === streamId))) {
+          let subTrack = subscriptions[sub_id].media.tracks
+            .find(t => (t.from === streamId || trackOwners[t.from] === streamId));
+          if (subTrack) {
             accessController && accessController.terminate(sub_id, 'out', 'Source stream loss');
           }
         }
@@ -693,48 +694,31 @@ var Conference = function (rpcClient, selfRpcId) {
       if (streams[streamId]) {
         subscription.setSource(from, streams[streamId]);
       } else {
-        return Promise.reject('Subscription source early released: ' + from);
+        return Promise.reject('Subscription source not found: ' + from);
       }
     }
 
     const isAudioPubPermitted = !!participants[info.owner].isPublishPermitted('audio'); 
     const subArgs = subscription.toRoomCtrlSubArgs();
-    if (info.type === 'webrtc') {
-      const subs = subArgs.map(subArg => new Promise((resolve, reject) => {
-        roomController && roomController.subscribe(
+    const subs = subArgs.map(subArg => new Promise((resolve, reject) => {
+      if (roomController) {
+        roomController.subscribe(
           subArg.owner, subArg.id, subArg.locality, subArg.media, subArg.type,
           isAudioPubPermitted, resolve, reject);
-      }));
-      return Promise.all(subs).then(() => {
-        if (participants[info.owner]) {
-          subscriptions[id] = subscription;
-          return Promise.resolve('ok');
-        } else {
-          subArgs.forEach(subArg => {
-            roomController && roomController.unsubscribe(info.owner, subArg.id);
-          });
-          return Promise.reject('Participant early left');
-        }
-      });
-    }
-
-    // For non-webrtc subscription
-    const subArg = subArgs[0];
-    return new Promise((resolve, reject) => {
-      roomController && roomController.subscribe(
-        subArg.owner, subArg.id, subArg.locality, subArg.media, subArg.type,
-        isAudioPubPermitted, function() {
-          if (participants[info.owner]) {
-            subscriptions[id] = subscription;
-            resolve('ok');
-          } else {
-            roomController && roomController.unsubscribe(info.owner, subArg.id);
-            reject('Participant early left');
-          }
-        }, function(reason) {
-          log.info('roomController.subscribe failed, reason: ' + (reason.message ? reason.message : reason));
-          reject('roomController.subscribe failed, reason: ' + (reason.message ? reason.message : reason));
+      } else {
+        reject('RoomController is not ready');
+      }
+    }));
+    return Promise.all(subs).then(() => {
+      if (participants[info.owner]) {
+        subscriptions[id] = subscription;
+        return Promise.resolve('ok');
+      } else {
+        subArgs.forEach(subArg => {
+          roomController && roomController.unsubscribe(info.owner, subArg.id);
         });
+        return Promise.reject('Participant early left');
+      }
     });
   };
 
@@ -1052,6 +1036,18 @@ var Conference = function (rpcClient, selfRpcId) {
       });
   };
 
+  const getStreamTrack = (tsId, type) => {
+    let track = null;
+    if (trackOwners[tsId]) {
+      track = streams[trackOwners[tsId]].media.tracks
+        .find(t => (t.id === tsId && t.type === type));
+    } else if (streams[tsId]) {
+      track = streams[tsId].media.tracks
+        .find(t => t.type === type);
+    }
+    return track;
+  };
+
   const isAudioFmtAvailable = (streamAudio, fmt) => {
     //log.debug('streamAudio:', JSON.stringify(streamAudio), 'fmt:', fmt);
     if (isAudioFmtEqual(streamAudio.format, fmt)) {
@@ -1064,18 +1060,17 @@ var Conference = function (rpcClient, selfRpcId) {
   };
 
   const validateAudioRequest = (type, req, err) => {
-    if (!streams[req.from] || !streams[req.from].media.audio) {
+    let track = getStreamTrack(req.from, 'audio');
+    if (!track) {
       err && (err.message = 'Requested audio stream');
       return false;
     }
-
     if (req.format) {
-      if (!isAudioFmtAvailable(streams[req.from].media.audio, req.format)) {
+      if (!isAudioFmtAvailable(track, req.format)) {
         err && (err.message = 'Format is not acceptable');
         return false;
       }
     }
-
     return true;
   };
 
@@ -1091,7 +1086,7 @@ var Conference = function (rpcClient, selfRpcId) {
   };
 
   const isResolutionEqual = (r1, r2) => {
-    return (r1.width === r2.width) && (r1.height === r2.height);
+    return r1 && r2 && (r1.width === r2.width) && (r1.height === r2.height);
   };
 
   const isResolutionAvailable = (streamVideo, resolution) => {
@@ -1140,37 +1135,34 @@ var Conference = function (rpcClient, selfRpcId) {
   };
 
   const validateVideoRequest = (type, req, err) => {
-    if (!streams[req.from] || !streams[req.from].media.video) {
+    let track = getStreamTrack(req.from, 'video');
+    if (!track) {
       err && (err.message = 'Requested video stream');
       return false;
     }
-
-    if (req.format && !isVideoFmtAvailable(streams[req.from].media.video, req.format)) {
+    if (req.format && !isVideoFmtAvailable(track, req.format)) {
       err && (err.message = 'Format is not acceptable');
       return false;
     }
-
     if (req.parameters) {
-      if (req.parameters.resolution && !isResolutionAvailable(streams[req.from].media.video, req.parameters.resolution)) {
+      if (req.parameters.resolution && !isResolutionAvailable(track, req.parameters.resolution)) {
         err && (err.message = 'Resolution is not acceptable');
         return false;
       }
 
-      if (req.parameters.framerate && !isFramerateAvailable(streams[req.from].media.video, req.parameters.framerate)) {
+      if (req.parameters.framerate && !isFramerateAvailable(track, req.parameters.framerate)) {
         err && (err.message = 'Framerate is not acceptable');
         return false;
       }
-
       //FIXME: allow bitrate 1.0x for client-sdk
       if (req.parameters.bitrate === 'x1.0' || req.parameters.bitrate === 'x1') {
         req.parameters.bitrate = undefined;
       }
-      if (req.parameters.bitrate && !isBitrateAvailable(streams[req.from].media.video, req.parameters.bitrate)) {
+      if (req.parameters.bitrate && !isBitrateAvailable(track, req.parameters.bitrate)) {
         err && (err.message = 'Bitrate is not acceptable');
         return false;
       }
-
-      if (req.parameters.keyFrameInterval && !isKeyFrameIntervalAvailable(streams[req.from].media.video, req.parameters.keyFrameInterval)) {
+      if (req.parameters.keyFrameInterval && !isKeyFrameIntervalAvailable(track, req.parameters.keyFrameInterval)) {
         err && (err.message = 'KeyFrameInterval is not acceptable');
         return false;
       }
@@ -1262,7 +1254,8 @@ var Conference = function (rpcClient, selfRpcId) {
           if (subDesc.media.audio.format) {
             audio_codec = subDesc.media.audio.format.codec;
           } else {
-            audio_codec = streams[subDesc.media.audio.from].media.audio.format.codec;
+            let track = getStreamTrack(subDesc.media.audio.from, 'audio');
+            audio_codec = track.format.codec;
           }
 
           //FIXME: To support codecs other than those in the following list.
@@ -1272,7 +1265,8 @@ var Conference = function (rpcClient, selfRpcId) {
         }
 
         if (subDesc.media.video) {
-          video_codec = ((subDesc.media.video.format && subDesc.media.video.format.codec) || streams[subDesc.media.video.from].media.video.format.codec);
+          let track = getStreamTrack(subDesc.media.video.from, 'video');
+          video_codec = ((subDesc.media.video.format && subDesc.media.video.format.codec) || track.format.codec);
         }
 
         if (!subDesc.connection.container || subDesc.connection.container === 'auto') {
@@ -1410,16 +1404,16 @@ var Conference = function (rpcClient, selfRpcId) {
     const affectedTracks = streams[streamId].media.tracks
       .filter(t => ((audio && t.type === 'audio') || (video && t.type === 'video')))
       .map(t => t.id);
-
     if (affectedTracks.length === 0) {
       return Promise.reject('Stream does NOT contain valid track to mute/unmute');
     }
-
     return rtcController.setMute(streamId, affectedTracks, muted)
       .then(() => {
-        affectedTracks.forEach(trackId => {
-          streams[streamId].media.tracks.find(t => t.id === trackId).status = status;
-          roomController.updateStream(trackId, track, status);
+        streams[streamId].media.tracks.forEach(t => {
+          if (affectedTracks.indexOf(t.id) > -1) {
+            t.status = status;
+            roomController.updateStream(t.id, track, status);
+          }
         });
         var updateFields = (track === 'av') ? ['audio.status', 'video.status'] : [track + '.status'];
         room_config.notifying.streamChange && updateFields.forEach((fieldData) => {
@@ -1525,52 +1519,52 @@ var Conference = function (rpcClient, selfRpcId) {
   };
 
   const updateSubscription = (subscriptionId, update) => {
-    var old_su = subscriptions[subscriptionId],
-        new_su = JSON.parse(JSON.stringify(old_su));
+    const oldSub = subscriptions[subscriptionId];
+    const newSubMedia = JSON.parse(JSON.stringify(oldSub.media));
+    let audioTrack = null;
+    let videoTrack = null;
+    let effective = false;
 
-    var effective = false;
     if (update.audio) {
-      if (!old_su.media.audio) {
-        return Promise.reject('Target audio stream does NOT satisfy');
+      audioTrack = newSubMedia.tracks.find(t => t.type === 'audio');
+      if (!audioTrack) {
+        return Promise.reject('Target subscription does NOT have audio to update');
       }
-
-      new_su.media.audio = (new_su.media.audio || {});
-      if (update.audio.from && (update.audio.from !== new_su.media.audio.from)) {
-        new_su.media.audio.from = update.audio.from;
+      if (update.audio.from && update.audio.from !== audioTrack.from) {
+        audioTrack.from = update.audio.from;
         effective = true;
       }
     }
 
     if (update.video) {
-      if (!old_su.media.video) {
-        return Promise.reject('Target video stream does NOT satisfy');
+      videoTrack = newSubMedia.tracks.find(t => t.type === 'video');
+      if (!videoTrack) {
+        return Promise.reject('Target subscription does NOT have video to update');
       }
-
-      new_su.media.video = (new_su.media.video || {});
-      if (update.video.from && (update.video.from !== new_su.media.video.from)) {
-        new_su.media.video.from = update.video.from;
+      if (update.video.from && update.video.from !== videoTrack.from) {
+        videoTrack.from = update.video.from;
         effective = true;
       }
-
       if (update.video.parameters && (Object.keys(update.video.parameters).length > 0)) {
-        new_su.media.video.parameters = (new_su.media.video.parameters || {});
-        old_su.media.video.parameters = (old_su.media.video.parameters || {});
-        old_su.media.video.parameters.resolution = (old_su.media.video.parameters.resolution || {});
-
-        if (update.video.parameters.resolution && ((update.video.parameters.resolution.width !== old_su.media.video.parameters.resolution.width) || (update.video.parameters.resolution.height !== old_su.media.video.parameters.resolution.height))) {
-          new_su.media.video.parameters.resolution = update.video.parameters.resolution;
+        videoTrack.parameters = (videoTrack.parameters || {});
+        if (update.video.parameters.resolution &&
+            !isResolutionEqual(update.video.parameters.resolution, videoTrack.parameters.resolution)) {
+          videoTrack.parameters.resolution = update.video.parameters.resolution;
           effective = true;
         }
-        if (update.video.parameters.framerate && (update.video.parameters.framerate !== old_su.media.video.parameters.framerate)) {
-          new_su.media.video.parameters.framerate = update.video.parameters.framerate;
+        if (update.video.parameters.framerate &&
+            update.video.parameters.framerate !== videoTrack.parameters.framerate) {
+          videoTrack.parameters.framerate = update.video.parameters.framerate;
           effective = true;
         }
-        if (update.video.parameters.bitrate && (update.video.parameters.bitrate !== old_su.media.video.parameters.bitrate)) {
-          new_su.media.video.parameters.bitrate = update.video.parameters.bitrate;
+        if (update.video.parameters.bitrate &&
+            update.video.parameters.bitrate !== videoTrack.parameters.bitrate) {
+          videoTrack.parameters.bitrate = update.video.parameters.bitrate;
           effective = true;
         }
-        if (update.video.parameters.keyFrameInterval && (update.video.parameters.keyFrameInterval !== old_su.media.video.parameters.keyFrameInterval)) {
-          new_su.media.video.parameters.keyFrameInterval = update.video.parameters.keyFrameInterval;
+        if (update.video.parameters.keyFrameInterval &&
+            update.video.parameters.keyFrameInterval !== videoTrack.parameters.keyFrameInterval) {
+          videoTrack.parameters.keyFrameInterval = update.video.parameters.keyFrameInterval;
           effective = true;
         }
       }
@@ -1578,46 +1572,47 @@ var Conference = function (rpcClient, selfRpcId) {
 
     if (!effective) {
       return Promise.resolve('ok');
-    } else {
-      if (new_su.media.video && !validateVideoRequest(new_su.info.type, new_su.media.video)) {
-        return Promise.reject('Target video stream does NOT satisfy');
-      } else if (new_su.media.audio && !validateAudioRequest(new_su.info.type, new_su.media.audio)) {
-        return Promise.reject('Target audio stream does NOT satisfy');
-      } else {
-        return removeSubscription(subscriptionId)
-          .then((result) => {
-            return addSubscription(subscriptionId, new_su.locality, new_su.media, new_su.info);
-          }).catch((err) => {
-            log.info('Update subscription failed:', err.message ? err.message : err);
-            log.info('And is recovering the previous subscription:', JSON.stringify(old_su));
-            return addSubscription(subscriptionId, old_su.locality, old_su.media, old_su.info)
-              .then(() => {
-                return Promise.reject('Update subscription failed');
-              }, () => {
-                return Promise.reject('Update subscription failed');
-              });
-          });
-      }
     }
+    if (videoTrack && !validateVideoRequest(oldSub.info.type, videoTrack)) {
+      return Promise.reject('Target video stream does NOT satisfy');
+    }
+    if (audioTrack && !validateAudioRequest(oldSub.info.type, audioTrack)) {
+      return Promise.reject('Target audio stream does NOT satisfy');
+    }
+
+    return removeSubscription(subscriptionId)
+      .then((result) => {
+        return addSubscription(subscriptionId, oldSub.locality, newSubMedia, oldSub.info);
+      }).catch((err) => {
+        log.info('Update subscription failed:', err.message ? err.message : err);
+        log.info('And is recovering the previous subscription:', JSON.stringify(old_su));
+        return addSubscription(subscriptionId, oldSub.locality, oldSub.media, oldSub.info)
+          .then(() => {
+            return Promise.reject('Update subscription failed');
+          }, () => {
+            return Promise.reject('Update subscription failed');
+          });
+      });
   };
 
   const setSubscriptionMute = (subscriptionId, track, muted) => {
-    var audio = (track === 'audio' || track === 'av') ? true : false,
-        video = (track === 'video' || track === 'av') ? true : false,
-        status = (muted ? 'active' : 'inactive');
+    const audio = (track === 'audio' || track === 'av') ? true : false;
+    const video = (track === 'video' || track === 'av') ? true : false;
+    const status = (muted ? 'active' : 'inactive');
 
-    if (audio && !subscriptions[subscriptionId].media.audio) {
-      return Promise.reject('Subscription does NOT contain audio track');
+    const affectedTracks = subscriptions[subscriptionId].media.tracks
+      .filter(t => ((audio && t.type === 'audio') || (video && t.type === 'video')))
+      .map(t => t.id);
+    if (affectedTracks.length === 0) {
+      return Promise.reject('Stream does NOT contain valid track to mute/unmute');
     }
-
-    if (video && !subscriptions[subscriptionId].media.video) {
-      return Promise.reject('Subscription does NOT contain video track');
-    }
-
-    return accessController.setMute(subscriptionId, track, muted)
+    return rtcController.setMute(subscriptionId, affectedTracks, muted)
       .then(() => {
-        audio && (subscriptions[subscriptionId].media.audio.status = status);
-        video && (subscriptions[subscriptionId].media.video.status = status);
+        subscriptions[subscriptionId].media.tracks.forEach(t => {
+          if (affectedTracks.indexOf(t.id) > -1) {
+            t.status = status;
+          }
+        });
         return 'ok';
       });
   };
@@ -1964,8 +1959,9 @@ var Conference = function (rpcClient, selfRpcId) {
             break;
           case 'replace':
             if ((cmd.path === '/media/audio/status') && (cmd.value === 'inactive' || cmd.value === 'active')) {
-              if (streams[streamId].media.audio) {
-                if (streams[streamId].media.audio.status !== cmd.value) {
+              const track = getStreamTrack(streamId, 'audio');
+              if (track) {
+                if (track.status !== cmd.value) {
                   muteReq.push({track: 'audio', mute: (cmd.value === 'inactive')});
                 }
                 exe = Promise.resolve('ok');
@@ -1973,8 +1969,9 @@ var Conference = function (rpcClient, selfRpcId) {
                 exe = Promise.reject('Track does NOT exist');
               }
             } else if ((cmd.path === '/media/video/status') && (cmd.value === 'inactive' || cmd.value === 'active')) {
-              if (streams[streamId].media.video) {
-                if (streams[streamId].media.video.status !== cmd.value) {
+              const track = getStreamTrack(streamId, 'video');
+              if (track) {
+                if (track.status !== cmd.value) {
                   muteReq.push({track: 'video', mute: (cmd.value === 'inactive')});
                 }
                 exe = Promise.resolve('ok');
@@ -2157,7 +2154,8 @@ var Conference = function (rpcClient, selfRpcId) {
             if (subDesc.media.audio.format) {
               audio_codec = subDesc.media.audio.format.codec;
             } else {
-              audio_codec = streams[subDesc.media.audio.from].media.audio.format.codec;
+              let track = getStreamTrack(subDesc.media.audio.from, 'audio');
+              audio_codec = track.format.codec;
             }
 
             //FIXME: To support codecs other than those in the following list.
@@ -2167,7 +2165,8 @@ var Conference = function (rpcClient, selfRpcId) {
           }
 
           if (subDesc.media.video) {
-            video_codec = ((subDesc.media.video.format && subDesc.media.video.format.codec) || streams[subDesc.media.video.from].media.video.format.codec);
+            let track = getStreamTrack(subDesc.media.video.from, 'video');
+            video_codec = ((subDesc.media.video.format && subDesc.media.video.format.codec) || track.format.codec);
           }
 
           if (!subDesc.connection.container || subDesc.connection.container === 'auto') {
@@ -2210,7 +2209,8 @@ var Conference = function (rpcClient, selfRpcId) {
           if (!streams[subDesc.media.video.from]) {
             return Promise.reject('Video source not valid for analyzing');
           }
-          let sourceVideoOption = streams[subDesc.media.video.from].media.video;
+
+          let sourceVideoOption = getStreamTrack(subDesc.media.video.from, 'video');
           if (!subDesc.media.video.format) {
             // Subscribe source format
             subDesc.media.video.format = sourceVideoOption.format;
@@ -2286,69 +2286,54 @@ var Conference = function (rpcClient, selfRpcId) {
   var doControlSubscription = function(subId, commands) {
     var subUpdate;
     var muteReqs = [];
-    return Promise.all(
-      commands.map((cmd) => {
-        var exe;
-        switch (cmd.op) {
-          case 'replace':
-            if ((cmd.path === '/media/audio/status') && subscriptions[subId].media.audio && (cmd.value === 'inactive' || cmd.value === 'active')) {
-              if (subscriptions[subId].media.audio.status !== cmd.value) {
-                muteReqs.push({track: 'audio', mute: (cmd.value === 'inactive')});
-              }
-              exe = Promise.resolve('ok');
-            } else if ((cmd.path === '/media/video/status') && subscriptions[subId].media.video && (cmd.value === 'inactive' || cmd.value === 'active')) {
-              if (subscriptions[subId].media.video.status !== cmd.value) {
-                muteReqs.push({track: 'video', mute: (cmd.value === 'inactive')});
-              }
-              exe = Promise.resolve('ok');
-            } else if ((cmd.path === '/media/audio/from') && streams[cmd.value]) {
-              subUpdate = (subUpdate || {});
-              subUpdate.audio = (subUpdate.audio || {});
-              subUpdate.audio.from = cmd.value
-              exe = Promise.resolve('ok');
-            } else if ((cmd.path === '/media/video/from') && streams[cmd.value]) {
-              subUpdate = (subUpdate || {});
-              subUpdate.video = (subUpdate.video || {});
-              subUpdate.video.from = cmd.value;
-              exe = Promise.resolve('ok');
-            } else if (cmd.path === '/media/video/parameters/resolution') {
-              subUpdate = (subUpdate || {});
-              subUpdate.video = (subUpdate.video || {});
-              subUpdate.video.parameters = (subUpdate.video.parameters || {});
-              subUpdate.video.parameters.resolution = cmd.value;
-              exe = Promise.resolve('ok');
-            } else if (cmd.path === '/media/video/parameters/framerate') {
-              subUpdate = (subUpdate || {});
-              subUpdate.video = (subUpdate.video || {});
-              subUpdate.video.parameters = (subUpdate.video.parameters || {});
-              subUpdate.video.parameters.framerate = Number(cmd.value);
-              exe = Promise.resolve('ok');
-            } else if (cmd.path === '/media/video/parameters/bitrate') {
-              subUpdate = (subUpdate || {});
-              subUpdate.video = (subUpdate.video || {});
-              subUpdate.video.parameters = (subUpdate.video.parameters || {});
-              subUpdate.video.parameters.bitrate = cmd.value;
-              exe = Promise.resolve('ok');
-            } else if (cmd.path === '/media/video/parameters/keyFrameInterval') {
-              subUpdate = (subUpdate || {});
-              subUpdate.video = (subUpdate.video || {});
-              subUpdate.video.parameters = (subUpdate.video.parameters || {});
-              subUpdate.video.parameters.keyFrameInterval = cmd.value;
-              exe = Promise.resolve('ok');
-            } else {
-              exe = Promise.reject('Invalid path or value');
-            }
-            break;
-          default:
-            exe = Promise.reject('Invalid subscription control operation');
-        }
-        return exe;
-      })
-    ).then(() => {
-      return Promise.all(muteReqs.map((r) => {
+    for (const cmd of commands) {
+      switch (cmd.op) {
+        case 'replace':
+          if ((cmd.path === '/media/audio/status') && (cmd.value === 'inactive' || cmd.value === 'active')) {
+            muteReqs.push({track: 'audio', mute: (cmd.value === 'inactive')});
+          } else if ((cmd.path === '/media/video/status') && (cmd.value === 'inactive' || cmd.value === 'active')) {
+            muteReqs.push({track: 'video', mute: (cmd.value === 'inactive')});
+          } else if ((cmd.path === '/media/audio/from') && streams[cmd.value]) {
+            subUpdate = (subUpdate || {});
+            subUpdate.audio = (subUpdate.audio || {});
+            subUpdate.audio.from = cmd.value
+          } else if ((cmd.path === '/media/video/from') && streams[cmd.value]) {
+            subUpdate = (subUpdate || {});
+            subUpdate.video = (subUpdate.video || {});
+            subUpdate.video.from = cmd.value;
+          } else if (cmd.path === '/media/video/parameters/resolution') {
+            subUpdate = (subUpdate || {});
+            subUpdate.video = (subUpdate.video || {});
+            subUpdate.video.parameters = (subUpdate.video.parameters || {});
+            subUpdate.video.parameters.resolution = cmd.value;
+            exe = Promise.resolve('ok');
+          } else if (cmd.path === '/media/video/parameters/framerate') {
+            subUpdate = (subUpdate || {});
+            subUpdate.video = (subUpdate.video || {});
+            subUpdate.video.parameters = (subUpdate.video.parameters || {});
+            subUpdate.video.parameters.framerate = Number(cmd.value);
+            exe = Promise.resolve('ok');
+          } else if (cmd.path === '/media/video/parameters/bitrate') {
+            subUpdate = (subUpdate || {});
+            subUpdate.video = (subUpdate.video || {});
+            subUpdate.video.parameters = (subUpdate.video.parameters || {});
+            subUpdate.video.parameters.bitrate = cmd.value;
+          } else if (cmd.path === '/media/video/parameters/keyFrameInterval') {
+            subUpdate = (subUpdate || {});
+            subUpdate.video = (subUpdate.video || {});
+            subUpdate.video.parameters = (subUpdate.video.parameters || {});
+            subUpdate.video.parameters.keyFrameInterval = cmd.value;
+          } else {
+            return Promise.reject('Invalid path or value');
+          }
+        default:
+          return Promise.reject('Invalid subscription control operation');
+      }
+    }
+
+    return Promise.all(muteReqs.map((r) => {
         return setSubscriptionMute(subId, r.track, r.mute);
-      }));
-    }).then(() => {
+    })).then(() => {
       if (subUpdate) {
         return updateSubscription(subId, subUpdate);
       } else {
