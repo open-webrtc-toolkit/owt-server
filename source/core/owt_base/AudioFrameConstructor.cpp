@@ -4,13 +4,7 @@
 
 #include "AudioFrameConstructor.h"
 #include "AudioUtilities.h"
-
 #include <rtputils.h>
-
-#include <webrtc/modules/rtp_rtcp/source/rtp_packet.h>
-#include <webrtc/modules/rtp_rtcp/source/rtp_packet_received.h>
-#include <webrtc/modules/rtp_rtcp/source/rtp_header_extensions.h>
-
 #include <RtpHeaders.h>
 
 
@@ -26,7 +20,6 @@ AudioFrameConstructor::AudioFrameConstructor()
   , m_transport(nullptr)
 {
     sink_fb_source_ = this;
-    m_extensions.Register<webrtc::AudioLevel>(kAudioLevelExtensionId);
 }
 
 AudioFrameConstructor::~AudioFrameConstructor()

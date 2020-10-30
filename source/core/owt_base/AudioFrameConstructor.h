@@ -11,8 +11,6 @@
 #include <MediaDefinitions.h>
 #include <MediaDefinitionExtra.h>
 
-#include <webrtc/modules/rtp_rtcp/source/rtp_header_extension.h>
-
 namespace owt_base {
 
 /**
@@ -49,8 +47,6 @@ private:
     int deliverVideoData_(std::shared_ptr<erizo::DataPacket> video_packet) override;
     int deliverEvent_(erizo::MediaEventPtr event) override;
     void close();
-
-    webrtc::RtpHeaderExtensionMap m_extensions;
 };
 
 }
