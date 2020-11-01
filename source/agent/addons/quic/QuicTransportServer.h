@@ -13,7 +13,6 @@
 #include <mutex>
 #include <nan.h>
 #include <string>
-#include <thread>
 #include <unordered_map>
 
 class QuicTransportServer : public Nan::ObjectWrap, owt::quic::QuicTransportServerInterface::Visitor, QuicTransportConnection::Visitor {

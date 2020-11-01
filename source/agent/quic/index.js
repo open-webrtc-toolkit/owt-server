@@ -39,6 +39,7 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
         new Map();  // Key is publication ID, value is stream pipeline.
     const outgoingStreamPipelines =
         new Map();  // Key is subscription ID, value is stream pipeline.
+    let quicTransportServer;
 
     const notifyStatus = (controller, sessionId, direction, status) => {
         rpcClient.remoteCast(controller, 'onSessionProgress', [sessionId, direction, status]);
@@ -53,7 +54,7 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
         return;
       }
       log.info('path is '+path.resolve(global.config.quic.keystorePath));
-      const quicTransportServer = new QuicTransportServer(
+      quicTransportServer = new QuicTransportServer(
           addon, global.config.quic.port, path.resolve(global.config.quic.keystorePath),
           password);
       quicTransportServer.start();

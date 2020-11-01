@@ -93,11 +93,14 @@ NAUV_WORK_CB(QuicTransportConnection::onStreamCallback)
     if (obj == nullptr || obj->m_streamsToBeNotified.empty()) {
         return;
     }
-    std::lock_guard<std::mutex> lock(obj->m_streamQueueMutex);
     while (!obj->m_streamsToBeNotified.empty()) {
-        v8::Local<v8::Object> streamObject = QuicTransportStream::newInstance(obj->m_streamsToBeNotified.front());
+        obj->m_streamQueueMutex.lock();
+        auto quicStream=obj->m_streamsToBeNotified.front();
+        obj->m_streamsToBeNotified.pop();
+        obj->m_streamQueueMutex.unlock();
+        v8::Local<v8::Object> streamObject = QuicTransportStream::newInstance(quicStream);
         QuicTransportStream* stream = Nan::ObjectWrap::Unwrap<QuicTransportStream>(streamObject);
-        obj->m_streamsToBeNotified.front()->SetVisitor(stream);
+        quicStream->SetVisitor(stream);
         Nan::MaybeLocal<v8::Value> onEvent = Nan::Get(obj->handle(), Nan::New<v8::String>("onincomingstream").ToLocalChecked());
         if (!onEvent.IsEmpty()) {
             v8::Local<v8::Value> onEventLocal = onEvent.ToLocalChecked();
@@ -110,7 +113,6 @@ NAUV_WORK_CB(QuicTransportConnection::onStreamCallback)
         } else {
             ELOG_DEBUG("onEvent is empty");
         }
-        obj->m_streamsToBeNotified.pop();
     }
 }
 

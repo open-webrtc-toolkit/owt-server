@@ -97,8 +97,8 @@ NAN_METHOD(QuicTransportStream::write)
     QuicTransportStream* obj = Nan::ObjectWrap::Unwrap<QuicTransportStream>(info.Holder());
     uint8_t* buffer = (uint8_t*)node::Buffer::Data(info[0]->ToObject());
     unsigned int length = info[1]->Uint32Value();
-    obj->m_stream->Write(buffer, length);
-    info.GetReturnValue().Set(info.This());
+    auto written = obj->m_stream->Write(buffer, length);
+    info.GetReturnValue().Set(Nan::New(static_cast<int>(written)));
 }
 
 NAN_METHOD(QuicTransportStream::addDestination)
@@ -131,7 +131,7 @@ v8::Local<v8::Object> QuicTransportStream::newInstance(owt::quic::QuicTransportS
 
 void QuicTransportStream::MaybeReadContentSessionId()
 {
-    if (!m_receivedContentSessionId) {
+    if (!m_receivedContentSessionId && m_stream->ReadableBytes() > 0) {
         // Match to a content session.
         if (m_stream->ReadableBytes() > 0 && m_stream->ReadableBytes() < uuidSizeInBytes) {
             ELOG_ERROR("No enough data to get content session ID.");
