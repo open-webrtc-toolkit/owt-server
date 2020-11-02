@@ -576,7 +576,18 @@ var Conference = function (rpcClient, selfRpcId) {
   };
 
   const addStream = (id, locality, media, info) => {
-    info.origin = streams[id].info.origin;
+    info.origin = streams[id] ? streams[id].info.origin : {isp:"isp", region:"region"};
+    if (info.analytics && subscriptions[info.analytics]) {
+      const sourceTrack = subscriptions[info.analytics].media.tracks
+        .find(t => t.type === 'video');
+      const sourceId = streams[sourceTrack.from] ? sourceTrack.from : trackOwners[sourceTrack.from];
+      if (streams[sourceId]) {
+        info.origin = streams[sourceId].info.origin;
+      } else {
+        log.warn('Invalid analytics source when adding stream:', id);
+      }
+    }
+
     const fwdStream = new ForwardStream(id, media, info, locality);
     const errMsg = fwdStream.checkMediaError();
     if (errMsg) {

@@ -89,6 +89,7 @@ public:
     virtual void destoryAudioReceiver(AudioReceiveAdapter*) = 0;
     virtual AudioSendAdapter* createAudioSender(const Config&) = 0;
     virtual void destoryAudioSender(AudioSendAdapter*) = 0;
+    virtual ~RtcAdapter(){}
 };
 
 class RtcAdapterFactory {
