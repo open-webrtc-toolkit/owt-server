@@ -347,7 +347,7 @@ class RtcController extends EventEmitter {
     // Or just destroy the transport
     this.operations.forEach((operation, operationId) => {
       const transport = this.transports.get(operation.transportId);
-      if (transport.ownerId) {
+      if (transport.owner) {
         const p = this.terminate(operationId, operation.direction, 'Owner leave');
         terminations.push(p);
       }

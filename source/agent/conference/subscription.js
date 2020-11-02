@@ -134,7 +134,6 @@ class Subscription {
                   track.parameters.bitrate = track.parameters.bitrate || sourceBitrate * resoRatio * frRatio;
                 }
               }
-              track.parameters.bitrate = (track.parameters.bitrate || 'unspecified');
               if (source.parameters) {
                 track.parameters.resolution = (track.parameters.resolution || sourceResolution);
                 track.parameters.framerate = (track.parameters.framerate || sourceFramerate);
@@ -149,22 +148,22 @@ class Subscription {
                 track.parameters.bitrate = source.parameters.bitrate *
                   Number(track.parameters.bitrate.substring(1));
               }
-              track.parameters.bitrate = (track.parameters.bitrate || 'unspecified');
-              track.parameters.resolution = (track.parameters.resolution || 'unspecified');
-              track.parameters.framerate = (track.parameters.framerate || 'unspecified');
-              track.parameters.keyFrameInterval = (track.parameters.keyFrameInterval || 'unspecified');
-            } else {
-              track.parameters = {
-                resolution: 'unspecified',
-                framerate: 'unspecified',
-                bitrate: 'unspecified',
-                keyFrameInterval: 'unspecified'
-              };
             }
           }
         }
       }
     });
+  }
+
+  _toCtrlParameters(param) {
+    const srcParam = (param || {});
+    const ctrlParam = {
+      bitrate: (srcParam.bitrate || 'unspecified'),
+      resolution: (srcParam.resolution || 'unspecified'),
+      framerate: (srcParam.framerate || 'unspecified'),
+      keyFrameInterval: (srcParam.keyFrameInterval || 'unspecified'),
+    };
+    return ctrlParam;
   }
 
   // To arguments for RoomController.subscribe [{owner, id, locality, media, type}]
@@ -174,7 +173,7 @@ class Subscription {
         const media = { origin: this.origin };
         media[track.type] = {
           format: track.format,
-          parameters: track.parameters,
+          parameters: this._toCtrlParameters(track.parameters),
           from: (track.source || track.from),
         };
         return {
@@ -191,7 +190,7 @@ class Subscription {
         if (!media[track.type]) {
           media[track.type] = {
             format: track.format,
-            parameters: track.parameters,
+            parameters: this._toCtrlParameters(track.parameters),
             from: (track.source || track.from),
           };
         }

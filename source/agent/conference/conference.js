@@ -1580,11 +1580,12 @@ var Conference = function (rpcClient, selfRpcId) {
     if (!effective) {
       return Promise.resolve('ok');
     }
-    if (videoTrack && !validateVideoRequest(oldSub.info.type, videoTrack)) {
-      return Promise.reject('Target video stream does NOT satisfy');
+    const err = {};
+    if (videoTrack && !validateVideoRequest(oldSub.info.type, videoTrack, err)) {
+      return Promise.reject('Target video stream does NOT satisfy:', (err && err.message));
     }
-    if (audioTrack && !validateAudioRequest(oldSub.info.type, audioTrack)) {
-      return Promise.reject('Target audio stream does NOT satisfy');
+    if (audioTrack && !validateAudioRequest(oldSub.info.type, audioTrack, err)) {
+      return Promise.reject('Target audio stream does NOT satisfy', (err && err.message));
     }
 
     return removeSubscription(subscriptionId)
