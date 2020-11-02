@@ -25,13 +25,7 @@ public:
 
     // Implements ProcessThread
     // Stop() has no effect on proxy
-    virtual void Stop() override
-    {
-        for (webrtc::Module* m : m_modules) {
-            DeRegisterModule(m);
-        }
-        m_modules.clear();
-    }
+    virtual void Stop() override {}
 
     // Implements ProcessThread
     // Call actual ProcessThread's WakeUp
@@ -52,7 +46,6 @@ public:
     virtual void RegisterModule(webrtc::Module* module, const rtc::Location& from) override
     {
         m_processThread->RegisterModule(module, from);
-        m_modules.insert(module);
     }
 
     // Implements ProcessThread
@@ -60,12 +53,11 @@ public:
     virtual void DeRegisterModule(webrtc::Module* module) override
     {
         m_processThread->DeRegisterModule(module);
-        m_modules.erase(module);
     }
 
 private:
     webrtc::ProcessThread* m_processThread;
-    std::unordered_set<webrtc::Module*> m_modules;
+    // std::unordered_set<webrtc::Module*> m_modules;
 };
 
 } // namespace rtc_adapter
