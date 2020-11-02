@@ -46,8 +46,8 @@
         "libdist": "lib",
         "addons": [
             {
-                "folder": "../video/videoTranscoder/videoAnalyzer_sw",
-                "name": "videoAnalyzer-sw"
+                "folder": "./videoGstPipeline",
+                "name": "videoAnalyzer-pipeline"
             },
             {
                 "folder": "../addons/mediaFrameMulticaster",
@@ -64,7 +64,12 @@
             {
                 "folder": "../addons/quicIO",
                 "name": "quicIO"
+            },
+            {
+                "folder": "../addons/resourceUtil",
+                "name": "resourceUtil"
             }
+
         ]
     },
     "start": "node . -U analytics"
