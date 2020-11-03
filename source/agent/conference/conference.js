@@ -705,8 +705,21 @@ var Conference = function (rpcClient, selfRpcId) {
     if (!participants[info.owner]) {
       return Promise.reject('Participant early left');
     }
-
     const subscription = new Subscription(id, mediaSpec, locality, info);
+    const pending = subscriptions[id];
+    if (pending) {
+      if (pending.isInConnecting) {
+        // Assign pending parameters settings
+        const tmp = new Subscription(id, pending.media, locality, info);
+        subscription.media.tracks.forEach(t1 => {
+          const mappedTrack = tmp.media.tracks
+            .find(t2 => (t1.type === t2.type && t1.mid === t2.mid));
+          t1.parameters = mappedTrack.parameters;
+        });
+      } else {
+        log.warn('Add duplicate subscription:', id);
+      }
+    }
     for (const from of subscription.froms()) {
       const streamId = streams[from] ? from : trackOwners[from];
       if (streams[streamId]) {
@@ -919,7 +932,7 @@ var Conference = function (rpcClient, selfRpcId) {
   // id - count
   const transports = {};
 
-  const translateRtcPubIfNeeded = function (streamId, pubInfo) {
+  const translateRtcPubIfNeeded = function (pubInfo) {
     if (pubInfo.tracks) {
       return pubInfo;
     }
@@ -932,7 +945,7 @@ var Conference = function (rpcClient, selfRpcId) {
     return rtcPubInfo;
   };
 
-  const translateRtcSubIfNeeded = function (subscriptionId, subDesc) {
+  const translateRtcSubIfNeeded = function (subDesc) {
     if (subDesc.tracks) {
       return subDesc;
     }
@@ -1003,7 +1016,7 @@ var Conference = function (rpcClient, selfRpcId) {
         if (!participants[participantId].transportId) {
           participants[participantId].transportId = streamId;
         }
-        const rtcPubInfo = translateRtcPubIfNeeded(streamId, pubInfo);
+        const rtcPubInfo = translateRtcPubIfNeeded(pubInfo);
         // Set formatPreference
         rtcPubInfo.tracks.forEach(track => {
           track.formatPreference = {optional: room_config.mediaIn[track.type]};
@@ -1232,7 +1245,7 @@ var Conference = function (rpcClient, selfRpcId) {
         if (!participants[participantId].transportId) {
           participants[participantId].transportId = subscriptionId;
         }
-        const rtcSubInfo = translateRtcSubIfNeeded(subscriptionId, subDesc);
+        const rtcSubInfo = translateRtcSubIfNeeded(subDesc);
         // Set formatPreference
         rtcSubInfo.tracks.forEach(track => {
           const source = streams[track.from].media.tracks.find(t => t.type === track.type);

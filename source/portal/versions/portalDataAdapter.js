@@ -93,7 +93,8 @@ const AdatperV1_1 = {
         subReq.media.tracks.push({
           type: 'video',
           mid: subReq.media.tracks.length.toString(),
-          from: data.media.video.from
+          from: data.media.video.from,
+          parameters: data.media.video.parameters,
         });
       }
       return subReq;
