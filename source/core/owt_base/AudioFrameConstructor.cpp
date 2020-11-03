@@ -70,9 +70,9 @@ class AudioLevel {
   uint8_t al_data:8;
 };
 
-AudioLevel* parseAudioLevel(std::shared_ptr<erizo::DataPacket> p) {
+std::unique_ptr<AudioLevel> parseAudioLevel(std::shared_ptr<erizo::DataPacket> p) {
     const erizo::RtpHeader* head = reinterpret_cast<const erizo::RtpHeader*>(p->data);
-    AudioLevel* ret = nullptr;
+    std::unique_ptr<AudioLevel> ret;
     if (head->getExtension()) {
         uint16_t totalExtLength = head->getExtLength();
         if (head->getExtId() == 0xBEDE) {
@@ -86,7 +86,8 @@ AudioLevel* parseAudioLevel(std::shared_ptr<erizo::DataPacket> p) {
                 extId = extByte >> 4;
                 extLength = extByte & 0x0F;
                 if (extId == kAudioLevelExtensionId) {
-                    ret = reinterpret_cast<AudioLevel*>(extBuffer);
+                    ret.reset(new AudioLevel());
+                    memcpy(ret.get(), extBuffer, sizeof(AudioLevel));
                     break;
                 }
                 extBuffer = extBuffer + extLength + 2;
@@ -120,7 +121,7 @@ int AudioFrameConstructor::deliverAudioData_(std::shared_ptr<erizo::DataPacket> 
     frame.timeStamp = head->getTimestamp();
     frame.additionalInfo.audio.isRtpPacket = 1;
 
-    AudioLevel* audioLevel = parseAudioLevel(audio_packet);
+    std::unique_ptr<AudioLevel> audioLevel = parseAudioLevel(audio_packet);
     if (audioLevel) {
         frame.additionalInfo.audio.audioLevel = audioLevel->getLevel();
         frame.additionalInfo.audio.voice = audioLevel->getVoice();
