@@ -95,6 +95,7 @@ var joinCluster = function (on_ok) {
         joinRetry: config.cluster.worker.join_retry,
         info: {
             ip: config.cluster.worker.ip,
+            port: config[myPurpose] ? config[myPurpose].port : undefined,
             purpose: myPurpose,
             state: 2,
             max_load: config.cluster.worker.load.max,

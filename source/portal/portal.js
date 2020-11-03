@@ -35,7 +35,7 @@ var Portal = function(spec, rpcReq) {
     }
 
     var calculateSignature = function (token) {
-      var toSign = token.tokenId + ',' + token.host,
+      var toSign = token.tokenId + ',' + token.host + ',' + token.webTransportUrl,
         signed = crypto.createHmac('sha256', token_key).update(toSign).digest('hex');
       return (new Buffer(signed)).toString('base64');
     };

@@ -39,7 +39,7 @@ var log = logger.getLogger('TokensResource');
 
 var getTokenString = function (id, token) {
     return dataAccess.token.key().then(function(serverKey) {
-        var toSign = id + ',' + token.host,
+        var toSign = id + ',' + token.host + ',' + token.webTransportUrl,
             hex = crypto.createHmac('sha256', serverKey).update(toSign).digest('hex'),
             signed = (new Buffer(hex)).toString('base64'),
 
@@ -47,6 +47,7 @@ var getTokenString = function (id, token) {
                 tokenId: id,
                 host: token.host,
                 secure: token.secure,
+                webTransportUrl: token.webTransportUrl,
                 signature: signed
             },
             tokenS = (new Buffer(JSON.stringify(tokenJ))).toString('base64');
@@ -100,7 +101,7 @@ var generateToken = function (currentRoom, authData, origin, callback) {
             return;
         }
 
-	if(ec.via_host !== '') {
+        if(ec.via_host !== '') {
             if(ec.via_host.indexOf('https') == 0) {
                 token.secure = true;
                 token.host = ec.via_host.substr(8);
@@ -120,11 +121,22 @@ var generateToken = function (currentRoom, authData, origin, callback) {
             token.host += ':' + ec.port;
         }
 
-        dataAccess.token.create(token, function(id) {
-            getTokenString(id, token)
-                .then((tokenS) => {
-                    callback(tokenS);
-                });
+        // TODO: Schedule QUIC agent and portal parallelly.
+        requestHandler.scheduleQuicAgent(token.code, origin, info => {
+            if (info !== 'timeout') {
+                let hostname = info.hostname;
+                if (!hostname) {
+                    hostname = info.ip;
+                }
+                // TODO: Rename "echo".
+                token.webTransportUrl = 'quic-transport://' + hostname + ':' + info.port + '/echo';
+            }
+            dataAccess.token.create(token, function(id) {
+                getTokenString(id, token)
+                    .then((tokenS) => {
+                        callback(tokenS);
+                    });
+            });
         });
     });
 };
