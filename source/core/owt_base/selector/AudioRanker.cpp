@@ -11,7 +11,7 @@ using std::string;
 using std::vector;
 
 // Treat streams without frames in a certain period as muted
-static constexpr uint64_t kNoFrameThreshold = 600;
+static constexpr uint64_t kNoFrameThresholdMs = 600;
 static constexpr int kRankChangeInterval = 200;
 
 DEFINE_LOGGER(AudioRanker, "owt.AudioRanker");
@@ -109,14 +109,14 @@ void AudioRanker::updateInput(std::string streamId, int level)
 {
     ELOG_TRACE("updateInput %s", streamId.c_str());
     m_service->service().dispatch([this, streamId, level]() {
-        privUpdateInput(streamId, level, true);
+        updateInputInternal(streamId, level, true);
     });
 }
 
-void AudioRanker::privUpdateInput(std::string streamId, int level, bool triggerChange)
+void AudioRanker::updateInputInternal(std::string streamId, int level, bool triggerChange)
 {
     // Put this in IO service
-    ELOG_TRACE("privUpdateInput %s %d", streamId.c_str(), level);
+    ELOG_TRACE("updateInputInternal %s %d", streamId.c_str(), level);
     if (m_processors.count(streamId) == 0) {
         return;
     }
@@ -140,7 +140,7 @@ void AudioRanker::privUpdateInput(std::string streamId, int level, bool triggerC
                 m_topK.erase(audioProc->iter());
                 audioProc->setLinkedOutput(nullptr);
                 audioProc->setIter(newIt);
-                ELOG_TRACE("triggerRankChange privUpdateInput %s remove in top", streamId.c_str());
+                ELOG_TRACE("triggerRankChange updateInputInternal %s remove in top", streamId.c_str());
                 if (triggerChange) {
                     triggerRankChange();
                 }
@@ -169,7 +169,7 @@ void AudioRanker::privUpdateInput(std::string streamId, int level, bool triggerC
                 m_topK.erase(it);
                 newIt->second->setLinkedOutput(nullptr);
                 newIt->second->setIter(newIt);
-                ELOG_TRACE("triggerRankChange privUpdateInput %s add in top", streamId.c_str());
+                ELOG_TRACE("triggerRankChange updateInputInternal %s add in top", streamId.c_str());
                 if (triggerChange) {
                     triggerRankChange();
                 }
@@ -184,7 +184,7 @@ void AudioRanker::privUpdateInput(std::string streamId, int level, bool triggerC
     }
 
     if (triggerChange && m_stashChange) {
-        ELOG_TRACE("triggerRankChange privUpdateInput stash");
+        ELOG_TRACE("triggerRankChange updateInputInternal stash");
         triggerRankChange();
     }
 }
@@ -215,7 +215,7 @@ void AudioRanker::triggerRankChange()
             vector<string> mutedStreamIds;
             for (auto& pair : m_topK) {
                 auto audioProc = pair.second;
-                if (tsNow - audioProc->lastUpdateTime() > kNoFrameThreshold) {
+                if (tsNow - audioProc->lastUpdateTime() > kNoFrameThresholdMs) {
                     mutedStreamIds.push_back(audioProc->streamId());
                 }
             }
@@ -224,7 +224,7 @@ void AudioRanker::triggerRankChange()
                 // Detect muted streams
                 for (string& mutedId : mutedStreamIds) {
                     ELOG_DEBUG("muted stream: %s", mutedId.c_str());
-                    privUpdateInput(mutedId, 0, false);
+                    updateInputInternal(mutedId, 0, false);
                 }
             }
         }
@@ -292,7 +292,7 @@ void AudioRanker::AudioLevelProcessor::onFrame(const Frame& frame)
         uint64_t tsNow = std::chrono::duration_cast<std::chrono::milliseconds>(
             std::chrono::steady_clock::now().time_since_epoch()).count();
 
-        // Less the original level, larger the volumn
+        // Less the original level, larger the volume
         int revLevel = 127 - frame.additionalInfo.audio.audioLevel;
         m_lastUpdateTime = tsNow;
         m_parent->updateInput(m_streamId, revLevel);

@@ -80,7 +80,7 @@ public:
     void updateInput(std::string streamId, int level);
 
 private:
-    void privUpdateInput(std::string streamId, int level, bool triggerChange = true);
+    void updateInputInternal(std::string streamId, int level, bool triggerChange = true);
     void triggerRankChange();
 
     bool m_detectMute;

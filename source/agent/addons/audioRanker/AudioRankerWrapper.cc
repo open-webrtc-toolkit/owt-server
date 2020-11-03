@@ -9,8 +9,8 @@ using namespace v8;
 
 Nan::Persistent<Function> AudioRanker::constructor;
 
-AudioRanker::AudioRanker() {};
-AudioRanker::~AudioRanker() {};
+AudioRanker::AudioRanker() {}
+AudioRanker::~AudioRanker() {}
 
 NAN_MODULE_INIT(AudioRanker::Init) {
   // Prepare constructor template
@@ -51,10 +51,7 @@ NAN_METHOD(AudioRanker::New) {
     obj->Wrap(info.This());
     info.GetReturnValue().Set(info.This());
   } else {
-    // const int argc = 1;
-    // v8::Local<v8::Value> argv[argc] = {info[0]};
-    // v8::Local<v8::Function> cons = Nan::New(constructor);
-    // info.GetReturnValue().Set(cons->NewInstance(argc, argv));
+    // Not construct call
   }
 }
 

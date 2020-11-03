@@ -53,9 +53,6 @@ int AudioFrameConstructor::deliverVideoData_(std::shared_ptr<erizo::DataPacket> 
 
 class AudioLevel {
  public:
-  uint32_t ext_info:8;
-  uint8_t al_data:8;
-
   inline uint8_t getId() {
     return ext_info >> 4;
   }
@@ -68,6 +65,9 @@ class AudioLevel {
   inline uint8_t getLevel() {
     return al_data & 0x7F;
   }
+ private:
+  uint32_t ext_info:8;
+  uint8_t al_data:8;
 };
 
 AudioLevel* parseAudioLevel(std::shared_ptr<erizo::DataPacket> p) {
