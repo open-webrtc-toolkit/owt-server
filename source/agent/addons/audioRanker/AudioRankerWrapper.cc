@@ -118,15 +118,14 @@ void AudioRanker::onRankChange(std::vector<std::pair<std::string, std::string>> 
    */
   jsonChange.str("");
   jsonChange << "[";
-  for (size_t i = 0; i + 1 < updates.size(); i++) {
+  for (size_t i = 0; i < updates.size(); i++) {
     jsonChange << "[\"" << updates[i].first << "\",\""
-        << updates[i].second << "\"],";
+        << updates[i].second << "\"]";
+    if (i + 1 < updates.size()) {
+      jsonChange << ",";
+    }
   }
-  if (!updates.empty()) {
-    auto lastPair = updates.back();
-    jsonChange << "[\"" << lastPair.first << "\",\""
-        << lastPair.second << "\"]]";
-  }
+  jsonChange << "]";
   this->jsonChanges.push(jsonChange.str());
   async_.data = this;
   uv_async_send(&async_);
