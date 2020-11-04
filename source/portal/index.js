@@ -232,6 +232,13 @@ var rpcPublic = {
     var notifyFail = (err) => {};
     socketio_server && socketio_server.notify(participantId, event, data).catch(notifyFail);
     callback('callback', 'ok');
+  },
+  validateWebTransportToken: (token, callback) => {
+    if(portal.validateWebTransportToken(token)) {
+      callback('callback','ok');
+    } else {
+      callback('callback', 'error');
+    }
   }
 };
 

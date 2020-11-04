@@ -9,6 +9,8 @@ var url = require('url');
 var crypto = require('crypto');
 var log = require('./logger').logger.getLogger('Portal');
 var dataAccess = require('./data_access');
+const { v4 : uuid } = require('uuid');
+const vsprintf = require("sprintf-js").vsprintf;
 
 var Portal = function(spec, rpcReq) {
   var that = {},
@@ -23,6 +25,38 @@ var Portal = function(spec, rpcReq) {
    * }}
    */
   var participants = {};
+
+  // Key is token, value is participant ID. An ID is only valid when the participant is online.
+  const webTransportIds = new Map();
+  const calculateSignatureForWebTransportToken = (token) => {
+      const toSign = vsprintf('%s,%s,%s,%s', [
+          token.tokenId,
+          token.transportId,
+          token.participantId,
+          token.issueTime
+      ]);
+      const signed = crypto.createHmac('sha256', token_key).update(toSign).digest('hex');
+      return (Buffer.from(signed)).toString('base64');
+  };
+  const generateWebTransportToken = (participantId) => {
+      const now = Date.now();
+      const token = {
+          tokenId : uuid().replace(/-/g, ''),
+          transportId: uuid().replace(/-/g, ''),
+          participantId : participantId,
+          issueTime : now,
+      };
+      token.signature = calculateSignatureForWebTransportToken(token);
+      return token;
+  };
+
+  that.validateWebTransportToken = (token) => {
+      // |participants| is better to be a map.
+      if (!participants.hasOwnProperty(token.participantId)) {
+          return false;
+      }
+      return calculateSignatureForWebTransportToken(token) == token.signature;
+  };
 
   that.updateTokenKey = function(tokenKey) {
     token_key = tokenKey;
@@ -78,13 +112,19 @@ var Portal = function(spec, rpcReq) {
           controller: room_controller
         };
 
+        let webTransportToken = undefined;
+        if (token.webTransportUrl) {
+            webTransportToken = (Buffer.from(JSON.stringify(generateWebTransportToken(participantId)))).toString('base64');
+        }
+
         return {
           tokenCode: tokenCode,
           data: {
             user: userInfo,
             role: role,
             permission: joinResult.permission,
-            room: joinResult.room
+            room: joinResult.room,
+            webTransportToken: webTransportToken
           }
         };
       });
