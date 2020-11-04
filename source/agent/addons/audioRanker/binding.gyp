@@ -1,18 +1,23 @@
 {
   'targets': [{
-    'target_name': 'mediaFrameMulticaster',
+    'target_name': 'audioRanker',
     'sources': [
       'addon.cc',
-      'MediaFrameMulticasterWrapper.cc',
-      '../../../core/owt_base/MediaFrameMulticaster.cpp',
+      'AudioRankerWrapper.cc',
+      '../../../core/owt_base/selector/AudioRanker.cpp',
       '../../../core/owt_base/MediaFramePipeline.cpp',
-      '../../../core/common/JobTimer.cpp',
+      '../../../core/common/IOService.cpp',
     ],
-    'include_dirs': ['$(CORE_HOME)/common',
-                      '$(CORE_HOME)/owt_base',
-                      "<!(node -e \"require('nan')\")"],
+    'include_dirs': [
+        "<!(node -e \"require('nan')\")",
+        '../common',
+        '../../../core/common/',
+        '../../../core/owt_base/',
+        '../../../core/owt_base/selector/',
+    ],
     'libraries': [
       '-lboost_thread',
+      '-llog4cxx',
     ],
     'conditions': [
       [ 'OS=="mac"', {

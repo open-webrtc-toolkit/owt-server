@@ -9,8 +9,7 @@
 
 #include <logger.h>
 #include <MediaDefinitions.h>
- #include <MediaDefinitionExtra.h>
-
+#include <MediaDefinitionExtra.h>
 
 namespace owt_base {
 
