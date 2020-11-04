@@ -1513,6 +1513,14 @@ var Conference = function (rpcClient, selfRpcId) {
   };
 
   const setLayout = function(streamId, layout) {
+    if (layout) {
+      layout.forEach(mapRegion => {
+        const streamId = mapRegion.stream;
+        if (streamId && !streams[streamId] && trackOwners[streamId]) {
+          mapRegion.stream = trackOwners[streamId];
+        }
+      });
+    }
     return new Promise((resolve, reject) => {
       roomController.setLayout(streams[streamId].info.label, layout, function(updated) {
         if (streams[streamId]) {

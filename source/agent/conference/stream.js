@@ -101,7 +101,7 @@ class Stream {
         m.tracks.push({
           type: 'audio',
           format: {codec, sampleRate, channelNum},
-          status: media.audio.status,
+          status: (media.audio.status || 'active'),
           source: media.audio.source
         });
       }
@@ -122,7 +122,7 @@ class Stream {
             bitrate,
             keyFrameInterval
           },
-          status: media.video.status,
+          status: (media.video.status || 'active'),
           source: media.video.source
         });
       }

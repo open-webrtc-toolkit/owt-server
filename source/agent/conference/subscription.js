@@ -68,7 +68,7 @@ class Subscription {
           type: 'audio',
           from: media.audio.from,
           format: media.audio.format,
-          status: media.audio.status,
+          status: (media.audio.status || 'active'),
         });
       }
       if (media.video) {
@@ -77,16 +77,15 @@ class Subscription {
           from: media.video.from,
           format: media.video.format,
           parameters: media.video.parameters,
-          status: media.video.status,
+          status: (media.video.status || 'active'),
         });
       }
       return m;
-    } else {
-      // Set default status
-      media.tracks.forEach(track => {
-        track.status = 'active';
-      });
     }
+    // Set default status
+    media.tracks.forEach(track => {
+      track.status = 'active';
+    });
     return media;
   }
 
