@@ -68,6 +68,7 @@
         '<(source_rel_dir)/core/rtc_adapter/VideoReceiveAdapter.cc',
         '<(source_rel_dir)/core/rtc_adapter/VideoSendAdapter.cc',
         '<(source_rel_dir)/core/rtc_adapter/AudioSendAdapter.cc',
+        '<(source_rel_dir)/core/rtc_adapter/thread/StaticTaskQueueFactory.cc',
         '<(source_rel_dir)/core/owt_base/SsrcGenerator.cc',
         '<(source_rel_dir)/core/owt_base/AudioUtilitiesNew.cpp',
         '<(source_rel_dir)/core/owt_base/TaskRunnerPool.cpp',
