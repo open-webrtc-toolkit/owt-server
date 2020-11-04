@@ -2167,7 +2167,12 @@ var Conference = function (rpcClient, selfRpcId) {
       result.analytics = subscriptions[subId].info.analytics;
     }
     subscriptions[subId].media.tracks.forEach(t => {
-      result.media[t.type] = {format: t.format, parameters: t.parameters, from: t.from};
+      result.media[t.type] = {
+        format: t.format,
+        parameters: t.parameters,
+        from: t.from,
+        status: t.status
+      };
     });
     return result;
   };

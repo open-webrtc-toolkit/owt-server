@@ -81,6 +81,11 @@ class Subscription {
         });
       }
       return m;
+    } else {
+      // Set default status
+      media.tracks.forEach(track => {
+        track.status = 'active';
+      });
     }
     return media;
   }

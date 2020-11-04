@@ -132,6 +132,10 @@ class Stream {
       media.tracks = media.tracks.filter(track => {
         return (track.type && track.format);
       });
+      // Set default status
+      media.tracks.forEach(track => {
+        track.status = 'active';
+      });
     }
     return media;
   }
@@ -214,7 +218,7 @@ class Stream {
           format: track.format,
           parameters: track.parameters,
           optional: track.optional,
-          status: track.active ? 'active' : 'inactive',
+          status: track.status,
           mid: track.mid,
           rid: track.rid,
         }))
