@@ -56,9 +56,9 @@ docker cp Release-vxxx.tgz gst-analytics:/home/
 docker exec -it gst-analytics bash
 ````
 
-### 2.2 Install on host machine<a name="dependencies2"></a>
+### 2.2 Install running dependencies on host machine<a name="dependencies2"></a>
 
-Besides basic OWT dependencies, analytics agent requires OpenVINO and GStreamer to do video analytics. Please refer to [dlstreamer_gst install guide](https://github.com/openvinotoolkit/dlstreamer_gst/wiki/Install-Guide#install-on-host-machine) to install OpenVINO, gst-video-analytics plugins and related dependencies.
+Besides basic OWT dependencies, analytics agent requires OpenVINO and GStreamer to do video analytics. Please download OpenVINO 2021.1.110 and dlstreamer_gst 1.2.1 version and refer to option 3 steps in [dlstreamer_gst install guide](https://github.com/openvinotoolkit/dlstreamer_gst/wiki/Install-Guide#install-on-host-machine) to install OpenVINO, gst-video-analytics plugins and related dependencies. 
 
 ### 2.3 Download models for analytics<a name="dependencies3"></a>
 
@@ -68,7 +68,10 @@ Download [open model zoo package](https://github.com/opencv/open_model_zoo/relea
 #tar zxf 2020.4.tar.gz
 #cd open_model_zoo-2020.4/tools/downloader
 ````
-Follow  Model Downloader guide (open_model_zoo-2020.4/tools/downloader/README.md) to install dependencies and then download models.
+Follow  Model Downloader guide (open_model_zoo-2020.4/tools/downloader/README.md) to install dependencies and then download models. To try OWT analytics sample plugins, you can follow steps below to only download the used model:
+````
+./downloader.py --name face-detection-retail-0004
+````
 
 ## 3 Test Pipelines Shipped with Open WebRTC Toolkit<a name="test"></a>
 
@@ -120,13 +123,20 @@ Start up MCU in Docker container:
 
 ````
 cd Release-vxxx
-cp /home/analyticspage/index.js apps/current_app/public/scripts/ 
-cp /home/analyticspage/rest-sample.js apps/current_app/public/scripts/
-cp /home/analyticspage/index.html apps/current_app/public/
 ./bin/init-all.sh --deps
 ./bin/start-all.sh
 ````
 
+Start up OWT in host machine:
+````
+cd Release-vxxx
+cp ${OWT_SOURCE_CODE}/docker/analyticspage/index.js apps/current_app/public/scripts/ 
+cp /${OWT_SOURCE_CODE}/docker/analyticspage/rest-sample.js apps/current_app/public/scripts/
+cp ${OWT_SOURCE_CODE}/docker/analyticspage/index.html apps/current_app/public/
+cp ${OWT_SOURCE_CODE}/docker/analyticspage/samplertcservice.js apps/current_app/public/
+./bin/init-all.sh --deps
+./bin/start-all.sh
+````
 
 ### 3.3 Test Media Analytics Pipelines<a name="test3"></a>
 
