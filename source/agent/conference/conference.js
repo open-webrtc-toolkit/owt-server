@@ -929,9 +929,6 @@ var Conference = function (rpcClient, selfRpcId) {
       });
   };
 
-  // id - count
-  const transports = {};
-
   const translateRtcPubIfNeeded = function (pubInfo) {
     if (pubInfo.tracks) {
       return pubInfo;
@@ -973,6 +970,14 @@ var Conference = function (rpcClient, selfRpcId) {
     if ((pubInfo.media.audio && !participants[participantId].isPublishPermitted('audio'))
         || (pubInfo.media.video && !participants[participantId].isPublishPermitted('video'))) {
       return callback('callback', 'error', 'unauthorized');
+    }
+    if (pubInfo.type === 'webrtc' && pubInfo.media.tracks) {
+      if ((pubInfo.media.tracks.find(t => t.type === 'audio')
+        && !participants[participantId].isPublishPermitted('audio'))
+        || (pubInfo.media.tracks.find(t => t.type === 'video')
+        && !participants[participantId].isPublishPermitted('video'))) {
+        return callback('callback', 'error', 'unauthorized');
+      }
     }
 
     if (pubInfo.type !== 'analytics' && room_config.inputLimit >= 0 && (room_config.inputLimit <= currentInputCount())) {
@@ -1217,6 +1222,14 @@ var Conference = function (rpcClient, selfRpcId) {
         || (subDesc.media.video && !participants[participantId].isSubscribePermitted('video'))) {
       return callback('callback', 'error', 'unauthorized');
     }
+    if (subDesc.type === 'webrtc' && subDesc.media.tracks) {
+      if ((subDesc.media.tracks.find(t => t.type === 'audio')
+        && !participants[participantId].isSubscribePermitted('audio'))
+        || (subDesc.media.tracks.find(t => t.type === 'video')
+        && !participants[participantId].isSubscribePermitted('video'))) {
+        return callback('callback', 'error', 'unauthorized');
+      }
+    }
 
     if (subscriptions[subscriptionId]) {
       return callback('callback', 'error', 'Subscription exists');
@@ -1458,6 +1471,9 @@ var Conference = function (rpcClient, selfRpcId) {
   };
 
   const getRegion = function(streamId, inView) {
+    if (streams[streamId].info.type === 'webrtc') {
+      streamId = getStreamTrack(streamId, 'video').id;
+    }
     return new Promise((resolve, reject) => {
       roomController.getRegion(streamId, inView, function(region) {
         resolve({region: region});
@@ -1469,6 +1485,9 @@ var Conference = function (rpcClient, selfRpcId) {
   };
 
   const setRegion = function(streamId, regionId, inView) {
+    if (streams[streamId].info.type === 'webrtc') {
+      streamId = getStreamTrack(streamId, 'video').id;
+    }
     return new Promise((resolve, reject) => {
       roomController.setRegion(streamId, regionId, inView, function() {
         resolve('ok');
@@ -1479,11 +1498,25 @@ var Conference = function (rpcClient, selfRpcId) {
     });
   };
 
+  // Convert trackId to streamId for webrtc stream in layout
+  const convertLayout = function (layout) {
+    if (layout) {
+      layout = layout.map(mapRegion => {
+        const streamId = mapRegion.stream;
+        return {
+          stream: streams[streamId] ? streamId : trackOwners[streamId],
+          region: mapRegion.region
+        };
+      });
+    }
+    return layout;
+  };
+
   const setLayout = function(streamId, layout) {
     return new Promise((resolve, reject) => {
       roomController.setLayout(streams[streamId].info.label, layout, function(updated) {
         if (streams[streamId]) {
-          streams[streamId].info.layout = updated;
+          streams[streamId].info.layout = convertLayout(updated);
           resolve('ok');
         } else {
           reject('stream early terminated');
@@ -1740,6 +1773,7 @@ var Conference = function (rpcClient, selfRpcId) {
     if (room_id === roomId && roomController) {
       var streamId = roomController.getMixedStream(view);
       if (streams[streamId]) {
+        layout = convertLayout(layout);
         streams[streamId].info.layout = layout;
         room_config.notifying.streamChange && sendMsg('room', 'all', 'stream', {status: 'update', id: streamId, data: {field: 'video.layout', value: layout}});
         callback('callback', 'ok');
@@ -2124,7 +2158,7 @@ var Conference = function (rpcClient, selfRpcId) {
   };
 
   const subscriptionAbstract = (subId) => {
-    var result = {id: subId, media: subscriptions[subId].media};
+    var result = {id: subId, media: {}};
     if (subscriptions[subId].info.type === 'streaming') {
       result.url = subscriptions[subId].info.url;
     } else if (subscriptions[subId].info.type === 'recording') {
@@ -2132,6 +2166,9 @@ var Conference = function (rpcClient, selfRpcId) {
     } else if (subscriptions[subId].info.type === 'analytics') {
       result.analytics = subscriptions[subId].info.analytics;
     }
+    subscriptions[subId].media.tracks.forEach(t => {
+      result.media[t.type] = {format: t.format, parameters: t.parameters, from: t.from};
+    });
     return result;
   };
 
