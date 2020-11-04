@@ -44,6 +44,9 @@ module.exports.load = () => {
       config.internal.ip_address = addr.ip;
     }
 
+    config.mix = config.mix || {};
+    config.mix.top_k = config.mix.top_k || 0;
+
     return config;
   } catch (e) {
     console.error('Parsing config error on line ' + e.line + ', column ' + e.column + ': ' + e.message);

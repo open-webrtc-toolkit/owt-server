@@ -27,6 +27,7 @@
         "folders": {
             "audio": [
                 "index.js",
+                "SelectiveMixer.js",
                 "../connections.js",
                 "../InternalConnectionFactory.js"
             ]
@@ -54,6 +55,10 @@
             {
                 "folder": "../addons/quicIO",
                 "name": "quicIO"
+            },
+            {
+                "folder": "../addons/audioRanker",
+                "name": "audioRanker"
             }
         ]
     },

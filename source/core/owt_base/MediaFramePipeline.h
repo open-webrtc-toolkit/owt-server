@@ -66,6 +66,8 @@ struct AudioFrameSpecificInfo {
     uint32_t nbSamples;
     uint32_t sampleRate;
     uint8_t channels;
+    uint8_t voice;
+    uint8_t audioLevel;
 };
 
 typedef union MediaSpecInfo {
