@@ -21,6 +21,7 @@ const {
   isVideoFmtCompatible,
   calcResolution,
   calcBitrate,
+  isResolutionEqual,
 } = require('./formatUtil');
 
 const {
@@ -1112,10 +1113,6 @@ var Conference = function (rpcClient, selfRpcId) {
       return true;
     }
     return false;
-  };
-
-  const isResolutionEqual = (r1, r2) => {
-    return r1 && r2 && (r1.width === r2.width) && (r1.height === r2.height);
   };
 
   const isResolutionAvailable = (streamVideo, resolution) => {

@@ -95,6 +95,10 @@ const calcBitrate = (x, baseBitrate) => {
   return Number(x.substring(1)) * baseBitrate;
 };
 
+const isResolutionEqual = (r1, r2) => {
+  return r1 && r2 && (r1.width === r2.width) && (r1.height === r2.height);
+};
+
 module.exports = {
   isAudioFmtEqual,
   isVideoFmtEqual,
@@ -103,4 +107,5 @@ module.exports = {
   isVideoFmtAcceptable,
   calcResolution,
   calcBitrate,
+  isResolutionEqual,
 };
