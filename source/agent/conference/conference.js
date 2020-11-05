@@ -600,7 +600,13 @@ var Conference = function (rpcClient, selfRpcId) {
     }
 
     var isReadded = !!(streams[id] && !streams[id].isInConnecting);
-    var origin = streams[id].info.origin;
+    var origin = {isp:"isp", region:"region"};
+    if (streams[id]) {
+      origin = streams[id].info.origin;
+    } else if (info.analytics) {
+      var streamFrom = subscriptions[info.analytics].media.video.from;
+      origin = streams[streamFrom].info.origin;
+    }  
     info.origin = origin;
     return new Promise((resolve, reject) => {
       roomController && roomController.publish(info.owner, id, locality, media, info.type, origin, function() {
