@@ -387,8 +387,7 @@ var Conference = function (rpcClient, selfRpcId) {
                     onLocalSessionSignaling(owner, transportId, message);
                   });
                   rtcController.on('session-established', (rtcInfo) => {
-                    // rtcInfo = [{operationId, direction, mid, rid, type, format, active}]
-                    log.warn('New RTC session:', rtcInfo.id);
+                    log.debug('New RTC session:', rtcInfo.id);
                     const sessionId = rtcInfo.id;
                     const media = { tracks: rtcInfo.tracks };
                     let direction = rtcInfo.direction;
@@ -403,13 +402,10 @@ var Conference = function (rpcClient, selfRpcId) {
                   });
 
                   rtcController.on('session-updated', (sessionId, data) => {
-                    // data = { direction: track.direction, owner }
-                    // onSessionAborted(data.owner, trackId, data.direction, 'Session Removed');
                     log.warn('Unexpected event session-updated');
                   });
 
                   rtcController.on('session-aborted', (sessionId, data) => {
-                    // data = { direction: track.direction, owner, reason }
                     onSessionAborted(data.owner, sessionId, data.direction, data.reason);
                   });
 
@@ -1018,9 +1014,6 @@ var Conference = function (rpcClient, selfRpcId) {
       var origin = participants[participantId].getOrigin();
       var format_preference;
       if (pubInfo.type === 'webrtc') {
-        if (!participants[participantId].transportId) {
-          participants[participantId].transportId = streamId;
-        }
         const rtcPubInfo = translateRtcPubIfNeeded(pubInfo);
         // Set formatPreference
         rtcPubInfo.tracks.forEach(track => {
@@ -1255,9 +1248,6 @@ var Conference = function (rpcClient, selfRpcId) {
     } else {
       var format_preference;
       if (subDesc.type === 'webrtc') {
-        if (!participants[participantId].transportId) {
-          participants[participantId].transportId = subscriptionId;
-        }
         const rtcSubInfo = translateRtcSubIfNeeded(subDesc);
         // Set formatPreference
         rtcSubInfo.tracks.forEach(track => {

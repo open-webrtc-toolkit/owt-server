@@ -121,6 +121,9 @@ const AdatperV1_1 = {
       }
       log.debug('converted stream data:', JSON.stringify(data));
     }
+    if (evt === 'progress') {
+      delete data.sessionId;
+    }
     return {evt, data};
   },
   _convertStream: function (stream) {

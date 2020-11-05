@@ -19,18 +19,6 @@ const cipher = require('../cipher');
 const log = logger.getLogger('WrtcConnection');
 
 const { Connection } = require('./connection');
-// const {
-//   // processOffer,
-//   getAudioSsrc,
-//   getVideoSsrcList,
-//   getSimulcastInfo,
-//   getLegacySimulcastInfo,
-//   hasCodec,
-//   getExtId,
-//   filterExt,
-//   addAudioSSRC,
-//   addVideoSSRC,
-// } = require('./sdp');
 
 const { SdpInfo } = require('./SdpInfo.js');
 

@@ -18,6 +18,9 @@
     "Conference": "INFO",
     "AccessController": "INFO",
     "RoomController": "INFO",
+    "RtcController": "INFO",
+    "Stream": "INFO",
+    "Subscription": "INFO",
     "WorkingAgent": "INFO",
     "Connections": "INFO",
     "InternalConnectionFactory": "INFO"

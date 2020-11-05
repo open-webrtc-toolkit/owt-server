@@ -98,10 +98,9 @@ class Operation {
  * 'transport-aborted': (id, reason)
  * 'transport-signaling': (id, {type, ... })
  * Events for conference.js
- * trackData = {id, operationId, direction, mid, rid, type, format, active, from}
  * 'session-established': (id, Operation)
  * 'session-updated': (id, Operation)
- * 'session-aborted': (id, {operationId, direction, reason})
+ * 'session-aborted': (id, {owner, direction, reason})
  */
 class RtcController extends EventEmitter {
 
@@ -117,15 +116,15 @@ class RtcController extends EventEmitter {
     this.roomRpcId = roomRpcId;
     this.rpcReq = rpcReq;
     this.clusterRpcId = clusterRpcId;
-    // Map {transportId => {owner, origin, locality, state}}
+    // Map {transportId => Transport}
     this.transports = new Map();
-    // Map {operationId => {transportId, direction, tracks, state, promise, legacy}}
+    // Map {operationId => Operation}
     this.operations = new Map();
-    // Map {publicTrackId => trackData}
+    // Map {publicTrackId => Track}
     this.tracks = new Map();
   }
 
-  // Return {owner, origin, locality, state}
+  // Return Transport
   getTransport(transportId) {
     return this.transports.get(transportId);
   }
@@ -265,7 +264,7 @@ class RtcController extends EventEmitter {
   }
 
   // tracks = [ {mid, type, formatPreference, from} ]
-  // return Promise
+  // Return Promise
   initiate(ownerId, sessionId, direction, origin, {transportId, tracks, legacy}) {
     log.debug(`initiate, ownerId:${ownerId}, sessionId:${sessionId}, origin:${origin}, ` +
       `transportId:${transportId}, tracks:${JSON.stringify(tracks)}, legacy:${legacy}`);
@@ -291,7 +290,7 @@ class RtcController extends EventEmitter {
     });
   }
 
-  // return Promise
+  // Return Promise
   terminate(sessionId, direction, reason) {
     log.debug(`terminate, sessionId: ${sessionId} direction: ${direction}, ${reason}`);
 
