@@ -123,7 +123,7 @@ const AdatperV1_1 = {
     }
     if (evt === 'progress') {
       if (data.sessionId) {
-        return {};
+        data = {id: data.id};
       }
     }
     return {evt, data};
