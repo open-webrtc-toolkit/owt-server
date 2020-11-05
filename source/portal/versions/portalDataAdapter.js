@@ -122,7 +122,9 @@ const AdatperV1_1 = {
       log.debug('converted stream data:', JSON.stringify(data));
     }
     if (evt === 'progress') {
-      delete data.sessionId;
+      if (data.sessionId) {
+        return {};
+      }
     }
     return {evt, data};
   },
