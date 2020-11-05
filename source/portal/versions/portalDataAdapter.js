@@ -122,8 +122,8 @@ const AdatperV1_1 = {
       log.debug('converted stream data:', JSON.stringify(data));
     }
     if (evt === 'progress') {
-      if (data.sessionId) {
-        data = {id: data.id};
+      if (data.sessionId && data.status === 'ready') {
+        return {};
       }
     }
     return {evt, data};
