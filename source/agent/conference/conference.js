@@ -1516,8 +1516,8 @@ var Conference = function (rpcClient, selfRpcId) {
     if (layout) {
       layout.forEach(mapRegion => {
         const streamId = mapRegion.stream;
-        if (streamId && !streams[streamId] && trackOwners[streamId]) {
-          mapRegion.stream = trackOwners[streamId];
+        if (streams[streamId] && streams[streamId].info.type === 'webrtc') {
+          mapRegion.stream = getStreamTrack(streamId, 'video').id;
         }
       });
     }
@@ -1802,14 +1802,8 @@ var Conference = function (rpcClient, selfRpcId) {
         }
       });
 
-      var input = undefined;
-      for (var id in streams) {
-        if (streams[id].type === 'forward' && id === activeInputStream) {
-          input = id;
-          break;
-        }
-      }
-      if (input) {
+      var input = streams[activeInputStream] ? activeInputStream : trackOwners[activeInputStream];
+      if (input && streams[input]) {
         for (var id in streams) {
           if (streams[id].type === 'mixed' && streams[id].info.label === view) {
             if (streams[id].info.activeInput !== input) {
