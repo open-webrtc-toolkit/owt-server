@@ -15,7 +15,6 @@
       '../../../core/common',
       '../../../core/owt_base',
       '../../../../third_party/licode/erizo/src/erizo',
-      '../../../../third_party/licode/erizo/src/erizo/rtp',
     ],
     'libraries': [
       '-llog4cxx',
