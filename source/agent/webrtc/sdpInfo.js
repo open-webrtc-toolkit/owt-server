@@ -1,4 +1,4 @@
-// Copyright (C) <2019> Intel Corporation
+// Copyright (C) <2020> Intel Corporation
 //
 // SPDX-License-Identifier: Apache-2.0
 
@@ -9,8 +9,9 @@ const logger = require('../logger').logger;
 const log = logger.getLogger('SdpInfo');
 
 const {
-  filterH264
-} = require('./sdp');
+  filterH264,
+  filterVP9,
+} = require('./profileFilter');
 
 const TransportCCUri =
   'http://www.ietf.org/id/draft-holmer-rmcat-transport-wide-cc-extensions-01';
@@ -74,14 +75,14 @@ class SdpInfo {
   }
 
   filterAudioPayload(mid, preference) {
-    var preferred = preference.preferred;
-    var optionals = preference.optional || [];
-    var finalFmt = null;
-    var selectedPayload = -1;
-    var reservedCodecs = ['telephone-event', 'cn'];
-    var relatedPayloads = new Set();
-    var rtpMap = new Map();
-    var payloadOrder = new Map();
+    const preferred = preference.preferred;
+    const optionals = preference.optional || [];
+    let finalFmt = null;
+    let selectedPayload = -1;
+    const reservedCodecs = ['telephone-event', 'cn'];
+    const relatedPayloads = new Set();
+    const rtpMap = new Map();
+    const payloadOrder = new Map();
 
     const isAudioMatchRtp = (fmt, rtp) => {
       if (fmt && fmt.codec === rtp.codec.toLowerCase()) {
@@ -162,15 +163,17 @@ class SdpInfo {
   }
 
   filterVideoPayload(mid, preference) {
-    var finalPrf = filterH264(this.obj, preference, mid);
-    var finalFmt = null;
-    var preferred = preference.preferred;
-    var optionals = preference.optional || [];
-    var selectedPayload = -1;
-    var relatedPayloads = new Set();
-    var reservedCodecs = ['red', 'ulpfec'];
-    var codecMap = new Map();
-    var payloadOrder = new Map();
+    // Remove unsupported profiles
+    filterVP9(this.obj, preference, mid);
+    const finalPrf = filterH264(this.obj, preference, mid);
+    let finalFmt = null;
+    let selectedPayload = -1;
+    const preferred = preference.preferred;
+    const optionals = preference.optional || [];
+    const relatedPayloads = new Set();
+    const reservedCodecs = ['red', 'ulpfec'];
+    const codecMap = new Map();
+    const payloadOrder = new Map();
 
     const mediaInfo = this.media(mid);
     if (mediaInfo && mediaInfo.type == 'video') {
@@ -506,45 +509,3 @@ class SdpInfo {
 }
 
 exports.SdpInfo = SdpInfo;
-
-/*
-exports.addAudioSSRC = function (sdp, ssrc) {
-  const sdpObj = transform.parse(sdp);
-  if (sdpObj.msidSemantic) {
-    const msid = sdpObj.msidSemantic.token;
-    for (const media of sdpObj.media) {
-      if (media.type == 'audio') {
-        if (!media.ssrcs) {
-          media.ssrcs = [
-            {id: ssrc, attribute: 'cname', value: 'o/i14u9pJrxRKAsu'},
-            {id: ssrc, attribute: 'msid', value: `${msid} a0`},
-            {id: ssrc, attribute: 'mslabel', value: msid},
-            {id: ssrc, attribute: 'label', value: `${msid}a0`},
-          ];
-        }
-      }
-    }
-  }
-  return transform.write(sdpObj);
-};
-
-exports.addVideoSSRC = function (sdp, ssrc) {
-  const sdpObj = transform.parse(sdp);
-  if (sdpObj.msidSemantic) {
-    const msid = sdpObj.msidSemantic.token;
-    for (const media of sdpObj.media) {
-      if (media.type == 'video') {
-        if (!media.ssrcs) {
-          media.ssrcs = [
-            {id: ssrc, attribute: 'cname', value: 'o/i14u9pJrxRKAsu'},
-            {id: ssrc, attribute: 'msid', value: `${msid} v0`},
-            {id: ssrc, attribute: 'mslabel', value: msid},
-            {id: ssrc, attribute: 'label', value: `${msid}v0`},
-          ];
-        }
-      }
-    }
-  }
-  return transform.write(sdpObj);
-};
-*/
