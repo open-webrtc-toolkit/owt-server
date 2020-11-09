@@ -20,7 +20,7 @@ const log = logger.getLogger('WrtcConnection');
 
 const { Connection } = require('./connection');
 
-const { SdpInfo } = require('./SdpInfo.js');
+const { SdpInfo } = require('./sdpInfo.js');
 
 
 
