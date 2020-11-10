@@ -6,10 +6,15 @@
 #include "AudioUtilitiesNew.h"
 
 #include <rtputils.h>
+#include <rtp/RtpHeaders.h>
+
 
 namespace owt_base {
 
 DEFINE_LOGGER(AudioFrameConstructor, "owt.AudioFrameConstructor");
+
+// TODO: Get the extension ID from SDP
+constexpr uint8_t kAudioLevelExtensionId = 1;
 
 AudioFrameConstructor::AudioFrameConstructor()
     : m_enabled(true)
@@ -47,6 +52,53 @@ int AudioFrameConstructor::deliverVideoData_(std::shared_ptr<erizo::DataPacket> 
     return 0;
 }
 
+class AudioLevel {
+ public:
+  inline uint8_t getId() {
+    return ext_info >> 4;
+  }
+  inline uint8_t getLength() {
+    return (ext_info & 0x0F);
+  }
+  inline bool getVoice() {
+    return (al_data & 0x80) != 0;
+  }
+  inline uint8_t getLevel() {
+    return al_data & 0x7F;
+  }
+ private:
+  uint32_t ext_info:8;
+  uint8_t al_data:8;
+};
+
+std::unique_ptr<AudioLevel> parseAudioLevel(std::shared_ptr<erizo::DataPacket> p) {
+    const erizo::RtpHeader* head = reinterpret_cast<const erizo::RtpHeader*>(p->data);
+    std::unique_ptr<AudioLevel> ret;
+    if (head->getExtension()) {
+        uint16_t totalExtLength = head->getExtLength();
+        if (head->getExtId() == 0xBEDE) {
+            char* extBuffer = (char*)&head->extensions;  // NOLINT
+            uint8_t extByte = 0;
+            uint16_t currentPlace = 1;
+            uint8_t extId = 0;
+            uint8_t extLength = 0;
+            while (currentPlace < (totalExtLength*4)) {
+                extByte = (uint8_t)(*extBuffer);
+                extId = extByte >> 4;
+                extLength = extByte & 0x0F;
+                if (extId == kAudioLevelExtensionId) {
+                    ret.reset(new AudioLevel());
+                    memcpy(ret.get(), extBuffer, sizeof(AudioLevel));
+                    break;
+                }
+                extBuffer = extBuffer + extLength + 2;
+                currentPlace = currentPlace + extLength + 2;
+            }
+        }
+    }
+    return ret;
+}
+
 int AudioFrameConstructor::deliverAudioData_(std::shared_ptr<erizo::DataPacket> audio_packet)
 {
     if (audio_packet->length <= 0)
@@ -69,6 +121,15 @@ int AudioFrameConstructor::deliverAudioData_(std::shared_ptr<erizo::DataPacket> 
     frame.length = audio_packet->length;
     frame.timeStamp = head->getTimestamp();
     frame.additionalInfo.audio.isRtpPacket = 1;
+
+    std::unique_ptr<AudioLevel> audioLevel = parseAudioLevel(audio_packet);
+    if (audioLevel) {
+        frame.additionalInfo.audio.audioLevel = audioLevel->getLevel();
+        frame.additionalInfo.audio.voice = audioLevel->getVoice();
+        ELOG_DEBUG("Has audio level extension %u, %d", audioLevel->getLevel(), audioLevel->getVoice());
+    } else {
+        ELOG_DEBUG("No audio level extension");
+    }
 
     if (m_enabled) {
         deliverFrame(frame);

@@ -16,6 +16,7 @@
     "WorkingNode": "INFO",
     "NodeManager": "INFO",
     "AudioNode": "INFO",
+    "SelectiveMixer": "INFO",
     "WorkingAgent": "INFO",
     "Connections": "INFO",
     "InternalConnectionFactory": "INFO"

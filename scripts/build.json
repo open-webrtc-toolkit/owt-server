@@ -8,6 +8,7 @@
             "logger",
             "media-frame-multicaster",
             "audio",
+            "audio-ranker",
             "webrtc",
             "avstream",
             "gst-pipeline",
@@ -22,6 +23,7 @@
             "logger",
             "media-frame-multicaster",
             "audio",
+            "audio-ranker",
             "webrtc",
             "avstream",
             "sip"
@@ -96,6 +98,12 @@
     },
     "logger" : {
         "path" : "source/agent/addons/logger"
+    },
+    "audio-ranker" : {
+        "path" : "source/agent/addons/audioRanker"
+    },
+    "audio-ranker-test" : {
+        "path" : "source/agent/addons/audioRanker/test"
     }
     ,
     "quicIO" : {
