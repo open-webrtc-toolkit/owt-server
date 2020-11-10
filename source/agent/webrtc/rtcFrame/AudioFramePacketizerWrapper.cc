@@ -37,8 +37,18 @@ void AudioFramePacketizer::New(const FunctionCallbackInfo<Value>& args) {
   Isolate* isolate = Isolate::GetCurrent();
   HandleScope scope(isolate);
 
+  std::string mid;
+  int midExtId = -1;
+  if (args.Length() == 2) {
+    v8::String::Utf8Value param0(Nan::To<v8::String>(args[0]).ToLocalChecked());
+    mid = std::string(*param0);
+    midExtId = args[1]->IntegerValue();
+  }
   AudioFramePacketizer* obj = new AudioFramePacketizer();
-  obj->me = new owt_base::AudioFramePacketizer();
+  owt_base::AudioFramePacketizer::Config config;
+  config.mid = mid;
+  config.midExtId = midExtId;
+  obj->me = new owt_base::AudioFramePacketizer(config);
   obj->dest = obj->me;
 
   obj->Wrap(args.This());

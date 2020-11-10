@@ -29,8 +29,9 @@
                 "index.js",
                 "wrtcConnection.js",
                 "connection.js",
-                "sdp.js",
                 "mediaConfig.js",
+                "profileFilter.js",
+                "sdpInfo.js",
                 "../connections.js",
                 "../InternalConnectionFactory.js"
             ],
