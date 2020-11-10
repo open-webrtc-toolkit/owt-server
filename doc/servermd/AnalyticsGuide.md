@@ -131,7 +131,7 @@ Start up OWT in host machine:
 ````
 cd Release-vxxx
 cp ${OWT_SOURCE_CODE}/docker/analyticspage/index.js apps/current_app/public/scripts/ 
-cp /${OWT_SOURCE_CODE}/docker/analyticspage/rest-sample.js apps/current_app/public/scripts/
+cp ${OWT_SOURCE_CODE}/docker/analyticspage/rest-sample.js apps/current_app/public/scripts/
 cp ${OWT_SOURCE_CODE}/docker/analyticspage/index.html apps/current_app/public/
 cp ${OWT_SOURCE_CODE}/docker/analyticspage/samplertcservice.js apps/current_app/public/
 ./bin/init-all.sh --deps
