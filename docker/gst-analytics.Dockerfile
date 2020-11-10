@@ -13,6 +13,7 @@ WORKDIR /home
 # COMMON BUILD TOOLS
 RUN DEBIAN_FRONTEND=noninteractive apt-get update && \
     apt-get install -y -q --no-install-recommends \
+        ca-certificates \
         cmake \
         build-essential \
         automake \
@@ -104,7 +105,7 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update && \
     rm -rf /var/lib/apt/lists/* && \
     pip3 install --no-cache-dir meson ninja
 
-ARG PACKAGE_ORIGIN="Intel (R) GStreamer Distribution"
+ARG PACKAGE_ORIGIN="https://gstreamer.freedesktop.org"
 
 ARG PREFIX=/usr
 ARG LIBDIR=/usr/lib/x86_64-linux-gnu
@@ -503,7 +504,7 @@ RUN  wget -O - ${NODE_REPO} | tar -xz && ls && \
 FROM base AS dldt-binaries
 WORKDIR /home
 
-ARG OpenVINO_VERSION=2020.4.287
+ARG OpenVINO_VERSION=2021.1.110
 
 RUN DEBIAN_FRONTEND=noninteractive apt-get update && apt-get install -y -q --no-install-recommends cpio
 
@@ -519,30 +520,69 @@ RUN tar -xvzf l_openvino_toolkit_p_${OpenVINO_VERSION}.tgz && \
 ARG IE_DIR=/home/build/opt/intel/dldt/inference-engine
 
 RUN mkdir -p ${IE_DIR}/include && \
-    cp -r /opt/intel/openvino/inference_engine/include/* ${IE_DIR}/include && \
+    cp -r /opt/intel/openvino_2021/inference_engine/include/* ${IE_DIR}/include && \
 
     mkdir -p ${IE_DIR}/lib/intel64 && \
-    cp -r /opt/intel/openvino/inference_engine/lib/intel64/* ${IE_DIR}/lib/intel64 && \
+    cp -r /opt/intel/openvino_2021/inference_engine/lib/intel64/* ${IE_DIR}/lib/intel64 && \
 
     mkdir -p ${IE_DIR}/share && \
-    cp -r  /opt/intel/openvino/inference_engine/share/* ${IE_DIR}/share/ && \
+    cp -r  /opt/intel/openvino_2021/inference_engine/share/* ${IE_DIR}/share/ && \
 
     mkdir -p ${IE_DIR}/external/ && \
-    cp -r /opt/intel/openvino/inference_engine/external/* ${IE_DIR}/external && \
+    cp -r /opt/intel/openvino_2021/inference_engine/external/* ${IE_DIR}/external && \
 
     mkdir -p ${IE_DIR}/external/opencv && \
-    cp -r /opt/intel/openvino/opencv/* ${IE_DIR}/external/opencv/ && \
+    cp -r /opt/intel/openvino_2021/opencv/* ${IE_DIR}/external/opencv/ && \
 
     mkdir -p ${IE_DIR}/external/ngraph && \
-    cp -r /opt/intel/openvino/deployment_tools/ngraph/* ${IE_DIR}/external/ngraph/
+    cp -r /opt/intel/openvino_2021/deployment_tools/ngraph/* ${IE_DIR}/external/ngraph/
 
 
 FROM ${dldt} AS dldt-build
 
 FROM ${gst} AS gst-build
 
+FROM ubuntu:18.04 AS owt-build
+LABEL Description="This is the base image for GSTREAMER & DLDT Ubuntu 18.04 LTS"
+LABEL Vendor="Intel Corporation"
+WORKDIR /root
 
-FROM ubuntu:18.04
+# Prerequisites
+RUN apt-get update && apt-get install -y -q --no-install-recommends git make gcc g++ libglib2.0-dev pkg-config libboost-regex-dev libboost-thread-dev libboost-system-dev liblog4cxx-dev rabbitmq-server mongodb openjdk-8-jre curl libboost-test-dev nasm yasm gyp libx11-dev libkrb5-dev intel-gpu-tools m4 autoconf libtool automake cmake libfreetype6-dev sudo wget
+
+
+# Install
+COPY --from=dldt-build /home/build /
+COPY --from=gst-build /home/build /
+
+WORKDIR /home
+ARG OWTSERVER_REPO=https://github.com/open-webrtc-toolkit/owt-server.git
+ARG SERVER_PATH=/home/owt-server
+ARG OWT_SDK_REPO=https://github.com/open-webrtc-toolkit/owt-client-javascript.git
+ARG OWT_BRANCH="master"
+ENV LD_LIBRARY_PATH=/opt/intel/dldt/inference-engine/external/tbb/lib:/opt/intel/dldt/inference-engine/lib/intel64/
+
+# Build OWT specific modules
+
+# 1. Clone OWT server source code 
+# 2. Clone licode source code and patch
+# 3. Clone webrtc source code and patch
+RUN git config --global user.email "you@example.com" && \
+    git config --global user.name "Your Name" && \
+    git clone -b ${OWT_BRANCH} ${OWTSERVER_REPO} && \
+    cd /home/owt-server && ./scripts/installDepsUnattended.sh --disable-nonfree 
+
+    # Get js client sdk for owt
+RUN cd /home && git clone ${OWT_SDK_REPO} && \
+    cd owt-client-javascript/scripts && npm install -g grunt-cli node-gyp@6.1.0 && npm install && grunt
+ 
+    #Build and pack owt
+RUN cd ${SERVER_PATH} && ./scripts/build.js -t mcu -r -c && \
+    ./scripts/pack.js -t all --install-module --no-pseudo --with-ffmpeg -f -p /home/owt-client-javascript/dist/samples/conference
+
+
+
+FROM ubuntu:18.04 AS owt-run
 LABEL Description="This is the base image for GSTREAMER & DLDT Ubuntu 18.04 LTS"
 LABEL Vendor="Intel Corporation"
 WORKDIR /root
@@ -579,6 +619,7 @@ RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y -q --no-
 # Install
 COPY --from=dldt-build /home/build /
 COPY --from=gst-build /home/build /
+COPY --from=owt-build /home/owt-server/dist /home/owt
 
 ARG LIBDIR=/usr/lib/x86_64-linux-gnu
 
@@ -604,20 +645,21 @@ ENV LIBVA_DRIVERS_PATH=/opt/intel/mediasdk/lib64
 ENV LIBVA_DRIVER_NAME=iHD
 ENV GST_VAAPI_ALL_DRIVERS=1
 ENV DISPLAY=:0.0
-ENV LD_LIBRARY_PATH=/usr/lib/gst-video-analytics:/opt/intel/dldt/inference-engine/external/hddl/lib
+ENV LD_LIBRARY_PATH=/opt/intel/dldt/inference-engine/external/hddl/lib
 ENV HDDL_INSTALL_DIR=/opt/intel/dldt/inference-engine/external/hddl
 
 ARG GIT_INFO
 ARG SOURCE_REV
-ARG DLSTREAM_SOURCE_REPO=https://github.com/openvinotoolkit/dlstreamer_gst.git
+ARG DLSTREAMER_VERSION=1.2.1
+ARG DLSTREAM_SOURCE_REPO=https://github.com/openvinotoolkit/dlstreamer_gst/archive/v${DLSTREAMER_VERSION}.tar.gz
 
-COPY analyticspage /home/
+COPY analyticspage /home/analyticspage
 ARG ENABLE_PAHO_INSTALLATION=false
 ARG ENABLE_RDKAFKA_INSTALLATION=false
 ARG BUILD_TYPE=Release
 ARG EXTERNAL_GVA_BUILD_FLAGS
 
-RUN git clone ${DLSTREAM_SOURCE_REPO} && mv dlstreamer_gst gst-video-analytics \
+RUN wget ${DLSTREAM_SOURCE_REPO} && tar zxf v${DLSTREAMER_VERSION}.tar.gz &&  mv dlstreamer_gst-${DLSTREAMER_VERSION} gst-video-analytics \
         && mkdir -p gst-video-analytics/build \
         && pwd && ls gst-video-analytics \
         && cd gst-video-analytics/build \
@@ -627,16 +669,16 @@ RUN git clone ${DLSTREAM_SOURCE_REPO} && mv dlstreamer_gst gst-video-analytics \
         -DVERSION_PATCH=${SOURCE_REV} \
         -DGIT_INFO=${GIT_INFO} \
         -DBUILD_SHARED_LIBS=ON \
-        -DENABLE_PAHO_INSTALLATION=${ENABLE_PAHO_INSTALLATION} \
-        -DENABLE_RDKAFKA_INSTALLATION=${ENABLE_RDKAFKA_INSTALLATION} \
-        -DHAVE_VAAPI=ON \
-        -DENABLE_VAS_TRACKER=ON \
         ${EXTERNAL_GVA_BUILD_FLAGS} \
         .. \
         && make -j $(nproc) \
         && make install \
-        && echo "/usr/lib/gst-video-analytics" >> /etc/ld.so.conf.d/opencv-dldt-gst.conf && ldconfig
+        && rm /root/v${DLSTREAMER_VERSION}.tar.gz
 
+RUN cp /home/analyticspage/index.js /home/owt/apps/current_app/public/scripts/ \
+    && cp /home/analyticspage/rest-sample.js /home/owt/apps/current_app/public/scripts/ \
+    && cp /home/analyticspage/index.html /home/owt/apps/current_app/public/ \
+    && cp /home/analyticspage/samplertcservice.js /home/owt/apps/current_app/
 
-ENV GST_PLUGIN_PATH=/usr/lib/gst-video-analytics/:/root/gst-video-analytics/
+ENV GST_PLUGIN_PATH=/root/gst-video-analytics/
 ENV PYTHONPATH=/root/gst-video-analytics/python:$PYTHONPATH
