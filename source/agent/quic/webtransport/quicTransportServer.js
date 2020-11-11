@@ -23,7 +23,7 @@ const zeroUuid = '00000000000000000000000000000000';
 const authenticationTimeout = 10;
 
 module.exports = class QuicTransportServer extends EventEmitter {
-  constructor(addon, port, pfxPath, password) {
+  constructor(addon, port, pfxPath, password, validateTokenCallback) {
     super();
     this._server = new addon.QuicTransportServer(port, pfxPath, password);
     this._connections = new Map(); // Key is transport ID.
@@ -31,6 +31,7 @@ module.exports = class QuicTransportServer extends EventEmitter {
     this._unAuthenticatedConnections = []; // When it's authenticated, it will be moved to this.connections.
     this._unAssociatedStreams = []; // No content session ID assgined to them.
     this._assignedTransportIds = []; // Transport channels assigned to this server.
+    this._validateTokenCallback = validateTokenCallback;
     this._server.onconnection = (connection) => {
       this._unAuthenticatedConnections.push(connection);
       setTimeout(() => {
@@ -61,16 +62,68 @@ module.exports = class QuicTransportServer extends EventEmitter {
         };
         stream.ondata = (data) => {
           if (stream.contentSessionId === zeroUuid) {
-            const transportId = data.toString('utf8');
-            log.info('Received new transport ID: '+transportId);
-            if (!this._assignedTransportIds.includes(transportId)) {
-              log.info(JSON.stringify(connection));
-              connection.close();
+            // Please refer
+            // https://github.com/open-webrtc-toolkit/owt-server/blob/20e8aad216cc446095f63c409339c34c7ee770ee/doc/design/quic-transport-payload-format.md#signaling-session
+            // for the format of data received on this stream.
+
+            // Size of data received, but haven't been read.
+            let unreadSize = data.length;
+            let nextReadSize = stream.frameSize ? stream.frameSize : 0;
+            while (unreadSize != 0) {
+              if (nextReadSize == 0) {  // Starts a new frame.
+                // 32 bit indicates the length of next frame.
+                const lengthSize = 4;
+                if (data.length >= lengthSize) {
+                  for (let i = 0; i < lengthSize; i++) {
+                    nextReadSize += (data[i] << 8 * i);
+                  }
+                  unreadSize -= lengthSize;
+                } else {
+                  log.error('Not implemented.');
+                  return;
+                }
+              } else {
+                nextReadSize = stream.frameSize - stream.unreadData.length;
+              }
+              const startIndex = data.length - unreadSize;
+              if (unreadSize >= nextReadSize) {
+                let frame = data.slice(startIndex, startIndex + nextReadSize);
+                if (stream.unreadData) {
+                  frame = stream.unreadData + frame;
+                  stream.unreadData = null;
+                  stream.frameSize = 0;
+                }
+                const message = frame.toString('utf8');
+                unreadSize -= nextReadSize;
+                // Currently, Signaling over WebTransport is not supported, so
+                // only one message (WebTransport token) will be sent on this
+                // stream. We process the message and discard all other
+                // messages.
+                let token;
+                try {
+                  token = JSON.parse(Buffer.from(message, 'base64').toString());
+                } catch (error) {
+                  log.error('Invalid token.');
+                  connection.close();
+                  return;
+                }
+                this._validateTokenCallback(token).then(result => {
+                  if (result !== 'ok') {
+                    log.error('Authentication failed.');
+                    connection.close();
+                    return;
+                  }
+                  connection.transportId = token.transportId;
+                  stream.transportId = token.transportId;
+                  this._connections.set(connection.transportId, connection);
+                });
+                return;
+              } else {  // Store the data.
+                stream.unreadData = data.slice(startIndex);
+                stream.frameSize = nextReadSize;
+              }
             }
-            connection.transportId = transportId;
-            stream.transportId = transportId;
-            this._connections.set(connection.transportId, connection);
-            log.info('New connection for transport ID: ' + transportId);
+            return;
           }
         }
       }
@@ -131,5 +184,10 @@ module.exports = class QuicTransportServer extends EventEmitter {
       uuidArray[i] = parseInt(uuidString.substring(i * 2, i * 2 + 2), 16);
     }
     return uuidArray;
+  }
+
+  _validateToken(tokenString) {
+    const token = JSON.parse(Buffer.from(tokenString, 'base64').toString());
+    return this._validateTokenCallback(token);
   }
 };

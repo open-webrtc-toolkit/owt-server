@@ -29,6 +29,7 @@ const path = require('path');
 log.info('QUIC transport node.')
 
 module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
+    const rpcChannel = require('./rpcChannel')(rpcClient);
     const that = {
       agentID: parentRpcId,
       clusterIP: clusterWorkerIP
@@ -40,15 +41,52 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
     const outgoingStreamPipelines =
         new Map();  // Key is subscription ID, value is stream pipeline.
     let quicTransportServer;
+    const clusterName = global && global.config && global.config.cluster ?
+        global.config.cluster.name :
+        undefined;
+
+    const getRpcPortal = async (roomId, participantId) => {
+      const controllerAgent =
+          await rpcChannel.makeRPC(clusterName, 'schedule', [
+            'conference', roomId, 'preference' /*TODO: specify preference*/,
+            30 * 1000
+          ]);
+      let controller = null;
+      let portal = null;
+      const retry = 5;
+      const sleep = require('util').promisify(setTimeout);
+      for (let i = 0; i < retry; i++) {
+        try {
+          controller = await rpcChannel.makeRPC(
+              controllerAgent.id, 'getNode', [{room: roomId, task: roomId}]);
+          if (controller) {
+            break;
+          }
+        } catch (error) {
+          sleep(1000);
+        }
+      }
+      portal =
+          await rpcChannel.makeRPC(controller, 'getPortal', [participantId])
+      return portal;
+    };
 
     const notifyStatus = (controller, sessionId, direction, status) => {
-        rpcClient.remoteCast(controller, 'onSessionProgress', [sessionId, direction, status]);
+      rpcClient.remoteCast(
+          controller, 'onSessionProgress', [sessionId, direction, status]);
+    };
+
+    const validateToken = async (token) => {
+      if (!token || !token.roomId) {
+        throw new TypeError('Invalid token.');
+      }
+      const portal = await getRpcPortal(token.roomId, token.participantId);
+      return rpcChannel.makeRPC(
+          portal, 'validateAndDeleteWebTransportToken', [token])
     };
 
     const keystore = path.resolve(path.dirname(global.config.quic.keystorePath), cipher.kstore);
-    log.info('before unlock');
     cipher.unlock(cipher.k, keystore, (error, password) => {
-      log.info('unlocked.');
       if (error) {
         log.error('Failed to read certificate and key.');
         return;
@@ -56,7 +94,7 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
       log.info('path is '+path.resolve(global.config.quic.keystorePath));
       quicTransportServer = new QuicTransportServer(
           addon, global.config.quic.port, path.resolve(global.config.quic.keystorePath),
-          password);
+          password, validateToken);
       quicTransportServer.start();
       quicTransportServer.on('streamadded', (stream) => {
         const conn = connections.getConnection(stream.contentSessionId);

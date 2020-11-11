@@ -233,11 +233,11 @@ var rpcPublic = {
     socketio_server && socketio_server.notify(participantId, event, data).catch(notifyFail);
     callback('callback', 'ok');
   },
-  validateWebTransportToken: (token, callback) => {
-    if(portal.validateWebTransportToken(token)) {
+  validateAndDeleteWebTransportToken: (token, callback) => {
+    if(portal.validateAndDeleteWebTransportToken(token)) {
       callback('callback','ok');
     } else {
-      callback('callback', 'error');
+      callback('callback', 'error', 'Invalid token for WebTransport.');
     }
   }
 };
