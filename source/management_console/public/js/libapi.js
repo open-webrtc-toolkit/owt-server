@@ -93,7 +93,7 @@ function calculateSignature (toSign, key) {
 function ManagementApi (spec) {
     this.id = spec.id;
     this.key = spec.key;
-    this.url = spec.url || '/';
+    this.url = spec.url || window.location.pathname.replace(/\/console.*/g, "/");
     this.send = function (method, body, url, callback) { // callback (err, resp)
         var service = this.id;
         var key = this.key;
