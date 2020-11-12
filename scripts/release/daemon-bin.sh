@@ -189,6 +189,13 @@ case $startStop in
 
     sleep 1; [[ -f ${stdout} ]] && head "$stdout"
     ;;
+    
+  (restart)
+     echo restarting $command
+
+     ${0} stop $command
+     ${0} start $command
+     ;;    
 
   (stop)
     if [ -f $pid ]; then
