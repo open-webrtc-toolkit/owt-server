@@ -39,7 +39,15 @@ const PublicationRequest = {
       properties: {
         'media': { $ref: '#/definitions/WebRTCMediaOptions' },
         'attributes': { type: 'object' },
-        'transportId': { type: 'string' }
+        'data': {type: 'boolean'},
+        'transport': {
+          type: 'object',
+          properties: {
+            'type': {type: 'string'},
+            'id': {type: 'string'},
+          },
+          additionalProperties: false,
+        },
       },
       additionalProperties: false,
       required: ['media']
@@ -48,7 +56,7 @@ const PublicationRequest = {
 
   definitions: {
     'WebRTCMediaOptions': {
-      type: 'object',
+      type: ['object', 'null'],
       properties: {
         'tracks': {
           type: 'array',
@@ -75,7 +83,15 @@ const SubscriptionRequest = {
       type: 'object',
       properties: {
         'media': { $ref: '#/definitions/MediaSubOptions' },
-        'transportId': { type: 'string' }
+        'transport': {
+          type: 'object',
+          properties: {
+            'type': {type: 'string'},
+            'id': {type: 'string'},
+          },
+          additionalProperties: false,
+        },
+        'data': {type: 'boolean'}
       },
       additionalProperties: false,
       required: ['media']

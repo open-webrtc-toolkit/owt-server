@@ -294,7 +294,6 @@ class ForwardStream extends Stream {
     }
   }
 
-<<<<<<< HEAD
   update(info) {
     let updateTrack;
     let updateParameters;
@@ -306,18 +305,6 @@ class ForwardStream extends Stream {
       updateTrack = this.media.tracks.find(t => t.type === 'video');
       updateParameters = info.video ? info.video.parameters : null;
     }
-=======
-  var forwardStreamInfo = {
-    id,
-    type: 'forward',
-    media: result,
-    // Indicates whether this is a data stream.
-    data: data,
-    info
-  };
-  return forwardStreamInfo;
-}
->>>>>>> Stream info has data property.
 
     if (updateParameters && updateParameters.resolution) {
       if (!updateTrack.parameters ||
@@ -343,7 +330,7 @@ class MixedStream extends Stream {
       audio: Object.assign({}, view.audio.format),
       video: Object.assign({}, view.video.format, view.video.parameters)
     };
-    super(id, 'mixed', media, info);
+    super(id, 'mixed', media, null, info);
   }
 }
 
