@@ -1248,9 +1248,10 @@ var Conference = function (rpcClient, selfRpcId) {
         const rtcSubInfo = translateRtcSubIfNeeded(subDesc);
         // Set formatPreference
         rtcSubInfo.tracks.forEach(track => {
-          const source = streams[track.from].media.tracks.find(t => t.type === track.type);
+          const streamId = streams[track.from]? track.from : trackOwners[track.from];
+          const source = getStreamTrack(track.from, track.type);
           const formatPreference = {};
-          if (streams[track.from].type === 'forward') {
+          if (streams[streamId].type === 'forward') {
             formatPreference.preferred = source.format;
             source.optional && source.optional.format && (formatPreference.optional = source.optional.format);
           } else {

@@ -313,25 +313,12 @@ class RtcController extends EventEmitter {
         const abortData = { direction: operation.direction, owner, reason };
         this.emit('session-aborted', sessionId, abortData);
         this.operations.delete(sessionId);
-
-        let emptyTransport = true;
-        for (const [id, op] of this.operations) {
-          if (op.transportId === transport.id) {
-            emptyTransport = false;
-            break;
-          }
-        }
-        if (emptyTransport) {
-          log.debug(`to recycleWorkerNode: ${locality} task:, ${sessionId}`);
-          const taskConfig = {room: this.roomId, task: sessionId};
-          return this.rpcReq.recycleWorkerNode(locality.agent, locality.node, taskConfig)
-            .catch(reason => {
-              log.debug(`AccessNode not recycled ${locality}, ${reason}`);
-            })
-            .then(() => {
-              this.transports.delete(transport.id);
-            });
-        }
+        log.debug(`to recycleWorkerNode: ${locality} task:, ${sessionId}`);
+        const taskConfig = {room: this.roomId, task: sessionId};
+        return this.rpcReq.recycleWorkerNode(locality.agent, locality.node, taskConfig)
+          .catch(reason => {
+            log.debug(`AccessNode not recycled ${locality}, ${reason}`);
+          });
       }
     })
     .catch(reason => {
