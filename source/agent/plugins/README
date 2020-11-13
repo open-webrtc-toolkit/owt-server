@@ -1,0 +1,48 @@
+User can customize their own GStreamer pipeline as a share library to use in OWT.
+To make it work well in OWT, please follow rules below:
+1. The first src plugin should always be appsrc plugin so that we can use streams published to OWT server and then do analytics, please refer detect_pipeline in analytics_agent/plugins/samples of a analytics pipeline source code to detect face with CPU, GPU and VPU
+2. If you want to send the analyzed stream back to OWT and subscribe and display the analyzed stream in Chrome, you should follow rules below to setup your GStreamer pipeline:
+a. The first element in the pipeline should be appsrc plugin and plugin name should be "appsource" so that stream in OWT server can be forward to GStreamer pipeline to analyze
+b. The last element in the pipeline should be appsink plugin and plugin name should be "appsink" so that analyzed stream can be forward to OWT server
+c. The encoder element in the pipeline should be "encoder" so that key frame request can be forward to encoder in the pipeline.
+Please refer to cpu_pipeline in analytics_agent/plugins/samples of a face detection pipeline source code with only CPU
+3. You can set different properties for each pipeline in analytics/plugin.cfg file as below:
+
+[dc51138a8284436f873418a21ba8cfa7] #face detection pipeline(decoder:GPU, inference:VPU)
+description = 'detect plugin'
+pluginversion = 1
+apiversion = 400
+name = 'libDetectPipeline.so'
+libpath = 'pluginlibs/'
+configpath = 'pluginlibs/'
+modelpath = '/mnt/models/face-detection-retail-0004.xm'    # inference model path
+inferencewidth = 672    # inference input width.
+inferenceheight = 384   # inference input height.
+inferenceframerate = 5  # inference input framerate
+device = "MULTI:HDDL,CPU"
+
+[dc51138a8284436f873418a21ba8cfa8] #A simple pipeline just save OWT stream to file
+description = 'dummy plugin'
+pluginversion = 1
+apiversion = 400
+name = 'libSamplePipeline.so'
+libpath = 'pluginlibs/'
+configpath = 'pluginlibs/'
+outputpath = '/home/test.h264'
+
+[dc51138a8284436f873418a21ba8cfa9] #face detection pipeline with only CPU, and analyzed stream will be send back to OWT server
+description = 'detect plugin'
+pluginversion = 1
+apiversion = 400
+name = 'libCPUPipeline.so'
+libpath = 'pluginlibs/'
+configpath = 'pluginlibs/'
+modelpath = '/mnt/models/face-detection-retail-0004.xm'    # inference model path
+inferencewidth = 672    # inference input width.
+inferenceheight = 384   # inference input height.
+inferenceframerate = 5  # inference input framerate
+device = "CPU"
+
+Note: The model face-detection-retail-0004.xm used in the sample configuration are all from OpenVINO, please refer to https://github.com/opencv/open_model_zoo/blob/master/tools/downloader/README.md to download OpenVINO sample models and put it in container where analytics agent runs and then specify model path in plugin.cfg.
+
+4. Run build_samples.sh in analytics_agent/plugins/samples folder to compile and generate related GStreamer pipeline share library. Copy share libraries generated in samples/build/intel64/Release/lib/ to analytics_agent/lib/ folder in OWT package.

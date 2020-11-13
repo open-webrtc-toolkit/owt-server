@@ -28,6 +28,17 @@ module.exports.load = () => {
       name: 'cpu'
     };
 
+    var resource = config.cluster.load_items;
+    //In current environment, always report CPU resource
+
+    if (resource.toLowerCase().indexOf("gpu") !== -1) {
+      config.cluster.worker.load.item.gpu = true;
+    }
+
+    if (resource.toLowerCase().indexOf("vpu") !== -1) {
+      config.cluster.worker.load.item.vpu = true;
+    }
+
     config.internal.ip_address = config.internal.ip_address || '';
     config.internal.network_interface = config.internal.network_interface || undefined;
     config.internal.minport = config.internal.minport || 0;

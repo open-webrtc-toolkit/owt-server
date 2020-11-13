@@ -11,9 +11,10 @@ var makeRPC = require('./makeRPC').makeRPC;
 // Logger
 var log = logger.getLogger('RoomController');
 
-function isResolutionEqual(r1, r2) {
-  return r1.width && r2.width && r1.height && r2.height && (r1.width === r2.width) && (r1.height === r2.height);
-}
+const {
+    isVideoFmtCompatible,
+    isResolutionEqual,
+} = require('./formatUtil');
 
 const audio_format_obj = function (fmtStr) {
     var fmt_l = fmtStr.split('_'),
@@ -28,24 +29,6 @@ const video_format_obj = function (fmtStr) {
     var fmt = { codec: fmt_l[0] };
     fmt_l[1] && (fmt.profile = fmt_l[1]);
     return fmt;
-};
-
-const h264ProfileDict = {
-  'CB': 1,
-  'B': 2,
-  'M': 3,
-  'H': 4
-};
-
-const isVideoProfileCompatible = (curProfile, reqProfile) => {
-  let curP = h264ProfileDict[curProfile],
-    reqP = h264ProfileDict[reqProfile];
-
-  return !curP || !reqP || (curP <= reqP);
-};
-
-const isVideoFmtCompatible = (curFmt, reqFmt) => {
-  return (curFmt.codec === reqFmt.codec && isVideoProfileCompatible(curFmt.profile, reqFmt.profile));
 };
 
 module.exports.create = function (spec, on_init_ok, on_init_failed) {
@@ -119,7 +102,6 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
             encode: config.mediaOut.video.format.map(formatStr),
             decode: config.mediaIn.video.map(formatStr)
         };
-        config.mediaOut.video.format
         config.views.forEach((view) => {
             if (view.video.format) {
                 capability.video.encode.push(formatStr(view.video.format));
@@ -1426,12 +1408,12 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
         });
     };
 
-    that.publish = function (participantId, streamId, accessNode, streamInfo, streamType, origin, on_ok, on_error) {
+    that.publish = function (participantId, streamId, accessNode, streamInfo, streamType, on_ok, on_error) {
         log.debug('publish, participantId: ', participantId, 'streamId:', streamId, 'accessNode:', accessNode.node, 'streamInfo:', JSON.stringify(streamInfo), ' origin is:', origin);
         if (streams[streamId] === undefined) {
             var terminal_id = pubTermId(participantId, streamId);
             var terminal_owner = (streamType === 'webrtc' || streamType === 'sip') ? participantId : room_id + '-' + randomId();
-            newTerminal(terminal_id, streamType, terminal_owner, accessNode, origin, function () {
+            newTerminal(terminal_id, streamType, terminal_owner, accessNode, streamInfo.origin, function () {
                 streams[streamId] = {owner: terminal_id,
                                      audio: streamInfo.audio ? {format: formatStr(streamInfo.audio),
                                                                 subscribers: [],

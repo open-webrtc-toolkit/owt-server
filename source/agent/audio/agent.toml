@@ -41,3 +41,7 @@ ip_address = "" #default: ""
 # The internal listening port range, only works for TCP now
 maxport = 0 #default: 0
 minport = 0 #default: 0
+
+[mix]
+# Only mix top K audio level inputs, mix all inputs when set to 0.
+top_k = 0 #default: 0

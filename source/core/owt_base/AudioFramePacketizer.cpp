@@ -11,7 +11,7 @@ namespace owt_base {
 
 DEFINE_LOGGER(AudioFramePacketizer, "owt.AudioFramePacketizer");
 
-AudioFramePacketizer::AudioFramePacketizer()
+AudioFramePacketizer::AudioFramePacketizer(AudioFramePacketizer::Config& config)
     : m_enabled(true)
     , m_frameFormat(FRAME_FORMAT_UNKNOWN)
     , m_lastOriginSeqNo(0)
@@ -21,7 +21,7 @@ AudioFramePacketizer::AudioFramePacketizer()
     , m_audioSend(nullptr)
 {
     audio_sink_ = nullptr;
-    init();
+    init(config);
 }
 
 AudioFramePacketizer::~AudioFramePacketizer()
@@ -96,13 +96,17 @@ void AudioFramePacketizer::onFrame(const Frame& frame)
     }
 }
 
-bool AudioFramePacketizer::init()
+bool AudioFramePacketizer::init(AudioFramePacketizer::Config& config)
 {
     if (!m_audioSend) {
         // Create Send audio Stream
         rtc_adapter::RtcAdapter::Config sendConfig;
         sendConfig.rtp_listener = this;
         sendConfig.stats_listener = this;
+        if (!config.mid.empty()) {
+            strncpy(sendConfig.mid, config.mid.c_str(), sizeof(sendConfig.mid) - 1);
+            sendConfig.mid_ext = config.midExtId;
+        }
         m_audioSend = m_rtcAdapter->createAudioSender(sendConfig);
         m_ssrc = m_audioSend->ssrc();
         return true;

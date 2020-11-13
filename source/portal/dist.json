@@ -11,9 +11,7 @@
             "rpcRequest.js",
             "socketIOServer.js",
             "legacyClient.js",
-            "v10Client.js",
-            "v11Client.js",
-            "requestDataValidator.js",
+            "client.js",
             "../common/amqp_client.js",
             "../common/cipher.js",
             "../common/clusterWorker.js",
@@ -26,6 +24,13 @@
             "../../scripts/detectOS.sh"
         ],
         "folders": {
+            "versions": [
+                "versions/portalDataAdapter.js",
+                "versions/requestDataValidator.js",
+                "versions/requestFormatV1-0.js",
+                "versions/requestFormatV1-2.js",
+                "versions/requestType.js"
+            ],
             "cert": [
                 "../../cert/certificate.pfx",
                 "../../cert/.owt.keystore"

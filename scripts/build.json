@@ -8,8 +8,10 @@
             "logger",
             "media-frame-multicaster",
             "audio",
+            "audio-ranker",
             "webrtc",
             "avstream",
+            "gst-pipeline",
             "sip"
         ]
     },
@@ -21,6 +23,7 @@
             "logger",
             "media-frame-multicaster",
             "audio",
+            "audio-ranker",
             "webrtc",
             "avstream",
             "sip"
@@ -66,6 +69,11 @@
         "path" : "source/agent/video/videoTranscoder/videoTranscoder_msdk",
         "gyp" : "binding.msdk.gyp"
     },
+    "gst-pipeline":{
+      "path" : "source/agent/analytics/videoGstPipeline",
+      "gyp"  : "binding.pipeline.gyp"
+      },
+
     "internal-io" : {
         "path" : "source/agent/addons/internalIO"
     },
@@ -90,9 +98,18 @@
     },
     "logger" : {
         "path" : "source/agent/addons/logger"
+    },
+    "audio-ranker" : {
+        "path" : "source/agent/addons/audioRanker"
+    },
+    "audio-ranker-test" : {
+        "path" : "source/agent/addons/audioRanker/test"
     }
     ,
     "quicIO" : {
         "path" : "source/agent/addons/quicIO"
+    },
+    "resource-util" : {
+        "path" : "source/agent/addons/resourceUtil"
     }
 }

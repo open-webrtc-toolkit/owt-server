@@ -8,7 +8,7 @@ FROM ubuntu:18.04 AS owt-build
 WORKDIR /home
 
 # COMMON BUILD TOOLS
-RUN DEBIAN_FRONTEND=noninteractive apt-get update && apt-get install -y -q --no-install-recommends build-essential autoconf make git wget pciutils cpio libtool lsb-release ca-certificates pkg-config bison flex libcurl4-gnutls-dev zlib1g-dev nasm yasm m4 autoconf libtool automake cmake libfreetype6-dev
+RUN DEBIAN_FRONTEND=noninteractive apt-get update && apt-get install -y -q --no-install-recommends build-essential autoconf make git wget pciutils cpio libtool lsb-release ca-certificates pkg-config bison flex libcurl4-gnutls-dev zlib1g-dev nasm yasm m4 autoconf libtool automake cmake libfreetype6-dev libgstreamer-plugins-base1.0-dev
 
 
 # Build libnice
@@ -34,12 +34,12 @@ RUN wget -O - ${NICE_REPO} | tar xz && \
 
 # Build open ssl
 ARG OPENSSL_BASE="1.1.1"
-ARG OPENSSL_VER="1.1.1g"
+ARG OPENSSL_VER="1.1.1h"
 ARG OPENSSL_REPO=https://www.openssl.org/source/openssl-${OPENSSL_VER}.tar.gz
 
 RUN wget -O - ${OPENSSL_REPO} | tar xz && \
     cd openssl-${OPENSSL_VER} && \
-    ./config no-ssl3 --prefix="/usr/local" -fPIC && \
+    ./config no-ssl3 --prefix=/usr/local/ssl --openssldir=/usr/local/ssl -Wl,-rpath=/usr/local/ssl/lib -fPIC && \
     make depend && \
     make -s V=0  && \
     make install
@@ -82,7 +82,7 @@ RUN curl -o libsrtp-${SRTP2_VER}.tar.gz ${SRTP2_REPO} && \
     cd libsrtp-${SRTP2_VER} && \
     export PKG_CONFIG_PATH="/usr/local/lib/x86_64-linux-gnu/pkgconfig" && \
     export CFLAGS="-fPIC" && \
-    ./configure --enable-openssl --prefix="/usr/local" --with-openssl-dir="/usr/local" && \
+    ./configure --enable-openssl --prefix="/usr/local" --with-openssl-dir="/usr/local/ssl" && \
     make -s V=0  && \
     make install
 
@@ -204,6 +204,8 @@ RUN cd /home && git clone --depth=1 -b ${OWT_BRANCH} ${OWT_SDK_REPO} && cd owt-c
     export LD_LIBRARY_PATH=/usr/local/lib/x86_64-linux-gnu && \
     cd ${SERVER_PATH}/third_party/quic-lib && wget https://github.com/open-webrtc-toolkit/owt-deps-quic/releases/download/v0.1/dist.tgz && tar xzf dist.tgz && \
     #Build and pack owt
+    sed -i "/lssl/i\'\-L\/usr\/local\/ssl\/lib\'," /home/owt-server/source/agent/webrtc/rtcConn/binding.gyp && \
+    sed -i "/lssl/i\'\-L\/usr\/local\/ssl\/lib\'," /home/owt-server/source/agent/webrtc/rtcFrame/binding.gyp && \
     cd ${SERVER_PATH} && export PKG_CONFIG_PATH=/usr/local/lib/x86_64-linux-gnu/pkgconfig && ./scripts/build.js -t mcu-all -r -c && \
     ./scripts/pack.js -t all --install-module --no-pseudo --app-path /home/owt-client-javascript/dist/samples/conference
 

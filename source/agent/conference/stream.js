@@ -6,18 +6,11 @@
  *   id: string(StreamId),
  *   type: 'forward' | 'mixed',
  *   media: {
- *     audio: {
+ *     tracks: {
+*       type: 'audio' | 'video',
  *       status: 'active' | 'inactive' | undefined,
- *       source: 'mic' | 'screen-cast' | 'raw-file' | 'encoded-file' | 'streaming',
- *       format: object(AudioFormat),
- *       optional: {
- *         format: [object(AudioFormat)] | undefined
- *       } | undefined
- *     } | undefined,
- *     video: {
- *       status: 'active' | 'inactive' | undefined,
- *       source: 'camera' | screen-cast' | 'raw-file' | 'encoded-file' | 'streaming',
- *       format: object(VideoFormat),
+ *       source: 'mic' | 'camera' | screen-cast' | 'raw-file' | 'encoded-file' | 'streaming',
+ *       format: object(VideoFormat) | object(AudioFormat),
  *       parameters: {
  *         resolution: object(Resolution) | undefined,
  *         framerate: number(FramerateFPS) | undefined,
@@ -25,7 +18,7 @@
  *         keyFrameInterval: number(Seconds) | undefined,
  *         } | undefined
  *       optional: {
- *         format: [object(VideoFormat)] | undefined,
+ *         format: [object(VideoFormat)] | [object(AudioFormat)] | undefined,
  *         parameters: {
  *           resolution: [object(Resolution)] | undefined,
  *           framerate: [number(FramerateFPS)] | undefined,
@@ -33,12 +26,6 @@
  *           keyFrameRate: [number(Seconds)] | undefined
  *         } | undefined
  *       } | undefined
- *       alternative: [{
- *         resolution: object(Resolution) | undefined,
- *         framerate: number(FramerateFPS) | undefined,
- *         bitrate: number(Kbps) | undefined,
- *         keyFrameInterval: number(Seconds) | undefined,
- *       }] | undefined
  *     } | undefined
  *   },
  *   info: object(PublicationInfo):: {
@@ -48,6 +35,7 @@
  *     attributes: object(ExternalDefinedObj)
  *   } | object(ViewInfo):: {
  *     label: string(ViewLabel),
+ *     activeInput: 'unknown' | string(StreamId),
  *     layout: [{
  *       stream: string(StreamId),
  *       region: object(Region)
@@ -58,375 +46,299 @@
 
 'use strict';
 
-const isAudioFmtEqual = (fmt1, fmt2) => {
-  return (fmt1.codec === fmt2.codec) &&
-      (fmt1.sampleRate === fmt2.sampleRate) &&
-      (fmt1.channelNum === fmt2.channelNum);
-};
+const {
+  isAudioFmtEqual,
+  isVideoFmtEqual,
+  isAudioFmtAcceptable,
+  isVideoFmtAcceptable,
+  calcResolution,
+} = require('./formatUtil');
 
-const isVideoFmtEqual = (fmt1, fmt2) => {
-  return (fmt1.codec === fmt2.codec &&
-      fmt1.profile === fmt2.profile);
-};
-
-const NamedResolution = {
-  'xga': {width: 1024, height: 768},
-  'svga': {width: 800, height: 600},
-  'vga': {width: 640, height: 480},
-  'hvga': {width: 480, height: 320},
-  'cif': {width: 352, height: 288},
-  'qvga': {width: 320, height: 240},
-  'qcif': {width: 176, height: 144},
-  'hd720p': {width: 1280, height: 720},
-  'hd1080p': {width: 1920, height: 1080}
-};
-
-const calcResolution = (x, baseResolution) => {
-  if (NamedResolution[x]) {
-    return NamedResolution[x];
-  }
-  if (x.indexOf('r') === 0 && x.indexOf('x') > 0) {
-    // resolution 'r{width}x{height}'
-    const xpos = x.indexOf('x');
-    const width = parseInt(x.substr(1, xpos - 1)) || 65536;
-    const height = parseInt(x.substr(xpos + 1)) || 65536;
-    return {width, height};
-  }
-  if (x.indexOf('x') === 0 && x.indexOf('/') > 0) {
-    // multiplier 'x{d}/{n}'
-    const spos = x.indexOf('/');
-    const d = parseInt(x.substr(1, spos - 1)) || 1;
-    const n = parseInt(x.substr(spos + 1)) || 1;
-    const floatToSize = (n) => {
-      var x = Math.floor(n);
-      return (x % 2 === 0) ? x : (x - 1);
-    };
-    return {
-      width: floatToSize(baseResolution.width * d / n),
-      height: floatToSize(baseResolution.height * d / n)
-    };
-  }
-
-  return {width: 65536, height: 65536};
-};
-
-function createMixStream(roomId, viewSettings, mediaOut, avCapability) {
-  var mixedStreamId = roomId + '-' + viewSettings.label;
-  var defaultAudiofmt = null;
-  var defaultVideofmt = null;
-
-  var hasAudioEncodeCapability = function (fmt) {
-    return avCapability.audio.findIndex(
-        f => isAudioFmtEqual(defaultAudiofmt, f)) >= 0;
-  };
-  var hasVideoEncodeCapability = function (fmt) {
-    return avCapability.video.encode.findIndex(
-        f => isVideoFmtEqual(fmt, f)) >= 0;
-  };
-
-  if (viewSettings.audio) {
-    defaultAudiofmt = viewSettings.audio.format;
-    if (!hasAudioEncodeCapability(defaultAudiofmt)) {
-      defaultAudiofmt = null;
-      for (const fmt of mediaOut.audio) {
-        if (hasAudioEncodeCapability(fmt)) {
-          defaultAudiofmt = fmt;
-          break;
-        }
-      }
-    }
-  }
-  if (!defaultAudiofmt) {
-    log.error('No capable audio format for view: ' + viewSettings.label);
-    return null;
-  }
-
-  if (viewSettings.video) {
-    defaultVideofmt = viewSettings.video.format;
-    if (!hasVideoEncodeCapability(defaultVideofmt)) {
-      defaultVideofmt = null;
-      for (const fmt of mediaOut.video.format) {
-        if (hasVideoEncodeCapability(fmt)) {
-          defaultVideofmt = fmt;
-          break;
-        }
-      }
-    }
-    if (!defaultVideofmt) {
-      log.error('No capable video format for view: ' + viewSettings.label);
-      return null;
-    }
-  }
-
-  var mixedStreamInfo = {
-    id: mixedStreamId,
-    type: 'mixed',
-    media: {
-      audio: (viewSettings.audio) ? {
-        format: defaultAudiofmt,
-        optional: {
-          format: mediaOut.audio.filter(fmt => (
-              hasAudioEncodeCapability(fmt)
-              && !isAudioFmtEqual(fmt, defaultAudiofmt)))
-        }
-      } : undefined,
-      video: (viewSettings.video) ? {
-        format: defaultVideofmt,
-        optional: {
-          format: mediaOut.video.format.filter(fmt => (
-              hasVideoEncodeCapability(fmt)
-              && !isVideoFmtEqual(fmt, defaultVideofmt))),
-          parameters: {
-            resolution: mediaOut.video.parameters.resolution
-                .map(x => calcResolution(x, viewSettings.video.parameters.resolution))
-                .filter((reso, pos, self) => (reso.width < viewSettings.video.parameters.resolution.width
-                    && reso.height < viewSettings.video.parameters.resolution.height)
-                    && (self.findIndex(r => r.width === reso.width && r.height === reso.height) === pos)),
-            framerate: mediaOut.video.parameters.framerate
-                .filter(x => (x < viewSettings.video.parameters.framerate)),
-            bitrate: mediaOut.video.parameters.bitrate,
-            keyFrameInterval: mediaOut.video.parameters.keyFrameInterval
-                .filter(x => (x < viewSettings.video.parameters.keyFrameInterval))
-          }
-        },
-        parameters: {
-          resolution: viewSettings.video.parameters.resolution,
-          framerate: viewSettings.video.parameters.framerate,
-          bitrate: viewSettings.video.parameters.bitrate,
-          keyFrameInterval: viewSettings.video.parameters.keyFrameInterval,
-        }
-      } : undefined
-    },
-    info: {
-      label: viewSettings.label,
-      activeInput: 'unknown',
-      layout: []
-    }
-  };
-
-  return mixedStreamInfo;
-}
-
-function createForwardStream(id, media, info, roomConfig) {
-  var result = {};
-
-  const extractAudioFormat = (audioInfo) => {
-    var result = {codec: audioInfo.codec};
-    audioInfo.sampleRate && (result.sampleRate = audioInfo.sampleRate);
-    audioInfo.channelNum && (result.channelNum = audioInfo.channelNum);
-    return result;
-  };
-
-  const extractVideoFormat = (videoInfo) => {
-    var result = {codec: videoInfo.codec};
-    videoInfo.profile && (result.profile = videoInfo.profile);
-    return result;
-  };
-
-  if (media.audio) {
-    result.audio = {
-      status: 'active',
-      format: extractAudioFormat(media.audio)
-    };
-
-    media.audio.source && (result.audio.source = media.audio.source);
-
-    if (roomConfig.transcoding.audio) {
-      result.audio.optional = {format: []};
-      roomConfig.mediaOut.audio.forEach((fmt) => {
-        if ((fmt.codec !== result.audio.format.codec)
-            || (fmt.sampleRate !== result.audio.format.sampleRate)
-            || (fmt.channelNum !== result.audio.format.channelNum)) {
-          result.audio.optional.format.push(fmt);
-        }
-      });
-    }
-  }
-
-  if (media.video) {
-    result.video = {
-      status: 'active',
-      format: extractVideoFormat(media.video)
-    };
-
-    //FIXME: sometimes, streaming send invalid resolution { width: 0, height: 0}
-    if (media.video.resolution && (!media.video.resolution.height && !media.video.resolution.width)) {
-      delete media.video.resolution;
-    }
-
-    media.video.source && (result.video.source = media.video.source);
-    media.video.resolution && (media.video.resolution.width !== 0) && (media.video.resolution.height !== 0) && (result.video.parameters || (result.video.parameters = {})) && (result.video.parameters.resolution = media.video.resolution);
-    media.video.framerate && (media.video.framerate !== 0) && (result.video.parameters || (result.video.parameters = {})) && (result.video.parameters.framerate = Math.floor(media.video.framerate));
-    media.video.bitrate && (result.video.parameters || (result.video.parameters = {})) && (result.video.parameters.bitrate = media.video.bitrate);
-    media.video.keyFrameInterval && (result.video.parameters || (result.video.parameters = {})) && (result.video.parameters.keyFrameInterval = media.video.keyFrameInterval);
-
-    if (!media.video.simulcast) {
-      if (roomConfig.transcoding.video && roomConfig.transcoding.video.format) {
-        result.video.optional = {format: []};
-        roomConfig.mediaOut.video.format.forEach((fmt) => {
-          if ((fmt.codec !== result.video.format.codec)
-              || (fmt.profile !== result.video.format.profile)) {
-            result.video.optional.format.push(fmt);
-          }
-        });
-      }
-
-      if (roomConfig.transcoding.video && roomConfig.transcoding.video.parameters) {
-        if (roomConfig.transcoding.video.parameters.resolution) {
-          result.video.optional = (result.video.optional || {});
-          result.video.optional.parameters = (result.video.optional.parameters || {});
-
-          if (result.video.parameters && result.video.parameters.resolution) {
-            result.video.optional.parameters.resolution = roomConfig.mediaOut.video.parameters.resolution.map((x) => {return calcResolution(x, result.video.parameters.resolution)}).filter((reso, pos, self) => {return ((reso.width < result.video.parameters.resolution.width) && (reso.height < result.video.parameters.resolution.height)) && (self.findIndex((r) => {return r.width === reso.width && r.height === reso.height;}) === pos);});
-          } else {
-            result.video.optional.parameters.resolution = roomConfig.mediaOut.video.parameters.resolution
-              .filter((x) => {return (x !== 'x3/4') && (x !== 'x2/3') && (x !== 'x1/2') && (x !== 'x1/3') && (x !== 'x1/4');})//FIXME: is auto-scaling possible?
-              .map((x) => {return calcResolution(x)});
-          }
-        }
-
-        if (roomConfig.transcoding.video.parameters.framerate) {
-          result.video.optional = (result.video.optional || {});
-          result.video.optional.parameters = (result.video.optional.parameters || {});
-
-          if (result.video.parameters && result.video.parameters.framerate) {
-            result.video.optional.parameters.framerate = roomConfig.mediaOut.video.parameters.framerate.filter((fr) => {return fr < result.video.parameters.framerate;});
-          } else {
-            result.video.optional.parameters.framerate = roomConfig.mediaOut.video.parameters.framerate;
-          }
-        }
-
-        if (roomConfig.transcoding.video.parameters.bitrate) {
-          result.video.optional = (result.video.optional || {});
-          result.video.optional.parameters = (result.video.optional.parameters || {});
-
-          result.video.optional.parameters.bitrate = roomConfig.mediaOut.video.parameters.bitrate.filter((x) => {return Number(x.substring(1)) < 1;});
-        }
-
-        if (roomConfig.transcoding.video.parameters.keyFrameInterval) {
-          result.video.optional = (result.video.optional || {});
-          result.video.optional.parameters = (result.video.optional.parameters || {});
-
-          result.video.optional.parameters.keyFrameInterval = roomConfig.mediaOut.video.parameters.keyFrameInterval;
-        }
-      }
-    } else {
-      result.video.optional = {
-        format: [],
-        parameters: {
-          resolution: [],
-          framerate: [],
-          bitrate: [],
-          keyFrameInterval: [],
-        }
-      };
-    }
-  }
-
-  var forwardStreamInfo = {
-    id,
-    type: 'forward',
-    media: result,
-    info
-  };
-  return forwardStreamInfo;
-}
-
-function updateForwardStream(stream, info, roomConfig) {
-  if (stream && stream.type === 'forward' && info) {
-    if (info.video && stream.media.video) {
-      if (info.video.parameters) {
-        if (info.video.parameters.resolution) {
-          stream.media.video.parameters = (stream.media.video.parameters || {});
-          if (!stream.media.video.parameters.resolution ||
-              (stream.media.video.parameters.resolution.width !== info.video.parameters.resolution.width) ||
-              (stream.media.video.parameters.resolution.height !== info.video.parameters.resolution.height)) {
-            stream.media.video.parameters.resolution = info.video.parameters.resolution;
-            if (roomConfig.transcoding.video &&
-                roomConfig.transcoding.video.parameters &&
-                roomConfig.transcoding.video.parameters.resolution &&
-                stream.media.video.rid === undefined) {
-              stream.media.video.optional = (stream.media.video.optional || {});
-              stream.media.video.optional.parameters = (stream.media.video.optional.parameters || {});
-              stream.media.video.optional.parameters.resolution =
-                roomConfig.mediaOut.video.parameters.resolution
-                  .map(x => calcResolution(x, stream.media.video.parameters.resolution))
-                  .filter(reso => (reso.width < stream.media.video.parameters.resolution.width &&
-                    reso.height < stream.media.video.parameters.resolution.height));
-            }
-            return true;
-          }
-        }
-      }
-    } else if (info.rid) {
-      const simInfo = info.info;
-      if (simInfo && simInfo.video && stream.media.video) {
-        let alternative = stream.media.video.alternative || [];
-        let pos = alternative.findIndex((item) => item.rid === (info.rid));
-        if (pos < 0) {
-          pos = alternative.length;
-          alternative.push({rid: info.rid});
-          alternative[pos].parameters = stream.media.video.parameters;
-        }
-        if (simInfo.video.parameters) {
-          alternative[pos].parameters = Object.assign({},
-            alternative[pos].parameters,
-            simInfo.video.parameters);
-        }
-        stream.media.video.alternative = alternative;
-      }
-      return true;
-    } else if (info.firstrid) {
-      if (stream.media.video) {
-        stream.media.video.rid = info.firstrid;
-        stream.media.video.optional.parameters.resolution = [];
-      }
-      return true;
-    }
+const isResolutionEqual = (res1, res2) => {
+  if (res1 && res2) {
+    return res1.width === res2.width && res1.height === res2.height;
   }
   return false;
-}
-
-function toPortalFormat (internalStream) {
-  var stream = JSON.parse(JSON.stringify(internalStream));
-  if (stream && stream.media && stream.media.video) {
-    const videoInfo = stream.media.video;
-    if (!videoInfo.original) {
-      videoInfo.original = [{}];
-      if (videoInfo.format) {
-        videoInfo.original[0].format = videoInfo.format;
-        delete videoInfo.format;
-      }
-      if (videoInfo.parameters) {
-        videoInfo.original[0].parameters = videoInfo.parameters;
-        delete videoInfo.parameters;
-      }
-      if (videoInfo.rid) {
-        videoInfo.original[0].simulcastRid = videoInfo.rid;
-        delete videoInfo.rid;
-      }
-    }
-    if (videoInfo.alternative) {
-      videoInfo.alternative.forEach((alt) => {
-        if (!alt.format) {
-          alt.format = videoInfo.original[0].format;
-        }
-        alt.simulcastRid = alt.rid;
-        delete alt.rid;
-        videoInfo.original.push(alt);
-      });
-      delete videoInfo.alternative;
-    }
-  }
-  if(stream && stream.info && stream.info.origin) {
-    delete stream.info.origin;
-  }
-  return stream;
 };
 
+const log = require('./logger').logger.getLogger('Stream');
+
+const DEFAULT_VIDEO_PARAS = {
+  resolution: { width: 640, height: 480 },
+  bitrate: 500,
+  framerate: 30,
+  keyFrameInterval: 60
+};
+
+/* Room configuration Object */
+var config = {};
+
+/* Stream object in conference */
+class Stream {
+
+  constructor(id, type, media, info) {
+    this.id = id;
+    this.type = type;
+    this.info = info;
+    this.media = this._constructMedia(media);
+  }
+
+  _upgradeMediaIfNeeded(media) {
+    if (!media.tracks) {
+      /*
+       * Early version media format: {
+       *   audio: { codec, sampleRate, channelNum },
+       *   video: {
+       *     codec, profile,
+       *     resolution, framerate, bitrate, keyFrameInterval
+       *   }
+       * }
+       */
+      log.debug('Upgrade stream media:', JSON.stringify(media));
+      const m = { tracks: [] };
+      if (media.audio) {
+        const {codec, sampleRate, channelNum} = media.audio;
+        m.tracks.push({
+          type: 'audio',
+          format: {codec, sampleRate, channelNum},
+          status: (media.audio.status || 'active'),
+          source: media.audio.source
+        });
+      }
+      if (media.video) {
+        const {codec, profile} = media.video;
+        const {
+          resolution,
+          framerate,
+          bitrate,
+          keyFrameInterval
+        } = media.video;
+        m.tracks.push({
+          type: 'video',
+          format: {codec, profile},
+          parameters: {
+            resolution,
+            framerate,
+            bitrate,
+            keyFrameInterval
+          },
+          status: (media.video.status || 'active'),
+          source: media.video.source
+        });
+      }
+      return m;
+    } else {
+      // Filter valid tracks
+      media.tracks = media.tracks.filter(track => {
+        return (track.type && track.format);
+      });
+      // Set default status
+      media.tracks.forEach(track => {
+        track.status = 'active';
+      });
+    }
+    return media;
+  }
+
+  _addTrackOptional(track) {
+    // Add optional
+    log.debug('_addTrackOptional:', JSON.stringify(track));
+    const mediaOut = config.mediaOut;
+    track.optional = {};
+    if (track.type === 'audio') {
+      if (config.transcoding.audio) {
+        track.optional.format = mediaOut.audio.filter(fmt =>
+          !isAudioFmtEqual(fmt, track.format));
+      }
+    } else if (track.type === 'video') {
+      if (config.transcoding.video.format) {
+        track.optional.format = mediaOut.video.format.filter(fmt =>
+          !isVideoFmtEqual(fmt, track.format));
+      }
+      const trackParameters = track.parameters || {};
+      const baseParameters = Object.assign({}, DEFAULT_VIDEO_PARAS, trackParameters);
+      log.debug('baseParameters:', JSON.stringify(baseParameters));
+
+      if (config.transcoding.video.parameters.resolution) {
+        track.optional.parameters = track.optional.parameters || {};
+        track.optional.parameters.resolution =
+          mediaOut.video.parameters.resolution
+          .map(x => calcResolution(x, baseParameters.resolution))
+          .filter((reso, pos, self) => (
+            reso.width < baseParameters.resolution.width
+            && reso.height < baseParameters.resolution.height)
+            && (self.findIndex(r =>
+              r.width === reso.width && r.height === reso.height) === pos))
+      }
+      if (config.transcoding.video.parameters.bitrate) {
+        track.optional.parameters = track.optional.parameters || {};
+        track.optional.parameters.bitrate = mediaOut.video.parameters.bitrate;
+      }
+      if (config.transcoding.video.parameters.framerate) {
+        track.optional.parameters = track.optional.parameters || {};
+        track.optional.parameters.framerate =
+          mediaOut.video.parameters.framerate
+          .filter(x => (x < baseParameters.framerate));
+      }
+      if (config.transcoding.video.parameters.keyFrameInterval) {
+        track.optional.parameters = track.optional.parameters || {};
+        track.optional.parameters.keyFrameInterval =
+          mediaOut.video.parameters.keyFrameInterval
+          .filter(x => (x < baseParameters.keyFrameInterval))
+      }
+    }
+    return track;
+  }
+
+  _constructMedia(media) {
+    media = this._upgradeMediaIfNeeded(media);
+    media.tracks = media.tracks.map(t => {
+      const track = this._addTrackOptional(t);
+      return track;
+    });
+    return media;
+  }
+
+  toPortalFormat() {
+    const forwardInfo = {
+      owner: this.info.owner,
+      type: this.info.type,
+      inViews: this.info.inViews,
+      attributes: this.info.attributes
+    };
+    const portalFormat = {
+      id: this.id,
+      type: this.type,
+      media: {
+        // Pick track properties
+        tracks: this.media.tracks.map(track => ({
+          id: track.id,
+          type: track.type,
+          source: track.source,
+          format: track.format,
+          parameters: track.parameters,
+          optional: track.optional,
+          status: track.status,
+          mid: track.mid,
+          rid: track.rid,
+        }))
+      },
+      info: (this.type === 'mixed') ? this.info : forwardInfo,
+    };
+    return portalFormat;
+  }
+}
+
+class ForwardStream extends Stream {
+
+  constructor(id, media, info, locality) {
+    info.inViews = [];
+    super(id, 'forward', media, info);
+    this.locality = locality;
+  }
+
+  checkMediaError() {
+    const mediaIn = config.mediaIn;
+    let err = '';
+    for (let track of this.media.tracks) {
+      if (track.type === 'audio') {
+        if (!isAudioFmtAcceptable(track.format, mediaIn.audio)) {
+          err = 'Audio format unacceptable';
+          break;
+        }
+      } else if (track.type === 'video') {
+        if (!isVideoFmtAcceptable(track.format, mediaIn.video)) {
+          err = 'Video format unacceptable';
+          break;
+        }
+      } else {
+        log.error(`Unexpected track type: ${track.type}`);
+      }
+    }
+    if (this.media.tracks.length === 0) {
+      err = 'No valid tracks in stream';
+    }
+    return err;
+  }
+
+  // To arguments for RoomController.publish [{owner, id, locality, media, type}]
+  toRoomCtrlPubArgs() {
+    if (this.info.type === 'webrtc') {
+      return this.media.tracks.map(track => {
+        const media = { origin: this.info.origin };
+        media[track.type] = Object.assign({}, track.format, track.parameters);
+        return {
+          owner: this.info.owner,
+          id: track.id, // Use track ID for webrtc publication
+          locality: this.locality,
+          type: this.info.type,
+          media
+        };
+      });
+    } else {
+      const media = { origin: this.info.origin };
+      this.media.tracks.forEach(track => {
+        if (!media[track.type]) {
+          media[track.type] = Object.assign({}, track.format, track.parameters);
+        }
+      });
+      return [{
+        owner: this.info.owner,
+        id: this.id,
+        locality: this.locality,
+        type: this.info.type,
+        media
+      }];
+    }
+  }
+
+  update(info) {
+    let updateTrack;
+    let updateParameters;
+    if (info.id) {
+      updateTrack = this.media.tracks.find(t => t.id === info.id);
+      updateParameters = info.video ? info.video.parameters : null;
+    } else {
+      // Legacy update
+      updateTrack = this.media.tracks.find(t => t.type === 'video');
+      updateParameters = info.video ? info.video.parameters : null;
+    }
+
+    if (updateParameters && updateParameters.resolution) {
+      if (!updateTrack.parameters ||
+          !isResolutionEqual(updateTrack.parameters.resolution,
+            updateParameters.resolution)) {
+        updateTrack.parameters = updateTrack.parameters || {};
+        updateTrack.parameters.resolution = updateParameters.resolution;
+        // Update optional
+        this._addTrackOptional(updateTrack);
+        return true;
+      }
+    }
+    return false;
+  }
+}
+
+class MixedStream extends Stream {
+
+  constructor(id, viewLabel) {
+    const view = config.views.find(v => v.label === viewLabel);
+    const info = {label: viewLabel, activeInput: 'unknown', layout: []};
+    const media = {
+      audio: Object.assign({}, view.audio.format),
+      video: Object.assign({}, view.video.format, view.video.parameters)
+    };
+    super(id, 'mixed', media, info);
+  }
+}
+
+function StreamConfigure(roomConfig) {
+  // Set room configuration
+  config = roomConfig;
+}
+
 module.exports = {
-  createMixStream,
-  createForwardStream,
-  updateForwardStream,
-  toPortalFormat
+  ForwardStream,
+  MixedStream,
+  StreamConfigure,
 };

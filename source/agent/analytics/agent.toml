@@ -18,6 +18,8 @@ report_load_interval = 1000 #default: 1000, unit: millisecond
 #The max load under which this worker can take new tasks.
 max_load = 0.85 #default: 0.85
 
+load_items = "CPU"
+
 [capacity]
 #The ISP list this agent tends to handle
 isps = [] #default: [], which means all ISPs.
@@ -42,3 +44,9 @@ minport = 0 #default: 0
 
 [analytics]
 libpath = "pluginlibs/"
+
+#If true and the machine has the capability, then GPU utilization will be reported
+hardwareAccelerated = false
+
+#If true and the machine has the capability, then VPU utilization will be reported
+HDDL = false

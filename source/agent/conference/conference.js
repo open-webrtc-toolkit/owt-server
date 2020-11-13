@@ -6,6 +6,7 @@
 
 var logger = require('./logger').logger;
 
+var { RtcController } = require('./rtcController');
 var AccessController = require('./accessController');
 var RoomController = require('./roomController');
 var dataAccess = require('./data_access');
@@ -13,77 +14,25 @@ var Participant = require('./participant');
 
 // Logger
 var log = logger.getLogger('Conference');
-var Stream = require('./stream');
 
-const isAudioFmtEqual = (fmt1, fmt2) => {
-  return (fmt1.codec === fmt2.codec) && (fmt1.sampleRate === fmt2.sampleRate) && (fmt1.channelNum === fmt2.channelNum);
-};
+const {
+  isAudioFmtEqual,
+  isVideoFmtEqual,
+  isVideoFmtCompatible,
+  calcResolution,
+  calcBitrate,
+  isResolutionEqual,
+} = require('./formatUtil');
 
-const isVideoFmtEqual = (fmt1, fmt2) => {
-  return (fmt1.codec === fmt2.codec) && (fmt1.profile === fmt2.profile);
-};
+const {
+  ForwardStream,
+  MixedStream,
+  StreamConfigure,
+} = require('./stream');
 
-const h264ProfileDict = {
-  'CB': 1,
-  'B': 2,
-  'M': 3,
-  'H': 4
-};
-
-const isVideoProfileCompatible = (curProfile, reqProfile) => {
-  let curP = h264ProfileDict[curProfile],
-    reqP = h264ProfileDict[reqProfile];
-
-  return !curP || !reqP || (curP <= reqP);
-};
-
-const isVideoFmtCompatible = (curFmt, reqFmt) => {
-  return (curFmt.codec === reqFmt.codec && isVideoProfileCompatible(curFmt.profile, reqFmt.profile));
-};
-
-var calcResolution = (x, baseResolution) => {
-  var floatToSize = (n) => {
-    var x = Math.floor(n);
-    return (x % 2 === 0) ? x : (x - 1);
-  };
-
-  switch (x) {
-    case 'x3/4':
-      return {width: floatToSize(baseResolution.width * 3 / 4), height: floatToSize(baseResolution.height * 3 / 4)};
-    case 'x2/3':
-      return {width: floatToSize(baseResolution.width * 2 / 3), height: floatToSize(baseResolution.height * 2 / 3)};
-    case 'x1/2':
-      return {width: floatToSize(baseResolution.width / 2), height: floatToSize(baseResolution.height / 2)};
-    case 'x1/3':
-      return {width: floatToSize(baseResolution.width / 3), height: floatToSize(baseResolution.height / 3)};
-    case 'x1/4':
-      return {width: floatToSize(baseResolution.width / 4), height: floatToSize(baseResolution.height / 4)};
-    case 'xga':
-      return {width: 1024, height: 768};
-    case 'svga':
-      return {width: 800, height: 600};
-    case 'vga':
-      return {width: 640, height: 480};
-    case 'hvga':
-      return {width: 480, height: 320};
-    case 'cif':
-      return {width: 352, height: 288};
-    case 'qvga':
-      return {width: 320, height: 240};
-    case 'qcif':
-      return {width: 176, height: 144};
-    case 'hd720p':
-      return {width: 1280, height: 720};
-    case 'hd1080p':
-      return {width: 1920, height: 1080}
-    default:
-      return {width: 65536, height: 65536};
-  }
-};
-
-var calcBitrate = (x, baseBitrate) => {
-  return Number(x.substring(1)) * baseBitrate;
-};
+const {
+  Subscription
+} = require('./subscription');
 
 /*
  * Definitions:
@@ -150,6 +99,8 @@ var Conference = function (rpcClient, selfRpcId) {
       room_id,
       roomController,
       accessController;
+
+  var rtcController;
 
   /*
    * {
@@ -241,6 +192,11 @@ var Conference = function (rpcClient, selfRpcId) {
   var streams = {};
 
   /*
+   * {TrackId: string(StreamId)}
+   */
+  var trackOwners = {};
+
+  /*
    * {
    *   SubscriptionId: {
    *     id: string(SubscriptionId),
@@ -283,7 +239,9 @@ var Conference = function (rpcClient, selfRpcId) {
     if (direction === 'in') {
       return addStream(sessionId, sessionInfo.locality, sessionInfo.media, sessionInfo.info
         ).then(() => {
-          sendMsgTo(participantId, 'progress', {id: sessionId, status: 'ready'});
+          if (sessionInfo.info && sessionInfo.info.type !== 'webrtc') {
+            sendMsgTo(participantId, 'progress', {id: sessionId, status: 'ready'});
+          }
         }).catch((err) => {
           var err_msg = (err.message ? err.message : err);
           log.info('Exception:', err_msg);
@@ -294,10 +252,12 @@ var Conference = function (rpcClient, selfRpcId) {
     } else if (direction === 'out') {
       return addSubscription(sessionId, sessionInfo.locality, sessionInfo.media, sessionInfo.info
         ).then(() => {
-          if (sessionInfo.info.location) {
-            sendMsgTo(participantId, 'progress', {id: sessionId, status: 'ready', data: sessionInfo.info.location});
-          } else {
-            sendMsgTo(participantId, 'progress', {id: sessionId, status: 'ready'});
+          if (sessionInfo.info && sessionInfo.info.type !== 'webrtc') {
+            if (sessionInfo.info.location) {
+              sendMsgTo(participantId, 'progress', {id: sessionId, status: 'ready', data: sessionInfo.info.location});
+            } else {
+              sendMsgTo(participantId, 'progress', {id: sessionId, status: 'ready'});
+            }
           }
         }).catch((err) => {
           var err_msg = (err.message ? err.message : err);
@@ -314,7 +274,14 @@ var Conference = function (rpcClient, selfRpcId) {
   var onSessionAborted = (participantId, sessionId, direction, reason) => {
     log.debug('onSessionAborted, participantId:', participantId, 'sessionId:', sessionId, 'direction:', direction, 'reason:', reason);
     if (reason !== 'Participant terminate') {
-      sendMsgTo(participantId, 'progress', {id: sessionId, status: 'error', data: reason});
+      const rtcSession = rtcController.getOperation(sessionId);
+      if (rtcSession) {
+        // Session progress
+        const transportId = rtcSession.transportId;
+        sendMsgTo(participantId, 'progress', {id: transportId, sessionId, status: 'error', data: reason});
+      } else {
+        sendMsgTo(participantId, 'progress', {id: sessionId, status: 'error', data: reason});
+      }
     }
 
     if (direction === 'in') {
@@ -334,10 +301,10 @@ var Conference = function (rpcClient, selfRpcId) {
     }
   };
 
-  var onLocalSessionSignaling = (participantId, sessionId, signaling) => {
-    log.debug('onLocalSessionSignaling, participantId:', participantId, 'sessionId:', sessionId, 'signaling:', signaling);
+  var onLocalSessionSignaling = (participantId, transportId, signaling) => {
+    log.debug('onLocalSessionSignaling, participantId:', participantId, 'transportId:', transportId, 'signaling:', signaling);
     if (participants[participantId]) {
-      sendMsgTo(participantId, 'progress', {id: sessionId, status: 'soac', data: signaling});
+      sendMsgTo(participantId, 'progress', {id: transportId, status: 'soac', data: signaling});
     }
   };
 
@@ -368,6 +335,7 @@ var Conference = function (rpcClient, selfRpcId) {
             //log.debug('initializing room:', roomId, 'got config:', JSON.stringify(config));
             room_config = config;
             room_config.internalConnProtocol = global.config.internal.protocol;
+            StreamConfigure(room_config);
 
             return new Promise(function(resolve, reject) {
               RoomController.create(
@@ -388,20 +356,13 @@ var Conference = function (rpcClient, selfRpcId) {
 
                   room_config.views.forEach((viewSettings) => {
                     var mixed_stream_id = room_id + '-' + viewSettings.label;
-                    var av_capability = roomController.getViewCapability(viewSettings.label);
-
-                    if (!av_capability) {
-                      log.error('No audio/video capability for view: ' + viewSettings.label);
-                      return;
-                    }
-
-                    var mixed_stream_info = Stream.createMixStream(room_id, viewSettings, room_config.mediaOut, av_capability);
+                    var mixed_stream_info = new MixedStream(mixed_stream_id, viewSettings.label);
 
                     streams[mixed_stream_id] = mixed_stream_info;
                     streams[mixed_stream_id].info.origin = origin;
                     log.debug('Mixed stream info:', mixed_stream_info);
                     room_config.notifying.streamChange &&
-                      sendMsg('room', 'all', 'stream', {id: mixed_stream_id, status: 'add', data: Stream.toPortalFormat(mixed_stream_info)});
+                      sendMsg('room', 'all', 'stream', {id: mixed_stream_id, status: 'add', data: mixed_stream_info.toPortalFormat()});
                   });
 
                   participants['admin'] = Participant({
@@ -416,6 +377,40 @@ var Conference = function (rpcClient, selfRpcId) {
                                                        }
                                                       }, rpcReq);
 
+                  rtcController = new RtcController(room_id, rpcReq, selfRpcId, global.config.cluster.name || 'owt-cluster');
+                  // Events
+                  rtcController.on('transport-established', transportId => {
+                    const transport = rtcController.getTransport(transportId);
+                    sendMsgTo(transport.owner, 'progress', {id: transportId, status: 'ready'});
+                  });
+                  rtcController.on('transport-aborted', (transportId, reason) => {
+                  });
+                  rtcController.on('transport-signaling', (owner, transportId, message) => {
+                    onLocalSessionSignaling(owner, transportId, message);
+                  });
+                  rtcController.on('session-established', (rtcInfo) => {
+                    log.debug('New RTC session:', rtcInfo.id);
+                    const sessionId = rtcInfo.id;
+                    const media = { tracks: rtcInfo.tracks };
+                    let direction = rtcInfo.direction;
+                    const transport = rtcInfo.transport;
+                    const sessionInfo = {
+                      locality: transport.locality,
+                      media: media,
+                      info: { type: 'webrtc', owner: transport.owner }
+                    };
+                    sendMsgTo(transport.owner, 'progress', {id: transport.id, sessionId, status: 'ready'});
+                    onSessionEstablished(transport.owner, sessionId, direction, sessionInfo);
+                  });
+
+                  rtcController.on('session-updated', (sessionId, data) => {
+                    log.warn('Unexpected event session-updated');
+                  });
+
+                  rtcController.on('session-aborted', (sessionId, data) => {
+                    onSessionAborted(data.owner, sessionId, data.direction, data.reason);
+                  });
+
                   accessController = AccessController.create({clusterName: global.config.cluster.name || 'owt-cluster',
                                                               selfRpcId: selfRpcId,
                                                               inRoom: room_id,
@@ -424,7 +419,8 @@ var Conference = function (rpcClient, selfRpcId) {
                                                               rpcReq,
                                                               onSessionEstablished,
                                                               onSessionAborted,
-                                                              onLocalSessionSignaling);
+                                                              onLocalSessionSignaling,
+                                                              rtcController);
                   resolve('ok');
                 },
                 function onError(reason) {
@@ -463,8 +459,12 @@ var Conference = function (rpcClient, selfRpcId) {
       if (pid !== 'admin' && accessController) {
         pl.push(accessController.participantLeave(pid));
       }
+      if (pid !== 'admin' && rtcController) {
+        pl.push(rtcController.terminateByOwner(pid));
+      }
     }
     accessController && pl.push(accessController.participantLeave('admin'));
+    rtcController && pl.push(rtcController.terminateByOwner('admin'));
 
     return Promise.all(pl)
       .then(() => {
@@ -575,63 +575,87 @@ var Conference = function (rpcClient, selfRpcId) {
     return Promise.resolve('ok');
   };
 
-  const isAudioFmtAcceptable = (audioIn, audioInList) => {
-    for (var i in audioInList) {
-      if (isAudioFmtEqual(audioIn, audioInList[i])) {
-        return true;
-      }
-    }
-    return false;
-  };
-
-  const isVideoFmtAcceptable = (videoIn, videoInList) => {
-    for (var i in videoInList) {
-      if (isVideoFmtCompatible(videoIn, videoInList[i])) {
-        return true;
-      }
-    }
-    return false;
-  };
-
   const addStream = (id, locality, media, info) => {
-    if (media.audio && (!room_config.mediaIn.audio.length || !isAudioFmtAcceptable(extractAudioFormat(media.audio), room_config.mediaIn.audio))) {
-      return Promise.reject('Audio format unacceptable');
+    info.origin = streams[id] ? streams[id].info.origin : {isp:"isp", region:"region"};
+    if (info.analytics && subscriptions[info.analytics]) {
+      const sourceTrack = subscriptions[info.analytics].media.tracks
+        .find(t => t.type === 'video');
+      const sourceId = streams[sourceTrack.from] ? sourceTrack.from : trackOwners[sourceTrack.from];
+      if (streams[sourceId]) {
+        info.origin = streams[sourceId].info.origin;
+      } else {
+        log.warn('Invalid analytics source when adding stream:', id);
+      }
     }
 
-    if (media.video && (!room_config.mediaIn.video.length || !isVideoFmtAcceptable(extractVideoFormat(media.video), room_config.mediaIn.video))) {
-      return Promise.reject('Video format unacceptable');
+    const fwdStream = new ForwardStream(id, media, info, locality);
+    const errMsg = fwdStream.checkMediaError();
+    if (errMsg) {
+      return Promise.reject(errMsg);
     }
 
-    var isReadded = !!(streams[id] && !streams[id].isInConnecting);
-    var origin = streams[id].info.origin;
-    info.origin = origin;
-    return new Promise((resolve, reject) => {
-      roomController && roomController.publish(info.owner, id, locality, media, info.type, origin, function() {
+    const isReadded = !!(streams[id] && !streams[id].isInConnecting);
+    const pubArgs = fwdStream.toRoomCtrlPubArgs();
+    log.debug('PubArgs:', JSON.stringify(pubArgs));
+    if (info.type === 'webrtc') {
+      const pubs = pubArgs.map(pubArg => new Promise((resolve, reject) => {
+        roomController && roomController.publish(
+          pubArg.owner, pubArg.id, pubArg.locality, pubArg.media, pubArg.type, resolve, reject);
+      }));
+      return Promise.all(pubs).then(() => {
         if (participants[info.owner]) {
-          var st = Stream.createForwardStream(id, media, info, room_config);
-          st.info.inViews = [];
-          streams[id] = st;
+          streams[id] = fwdStream;
+          pubArgs.forEach(pubArg => {
+            trackOwners[pubArg.id] = id;
+          });
           if (!isReadded) {
             setTimeout(() => {
               room_config.notifying.streamChange &&
-                sendMsg('room', 'all', 'stream', {id: id, status: 'add', data: Stream.toPortalFormat(st)});
+                sendMsg('room', 'all', 'stream', {id: id, status: 'add', data: fwdStream.toPortalFormat()});
             }, 10);
           }
-          resolve('ok');
         } else {
-          roomController && roomController.unpublish(info.owner, id);
-          reject('Participant early left');
+          pubArgs.forEach(pubArg => {
+            roomController && roomController.unpublish(info.owner, pubArg.id);
+          });
+          return Promise.reject('Participant early left');
         }
-      }, function(reason) {
-        reject('roomController.publish failed, reason: ' + (reason.message ? reason.message : reason));
       });
+    }
+
+    // For non-webrtc stream
+    const pubArg = pubArgs[0];
+    return new Promise((resolve, reject) => {
+      roomController && roomController.publish(
+        pubArg.owner, pubArg.id, pubArg.locality, pubArg.media, pubArg.type,
+        function() {
+          if (participants[info.owner]) {
+            streams[id] = fwdStream;
+            if (!isReadded) {
+              setTimeout(() => {
+                room_config.notifying.streamChange &&
+                  sendMsg('room', 'all', 'stream', {id: id, status: 'add', data: fwdStream.toPortalFormat()});
+              }, 10);
+            }
+            resolve('ok');
+          } else {
+            roomController && roomController.unpublish(info.owner, pubArg.id);
+            reject('Participant early left');
+          }
+        }, function(reason) {
+          reject('roomController.publish failed, reason: ' + (reason.message ? reason.message : reason));
+        });
     });
   };
 
   const updateStreamInfo = (streamId, info) => {
-    if (Stream.updateForwardStream(streams[streamId], info, room_config)) {
+    if (!streams[streamId].isInConnecting && streams[streamId].update(info)) {
       room_config.notifying.streamChange &&
-        sendMsg('room', 'all', 'stream', {id: streamId, status: 'update', data: {field: '.', value: Stream.toPortalFormat(streams[streamId])}});
+      sendMsg('room', 'all', 'stream', {
+        id: streamId,
+        status: 'update',
+        data: {field: '.', value: streams[streamId].toPortalFormat()}
+      });
     }
   };
 
@@ -639,14 +663,19 @@ var Conference = function (rpcClient, selfRpcId) {
     return new Promise((resolve, reject) => {
       if (streams[streamId]) {
         for (var sub_id in subscriptions) {
-          if ((subscriptions[sub_id].media.audio && (subscriptions[sub_id].media.audio.from === streamId))
-            || (subscriptions[sub_id].media.video && (subscriptions[sub_id].media.video.from === streamId))) {
+          let subTrack = subscriptions[sub_id].media.tracks
+            .find(t => (t.from === streamId || trackOwners[t.from] === streamId));
+          if (subTrack) {
             accessController && accessController.terminate(sub_id, 'out', 'Source stream loss');
           }
         }
 
         if (!streams[streamId].isInConnecting) {
-          roomController && roomController.unpublish(streams[streamId].info.owner, streamId);
+          // Only forward stream will be removed
+          const pubArgs = streams[streamId].toRoomCtrlPubArgs();
+          pubArgs.forEach(pubArg => {
+            roomController && roomController.unpublish(streams[streamId].info.owner, pubArg.id);
+          });
         }
         delete streams[streamId];
         setTimeout(() => {
@@ -676,105 +705,51 @@ var Conference = function (rpcClient, selfRpcId) {
     if (!participants[info.owner]) {
       return Promise.reject('Participant early left');
     }
-
-    var media = JSON.parse(JSON.stringify(mediaSpec));
-    if (media.video) {
-      if (streams[media.video.from] === undefined) {
-        return Promise.reject('Video source early released');
-      }
-
-      var source = streams[media.video.from].media.video;
-
-      media.video.format = (media.video.format || source.format);
-      mediaSpec.video.format = media.video.format;
-      mediaSpec.video.status = (media.video.status || 'active');
-
-      if (streams[media.video.from].type === 'mixed') {
-        if (media.video.parameters && (Object.keys(media.video.parameters).length > 0)) {
-          if (media.video.parameters.bitrate) {
-            if (source.parameters.bitrate && typeof media.video.parameters.bitrate === 'string') {
-              media.video.parameters.bitrate = source.parameters.bitrate * Number(media.video.parameters.bitrate.substring(1));
-            }
-          } else {
-            if (!media.video.parameters.resolution && !media.video.parameters.framerate) {
-              media.video.parameters.bitrate = ((source.parameters && source.parameters.bitrate) || 'unspecified');
-            } else {
-              if (source.parameters && source.parameters.bitrate) {
-                var reso_f = (media.video.parameters.resolution ? (media.video.parameters.resolution.width * media.video.parameters.resolution.height) / (source.parameters.resolution.width * source.parameters.resolution.height) : 1.0);
-                var fr_f = (media.video.parameters.framerate ? media.video.parameters.framerate / source.parameters.framerate : 1.0);
-                media.video.parameters.bitrate = source.parameters.bitrate * reso_f * fr_f;
-              } else {
-                media.video.parameters.bitrate = 'unspecified';
-              }
-            }
-          }
-          media.video.parameters.bitrate = (media.video.parameters.bitrate || 'unspecified');
-          media.video.parameters.resolution = (media.video.parameters.resolution || source.parameters.resolution);
-          media.video.parameters.framerate = (media.video.parameters.framerate || source.parameters.framerate);
-          media.video.parameters.keyFrameInterval = (media.video.parameters.keyFrameInterval || source.parameters.keyFrameInterval);
-        } else {
-          media.video.parameters = source.parameters;
-        }
+    const subscription = new Subscription(id, mediaSpec, locality, info);
+    const pending = subscriptions[id];
+    if (pending) {
+      if (pending.isInConnecting) {
+        // Assign pending parameters settings
+        const tmp = new Subscription(id, pending.media, locality, info);
+        subscription.media.tracks.forEach(t1 => {
+          const mappedTrack = tmp.media.tracks
+            .find(t2 => (t1.type === t2.type && t1.mid === t2.mid));
+          t1.parameters = mappedTrack.parameters;
+        });
       } else {
-        if (media.video.parameters && (Object.keys(media.video.parameters).length > 0)) {
-          if (!media.video.parameters.resolution && !media.video.parameters.framerate) {
-            if (media.video.parameters.bitrate) {
-              (source.parameters && source.parameters.bitrate) && (media.video.parameters.bitrate = source.parameters.bitrate * Number(media.video.parameters.bitrate.substring(1)));
-            } else {
-              media.video.parameters.bitrate = 'unspecified';
-            }
-          } else {
-            media.video.parameters.bitrate = (media.video.parameters.bitrate || 'unspecified');
-          }
-
-          media.video.parameters.resolution = (media.video.parameters.resolution || 'unspecified');
-          media.video.parameters.framerate = (media.video.parameters.framerate || 'unspecified');
-          media.video.parameters.keyFrameInterval = (media.video.parameters.keyFrameInterval || 'unspecified');
-        } else {
-          media.video.parameters = {
-            resolution: 'unspecified',
-            framerate: 'unspecified',
-            bitrate: 'unspecified',
-            keyFrameInterval: 'unspecified'
-          };
-        }
+        log.warn('Add duplicate subscription:', id);
       }
-      media.origin = streams[media.video.from].info.origin;
     }
-
-    if (media.audio) {
-      if (streams[media.audio.from] === undefined) {
-        return Promise.reject('Audio source early released');
+    for (const from of subscription.froms()) {
+      const streamId = streams[from] ? from : trackOwners[from];
+      if (streams[streamId]) {
+        subscription.setSource(from, streams[streamId]);
+      } else {
+        return Promise.reject('Subscription source not found: ' + from);
       }
-
-      var source = streams[media.audio.from].media.audio;
-
-      media.audio.format = (media.audio.format || source.format);
-      mediaSpec.audio.format = media.audio.format;
-      mediaSpec.audio.status = (media.audio.status || 'active');
-      media.origin = streams[media.audio.from].info.origin;
     }
 
     const isAudioPubPermitted = !!participants[info.owner].isPublishPermitted('audio'); 
-    return new Promise((resolve, reject) => {
-      roomController && roomController.subscribe(info.owner, id, locality, media, info.type, isAudioPubPermitted, function() {
-        if (participants[info.owner]) {
-          var subscription = {
-            id: id,
-            locality: locality,
-            media: mediaSpec,
-            info: info
-          };
-          subscriptions[id] = subscription;
-          resolve('ok');
-        } else {
-          roomController && roomController.unsubscribe(info.owner, id);
-          reject('Participant early left');
-        }
-      }, function(reason) {
-        log.info('roomController.subscribe failed, reason: ' + (reason.message ? reason.message : reason));
-        reject('roomController.subscribe failed, reason: ' + (reason.message ? reason.message : reason));
-      });
+    const subArgs = subscription.toRoomCtrlSubArgs();
+    const subs = subArgs.map(subArg => new Promise((resolve, reject) => {
+      if (roomController) {
+        roomController.subscribe(
+          subArg.owner, subArg.id, subArg.locality, subArg.media, subArg.type,
+          isAudioPubPermitted, resolve, reject);
+      } else {
+        reject('RoomController is not ready');
+      }
+    }));
+    return Promise.all(subs).then(() => {
+      if (participants[info.owner]) {
+        subscriptions[id] = subscription;
+        return Promise.resolve('ok');
+      } else {
+        subArgs.forEach(subArg => {
+          roomController && roomController.unsubscribe(info.owner, subArg.id);
+        });
+        return Promise.reject('Participant early left');
+      }
     });
   };
 
@@ -782,7 +757,11 @@ var Conference = function (rpcClient, selfRpcId) {
     return new Promise((resolve, reject) => {
       if (subscriptions[subscriptionId]) {
         if (!subscriptions[subscriptionId].isInConnecting) {
-          roomController && roomController.unsubscribe(subscriptions[subscriptionId].info.owner, subscriptionId);
+          const subArgs = subscriptions[subscriptionId].toRoomCtrlSubArgs();
+          subArgs.forEach(subArg => {
+            roomController && roomController.unsubscribe(
+              subscriptions[subscriptionId].info.owner, subArg.id);
+          });
         }
         delete subscriptions[subscriptionId];
       }
@@ -900,7 +879,7 @@ var Conference = function (rpcClient, selfRpcId) {
 
         for (var stream_id in streams) {
           if (!streams[stream_id].isInConnecting) {
-            current_streams.push(Stream.toPortalFormat(streams[stream_id]));
+            current_streams.push(streams[stream_id].toPortalFormat());
           }
         }
 
@@ -930,9 +909,8 @@ var Conference = function (rpcClient, selfRpcId) {
     }
 
     return accessController.participantLeave(participantId)
+      .then(() => rtcController.terminateByOwner(participantId))
       .then((result) => {
-        return removeParticipant(participantId);
-      }).then((result) => {
         callback('callback', 'ok');
         selfClean();
       }, (e) => {
@@ -945,13 +923,40 @@ var Conference = function (rpcClient, selfRpcId) {
       return callback('callback', 'error', 'Controllers are not ready');
     }
 
-    return accessController.onSessionSignaling(sessionId, signaling)
+    return rtcController.onClientTransportSignaling(sessionId, signaling)
       .then((result) => {
         callback('callback', 'ok');
       }, (e) => {
         callback('callback', 'error', e.message ? e.message : e);
       });
   };
+
+  const translateRtcPubIfNeeded = function (pubInfo) {
+    if (pubInfo.tracks) {
+      return pubInfo;
+    }
+    const rtcPubInfo = {
+      type: pubInfo.type,
+      transportId: pubInfo.transportId,
+      tracks: pubInfo.media.tracks,
+      legacy: pubInfo.legacy
+    };
+    return rtcPubInfo;
+  };
+
+  const translateRtcSubIfNeeded = function (subDesc) {
+    if (subDesc.tracks) {
+      return subDesc;
+    }
+    const rtcSubInfo = {
+      type: subDesc.type,
+      transportId: subDesc.transportId,
+      tracks: subDesc.media.tracks,
+      legacy: subDesc.legacy,
+    };
+    return rtcSubInfo;
+  };
+
 
   that.publish = function(participantId, streamId, pubInfo, callback) {
     log.debug('publish, participantId:', participantId, 'streamId:', streamId, 'pubInfo:', JSON.stringify(pubInfo));
@@ -967,6 +972,14 @@ var Conference = function (rpcClient, selfRpcId) {
     if ((pubInfo.media.audio && !participants[participantId].isPublishPermitted('audio'))
         || (pubInfo.media.video && !participants[participantId].isPublishPermitted('video'))) {
       return callback('callback', 'error', 'unauthorized');
+    }
+    if (pubInfo.type === 'webrtc' && pubInfo.media.tracks) {
+      if ((pubInfo.media.tracks.find(t => t.type === 'audio')
+        && !participants[participantId].isPublishPermitted('audio'))
+        || (pubInfo.media.tracks.find(t => t.type === 'video')
+        && !participants[participantId].isPublishPermitted('video'))) {
+        return callback('callback', 'error', 'unauthorized');
+      }
     }
 
     if (pubInfo.type !== 'analytics' && room_config.inputLimit >= 0 && (room_config.inputLimit <= currentInputCount())) {
@@ -1004,20 +1017,26 @@ var Conference = function (rpcClient, selfRpcId) {
         callback('callback', 'error', e.message ? e.message : e);
       });
     } else {
+      var origin = participants[participantId].getOrigin();
       var format_preference;
       if (pubInfo.type === 'webrtc') {
-        format_preference = {};
-        if (pubInfo.media.audio) {
-          format_preference.audio = {optional: room_config.mediaIn.audio};
-        }
-
-        if (pubInfo.media.video) {
-          format_preference.video = {optional: room_config.mediaIn.video};
-        }
+        const rtcPubInfo = translateRtcPubIfNeeded(pubInfo);
+        // Set formatPreference
+        rtcPubInfo.tracks.forEach(track => {
+          track.formatPreference = {optional: room_config.mediaIn[track.type]};
+        });
+        initiateStream(streamId, {owner: participantId, type: pubInfo.type, origin});
+        return rtcController.initiate(participantId, streamId, 'in', participants[participantId].getOrigin(), rtcPubInfo)
+        .then((result) => {
+          callback('callback', result);
+        })
+        .catch((e) => {
+          removeStream(streamId);
+          callback('callback', 'error', e.message ? e.message : e);
+        });
       }
 
-      var origin = participants[participantId].getOrigin();
-      initiateStream(streamId, {owner: participantId, type: pubInfo.type, origin: origin});
+      initiateStream(streamId, {owner: participantId, type: pubInfo.type, origin});
       return accessController.initiate(participantId, streamId, 'in', participants[participantId].getOrigin(), pubInfo, format_preference)
       .then((result) => {
         callback('callback', result);
@@ -1052,6 +1071,18 @@ var Conference = function (rpcClient, selfRpcId) {
       });
   };
 
+  const getStreamTrack = (tsId, type) => {
+    let track = null;
+    if (trackOwners[tsId]) {
+      track = streams[trackOwners[tsId]].media.tracks
+        .find(t => (t.id === tsId && t.type === type));
+    } else if (streams[tsId]) {
+      track = streams[tsId].media.tracks
+        .find(t => t.type === type);
+    }
+    return track;
+  };
+
   const isAudioFmtAvailable = (streamAudio, fmt) => {
     //log.debug('streamAudio:', JSON.stringify(streamAudio), 'fmt:', fmt);
     if (isAudioFmtEqual(streamAudio.format, fmt)) {
@@ -1064,18 +1095,17 @@ var Conference = function (rpcClient, selfRpcId) {
   };
 
   const validateAudioRequest = (type, req, err) => {
-    if (!streams[req.from] || !streams[req.from].media.audio) {
+    let track = getStreamTrack(req.from, 'audio');
+    if (!track) {
       err && (err.message = 'Requested audio stream');
       return false;
     }
-
     if (req.format) {
-      if (!isAudioFmtAvailable(streams[req.from].media.audio, req.format)) {
+      if (!isAudioFmtAvailable(track, req.format)) {
         err && (err.message = 'Format is not acceptable');
         return false;
       }
     }
-
     return true;
   };
 
@@ -1088,10 +1118,6 @@ var Conference = function (rpcClient, selfRpcId) {
       return true;
     }
     return false;
-  };
-
-  const isResolutionEqual = (r1, r2) => {
-    return (r1.width === r2.width) && (r1.height === r2.height);
   };
 
   const isResolutionAvailable = (streamVideo, resolution) => {
@@ -1140,53 +1166,34 @@ var Conference = function (rpcClient, selfRpcId) {
   };
 
   const validateVideoRequest = (type, req, err) => {
-    if (!streams[req.from] || !streams[req.from].media.video) {
+    let track = getStreamTrack(req.from, 'video');
+    if (!track) {
       err && (err.message = 'Requested video stream');
       return false;
     }
-
-    if (req.format && !isVideoFmtAvailable(streams[req.from].media.video, req.format)) {
+    if (req.format && !isVideoFmtAvailable(track, req.format)) {
       err && (err.message = 'Format is not acceptable');
       return false;
     }
-
-    if (req.simulcastRid) {
-      let findRid = false;
-      if (streams[req.from].media.video.rid === req.simulcastRid) {
-        findRid = true;
-      }
-      if (streams[req.from].media.video.alternative) {
-        streams[req.from].media.video.alternative.forEach((item) => {
-          if (item.rid === req.simulcastRid) {
-            findRid = true;
-          }
-        });
-      }
-      if (!findRid) {
-        err && (err.message = 'Simulcast RID is not acceptable');
-        return false;
-      }
-    } else if (req.parameters) {
-      if (req.parameters.resolution && !isResolutionAvailable(streams[req.from].media.video, req.parameters.resolution)) {
+    if (req.parameters) {
+      if (req.parameters.resolution && !isResolutionAvailable(track, req.parameters.resolution)) {
         err && (err.message = 'Resolution is not acceptable');
         return false;
       }
 
-      if (req.parameters.framerate && !isFramerateAvailable(streams[req.from].media.video, req.parameters.framerate)) {
+      if (req.parameters.framerate && !isFramerateAvailable(track, req.parameters.framerate)) {
         err && (err.message = 'Framerate is not acceptable');
         return false;
       }
-
       //FIXME: allow bitrate 1.0x for client-sdk
       if (req.parameters.bitrate === 'x1.0' || req.parameters.bitrate === 'x1') {
         req.parameters.bitrate = undefined;
       }
-      if (req.parameters.bitrate && !isBitrateAvailable(streams[req.from].media.video, req.parameters.bitrate)) {
+      if (req.parameters.bitrate && !isBitrateAvailable(track, req.parameters.bitrate)) {
         err && (err.message = 'Bitrate is not acceptable');
         return false;
       }
-
-      if (req.parameters.keyFrameInterval && !isKeyFrameIntervalAvailable(streams[req.from].media.video, req.parameters.keyFrameInterval)) {
+      if (req.parameters.keyFrameInterval && !isKeyFrameIntervalAvailable(track, req.parameters.keyFrameInterval)) {
         err && (err.message = 'KeyFrameInterval is not acceptable');
         return false;
       }
@@ -1209,6 +1216,14 @@ var Conference = function (rpcClient, selfRpcId) {
     if ((subDesc.media.audio && !participants[participantId].isSubscribePermitted('audio'))
         || (subDesc.media.video && !participants[participantId].isSubscribePermitted('video'))) {
       return callback('callback', 'error', 'unauthorized');
+    }
+    if (subDesc.type === 'webrtc' && subDesc.media.tracks) {
+      if ((subDesc.media.tracks.find(t => t.type === 'audio')
+        && !participants[participantId].isSubscribePermitted('audio'))
+        || (subDesc.media.tracks.find(t => t.type === 'video')
+        && !participants[participantId].isSubscribePermitted('video'))) {
+        return callback('callback', 'error', 'unauthorized');
+      }
     }
 
     if (subscriptions[subscriptionId]) {
@@ -1235,28 +1250,38 @@ var Conference = function (rpcClient, selfRpcId) {
     } else {
       var format_preference;
       if (subDesc.type === 'webrtc') {
-        format_preference = {};
-        if (subDesc.media.audio) {
-          var source = streams[subDesc.media.audio.from].media.audio;
-          if (streams[subDesc.media.audio.from].type === 'forward') {
-            format_preference.audio = {preferred: source.format};
-            source.optional && source.optional.format && (format_preference.audio.optional = source.optional.format);
+        const rtcSubInfo = translateRtcSubIfNeeded(subDesc);
+        // Set formatPreference
+        rtcSubInfo.tracks.forEach(track => {
+          const source = streams[track.from].media.tracks.find(t => t.type === track.type);
+          const formatPreference = {};
+          if (streams[track.from].type === 'forward') {
+            formatPreference.preferred = source.format;
+            source.optional && source.optional.format && (formatPreference.optional = source.optional.format);
           } else {
-            format_preference.audio = {optional: [source.format]};
-            source.optional && source.optional.format && (format_preference.audio.optional = format_preference.audio.optional.concat(source.optional.format));
+            formatPreference.optional = [source.format];
+            source.optional && source.optional.format && (formatPreference.optional = formatPreference.optional.concat(source.optional.format));
           }
-        }
+          track.formatPreference = formatPreference;
+        });
 
-        if (subDesc.media.video) {
-          var source = streams[subDesc.media.video.from].media.video;
-          if (streams[subDesc.media.video.from].type === 'forward') {
-            format_preference.video = {preferred: source.format};
-            source.optional && source.optional.format && (format_preference.video.optional = source.optional.format);
-          } else {
-            format_preference.video = {optional: [source.format]};
-            source.optional && source.optional.format && (format_preference.video.optional = format_preference.video.optional.concat(source.optional.format));
+        initiateSubscription(subscriptionId, subDesc, {owner: participantId, type: subDesc.type});
+        return rtcController.initiate(participantId, subscriptionId, 'out', participants[participantId].getOrigin(), rtcSubInfo)
+        .then((result) => {
+          const releasedSource = rtcSubInfo.tracks.find(track => {
+            const sourceStreamId = trackOwners[track.from] || track.from;
+            return !streams[sourceStreamId];
+          });
+          if (releasedSource) {
+            rtcController.terminate(participantId, subscriptionId, 'Participant terminate');
+            return Promise.reject('Target audio/video stream early released');
           }
-        }
+          callback('callback', result);
+        })
+        .catch((e) => {
+          removeSubscription(subscriptionId);
+          callback('callback', 'error', e.message ? e.message : e);
+        });
       }
 
       if (subDesc.type === 'recording') {
@@ -1265,7 +1290,8 @@ var Conference = function (rpcClient, selfRpcId) {
           if (subDesc.media.audio.format) {
             audio_codec = subDesc.media.audio.format.codec;
           } else {
-            audio_codec = streams[subDesc.media.audio.from].media.audio.format.codec;
+            let track = getStreamTrack(subDesc.media.audio.from, 'audio');
+            audio_codec = track.format.codec;
           }
 
           //FIXME: To support codecs other than those in the following list.
@@ -1275,7 +1301,8 @@ var Conference = function (rpcClient, selfRpcId) {
         }
 
         if (subDesc.media.video) {
-          video_codec = ((subDesc.media.video.format && subDesc.media.video.format.codec) || streams[subDesc.media.video.from].media.video.format.codec);
+          let track = getStreamTrack(subDesc.media.video.from, 'video');
+          video_codec = ((subDesc.media.video.format && subDesc.media.video.format.codec) || track.format.codec);
         }
 
         if (!subDesc.connection.container || subDesc.connection.container === 'auto') {
@@ -1356,16 +1383,24 @@ var Conference = function (rpcClient, selfRpcId) {
       return Promise.resolve('ok');
     }
 
-    return new Promise((resolve, reject) => {
-      roomController.mix(streamId, toView, function() {
-        if (streams[streamId].info.inViews.indexOf(toView) === -1) {
-          streams[streamId].info.inViews.push(toView);
-        }
-        resolve('ok');
-      }, function(reason) {
-        log.info('roomController.mix failed, reason:', reason);
-        reject(reason);
-      });
+    const trackIds = streams[streamId].media.tracks
+      .map(t => t.id).filter(id => !!id);
+    if (trackIds.length === 0) {
+      // Mix the no-track-id stream
+      trackIds.push(streamId);
+    }
+
+    const mixOps = trackIds.map(id => new Promise((resolve, reject) => {
+      roomController.mix(id, toView, resolve, reject);
+    }));
+    return Promise.all(mixOps).then(() => {
+      if (streams[streamId].info.inViews.indexOf(toView) === -1) {
+        streams[streamId].info.inViews.push(toView);
+      }
+      return Promise.resolve('ok');
+    }).catch(reason => {
+      log.info('roomController.mix failed, reason:', reason);
+      throw reason;
     });
   };
 
@@ -1374,14 +1409,22 @@ var Conference = function (rpcClient, selfRpcId) {
       return Promise.reject('Stream is NOT ready');
     }
 
-    return new Promise((resolve, reject) => {
-      roomController.unmix(streamId, fromView, function() {
-        streams[streamId].info.inViews.splice(streams[streamId].info.inViews.indexOf(fromView), 1);
-        resolve('ok');
-      }, function(reason) {
-        log.info('roomController.unmix failed, reason:', reason);
-        reject(reason);
-      });
+    const trackIds = streams[streamId].media.tracks
+      .map(t => t.id).filter(id => !!id);
+    if (trackIds.length === 0) {
+      // Mix the no-track-id stream
+      trackIds.push(streamId);
+    }
+
+    const unmixOps = trackIds.map(id => new Promise((resolve, reject) => {
+      roomController.unmix(id, fromView, resolve, reject);
+    }));
+    return Promise.all(unmixOps).then(() => {
+      streams[streamId].info.inViews.splice(streams[streamId].info.inViews.indexOf(fromView), 1);
+      return Promise.resolve('ok');
+    }).catch(reason => {
+      log.info('roomController.unmix failed, reason:', reason);
+      throw reason;
     });
   };
 
@@ -1390,35 +1433,39 @@ var Conference = function (rpcClient, selfRpcId) {
       return Promise.reject('Stream is Mixed');
     }
 
-    var audio = (track === 'audio' || track === 'av') ? true : false,
-        video = (track === 'video' || track === 'av') ? true : false,
-        status = (muted ? 'inactive' : 'active');
+    const audio = (track === 'audio' || track === 'av') ? true : false;
+    const video = (track === 'video' || track === 'av') ? true : false;
+    const status = muted ? 'inactive' : 'active';
 
-    if (audio && !streams[streamId].media.audio) {
-      return Promise.reject('Stream does NOT contain audio track');
+    const affectedTracks = streams[streamId].media.tracks
+      .filter(t => ((audio && t.type === 'audio') || (video && t.type === 'video')))
+      .map(t => t.id);
+    if (affectedTracks.length === 0) {
+      return Promise.reject('Stream does NOT contain valid track to mute/unmute');
     }
-
-    if (video && !streams[streamId].media.video) {
-      return Promise.reject('Stream does NOT contain video track');
-    }
-
-    return accessController.setMute(streamId, track, muted)
+    return rtcController.setMute(streamId, affectedTracks, muted)
       .then(() => {
-        audio && (streams[streamId].media.audio.status = status);
-        video && (streams[streamId].media.video.status = status);
-        roomController.updateStream(streamId, track, status);
+        streams[streamId].media.tracks.forEach(t => {
+          if (affectedTracks.indexOf(t.id) > -1) {
+            t.status = status;
+            roomController.updateStream(t.id, track, status);
+          }
+        });
         var updateFields = (track === 'av') ? ['audio.status', 'video.status'] : [track + '.status'];
         room_config.notifying.streamChange && updateFields.forEach((fieldData) => {
           sendMsg('room', 'all', 'stream', {status: 'update', id: streamId, data: {field: fieldData, value: status}});
         });
         return 'ok';
       }, function(reason) {
-        log.warn('accessController set mute failed:', reason);
+        log.warn('rtcController set mute failed:', reason);
         return Promise.reject(reason);
       });
   };
 
   const getRegion = function(streamId, inView) {
+    if (streams[streamId].info.type === 'webrtc') {
+      streamId = getStreamTrack(streamId, 'video').id;
+    }
     return new Promise((resolve, reject) => {
       roomController.getRegion(streamId, inView, function(region) {
         resolve({region: region});
@@ -1430,6 +1477,9 @@ var Conference = function (rpcClient, selfRpcId) {
   };
 
   const setRegion = function(streamId, regionId, inView) {
+    if (streams[streamId].info.type === 'webrtc') {
+      streamId = getStreamTrack(streamId, 'video').id;
+    }
     return new Promise((resolve, reject) => {
       roomController.setRegion(streamId, regionId, inView, function() {
         resolve('ok');
@@ -1440,11 +1490,33 @@ var Conference = function (rpcClient, selfRpcId) {
     });
   };
 
+  // Convert trackId to streamId for webrtc stream in layout
+  const convertLayout = function (layout) {
+    if (layout) {
+      layout = layout.map(mapRegion => {
+        const streamId = mapRegion.stream;
+        return {
+          stream: streams[streamId] ? streamId : trackOwners[streamId],
+          region: mapRegion.region
+        };
+      });
+    }
+    return layout;
+  };
+
   const setLayout = function(streamId, layout) {
+    if (layout) {
+      layout.forEach(mapRegion => {
+        const streamId = mapRegion.stream;
+        if (streams[streamId] && streams[streamId].info.type === 'webrtc') {
+          mapRegion.stream = getStreamTrack(streamId, 'video').id;
+        }
+      });
+    }
     return new Promise((resolve, reject) => {
       roomController.setLayout(streams[streamId].info.label, layout, function(updated) {
         if (streams[streamId]) {
-          streams[streamId].info.layout = updated;
+          streams[streamId].info.layout = convertLayout(updated);
           resolve('ok');
         } else {
           reject('stream early terminated');
@@ -1511,52 +1583,52 @@ var Conference = function (rpcClient, selfRpcId) {
   };
 
   const updateSubscription = (subscriptionId, update) => {
-    var old_su = subscriptions[subscriptionId],
-        new_su = JSON.parse(JSON.stringify(old_su));
+    const oldSub = subscriptions[subscriptionId];
+    const newSubMedia = JSON.parse(JSON.stringify(oldSub.media));
+    let audioTrack = null;
+    let videoTrack = null;
+    let effective = false;
 
-    var effective = false;
     if (update.audio) {
-      if (!old_su.media.audio) {
-        return Promise.reject('Target audio stream does NOT satisfy');
+      audioTrack = newSubMedia.tracks.find(t => t.type === 'audio');
+      if (!audioTrack) {
+        return Promise.reject('Target subscription does NOT have audio to update');
       }
-
-      new_su.media.audio = (new_su.media.audio || {});
-      if (update.audio.from && (update.audio.from !== new_su.media.audio.from)) {
-        new_su.media.audio.from = update.audio.from;
+      if (update.audio.from && update.audio.from !== audioTrack.from) {
+        audioTrack.from = update.audio.from;
         effective = true;
       }
     }
 
     if (update.video) {
-      if (!old_su.media.video) {
-        return Promise.reject('Target video stream does NOT satisfy');
+      videoTrack = newSubMedia.tracks.find(t => t.type === 'video');
+      if (!videoTrack) {
+        return Promise.reject('Target subscription does NOT have video to update');
       }
-
-      new_su.media.video = (new_su.media.video || {});
-      if (update.video.from && (update.video.from !== new_su.media.video.from)) {
-        new_su.media.video.from = update.video.from;
+      if (update.video.from && update.video.from !== videoTrack.from) {
+        videoTrack.from = update.video.from;
         effective = true;
       }
-
       if (update.video.parameters && (Object.keys(update.video.parameters).length > 0)) {
-        new_su.media.video.parameters = (new_su.media.video.parameters || {});
-        old_su.media.video.parameters = (old_su.media.video.parameters || {});
-        old_su.media.video.parameters.resolution = (old_su.media.video.parameters.resolution || {});
-
-        if (update.video.parameters.resolution && ((update.video.parameters.resolution.width !== old_su.media.video.parameters.resolution.width) || (update.video.parameters.resolution.height !== old_su.media.video.parameters.resolution.height))) {
-          new_su.media.video.parameters.resolution = update.video.parameters.resolution;
+        videoTrack.parameters = (videoTrack.parameters || {});
+        if (update.video.parameters.resolution &&
+            !isResolutionEqual(update.video.parameters.resolution, videoTrack.parameters.resolution)) {
+          videoTrack.parameters.resolution = update.video.parameters.resolution;
           effective = true;
         }
-        if (update.video.parameters.framerate && (update.video.parameters.framerate !== old_su.media.video.parameters.framerate)) {
-          new_su.media.video.parameters.framerate = update.video.parameters.framerate;
+        if (update.video.parameters.framerate &&
+            update.video.parameters.framerate !== videoTrack.parameters.framerate) {
+          videoTrack.parameters.framerate = update.video.parameters.framerate;
           effective = true;
         }
-        if (update.video.parameters.bitrate && (update.video.parameters.bitrate !== old_su.media.video.parameters.bitrate)) {
-          new_su.media.video.parameters.bitrate = update.video.parameters.bitrate;
+        if (update.video.parameters.bitrate &&
+            update.video.parameters.bitrate !== videoTrack.parameters.bitrate) {
+          videoTrack.parameters.bitrate = update.video.parameters.bitrate;
           effective = true;
         }
-        if (update.video.parameters.keyFrameInterval && (update.video.parameters.keyFrameInterval !== old_su.media.video.parameters.keyFrameInterval)) {
-          new_su.media.video.parameters.keyFrameInterval = update.video.parameters.keyFrameInterval;
+        if (update.video.parameters.keyFrameInterval &&
+            update.video.parameters.keyFrameInterval !== videoTrack.parameters.keyFrameInterval) {
+          videoTrack.parameters.keyFrameInterval = update.video.parameters.keyFrameInterval;
           effective = true;
         }
       }
@@ -1564,46 +1636,48 @@ var Conference = function (rpcClient, selfRpcId) {
 
     if (!effective) {
       return Promise.resolve('ok');
-    } else {
-      if (new_su.media.video && !validateVideoRequest(new_su.info.type, new_su.media.video)) {
-        return Promise.reject('Target video stream does NOT satisfy');
-      } else if (new_su.media.audio && !validateAudioRequest(new_su.info.type, new_su.media.audio)) {
-        return Promise.reject('Target audio stream does NOT satisfy');
-      } else {
-        return removeSubscription(subscriptionId)
-          .then((result) => {
-            return addSubscription(subscriptionId, new_su.locality, new_su.media, new_su.info);
-          }).catch((err) => {
-            log.info('Update subscription failed:', err.message ? err.message : err);
-            log.info('And is recovering the previous subscription:', JSON.stringify(old_su));
-            return addSubscription(subscriptionId, old_su.locality, old_su.media, old_su.info)
-              .then(() => {
-                return Promise.reject('Update subscription failed');
-              }, () => {
-                return Promise.reject('Update subscription failed');
-              });
-          });
-      }
     }
+    const err = {};
+    if (videoTrack && !validateVideoRequest(oldSub.info.type, videoTrack, err)) {
+      return Promise.reject('Target video stream does NOT satisfy:', (err && err.message));
+    }
+    if (audioTrack && !validateAudioRequest(oldSub.info.type, audioTrack, err)) {
+      return Promise.reject('Target audio stream does NOT satisfy', (err && err.message));
+    }
+
+    return removeSubscription(subscriptionId)
+      .then((result) => {
+        return addSubscription(subscriptionId, oldSub.locality, newSubMedia, oldSub.info);
+      }).catch((err) => {
+        log.info('Update subscription failed:', err.message ? err.message : err);
+        log.info('And is recovering the previous subscription:', JSON.stringify(old_su));
+        return addSubscription(subscriptionId, oldSub.locality, oldSub.media, oldSub.info)
+          .then(() => {
+            return Promise.reject('Update subscription failed');
+          }, () => {
+            return Promise.reject('Update subscription failed');
+          });
+      });
   };
 
   const setSubscriptionMute = (subscriptionId, track, muted) => {
-    var audio = (track === 'audio' || track === 'av') ? true : false,
-        video = (track === 'video' || track === 'av') ? true : false,
-        status = (muted ? 'active' : 'inactive');
+    const audio = (track === 'audio' || track === 'av') ? true : false;
+    const video = (track === 'video' || track === 'av') ? true : false;
+    const status = (muted ? 'active' : 'inactive');
 
-    if (audio && !subscriptions[subscriptionId].media.audio) {
-      return Promise.reject('Subscription does NOT contain audio track');
+    const affectedTracks = subscriptions[subscriptionId].media.tracks
+      .filter(t => ((audio && t.type === 'audio') || (video && t.type === 'video')))
+      .map(t => t.id);
+    if (affectedTracks.length === 0) {
+      return Promise.reject('Stream does NOT contain valid track to mute/unmute');
     }
-
-    if (video && !subscriptions[subscriptionId].media.video) {
-      return Promise.reject('Subscription does NOT contain video track');
-    }
-
-    return accessController.setMute(subscriptionId, track, muted)
+    return rtcController.setMute(subscriptionId, affectedTracks, muted)
       .then(() => {
-        audio && (subscriptions[subscriptionId].media.audio.status = status);
-        video && (subscriptions[subscriptionId].media.video.status = status);
+        subscriptions[subscriptionId].media.tracks.forEach(t => {
+          if (affectedTracks.indexOf(t.id) > -1) {
+            t.status = status;
+          }
+        });
         return 'ok';
       });
   };
@@ -1661,17 +1735,37 @@ var Conference = function (rpcClient, selfRpcId) {
     callback('callback', 'ok');
   };
 
-  that.onSessionProgress = (sessionId, direction, sessionStatus) => {
+  that.onSessionProgress = function (sessionId, direction, sessionStatus) {
     log.debug('onSessionProgress, sessionId:', sessionId, 'direction:', direction, 'sessionStatus:', sessionStatus);
     accessController && accessController.onSessionStatus(sessionId, sessionStatus);
   };
 
-  that.onMediaUpdate = (sessionId, direction, mediaUpdate) => {
-    log.debug('onMediaUpdate, sessionId:', sessionId, 'direction:', direction, 'mediaUpdate:', JSON.stringify(mediaUpdate));
-    if (direction === 'in' && streams[sessionId] && (streams[sessionId].type === 'forward')) {
-      updateStreamInfo(sessionId, mediaUpdate);
-      roomController && roomController.updateStreamInfo(sessionId, mediaUpdate);
+  that.onTransportProgress = function (transportId, status) {
+    log.debug('onTransportProgress, transportId:', transportId, 'status:', status);
+    rtcController && rtcController.onTransportProgress(transportId, status);
+  };
+
+  that.onMediaUpdate = function (trackId, direction, mediaUpdate) {
+    log.debug('onMediaUpdate, trackId:', trackId, 'direction:', direction, 'mediaUpdate:', JSON.stringify(mediaUpdate));
+    if (direction === 'in') {
+      if (rtcController && rtcController.getTrack(trackId)) {
+        // Update from webrtc
+        const track = rtcController.getTrack(trackId);
+        mediaUpdate.id = trackId;
+        updateStreamInfo(track.operationId, mediaUpdate);
+        roomController && roomController.updateStreamInfo(trackId, mediaUpdate);
+      } else if (streams[trackId] && streams[trackId].type === 'forward'){
+        // Update from others e.g SIP
+        const sessionId = trackId;
+        updateStreamInfo(sessionId, mediaUpdate);
+        roomController && roomController.updateStreamInfo(sessionId, mediaUpdate);
+      }
     }
+  };
+
+  that.onTrackUpdate = function (sessionId, trackUpdate) {
+    log.debug('onTrackUpdate, sessionId:', sessionId, 'update:', JSON.stringify(trackUpdate));
+    rtcController && rtcController.onTrackUpdate(sessionId, trackUpdate);
   };
 
   that.onVideoLayoutChange = function(roomId, layout, view, callback) {
@@ -1679,6 +1773,7 @@ var Conference = function (rpcClient, selfRpcId) {
     if (room_id === roomId && roomController) {
       var streamId = roomController.getMixedStream(view);
       if (streams[streamId]) {
+        layout = convertLayout(layout);
         streams[streamId].info.layout = layout;
         room_config.notifying.streamChange && sendMsg('room', 'all', 'stream', {status: 'update', id: streamId, data: {field: 'video.layout', value: layout}});
         callback('callback', 'ok');
@@ -1699,14 +1794,8 @@ var Conference = function (rpcClient, selfRpcId) {
         }
       });
 
-      var input = undefined;
-      for (var id in streams) {
-        if (streams[id].type === 'forward' && id === activeInputStream) {
-          input = id;
-          break;
-        }
-      }
-      if (input) {
+      var input = streams[activeInputStream] ? activeInputStream : trackOwners[activeInputStream];
+      if (input && streams[input]) {
         for (var id in streams) {
           if (streams[id].type === 'mixed' && streams[id].info.label === view) {
             if (streams[id].info.activeInput !== input) {
@@ -1788,7 +1877,7 @@ var Conference = function (rpcClient, selfRpcId) {
     var result = [];
     for (var stream_id in streams) {
       if (!streams[stream_id].isInConnecting) {
-        result.push(Stream.toPortalFormat(streams[stream_id]));
+        result.push(streams[stream_id].toPortalFormat());
       }
     }
     callback('callback', result);
@@ -1850,7 +1939,7 @@ var Conference = function (rpcClient, selfRpcId) {
           }, 60);
         });
       }).then(() => {
-        callback('callback', Stream.toPortalFormat(streams[stream_id]));
+        callback('callback', streams[stream_id].toPortalFormat());
       }).catch((e) => {
         callback('callback', 'error', e.message ? e.message : e);
         removeStream(stream_id);
@@ -1930,8 +2019,9 @@ var Conference = function (rpcClient, selfRpcId) {
             break;
           case 'replace':
             if ((cmd.path === '/media/audio/status') && (cmd.value === 'inactive' || cmd.value === 'active')) {
-              if (streams[streamId].media.audio) {
-                if (streams[streamId].media.audio.status !== cmd.value) {
+              const track = getStreamTrack(streamId, 'audio');
+              if (track) {
+                if (track.status !== cmd.value) {
                   muteReq.push({track: 'audio', mute: (cmd.value === 'inactive')});
                 }
                 exe = Promise.resolve('ok');
@@ -1939,8 +2029,9 @@ var Conference = function (rpcClient, selfRpcId) {
                 exe = Promise.reject('Track does NOT exist');
               }
             } else if ((cmd.path === '/media/video/status') && (cmd.value === 'inactive' || cmd.value === 'active')) {
-              if (streams[streamId].media.video) {
-                if (streams[streamId].media.video.status !== cmd.value) {
+              const track = getStreamTrack(streamId, 'video');
+              if (track) {
+                if (track.status !== cmd.value) {
                   muteReq.push({track: 'video', mute: (cmd.value === 'inactive')});
                 }
                 exe = Promise.resolve('ok');
@@ -2033,7 +2124,7 @@ var Conference = function (rpcClient, selfRpcId) {
     ).then(() => {
       return Promise.all(muteReq.map((r) => {return setStreamMute(streamId, r.track, r.mute);}));
     }).then(() => {
-      callback('callback', Stream.toPortalFormat(streams[streamId]));
+      callback('callback', streams[streamId].toPortalFormat());
     }, (err) => {
       log.warn('failed in controlStream, reason:', err.message ? err.message : err);
       callback('callback', 'error', err.message ? err.message : err);
@@ -2061,7 +2152,7 @@ var Conference = function (rpcClient, selfRpcId) {
   };
 
   const subscriptionAbstract = (subId) => {
-    var result = {id: subId, media: subscriptions[subId].media};
+    var result = {id: subId, media: {}};
     if (subscriptions[subId].info.type === 'streaming') {
       result.url = subscriptions[subId].info.url;
     } else if (subscriptions[subId].info.type === 'recording') {
@@ -2069,6 +2160,14 @@ var Conference = function (rpcClient, selfRpcId) {
     } else if (subscriptions[subId].info.type === 'analytics') {
       result.analytics = subscriptions[subId].info.analytics;
     }
+    subscriptions[subId].media.tracks.forEach(t => {
+      result.media[t.type] = {
+        format: t.format,
+        parameters: t.parameters,
+        from: t.from,
+        status: t.status
+      };
+    });
     return result;
   };
 
@@ -2123,7 +2222,8 @@ var Conference = function (rpcClient, selfRpcId) {
             if (subDesc.media.audio.format) {
               audio_codec = subDesc.media.audio.format.codec;
             } else {
-              audio_codec = streams[subDesc.media.audio.from].media.audio.format.codec;
+              let track = getStreamTrack(subDesc.media.audio.from, 'audio');
+              audio_codec = track.format.codec;
             }
 
             //FIXME: To support codecs other than those in the following list.
@@ -2133,7 +2233,8 @@ var Conference = function (rpcClient, selfRpcId) {
           }
 
           if (subDesc.media.video) {
-            video_codec = ((subDesc.media.video.format && subDesc.media.video.format.codec) || streams[subDesc.media.video.from].media.video.format.codec);
+            let track = getStreamTrack(subDesc.media.video.from, 'video');
+            video_codec = ((subDesc.media.video.format && subDesc.media.video.format.codec) || track.format.codec);
           }
 
           if (!subDesc.connection.container || subDesc.connection.container === 'auto') {
@@ -2176,7 +2277,8 @@ var Conference = function (rpcClient, selfRpcId) {
           if (!streams[subDesc.media.video.from]) {
             return Promise.reject('Video source not valid for analyzing');
           }
-          let sourceVideoOption = streams[subDesc.media.video.from].media.video;
+
+          let sourceVideoOption = getStreamTrack(subDesc.media.video.from, 'video');
           if (!subDesc.media.video.format) {
             // Subscribe source format
             subDesc.media.video.format = sourceVideoOption.format;
@@ -2252,69 +2354,54 @@ var Conference = function (rpcClient, selfRpcId) {
   var doControlSubscription = function(subId, commands) {
     var subUpdate;
     var muteReqs = [];
-    return Promise.all(
-      commands.map((cmd) => {
-        var exe;
-        switch (cmd.op) {
-          case 'replace':
-            if ((cmd.path === '/media/audio/status') && subscriptions[subId].media.audio && (cmd.value === 'inactive' || cmd.value === 'active')) {
-              if (subscriptions[subId].media.audio.status !== cmd.value) {
-                muteReqs.push({track: 'audio', mute: (cmd.value === 'inactive')});
-              }
-              exe = Promise.resolve('ok');
-            } else if ((cmd.path === '/media/video/status') && subscriptions[subId].media.video && (cmd.value === 'inactive' || cmd.value === 'active')) {
-              if (subscriptions[subId].media.video.status !== cmd.value) {
-                muteReqs.push({track: 'video', mute: (cmd.value === 'inactive')});
-              }
-              exe = Promise.resolve('ok');
-            } else if ((cmd.path === '/media/audio/from') && streams[cmd.value]) {
-              subUpdate = (subUpdate || {});
-              subUpdate.audio = (subUpdate.audio || {});
-              subUpdate.audio.from = cmd.value
-              exe = Promise.resolve('ok');
-            } else if ((cmd.path === '/media/video/from') && streams[cmd.value]) {
-              subUpdate = (subUpdate || {});
-              subUpdate.video = (subUpdate.video || {});
-              subUpdate.video.from = cmd.value;
-              exe = Promise.resolve('ok');
-            } else if (cmd.path === '/media/video/parameters/resolution') {
-              subUpdate = (subUpdate || {});
-              subUpdate.video = (subUpdate.video || {});
-              subUpdate.video.parameters = (subUpdate.video.parameters || {});
-              subUpdate.video.parameters.resolution = cmd.value;
-              exe = Promise.resolve('ok');
-            } else if (cmd.path === '/media/video/parameters/framerate') {
-              subUpdate = (subUpdate || {});
-              subUpdate.video = (subUpdate.video || {});
-              subUpdate.video.parameters = (subUpdate.video.parameters || {});
-              subUpdate.video.parameters.framerate = Number(cmd.value);
-              exe = Promise.resolve('ok');
-            } else if (cmd.path === '/media/video/parameters/bitrate') {
-              subUpdate = (subUpdate || {});
-              subUpdate.video = (subUpdate.video || {});
-              subUpdate.video.parameters = (subUpdate.video.parameters || {});
-              subUpdate.video.parameters.bitrate = cmd.value;
-              exe = Promise.resolve('ok');
-            } else if (cmd.path === '/media/video/parameters/keyFrameInterval') {
-              subUpdate = (subUpdate || {});
-              subUpdate.video = (subUpdate.video || {});
-              subUpdate.video.parameters = (subUpdate.video.parameters || {});
-              subUpdate.video.parameters.keyFrameInterval = cmd.value;
-              exe = Promise.resolve('ok');
-            } else {
-              exe = Promise.reject('Invalid path or value');
-            }
-            break;
-          default:
-            exe = Promise.reject('Invalid subscription control operation');
-        }
-        return exe;
-      })
-    ).then(() => {
-      return Promise.all(muteReqs.map((r) => {
+    for (const cmd of commands) {
+      switch (cmd.op) {
+        case 'replace':
+          if ((cmd.path === '/media/audio/status') && (cmd.value === 'inactive' || cmd.value === 'active')) {
+            muteReqs.push({track: 'audio', mute: (cmd.value === 'inactive')});
+          } else if ((cmd.path === '/media/video/status') && (cmd.value === 'inactive' || cmd.value === 'active')) {
+            muteReqs.push({track: 'video', mute: (cmd.value === 'inactive')});
+          } else if ((cmd.path === '/media/audio/from') && streams[cmd.value]) {
+            subUpdate = (subUpdate || {});
+            subUpdate.audio = (subUpdate.audio || {});
+            subUpdate.audio.from = cmd.value
+          } else if ((cmd.path === '/media/video/from') && streams[cmd.value]) {
+            subUpdate = (subUpdate || {});
+            subUpdate.video = (subUpdate.video || {});
+            subUpdate.video.from = cmd.value;
+          } else if (cmd.path === '/media/video/parameters/resolution') {
+            subUpdate = (subUpdate || {});
+            subUpdate.video = (subUpdate.video || {});
+            subUpdate.video.parameters = (subUpdate.video.parameters || {});
+            subUpdate.video.parameters.resolution = cmd.value;
+            exe = Promise.resolve('ok');
+          } else if (cmd.path === '/media/video/parameters/framerate') {
+            subUpdate = (subUpdate || {});
+            subUpdate.video = (subUpdate.video || {});
+            subUpdate.video.parameters = (subUpdate.video.parameters || {});
+            subUpdate.video.parameters.framerate = Number(cmd.value);
+            exe = Promise.resolve('ok');
+          } else if (cmd.path === '/media/video/parameters/bitrate') {
+            subUpdate = (subUpdate || {});
+            subUpdate.video = (subUpdate.video || {});
+            subUpdate.video.parameters = (subUpdate.video.parameters || {});
+            subUpdate.video.parameters.bitrate = cmd.value;
+          } else if (cmd.path === '/media/video/parameters/keyFrameInterval') {
+            subUpdate = (subUpdate || {});
+            subUpdate.video = (subUpdate.video || {});
+            subUpdate.video.parameters = (subUpdate.video.parameters || {});
+            subUpdate.video.parameters.keyFrameInterval = cmd.value;
+          } else {
+            return Promise.reject('Invalid path or value');
+          }
+        default:
+          return Promise.reject('Invalid subscription control operation');
+      }
+    }
+
+    return Promise.all(muteReqs.map((r) => {
         return setSubscriptionMute(subId, r.track, r.mute);
-      }));
-    }).then(() => {
+    })).then(() => {
       if (subUpdate) {
         return updateSubscription(subId, subUpdate);
       } else {
@@ -2497,8 +2584,9 @@ var Conference = function (rpcClient, selfRpcId) {
   that.onFaultDetected = function (message) {
     if (message.purpose === 'portal' || message.purpose === 'sip') {
       dropParticipants(message.id);
-    } else if (message.purpose === 'webrtc' ||
-               message.purpose === 'recording' ||
+    } else if (message.purpose === 'webrtc') {
+      rtcController && rtcController.terminateByLocality(message.type, message.id);
+    } else if (message.purpose === 'recording' ||
                message.purpose === 'streaming' ||
                message.purpose === 'analytics') {
       accessController && accessController.onFaultDetected(message.type, message.id);
@@ -2535,8 +2623,10 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
 
     //rpc from access nodes.
     onSessionProgress: conference.onSessionProgress,
+    onTransportProgress: conference.onTransportProgress,
     onMediaUpdate: conference.onMediaUpdate,
-    onSessionAudit: conference.onSessionAudit,
+    onTrackUpdate: conference.onTrackUpdate,
+    // onSessionAudit: conference.onSessionAudit,
 
     // rpc from audio nodes.
     onAudioActiveness: conference.onAudioActiveness,
