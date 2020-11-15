@@ -194,6 +194,23 @@ void VideoTranscoder::forceKeyFrame(const std::string& outStreamID)
         m_frameTranscoder->requestKeyFrame(index);
     }
 }
+    
+void VideoTranscoder::setMaxResolution(const std::string& outStreamID, int width, int height)
+{
+
+    int32_t index = -1;
+    boost::shared_lock<boost::shared_mutex> lock(m_outputsMutex);
+    auto it = m_outputs.find(outStreamID);
+    if (it != m_outputs.end()) {
+        index = it->second;
+    }
+    lock.unlock();
+
+    if (index != -1) {
+        m_frameTranscoder->setMaxResolution(index, width, height);
+    }
+}    
+    
 #ifndef BUILD_FOR_ANALYTICS
 void VideoTranscoder::drawText(const std::string& textSpec)
 {
