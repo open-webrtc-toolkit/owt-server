@@ -302,7 +302,19 @@ public:
     virtual void degenerateStream(int32_t streamId) = 0;
     virtual void setBitrate(unsigned short kbps, int32_t streamId) = 0;
     virtual void requestKeyFrame(int32_t streamId) = 0;
+    
+protected:
+    int maxWidth = 0;
+    int maxHeight = 0;        
 };
+    
+
+inline void VideoFrameEncoder::setMaxResolution(int output, int width, int height)
+{
+    maxWidth = width;
+    maxHeight = height;
+}    
+
 
 }
 #endif
