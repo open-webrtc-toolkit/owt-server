@@ -53,6 +53,7 @@ public:
 #endif
     void removeOutput(const std::string& outStreamID);
     void forceKeyFrame(const std::string& outStreamID);
+    void setMaxResolution(const std::string& outStreamID, int width, int height);
 #ifndef BUILD_FOR_ANALYTICS
     void drawText(const std::string& textSpec);
     void clearText();
