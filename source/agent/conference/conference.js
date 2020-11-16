@@ -575,9 +575,14 @@ var Conference = function (rpcClient, selfRpcId) {
   const addStream = (id, locality, media, info) => {
     info.origin = streams[id] ? streams[id].info.origin : {isp:"isp", region:"region"};
     if (info.analytics && subscriptions[info.analytics]) {
-      const sourceTrack = subscriptions[info.analytics].media.tracks
-        .find(t => t.type === 'video');
-      const sourceId = streams[sourceTrack.from] ? sourceTrack.from : trackOwners[sourceTrack.from];
+      let sourceId;
+      if (subscriptions[info.analytics].isInConnecting) {
+        sourceId = subscriptions[info.analytics].media.video.from;
+      } else {
+        const sourceTrack = subscriptions[info.analytics].media.tracks
+            .find(t => t.type === 'video');
+        sourceId = streams[sourceTrack.from] ? sourceTrack.from : trackOwners[sourceTrack.from];
+      }
       if (streams[sourceId]) {
         info.origin = streams[sourceId].info.origin;
       } else {
