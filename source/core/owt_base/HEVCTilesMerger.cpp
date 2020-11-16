@@ -4,8 +4,20 @@
 
 #ifdef _ENABLE_HEVC_TILES_MERGER_
 
+#include <glog/logging.h>
+
 #include "HEVCTilesMerger.h"
 #include "MediaUtilities.h"
+
+#ifndef ELOG_IS_TRACE_ENABLED
+#define ELOG_IS_TRACE_ENABLED() \
+    logger->isTraceEnabled()
+#endif
+
+#ifndef ELOG_IS_DEBUG_ENABLED
+#define ELOG_IS_DEBUG_ENABLED() \
+    logger->isDebugEnabled()
+#endif
 
 namespace owt_base {
 
@@ -71,6 +83,13 @@ HEVCTilesMerger::HEVCTilesMerger()
     , m_bsDumpfp_low_res(NULL)
     , m_bsDumpfp(NULL)
 {
+    google::InitGoogleLogging("");
+
+    if (ELOG_IS_DEBUG_ENABLED() ||
+        ELOG_IS_TRACE_ENABLED())
+        google::SetStderrLogging(google::INFO);
+    else
+        google::SetStderrLogging(google::ERROR);
 }
 
 HEVCTilesMerger::~HEVCTilesMerger()
