@@ -1218,17 +1218,19 @@ var Conference = function (rpcClient, selfRpcId) {
       return callback('callback', 'error', 'Participant has not joined');
     }
 
-    if ((subDesc.media.audio && !participants[participantId].isSubscribePermitted('audio'))
-        || (subDesc.media.video && !participants[participantId].isSubscribePermitted('video'))) {
-      return callback('callback', 'error', 'unauthorized');
+    let audioTrack = null;
+    let videoTrack = null;
+    if (subDesc.type === 'webrtc') {
+      audioTrack = subDesc.media.tracks.find(t => t.type === 'audio');
+      videoTrack = subDesc.media.tracks.find(t => t.type === 'audio');
+    } else {
+      audioTrack = subDesc.media.audio;
+      videoTrack = subDesc.media.video;
     }
-    if (subDesc.type === 'webrtc' && subDesc.media.tracks) {
-      if ((subDesc.media.tracks.find(t => t.type === 'audio')
-        && !participants[participantId].isSubscribePermitted('audio'))
-        || (subDesc.media.tracks.find(t => t.type === 'video')
-        && !participants[participantId].isSubscribePermitted('video'))) {
-        return callback('callback', 'error', 'unauthorized');
-      }
+
+    if ((audioTrack && !participants[participantId].isSubscribePermitted('audio'))
+        || (videoTrack && !participants[participantId].isSubscribePermitted('video'))) {
+      return callback('callback', 'error', 'unauthorized');
     }
 
     if (subscriptions[subscriptionId]) {
@@ -1236,11 +1238,11 @@ var Conference = function (rpcClient, selfRpcId) {
     }
 
     var requestError = { message: '' };
-    if (subDesc.media.audio && !validateAudioRequest(subDesc.type, subDesc.media.audio, requestError)) {
+    if (audioTrack && !validateAudioRequest(subDesc.type, audioTrack, requestError)) {
       return callback('callback', 'error', 'Target audio stream does NOT satisfy:' + requestError.message);
     }
 
-    if (subDesc.media.video && !validateVideoRequest(subDesc.type, subDesc.media.video, requestError)) {
+    if (videoTrack && !validateVideoRequest(subDesc.type, videoTrack, requestError)) {
       return callback('callback', 'error', 'Target video stream does NOT satisfy:' + requestError.message);
     }
 
