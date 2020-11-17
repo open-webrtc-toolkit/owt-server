@@ -12,6 +12,7 @@
 #include <boost/thread/mutex.hpp>
 #include <logger.h>
 #include <queue>
+#include "IOService.h"
 
 namespace owt_base {
 
@@ -93,8 +94,7 @@ private:
     // the order of the member declarations here.
     // Alternatively, we may make the io_service object reference counted but it
     // introduces unnecessary complexity.
-    boost::asio::io_service m_ioService;
-    boost::thread m_workThread;
+    std::shared_ptr<IOService> m_service;
     struct Socket {
         Socket() { }
         ~Socket() { }
