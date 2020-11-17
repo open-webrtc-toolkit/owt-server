@@ -229,6 +229,7 @@ var Conference = function (rpcClient, selfRpcId) {
    * }
    */
   var subscriptions = {};
+  var selfCleanTimer = null;
 
   var rpcChannel = require('./rpcChannel')(rpcClient),
       rpcReq = require('./rpcRequest')(rpcChannel);
@@ -448,6 +449,8 @@ var Conference = function (rpcClient, selfRpcId) {
       subscriptions = {};
       streams = {};
       participants = {};
+      selfCleanTimer && clearTimeout(selfCleanTimer);
+      selfCleanTimer = null;
       room_id = undefined;
     };
 
@@ -817,7 +820,9 @@ var Conference = function (rpcClient, selfRpcId) {
   };
 
   const selfClean = () => {
-    setTimeout(function() {
+    selfCleanTimer && clearTimeout(selfCleanTimer);
+    selfCleanTimer = setTimeout(function() {
+      selfCleanTimer = null;
       if (roomIsIdle()) {
         log.info('Empty room ', room_id, '. Deleting it');
         destroyRoom();
