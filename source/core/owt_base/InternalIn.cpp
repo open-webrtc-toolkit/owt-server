@@ -41,7 +41,7 @@ void InternalIn::onFeedback(const FeedbackMsg& msg)
 void InternalIn::onTransportData(char* buf, int len)
 {
     Frame* frame = nullptr;
-    Metadata* metadata = nullptr;
+    MetaData* metadata = nullptr;
     switch (buf[0]) {
         case TDT_MEDIA_FRAME:
             frame = reinterpret_cast<Frame*>(buf + 1);
@@ -49,9 +49,9 @@ void InternalIn::onTransportData(char* buf, int len)
             deliverFrame(*frame);
             break;
         case TDT_MEDIA_METADATA:
-            metadata = reinterpret_cast<Metadata*>(buf + 1);
-            metadata->payload = reinterpret_cast<uint8_t*>(buf + 1 + sizeof(Metadata));
-            deliverMetadata(*metadata);
+            metadata = reinterpret_cast<MetaData*>(buf + 1);
+            metadata->payload = reinterpret_cast<uint8_t*>(buf + 1 + sizeof(MetaData));
+            deliverMetaData(*metadata);
             break;
         default:
             break;
