@@ -12,6 +12,7 @@
       '../../../core/owt_base/MediaFramePipeline.cpp',
       '../../../core/owt_base/RawTransport.cpp',
       '../../../core/owt_base/SctpTransport.cpp',
+      '../../../core/common/IOService.cpp',
     ],
     'include_dirs': [
       '$(CORE_HOME)/common',
