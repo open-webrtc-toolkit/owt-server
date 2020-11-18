@@ -739,7 +739,6 @@ var Conference = function (rpcClient, selfRpcId) {
 
     const isAudioPubPermitted = !!participants[info.owner].isPublishPermitted('audio');
     const subArgs = subscription.toRoomCtrlSubArgs();
-    const subInfo = { transport : transport, media : media, data : dataSpec };
     const subs = subArgs.map(subArg => new Promise((resolve, reject) => {
         if (roomController) {
             const subInfo = { transport : transport, media : subArg.media, data : subArg.data };
@@ -948,7 +947,8 @@ var Conference = function (rpcClient, selfRpcId) {
     }
     const rtcPubInfo = {
       type: pubInfo.type,
-      transportId: pubInfo.transportId,
+      transport: pubInfo.transport,
+      transportId: pubInfo.transport.id,
       tracks: pubInfo.media.tracks,
       legacy: pubInfo.legacy,
       data: pubInfo.data
@@ -962,8 +962,10 @@ var Conference = function (rpcClient, selfRpcId) {
     }
     const rtcSubInfo = {
       type: subDesc.type,
-      transportId: subDesc.transportId,
+      transport: subDesc.transport,
+      transportId: subDesc.transport.id,
       tracks: subDesc.media.tracks,
+      data: subDesc.data,
       legacy: subDesc.legacy,
     };
     return rtcSubInfo;
@@ -1272,30 +1274,32 @@ var Conference = function (rpcClient, selfRpcId) {
       });
     } else {
       var format_preference;
-      if (subDesc.type === 'webrtc') {
+      if (subDesc.type === 'webrtc' || subDesc.type === 'quic') {
         const rtcSubInfo = translateRtcSubIfNeeded(subDesc);
-        // Set formatPreference
-        rtcSubInfo.tracks.forEach(track => {
-          const streamId = streams[track.from]? track.from : trackOwners[track.from];
-          const source = getStreamTrack(track.from, track.type);
-          const formatPreference = {};
-          if (streams[streamId].type === 'forward') {
-            formatPreference.preferred = source.format;
-            source.optional && source.optional.format && (formatPreference.optional = source.optional.format);
-          } else {
-            formatPreference.optional = [source.format];
-            source.optional && source.optional.format && (formatPreference.optional = formatPreference.optional.concat(source.optional.format));
-          }
-          track.formatPreference = formatPreference;
-        });
+        if (rtcSubInfo.tracks){
+          // Set formatPreference
+          rtcSubInfo.tracks.forEach(track => {
+            const streamId = streams[track.from]? track.from : trackOwners[track.from];
+            const source = getStreamTrack(track.from, track.type);
+            const formatPreference = {};
+            if (streams[streamId].type === 'forward') {
+              formatPreference.preferred = source.format;
+              source.optional && source.optional.format && (formatPreference.optional = source.optional.format);
+            } else {
+              formatPreference.optional = [source.format];
+              source.optional && source.optional.format && (formatPreference.optional = formatPreference.optional.concat(source.optional.format));
+            }
+            track.formatPreference = formatPreference;
+          });
+        }
 
         initiateSubscription(subscriptionId, subDesc, {owner: participantId, type: subDesc.type});
         return rtcController.initiate(participantId, subscriptionId, 'out', participants[participantId].getOrigin(), rtcSubInfo)
         .then((result) => {
-          const releasedSource = rtcSubInfo.tracks.find(track => {
-            const sourceStreamId = trackOwners[track.from] || track.from;
-            return !streams[sourceStreamId];
-          });
+          const releasedSource = rtcSubInfo.tracks ? rtcSubInfo.tracks.find(track => {
+              const sourceStreamId = trackOwners[track.from] || track.from;
+              return !streams[sourceStreamId];
+          }) : undefined;
           if (releasedSource) {
             rtcController.terminate(participantId, subscriptionId, 'Participant terminate');
             return Promise.reject('Target audio/video stream early released');
@@ -1671,11 +1675,11 @@ var Conference = function (rpcClient, selfRpcId) {
 
     return removeSubscription(subscriptionId)
       .then((result) => {
-        return addSubscription(subscriptionId, oldSub.locality, newSubMedia, oldSub.info);
+        return addSubscription(subscriptionId, oldSub.locality, newSubMedia, oldSub.data, oldSub.info);
       }).catch((err) => {
         log.info('Update subscription failed:', err.message ? err.message : err);
         log.info('And is recovering the previous subscription:', JSON.stringify(old_su));
-        return addSubscription(subscriptionId, oldSub.locality, oldSub.media, oldSub.info)
+        return addSubscription(subscriptionId, oldSub.locality, oldSub.media, oldSub.data, oldSub.info)
           .then(() => {
             return Promise.reject('Update subscription failed');
           }, () => {

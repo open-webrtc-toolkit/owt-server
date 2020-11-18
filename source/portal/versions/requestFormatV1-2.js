@@ -91,7 +91,7 @@ const SubscriptionRequest = {
           },
           additionalProperties: false,
         },
-        'data': {type: 'boolean'}
+        'data': { $ref: '#/definitions/DataSubOptions' },
       },
       additionalProperties: false,
       required: ['media']
@@ -100,7 +100,7 @@ const SubscriptionRequest = {
 
   definitions: {
     'MediaSubOptions': {
-      type: 'object',
+      type: ['object', 'null'],
       properties: {
         'tracks': {
           type: 'array',
@@ -123,6 +123,15 @@ const SubscriptionRequest = {
       },
       additionalProperties: false,
       required: ['tracks']
+    },
+
+    'DataSubOptions': {
+      type: 'object',
+      properties: {
+        'from': {type: 'string'}
+      },
+      additionalProperties: false,
+      required: ['from']
     },
 
     'AudioFormat': {

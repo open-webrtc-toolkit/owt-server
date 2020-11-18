@@ -186,7 +186,8 @@ class Subscription {
           id: track.id, // Use track ID for webrtc publication
           locality: this.locality,
           type: this.info.type,
-          media
+          media,
+          data: this.data
         };
       });
     } else {

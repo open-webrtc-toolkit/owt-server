@@ -224,6 +224,7 @@ class Stream {
           rid: track.rid,
         }))
       },
+      data: this.data,
       info: (this.type === 'mixed') ? this.info : forwardInfo,
     };
     return portalFormat;
