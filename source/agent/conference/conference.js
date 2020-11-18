@@ -1126,6 +1126,9 @@ var Conference = function (rpcClient, selfRpcId) {
   };
 
   const isResolutionAvailable = (streamVideo, resolution) => {
+    if (!streamVideo.parameters || !streamVideo.parameters.resolution) {
+      return true;
+    }
     if (streamVideo.parameters && streamVideo.parameters.resolution && isResolutionEqual(streamVideo.parameters.resolution, resolution)) {
       return true;
     }
