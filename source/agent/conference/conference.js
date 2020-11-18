@@ -1222,7 +1222,7 @@ var Conference = function (rpcClient, selfRpcId) {
     let videoTrack = null;
     if (subDesc.type === 'webrtc') {
       audioTrack = subDesc.media.tracks.find(t => t.type === 'audio');
-      videoTrack = subDesc.media.tracks.find(t => t.type === 'audio');
+      videoTrack = subDesc.media.tracks.find(t => t.type === 'video');
     } else {
       audioTrack = subDesc.media.audio;
       videoTrack = subDesc.media.video;
