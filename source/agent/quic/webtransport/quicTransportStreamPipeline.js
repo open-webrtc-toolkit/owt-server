@@ -32,6 +32,7 @@ module.exports = class QuicTransportStreamPipeline {
           type: 'ready',
           audio: false,
           video: false,
+          data: true,
           simulcast: false
         });
       }
@@ -50,6 +51,7 @@ module.exports = class QuicTransportStreamPipeline {
     };
 
     this.close = function(){
+      return;
       this._quicStream.close();
     }
   }

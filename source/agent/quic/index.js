@@ -45,12 +45,15 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
         global.config.cluster.name :
         undefined;
 
+    const getConferenceController = async (roomId) => {
+      return await rpcChannel.makeRPC(clusterName, 'schedule', [
+        'conference', roomId, 'preference' /*TODO: specify preference*/,
+        30 * 1000
+      ]);
+    };
+
     const getRpcPortal = async (roomId, participantId) => {
-      const controllerAgent =
-          await rpcChannel.makeRPC(clusterName, 'schedule', [
-            'conference', roomId, 'preference' /*TODO: specify preference*/,
-            30 * 1000
-          ]);
+      const controllerAgent = await getConferenceController(roomId);
       let controller = null;
       let portal = null;
       const retry = 5;
@@ -97,16 +100,23 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
           password, validateToken);
       quicTransportServer.start();
       quicTransportServer.on('streamadded', (stream) => {
+        log.debug('A stream with session ID '+stream.contentSessionId+' is added.');
         const conn = connections.getConnection(stream.contentSessionId);
         if (conn) {
           // TODO: verify transport ID.
           conn.connection.quicStream(stream);
+          // TODO: Make RPC call to conference node for session-established.
         } else {
           log.warn(
               'Cannot find a pipeline for QUIC stream. Content session ID: ' +
               stream.contentSessionId);
           stream.close();
         }
+      });
+      quicTransportServer.on('connectionadded', (connection) => {
+        log.debug(
+            'A connection for transport ID ' + connection.transportId +
+            ' is created.');
       });
     });
 
@@ -176,7 +186,6 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
                 conn.connect(options);
             break;
         case 'quic':
-            quicTransportServer.addTransportId(options.transport.id);
             conn = createStreamPipeline(connectionId, 'in', options, callback);
             if (!conn) {
                 return;

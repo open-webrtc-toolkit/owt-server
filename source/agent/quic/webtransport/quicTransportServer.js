@@ -30,7 +30,6 @@ module.exports = class QuicTransportServer extends EventEmitter {
     this._streams = new Map(); // Key is content session ID.
     this._unAuthenticatedConnections = []; // When it's authenticated, it will be moved to this.connections.
     this._unAssociatedStreams = []; // No content session ID assgined to them.
-    this._assignedTransportIds = []; // Transport channels assigned to this server.
     this._validateTokenCallback = validateTokenCallback;
     this._server.onconnection = (connection) => {
       this._unAuthenticatedConnections.push(connection);
@@ -58,6 +57,9 @@ module.exports = class QuicTransportServer extends EventEmitter {
                 'A new stream ' + streamId + ' is created on transport ' +
                 connection.transportId);
             this.emit('streamadded', stream);
+            const uuidBytes =
+                this._uuidStringToUint8Array(connection.transportId);
+            stream.write(uuidBytes, uuidBytes.length);
           }
         };
         stream.ondata = (data) => {
@@ -113,9 +115,17 @@ module.exports = class QuicTransportServer extends EventEmitter {
                     connection.close();
                     return;
                   }
+                  log.debug('Created connection for transport ID '+connection.transportId);
                   connection.transportId = token.transportId;
+                  connection.participantId = token.participantId;
+                  // A user can join multiple rooms. And it would be better if a
+                  // connection can be shared by all these rooms. But it looks
+                  // like existing architecture doesn't support to do so. So we
+                  // bind a connection to a single room here.
+                  connection.roomId = token.roomId;
                   stream.transportId = token.transportId;
                   this._connections.set(connection.transportId, connection);
+                  this.emit('connectionadded', connection);
                 });
                 return;
               } else {  // Store the data.
@@ -133,12 +143,6 @@ module.exports = class QuicTransportServer extends EventEmitter {
   start() {
     this._server.start();
     // TODO: Return error if server is not started, e.g.: port is not available.
-  }
-
-  addTransportId(id) {
-    if (!(id in this._assignedTransportIds)) {
-      this._assignedTransportIds.push(id);
-    }
   }
 
   // Create a send stream for specfied QuicTransport. If specified QuicTransport

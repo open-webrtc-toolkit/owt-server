@@ -256,7 +256,7 @@ class ForwardStream extends Stream {
         log.error(`Unexpected track type: ${track.type}`);
       }
     }
-    if (this.media.tracks.length === 0) {
+    if (!this.data && this.media.tracks.length === 0) {
       err = 'No valid tracks in stream';
     }
     return err;
