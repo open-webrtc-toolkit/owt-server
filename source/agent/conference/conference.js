@@ -578,9 +578,14 @@ var Conference = function (rpcClient, selfRpcId) {
   const addStream = (id, locality, media, info) => {
     info.origin = streams[id] ? streams[id].info.origin : {isp:"isp", region:"region"};
     if (info.analytics && subscriptions[info.analytics]) {
-      const sourceTrack = subscriptions[info.analytics].media.tracks
-        .find(t => t.type === 'video');
-      const sourceId = streams[sourceTrack.from] ? sourceTrack.from : trackOwners[sourceTrack.from];
+      let sourceId;
+      if (subscriptions[info.analytics].isInConnecting) {
+        sourceId = subscriptions[info.analytics].media.video.from;
+      } else {
+        const sourceTrack = subscriptions[info.analytics].media.tracks
+            .find(t => t.type === 'video');
+        sourceId = streams[sourceTrack.from] ? sourceTrack.from : trackOwners[sourceTrack.from];
+      }
       if (streams[sourceId]) {
         info.origin = streams[sourceId].info.origin;
       } else {
@@ -1121,6 +1126,9 @@ var Conference = function (rpcClient, selfRpcId) {
   };
 
   const isResolutionAvailable = (streamVideo, resolution) => {
+    if (!streamVideo.parameters || !streamVideo.parameters.resolution) {
+      return true;
+    }
     if (streamVideo.parameters && streamVideo.parameters.resolution && isResolutionEqual(streamVideo.parameters.resolution, resolution)) {
       return true;
     }
@@ -1213,17 +1221,19 @@ var Conference = function (rpcClient, selfRpcId) {
       return callback('callback', 'error', 'Participant has not joined');
     }
 
-    if ((subDesc.media.audio && !participants[participantId].isSubscribePermitted('audio'))
-        || (subDesc.media.video && !participants[participantId].isSubscribePermitted('video'))) {
-      return callback('callback', 'error', 'unauthorized');
+    let audioTrack = null;
+    let videoTrack = null;
+    if (subDesc.type === 'webrtc') {
+      audioTrack = subDesc.media.tracks.find(t => t.type === 'audio');
+      videoTrack = subDesc.media.tracks.find(t => t.type === 'video');
+    } else {
+      audioTrack = subDesc.media.audio;
+      videoTrack = subDesc.media.video;
     }
-    if (subDesc.type === 'webrtc' && subDesc.media.tracks) {
-      if ((subDesc.media.tracks.find(t => t.type === 'audio')
-        && !participants[participantId].isSubscribePermitted('audio'))
-        || (subDesc.media.tracks.find(t => t.type === 'video')
-        && !participants[participantId].isSubscribePermitted('video'))) {
-        return callback('callback', 'error', 'unauthorized');
-      }
+
+    if ((audioTrack && !participants[participantId].isSubscribePermitted('audio'))
+        || (videoTrack && !participants[participantId].isSubscribePermitted('video'))) {
+      return callback('callback', 'error', 'unauthorized');
     }
 
     if (subscriptions[subscriptionId]) {
@@ -1231,11 +1241,11 @@ var Conference = function (rpcClient, selfRpcId) {
     }
 
     var requestError = { message: '' };
-    if (subDesc.media.audio && !validateAudioRequest(subDesc.type, subDesc.media.audio, requestError)) {
+    if (audioTrack && !validateAudioRequest(subDesc.type, audioTrack, requestError)) {
       return callback('callback', 'error', 'Target audio stream does NOT satisfy:' + requestError.message);
     }
 
-    if (subDesc.media.video && !validateVideoRequest(subDesc.type, subDesc.media.video, requestError)) {
+    if (videoTrack && !validateVideoRequest(subDesc.type, videoTrack, requestError)) {
       return callback('callback', 'error', 'Target video stream does NOT satisfy:' + requestError.message);
     }
 
@@ -1253,9 +1263,10 @@ var Conference = function (rpcClient, selfRpcId) {
         const rtcSubInfo = translateRtcSubIfNeeded(subDesc);
         // Set formatPreference
         rtcSubInfo.tracks.forEach(track => {
-          const source = streams[track.from].media.tracks.find(t => t.type === track.type);
+          const streamId = streams[track.from]? track.from : trackOwners[track.from];
+          const source = getStreamTrack(track.from, track.type);
           const formatPreference = {};
-          if (streams[track.from].type === 'forward') {
+          if (streams[streamId].type === 'forward') {
             formatPreference.preferred = source.format;
             source.optional && source.optional.format && (formatPreference.optional = source.optional.format);
           } else {
