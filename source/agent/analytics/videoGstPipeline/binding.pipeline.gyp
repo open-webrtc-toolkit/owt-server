@@ -7,6 +7,7 @@
       './VideoGstAnalyzer.cpp',
       '../../../core/owt_base/MediaFramePipeline.cpp',
       '../../../core/owt_base/RawTransport.cpp',
+      '../../../core/common/IOService.cpp',
       './GstInternalOut.cpp',
       './GstInternalIn.cpp',
     ],
