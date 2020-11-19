@@ -40,6 +40,9 @@ class Subscription {
   }
 
   _upgradeMediaIfNeeded(media) {
+    if (!media) {
+      return media;
+    }
     if (!media.tracks) {
       /*
        * Early version media format: {

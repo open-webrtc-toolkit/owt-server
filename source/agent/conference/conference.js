@@ -11,6 +11,7 @@ var AccessController = require('./accessController');
 var RoomController = require('./roomController');
 var dataAccess = require('./data_access');
 var Participant = require('./participant');
+const { QuicController } = require('./quicController');
 
 // Logger
 var log = logger.getLogger('Conference');
@@ -101,6 +102,7 @@ var Conference = function (rpcClient, selfRpcId) {
       accessController;
 
   var rtcController;
+  let quicController;
 
   /*
    * {
@@ -412,6 +414,25 @@ var Conference = function (rpcClient, selfRpcId) {
                     onSessionAborted(data.owner, sessionId, data.direction, data.reason);
                   });
 
+                  quicController = new QuicController(room_id, rpcReq, selfRpcId, global.config.clusterName || 'owt-cluster');
+                  quicController.on('session-established', (sessionInfo) => {
+                    const sessionId = sessionInfo.id;
+                    const media = { tracks: sessionInfo.tracks };
+                    let direction = sessionInfo.direction;
+                    const transport = sessionInfo.transport;
+                    const conferenceSessionInfo = {
+                      locality: transport.locality,
+                      media: media,
+                      data: sessionInfo.data,
+                      info: { type: 'quic', owner: transport.owner }
+                    };
+                    onSessionEstablished(transport.owner, sessionId, direction, conferenceSessionInfo);
+                  });
+
+                  quicController.on('session-aborted', (sessionId, data) => {
+                    onSessionAborted(data.owner, sessionId, data.direction, data.reason);
+                  });
+
                   accessController = AccessController.create({clusterName: global.config.cluster.name || 'owt-cluster',
                                                               selfRpcId: selfRpcId,
                                                               inRoom: room_id,
@@ -421,7 +442,8 @@ var Conference = function (rpcClient, selfRpcId) {
                                                               onSessionEstablished,
                                                               onSessionAborted,
                                                               onLocalSessionSignaling,
-                                                              rtcController);
+                                                              rtcController,
+                                                              quicController);
                   resolve('ok');
                 },
                 function onError(reason) {
@@ -463,9 +485,13 @@ var Conference = function (rpcClient, selfRpcId) {
       if (pid !== 'admin' && rtcController) {
         pl.push(rtcController.terminateByOwner(pid));
       }
+      if (pid != 'admin' && quicController) {
+          pl.push(quicController.terminateByOwner(pid));
+      }
     }
     accessController && pl.push(accessController.participantLeave('admin'));
     rtcController && pl.push(rtcController.terminateByOwner('admin'));
+    quicController && pl.push(quicController.terminateByOwner('admin'));
 
     return Promise.all(pl)
       .then(() => {
@@ -918,14 +944,14 @@ var Conference = function (rpcClient, selfRpcId) {
     }
 
     return accessController.participantLeave(participantId)
-      .then(() => rtcController.terminateByOwner(participantId))
-      .then(() => removeParticipant(participantId))
-      .then((result) => {
+        .then(() => {
+            rtcController.terminateByOwner(participantId);
+            quicController.terminateByOwner(participantId);
+        })
+        .then(() => removeParticipant(participantId))
+        .then((result) => {
         callback('callback', 'ok');
-        selfClean();
-      }, (e) => {
-        callback('callback', 'error', e.message ? e.message : e);
-      });
+        selfClean(); }, (e) => { callback('callback', 'error', e.message ? e.message : e); });
   };
 
   that.onSessionSignaling = function(sessionId, signaling, callback) {
@@ -964,7 +990,7 @@ var Conference = function (rpcClient, selfRpcId) {
       type: subDesc.type,
       transport: subDesc.transport,
       transportId: subDesc.transport.id,
-      tracks: subDesc.media.tracks,
+      tracks: subDesc.media ? subDesc.media.tracks : undefined,
       data: subDesc.data,
       legacy: subDesc.legacy,
     };
@@ -1038,22 +1064,23 @@ var Conference = function (rpcClient, selfRpcId) {
       var origin = participants[participantId].getOrigin();
       var format_preference;
       if (pubInfo.type === 'webrtc' || pubInfo.type === 'quic') {
-        const rtcPubInfo = translateRtcPubIfNeeded(pubInfo);
-        if (rtcPubInfo.tracks) {
-            // Set formatPreference
-            rtcPubInfo.tracks.forEach(track => {
-                track.formatPreference = { optional : room_config.mediaIn[track.type] };
-            });
-        }
-        initiateStream(streamId, {owner: participantId, type: pubInfo.type, origin});
-        return rtcController.initiate(participantId, streamId, 'in', participants[participantId].getOrigin(), rtcPubInfo)
-        .then((result) => {
-          callback('callback', result);
-        })
-        .catch((e) => {
-          removeStream(streamId);
-          callback('callback', 'error', e.message ? e.message : e);
-        });
+          const controller = pubInfo.type === 'webrtc' ? rtcController : quicController;
+          const rtcPubInfo = translateRtcPubIfNeeded(pubInfo);
+          if (rtcPubInfo.tracks) {
+              // Set formatPreference
+              rtcPubInfo.tracks.forEach(track => {
+                  track.formatPreference = { optional : room_config.mediaIn[track.type] };
+              });
+          }
+          initiateStream(streamId, { owner : participantId, type : pubInfo.type, origin });
+          return controller.initiate(participantId, streamId, 'in', participants[participantId].getOrigin(), rtcPubInfo)
+              .then((result) => {
+                  callback('callback', result);
+              })
+              .catch((e) => {
+                  removeStream(streamId);
+                  callback('callback', 'error', e.message ? e.message : e);
+              });
       }
 
       initiateStream(streamId, {owner: participantId, type: pubInfo.type, origin});
@@ -1241,7 +1268,7 @@ var Conference = function (rpcClient, selfRpcId) {
     if (subDesc.type === 'webrtc') {
       audioTrack = subDesc.media.tracks.find(t => t.type === 'audio');
       videoTrack = subDesc.media.tracks.find(t => t.type === 'video');
-    } else {
+    } else if (subDesc.media) {
       audioTrack = subDesc.media.audio;
       videoTrack = subDesc.media.video;
     }
@@ -1275,6 +1302,7 @@ var Conference = function (rpcClient, selfRpcId) {
     } else {
       var format_preference;
       if (subDesc.type === 'webrtc' || subDesc.type === 'quic') {
+        const controller = subDesc.type === 'webrtc' ? rtcController : quicController;
         const rtcSubInfo = translateRtcSubIfNeeded(subDesc);
         if (rtcSubInfo.tracks){
           // Set formatPreference
@@ -1294,14 +1322,14 @@ var Conference = function (rpcClient, selfRpcId) {
         }
 
         initiateSubscription(subscriptionId, subDesc, {owner: participantId, type: subDesc.type});
-        return rtcController.initiate(participantId, subscriptionId, 'out', participants[participantId].getOrigin(), rtcSubInfo)
+        return controller.initiate(participantId, subscriptionId, 'out', participants[participantId].getOrigin(), rtcSubInfo)
         .then((result) => {
           const releasedSource = rtcSubInfo.tracks ? rtcSubInfo.tracks.find(track => {
               const sourceStreamId = trackOwners[track.from] || track.from;
               return !streams[sourceStreamId];
           }) : undefined;
           if (releasedSource) {
-            rtcController.terminate(participantId, subscriptionId, 'Participant terminate');
+            controller.terminate(participantId, subscriptionId, 'Participant terminate');
             return Promise.reject('Target audio/video stream early released');
           }
           callback('callback', result);
@@ -1766,7 +1794,7 @@ var Conference = function (rpcClient, selfRpcId) {
   that.onSessionProgress = function(sessionId, direction, sessionStatus) {
       log.debug('onSessionProgress, sessionId:', sessionId, 'direction:', direction, 'sessionStatus:', sessionStatus);
       if (sessionStatus.data) {
-          rtcController.onSessionProgress(sessionId, sessionStatus);
+          quicController && quicController.onSessionProgress(sessionId, sessionStatus);
       } else {
           accessController && accessController.onSessionStatus(sessionId, sessionStatus);
       }
@@ -2627,6 +2655,8 @@ var Conference = function (rpcClient, selfRpcId) {
       dropParticipants(message.id);
     } else if (message.purpose === 'webrtc') {
       rtcController && rtcController.terminateByLocality(message.type, message.id);
+    } else if (message.purpose === 'quic') {
+      quicController && quicController.terminateByLocality(message.type, message.id);
     } else if (message.purpose === 'recording' ||
                message.purpose === 'streaming' ||
                message.purpose === 'analytics') {

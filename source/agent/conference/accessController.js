@@ -8,7 +8,7 @@ var path = require('path');
 var url = require('url');
 var log = require('./logger').logger.getLogger('AccessController');
 
-module.exports.create = function(spec, rpcReq, on_session_established, on_session_aborted, on_session_signaling, rtc_controller) {
+module.exports.create = function(spec, rpcReq, on_session_established, on_session_aborted, on_session_signaling, rtc_controller, quic_controller) {
   var that = {},
     cluster_name = spec.clusterName,
     self_rpc_id = spec.selfRpcId,
@@ -192,6 +192,9 @@ module.exports.create = function(spec, rpcReq, on_session_established, on_sessio
     if (sessionOptions.type === 'webrtc') {
       return rtc_controller.initiate(participantId, sessionId, direction, origin, sessionOptions, formatPreference);
     }
+    if (sessionOptions.type === 'quic') {
+      return quic_controller.initiate(participantId, sessionId, direction, origin, sessionOptions, formatPreference);
+    }
     if (sessions[sessionId]) {
       return Promise.reject('Session exists');
     }
@@ -256,7 +259,9 @@ module.exports.create = function(spec, rpcReq, on_session_established, on_sessio
   that.terminate = function(sessionId, direction, reason) {
     log.debug('terminate, sessionId:', sessionId, 'direction:', direction);
     if (!sessions[sessionId]) {
-      return rtc_controller.terminate(sessionId, direction, reason);
+      rtc_controller.terminate(sessionId, direction, reason);
+      quic_controller.terminate(sessionId, direction, reason);
+      return;
     }
 
     var session = sessions[sessionId];
