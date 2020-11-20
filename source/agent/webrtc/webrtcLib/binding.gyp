@@ -79,6 +79,7 @@
       '-lboost_system',
       '-lnice',
       '-l360SCVP',
+      '-lglog',
       '-L$(CORE_HOME)/../../third_party/webrtc', '-lwebrtc',
     ],
     'conditions': [

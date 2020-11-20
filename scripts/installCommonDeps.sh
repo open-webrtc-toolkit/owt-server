@@ -489,8 +489,30 @@ install_svt_hevc(){
     popd >/dev/null
 }
 
+install_safestringlib(){
+    mkdir -p ${LIB_DIR}
+    pushd ${LIB_DIR}
+
+    rm -fr safestringlib
+    git clone https://github.com/intel/safestringlib.git
+
+    cd safestringlib
+    git checkout 245c4b8cff1d2e7338b7f3a82828fc8e72b29549
+
+    mkdir build
+    cd build
+    cmake ..
+    make -j
+
+    cp -v libsafestring_shared.so ${PREFIX_DIR}/lib/
+    mkdir -p ${PREFIX_DIR}/include/safestringlib
+    cp -rfv ../include/* ${PREFIX_DIR}/include/safestringlib/
+}
+
 install_360scvp(){
-    local SCVP_VER="v1.0.0"
+    install_safestringlib
+
+    local SCVP_VER="v1.2.0"
     local SCVP_REPO=https://github.com/OpenVisualCloud/Immersive-Video-Sample.git
 
     mkdir -p ${LIB_DIR}
@@ -501,6 +523,10 @@ install_360scvp(){
     git checkout ${SCVP_VER}
     mkdir build
     pushd  build
+
+    sed -i "s@INCLUDE_DIRECTORIES\(.*\)@INCLUDE_DIRECTORIES\1\nINCLUDE_DIRECTORIES(${PREFIX_DIR}/include)@" ../CMakeLists.txt
+    sed -i "s@LINK_DIRECTORIES\(.*\)@LINK_DIRECTORIES\1\nLINK_DIRECTORIES(${PREFIX_DIR}/lib)@" ../CMakeLists.txt
+
     cmake -DCMAKE_INSTALL_PREFIX=${PREFIX_DIR} -DCMAKE_INSTALL_LIBDIR=lib ../
     make -j
     make install

@@ -417,7 +417,8 @@ function isLibAllowed(libSrc) {
     'libre',
     'sipLib',
     'librawquic',
-    'lib360SCVP'
+    'lib360SCVP',
+    'libsafestring_shared',
   ];
   if (!options['archive'] || options['with-ffmpeg']) {
     whiteList.push('libav');

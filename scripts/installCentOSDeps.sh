@@ -50,7 +50,8 @@ installYumDeps(){
   sudo -E yum groupinstall " Development Tools" "Development Libraries " -y
   sudo -E yum install zlib-devel pkgconfig git libcurl-devel.x86_64 curl log4cxx-devel gcc gcc-c++ bzip2 bzip2-devel bzip2-libs python-devel nasm libXext-devel libXfixes-devel libpciaccess-devel libX11-devel yasm cmake -y
   sudo -E yum install rabbitmq-server mongodb mongodb-server java-1.7.0-openjdk gyp intel-gpu-tools which libtool freetype-devel -y
-  sudo -E yum install glib2-devel boost-devel -y
+  sudo -E yum install glib2-devel boost-devel   -y
+  sudo -E yum install glog-devel gflags-devel   -y
 }
 
 installRepo(){
