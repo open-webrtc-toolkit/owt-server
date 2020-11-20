@@ -275,17 +275,26 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
         }
 
         var conn = null;
-        switch (connectionType) {
-            case 'internal':
-                conn = internalConnFactory.fetch(connectionId, 'out');
-                if (conn)
-                    conn.connect(options);//FIXME: May FAIL here!!!!!
-                break;
-            case 'webrtc':
-                conn = createWebRTCConnection(connectionId, 'out', options, callback);
-                break;
-            default:
-                log.error('Connection type invalid:' + connectionType);
+        if (connectionType === 'internal') {
+            conn = internalConnFactory.fetch(operationId, 'out');
+            if (conn) {
+                conn.connect(options);
+                connections.addConnection(operationId, connectionType, options.controller, conn, 'out')
+                .then(onSuccess(callback), onError(callback));
+            }
+        } else if (connectionType === 'webrtc') {
+            if (!options.transportId) {
+                // Generate a transportId
+
+            }
+            conn = createWebRTCConnection(options.transportId, options.controller);
+            options.tracks.forEach(function trackOp(t) {
+                conn.addTrackOperation(operationId, t.mid, t.type, 'recvonly', t.formatPreference);
+            });
+            mappingTransports.set(operationId, options.transportId);
+            callback('callback', 'ok');
+        } else {
+            log.error('Connection type invalid:' + connectionType);
         }
 
         if (!conn) {
@@ -313,7 +322,7 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
     };
 
     that.linkup = function (connectionId, audioFrom, videoFrom, dataFrom, callback) {
-        log.debug('linkup, connectionId:', connectionId, 'audioFrom:', audioFrom, 'videoFrom:', videoFrom, 'callback:', callback);
+        log.debug('linkup, connectionId:', connectionId, 'audioFrom:', audioFrom, 'videoFrom:', videoFrom, 'dataFrom:', dataFrom);
         connections.linkupConnection(connectionId, audioFrom, videoFrom).then(onSuccess(callback), onError(callback));
     };
 
@@ -326,13 +335,8 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
         log.debug('onTransportSignaling, connection id:', connectionId, 'msg:', msg);
         var conn = getWebRTCConnection(connectionId);
         if (conn) {
-            if (conn.type === 'webrtc') {//NOTE: Only webrtc connection supports signaling.
-                conn.connection.onSignalling(msg);
-                callback('callback', 'ok');
-            } else {
-                log.info('signaling on non-webrtc connection');
-                callback('callback', 'error', 'signaling on non-webrtc connection');
-            }
+            conn.onSignalling(msg, connectionId);
+            callback('callback', 'ok');
         } else {
           callback('callback', 'error', 'Connection does NOT exist:' + connectionId);
         }
