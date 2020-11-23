@@ -105,12 +105,10 @@ class SdpInfo {
     if (mediaInfo && mediaInfo.type === 'audio') {
       let rtp, fmtp;
       // Keep payload order in m line
-      if (typeof mediaInfo.payloads === 'string') {
-        mediaInfo.payloads.split(' ')
-          .forEach((p, index) => {
-            payloadOrder.set(parseInt(p), index);
-          });
-      }
+      mediaInfo.payloads.toString().split(' ')
+        .forEach((p, index) => {
+          payloadOrder.set(parseInt(p), index);
+        });
 
       for (let i = 0; i < mediaInfo.rtp.length; i++) {
         rtp = mediaInfo.rtp[i];
@@ -153,7 +151,7 @@ class SdpInfo {
         mediaInfo.rtcpFb = mediaInfo.rtcpFb.filter(
           (rtcp) => relatedPayloads.has(rtcp.payload));
       }
-      mediaInfo.payloads = mediaInfo.payloads.split(' ')
+      mediaInfo.payloads = mediaInfo.payloads.toString().split(' ')
         .filter((p) => relatedPayloads.has(parseInt(p)))
         .filter((v, index, self) => self.indexOf(v) === index)
         .join(' ');
@@ -180,12 +178,10 @@ class SdpInfo {
       let rtp, fmtp;
       let payloads;
       // Keep payload order in m line
-      if (typeof mediaInfo.payloads === 'string') {
-        mediaInfo.payloads.split(' ')
-          .forEach((p, index) => {
-            payloadOrder.set(parseInt(p), index);
-          });
-      }
+      mediaInfo.payloads.toString().split(' ')
+        .forEach((p, index) => {
+          payloadOrder.set(parseInt(p), index);
+        });
 
       for (let i = 0; i < mediaInfo.rtp.length; i++) {
         rtp = mediaInfo.rtp[i];
@@ -227,7 +223,7 @@ class SdpInfo {
         mediaInfo.rtcpFb = mediaInfo.rtcpFb.filter(
           (rtcp) => relatedPayloads.has(rtcp.payload));
       }
-      mediaInfo.payloads = mediaInfo.payloads.split(' ')
+      mediaInfo.payloads = mediaInfo.payloads.toString().split(' ')
         .filter((p) => relatedPayloads.has(parseInt(p)))
         .filter((v, index, self) => self.indexOf(v) === index)
         .join(' ');
