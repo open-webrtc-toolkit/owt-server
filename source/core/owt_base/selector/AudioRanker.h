@@ -29,7 +29,8 @@ public:
             std::vector<std::pair<std::string, std::string>> updates) = 0;
     };
 
-    class AudioLevelProcessor : public FrameDestination {
+    class AudioLevelProcessor : public FrameDestination,
+                                public FrameSource {
     public:
         AudioLevelProcessor(AudioRanker* parent, FrameSource* source,
             std::string streamId, std::string ownerId);
@@ -37,6 +38,8 @@ public:
 
         // Implements FrameDestination
         void onFrame(const Frame&) override;
+        // Implements FrameSource
+        void onFeedback(const FeedbackMsg&) override;
 
         std::string streamId() { return m_streamId; }
         std::string ownerId() { return m_ownerId; }
