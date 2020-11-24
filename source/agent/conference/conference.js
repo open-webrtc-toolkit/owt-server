@@ -632,7 +632,7 @@ var Conference = function (rpcClient, selfRpcId) {
     if (info.type === 'webrtc' || info.type === 'quic') {
       const pubs = pubArgs.map(pubArg => new Promise((resolve, reject) => {
         roomController && roomController.publish(
-          pubArg.owner, pubArg.id, pubArg.locality, {media:pubArg.media, data:pubArg.data}, pubArg.type, resolve, reject);
+          pubArg.owner, pubArg.id, pubArg.locality, {origin: pubArg.media.origin, media:pubArg.media, data:pubArg.data}, pubArg.type, resolve, reject);
       }));
       return Promise.all(pubs).then(() => {
         if (participants[info.owner]) {
@@ -767,7 +767,7 @@ var Conference = function (rpcClient, selfRpcId) {
     const subArgs = subscription.toRoomCtrlSubArgs();
     const subs = subArgs.map(subArg => new Promise((resolve, reject) => {
         if (roomController) {
-            const subInfo = { transport : transport, media : subArg.media, data : subArg.data };
+            const subInfo = { transport : transport, media : subArg.media, data : subArg.data, origin: subArg.media.origin };
             roomController.subscribe(
                 subArg.owner, subArg.id, subArg.locality, subInfo, subArg.type,
                 isAudioPubPermitted, resolve, reject);
