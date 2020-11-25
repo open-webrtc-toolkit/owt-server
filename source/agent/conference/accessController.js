@@ -259,9 +259,10 @@ module.exports.create = function(spec, rpcReq, on_session_established, on_sessio
   that.terminate = function(sessionId, direction, reason) {
     log.debug('terminate, sessionId:', sessionId, 'direction:', direction);
     if (!sessions[sessionId]) {
-      rtc_controller.terminate(sessionId, direction, reason);
-      quic_controller.terminate(sessionId, direction, reason);
-      return;
+        // It looks like accessController doesn't know if a session is a RTC session or QUIC session.
+        return rtc_controller.terminate(sessionId, direction, reason).catch(e => {
+            quic_controller.terminate(sessionId, direction, reason);
+        });
     }
 
     var session = sessions[sessionId];
