@@ -38,7 +38,7 @@ module.exports = class QuicTransportServer extends EventEmitter {
         if (!connection.transportId) {
           connection.close();
         }
-      }, authenticationTimeout * 100000);
+      }, authenticationTimeout * 1000000);
       connection.onincomingstream = (stream) => {
         log.info('New incoming stream.');
         stream.oncontentsessionid = (id) => {

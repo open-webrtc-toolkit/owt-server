@@ -127,7 +127,7 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
       const streamPipeline = new QuicTransportStreamPipeline(streamId, status=>{
         notifyStatus(options.controller, streamId, direction, status)
       });
-      // If an stream pipeline already exists, just replace the old.
+      // If a stream pipeline already exists, just replace the old.
       let pipelineMap;
       if (direction === 'in') {
         pipelineMap = incomingStreamPipelines;

@@ -16,13 +16,6 @@ void InitAll(Handle<Object> exports) {
   AudioFramePacketizer::Init(exports);
   VideoFrameConstructor::Init(exports);
   VideoFramePacketizer::Init(exports);
-#ifdef OMS_ENABLE_QUIC
-  RTCQuicTransport::Init(exports);
-  RTCIceTransport::Init(exports);
-  RTCIceCandidate::Init(exports);
-  RTCCertificate::Init(exports);
-  QuicStream::Init(exports);
-#endif
 }
 
 NODE_MODULE(addon, InitAll)
