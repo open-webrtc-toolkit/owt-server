@@ -315,46 +315,51 @@ class RtcController extends EventEmitter {
   terminateByOwner(ownerId) {
     log.debug(`terminateByOwner ${ownerId}`);
     const terminations = [];
-    // Or just destroy the transport
+    const transports = new Set();
     this.operations.forEach((operation, operationId) => {
       const transport = this.transports.get(operation.transportId);
       if (transport.owner === ownerId) {
         const p = this.terminate(operationId, operation.direction, 'Owner leave');
         terminations.push(p);
+        transports.add(transport.id);
       }
     });
-    return Promise.all(terminations);
+    return Promise.all(terminations).then(() => {
+      transports.forEach((transportId) => {
+        const status = {type: 'failed', reason: 'Owner leave'};
+        this.onTransportProgress(transportId, status);
+      });
+    });
   };
 
   terminateByLocality(type, id) {
     log.debug(`terminateByLocality ${type} ${id}`);
     const terminations = [];
-    // Or just destroy the transport
+    const transports = new Set();
     this.operations.forEach((operation, operationId) => {
       const l = this.transports.get(operation.transportId).locality;
-      if (l) {
-        if ((type === 'worker' && l.agent === id) ||
-            (type === 'node' && l.node === id)) {
-          const p = this.terminate(operationId, operation.direction, 'Node lost');
-          terminations.push(p);
-        }
+      if (l && ((type === 'worker' && l.agent === id) ||
+          (type === 'node' && l.node === id))) {
+        const p = this.terminate(operationId, operation.direction, 'Node lost');
+        terminations.push(p);
+        transports.add(operation.transportId);
       }
     });
-    return Promise.all(terminations);
+    return Promise.all(terminations).then(() => {
+      transports.forEach((transportId) => {
+        const status = {type: 'failed', reason: 'Owner leave'};
+        this.onTransportProgress(transportId, status);
+      });
+    });
   };
-
-  onFaultDetected(type, id) {
-
-  }
 
   destroy() {
     log.debug(`destroy`);
-    const terminations = [];
     // Destroy all transports
     this.transports.forEach((transport, transportId) => {
-      const p = this.rpcReq.destroyTransport(transportId);
+      const status = {type: 'failed', reason: 'Owner leave'};
+        this.onTransportProgress(transportId, status);
     });
-    return Promise.all(terminations);
   };
 
   setMute(sessionId, tracks, muted) {
