@@ -6,7 +6,6 @@
 
 var log = require('./logger').logger.getLogger('V11Client');
 var requestData = require('./requestDataValidator');
-const { v4: uuid } = require('uuid');
 
 var idPattern = /^[0-9a-zA-Z\-]+$/;
 function isValidIdString(str) {
@@ -79,7 +78,7 @@ var V11Client = function(clientId, sigConnection, portal) {
   };
 
   const validateSubReq = (subReq) => {
-    if ((!subReq.media && !subReq.data) || (subReq.media && !subReq.media.audio && !subReq.media.video)) {
+    if (!subReq.media || !(subReq.media.audio || subReq.media.video)) {
       return Promise.reject('Bad subscription request');
     }
     return requestData.validate('subscription-request', subReq);
@@ -95,19 +94,15 @@ var V11Client = function(clientId, sigConnection, portal) {
   const validateSOAC = (SOAC) => {
     return validateId('session id', SOAC.id)
       .then(() => {
-        if (SOAC.signaling.type === 'offer' ||
-          SOAC.signaling.type === 'answer' ||
-          SOAC.signaling.type === 'candidate' ||
-          SOAC.signaling.type === 'removed-candidates') {
+        if (SOAC.signaling.type === 'offer'
+            || SOAC.signaling.type === 'answer'
+            || SOAC.signaling.type === 'candidate'
+            || SOAC.signaling.type === 'removed-candidates') {
           return Promise.resolve(SOAC);
         } else {
           return Promise.reject('Invalid signaling type');
         }
       });
-  };
-
-  const uuidWithoutDash = function() {
-    return uuid().replace(/-/g, '');
   };
 
   const listenAt = (socket) => {
@@ -129,22 +124,13 @@ var V11Client = function(clientId, sigConnection, portal) {
         return safeCall(callback, 'error', 'Illegal request');
       }
 
-      var stream_id = uuidWithoutDash();
-      let transport_id;
+      var stream_id = Math.round(Math.random() * 1000000000000000000) + '';
       return validatePubReq(pubReq)
         .then((req) => {
-          if (pubReq.transport && pubReq.transport.type == 'quic') {
-            req.type = 'quic';
-            if (!req.transport.id) {
-                req.transport.id = uuidWithoutDash();
-            }
-            transport_id = req.transport.id;
-          } else {
-            req.type = 'webrtc'; //FIXME: For backend compatibility with v3.4 clients.
-          }
+          req.type = 'webrtc';//FIXME: For backend compatibility with v3.4 clients.
           return portal.publish(clientId, stream_id, req);
         }).then((result) => {
-          safeCall(callback, 'ok', {id: stream_id, transportId: transport_id});
+          safeCall(callback, 'ok', {id: stream_id});
         }).catch(onError('publish', callback));
     });
 
@@ -179,22 +165,13 @@ var V11Client = function(clientId, sigConnection, portal) {
         return safeCall(callback, 'error', 'Illegal request');
       }
 
-      var subscription_id = uuid().replace(/-/g,'');
-      let transport_id;
+      var subscription_id = Math.round(Math.random() * 1000000000000000000) + '';
       return validateSubReq(subReq)
         .then((req) => {
-          if (req.transport && req.transport.type == 'quic') {
-            req.type = 'quic';
-            if (!req.transport.id) {
-              req.transport.id = uuidWithoutDash();
-            }
-            transport_id = req.transport.id;
-          } else {
-            req.type = 'webrtc';//FIXME: For backend compatibility with v3.4 clients.
-          }
+          req.type = 'webrtc';//FIXME: For backend compatibility with v3.4 clients.
           return portal.subscribe(clientId, subscription_id, req);
         }).then((result) => {
-          safeCall(callback, 'ok', {id: subscription_id, transportId: transport_id});
+          safeCall(callback, 'ok', {id: subscription_id});
         }).catch(onError('subscribe', callback));
     });
 
