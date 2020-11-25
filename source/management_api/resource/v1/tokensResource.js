@@ -64,7 +64,21 @@ var getTokenString = function (id, token) {
  * The format of a token is:
  * {tokenId: id, host: erizoController host, signature: signature of the token};
  */
-var generateToken = function (currentRoom, authData, origin, callback) {
+var generateToken = function(currentRoom, authData, origin, callback) {
+    const databaseGenerateToken = function(token) {
+        return new Promise((resolve, reject) => {
+            dataAccess.token.create(token, (id) => {
+                if (id) {
+                    resolve(id);
+                } else {
+                    reject(new Error('Failed to get token ID.'));
+                }
+            });
+        }).then(id => {
+            return getTokenString(id, token);
+        });
+    };
+
     var currentService = authData.service,
         user = authData.user,
         role = authData.role,
@@ -121,23 +135,26 @@ var generateToken = function (currentRoom, authData, origin, callback) {
             token.host += ':' + ec.port;
         }
 
-        // TODO: Schedule QUIC agent and portal parallelly.
-        requestHandler.scheduleQuicAgent(token.code, origin, info => {
-            if (info !== 'timeout') {
-                let hostname = info.hostname;
-                if (!hostname) {
-                    hostname = info.ip;
-                }
-                // TODO: Rename "echo".
-                token.webTransportUrl = 'quic-transport://' + hostname + ':' + info.port + '/echo';
-            }
-            dataAccess.token.create(token, function(id) {
-                getTokenString(id, token)
-                    .then((tokenS) => {
-                        callback(tokenS);
-                    });
+        if (!global.config.server.enableWebTransport){
+            databaseGenerateToken(token).then(tokenS => {
+                callback(tokenS);
             });
-        });
+        } else {
+            // TODO: Schedule QUIC agent and portal parallelly.
+            requestHandler.scheduleQuicAgent(token.code, origin, info => {
+                if (info !== 'timeout') {
+                    let hostname = info.hostname;
+                    if (!hostname) {
+                        hostname = info.ip;
+                    }
+                    // TODO: Rename "echo".
+                    token.webTransportUrl = 'quic-transport://' + hostname + ':' + info.port + '/echo';
+                }
+                databaseGenerateToken(token).then(tokenS => {
+                    callback(tokenS);
+                });
+            });
+        }
     });
 };
 
