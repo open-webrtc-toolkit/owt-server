@@ -9,6 +9,7 @@
 
 const {
   StreamControlInfo,
+  SubscriptionControlInfo,
 } = require('./requestFormatV1-0');
 
 const Resolution = {
@@ -143,6 +144,7 @@ const SubscriptionRequest = {
 };
 
 // SubscriptionControlInfo
+/*
 const SubscriptionControlInfo = {
   type: 'object',
   anyOf: [
@@ -197,6 +199,7 @@ const SubscriptionControlInfo = {
     }
   }
 };
+*/
 
 module.exports = {
   PublicationRequest,
