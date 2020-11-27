@@ -95,6 +95,11 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
     */
     var streams = {};
 
+    /*
+    activeAudio = {streams: [streamID], terminal: Terminal}
+    */
+    var activeAudio = {};
+
     // Schedule preference
     var getMediaPreference = function() {
         var capability = {};
@@ -258,6 +263,52 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
         );
     };
 
+    const initSelector = function (onOk, onError) {
+        log.debug('initialize selector');
+        // Initialize selector
+        const selectorId = randomId();
+        const selectConfig = {
+            activeStreamIds: [
+                'active-audio-0',
+                'active-audio-1',
+                'active-audio-2',
+            ],
+        };
+        activeAudio.streams = selectConfig.activeStreamIds;
+        activeAudio.terminal = selectorId;
+        newTerminal(selectorId, 'aselect', 'admin', false, origin,
+            function onTerminalReady() {
+                log.debug('new terminal ok. terminal_id', selectorId);
+                terminals[selectorId].published = activeAudio.streams;
+                initMediaProcessor(selectorId,
+                    ['selecting', selectConfig, room_id, selfRpcId, 'placehodler'])
+                .then(function(initMediaResult) {
+                    activeAudio.streams.forEach((streamId) => {
+                        streams[streamId] = {
+                            owner: selectorId,
+                            audio: {
+                                format: {codec: 'unknown'},
+                                mutable: true,
+                                subscribers: [],
+                            },
+                            video: undefined,
+                            spread: []
+                        };
+                    });
+                    onOk(initMediaResult);
+                }).catch(function(reason) {
+                    log.error("Init media processor failed.:", reason);
+                    deleteTerminal(selectorId);
+                    onError(reason);
+                });
+            },
+            function onTerminalFail(reason) {
+                log.error('new mix terminal failed. room_id:', room_id, 'reason:', reason);
+                onError(reason);
+            }
+        );
+    };
+
     var initialize = function (on_ok, on_error) {
         log.debug('initialize room', room_id);
 
@@ -294,6 +345,10 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                     if (viewCount < results.length) {
                         log.debug("Views incomplete initialization", viewCount);
                         on_error(errorReason);
+                    } else if (config.selectActiveAudio) {
+                        initSelector(function onOk() {
+                            on_ok(that);
+                        }, on_error);
                     } else {
                         on_ok(that);
                     }
@@ -336,25 +391,32 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
     var newTerminal = function (terminal_id, terminal_type, owner, preAssignedNode, origin, on_ok, on_error) {
         log.debug('newTerminal:', terminal_id, 'terminal_type:', terminal_type, 'owner:', owner, " origin:", origin);
         if (terminals[terminal_id] === undefined) {
-                var purpose = (terminal_type === 'vmixer' || terminal_type === 'vxcoder') ? 'video'
-                              : ((terminal_type === 'amixer' || terminal_type === 'axcoder') ? 'audio' : 'unknown');
-                mediaPreference.origin = origin;
-                var nodeLocality = (preAssignedNode ? Promise.resolve(preAssignedNode)
-                                               : rpcReq.getWorkerNode(cluster, purpose, {room: room_id, task: terminal_id}, mediaPreference));
+            var terminalPurpose = {
+                'vmixer': 'video',
+                'vxcoder': 'video',
+                'amixer': 'audio',
+                'axcoder': 'audio',
+                'aselect': 'audio',
+                'default': 'unknown',
+            };
+            var purpose = terminalPurpose[terminal_type] || terminalPurpose['default'];
+            mediaPreference.origin = origin;
+            var nodeLocality = (preAssignedNode ? Promise.resolve(preAssignedNode)
+                                           : rpcReq.getWorkerNode(cluster, purpose, {room: room_id, task: terminal_id}, mediaPreference));
 
-                return nodeLocality
-                    .then(function(locality) {
-                        terminals[terminal_id] = {
-                            owner: owner,
-                            origin: origin,
-                            type: terminal_type,
-                            locality: locality,
-                            published: [],
-                            subscribed: {}};
-                        on_ok();
-                    }, function(err) {
-                        on_error(err.message? err.message : err);
-                    });
+            return nodeLocality
+                .then(function(locality) {
+                    terminals[terminal_id] = {
+                        owner: owner,
+                        origin: origin,
+                        type: terminal_type,
+                        locality: locality,
+                        published: [],
+                        subscribed: {}};
+                    on_ok();
+                }, function(err) {
+                    on_error(err.message? err.message : err);
+                });
         } else {
             on_ok();
         }
@@ -384,7 +446,12 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
     };
 
     var isParticipantTerminal = function (terminal_id) {
-        return terminals[terminal_id] && (terminals[terminal_id].type === 'webrtc' || terminals[terminal_id].type === 'streaming' || terminals[terminal_id].type === 'recording' || terminals[terminal_id].type === 'sip');
+        return terminals[terminal_id] &&
+            (terminals[terminal_id].type === 'webrtc'
+            || terminals[terminal_id].type === 'streaming'
+            || terminals[terminal_id].type === 'recording'
+            || terminals[terminal_id].type === 'sip'
+            || terminals[terminal_id].type === 'aselect');
     };
 
     var spreadStream = function (stream_id, target_node, target_node_type, on_ok, on_error) {
@@ -1139,6 +1206,9 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
             if (streams[stream_id].audio) {
                 if (streams[stream_id].audio.format === audio_format) {
                     on_ok(stream_id);
+                } else if (streams[stream_id].audio.mutable) {
+                    // For selected audio
+                    on_ok(stream_id);
                 } else {
                     getTranscodedAudio(audio_format, stream_id, function (streamID) {
                         on_ok(streamID);
@@ -1825,6 +1895,43 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
 
     that.getMixedStream = function(view) {
         return getMixStreamOfView(view);
+    };
+
+    that.getActiveAudioNode = function () {
+        if (terminals[activeAudio.terminal]) {
+            return terminals[activeAudio.terminal].locality;
+        }
+        return undefined;
+    };
+
+    that.getActiveAudioStreams = function() {
+        if (activeAudio.streams) {
+            return activeAudio.streams;
+        }
+        return [];
+    };
+
+    that.selectAudio = function (stream_id, on_ok, on_error) {
+        log.debug('to select audio of stream:', stream_id, streams[stream_id], activeAudio.terminal);
+        var audio_selector = activeAudio.terminal;
+        if (streams[stream_id] && audio_selector && terminals[audio_selector]) {
+            var target_node = terminals[audio_selector].locality.node,
+                spread_id = stream_id + '@' + target_node;
+            spreadStream(stream_id, target_node, 'axcoder', function() {
+                if (terminals[audio_selector] && streams[stream_id]) {
+                    terminals[audio_selector].subscribed[spread_id] = {audio: stream_id};
+                    (streams[stream_id].audio.subscribers.indexOf(audio_selector) < 0) &&
+                        streams[stream_id].audio.subscribers.push(audio_selector);
+                    on_ok();
+                } else {
+                    shrinkStream(stream_id, target_node);
+                    on_error('Audio selector is early released.');
+                }
+            }, on_error);
+        } else {
+            log.error('Audio selector is NOT ready.');
+            on_error('Audio selector is NOT ready.');
+        }
     };
 
     var isImpacted = function (locality, type, id) {
