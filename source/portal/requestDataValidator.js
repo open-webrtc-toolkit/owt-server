@@ -66,16 +66,7 @@ const PublicationRequest = {
       type: 'object',
       properties: {
         'media': { $ref: '#/definitions/WebRTCMediaOptions' },
-        'data': {type: 'boolean' },
-        'attributes': { type: 'object' },
-        'transport': {
-          type: 'object',
-          properties: {
-            'type': {type: 'string'},
-            'id': {type: 'string'},
-          },
-          additionalProperties: false,
-        }
+        'attributes': { type: 'object' }
       },
       additionalProperties: false,
       required: ['media']
@@ -84,7 +75,7 @@ const PublicationRequest = {
 
   definitions: {
     'WebRTCMediaOptions': {
-      type: ['object', 'null'],
+      type: 'object',
       properties: {
         'audio': {
           anyOf: [
@@ -177,14 +168,6 @@ const SubscriptionRequest = {
       type: 'object',
       properties: {
         'media': { $ref: '#/definitions/MediaSubOptions' },
-        'data': { $ref: '#/definitions/DataSubOptions' },
-        'transport': {
-          type: 'object',
-          properties: {
-            'type': {type: 'string'},
-            'id': {type: 'string'},
-          },
-        },
       },
       additionalProperties: false,
       required: ['media']
@@ -193,7 +176,7 @@ const SubscriptionRequest = {
 
   definitions: {
     'MediaSubOptions': {
-      type: ['object', 'null'],
+      type: 'object',
       properties: {
         'audio': {
           anyOf: [
@@ -210,15 +193,6 @@ const SubscriptionRequest = {
       },
       additionalProperties: false,
       required: ['audio', 'video']
-    },
-
-    'DataSubOptions': {
-      type: 'object',
-      properties: {
-        'from': {type: 'string'}
-      },
-      additionalProperties: false,
-      required: ['from']
     },
 
     'AudioSubOptions': {

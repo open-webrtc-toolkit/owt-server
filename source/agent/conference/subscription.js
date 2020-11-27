@@ -7,7 +7,7 @@
  *   locality: {agent: string(AgentRpcId), node: string(NodeRpcId)}
  *   media: {
  *     tracks: {
- *       type: 'audio' | 'video' | 'data',
+ *       type: 'audio' | 'video',
  *       from: string(StreamId) | string(TrackId),
  *       source: object(Stream),
  *       status: 'active' | 'inactive' | undefined,
@@ -17,7 +17,7 @@
  *   },
  *   info: object(SubscriptionInfo):: {
  *     owner: string(ParticipantId),
- *     type: 'webrtc' | 'streaming' | 'recording' | 'sip' | 'analytics' | 'quic',
+ *     type: 'webrtc' | 'streaming' | 'recording' | 'sip' | 'analytics',
  *     location: {host: string(HostIPorDN), path: string(FileFullPath)} | undefined,
  *     url: string(URLofStreamingOut) | undefined
  *   }
@@ -30,19 +30,15 @@ const log = require('./logger').logger.getLogger('Subscription');
 
 class Subscription {
 
-  constructor(id, media, data, locality, info) {
+  constructor(id, media, locality, info) {
     this.id = id;
     this.info = info;
     this.locality = locality;
     this.media = this._upgradeMediaIfNeeded(media);
-    this.data = data;
     this.origin = null;
   }
 
   _upgradeMediaIfNeeded(media) {
-    if (!media) {
-      return media;
-    }
     if (!media.tracks) {
       /*
        * Early version media format: {
@@ -189,8 +185,7 @@ class Subscription {
           id: track.id, // Use track ID for webrtc publication
           locality: this.locality,
           type: this.info.type,
-          media,
-          data: this.data
+          media
         };
       });
     } else {
@@ -209,8 +204,7 @@ class Subscription {
         id: this.id,
         locality: this.locality,
         type: this.info.type,
-        media,
-        data: this.data
+        media
       }];
     }
   }
