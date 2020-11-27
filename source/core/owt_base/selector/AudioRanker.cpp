@@ -288,6 +288,7 @@ void AudioRanker::AudioLevelProcessor::setLinkedOutput(FrameDestination* output)
     }
     m_linkedOutput = output;
     addAudioDestination(m_linkedOutput);
+    deliverOwnerData();
 }
 
 FrameDestination* AudioRanker::AudioLevelProcessor::linkedOutput()
@@ -314,16 +315,22 @@ void AudioRanker::AudioLevelProcessor::onFrame(const Frame& frame)
     }
 }
 
-void AudioRanker::AudioLevelProcessor::onFeedback(const FeedbackMsg&)
+void AudioRanker::AudioLevelProcessor::onFeedback(const FeedbackMsg& msg)
 {
     if (msg.type == AUDIO_FEEDBACK && msg.cmd == REQUEST_OWNER_ID) {
-        // Pass owner ID metadata to linkedoutput
-        MetaData ownerData;
-        ownerData.type = META_DATA_OWNER_ID;
-        ownerData.payload = (uint8_t*) m_ownerId.c_str();
-        ownerData.length = m_ownerId.length();
-        deliverMetaData(ownerData);
+        deliverOwnerData();
     }
+}
+
+void AudioRanker::AudioLevelProcessor::deliverOwnerData()
+{
+    ELOG_DEBUG("deliver ownerID as metadata");
+    // Pass owner ID metadata to linkedoutput
+    MetaData ownerData;
+    ownerData.type = META_DATA_OWNER_ID;
+    ownerData.payload = (uint8_t*) m_ownerId.c_str();
+    ownerData.length = m_ownerId.length();
+    deliverMetaData(ownerData);
 }
 
 } // namespace owt_base

@@ -45,16 +45,11 @@ public:
         std::string ownerId() { return m_ownerId; }
         uint64_t lastUpdateTime() { return m_lastUpdateTime; }
 
-        void setLinkedOutput(FrameDestination* output)
-        {
-            boost::mutex::scoped_lock lock(m_mutex);
-            m_linkedOutput = output;
-        }
-        FrameDestination* linkedOutput()
-        {
-            boost::mutex::scoped_lock lock(m_mutex);
-            return m_linkedOutput;
-        }
+        void setLinkedOutput(FrameDestination* output);
+        FrameDestination* linkedOutput();
+
+        void deliverOwnerData();
+
         void setIter(std::multimap<int, std::shared_ptr<AudioLevelProcessor>>::iterator it)
         { m_iter = it; }
         std::multimap<int, std::shared_ptr<AudioLevelProcessor>>::iterator iter() { return m_iter; }
