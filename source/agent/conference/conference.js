@@ -915,6 +915,7 @@ var Conference = function (rpcClient, selfRpcId) {
 
     return accessController.participantLeave(participantId)
       .then(() => rtcController.terminateByOwner(participantId))
+      .then(() => removeParticipant(participantId))
       .then((result) => {
         callback('callback', 'ok');
         selfClean();
