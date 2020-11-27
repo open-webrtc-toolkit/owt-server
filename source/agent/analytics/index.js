@@ -132,9 +132,9 @@ module.exports = function (rpcClient, rpcId, agentId, clusterIp) {
         .then(rpcSuccess(callback))
         .catch(rpcError(callback));
     },
-    linkup: function (connectionId, audioFrom, videoFrom, callback) {
+    linkup: function (connectionId, audioFrom, videoFrom, dataFrom, callback) {
       log.debug('linkup,','connectionId:',connectionId,'videoFrom:',videoFrom,'callback:',callback);
-      agent.linkup(connectionId, audioFrom, videoFrom)
+      agent.linkup(connectionId, audioFrom, videoFrom, dataFrom)
         .then(rpcSuccess(callback))
         .catch(rpcError(callback));
     },

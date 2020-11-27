@@ -45,6 +45,14 @@ void FrameSource::addVideoDestination(FrameDestination* dest)
     dest->setVideoSource(this);
 }
 
+void FrameSource::addDataDestination(FrameDestination* dest)
+{
+    boost::unique_lock<boost::shared_mutex> lock(m_data_dests_mutex);
+    m_data_dests.push_back(dest);
+    lock.unlock();
+    dest->setDataSource(this);
+}
+
 void FrameSource::removeAudioDestination(FrameDestination* dest)
 {
     boost::unique_lock<boost::shared_mutex> lock(m_audio_dests_mutex);
@@ -61,6 +69,14 @@ void FrameSource::removeVideoDestination(FrameDestination* dest)
     dest->unsetVideoSource();
 }
 
+void FrameSource::removeDataDestination(FrameDestination* dest)
+{
+    boost::unique_lock<boost::shared_mutex> lock(m_data_dests_mutex);
+    m_data_dests.remove(dest);
+    lock.unlock();
+    dest->unsetDataSource();
+}
+
 void FrameSource::deliverFrame(const Frame& frame)
 {
     if (isAudioFrame(frame)) {
@@ -71,6 +87,11 @@ void FrameSource::deliverFrame(const Frame& frame)
     } else if (isVideoFrame(frame)) {
         boost::shared_lock<boost::shared_mutex> lock(m_video_dests_mutex);
         for (auto it = m_video_dests.begin(); it != m_video_dests.end(); ++it) {
+            (*it)->onFrame(frame);
+        }
+    } else if (isDataFrame(frame)){
+        boost::shared_lock<boost::shared_mutex> lock(m_data_dests_mutex);
+        for (auto it = m_data_dests.begin(); it != m_data_dests.end(); ++it) {
             (*it)->onFrame(frame);
         }
     } else {
@@ -94,6 +115,12 @@ void FrameDestination::setVideoSource(FrameSource* src)
     onVideoSourceChanged();
 }
 
+void FrameDestination::setDataSource(FrameSource* src)
+{
+    boost::unique_lock<boost::shared_mutex> lock(m_data_src_mutex);
+    m_data_src = src;
+}
+
 void FrameDestination::unsetAudioSource()
 {
     boost::unique_lock<boost::shared_mutex> lock(m_audio_src_mutex);
@@ -104,6 +131,12 @@ void FrameDestination::unsetVideoSource()
 {
     boost::unique_lock<boost::shared_mutex> lock(m_video_src_mutex);
     m_video_src = nullptr;
+}
+
+void FrameDestination::unsetDataSource()
+{
+    boost::unique_lock<boost::shared_mutex> lock(m_data_src_mutex);
+    m_data_src = nullptr;
 }
 
 void FrameDestination::deliverFeedbackMsg(const FeedbackMsg& msg) {
