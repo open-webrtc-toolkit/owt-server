@@ -76,12 +76,11 @@ var config = {};
 /* Stream object in conference */
 class Stream {
 
-  constructor(id, type, media, data, info) {
+  constructor(id, type, media, info) {
     this.id = id;
     this.type = type;
     this.info = info;
     this.media = this._constructMedia(media);
-    this.data = data;
   }
 
   _upgradeMediaIfNeeded(media) {
@@ -224,7 +223,6 @@ class Stream {
           rid: track.rid,
         }))
       },
-      data: this.data,
       info: (this.type === 'mixed') ? this.info : forwardInfo,
     };
     return portalFormat;
@@ -233,9 +231,9 @@ class Stream {
 
 class ForwardStream extends Stream {
 
-  constructor(id, media, data, info, locality) {
+  constructor(id, media, info, locality) {
     info.inViews = [];
-    super(id, 'forward', media, data, info);
+    super(id, 'forward', media, info);
     this.locality = locality;
   }
 
@@ -257,7 +255,7 @@ class ForwardStream extends Stream {
         log.error(`Unexpected track type: ${track.type}`);
       }
     }
-    if (!this.data && this.media.tracks.length === 0) {
+    if (this.media.tracks.length === 0) {
       err = 'No valid tracks in stream';
     }
     return err;
@@ -289,8 +287,7 @@ class ForwardStream extends Stream {
         id: this.id,
         locality: this.locality,
         type: this.info.type,
-        media,
-        data: this.data
+        media
       }];
     }
   }
@@ -331,7 +328,7 @@ class MixedStream extends Stream {
       audio: Object.assign({}, view.audio.format),
       video: Object.assign({}, view.video.format, view.video.parameters)
     };
-    super(id, 'mixed', media, null, info);
+    super(id, 'mixed', media, info);
   }
 }
 

@@ -49,12 +49,6 @@
             "webrtc-frame"
         ]
     },
-    "mcu-quic": {
-        "include":[
-            "mcu",
-            "quic"
-        ]
-    },
     "video-mixer-sw" : {
         "path" : "source/agent/video/videoMixer/videoMixer_sw",
         "gyp" : "binding.sw.gyp"
@@ -117,9 +111,5 @@
     },
     "resource-util" : {
         "path" : "source/agent/addons/resourceUtil"
-    },
-    "quic" : {
-        "path" : "source/agent/addons/quic",
-        "description": "QUIC agent supports WebTransport - QuicTransport connections. Experimental feature."
     }
 }

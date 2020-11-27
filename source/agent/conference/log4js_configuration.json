@@ -19,7 +19,6 @@
     "AccessController": "INFO",
     "RoomController": "INFO",
     "RtcController": "INFO",
-    "QuicController": "INFO",
     "Stream": "INFO",
     "Subscription": "INFO",
     "WorkingAgent": "INFO",

@@ -37,8 +37,7 @@ for (var prop in opt.options) {
                     value === 'recording' ||
                     value === 'analytics' ||
                     value === 'audio' ||
-                    value === 'video' ||
-                    value === 'quic') {
+                    value === 'video') {
                     myPurpose = value;
                 } else {
                     process.exit(0);
@@ -93,11 +92,8 @@ var joinCluster = function (on_ok) {
         purpose: myPurpose,
         clusterName: config.cluster.name,
         joinRetry: config.cluster.worker.join_retry,
-        // Cannot find a defination about |info|. It looks like it will be used by cluster manager, but agents and portal may have different properties of |info|.
         info: {
             ip: config.cluster.worker.ip,
-            hostname: config[myPurpose] ? config[myPurpose].hostname : undefined,
-            port: config[myPurpose] ? config[myPurpose].port : undefined,
             purpose: myPurpose,
             state: 2,
             max_load: config.cluster.worker.load.max,

@@ -15,7 +15,6 @@
             "conference.js",
             "accessController.js",
             "rtcController.js",
-            "quicController.js",
             "stream.js",
             "subscription.js",
             "../index.js",
