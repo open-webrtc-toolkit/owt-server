@@ -18,6 +18,7 @@ RawTransport<prot>::RawTransport(RawTransportListener* listener, size_t initialB
     : m_isClosing(false)
     , m_tag(tag)
     , m_bufferSize(initialBufferSize)
+    , m_service(getIOService())
     , m_listener(listener)
     , m_receivedBytes(0)
 {
@@ -36,11 +37,9 @@ void RawTransport<prot>::close()
     if (m_isClosing)
         return;
 
-    // We need to wait for the work thread to finish its job.
     m_isClosing = true;
-    m_ioService.stop();
-    m_workThread.join();
-
+    // Release the service
+    m_service.reset();
     boost::system::error_code ec;
     switch (prot) {
     case TCP:
@@ -71,8 +70,8 @@ void RawTransport<prot>::createConnection(const std::string& ip, uint32_t port)
         if (m_socket.tcp.socket) {
             ELOG_WARN("TCP transport existed, ignoring the connection request for ip %s port %d\n", ip.c_str(), port);
         } else {
-            m_socket.tcp.socket.reset(new tcp::socket(m_ioService));
-            tcp::resolver resolver(m_ioService);
+            m_socket.tcp.socket.reset(new tcp::socket(m_service->service()));
+            tcp::resolver resolver(m_service->service());
             tcp::resolver::query query(ip.c_str(), boost::to_string(port).c_str());
             tcp::resolver::iterator iterator = resolver.resolve(query);
             // TODO: Accept IPv6.
@@ -87,8 +86,8 @@ void RawTransport<prot>::createConnection(const std::string& ip, uint32_t port)
         if (m_socket.udp.socket) {
             ELOG_WARN("UDP transport existed, ignoring the connection request for ip %s port %d\n", ip.c_str(), port);
         } else {
-            m_socket.udp.socket.reset(new udp::socket(m_ioService));
-            udp::resolver resolver(m_ioService);
+            m_socket.udp.socket.reset(new udp::socket(m_service->service()));
+            udp::resolver resolver(m_service->service());
             udp::resolver::query query(udp::v4(), ip.c_str(), boost::to_string(port).c_str());
             udp::resolver::iterator iterator = resolver.resolve(query);
 
@@ -103,9 +102,6 @@ void RawTransport<prot>::createConnection(const std::string& ip, uint32_t port)
     default:
         break;
     }
-
-    if (m_workThread.get_id() == boost::thread::id()) // Not-A-Thread
-        m_workThread = boost::thread(boost::bind(&boost::asio::io_service::run, &m_ioService));
 }
 
 template<Protocol prot>
@@ -179,8 +175,8 @@ void RawTransport<prot>::listenTo(uint32_t port)
         if (m_socket.tcp.socket) {
             ELOG_WARN("TCP transport existed, ignoring the listening request for port %d\n", port);
         } else {
-            m_socket.tcp.socket.reset(new tcp::socket(m_ioService));
-            m_socket.tcp.acceptor.reset(new tcp::acceptor(m_ioService, tcp::endpoint(tcp::v4(), port)));
+            m_socket.tcp.socket.reset(new tcp::socket(m_service->service()));
+            m_socket.tcp.acceptor.reset(new tcp::acceptor(m_service->service(), tcp::endpoint(tcp::v4(), port)));
             m_socket.tcp.acceptor->async_accept(*(m_socket.tcp.socket.get()),
                 boost::bind(&RawTransport::acceptHandler, this,
                     boost::asio::placeholders::error));
@@ -192,7 +188,7 @@ void RawTransport<prot>::listenTo(uint32_t port)
         if (m_socket.udp.socket) {
             ELOG_WARN("UDP transport existed, ignoring the listening request for port %d\n", port);
         } else {
-            m_socket.udp.socket.reset(new udp::socket(m_ioService, udp::endpoint(udp::v4(), port)));
+            m_socket.udp.socket.reset(new udp::socket(m_service->service(), udp::endpoint(udp::v4(), port)));
             receiveData();
         }
         break;
@@ -200,9 +196,6 @@ void RawTransport<prot>::listenTo(uint32_t port)
     default:
         break;
     }
-
-    if (m_workThread.get_id() == boost::thread::id()) // Not-A-Thread
-        m_workThread = boost::thread(boost::bind(&boost::asio::io_service::run, &m_ioService));
 }
 
 template<Protocol prot>
@@ -213,7 +206,7 @@ void RawTransport<prot>::listenTo(uint32_t minPort, uint32_t maxPort)
         if (m_socket.tcp.socket) {
             ELOG_WARN("TCP transport existed, ignoring the listening request for minPort %d, maxPort %d\n", minPort, maxPort);
         } else {
-            m_socket.tcp.socket.reset(new tcp::socket(m_ioService));
+            m_socket.tcp.socket.reset(new tcp::socket(m_service->service()));
 
             // find port in range
             uint32_t portRange = maxPort - minPort + 1;
@@ -221,7 +214,7 @@ void RawTransport<prot>::listenTo(uint32_t minPort, uint32_t maxPort)
             boost::system::error_code ec;
 
             for (uint32_t i = 0; i < portRange; i++) {
-                m_socket.tcp.acceptor.reset(new tcp::acceptor(m_ioService));
+                m_socket.tcp.acceptor.reset(new tcp::acceptor(m_service->service()));
                 m_socket.tcp.acceptor->open(tcp::v4());
                 m_socket.tcp.acceptor->bind(tcp::endpoint(tcp::v4(), port), ec);
 
@@ -260,7 +253,7 @@ void RawTransport<prot>::listenTo(uint32_t minPort, uint32_t maxPort)
             ELOG_WARN("UDP transport existed, ignoring the listening request for minPort %d, maxPort %d\n", minPort, maxPort);
         } else {
             ELOG_WARN("UDP transport does not support listening in specific range.");
-            m_socket.udp.socket.reset(new udp::socket(m_ioService, udp::endpoint(udp::v4(), 0)));
+            m_socket.udp.socket.reset(new udp::socket(m_service->service(), udp::endpoint(udp::v4(), 0)));
             receiveData();
         }
         break;
@@ -268,9 +261,6 @@ void RawTransport<prot>::listenTo(uint32_t minPort, uint32_t maxPort)
     default:
         break;
     }
-
-    if (m_workThread.get_id() == boost::thread::id()) // Not-A-Thread
-        m_workThread = boost::thread(boost::bind(&boost::asio::io_service::run, &m_ioService));
 }
 
 template<Protocol prot>

@@ -60,6 +60,18 @@ docker exec -it gst-analytics bash
 
 Besides basic OWT dependencies, analytics agent requires OpenVINO and GStreamer to do video analytics. Please download OpenVINO 2021.1.110 and dlstreamer_gst 1.2.1 version and refer to option 3 steps in [dlstreamer_gst install guide](https://github.com/openvinotoolkit/dlstreamer_gst/wiki/Install-Guide#install-on-host-machine) to install OpenVINO, gst-video-analytics plugins and related dependencies. 
 
+For dlstreamer installation in CentOS, required version is >=3.1, if your system installed cmake version is < 3.1, build process will fail. In this case, following steps below:
+```
+yum remove cmake
+wget https://github.com/Kitware/CMake/releases/download/v3.14.5/cmake-3.14.5-Linux-x86_64.tar.gz
+tar zxf cmake-3.14.5-Linux-x86_64.tar.gz -C /opt/
+export CMAKE_HOME=/opt/cmake-3.14.5-Linux-x86_64
+export PATH=$PATH:$CMAKE_HOME/bin
+cmake --version
+```
+
+Then you can continue to build dlstreamer.
+
 ### 2.3 Download models for analytics<a name="dependencies3"></a>
 
 Download [open model zoo package](https://github.com/opencv/open_model_zoo/releases/tag/2020.4) and uncompress file in docker container or host machine:
@@ -129,6 +141,10 @@ cd Release-vxxx
 
 Start up OWT in host machine:
 ````
+source /opt/intel/openvino_2021/bin/setupvars.sh
+##dl_streamer_lib_path is the build library path in step 2.2
+export GST_PLUGIN_PATH=${dl_streamer_lib_path}:/usr/lib/x86_64-linux-gnu/gstreamer-1.0:${GST_PLUGIN_PATH} #for ubuntu18.04
+export GST_PLUGIN_PATH=${dl_streamer_lib_path}:/usr/lib64/gstreamer-1.0::${GST_PLUGIN_PATH} #for centos7.6
 cd Release-vxxx
 cp ${OWT_SOURCE_CODE}/docker/analyticspage/index.js apps/current_app/public/scripts/ 
 cp ${OWT_SOURCE_CODE}/docker/analyticspage/rest-sample.js apps/current_app/public/scripts/
@@ -155,6 +171,15 @@ Make sure face detection with cpu pipeline has been installed and model path has
 
 Check ````analytics_agent/plugin.cfg````， The pipeline ID for face detection with CPU is ````dc51138a8284436f873418a21ba8cfa9````, so on the page, in "pipelineID" input text, input the pipeline ID in "analytics id" 
 edit control, that is,  ````dc51138a8284436f873418a21ba8cfa9```` without any extra spaces, and press "startAnalytics" button. The stream you selected will be analyzed, with annotation on the faces in the stream.
+
+Note: If the sample cpu_pipeline analytics failed, please debug as following:
+a. Check sample cpu_pipeline is successfully compiled and generated libraries are copied to analytics_agent/lib folder
+b. Check ```modelpath``` in analytics_agent/plugin.cfg and make sure it is configured to the correct openmodel zoo model path.
+c. For sample cpu_pipeline, the failure is mostly caused by gvadetect and x264enc elements cannot be found, use ```gst-inspect-1.0 gvadetect``` and ```gst-inspect-1.0 x264enc``` to check if used GStreamer elements are successfully installed or configured. If x264enc element is not found, please make sure gstreamer1-plugins-ugly (for CentOS) and gstreamer1.0-plugins-ugly(for Ubuntu). If gvadetect element is not found, please make sure dlstreamer is successfully compiled. Check environment variable GST_PLUGIN_PATH and add x264 and gvadetect libraries to the GST_PLUGIN_PATH as:
+````
+export GST_PLUGIN_PATH=${dl_streamer_lib_path}:/usr/lib/x86_64-linux-gnu/gstreamer-1.0:${GST_PLUGIN_PATH} #for ubuntu18.04
+export GST_PLUGIN_PATH=${dl_streamer_lib_path}:/usr/lib64/gstreamer-1.0::${GST_PLUGIN_PATH} #for centos7.6
+````
 
 #### Subscribe analyzed stream
 

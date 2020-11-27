@@ -9,6 +9,7 @@
 
 const {
   StreamControlInfo,
+  SubscriptionControlInfo,
 } = require('./requestFormatV1-0');
 
 const Resolution = {
@@ -38,7 +39,15 @@ const PublicationRequest = {
       properties: {
         'media': { $ref: '#/definitions/WebRTCMediaOptions' },
         'attributes': { type: 'object' },
-        'transportId': { type: 'string' }
+        'data': {type: 'boolean'},
+        'transport': {
+          type: 'object',
+          properties: {
+            'type': {type: 'string'},
+            'id': {type: 'string'},
+          },
+          additionalProperties: false,
+        },
       },
       additionalProperties: false,
       required: ['media']
@@ -47,7 +56,7 @@ const PublicationRequest = {
 
   definitions: {
     'WebRTCMediaOptions': {
-      type: 'object',
+      type: ['object', 'null'],
       properties: {
         'tracks': {
           type: 'array',
@@ -74,7 +83,15 @@ const SubscriptionRequest = {
       type: 'object',
       properties: {
         'media': { $ref: '#/definitions/MediaSubOptions' },
-        'transportId': { type: 'string' }
+        'transport': {
+          type: 'object',
+          properties: {
+            'type': {type: 'string'},
+            'id': {type: 'string'},
+          },
+          additionalProperties: false,
+        },
+        'data': { $ref: '#/definitions/DataSubOptions' },
       },
       additionalProperties: false,
       required: ['media']
@@ -83,7 +100,7 @@ const SubscriptionRequest = {
 
   definitions: {
     'MediaSubOptions': {
-      type: 'object',
+      type: ['object', 'null'],
       properties: {
         'tracks': {
           type: 'array',
@@ -106,6 +123,15 @@ const SubscriptionRequest = {
       },
       additionalProperties: false,
       required: ['tracks']
+    },
+
+    'DataSubOptions': {
+      type: 'object',
+      properties: {
+        'from': {type: 'string'}
+      },
+      additionalProperties: false,
+      required: ['from']
     },
 
     'AudioFormat': {
@@ -143,6 +169,7 @@ const SubscriptionRequest = {
 };
 
 // SubscriptionControlInfo
+/*
 const SubscriptionControlInfo = {
   type: 'object',
   anyOf: [
@@ -197,6 +224,7 @@ const SubscriptionControlInfo = {
     }
   }
 };
+*/
 
 module.exports = {
   PublicationRequest,
