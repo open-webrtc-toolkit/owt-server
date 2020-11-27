@@ -99,6 +99,22 @@ void FrameSource::deliverFrame(const Frame& frame)
     }
 }
 
+void FrameSource::deliverMetaData(const MetaData& metadata)
+{
+    {
+        boost::shared_lock<boost::shared_mutex> lock(m_audio_dests_mutex);
+        for (auto it = m_audio_dests.begin(); it != m_audio_dests.end(); ++it) {
+            (*it)->onMetaData(metadata);
+        }
+    }
+    {
+        boost::shared_lock<boost::shared_mutex> lock(m_video_dests_mutex);
+        for (auto it = m_video_dests.begin(); it != m_video_dests.end(); ++it) {
+            (*it)->onMetaData(metadata);
+        }
+    }
+}
+
 //=========================================================================================
 
 void FrameDestination::setAudioSource(FrameSource* src)
