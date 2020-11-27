@@ -283,7 +283,7 @@ class RtcController extends EventEmitter {
       const op = new Operation(sessionId, transport, direction, tracks, legacy);
       this.operations.set(sessionId, op);
       // Return promise for this operation
-      const options = {transportId, tracks, controller: this.roomRpcId};
+      const options = {transportId, tracks, controller: this.roomRpcId, owner: ownerId};
       return this.rpcReq.initiate(locality.node, sessionId, 'webrtc', direction, options);
     });
   }

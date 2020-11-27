@@ -42,7 +42,7 @@ public:
     void unbindTransport();
     void enable(bool enabled) { m_enabled = enabled; }
     uint32_t getSsrc() { return m_ssrc; }
-    void setOwner(std::string owner) { m_owner = owner; }
+    void setOwner(std::string owner);
 
     // Implements FrameDestination.
     void onFrame(const Frame&);

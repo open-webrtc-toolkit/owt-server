@@ -53,6 +53,12 @@ void AudioFramePacketizer::unbindTransport()
     }
 }
 
+void AudioFramePacketizer::setOwner(std::string owner)
+{
+    m_firstFrame = false;
+    m_owner = owner;
+}
+
 int AudioFramePacketizer::deliverFeedback_(std::shared_ptr<erizo::DataPacket> data_packet)
 {
     if (m_audioSend) {
@@ -94,7 +100,7 @@ void AudioFramePacketizer::onFrame(const Frame& frame)
     if (frame.length <= 0)
         return;
 
-    if (!m_sourceOwner.empty() && m_owner != m_sourceOwner)
+    if (!m_sourceOwner.empty() && m_owner == m_sourceOwner)
         return;
 
     if (frame.format != m_frameFormat) {
@@ -112,15 +118,10 @@ void AudioFramePacketizer::onMetaData(const MetaData& metadata)
         return;
     }
 
-    boost::shared_lock<boost::shared_mutex> lock1(m_transport_mutex);
-    if (!audio_sink_) {
-        return;
-    }
-    lock1.unlock();
-
     if (metadata.type == META_DATA_OWNER_ID) {
-        m_sourceOwner = std::string(metadata.payload, metadata.length);
+        m_sourceOwner = std::string((char*)metadata.payload, metadata.length);
     }
+
 }
 
 bool AudioFramePacketizer::init(AudioFramePacketizer::Config& config)
