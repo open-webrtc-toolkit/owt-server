@@ -12,7 +12,8 @@
             "webrtc",
             "avstream",
             "gst-pipeline",
-            "sip"
+            "sip",
+            "quic"
         ]
     },
     "mcu-msdk" : {
@@ -26,7 +27,8 @@
             "audio-ranker",
             "webrtc",
             "avstream",
-            "sip"
+            "sip",
+            "quic"
         ]
     },
     "mcu-all" : {
@@ -47,12 +49,6 @@
         "include" : [
             "webrtc-conn",
             "webrtc-frame"
-        ]
-    },
-    "mcu-quic": {
-        "include":[
-            "mcu",
-            "quic"
         ]
     },
     "video-mixer-sw" : {
@@ -120,6 +116,6 @@
     },
     "quic" : {
         "path" : "source/agent/addons/quic",
-        "description": "QUIC agent supports WebTransport - QuicTransport connections. Experimental feature."
+        "description": "QUIC agent supports WebTransport over QUIC connections."
     }
 }

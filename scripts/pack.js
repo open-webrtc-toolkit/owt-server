@@ -421,7 +421,7 @@ function isLibAllowed(libSrc) {
   if (!libSrc)
     return false;
 
-  const whiteList = [
+  const allowList = [
     'rtcadapter',
     'libssl.so.1.1',
     'libcrypto',
@@ -431,18 +431,19 @@ function isLibAllowed(libSrc) {
     'libopenh264',
     'libre',
     'sipLib',
-    'librawquic'
+    'librawquic',
+    'libowt_quic_transport',
   ];
   if (!options['archive'] || options['with-ffmpeg']) {
-    whiteList.push('libav');
-    whiteList.push('libsw');
+    allowList.push('libav');
+    allowList.push('libsw');
   }
 
   const libName = path.basename(libSrc);
 
   var found = false;
-  for (let i in whiteList) {
-    if (libName.indexOf(whiteList[i]) === 0) {
+  for (let i in allowList) {
+    if (libName.indexOf(allowList[i]) === 0) {
       found = true;
       break;
     }

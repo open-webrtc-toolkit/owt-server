@@ -299,12 +299,29 @@ install_licode(){
 }
 
 install_quic(){
+  # QUIC IO
   rm $ROOT/third_party/quic-lib -rf
   mkdir $ROOT/third_party/quic-lib
 
   pushd ${ROOT}/third_party/quic-lib
   wget https://github.com/open-webrtc-toolkit/owt-deps-quic/releases/download/v0.1/dist.tgz
   tar xzf dist.tgz
+  popd
+
+  # QUIC transport
+  local QUIC_SDK_VERSION=`cat $ROOT/source/agent/addons/quic/quic_sdk_version`
+  local QUIC_TRANSPORT_PATH=$ROOT/third_party/quic-transport
+  rm -r $QUIC_TRANSPORT_PATH
+  mkdir $QUIC_TRANSPORT_PATH
+  pushd $QUIC_TRANSPORT_PATH
+  wget $QUIC_TRANSPORT_PACKAGE_URL_PREFIX/linux/$QUIC_SDK_VERSION.zip
+  if [ $? -eq 0 ]; then
+    unzip $QUIC_SDK_VERSION.zip
+    rm $QUIC_SDK_VERSION.zip
+    cp bin/release/libowt_quic_transport.so $ROOT/build/libdeps/build/lib
+  else
+    read -p "Failed to download prebuild QUIC SDK. Please download and compile QUIC SDK version $QUIC_SDK_VERSION from https://github.com/open-webrtc-toolkit/owt-deps-quic."
+  fi
   popd
 }
 
