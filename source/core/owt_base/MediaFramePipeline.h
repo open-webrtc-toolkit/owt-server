@@ -79,6 +79,9 @@ struct Frame {
     uint32_t        length;
     uint32_t        timeStamp;
     MediaSpecInfo   additionalInfo;
+
+    uint32_t sync_timeStamp; //ms
+    bool sync_enabled;
 };
 
 inline FrameFormat getFormat(const std::string& codec) {

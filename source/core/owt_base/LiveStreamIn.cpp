@@ -1244,6 +1244,12 @@ void LiveStreamIn::deliverVideoFrame(AVPacket *pkt)
     frame.additionalInfo.video.width = m_videoWidth;
     frame.additionalInfo.video.height = m_videoHeight;
     frame.additionalInfo.video.isKeyFrame = (pkt->flags & AV_PKT_FLAG_KEY);
+
+    if (isSyncEnabled()) {
+        frame.sync_enabled = true;
+        frame.sync_timeStamp = pkt->pts;
+    }
+
     deliverFrame(frame);
 
     ELOG_TRACE_T("deliver video frame, timestamp %ld(%ld), size %4d, %s"
