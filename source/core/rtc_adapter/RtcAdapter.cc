@@ -13,34 +13,13 @@
 #include <memory>
 #include <mutex>
 
+#include <rtc_base/event.h>
 #include <system_wrappers/include/clock.h>
+
 
 namespace rtc_adapter {
 
-class RTCProcessThread {
-public:
-    RTCProcessThread(const char* task_name)
-    : m_processThread(webrtc::ProcessThread::Create(task_name))
-    {
-        m_processThread->Start();
-    }
-    ~RTCProcessThread()
-    {
-        m_processThread->Stop();
-    }
-
-    webrtc::ProcessThread* unwrap()
-    {
-        return m_processThread.get();
-    }
-private:
-    std::unique_ptr<webrtc::ProcessThread> m_processThread;
-};
-
-static std::unique_ptr<RTCProcessThread> g_moduleThread
-    = std::make_unique<RTCProcessThread>("ModuleProcessThread");
-static std::unique_ptr<RTCProcessThread> g_pacerThread
-    = std::make_unique<RTCProcessThread>("PacerThread");
+static const int kCallDestroyTimeoutMs = 3000;
 
 class RtcAdapterImpl : public RtcAdapter,
                        public CallOwner {
@@ -87,6 +66,12 @@ RtcAdapterImpl::RtcAdapterImpl()
 
 RtcAdapterImpl::~RtcAdapterImpl()
 {
+    rtc::Event done;
+    m_taskQueue->PostTask(webrtc::ToQueuedTask([this, &done] {
+        m_call.reset();
+        done.Set();
+    }));
+    done.Wait(kCallDestroyTimeoutMs);
 }
 
 void RtcAdapterImpl::initCall()
@@ -98,9 +83,9 @@ void RtcAdapterImpl::initCall()
             call_config.task_queue_factory = m_taskQueueFactory.get();
 
             std::unique_ptr<webrtc::ProcessThread> moduleThreadProxy =
-                std::make_unique<ProcessThreadProxy>(g_moduleThread->unwrap());
+                std::make_unique<ProcessThreadProxy>("ModuleProcessThread");
             std::unique_ptr<webrtc::ProcessThread> pacerThreadProxy =
-                std::make_unique<ProcessThreadProxy>(g_pacerThread->unwrap());
+                std::make_unique<ProcessThreadProxy>("PacerThread");
             m_call.reset(webrtc::Call::Create(
                 call_config, webrtc::Clock::GetRealTimeClock(),
                 std::move(moduleThreadProxy),
