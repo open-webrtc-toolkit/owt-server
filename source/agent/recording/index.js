@@ -184,7 +184,7 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
         }, onError(callback));
     };
 
-    that.linkup = function (connectionId, audioFrom, videoFrom, callback) {
+    that.linkup = function (connectionId, audioFrom, videoFrom, dataFrom, callback) {
         connections.linkupConnection(connectionId, audioFrom, videoFrom).then(onSuccess(callback), onError(callback));
     };
 
