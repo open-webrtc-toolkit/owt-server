@@ -2,6 +2,9 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+#include "webrtc/common_video/include/video_frame_buffer.h"
+#include "webrtc/base/keep_ref_until_done.h"
+
 #include "FFmpegFrameDecoder.h"
 
 namespace owt_base {
@@ -60,6 +63,7 @@ void FFmpegFrameDecoder::AVFreeBuffer(void* opaque, uint8_t* data)
 FFmpegFrameDecoder::FFmpegFrameDecoder()
     : m_decCtx(NULL)
     , m_decFrame(NULL)
+    , m_needKeyFrame(true)
 {
 }
 
@@ -118,6 +122,12 @@ bool FFmpegFrameDecoder::init(FrameFormat format)
         return false;
     }
 
+#if 0
+    m_decCtx->active_thread_type = FF_THREAD_FRAME;
+    m_decCtx->thread_type = FF_THREAD_FRAME;
+    m_decCtx->thread_count = 16;
+#endif
+
     m_decCtx->get_buffer2 = AVGetBuffer;
     m_decCtx->opaque = this;
     ret = avcodec_open2(m_decCtx, dec , NULL);
@@ -143,43 +153,93 @@ void FFmpegFrameDecoder::onFrame(const Frame& frame)
 {
     int ret;
 
+    if (m_needKeyFrame) {
+        if (!frame.additionalInfo.video.isKeyFrame)
+            return;
+
+        m_needKeyFrame = false;
+    }
+
     av_init_packet(&m_packet);
     m_packet.data = frame.payload;
     m_packet.size = frame.length;
+    m_packet.dts = frame.timeStamp;
+    m_packet.pts = frame.timeStamp;
+
+    if (frame.sync_enabled)
+        m_timestamp_map.insert(std::make_pair(frame.timeStamp, frame.sync_timeStamp));
 
     ret = avcodec_send_packet(m_decCtx, &m_packet);
     if (ret < 0) {
         ELOG_ERROR_T("Error while send packet, %s", ff_err2str(ret));
+
+        if (frame.sync_enabled)
+            m_timestamp_map.erase(frame.timeStamp);
+
         return;
     }
 
-    ret = avcodec_receive_frame(m_decCtx, m_decFrame);
-    if (ret == AVERROR(EAGAIN)) {
-        ELOG_DEBUG_T("Retry receive frame, %s", ff_err2str(ret));
-        return;
-    }else if (ret < 0) {
-        ELOG_ERROR_T("Error while receive frame, %s", ff_err2str(ret));
-        return;
-    }
+    while(true) {
+        ret = avcodec_receive_frame(m_decCtx, m_decFrame);
+        if (ret == AVERROR(EAGAIN)) {
+            //ELOG_TRACE_T("Retry receive frame, %s", ff_err2str(ret));
+            return;
+        }else if (ret < 0) {
+            ELOG_ERROR_T("Error while receive frame, %s", ff_err2str(ret));
+            return;
+        }
 
-    webrtc::VideoFrame *video_frame = static_cast<webrtc::VideoFrame*>(
-            av_buffer_get_opaque(m_decFrame->buf[0]));
+        webrtc::VideoFrame *video_frame = static_cast<webrtc::VideoFrame*>(
+                av_buffer_get_opaque(m_decFrame->buf[0]));
+        video_frame->set_timestamp_us(m_decFrame->pts * 1000 / 90);
+        video_frame->set_timestamp(m_decFrame->pts);
 
-    {
-        Frame frame;
-        memset(&frame, 0, sizeof(frame));
-        frame.format = FRAME_FORMAT_I420;
-        frame.payload = reinterpret_cast<uint8_t*>(video_frame);
-        frame.length = 0;
-        frame.timeStamp = video_frame->timestamp();
-        frame.additionalInfo.video.width = video_frame->width();
-        frame.additionalInfo.video.height = video_frame->height();
+        rtc::scoped_refptr<webrtc::VideoFrameBuffer> buf = video_frame->video_frame_buffer();
 
-        ELOG_TRACE_T("deliverFrame, %dx%d, timeStamp %d",
-                frame.additionalInfo.video.width,
-                frame.additionalInfo.video.height,
-                frame.timeStamp);
-        deliverFrame(frame);
+        bool isCroppedBuf = false;
+        if (m_decFrame->width != buf->width() || m_decFrame->height != buf->height()) {
+            rtc::scoped_refptr<webrtc::VideoFrameBuffer> cropped_buf(
+                    new rtc::RefCountedObject<webrtc::WrappedI420Buffer>(
+                        m_decFrame->width, m_decFrame->height,
+                        buf->DataY(), buf->StrideY(),
+                        buf->DataU(), buf->StrideU(),
+                        buf->DataV(), buf->StrideV(),
+                        rtc::KeepRefUntilDone(buf)));
+
+            video_frame = new webrtc::VideoFrame(
+                    cropped_buf, m_decFrame->pts, m_decFrame->pts / 90,
+                    video_frame->rotation());
+
+            isCroppedBuf = true;
+        }
+
+        {
+            Frame frame;
+            memset(&frame, 0, sizeof(frame));
+            frame.format = FRAME_FORMAT_I420;
+            frame.payload = reinterpret_cast<uint8_t*>(video_frame);
+            frame.length = 0;
+            frame.timeStamp = m_decFrame->pts;
+            frame.additionalInfo.video.width = video_frame->width();
+            frame.additionalInfo.video.height = video_frame->height();
+
+            auto it = m_timestamp_map.find(frame.timeStamp);
+            if (it != m_timestamp_map.end()) {
+                frame.sync_enabled = true;
+                frame.sync_timeStamp = it->second;
+
+                m_timestamp_map.erase(it);
+            }
+
+            ELOG_TRACE_T("deliverFrame, %dx%d, timeStamp %d",
+                    frame.additionalInfo.video.width,
+                    frame.additionalInfo.video.height,
+                    frame.timeStamp / 90);
+            deliverFrame(frame);
+
+            if(isCroppedBuf)
+                delete video_frame;
+        }
     }
 }
 
