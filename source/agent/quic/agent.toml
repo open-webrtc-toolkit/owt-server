@@ -1,0 +1,55 @@
+[agent]
+#Max processes that agent can run
+maxProcesses = 1 #default: 13
+
+#Number of precesses that agent runs when it starts. 1 <= prerunProcesses <= maxProcesses.
+prerunProcesses = 1 #default: 2
+
+
+[cluster]
+name = "owt-cluster"
+
+#The number of times to retry joining if the first try fails.
+join_retry = 60 #default: 60
+
+#The interval of reporting the work load
+report_load_interval = 1000 #default: 1000, unit: millisecond
+
+#The max network load under which this worker can take new tasks.
+max_load = 0.85 #default: 0.85
+
+#The bandwidth of network-interface used for QUIC connections. 
+network_max_scale = 1000 #unit: Mbps
+
+
+[capacity]
+#The ISP list this agent is able to handle.
+#If the ISP list is set to be non-empty, only the creating token requests with preference.ips being matched with one element of this list will be scheduled to this agent.
+isps = [] #default: [], which means all ISPs.
+#The region list this agent prefers to handle
+#If the region list is set to be non-empty, the creating token requests with preference.region being matched with one element of this list will be priorly scheduled to this agent.
+regions = [] #default: [], which means all regions.
+
+
+[rabbit]
+host = "localhost" #default: "localhost"
+port = 5672 #default: 5672
+
+[internal]
+#The IP address used for internal-cluster media spreading. Will use the IP got from the 'network_interface' item if 'ip_address' is not specified or equal to "".
+ip_address = "" #default: ""
+
+#The network interface used for internal-cluster media spreading. The first enumerated network interface in the system will be adopted if this item is not specified.
+# network_interface = "eth0" # default: undefined
+
+# The internal listening port range, only works for TCP now
+maxport = 0 #default: 0
+minport = 0 #default: 0
+
+#########################################################################################
+[quic]
+# Key store path doesn't work right now.
+keystorePath = "./cert/certificate.pfx"
+
+# Port of QUIC agent is going to listen on. Default port for WebTransport is not defined in WebTransport spec. We will update it when it's defined.
+port = 7700 #default: 7700

@@ -18,6 +18,7 @@ namespace owt_base {
 
 const char TDT_FEEDBACK_MSG = 0x5A;
 const char TDT_MEDIA_FRAME = 0x8F;
+const char TDT_MEDIA_METADATA = 0x3A;
 
 enum Protocol {
     TCP = 0,
