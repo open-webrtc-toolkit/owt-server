@@ -193,7 +193,7 @@ void SoftInput::setActive(bool active)
     boost::unique_lock<boost::shared_mutex> lock(m_mutex);
     m_active = active;
     if (!m_active)
-        m_busyFrame.reset();
+        m_frame_queue.clear();
 }
 
 bool SoftInput::isActive(void)
@@ -235,8 +235,14 @@ void SoftInput::pushInput(const owt_base::Frame& frame)
 
     {
         boost::unique_lock<boost::shared_mutex> lock(m_mutex);
-        if (m_active)
-            m_busyFrame.reset(new webrtc::VideoFrame(dstBuffer, webrtc::kVideoRotation_0, 0));
+        if (m_active) {
+            std::shared_ptr<SoftInputFrame> inputFrame = std::make_shared<SoftInputFrame>();
+            inputFrame->buffer = dstBuffer;
+            inputFrame->timeStamp = frame.timeStamp;
+            inputFrame->sync_enabled = frame.sync_enabled;
+            inputFrame->sync_timeStamp = frame.sync_timeStamp ;
+            m_frame_queue.push_back(inputFrame);
+        }
     }
 #endif
 }
@@ -248,7 +254,15 @@ boost::shared_ptr<VideoFrame> SoftInput::popInput()
     if(!m_active)
         return NULL;
 
-    return m_busyFrame;
+    if (m_frame_queue.empty())
+        return nullptr;
+
+    std::shared_ptr<SoftInputFrame> inputFrame = m_frame_queue.front();
+
+    if (m_frame_queue.size() > 1)
+        m_frame_queue.pop_front();
+
+    return boost::make_shared<VideoFrame>(inputFrame->buffer, webrtc::kVideoRotation_0, 0);
 }
 
 DEFINE_LOGGER(SoftFrameGenerator, "mcu.media.SoftVideoCompositor.SoftFrameGenerator");

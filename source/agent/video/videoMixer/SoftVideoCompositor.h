@@ -6,6 +6,7 @@
 #define SoftVideoCompositor_h
 
 #include <vector>
+#include <deque>
 
 #include <boost/scoped_ptr.hpp>
 #include <boost/shared_ptr.hpp>
@@ -53,6 +54,14 @@ private:
     boost::shared_mutex m_mutex;
 };
 
+struct SoftInputFrame {
+    rtc::scoped_refptr<webrtc::I420Buffer> buffer;
+    uint32_t timeStamp;
+
+    bool sync_enabled;
+    uint32_t sync_timeStamp;
+};
+
 class SoftInput {
     DECLARE_LOGGER();
 
@@ -68,7 +77,7 @@ public:
 
 private:
     bool m_active;
-    boost::shared_ptr<webrtc::VideoFrame> m_busyFrame;
+    std::deque<std::shared_ptr<SoftInputFrame>> m_frame_queue;
     boost::shared_mutex m_mutex;
 
     boost::scoped_ptr<owt_base::I420BufferManager> m_bufferManager;
