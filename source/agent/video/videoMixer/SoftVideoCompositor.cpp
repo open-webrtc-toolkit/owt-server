@@ -193,7 +193,7 @@ void SoftInput::setActive(bool active)
     boost::unique_lock<boost::shared_mutex> lock(m_mutex);
     m_active = active;
     if (!m_active)
-        m_busyFrame.reset();
+        m_frame_queue.clear();
 }
 
 bool SoftInput::isActive(void)
@@ -201,8 +201,11 @@ bool SoftInput::isActive(void)
     return m_active;
 }
 
-void SoftInput::pushInput(webrtc::VideoFrame *videoFrame)
+void SoftInput::pushInput(const owt_base::Frame& frame)
 {
+    assert(frame.format == owt_base::FRAME_FORMAT_I420);
+    webrtc::VideoFrame* videoFrame = reinterpret_cast<webrtc::VideoFrame*>(frame.payload);
+
     {
         boost::unique_lock<boost::shared_mutex> lock(m_mutex);
         if (!m_active)
@@ -223,8 +226,14 @@ void SoftInput::pushInput(webrtc::VideoFrame *videoFrame)
 
     {
         boost::unique_lock<boost::shared_mutex> lock(m_mutex);
-        if (m_active)
-            m_busyFrame.reset(new webrtc::VideoFrame(dstBuffer, webrtc::kVideoRotation_0, 0));
+        if (m_active) {
+            std::shared_ptr<SoftInputFrame> inputFrame = std::make_shared<SoftInputFrame>();
+            inputFrame->buffer = dstBuffer;
+            inputFrame->timeStamp = frame.timeStamp;
+            inputFrame->sync_enabled = frame.sync_enabled;
+            inputFrame->sync_timeStamp = frame.sync_timeStamp ;
+            m_frame_queue.push_back(inputFrame);
+        }
     }
 }
 
@@ -235,7 +244,15 @@ boost::shared_ptr<VideoFrame> SoftInput::popInput()
     if(!m_active)
         return NULL;
 
-    return m_busyFrame;
+    if (m_frame_queue.empty())
+        return nullptr;
+
+    std::shared_ptr<SoftInputFrame> inputFrame = m_frame_queue.front();
+
+    if (m_frame_queue.size() > 1)
+        m_frame_queue.pop_front();
+
+    return boost::make_shared<VideoFrame>(inputFrame->buffer, webrtc::kVideoRotation_0, 0);
 }
 
 DEFINE_LOGGER(SoftFrameGenerator, "mcu.media.SoftVideoCompositor.SoftFrameGenerator");
@@ -666,10 +683,7 @@ bool SoftVideoCompositor::unsetAvatar(int input)
 
 void SoftVideoCompositor::pushInput(int input, const Frame& frame)
 {
-    assert(frame.format == owt_base::FRAME_FORMAT_I420);
-    webrtc::VideoFrame* i420Frame = reinterpret_cast<webrtc::VideoFrame*>(frame.payload);
-
-    m_inputs[input]->pushInput(i420Frame);
+    m_inputs[input]->pushInput(frame);
 }
 
 bool SoftVideoCompositor::addOutput(const uint32_t width, const uint32_t height, const uint32_t framerateFPS, owt_base::FrameDestination *dst)
