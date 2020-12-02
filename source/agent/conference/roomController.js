@@ -1526,9 +1526,9 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
 
             const createMapForSources = function(audioStreamId, videoStreamId, dataStreamId) {
                 const sourceMap = new Map();
-                sourceMap['audio'] = audioStreamId;
-                sourceMap['video'] = videoStreamId;
-                sourceMap['data'] = dataStreamId;
+                sourceMap.set('audio', audioStreamId);
+                sourceMap.set('video', videoStreamId);
+                sourceMap.set('data', dataStreamId);
                 return sourceMap;
             };
 
@@ -1541,7 +1541,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
 
                         terminals[terminal_id].subscribed[subscriptionId] = {};
                         for (const [kind, streamId] of createMapForSources(audioStream, videoStream, dataStream)) {
-                            if (from) {
+                            if (streamId) {
                                 streams[streamId][kind].subscriber = streams[streamId][kind].subscribers || [];
                                 streams[streamId][kind].subscribers.push(terminal_id);
                                 terminals[terminal_id].subscribed[subscriptionId].audio = streamId;
