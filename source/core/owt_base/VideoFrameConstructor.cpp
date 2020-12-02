@@ -92,7 +92,13 @@ void VideoFrameConstructor::unbindTransport()
 void VideoFrameConstructor::enable(bool enabled)
 {
     m_enabled = enabled;
-    RequestKeyFrame();
+    if(!m_enabled) {
+        m_ssrc = 0;
+        m_rtcAdapter->destoryVideoReceiver(m_videoReceive);
+        m_videoReceive = nullptr;
+    } else {
+        RequestKeyFrame();
+    }
 }
 
 int32_t VideoFrameConstructor::RequestKeyFrame()
@@ -114,9 +120,7 @@ bool VideoFrameConstructor::setBitrate(uint32_t kbps)
 
 void VideoFrameConstructor::onAdapterFrame(const Frame& frame)
 {
-    if (m_enabled) {
-        deliverFrame(frame);
-    }
+    deliverFrame(frame);
 }
 
 void VideoFrameConstructor::onAdapterStats(const AdapterStats& stats)
@@ -143,28 +147,32 @@ void VideoFrameConstructor::onAdapterData(char* data, int len)
 
 int VideoFrameConstructor::deliverVideoData_(std::shared_ptr<erizo::DataPacket> video_packet)
 {
-    RTCPHeader* chead = reinterpret_cast<RTCPHeader*>(video_packet->data);
-    uint8_t packetType = chead->getPacketType();
+    if (m_enabled) {
+        RTCPHeader* chead = reinterpret_cast<RTCPHeader*>(video_packet->data);
+        uint8_t packetType = chead->getPacketType();
 
-    assert(packetType != RTCP_Receiver_PT && packetType != RTCP_PS_Feedback_PT && packetType != RTCP_RTP_Feedback_PT);
-    if (packetType == RTCP_Sender_PT)
-        return 0;
+        assert(packetType != RTCP_Receiver_PT && packetType != RTCP_PS_Feedback_PT && packetType != RTCP_RTP_Feedback_PT);
+        if (packetType == RTCP_Sender_PT)
+            return 0;
 
-    const uint8_t rtcpMinPt = 194, rtcpMaxPt = 223;
-    if (packetType >= rtcpMinPt && packetType <= rtcpMaxPt) {
-        return 0;
+        const uint8_t rtcpMinPt = 194, rtcpMaxPt = 223;
+        if (packetType >= rtcpMinPt && packetType <= rtcpMaxPt) {
+            return 0;
+        }
+
+        RTPHeader* head = reinterpret_cast<RTPHeader*>(video_packet->data);
+        if (!m_ssrc && head->getSSRC()) {
+            m_ssrc = head->getSSRC();
+            maybeCreateReceiveVideo(m_ssrc);
+        }
+        if (m_videoReceive) {
+            m_videoReceive->onRtpData(video_packet->data, video_packet->length);
+        }
+
+        return video_packet->length;
     }
 
-    RTPHeader* head = reinterpret_cast<RTPHeader*>(video_packet->data);
-    if (!m_ssrc && head->getSSRC()) {
-        m_ssrc = head->getSSRC();
-        maybeCreateReceiveVideo(m_ssrc);
-    }
-    if (m_videoReceive) {
-        m_videoReceive->onRtpData(video_packet->data, video_packet->length);
-    }
-
-    return video_packet->length;
+    return 0;
 }
 
 int VideoFrameConstructor::deliverAudioData_(std::shared_ptr<erizo::DataPacket> audio_packet)
