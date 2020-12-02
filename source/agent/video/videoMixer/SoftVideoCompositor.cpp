@@ -179,8 +179,10 @@ DEFINE_LOGGER(SoftInput, "mcu.media.SoftVideoCompositor.SoftInput");
 
 SoftInput::SoftInput()
     : m_active(false)
+    , m_sync_enabled(true)
+    , m_frame_sync_enabled(false)
 {
-    m_bufferManager.reset(new I420BufferManager(3));
+    m_bufferManager.reset(new I420BufferManager(kMaxQueueSize));
     m_converter.reset(new owt_base::FrameConverter());
 }
 
@@ -210,20 +212,20 @@ void SoftInput::pushInput(const owt_base::Frame& frame)
         boost::unique_lock<boost::shared_mutex> lock(m_mutex);
         if (!m_active)
             return;
-    }
 
-    {
-        boost::unique_lock<boost::shared_mutex> lock(m_mutex);
-        if (m_active) {
-            m_busyFrame.reset(new webrtc::VideoFrame(*videoFrame));
+        if (m_frame_queue.size() == kMaxQueueSize) {
+            ELOG_WARN("Input frame queue is full (%d), disable sync", kMaxQueueSize);
+
+            // if the queue is full, it means the input is out of sync too much.
+            // we have to disable sync, and not wait any more.
+            m_frame_queue.clear();
+            m_sync_enabled = false;
         }
-        return;
     }
 
-#if 0
     rtc::scoped_refptr<webrtc::I420Buffer> dstBuffer = m_bufferManager->getFreeBuffer(videoFrame->width(), videoFrame->height());
     if (!dstBuffer) {
-        ELOG_ERROR("No free buffer");
+        ELOG_WARN("No free buffer");
         return;
     }
 
@@ -241,10 +243,14 @@ void SoftInput::pushInput(const owt_base::Frame& frame)
             inputFrame->timeStamp = frame.timeStamp;
             inputFrame->sync_enabled = frame.sync_enabled;
             inputFrame->sync_timeStamp = frame.sync_timeStamp ;
+
+            m_frame_sync_enabled = frame.sync_enabled;
+            if (!m_sync_enabled || !m_frame_sync_enabled)
+                m_frame_queue.clear();
+
             m_frame_queue.push_back(inputFrame);
         }
     }
-#endif
 }
 
 boost::shared_ptr<VideoFrame> SoftInput::popInput()
@@ -263,6 +269,65 @@ boost::shared_ptr<VideoFrame> SoftInput::popInput()
         m_frame_queue.pop_front();
 
     return boost::make_shared<VideoFrame>(inputFrame->buffer, webrtc::kVideoRotation_0, 0);
+}
+
+std::shared_ptr<SoftInputFrame> SoftInput::front()
+{
+    boost::unique_lock<boost::shared_mutex> lock(m_mutex);
+
+    if(!m_active)
+        return nullptr;
+
+    if (m_frame_queue.empty())
+        return nullptr;
+
+    return m_frame_queue.front();
+}
+
+std::shared_ptr<SoftInputFrame> SoftInput::back()
+{
+    boost::unique_lock<boost::shared_mutex> lock(m_mutex);
+
+    if(!m_active)
+        return nullptr;
+
+    if (m_frame_queue.empty())
+        return nullptr;
+
+    return m_frame_queue.back();
+}
+
+std::shared_ptr<SoftInputFrame> SoftInput::get_sync_frame(int64_t sync_timeStamp)
+{
+    boost::unique_lock<boost::shared_mutex> lock(m_mutex);
+
+    if(!m_active)
+        return nullptr;
+
+    if (m_frame_queue.empty())
+        return nullptr;
+
+    if (sync_timeStamp == -1)
+        return m_frame_queue.front();
+
+    while (true) {
+        if (m_frame_queue.front()->sync_timeStamp >= sync_timeStamp)
+            break;
+
+        if (m_frame_queue.size() == 1)
+            break;
+
+        m_frame_queue.pop_front();
+    }
+
+    ELOG_DEBUG("Get sync frame %u", m_frame_queue.front()->sync_timeStamp);
+    return m_frame_queue.front();
+}
+
+bool SoftInput::isSyncEnabled()
+{
+    boost::unique_lock<boost::shared_mutex> lock(m_mutex);
+    return m_sync_enabled && m_frame_sync_enabled;
 }
 
 DEFINE_LOGGER(SoftFrameGenerator, "mcu.media.SoftVideoCompositor.SoftFrameGenerator");
@@ -310,6 +375,7 @@ SoftFrameGenerator::SoftFrameGenerator(
 
     m_bufferManager.reset(new I420BufferManager(30));
 
+#if 0 //disable parallet composition in sync mode
     // parallet composition
     uint32_t nThreads = boost::thread::hardware_concurrency();
     m_parallelNum = nThreads / 2;
@@ -326,6 +392,7 @@ SoftFrameGenerator::SoftFrameGenerator(
         for (uint32_t i = 0; i < m_parallelNum; i++)
             m_thrGrp->create_thread(boost::bind(&boost::asio::io_service::run, m_srv));
     }
+#endif
 
     m_textDrawer.reset(new owt_base::FFmpegDrawText());
 
@@ -471,8 +538,48 @@ void SoftFrameGenerator::layout_regions(SoftFrameGenerator *t, rtc::scoped_refpt
     uint32_t composite_width = compositeBuffer->width();
     uint32_t composite_height = compositeBuffer->height();
 
+    // sync to latest frame
+    // example:
+    //   frame-queue-1 [t3 t2 t1 t0]
+    //   frame-queue-2 [t4 t3 t2 t1]
+    //   frame-queue-3 [t5 t4 t3 t2]
+    //   common sync timestamp range is [t3 t2], and we will sync to t3.
+    int64_t min_sync_timeStamp = -1;
+    int64_t max_sync_timeStamp = -1;
     for (LayoutSolution::const_iterator it = regions.begin(); it != regions.end(); ++it) {
-        boost::shared_ptr<webrtc::VideoFrame> inputFrame = t->m_owner->getInputFrame(it->input);
+        boost::shared_ptr<SoftInput> input = t->m_owner->getInput(it->input);
+        if (!input->isSyncEnabled()) {
+            continue;
+        }
+
+        std::shared_ptr<SoftInputFrame> front_frame = input->front();
+        std::shared_ptr<SoftInputFrame> back_frame = input->back();
+        if (front_frame == nullptr || back_frame == nullptr) {
+            continue;
+        }
+
+        if (min_sync_timeStamp == -1 || min_sync_timeStamp < front_frame->sync_timeStamp)
+            min_sync_timeStamp = front_frame->sync_timeStamp;
+
+        if (max_sync_timeStamp == -1 || max_sync_timeStamp > back_frame->sync_timeStamp)
+            max_sync_timeStamp = back_frame->sync_timeStamp;
+    }
+    ELOG_DEBUG("min_sync_timeStamp %ld, max_sync_timeStamp %ld", min_sync_timeStamp, max_sync_timeStamp);
+
+    // min_sync_timeStamp == max_sync_timeStamp == -1, no sync inputs or sync inputs disabled. Fallback to non sync mode
+    // min_sync_timeStamp > max_sync_timeStamp, valid sync inputs, but no sync frame. Keep front frame and wait for next sync
+    // min_sync_timeStamp <= max_sync_timeStamp, valid sync frame, use max_sync_timeStamp
+    for (LayoutSolution::const_iterator it = regions.begin(); it != regions.end(); ++it) {
+        boost::shared_ptr<webrtc::VideoFrame> inputFrame;
+
+        if (max_sync_timeStamp == -1) {
+            inputFrame = t->m_owner->getInputFrame(it->input);
+        } else if (min_sync_timeStamp > max_sync_timeStamp) {
+            inputFrame = t->m_owner->getSyncInputFrame(it->input, -1);
+        } else {
+            inputFrame = t->m_owner->getSyncInputFrame(it->input, max_sync_timeStamp);
+        }
+
         if (inputFrame == NULL) {
             continue;
         }
@@ -550,10 +657,12 @@ boost::shared_ptr<webrtc::VideoFrame> SoftFrameGenerator::layout()
         return NULL;
     }
 
+#if 0
     if (m_layout.size() == 1) {
         boost::shared_ptr<webrtc::VideoFrame> inputFrame = m_owner->getInputFrame(m_layout.front().input);
         return inputFrame;
     }
+#endif
 
     // Set the background color
     libyuv::I420Rect(
@@ -746,6 +855,27 @@ boost::shared_ptr<webrtc::VideoFrame> SoftVideoCompositor::getInputFrame(int ind
     }
 
     return src;
+}
+
+boost::shared_ptr<webrtc::VideoFrame> SoftVideoCompositor::getSyncInputFrame(int index, int64_t sync_timeStamp)
+{
+    auto& input = m_inputs[index];
+    if (!input->isActive())
+        return m_avatarManager->getAvatarFrame(index);
+
+    if (!input->isSyncEnabled())
+        return input->popInput();
+
+    std::shared_ptr<SoftInputFrame> input_frame = input->get_sync_frame(sync_timeStamp);
+    if (input_frame)
+        return boost::make_shared<VideoFrame>(input_frame->buffer, webrtc::kVideoRotation_0, 0);
+    else
+        return nullptr;
+}
+
+boost::shared_ptr<SoftInput> SoftVideoCompositor::getInput(int index)
+{
+    return m_inputs[index];
 }
 
 void SoftVideoCompositor::drawText(const std::string& textSpec)

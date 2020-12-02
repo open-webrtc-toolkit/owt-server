@@ -65,6 +65,8 @@ struct SoftInputFrame {
 class SoftInput {
     DECLARE_LOGGER();
 
+    const uint32_t kMaxQueueSize = 30;
+
 public:
     SoftInput();
     ~SoftInput();
@@ -75,10 +77,20 @@ public:
     void pushInput(const owt_base::Frame& frame);
     boost::shared_ptr<webrtc::VideoFrame> popInput();
 
+    // If sync_timeStamp = -1, return front frame;
+    // Otherwise, return frame sync_timeStamp >= sync_timeStamp.
+    std::shared_ptr<SoftInputFrame> get_sync_frame(int64_t sync_timeStamp);
+    std::shared_ptr<SoftInputFrame> front();
+    std::shared_ptr<SoftInputFrame> back();
+
+    bool isSyncEnabled();
+
 private:
     bool m_active;
     std::deque<std::shared_ptr<SoftInputFrame>> m_frame_queue;
     boost::shared_mutex m_mutex;
+    bool m_sync_enabled;
+    bool m_frame_sync_enabled;
 
     boost::scoped_ptr<owt_base::I420BufferManager> m_bufferManager;
 
@@ -197,6 +209,9 @@ public:
 
 protected:
     boost::shared_ptr<webrtc::VideoFrame> getInputFrame(int index);
+
+    boost::shared_ptr<webrtc::VideoFrame> getSyncInputFrame(int index, int64_t sync_timeStamp);
+    boost::shared_ptr<SoftInput> getInput(int index);
 
 private:
     uint32_t m_maxInput;
