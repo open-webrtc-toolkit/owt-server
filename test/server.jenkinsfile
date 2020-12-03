@@ -18,82 +18,8 @@ agent any
             echo 'uhd success'
          }
 
-    stages {
-        stage('Build package') {
-            options { timeout(time:30,unit:'MINUTES') }
-            steps {
-                podTemplate(name: "pack-server-centos-"+env.GIT_BRANCH, label: "pack-server-centos-"+env.GIT_BRANCH,
-                volumes: [
-                persistentVolumeClaim(claimName: 'centos-package',mountPath: '/root/centos_package',readOnly: false),
-              ],
-                containers: [
-                    containerTemplate(name: 'build-images', image: "$env.centos_build_images43x",  ttyEnabled: true, alwaysPullImage: true, privileged: true, resourceRequestCpu: '5000m', resourceLimitCpu: '6600m' , resourceRequestMemory: '3.0Gi', resourceLimitMemory: '4.0Gi',   command: 'cat')
-                ]){
-                    node ("pack-server-centos-"+env.GIT_BRANCH) {
-                      container ('build-images') {
-                      sh "/root/startRun.sh * * centos build owt-server $env.GIT_BRANCH $env.GIT_COMMIT $env.CHANGE_ID"
-                      }
-                    }
-                }
-            }
-        }
-
-        stage('Start test') {
-            options { timeout(time:40,unit:'MINUTES') }
-            when {
-              expression {
-                currentBuild.result == null || currentBuild.result == 'SUCCESS'
-              }
-            }
-            parallel {
-                stage('ConferenceClient API 1') {
-                    steps {
-                        podTemplate(name: 'api-server-centos--'+env.GIT_BRANCH, label: 'api-server-centos-'+env.GIT_BRANCH, cloud: 'kubernetes',
-                         volumes: [
-                              persistentVolumeClaim(claimName: 'centos-package', mountPath: '/root/centos_package', readOnly: false),
-                              persistentVolumeClaim(claimName: 'centos-log', mountPath: '/root/centos_log', readOnly: false)
-                              ],
-                         containers: [
-                            containerTemplate(name: 'test-images', image: "$env.centos_test_images43x",  ttyEnabled: true, alwaysPullImage: true, privileged: true, resourceRequestCpu: '3000m', resourceLimitCpu: '4000m', resourceRequestMemory: '2.0Gi', resourceLimitMemory: '3.0Gi', command: 'cat'),
-                            ]) {
-                            node('api-server-centos-'+env.GIT_BRANCH) {
-                                container('test-images') {
-                                    sh "/root/startRun.sh * * centos test ${env.GIT_COMMIT} ConferenceClient_API_1 $env.GIT_BRANCH"
-                                }
-                            }
-                        }
-                    }
-                }
-
-                stage('ConferenceClient API 2') {
-                    steps {
-                        podTemplate(name:'rest-server-centos-'+env.GIT_BRANCH, label: 'rest-server-centos-'+env.GIT_BRANCH, cloud: 'kubernetes',
-                        volumes: [
-                              persistentVolumeClaim(claimName: 'centos-package', mountPath: '/root/centos_package', readOnly: false),
-                              persistentVolumeClaim(claimName: 'centos-log', mountPath: '/root/centos_log', readOnly: false)
-                              ],
-                        containers: [
-                            containerTemplate(name: 'test-images', image: "$env.centos_test_images43x",  ttyEnabled: true, alwaysPullImage: true, privileged: true, resourceRequestCpu: '3000m', resourceLimitCpu: '4000m', resourceRequestMemory: '2.0Gi', resourceLimitMemory: '3.0Gi', command: 'cat'),
-                            ]) {
-                            node('rest-server-centos-'+env.GIT_BRANCH) {
-                                container('test-images') {
-                                    sh "/root/startRun.sh * * centos test ${env.GIT_COMMIT} ConferenceClient_API_2 $env.GIT_BRANCH"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-	}
-    }
-
     post {
         success {
-            script {
-                if ("${GIT_BRANCH}" == '4.3.x') {
-                   sh "curl ${env.checkServerUrl}/copyNightly/0${GIT_COMMIT}/owt-server/1"
-        }
-        }
             setBuildStatus("Build succeeded", "SUCCESS");
         }
 
@@ -103,5 +29,3 @@ agent any
         }
     }
 }
-
-
