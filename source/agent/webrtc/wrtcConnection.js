@@ -497,8 +497,9 @@ module.exports = function (spec, on_status, on_mediaUpdate) {
       ipAddresses.push(i.ip_address);
     }
   });
-  wrtc = new Connection(wrtcId, threadPool, ioThreadPool, { ipAddresses });
-  wrtc.addMediaStream(wrtcId, {label: ''}, direction === 'in');
+  var isPublisher = (direction === 'in');
+  wrtc = new Connection(wrtcId, threadPool, ioThreadPool, { ipAddresses, isPublisher });
+  wrtc.addMediaStream(wrtcId, {label: ''}, isPublisher);
 
   initWebRtcConnection(wrtc);
   return that;

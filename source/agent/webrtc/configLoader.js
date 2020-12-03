@@ -56,7 +56,7 @@ module.exports.load = () => {
     config.webrtc.keystorePath = config.webrtc.keystorePath || '';
     config.webrtc.num_workers = config.webrtc.num_workers || 24;
     config.webrtc.use_nicer = config.webrtc.use_nicer || false;
-    config.webrtc.io_workers = config.webrtc.io_workers || 1;
+    config.webrtc.io_workers = config.webrtc.io_workers || 8;
     config.webrtc.network_interfaces = config.webrtc.network_interfaces || [];
 
     config.webrtc.network_interfaces.forEach(item => {

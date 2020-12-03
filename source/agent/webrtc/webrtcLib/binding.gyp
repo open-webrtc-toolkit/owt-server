@@ -34,6 +34,9 @@
       'erizo/src/erizo/rtp/QualityManager.cpp',
       'erizo/src/erizo/rtp/RtpExtensionProcessor.cpp',
       'erizo/src/erizo/rtp/BandwidthEstimationHandler.cpp',
+      'erizo/src/erizo/rtp/RtcpFeedbackGenerationHandler.cpp',
+      'erizo/src/erizo/rtp/RtcpRrGenerator.cpp',
+      'erizo/src/erizo/rtp/RtcpNackGenerator.cpp',
       '<!@(find erizo/src/erizo/dtls -name "*.cpp")',
       '<!@(find erizo/src/erizo/dtls -name "*.c")',
       '<!@(find erizo/src/erizo/pipeline -name "*.cpp")',
@@ -46,6 +49,8 @@
       '../../../core/owt_base/VideoFrameConstructor.cpp',
       '../../../core/owt_base/VideoFramePacketizer.cpp',
       '../../../core/owt_base/SsrcGenerator.cc',
+      '../../../core/owt_base/TaskRunnerPool.cc',
+      '../../../core/common/JobTimer.cpp',
       '../../../core/rtc_adapter/VieReceiver.cc',
       '../../../core/rtc_adapter/VieRemb.cc', #20150508
       '../../../core/owt_base/HEVCTilesMerger.cpp',

@@ -4,7 +4,7 @@
 
 #include "VideoFrameConstructor.h"
 
-#include "WebRTCTaskRunner.h"
+#include "TaskRunnerPool.h"
 #include <rtputils.h>
 #include <webrtc/common_types.h>
 #include <webrtc/modules/video_coding/timing.h>
@@ -30,15 +30,15 @@ VideoFrameConstructor::VideoFrameConstructor(VideoInfoListener* vil, uint32_t tr
 {
     m_videoTransport.reset(new WebRTCTransport<erizoExtra::VIDEO>(nullptr, nullptr));
     sink_fb_source_ = m_videoTransport.get();
-    m_taskRunner.reset(new owt_base::WebRTCTaskRunner("VideoFrameConstructor"));
-    m_taskRunner->Start();
-    m_feedbackTimer.reset(new JobTimer(1, this));
+    m_taskRunner = TaskRunnerPool::GetInstance().GetTaskRunner();
+    m_feedbackTimer = SharedJobTimer::GetSharedFrequencyTimer(1);
+    m_feedbackTimer->addListener(this);
     init(transportccExtId);
 }
 
 VideoFrameConstructor::~VideoFrameConstructor()
 {
-    m_feedbackTimer->stop();
+    m_feedbackTimer->removeListener(this);
     m_remoteBitrateObserver->RemoveRembSender(m_rtpRtcp.get());
     m_videoReceiver->StopReceive();
 
@@ -49,7 +49,6 @@ VideoFrameConstructor::~VideoFrameConstructor()
         m_taskRunner->DeRegisterModule(m_video_receiver.get());;
         m_taskRunner->DeRegisterModule(m_remoteBitrateEstimator.get());
     }
-    m_taskRunner->Stop();
     boost::unique_lock<boost::shared_mutex> lock(m_rtpRtcpMutex);
 }
 

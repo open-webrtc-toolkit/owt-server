@@ -95,7 +95,7 @@ For download or installation instructions, please visit https://github.com/Intel
 The external stream output and mp4 format recording rely on AAC encoder libfdk_aac support in ffmpeg library, please see [Compile and deploy ffmpeg with libfdk_aac](#Conferencesection2_3_5) section for detailed instructions.
 
  **Table 2-2. Client compatibility**
-Application Name|Google Chrome\* 78|Mozilla Firefox\* 70|Microsoft Edge\* 44.18362.387.0|Safari\* 13.0|Open WebRTC Toolkit Client SDK for Android | Open WebRTC Toolkit Client SDK for iOS | Open WebRTC Toolkit Client SDK for Windows
+Application Name|Google Chrome\* 83|Mozilla Firefox\* 77|Microsoft Edge\* 83.0.478.37|Safari\* 13.1|Open WebRTC Toolkit Client SDK for Android | Open WebRTC Toolkit Client SDK for iOS | Open WebRTC Toolkit Client SDK for Windows
 --------|--------|--------|--------|--------|--------|--------|--------
 OWT Client|YES|YES|YES|YES|YES|YES|YES
 Management Console|YES|YES|YES|YES|N/A|N/A|N/A
@@ -106,7 +106,7 @@ This section describes the dependencies and steps for installing the OWT server.
 **Table 2-3. OWT Server Dependencies**
 Name|Version|Remarks
 --------|--------|--------
-Node.js |8.15.0|Website: http://nodejs.org/
+Node.js |10.21.0|Website: http://nodejs.org/
 Node modules|Specified|N/A
 MongoDB| 2.6.10 |Website: http://mongodb.org
 System libraries|Latest|N/A
@@ -115,7 +115,7 @@ All dependencies, except system libraries, are provided or can be automatically 
 
 All essential system libraries are installed when you install the OWT server package using the Ubuntu or CentOS's package management system.
 
-Regarding Node.js*, make sure it's installed in your system prior to installing the OWT server. We recommend version 8.15.0. Refer to http://nodejs.org/ for the details and installation.
+Regarding Node.js*, make sure it's installed in your system prior to installing the OWT server. We recommend version 10.21.0. Refer to http://nodejs.org/ for the details and installation.
 
 Before installing the OWT server, make sure your login account has sys-admin privileges; i.e. the ability to execute `sudo`.
 
@@ -789,10 +789,10 @@ Peer server | Ubuntu 18.04 LTS, CentOS* 7.6/7.4
 **Table 5-2. Peer Server Dependencies**
 Name | Version | Remarks
 -----|----|----
-Node.js | 8.15.0 | Website: http://nodejs.org/
+Node.js | 10.21.0 | Website: http://nodejs.org/
 Node modules | Specified | N/A
 
-Regarding Node.js*, make sure it's installed in your system prior to installing the Peer Server. We recommend version 8.15.0. Refer to http://nodejs.org/ for installation details.
+Regarding Node.js*, make sure it's installed in your system prior to installing the Peer Server. We recommend version 10.21.0. Refer to http://nodejs.org/ for installation details.
 ## 5.3 Installation {#Conferencesection5_3}
 On the server machine, unpack the peer server release package, and install node modules
 

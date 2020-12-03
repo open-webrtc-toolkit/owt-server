@@ -867,8 +867,14 @@ var Conference = function (rpcClient, selfRpcId) {
         }
 
         permission = {
-          publish: my_role_def[0].publish,
-          subscribe: my_role_def[0].subscribe
+          publish: {
+            video: my_role_def[0].publish.video,
+            audio: my_role_def[0].publish.audio
+          },
+          subscribe: {
+            video: my_role_def[0].subscribe.video,
+            audio: my_role_def[0].subscribe.audio
+          }
         };
 
         return addParticipant(participantInfo, permission);

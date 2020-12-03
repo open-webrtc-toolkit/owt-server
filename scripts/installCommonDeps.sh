@@ -152,6 +152,7 @@ install_libnice014(){
     patch -p1 < $PATHNAME/patches/libnice014-removecandidate.patch
     patch -p1 < $PATHNAME/patches/libnice014-keepalive.patch
     patch -p1 < $PATHNAME/patches/libnice014-startcheck.patch
+    patch -p1 < $PATHNAME/patches/libnice014-closelock.patch
     PKG_CONFIG_PATH=$PREFIX_DIR"/lib/pkgconfig":$PREFIX_DIR"/lib64/pkgconfig":$PKG_CONFIG_PATH ./configure --prefix=$PREFIX_DIR && make -s V= && make install
     cd $CURRENT_DIR
   else
@@ -165,7 +166,7 @@ install_openssl(){
   $INCR_INSTALL && [[ ! -z $LIST_LIBS ]] && echo "openssl already installed." && return 0
 
   if [ -d $LIB_DIR ]; then
-    local SSL_VERSION="1.0.2t"
+    local SSL_VERSION="1.1.1h"
     cd $LIB_DIR
     rm -f ./build/lib/libssl.*
     rm -f ./build/lib/libcrypto.*
@@ -343,7 +344,7 @@ install_libsrtp2(){
 }
 
 install_node() {
-  local NODE_VERSION="v8.15.0"
+  local NODE_VERSION="v10.21.0"
   echo -e "\x1b[32mInstalling nvm...\x1b[0m"
   NVM_DIR="${HOME}/.nvm"
 
@@ -385,7 +386,7 @@ install_libre() {
     rm -rf re
     git clone https://github.com/creytiv/re.git
     pushd re >/dev/null
-    git checkout v0.4.16
+    git checkout v0.5.0
     make SYSROOT_ALT=${PREFIX_DIR} RELEASE=1
     make install SYSROOT_ALT=${PREFIX_DIR} RELEASE=1 PREFIX=${PREFIX_DIR}
     popd >/dev/null

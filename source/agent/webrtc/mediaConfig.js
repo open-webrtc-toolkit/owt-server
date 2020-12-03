@@ -52,6 +52,13 @@ const vp8 = {
   ],
 };
 
+const vp8out = vp8;
+vp8out.feedbackTypes = [
+  'ccm fir',
+  'nack',
+  'goog-remb',
+];
+
 const vp9 = {
   payloadType: 101,
   encodingName: 'VP9',
@@ -65,6 +72,13 @@ const vp9 = {
     'goog-remb',
   ],
 };
+
+const vp9out = vp9;
+vp9out.feedbackTypes = [
+  'ccm fir',
+  'nack',
+  'goog-remb',
+];
 
 const h264 = {
   payloadType: 127,
@@ -80,6 +94,13 @@ const h264 = {
   ],
 };
 
+const h264out = h264;
+h264out.feedbackTypes = [
+  'ccm fir',
+  'nack',
+  'goog-remb',
+];
+
 const h265 = {
   payloadType: 121,
   encodingName: 'H265',
@@ -93,6 +114,13 @@ const h265 = {
     'goog-remb',
   ],
 };
+
+const h265out = h265;
+h265out.feedbackTypes = [
+  'ccm fir',
+  'nack',
+  'goog-remb',
+];
 
 const red = {
   payloadType: 116,
@@ -217,7 +245,7 @@ const telephoneevent = {
 };
 
 const mediaConfig = {
-  default: {
+  in: {
     rtpMappings: {
       vp8, vp9, h264, h265, red, rtx,
       opus, pcmu, pcma, isac16, isac32, g722, ilbc,
@@ -225,9 +253,14 @@ const mediaConfig = {
     },
     extMappings
   },
-  VP8_AND_OPUS: { rtpMappings: { vp8, opus }, extMappings },
-  VP9_AND_OPUS: { rtpMappings: { vp9, opus }, extMappings },
-  H264_AND_OPUS: { rtpMappings: { h264, opus }, extMappings },
+  out: {
+    rtpMappings: {
+      vp8out, vp9out, h264out, h265out, red, rtx,
+      opus, pcmu, pcma, isac16, isac32, g722, ilbc,
+      ulpfec, telephoneevent
+    },
+    extMappings
+  }
 };
 
 module.exports = mediaConfig;

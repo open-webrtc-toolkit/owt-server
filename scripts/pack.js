@@ -393,6 +393,17 @@ function getAddonLibs(addonPath) {
                   return line;
                 }).catch((e) => line);
             }
+          })
+          .catch((e) => {
+            // give more detail when ldd returns somelib.so => not found
+            if (!line.startsWith('/')) {
+              return exec(`ldd ${addonPath} | grep '=>' | grep -v '=> /'`).then(stdout => {
+                e.message = `library dependency not found for\n  ${addonPath}:\n${stdout}` +
+                  'Something failed to build. Try nvm use v8.15.0 and rerun build.js.';
+                throw e;
+              });
+            }
+            throw e;
           });
         checks.push(checkPros[line]);
       }
@@ -408,6 +419,8 @@ function isLibAllowed(libSrc) {
     return false;
 
   const whiteList = [
+    'libssl.so.1.1',
+    'libcrypto',
     'libnice',
     'libSvtHevcEnc',
     'libusrsctp',

@@ -4,6 +4,7 @@
 
 #include "VideoFramePacketizer.h"
 #include "MediaUtilities.h"
+#include "TaskRunnerPool.h"
 #include <rtputils.h>
 #include <boost/make_shared.hpp>
 
@@ -41,15 +42,13 @@ VideoFramePacketizer::VideoFramePacketizer(
     m_ssrc = m_ssrc_generator->CreateSsrc();
     m_ssrc_generator->RegisterSsrc(m_ssrc);
     m_videoTransport.reset(new WebRTCTransport<erizoExtra::VIDEO>(this, nullptr));
-    m_taskRunner.reset(new owt_base::WebRTCTaskRunner("VideoFramePacketizer"));
-    m_taskRunner->Start();
+    m_taskRunner = TaskRunnerPool::GetInstance().GetTaskRunner();
     init(enableRed, enableUlpfec, enableTransportcc, transportccExtId);
 }
 
 VideoFramePacketizer::~VideoFramePacketizer()
 {
     close();
-    m_taskRunner->Stop();
     m_ssrc_generator->ReturnSsrc(m_ssrc);
     SsrcGenerator::ReturnSsrcGenerator();
     boost::unique_lock<boost::shared_mutex> lock(m_rtpRtcpMutex);

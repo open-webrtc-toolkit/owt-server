@@ -16,6 +16,7 @@
       '../../../../core/owt_base/SVTHEVCEncoder.cpp',
       '../../../../core/owt_base/SVTHEVCEncoderBase.cpp',
       '../../../../core/owt_base/SVTHEVCMCTSEncoder.cpp',
+      '../../../../core/common/JobTimer.cpp',
     ],
     'cflags_cc': [
         '-Wall',
