@@ -85,6 +85,16 @@ struct Frame {
     MediaSpecInfo   additionalInfo;
 };
 
+enum MetaDataType {
+    META_DATA_OWNER_ID = 0,
+};
+
+struct MetaData {
+    MetaDataType type;
+    uint8_t* payload;
+    uint32_t length;
+};
+
 inline FrameFormat getFormat(const std::string& codec) {
     if (codec == "vp8") {
         return owt_base::FRAME_FORMAT_VP8;
@@ -210,6 +220,7 @@ enum FeedbackType {
 enum FeedbackCmd {
     REQUEST_KEY_FRAME,
     SET_BITRATE,
+    REQUEST_OWNER_ID,
     RTCP_PACKET  // FIXME: Temporarily use FeedbackMsg to carry audio rtcp-packets due to the premature AudioFrameConstructor implementation.
 };
 
@@ -245,6 +256,7 @@ public:
 
 protected:
     void deliverFrame(const Frame&);
+    void deliverMetaData(const MetaData&);
 
 private:
     std::list<FrameDestination*> m_audio_dests;
@@ -262,6 +274,7 @@ public:
     virtual ~FrameDestination() { }
 
     virtual void onFrame(const Frame&) = 0;
+    virtual void onMetaData(const MetaData&) {}
     virtual void onVideoSourceChanged() {}
 
     void setAudioSource(FrameSource*);

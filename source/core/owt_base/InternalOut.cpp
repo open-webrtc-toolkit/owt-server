@@ -31,6 +31,16 @@ void InternalOut::onFrame(const Frame& frame)
     m_transport->sendData(sendBuffer, header_len + 1, reinterpret_cast<char*>(const_cast<uint8_t*>(frame.payload)), frame.length);
 }
 
+void InternalOut::onMetaData(const MetaData& metadata)
+{
+    char sendBuffer[sizeof(MetaData) + 1];
+    size_t header_len = sizeof(MetaData);
+
+    sendBuffer[0] = TDT_MEDIA_METADATA;
+    memcpy(&sendBuffer[1], reinterpret_cast<char*>(const_cast<MetaData*>(&metadata)), header_len);
+    m_transport->sendData(sendBuffer, header_len + 1, reinterpret_cast<char*>(const_cast<uint8_t*>(metadata.payload)), metadata.length);
+}
+
 void InternalOut::onTransportData(char* buf, int len)
 {
     switch (buf[0]) {

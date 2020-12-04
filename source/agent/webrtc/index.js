@@ -123,7 +123,7 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
 
     var createWebRTCConnection = function (transportId, controller) {
         if (peerConnections.has(transportId)) {
-            log.warn('PeerConnection already created:', transportId);
+            log.debug('PeerConnection already created:', transportId);
             return peerConnections.get(transportId);
         }
         var connection = new WrtcConnection({
@@ -185,10 +185,10 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
             mediaTracks.delete(publicTrackId);
             // Notify controller
             const updateInfo = {
-                event: 'track-removed',
-                trackId: trackId,
+                type: 'track-removed',
+                trackId: publicTrackId,
             };
-            const controller = peerConnections.get(transportId).controller
+            const controller = peerConnections.get(transportId).controller;
             notifyTrackUpdate(controller, publicTrackId, updateInfo);
         });
         mappingPublicId.delete(transportId);

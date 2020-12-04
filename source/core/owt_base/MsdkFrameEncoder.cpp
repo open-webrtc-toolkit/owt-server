@@ -494,7 +494,7 @@ protected:
         m_encExtCodingOpt2->Header.BufferId            = MFX_EXTBUFF_CODING_OPTION2;
         m_encExtCodingOpt2->Header.BufferSz            = sizeof(*m_encExtCodingOpt2);
         m_encExtCodingOpt2->RepeatPPS                  = MFX_CODINGOPTION_OFF;
-        m_encExtCodingOpt2->ExtBRC                     = MFX_CODINGOPTION_ON;
+        m_encExtCodingOpt2->ExtBRC                     = MFX_CODINGOPTION_ADAPTIVE;
 
         m_encExtParams.push_back(reinterpret_cast<mfxExtBuffer *>(m_encExtCodingOpt2.get()));
 
