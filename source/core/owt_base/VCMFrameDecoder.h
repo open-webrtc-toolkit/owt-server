@@ -7,6 +7,8 @@
 
 #include "MediaFramePipeline.h"
 
+#include <map>
+
 #include <boost/scoped_ptr.hpp>
 #include <logger.h>
 
@@ -38,6 +40,8 @@ private:
     bool m_needKeyFrame;
     webrtc::CodecSpecificInfo m_codecInfo;
     boost::scoped_ptr<webrtc::VideoDecoder> m_decoder;
+
+    std::multimap<uint32_t, uint32_t> m_timestamp_map;
 };
 
 } /* namespace owt_base */

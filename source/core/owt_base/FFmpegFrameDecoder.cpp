@@ -124,8 +124,11 @@ bool FFmpegFrameDecoder::init(FrameFormat format)
         return false;
     }
 
+#if 0
+    m_decCtx->active_thread_type = FF_THREAD_FRAME;
     m_decCtx->thread_type = FF_THREAD_FRAME;
     m_decCtx->thread_count = 16;
+#endif
     m_decCtx->get_buffer2 = AVGetBuffer;
     m_decCtx->opaque = this;
     ret = avcodec_open2(m_decCtx, dec , NULL);
@@ -166,9 +169,16 @@ void FFmpegFrameDecoder::onFrame(const Frame& frame)
     m_packet.dts = frame.timeStamp;
     m_packet.pts = frame.timeStamp;
 
+    if (frame.sync_enabled)
+        m_timestamp_map.insert(std::make_pair(frame.timeStamp, frame.sync_timeStamp));
+
     ret = avcodec_send_packet(m_decCtx, &m_packet);
     if (ret < 0) {
         ELOG_ERROR_T("Error while send packet, %s", ff_err2str(ret));
+
+        if (frame.sync_enabled)
+            m_timestamp_map.erase(frame.timeStamp);
+
         return;
     }
 
@@ -218,6 +228,14 @@ void FFmpegFrameDecoder::onFrame(const Frame& frame)
             frame.orig_timeStamp = frame.timeStamp;
             frame.additionalInfo.video.width = video_frame->width();
             frame.additionalInfo.video.height = video_frame->height();
+
+            auto it = m_timestamp_map.find(frame.timeStamp);
+            if (it != m_timestamp_map.end()) {
+                frame.sync_enabled = true;
+                frame.sync_timeStamp = it->second;
+
+                m_timestamp_map.erase(it);
+            }
 
             ELOG_TRACE_T("deliverFrame, %dx%d, timeStamp_ms %u, timeStamp %u",
                     frame.additionalInfo.video.width,

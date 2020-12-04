@@ -96,6 +96,14 @@ int32_t VCMFrameDecoder::Decoded(VideoFrame& decodedImage)
     frame.additionalInfo.video.width = decodedImage.width();
     frame.additionalInfo.video.height = decodedImage.height();
 
+    auto it = m_timestamp_map.find(frame.timeStamp);
+    if (it != m_timestamp_map.end()) {
+        frame.sync_enabled = true;
+        frame.sync_timeStamp = it->second;
+
+        m_timestamp_map.erase(it);
+    }
+
     ELOG_TRACE_T("deliverFrame, %dx%d",
             frame.additionalInfo.video.width,
             frame.additionalInfo.video.height);
@@ -150,6 +158,9 @@ void VCMFrameDecoder::onFrame(const Frame& frame)
         }
     }
 
+    if (frame.sync_enabled)
+        m_timestamp_map.insert(std::make_pair(frame.timeStamp, frame.sync_timeStamp));
+
     payload = buffer.get() ? buffer.get() : frame.payload;
     EncodedImage image(payload, length, size);
     image._frameType = frame.additionalInfo.video.isKeyFrame ? kVideoFrameKey : kVideoFrameDelta;
@@ -162,6 +173,9 @@ void VCMFrameDecoder::onFrame(const Frame& frame)
         m_needKeyFrame = true;
         FeedbackMsg msg {.type = VIDEO_FEEDBACK, .cmd = REQUEST_KEY_FRAME};
         deliverFeedbackMsg(msg);
+
+        if (frame.sync_enabled)
+            m_timestamp_map.erase(frame.timeStamp);
     }
 }
 

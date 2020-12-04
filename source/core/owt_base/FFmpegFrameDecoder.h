@@ -5,6 +5,8 @@
 #ifndef FFmpegFrameDecoder_h
 #define FFmpegFrameDecoder_h
 
+#include <map>
+
 #include <boost/scoped_ptr.hpp>
 #include <boost/shared_ptr.hpp>
 #include <logger.h>
@@ -42,6 +44,8 @@ private:
 
     boost::scoped_ptr<owt_base::I420BufferManager> m_bufferManager;
     bool m_needKeyFrame;
+
+    std::multimap<uint32_t, uint32_t> m_timestamp_map;
 
     char m_errbuff[500];
     char *ff_err2str(int errRet);

@@ -81,6 +81,9 @@ struct Frame {
     uint32_t        timeStamp;
     uint32_t        orig_timeStamp;
     MediaSpecInfo   additionalInfo;
+
+    uint32_t sync_timeStamp; //ms
+    bool sync_enabled;
 };
 
 inline bool isHEVCMCTSVideoResolution(uint32_t width, uint32_t height) {
