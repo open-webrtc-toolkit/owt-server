@@ -73,12 +73,13 @@ public:
 
     ~StreamEncoder()
     {
+        m_keyFrameTimer->stop();
+
         m_srvWork.reset();
         m_srv->stop();
         m_thread.reset();
         m_srv.reset();
 
-        m_keyFrameTimer->stop();
         removeVideoDestination(m_dest);
 
         if (m_enc) {
