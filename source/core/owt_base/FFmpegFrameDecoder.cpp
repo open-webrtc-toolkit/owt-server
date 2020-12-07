@@ -71,7 +71,7 @@ FFmpegFrameDecoder::~FFmpegFrameDecoder()
     }
 
     if (m_decCtx) {
-        avcodec_close(m_decCtx);
+        avcodec_free_context(&m_decCtx);
         m_decCtx = NULL;
     }
 }
