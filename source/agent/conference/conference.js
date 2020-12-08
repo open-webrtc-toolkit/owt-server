@@ -659,7 +659,7 @@ var Conference = function (rpcClient, selfRpcId) {
     const pubArg = pubArgs[0];
     return new Promise((resolve, reject) => {
       roomController && roomController.publish(
-        pubArg.owner, pubArg.id, pubArg.locality, pubArg.media, pubArg.type,
+        pubArg.owner, pubArg.id, pubArg.locality, {origin: pubArg.media.origin, media:pubArg.media, data:pubArg.data}, pubArg.type,
         function() {
           if (participants[info.owner]) {
             streams[id] = fwdStream;
