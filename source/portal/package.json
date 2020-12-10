@@ -9,7 +9,8 @@
     "sprintf-js": "^1.0.3",
     "ajv": "^5.2.2",
     "mongoose": "^5.9.6",
-    "fraction.js": "^4.0.12"
+    "fraction.js": "^4.0.12",
+    "uuid": "^8.0.0"
   },
   "devDependencies": {
     "mocha": "^6.0.2",

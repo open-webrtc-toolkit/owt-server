@@ -409,6 +409,9 @@ module.exports = function (spec, on_status, on_track) {
   };
 
   const destroyTransport = function (mid) {
+    if (!remoteSdp) {
+      return;
+    }
     const rids = remoteSdp.rids(mid);
     if (rids) {
       // Simulcast
@@ -419,7 +422,7 @@ module.exports = function (spec, on_status, on_track) {
           trackMap.delete(trackId);
           on_track({type: 'track-removed', trackId});
         } else {
-          log.warn(`destroyTransport: No trackId ${trackId} for ${wrtcId}`);
+          log.info(`destroyTransport: No trackId ${trackId} for ${wrtcId}`);
         }
       });
     } else {
@@ -429,7 +432,7 @@ module.exports = function (spec, on_status, on_track) {
         trackMap.delete(mid);
         on_track({type: 'track-removed', trackId: mid});
       } else {
-        log.warn(`destroyTransport: No trackId ${mid} for ${wrtcId}`);
+        log.info(`destroyTransport: No trackId ${mid} for ${wrtcId}`);
       }
     }
   };

@@ -1,0 +1,32 @@
+{
+  "name": "OWT-Server-QUIC-Agent",
+  "version": "4.3.0",
+  "dependencies": {
+    "amqp": "*",
+    "log4js": "^1.1.1",
+    "node-getopt": "*",
+    "toml": "*"
+  },
+  "devDependencies": {
+    "chai": "^4.2.0",
+    "chai-as-promised": "^7.1.1",
+    "mocha": "^5.2.0",
+    "node-gyp": "*",
+    "sinon": "^9.0.2"
+  },
+  "engine": {
+    "node": "8.15.0"
+  },
+  "bin": "index.js",
+  "pkg": {
+    "assets": [
+      "node_modules*"
+    ],
+    "targets": [
+      "node8"
+    ]
+  },
+  "scripts": {
+    "test": "node_modules/mocha/bin/mocha quic/webtransport/test/quicTransportServerTest.js"
+  }
+}
