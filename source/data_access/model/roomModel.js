@@ -112,6 +112,10 @@ var RoomSchema = new Schema({
     type: Number,
     default: -1
   },
+  selectActiveAudio: {
+    type: Boolean,
+    default: false
+  },
   roles: [],
   views: [ViewSchema],
   mediaIn: {

@@ -28,6 +28,7 @@ const {
 const {
   ForwardStream,
   MixedStream,
+  SelectedStream,
   StreamConfigure,
 } = require('./stream');
 
@@ -356,15 +357,24 @@ var Conference = function (rpcClient, selfRpcId) {
                   room_id = roomId;
                   is_initializing = false;
 
-                  room_config.views.forEach((viewSettings) => {
-                    var mixed_stream_id = room_id + '-' + viewSettings.label;
-                    var mixed_stream_info = new MixedStream(mixed_stream_id, viewSettings.label);
-
-                    streams[mixed_stream_id] = mixed_stream_info;
-                    streams[mixed_stream_id].info.origin = origin;
-                    log.debug('Mixed stream info:', mixed_stream_info);
+                  roomController.getMixedStreams().forEach(({streamId, view}) => {
+                    const mixedStreamInfo = new MixedStream(streamId, view);
+                    streams[streamId] = mixedStreamInfo;
+                    streams[streamId].info.origin = origin;
+                    log.debug('Mixed stream info:', mixedStreamInfo);
                     room_config.notifying.streamChange &&
-                      sendMsg('room', 'all', 'stream', {id: mixed_stream_id, status: 'add', data: mixed_stream_info.toPortalFormat()});
+                        sendMsg('room', 'all', 'stream',
+                            {id: streamId, status: 'add', data: mixedStreamInfo.toPortalFormat()});
+                  });
+
+                  roomController.getActiveAudioStreams().forEach((streamId) => {
+                    const selectedStreamInfo = new SelectedStream(streamId);
+                    streams[streamId] = selectedStreamInfo;
+                    streams[streamId].info.origin = origin;
+                    log.debug('Selected stream info:', selectedStreamInfo);
+                    room_config.notifying.streamChange &&
+                        sendMsg('room', 'all', 'stream',
+                            {id: streamId, status: 'add', data: selectedStreamInfo.toPortalFormat()});
                   });
 
                   participants['admin'] = Participant({
@@ -639,6 +649,15 @@ var Conference = function (rpcClient, selfRpcId) {
           streams[id] = fwdStream;
           pubArgs.forEach(pubArg => {
             trackOwners[pubArg.id] = id;
+            if (room_config.selectActiveAudio) {
+              if (pubArg.media.audio) {
+                roomController.selectAudio(pubArg.id, () => {
+                  log.debug('Select active audio ok:', pubArg.id);
+                }, (err) => {
+                  log.info('Select active audio error:', pubArg.id, err);
+                });
+              }
+            }
           });
           if (!isReadded) {
             setTimeout(() => {
@@ -1845,28 +1864,44 @@ var Conference = function (rpcClient, selfRpcId) {
     }
   };
 
-  that.onAudioActiveness = function(roomId, activeInputStream, view, callback) {
-    log.debug('onAudioActiveness, roomId:', roomId, 'activeInputStream:', activeInputStream, 'view:', view);
+  that.onAudioActiveness = function(roomId, activeInputStream, target, callback) {
+    log.debug('onAudioActiveness, roomId:', roomId, 'activeInputStream:', activeInputStream, 'target:', target);
     if ((room_id === roomId) && roomController) {
-      room_config.views.forEach((viewSettings) => {
-        if (viewSettings.label === view && viewSettings.video.keepActiveInputPrimary) {
-          roomController.setPrimary(activeInputStream, view);
-        }
-      });
+      if (typeof target.view === 'string') {
+        const view = target.view;
+        room_config.views.forEach((viewSettings) => {
+          if (viewSettings.label === view && viewSettings.video.keepActiveInputPrimary) {
+            roomController.setPrimary(activeInputStream, view);
+          }
+        });
 
-      var input = streams[activeInputStream] ? activeInputStream : trackOwners[activeInputStream];
-      if (input && streams[input]) {
-        for (var id in streams) {
-          if (streams[id].type === 'mixed' && streams[id].info.label === view) {
-            if (streams[id].info.activeInput !== input) {
-              streams[id].info.activeInput = input;
-              room_config.notifying.streamChange && sendMsg('room', 'all', 'stream', {id: id, status: 'update', data: {field: 'activeInput', value: input}});
-            }
-            break;
+        const input = streams[activeInputStream] ?
+            activeInputStream : trackOwners[activeInputStream];
+        const mixedId = roomController.getMixedStream(view);
+        if (streams[mixedId] instanceof MixedStream) {
+          if (streams[mixedId].info.activeInput !== input) {
+            streams[mixedId].info.activeInput = input;
+            room_config.notifying.streamChange &&
+                sendMsg('room', 'all', 'stream',
+                    {id: mixedId, status: 'update', data: {field: 'activeInput', value: input}});
           }
         }
+        callback('callback', 'ok');
+      } else {
+        const input = streams[activeInputStream] ?
+            activeInputStream : trackOwners[activeInputStream];
+        const activeAudioId = target.id;
+        if (streams[activeAudioId] instanceof SelectedStream) {
+          if (streams[activeAudioId].info.activeInput !== input) {
+            streams[activeAudioId].info.activeInput = input;
+            streams[activeAudioId].info.owner = target.owner;
+            room_config.notifying.streamChange &&
+                sendMsg('room', 'all', 'stream',
+                    {id: activeAudioId, status: 'update', data: {field: 'activeInput', value: input}});
+          }
+        }
+        callback('callback', 'ok');
       }
-      callback('callback', 'ok');
     } else {
       log.info('onAudioActiveness, room does not exist');
       callback('callback', 'error', 'room is not in service');
