@@ -21,6 +21,9 @@ public:
     // Implements FrameDestination.
     void onFrame(const Frame&);
 
+    // Implements FrameDestination.
+    void onMetaData(const MetaData&);
+
     // Implements JobTimerListener.
     void onTimeout();
 

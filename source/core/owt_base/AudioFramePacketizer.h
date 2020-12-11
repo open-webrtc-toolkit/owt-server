@@ -42,9 +42,11 @@ public:
     void unbindTransport();
     void enable(bool enabled) { m_enabled = enabled; }
     uint32_t getSsrc() { return m_ssrc; }
+    void setOwner(std::string owner);
 
     // Implements FrameDestination.
     void onFrame(const Frame&);
+    void onMetaData(const MetaData&);
 
     // Implements RTPDataReceiver.
     void receiveRtpData(char*, int len, erizoExtra::DataType, uint32_t channelId);
@@ -74,6 +76,9 @@ private:
 
     std::shared_ptr<rtc_adapter::RtcAdapter> m_rtcAdapter;
     rtc_adapter::AudioSendAdapter* m_audioSend;
+    std::string m_owner;
+    std::string m_sourceOwner;
+    bool m_firstFrame;
 };
 }
 #endif /* AudioFramePacketizer_h */

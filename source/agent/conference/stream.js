@@ -30,7 +30,7 @@
  *   },
  *   info: object(PublicationInfo):: {
  *     owner: string(ParticipantId),
- *     type: 'webrtc' | 'streaming' | 'sip',
+ *     type: 'webrtc' | 'streaming' | 'sip' | 'selecting',
  *     inViews: [string(ViewLabel)],
  *     attributes: object(ExternalDefinedObj)
  *   } | object(ViewInfo):: {
@@ -205,7 +205,8 @@ class Stream {
       owner: this.info.owner,
       type: this.info.type,
       inViews: this.info.inViews,
-      attributes: this.info.attributes
+      attributes: this.info.attributes,
+      activeInput: this.info.activeInput,
     };
     const portalFormat = {
       id: this.id,
@@ -335,6 +336,21 @@ class MixedStream extends Stream {
   }
 }
 
+class SelectedStream extends ForwardStream {
+
+  constructor(id) {
+    const media = {
+      tracks: [{type:'audio', format: {codec: 'unknown'}}],
+    };
+    const info = {
+      owner: 'unknown',
+      activeInput: 'unknown',
+      type: 'selecting',
+    };
+    super(id, media, info, null);
+  }
+}
+
 function StreamConfigure(roomConfig) {
   // Set room configuration
   config = roomConfig;
@@ -343,5 +359,6 @@ function StreamConfigure(roomConfig) {
 module.exports = {
   ForwardStream,
   MixedStream,
+  SelectedStream,
   StreamConfigure,
 };
