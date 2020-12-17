@@ -147,32 +147,32 @@ void VideoFrameConstructor::onAdapterData(char* data, int len)
 
 int VideoFrameConstructor::deliverVideoData_(std::shared_ptr<erizo::DataPacket> video_packet)
 {
-    if (m_enabled) {
-        RTCPHeader* chead = reinterpret_cast<RTCPHeader*>(video_packet->data);
-        uint8_t packetType = chead->getPacketType();
-
-        assert(packetType != RTCP_Receiver_PT && packetType != RTCP_PS_Feedback_PT && packetType != RTCP_RTP_Feedback_PT);
-        if (packetType == RTCP_Sender_PT)
-            return 0;
-
-        const uint8_t rtcpMinPt = 194, rtcpMaxPt = 223;
-        if (packetType >= rtcpMinPt && packetType <= rtcpMaxPt) {
-            return 0;
-        }
-
-        RTPHeader* head = reinterpret_cast<RTPHeader*>(video_packet->data);
-        if (!m_ssrc && head->getSSRC()) {
-            m_ssrc = head->getSSRC();
-            maybeCreateReceiveVideo(m_ssrc);
-        }
-        if (m_videoReceive) {
-            m_videoReceive->onRtpData(video_packet->data, video_packet->length);
-        }
-
-        return video_packet->length;
+    if (!m_enabled) {
+        return 0;
     }
 
-    return 0;
+    RTCPHeader* chead = reinterpret_cast<RTCPHeader*>(video_packet->data);
+    uint8_t packetType = chead->getPacketType();
+
+    assert(packetType != RTCP_Receiver_PT && packetType != RTCP_PS_Feedback_PT && packetType != RTCP_RTP_Feedback_PT);
+    if (packetType == RTCP_Sender_PT)
+        return 0;
+
+    const uint8_t rtcpMinPt = 194, rtcpMaxPt = 223;
+    if (packetType >= rtcpMinPt && packetType <= rtcpMaxPt) {
+        return 0;
+    }
+
+    RTPHeader* head = reinterpret_cast<RTPHeader*>(video_packet->data);
+    if (!m_ssrc && head->getSSRC()) {
+        m_ssrc = head->getSSRC();
+        maybeCreateReceiveVideo(m_ssrc);
+    }
+    if (m_videoReceive) {
+        m_videoReceive->onRtpData(video_packet->data, video_packet->length);
+    }
+
+    return video_packet->length;
 }
 
 int VideoFrameConstructor::deliverAudioData_(std::shared_ptr<erizo::DataPacket> audio_packet)

@@ -101,43 +101,43 @@ std::unique_ptr<AudioLevel> parseAudioLevel(std::shared_ptr<erizo::DataPacket> p
 
 int AudioFrameConstructor::deliverAudioData_(std::shared_ptr<erizo::DataPacket> audio_packet)
 {
-    if (m_enabled) {
-        if (audio_packet->length <= 0)
-            return 0;
-
-        FrameFormat frameFormat;
-        Frame frame;
-        memset(&frame, 0, sizeof(frame));
-        RTPHeader* head = (RTPHeader*)(audio_packet->data);
-
-        frameFormat = getAudioFrameFormat(head->getPayloadType());
-        if (frameFormat == FRAME_FORMAT_UNKNOWN)
-            return 0;
-
-        frame.additionalInfo.audio.sampleRate = getAudioSampleRate(frameFormat);
-        frame.additionalInfo.audio.channels = getAudioChannels(frameFormat);
-
-        frame.format = frameFormat;
-        frame.payload = reinterpret_cast<uint8_t*>(audio_packet->data);
-        frame.length = audio_packet->length;
-        frame.timeStamp = head->getTimestamp();
-        frame.additionalInfo.audio.isRtpPacket = 1;
-
-        std::unique_ptr<AudioLevel> audioLevel = parseAudioLevel(audio_packet);
-        if (audioLevel) {
-            frame.additionalInfo.audio.audioLevel = audioLevel->getLevel();
-            frame.additionalInfo.audio.voice = audioLevel->getVoice();
-            ELOG_DEBUG("Has audio level extension %u, %d", audioLevel->getLevel(), audioLevel->getVoice());
-        } else {
-            ELOG_DEBUG("No audio level extension");
-        }
-
-        deliverFrame(frame);
-
-        return audio_packet->length;
+    if (!m_enabled) {
+        return 0;
     }
 
-    return 0;
+    if (audio_packet->length <= 0)
+        return 0;
+
+    FrameFormat frameFormat;
+    Frame frame;
+    memset(&frame, 0, sizeof(frame));
+    RTPHeader* head = (RTPHeader*)(audio_packet->data);
+
+    frameFormat = getAudioFrameFormat(head->getPayloadType());
+    if (frameFormat == FRAME_FORMAT_UNKNOWN)
+        return 0;
+
+    frame.additionalInfo.audio.sampleRate = getAudioSampleRate(frameFormat);
+    frame.additionalInfo.audio.channels = getAudioChannels(frameFormat);
+
+    frame.format = frameFormat;
+    frame.payload = reinterpret_cast<uint8_t*>(audio_packet->data);
+    frame.length = audio_packet->length;
+    frame.timeStamp = head->getTimestamp();
+    frame.additionalInfo.audio.isRtpPacket = 1;
+
+    std::unique_ptr<AudioLevel> audioLevel = parseAudioLevel(audio_packet);
+    if (audioLevel) {
+        frame.additionalInfo.audio.audioLevel = audioLevel->getLevel();
+        frame.additionalInfo.audio.voice = audioLevel->getVoice();
+        ELOG_DEBUG("Has audio level extension %u, %d", audioLevel->getLevel(), audioLevel->getVoice());
+    } else {
+        ELOG_DEBUG("No audio level extension");
+    }
+
+    deliverFrame(frame);
+
+    return audio_packet->length;
 }
 
 void AudioFrameConstructor::onFeedback(const FeedbackMsg& msg)
