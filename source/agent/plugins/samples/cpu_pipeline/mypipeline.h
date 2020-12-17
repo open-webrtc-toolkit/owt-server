@@ -6,7 +6,6 @@
 #define MYPIPELINE_H
 
 #include <gst/gst.h>
-#include <boost/thread.hpp>
 #include "pipeline.h"
 
 // Class definition for the pipeline invoked by the sample service.
