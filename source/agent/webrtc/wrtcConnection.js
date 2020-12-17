@@ -38,7 +38,7 @@ class WrtcStream extends EventEmitter {
    * audio: { format, ssrc, mid, midExtId }
    * video: { format, ssrc, mid, midExtId, transportcc, red, ulpfec }
    */
-  constructor(id, wrtc, direction, {audio, video}) {
+  constructor(id, wrtc, direction, {audio, video, owner}) {
     super();
     this.id = id;
     this.wrtc = wrtc;
@@ -50,6 +50,7 @@ class WrtcStream extends EventEmitter {
     this.videoFrameConstructor = null;
     this.videoFramePacketizer = null;
     this.closed = false;
+    this.owner = owner;
 
     if (direction === 'in') {
       wrtc.addMediaStream(id, {label: id}, true);
@@ -78,6 +79,10 @@ class WrtcStream extends EventEmitter {
       if (audio) {
         this.audioFramePacketizer = new AudioFramePacketizer(audio.mid, audio.midExtId);
         this.audioFramePacketizer.bindTransport(wrtc.getMediaStream(id));
+        if (this.owner) {
+          log.warn('set owner!!!', this.owner);
+          this.audioFramePacketizer.setOwner(this.owner);
+        }
       }
       if (video) {
         this.videoFramePacketizer = new VideoFramePacketizer(
@@ -239,6 +244,7 @@ module.exports = function (spec, on_status, on_track) {
   var threadPool = spec.threadPool;
   var ioThreadPool = spec.ioThreadPool;
   var networkInterfaces = spec.network_interfaces;
+  var owner = spec.owner;
 
   var remoteSdp = null;
   var localSdp = null;
@@ -337,6 +343,7 @@ module.exports = function (spec, on_status, on_track) {
     const trackSettings = remoteSdp.getMediaSettings(mid);
     const mediaType = remoteSdp.mediaType(mid);
 
+    trackSettings.owner = owner;
     if (opSettings.finalFormat) {
       trackSettings[mediaType].format = opSettings.finalFormat;
     }
@@ -402,6 +409,9 @@ module.exports = function (spec, on_status, on_track) {
   };
 
   const destroyTransport = function (mid) {
+    if (!remoteSdp) {
+      return;
+    }
     const rids = remoteSdp.rids(mid);
     if (rids) {
       // Simulcast
@@ -412,7 +422,7 @@ module.exports = function (spec, on_status, on_track) {
           trackMap.delete(trackId);
           on_track({type: 'track-removed', trackId});
         } else {
-          log.warn(`destroyTransport: No trackId ${trackId} for ${wrtcId}`);
+          log.info(`destroyTransport: No trackId ${trackId} for ${wrtcId}`);
         }
       });
     } else {
@@ -422,7 +432,7 @@ module.exports = function (spec, on_status, on_track) {
         trackMap.delete(mid);
         on_track({type: 'track-removed', trackId: mid});
       } else {
-        log.warn(`destroyTransport: No trackId ${mid} for ${wrtcId}`);
+        log.info(`destroyTransport: No trackId ${mid} for ${wrtcId}`);
       }
     }
   };

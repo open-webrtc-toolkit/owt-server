@@ -569,7 +569,7 @@ function VMixer(rpcClient, clusterIP) {
         }
     };
 
-    that.linkup = function (connectionId, audio_stream_id, video_stream_id, callback) {
+    that.linkup = function (connectionId, audio_stream_id, video_stream_id, data_stream_id, callback) {
         log.debug('linkup, connectionId:', connectionId, 'video_stream_id:', video_stream_id);
         if (connections[connectionId] === undefined) {
             return callback('callback', 'error', 'connection does not exist');
@@ -1028,7 +1028,7 @@ function VTranscoder(rpcClient, clusterIP) {
         }
     };
 
-    that.linkup = function (connectionId, audio_stream_id, video_stream_id, callback) {
+    that.linkup = function (connectionId, audio_stream_id, video_stream_id, data_stream_id, callback) {
         log.debug('linkup, connectionId:', connectionId, 'video_stream_id:', video_stream_id);
         if (connections[connectionId] === undefined) {
             return callback('callback', 'error', 'connection does not exist');

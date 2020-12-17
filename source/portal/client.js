@@ -7,6 +7,7 @@
 var log = require('./logger').logger.getLogger('Client');
 var ReqType = require('./versions/requestType');
 var dataAdapter = require('./versions/portalDataAdapter');
+const { v4: uuid } = require('uuid');
 
 var idPattern = /^[0-9a-zA-Z\-]+$/;
 function isValidIdString(str) {
@@ -61,6 +62,10 @@ var Client = function(clientId, sigConnection, portal, version) {
     }
   };
 
+  const uuidWithoutDash = function() {
+    return uuid().replace(/-/g, '');
+  };
+
   const listenAt = (socket) => {
     socket.on('text', function(textReq, callback) {
       if(!that.inRoom){
@@ -81,15 +86,23 @@ var Client = function(clientId, sigConnection, portal, version) {
       }
 
       //FIXME: move the id assignment to conference
-      var stream_id = Math.round(Math.random() * 1000000000000000000) + '';
+      var stream_id = uuidWithoutDash();
       var transportId;
       return adapter.translateReq(ReqType.Pub, pubReq)
         .then((req) => {
-          req.type = 'webrtc';//FIXME: For backend compatibility with v3.4 clients.
-          if (!req.transportId) {
-            req.transportId = stream_id;
+          if (req.transport && req.transport.type == 'quic') {
+            req.type = 'quic';
+            if (!req.transport.id) {
+                req.transport.id = uuidWithoutDash();
+            }
+            transportId = req.transport.id;
+          } else {
+            req.type = 'webrtc'; //FIXME: For backend compatibility with v3.4 clients.
+            if (!req.transport || !req.transport.id) {
+              req.transport = { type : 'webrtc', id : stream_id };
+            }
           }
-          transportId = req.transportId;
+          transportId = req.transport.id;
           return portal.publish(clientId, stream_id, req);
         }).then((result) => {
           safeCall(callback, 'ok', {id: stream_id, transportId});
@@ -128,15 +141,23 @@ var Client = function(clientId, sigConnection, portal, version) {
       }
 
       //FIXME: move the id assignment to conference
-      var subscription_id = Math.round(Math.random() * 1000000000000000000) + '';
+      var subscription_id = uuidWithoutDash();
       var transportId;
       return adapter.translateReq(ReqType.Sub, subReq)
         .then((req) => {
-          req.type = 'webrtc';//FIXME: For backend compatibility with v3.4 clients.
-          if (!req.transportId) {
-            req.transportId = subscription_id;
+          if (req.transport && req.transport.type == 'quic') {
+            req.type = 'quic';
+            if (!req.transport.id) {
+                req.transport.id = uuidWithoutDash();
+            }
+            transportId = req.transport.id;
+          } else {
+            req.type = 'webrtc'; //FIXME: For backend compatibility with v3.4 clients.
+            if (!req.transport || !req.transport.id) {
+              req.transport = { type : 'webrtc', id : subscription_id };
+            }
           }
-          transportId = req.transportId;
+          transportId = req.transport.id;
           return portal.subscribe(clientId, subscription_id, req);
         }).then((result) => {
           safeCall(callback, 'ok', {id: subscription_id, transportId});

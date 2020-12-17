@@ -310,6 +310,8 @@ SoftFrameGenerator::~SoftFrameGenerator()
 {
     ELOG_DEBUG_T("Exit");
 
+    m_jobTimer->stop();
+
     if (m_srvWork)
         m_srvWork.reset();
 
@@ -322,8 +324,6 @@ SoftFrameGenerator::~SoftFrameGenerator()
         m_thrGrp->join_all();
         m_thrGrp.reset();
     }
-
-    m_jobTimer->stop();
 
     for (uint32_t i = 0; i <  m_outputs.size(); i++) {
         if (m_outputs[i].size())

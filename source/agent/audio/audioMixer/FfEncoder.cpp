@@ -65,7 +65,7 @@ FfEncoder::~FfEncoder()
     }
 
     if (m_audioEnc) {
-        avcodec_close(m_audioEnc);
+        avcodec_free_context(&m_audioEnc);
         m_audioEnc = NULL;
     }
 
@@ -179,7 +179,7 @@ fail:
     }
 
     if (m_audioEnc) {
-        avcodec_close(m_audioEnc);
+        avcodec_free_context(&m_audioEnc);
         m_audioEnc = NULL;
     }
 
