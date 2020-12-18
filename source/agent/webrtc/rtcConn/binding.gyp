@@ -28,8 +28,6 @@
       'erizo/src/erizo/thread/ThreadPool.cpp',
       'erizo/src/erizo/thread/Worker.cpp',
       'erizo/src/erizo/rtp/PacketBufferService.cpp',
-      'erizo/src/erizo/rtp/RtcpForwarder.cpp',
-      'erizo/src/erizo/rtp/RtcpProcessorHandler.cpp',
       'erizo/src/erizo/rtp/RtpUtils.cpp',
       'erizo/src/erizo/rtp/QualityManager.cpp',
       'erizo/src/erizo/rtp/RtpExtensionProcessor.cpp',

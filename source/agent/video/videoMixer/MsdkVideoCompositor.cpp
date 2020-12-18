@@ -100,7 +100,7 @@ boost::shared_ptr<owt_base::MsdkFrame> MsdkAvatarManager::loadImage(const std::s
             reinterpret_cast<const uint8_t *>(image + width * height * 5 / 4), width / 2
             );
 
-    delete image;
+    delete[] image;
 
     boost::shared_ptr<owt_base::MsdkFrame> frame(new owt_base::MsdkFrame(width, height, m_allocator));
     if(!frame->init())

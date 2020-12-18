@@ -101,6 +101,10 @@ std::unique_ptr<AudioLevel> parseAudioLevel(std::shared_ptr<erizo::DataPacket> p
 
 int AudioFrameConstructor::deliverAudioData_(std::shared_ptr<erizo::DataPacket> audio_packet)
 {
+    if (!m_enabled) {
+        return 0;
+    }
+
     if (audio_packet->length <= 0)
         return 0;
 
@@ -131,9 +135,8 @@ int AudioFrameConstructor::deliverAudioData_(std::shared_ptr<erizo::DataPacket> 
         ELOG_DEBUG("No audio level extension");
     }
 
-    if (m_enabled) {
-        deliverFrame(frame);
-    }
+    deliverFrame(frame);
+
     return audio_packet->length;
 }
 

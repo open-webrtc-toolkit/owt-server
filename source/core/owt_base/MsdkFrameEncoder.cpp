@@ -512,7 +512,10 @@ protected:
 #endif
 
 #if (MFX_VERSION >= 1025)
-        uint32_t MFE_timeout = MsdkBase::get()->getConfigMFETimeout();
+        uint32_t MFE_timeout = 0;
+        MsdkBase *msdkBase = MsdkBase::get();
+        if (msdkBase)
+            MFE_timeout = msdkBase->getConfigMFETimeout();
         if (MFE_timeout) {
             // MFX_EXTBUFF_MULTI_FRAME_PARAM
             m_encExtMultiFrameParam.reset(new mfxExtMultiFrameParam);

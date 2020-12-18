@@ -1,0 +1,219 @@
+From f02918e6b4ca54eafacb3da057bb519e62a1b8d1 Mon Sep 17 00:00:00 2001
+From: Chen Li1 <li1.chen@intel.com>
+Date: Thu, 17 Dec 2020 14:21:31 +0800
+Subject: [PATCH] Remove unused includes and add checks
+
+---
+ erizo/src/erizo/DtlsTransport.cpp      | 30 ++++++++++++++----------------
+ erizo/src/erizo/MediaStream.cpp        | 10 ++++++----
+ erizo/src/erizo/WebRtcConnection.cpp   |  8 ++++----
+ erizo/src/erizo/dtls/DtlsClient.cpp    |  2 +-
+ erizo/src/erizo/rtp/QualityManager.cpp | 10 ++++++++++
+ erizo/src/erizo/thread/Scheduler.cpp   |  2 +-
+ erizo/src/erizo/thread/Worker.cpp      |  4 +++-
+ 7 files changed, 39 insertions(+), 27 deletions(-)
+
+diff --git a/erizo/src/erizo/DtlsTransport.cpp b/erizo/src/erizo/DtlsTransport.cpp
+index 8a6539e..6387ffe 100644
+--- a/erizo/src/erizo/DtlsTransport.cpp
++++ b/erizo/src/erizo/DtlsTransport.cpp
+@@ -49,22 +49,20 @@ void TimeoutChecker::scheduleCheck() {
+ 
+ void TimeoutChecker::scheduleNext() {
+   scheduled_task_ = transport_->getWorker()->scheduleFromNow([this]() {
+-      if (transport_->getTransportState() == TRANSPORT_READY) {
+-        return;
+-      }
+-      if (transport_ != nullptr) {
+-        if (max_checks_-- > 0) {
+-          ELOG_DEBUG("Handling dtls timeout, checks left: %d", max_checks_);
+-          if (socket_context_) {
+-            std::lock_guard<std::mutex> guard(dtls_mutex);
+-            socket_context_->handleTimeout();
+-          }
+-          scheduleNext();
+-        } else {
+-          ELOG_DEBUG("%s message: DTLS timeout", transport_->toLog());
+-          transport_->onHandshakeFailed(socket_context_, "Dtls Timeout on TimeoutChecker");
+-        }
++    if (!transport_ || transport_->getTransportState() == TRANSPORT_READY) {
++      return;
++    }
++    if (max_checks_-- > 0) {
++      ELOG_DEBUG("Handling dtls timeout, checks left: %d", max_checks_);
++      if (socket_context_) {
++        std::lock_guard<std::mutex> guard(dtls_mutex);
++        socket_context_->handleTimeout();
+       }
++      scheduleNext();
++    } else {
++      ELOG_DEBUG("%s message: DTLS timeout", transport_->toLog());
++      transport_->onHandshakeFailed(socket_context_, "Dtls Timeout on TimeoutChecker");
++    }
+   }, std::chrono::seconds(check_seconds_));
+ }
+ 
+@@ -261,7 +259,7 @@ void DtlsTransport::onDtlsPacket(DtlsSocketContext *ctx, const unsigned char* da
+   }
+ 
+   ELOG_DEBUG("%s message: Sending DTLS message, transportName: %s, componentId: %d",
+-             toLog(), transport_name.c_str(), packet->comp);
++             toLog(), transport_name.c_str(), packet ? packet->comp : 0);
+ }
+ 
+ void DtlsTransport::writeDtlsPacket(DtlsSocketContext *ctx, packetPtr packet) {
+diff --git a/erizo/src/erizo/MediaStream.cpp b/erizo/src/erizo/MediaStream.cpp
+index 00e046a..465caa4 100644
+--- a/erizo/src/erizo/MediaStream.cpp
++++ b/erizo/src/erizo/MediaStream.cpp
+@@ -18,7 +18,7 @@
+ #include "rtp/RtpHeaders.h"
+ #include "rtp/RtpVP8Parser.h"
+ #include "rtp/RtcpAggregator.h"
+-#include "rtp/RtcpForwarder.h"
++// #include "rtp/RtcpForwarder.h"
+ // #include "rtp/RtpSlideShowHandler.h"
+ // #include "rtp/RtpTrackMuteHandler.h"
+ // #include "rtp/BandwidthEstimationHandler.h"
+@@ -79,7 +79,7 @@ MediaStream::MediaStream(std::shared_ptr<Worker> worker,
+   audio_sink_ssrc_ = std::rand();
+   video_sink_ssrc_ = std::rand();
+ 
+-  rtcp_processor_ = std::make_shared<RtcpForwarder>(static_cast<MediaSink*>(this), static_cast<MediaSource*>(this));
++  rtcp_processor_ = nullptr;
+ 
+   should_send_feedback_ = true;
+   slide_show_mode_ = false;
+@@ -158,7 +158,7 @@ bool MediaStream::setRemoteSdp(std::shared_ptr<SdpInfo> sdp) {
+   remote_sdp_ =  std::make_shared<SdpInfo>(*sdp.get());
+   if (remote_sdp_->videoBandwidth != 0) {
+     ELOG_DEBUG("%s message: Setting remote BW, maxVideoBW: %u", toLog(), remote_sdp_->videoBandwidth);
+-    this->rtcp_processor_->setMaxVideoBW(remote_sdp_->videoBandwidth*1000);
++    // this->rtcp_processor_->setMaxVideoBW(remote_sdp_->videoBandwidth*1000);
+   }
+ 
+   auto video_ssrc_list_it = remote_sdp_->video_ssrc_map.find(getLabel());
+@@ -192,10 +192,12 @@ bool MediaStream::setRemoteSdp(std::shared_ptr<SdpInfo> sdp) {
+   audio_enabled_ = remote_sdp_->hasAudio;
+   video_enabled_ = remote_sdp_->hasVideo;
+ 
++  /*
+   rtcp_processor_->addSourceSsrc(getAudioSourceSSRC());
+   std::for_each(video_source_ssrc_list_.begin(), video_source_ssrc_list_.end(), [this] (uint32_t new_ssrc){
+       rtcp_processor_->addSourceSsrc(new_ssrc);
+   });
++  */
+ 
+   if (remote_sdp_->rids().size() > 1) {
+     simulcast_ = true;
+@@ -348,7 +350,7 @@ void MediaStream::initializePipeline() {
+   handler_manager_ = std::make_shared<HandlerManager>(shared_from_this());
+   pipeline_->addService(shared_from_this());
+   pipeline_->addService(handler_manager_);
+-  pipeline_->addService(rtcp_processor_);
++  // pipeline_->addService(rtcp_processor_);
+   pipeline_->addService(stats_);
+   pipeline_->addService(quality_manager_);
+   pipeline_->addService(packet_buffer_);
+diff --git a/erizo/src/erizo/WebRtcConnection.cpp b/erizo/src/erizo/WebRtcConnection.cpp
+index 5ff5156..b143811 100644
+--- a/erizo/src/erizo/WebRtcConnection.cpp
++++ b/erizo/src/erizo/WebRtcConnection.cpp
+@@ -16,14 +16,14 @@
+ // #include "bandwidth/MaxVideoBWDistributor.h"
+ // #include "bandwidth/TargetVideoBWDistributor.h"
+ #include "rtp/RtpHeaders.h"
+-#include "rtp/RtpVP8Parser.h"
+-#include "rtp/RtcpAggregator.h"
+-#include "rtp/RtcpForwarder.h"
++// #include "rtp/RtpVP8Parser.h"
++// #include "rtp/RtcpAggregator.h"
++// #include "rtp/RtcpForwarder.h"
+ // #include "rtp/RtpSlideShowHandler.h"
+ // #include "rtp/RtpTrackMuteHandler.h"
+ // #include "rtp/BandwidthEstimationHandler.h"
+ // #include "rtp/FecReceiverHandler.h"
+-#include "rtp/RtcpProcessorHandler.h"
++// #include "rtp/RtcpProcessorHandler.h"
+ // #include "rtp/RtpRetransmissionHandler.h"
+ // #include "rtp/RtcpFeedbackGenerationHandler.h"
+ // #include "rtp/RtpPaddingRemovalHandler.h"
+diff --git a/erizo/src/erizo/dtls/DtlsClient.cpp b/erizo/src/erizo/dtls/DtlsClient.cpp
+index e77bdd1..8bcc2d5 100644
+--- a/erizo/src/erizo/dtls/DtlsClient.cpp
++++ b/erizo/src/erizo/dtls/DtlsClient.cpp
+@@ -444,7 +444,7 @@ int createCert(const std::string& pAor, int expireDays, int keyLen, X509*& outCe
+           ELOG_DEBUG("SRTP Extension negotiated profile=%s", srtp_profile->name);
+         }
+ 
+-        if (receiver != NULL) {
++        if (receiver != NULL && srtp_profile) {
+           receiver->onHandshakeCompleted(this, clientKey, serverKey, srtp_profile->name);
+         }
+       } else {
+diff --git a/erizo/src/erizo/rtp/QualityManager.cpp b/erizo/src/erizo/rtp/QualityManager.cpp
+index 20fe2d2..60afdee 100644
+--- a/erizo/src/erizo/rtp/QualityManager.cpp
++++ b/erizo/src/erizo/rtp/QualityManager.cpp
+@@ -49,6 +49,10 @@ void QualityManager::notifyQualityUpdate() {
+     return;
+   }
+ 
++  if (!getContext()) {
++    return;
++  }
++
+   if (!initialized_) {
+     auto pipeline = getContext()->getPipelineShared();
+     if (!pipeline) {
+@@ -129,6 +133,9 @@ void QualityManager::selectLayer(bool try_higher_layers) {
+   if (!initialized_  || !stats_->getNode().hasChild("qualityLayers")) {
+     return;
+   }
++  if (!getContext() || !getContext()->getPipelineShared()) {
++    return;
++  }
+   stream_->setSimulcast(true);
+   last_quality_check_ = clock_->now();
+   int min_requested_spatial_layer =
+@@ -301,6 +308,9 @@ void QualityManager::setTemporalLayer(int temporal_layer) {
+ }
+ 
+ void QualityManager::setPadding(bool enabled) {
++  if (!getContext() || !getContext()->getPipelineShared()) {
++    return;
++  }
+   if (padding_enabled_ != enabled) {
+     padding_enabled_ = enabled;
+     HandlerManager *manager = getContext()->getPipelineShared()->getService<HandlerManager>().get();
+diff --git a/erizo/src/erizo/thread/Scheduler.cpp b/erizo/src/erizo/thread/Scheduler.cpp
+index a5fba22..f5e8adb 100644
+--- a/erizo/src/erizo/thread/Scheduler.cpp
++++ b/erizo/src/erizo/thread/Scheduler.cpp
+@@ -7,7 +7,7 @@
+ 
+ 
+ Scheduler::Scheduler(int n_threads_servicing_queue)
+-: n_threads_servicing_queue_(n_threads_servicing_queue), stop_requested_(false), stop_when_empty_(false) {
++  : task_queue_(), n_threads_servicing_queue_(n_threads_servicing_queue), stop_requested_(false), stop_when_empty_(false) {
+   stop_requested_ = false;
+   stop_when_empty_ = false;
+   for (int index = 0; index < n_threads_servicing_queue; index++) {
+diff --git a/erizo/src/erizo/thread/Worker.cpp b/erizo/src/erizo/thread/Worker.cpp
+index 5fc7983..25b3e56 100644
+--- a/erizo/src/erizo/thread/Worker.cpp
++++ b/erizo/src/erizo/thread/Worker.cpp
+@@ -141,7 +141,9 @@ std::shared_ptr<ScheduledTaskReference> SimulatedWorker::scheduleFromNow(Task f,
+ 
+ void SimulatedWorker::executeTasks() {
+   for (Task f : tasks_) {
+-    f();
++    if (f) {
++      f();
++    }
+   }
+   tasks_.clear();
+ }
+-- 
+2.7.4
+
