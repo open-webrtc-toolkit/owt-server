@@ -48,7 +48,7 @@ function getErrorMessage(errors) {
 }
 
 const Resolution = {
-  id: '/Resolution',
+  $id: 'Resolution.json',
   type: 'object',
   properties: {
     'width': { type: 'number' },
@@ -108,7 +108,7 @@ const PublicationRequest = {
                 'parameters': {
                   type: 'object',
                   properties: {
-                    'resolution': { $ref: '/Resolution' },
+                    'resolution': { $ref: 'Resolution.json' },
                     'framerate': { type: 'number' }
                   }
                 }
@@ -267,7 +267,7 @@ const SubscriptionRequest = {
     'VideoParametersSpecification': {
       type: 'object',
       properties: {
-        'resolution': { $ref: '/Resolution' },
+        'resolution': { $ref: 'Resolution.json' },
         'framerate': { type: 'number' },
         'bitrate': { type: ['string', 'number'] },
         'keyFrameInterval': { type: 'number' }
@@ -331,7 +331,7 @@ const SubscriptionControlInfo = {
     'VideoUpdateSpecification': {
       type: 'object',
       properties: {
-        resolution: { $ref: '/Resolution' },
+        resolution: { $ref: 'Resolution.json' },
         framerate: { type: 'number' },
         bitrate: { type: ['number', 'string'] },
         keyFrameInterval: { type: 'number' }
