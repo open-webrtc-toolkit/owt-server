@@ -2,15 +2,14 @@
   "name": "WooGeen-MCU-Nuve",
   "version": "4.1.0",
   "dependencies": {
-    "ajv": "^5.2.2",
+    "ajv": "^6.12.3",
     "amqp": "*",
     "body-parser": "*",
     "express": "*",
     "fraction.js": "*",
-    "log4js": "^1.1.1",
+    "log4js": "^6.3.0",
     "mongojs": "",
-    "mongoose": "^4.13.6",
-    "package.json": "^2.0.1",
+    "mongoose": "^5.3.9",
     "toml": "*"
   },
   "engine": {
