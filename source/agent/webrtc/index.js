@@ -121,7 +121,7 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
         }
     };
 
-    var createWebRTCConnection = function (transportId, controller) {
+    var createWebRTCConnection = function (transportId, controller, owner) {
         if (peerConnections.has(transportId)) {
             log.debug('PeerConnection already created:', transportId);
             return peerConnections.get(transportId);
@@ -130,7 +130,8 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
             connectionId: transportId,
             threadPool: threadPool,
             ioThreadPool: ioThreadPool,
-            network_interfaces: global.config.webrtc.network_interfaces
+            network_interfaces: global.config.webrtc.network_interfaces,
+            owner,
         }, function onTransportStatus(status) {
             notifyTransportStatus(controller, transportId, status);
         }, function onTrack(trackInfo) {
@@ -214,7 +215,7 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
      * For operations on type internal, operationId is connectionId.
      */
     // functions: publish, unpublish, subscribe, unsubscribe, linkup, cutoff
-    // options = { transportId, tracks = [{mid, type, formatPreference}], controller}
+    // options = { transportId, tracks = [{mid, type, formatPreference}], controller, owner}
     that.publish = function (operationId, connectionType, options, callback) {
         log.debug('publish, operationId:', operationId, 'connectionType:', connectionType, 'options:', options);
         if (connections.getConnection(operationId)) {
@@ -234,7 +235,7 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
                 // Generate a transportId
 
             }
-            conn = createWebRTCConnection(options.transportId, options.controller);
+            conn = createWebRTCConnection(options.transportId, options.controller, options.owner);
             options.tracks.forEach(function trackOp(t) {
                 conn.addTrackOperation(operationId, t.mid, t.type, 'sendonly', t.formatPreference);
             });
@@ -287,7 +288,7 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
                 // Generate a transportId
 
             }
-            conn = createWebRTCConnection(options.transportId, options.controller);
+            conn = createWebRTCConnection(options.transportId, options.controller, options.owner);
             options.tracks.forEach(function trackOp(t) {
                 conn.addTrackOperation(operationId, t.mid, t.type, 'recvonly', t.formatPreference);
             });

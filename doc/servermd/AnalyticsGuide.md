@@ -172,10 +172,10 @@ Make sure face detection with cpu pipeline has been installed and model path has
 Check ````analytics_agent/plugin.cfg````， The pipeline ID for face detection with CPU is ````dc51138a8284436f873418a21ba8cfa9````, so on the page, in "pipelineID" input text, input the pipeline ID in "analytics id" 
 edit control, that is,  ````dc51138a8284436f873418a21ba8cfa9```` without any extra spaces, and press "startAnalytics" button. The stream you selected will be analyzed, with annotation on the faces in the stream.
 
-Note: If the sample cpu_pipeline analytics failed, please debug as following:
-a. Check sample cpu_pipeline is successfully compiled and generated libraries are copied to analytics_agent/lib folder
-b. Check ```modelpath``` in analytics_agent/plugin.cfg and make sure it is configured to the correct openmodel zoo model path.
-c. For sample cpu_pipeline, the failure is mostly caused by gvadetect and x264enc elements cannot be found, use ```gst-inspect-1.0 gvadetect``` and ```gst-inspect-1.0 x264enc``` to check if used GStreamer elements are successfully installed or configured. If x264enc element is not found, please make sure gstreamer1-plugins-ugly (for CentOS) and gstreamer1.0-plugins-ugly(for Ubuntu). If gvadetect element is not found, please make sure dlstreamer is successfully compiled. Check environment variable GST_PLUGIN_PATH and add x264 and gvadetect libraries to the GST_PLUGIN_PATH as:
+**Note:** If the sample cpu_pipeline analytics failed, please debug as following:  
+a. Check sample cpu_pipeline is successfully compiled and generated libraries are copied to ```analytics_agent/lib``` folder  
+b. Check ```modelpath``` in ```analytics_agent/plugin.cfg``` and make sure it is configured to the correct openmodel zoo model path.  
+c. For sample cpu_pipeline, the failure is mostly caused by gvadetect and x264enc elements cannot be found, use ```gst-inspect-1.0 gvadetect``` and ```gst-inspect-1.0 x264enc``` to check if used GStreamer elements are successfully installed or configured. If x264enc element is not found, please make sure ```gstreamer1-plugins-ugly``` (for CentOS) and ```gstreamer1.0-plugins-ugly``` (for Ubuntu). If gvadetect element is not found, please make sure dlstreamer is successfully compiled. Check environment variable ```GST_PLUGIN_PATH``` and add x264 and gvadetect libraries to the ```GST_PLUGIN_PATH``` as:  
 ````
 export GST_PLUGIN_PATH=${dl_streamer_lib_path}:/usr/lib/x86_64-linux-gnu/gstreamer-1.0:${GST_PLUGIN_PATH} #for ubuntu18.04
 export GST_PLUGIN_PATH=${dl_streamer_lib_path}:/usr/lib64/gstreamer-1.0::${GST_PLUGIN_PATH} #for centos7.6

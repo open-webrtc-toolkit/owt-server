@@ -260,6 +260,7 @@ void AudioRanker::triggerRankChange()
     }
 }
 
+//=============================================================================
 
 AudioRanker::AudioLevelProcessor::AudioLevelProcessor(
     AudioRanker* parent, FrameSource* source,
@@ -279,15 +280,28 @@ AudioRanker::AudioLevelProcessor::~AudioLevelProcessor()
     m_source->removeAudioDestination(this);
 }
 
+void AudioRanker::AudioLevelProcessor::setLinkedOutput(FrameDestination* output)
+{
+    boost::mutex::scoped_lock lock(m_mutex);
+    if (m_linkedOutput) {
+        removeAudioDestination(m_linkedOutput);
+    }
+    m_linkedOutput = output;
+    addAudioDestination(m_linkedOutput);
+    deliverOwnerData();
+}
+
+FrameDestination* AudioRanker::AudioLevelProcessor::linkedOutput()
+{
+    boost::mutex::scoped_lock lock(m_mutex);
+    return m_linkedOutput;
+}
+
 void AudioRanker::AudioLevelProcessor::onFrame(const Frame& frame)
 {
-    // Add lock for m_linkedOutput
-    {
-        boost::mutex::scoped_lock lock(m_mutex);
-        if (m_linkedOutput) {
-            m_linkedOutput->onFrame(frame);
-        }
-    }
+    // Pass frame to linked output
+    deliverFrame(frame);
+
     if (frame.additionalInfo.audio.voice) {
         uint64_t tsNow = std::chrono::duration_cast<std::chrono::milliseconds>(
             std::chrono::steady_clock::now().time_since_epoch()).count();
@@ -301,6 +315,22 @@ void AudioRanker::AudioLevelProcessor::onFrame(const Frame& frame)
     }
 }
 
+void AudioRanker::AudioLevelProcessor::onFeedback(const FeedbackMsg& msg)
+{
+    if (msg.type == AUDIO_FEEDBACK && msg.cmd == REQUEST_OWNER_ID) {
+        deliverOwnerData();
+    }
+}
+
+void AudioRanker::AudioLevelProcessor::deliverOwnerData()
+{
+    ELOG_DEBUG("deliver ownerID as metadata");
+    // Pass owner ID metadata to linkedoutput
+    MetaData ownerData;
+    ownerData.type = META_DATA_OWNER_ID;
+    ownerData.payload = (uint8_t*) m_ownerId.c_str();
+    ownerData.length = m_ownerId.length();
+    deliverMetaData(ownerData);
+}
 
 } // namespace owt_base
-

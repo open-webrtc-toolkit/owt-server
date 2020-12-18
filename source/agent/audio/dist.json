@@ -27,7 +27,8 @@
         "folders": {
             "audio": [
                 "index.js",
-                "SelectiveMixer.js",
+                "selectiveMixer.js",
+                "activeAudioSelector.js",
                 "../connections.js",
                 "../InternalConnectionFactory.js"
             ]
