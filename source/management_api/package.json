@@ -7,7 +7,7 @@
     "express": "*",
     "mongojs": "",
     "toml": "*",
-    "ajv": "^5.2.2",
+    "ajv": "^6.12.3",
     "body-parser": "*",
     "mongoose": "^5.9.6",
     "fraction.js": "^4.0.12"
