@@ -1,4 +1,4 @@
-From f02918e6b4ca54eafacb3da057bb519e62a1b8d1 Mon Sep 17 00:00:00 2001
+From 01558422b23bac91846aa5e2592e054fabbcdf9c Mon Sep 17 00:00:00 2001
 From: Chen Li1 <li1.chen@intel.com>
 Date: Thu, 17 Dec 2020 14:21:31 +0800
 Subject: [PATCH] Remove unused includes and add checks
@@ -10,8 +10,8 @@ Subject: [PATCH] Remove unused includes and add checks
  erizo/src/erizo/dtls/DtlsClient.cpp    |  2 +-
  erizo/src/erizo/rtp/QualityManager.cpp | 10 ++++++++++
  erizo/src/erizo/thread/Scheduler.cpp   |  2 +-
- erizo/src/erizo/thread/Worker.cpp      |  4 +++-
- 7 files changed, 39 insertions(+), 27 deletions(-)
+ erizo/src/erizo/thread/Worker.cpp      |  6 ++++--
+ 7 files changed, 40 insertions(+), 28 deletions(-)
 
 diff --git a/erizo/src/erizo/DtlsTransport.cpp b/erizo/src/erizo/DtlsTransport.cpp
 index 8a6539e..6387ffe 100644
@@ -200,14 +200,16 @@ index a5fba22..f5e8adb 100644
    stop_when_empty_ = false;
    for (int index = 0; index < n_threads_servicing_queue; index++) {
 diff --git a/erizo/src/erizo/thread/Worker.cpp b/erizo/src/erizo/thread/Worker.cpp
-index 5fc7983..25b3e56 100644
+index 5fc7983..9cc9adf 100644
 --- a/erizo/src/erizo/thread/Worker.cpp
 +++ b/erizo/src/erizo/thread/Worker.cpp
-@@ -141,7 +141,9 @@ std::shared_ptr<ScheduledTaskReference> SimulatedWorker::scheduleFromNow(Task f,
+@@ -140,8 +140,10 @@ std::shared_ptr<ScheduledTaskReference> SimulatedWorker::scheduleFromNow(Task f,
+ }
  
  void SimulatedWorker::executeTasks() {
-   for (Task f : tasks_) {
+-  for (Task f : tasks_) {
 -    f();
++  for (Task& f : tasks_) {
 +    if (f) {
 +      f();
 +    }
