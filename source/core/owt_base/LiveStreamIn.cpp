@@ -69,9 +69,10 @@ FramePacket::FramePacket (AVPacket *packet)
     : m_packet(NULL)
 {
     m_packet = (AVPacket *)malloc(sizeof(AVPacket));
-
-    av_init_packet(m_packet);
-    av_packet_ref(m_packet, packet);
+    if (m_packet) {
+      av_init_packet(m_packet);
+      av_packet_ref(m_packet, packet);
+    }
 }
 
 FramePacket::~FramePacket()
@@ -1153,6 +1154,10 @@ bool LiveStreamIn::parse_avcC(AVPacket *pkt) {
 
                 nals_buf_length += nalsize + 4;
                 nals_buf = (uint8_t *)realloc(nals_buf, nals_buf_length);
+                if (nals_buf == nullptr) {
+                    ELOG_ERROR_T("OOM! Allocate size %d", nals_buf_length);
+                    return false;
+                }
             }
 
             nals_buf[nals_size] = 0;
