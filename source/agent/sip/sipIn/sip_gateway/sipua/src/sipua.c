@@ -276,7 +276,7 @@ void sipua_call(struct sipua_entity *sipua, sipua_bool audio, sipua_bool video, 
 	call_data = mem_zalloc(sizeof(struct sipua_call_data), NULL);
 	call_data->audio = NATURAL_BOOL(audio);
 	call_data->video = NATURAL_BOOL(video);
-	strcpy(call_data->calleeURI, calleeURI);
+	strcpy_s(call_data->calleeURI, sizeof(call_data->calleeURI), calleeURI);
 
 	mqueue_push(sipua->mq, SIPUA_CALL, call_data);
 	return;

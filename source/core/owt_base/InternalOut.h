@@ -16,6 +16,8 @@ public:
     virtual ~InternalOut();
 
     void onFrame(const Frame&);
+    void onMetaData(const MetaData&);
+
 
     void onTransportData(char*, int len);
     void onTransportError() { }

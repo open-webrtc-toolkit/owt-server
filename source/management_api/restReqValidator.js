@@ -48,7 +48,7 @@ function getErrorMessage(errors) {
 }
 
 const Resolution = {
-  id: '/Resolution',
+  $id: 'Resolution.json',
   type: 'object',
   properties: {
     'width': { type: 'number' },
@@ -357,7 +357,7 @@ const ServerSideSubscriptionRequest = {
     'VideoParametersSpecification': {
       type: 'object',
       properties: {
-        'resolution': { $ref: '/Resolution' },
+        'resolution': { $ref: 'Resolution.json' },
         'framerate': { type: 'number' },
         'bitrate': { type: ['string', 'number'] },
         'keyFrameInterval': { type: 'number' }
@@ -368,7 +368,7 @@ const ServerSideSubscriptionRequest = {
 };
 
 const SubscriptionControlInfo = {
-  id: '/SubscriptionControlInfo',
+  $id: 'SubscriptionControlInfo.json',
   type: 'object',
   anyOf: [
     {
@@ -391,7 +391,7 @@ const SubscriptionControlInfo = {
       properties: {
         'op': { 'const': 'replace' },
         'path': { 'const': '/media/video/parameters/resolution' },
-        'value': { $ref: '/Resolution' }
+        'value': { $ref: 'Resolution.json' }
       },
       additionalProperties: false
     },
@@ -426,7 +426,7 @@ ajv.addSchema(SubscriptionControlInfo);
 
 const SubscriptionUpdate = {
   type: 'array',
-  items: {$ref: '/SubscriptionControlInfo'}
+  items: {$ref: 'SubscriptionControlInfo.json',}
 };
 
 const SipCallAdd = {
@@ -487,7 +487,7 @@ const SipCallAdd = {
     'VideoParametersSpecification': {
       type: 'object',
       properties: {
-        'resolution': { $ref: '/Resolution' },
+        'resolution': { $ref: 'Resolution.json' },
         'framerate': { type: 'number' },
         'bitrate': { type: ['string', 'number'] },
         'keyFrameInterval': { type: 'number' }
@@ -498,7 +498,7 @@ const SipCallAdd = {
 };
 
 const SipCallControlInfo = {
-  id: '/SipCallControlInfo',
+  $id: 'SipCallControlInfo.json',
   type: 'object',
   anyOf: [
     {
@@ -521,7 +521,7 @@ const SipCallControlInfo = {
       properties: {
         'op': { 'const': 'replace' },
         'path': { 'const': '/output/media/video/parameters/resolution' },
-        'value': { $ref: '/Resolution' }
+        'value': { $ref: 'Resolution.json' }
       },
       additionalProperties: false
     },
@@ -556,7 +556,7 @@ ajv.addSchema(SipCallControlInfo);
 
 const SipCallUpdate = {
   type: 'array',
-  items: {$ref: '/SipCallControlInfo'}
+  items: {$ref: 'SipCallControlInfo.json'}
 };
 var validators = {
   'participant-update': generateValidator(ParticipantUpdate),

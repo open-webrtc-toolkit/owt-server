@@ -73,12 +73,13 @@ public:
 
     ~StreamEncoder()
     {
+        m_keyFrameTimer->stop();
+
         m_srvWork.reset();
         m_srv->stop();
         m_thread.reset();
         m_srv.reset();
 
-        m_keyFrameTimer->stop();
         removeVideoDestination(m_dest);
 
         if (m_enc) {
@@ -494,7 +495,7 @@ protected:
         m_encExtCodingOpt2->Header.BufferId            = MFX_EXTBUFF_CODING_OPTION2;
         m_encExtCodingOpt2->Header.BufferSz            = sizeof(*m_encExtCodingOpt2);
         m_encExtCodingOpt2->RepeatPPS                  = MFX_CODINGOPTION_OFF;
-        m_encExtCodingOpt2->ExtBRC                     = MFX_CODINGOPTION_ON;
+        m_encExtCodingOpt2->ExtBRC                     = MFX_CODINGOPTION_ADAPTIVE;
 
         m_encExtParams.push_back(reinterpret_cast<mfxExtBuffer *>(m_encExtCodingOpt2.get()));
 
@@ -511,7 +512,10 @@ protected:
 #endif
 
 #if (MFX_VERSION >= 1025)
-        uint32_t MFE_timeout = MsdkBase::get()->getConfigMFETimeout();
+        uint32_t MFE_timeout = 0;
+        MsdkBase *msdkBase = MsdkBase::get();
+        if (msdkBase)
+            MFE_timeout = msdkBase->getConfigMFETimeout();
         if (MFE_timeout) {
             // MFX_EXTBUFF_MULTI_FRAME_PARAM
             m_encExtMultiFrameParam.reset(new mfxExtMultiFrameParam);

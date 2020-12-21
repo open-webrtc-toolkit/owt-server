@@ -141,9 +141,11 @@ NAN_METHOD(WebRtcConnection::New) {
         } else {
           continue;
         }
+        rtp_map.clock_rate = 0;
         if (it.value()["clockRate"].is_number()) {
           rtp_map.clock_rate = it.value()["clockRate"];
         }
+        rtp_map.channels = 0;
         if (rtp_map.media_type == erizo::AUDIO_TYPE) {
           if (it.value()["channels"].is_number()) {
             rtp_map.channels = it.value()["channels"];
