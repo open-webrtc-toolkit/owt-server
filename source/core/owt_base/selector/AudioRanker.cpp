@@ -287,7 +287,9 @@ void AudioRanker::AudioLevelProcessor::setLinkedOutput(FrameDestination* output)
         removeAudioDestination(m_linkedOutput);
     }
     m_linkedOutput = output;
-    addAudioDestination(m_linkedOutput);
+    if (m_linkedOutput) {
+        addAudioDestination(m_linkedOutput);
+    }
     deliverOwnerData();
 }
 
