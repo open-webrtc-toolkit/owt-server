@@ -135,7 +135,7 @@ Start up MCU in Docker container:
 
 ````
 cd Release-vxxx
-./bin/init-all.sh --deps
+./bin/init-all.sh --deps ##default password for user owt is owt
 ./bin/start-all.sh
 ````
 
