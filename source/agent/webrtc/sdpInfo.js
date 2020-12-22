@@ -315,6 +315,7 @@ class SdpInfo {
   singleMediaSdp(mid) {
     const sdp = new SdpInfo(this.toString());
     sdp.obj.media = sdp.obj.media.filter(m => m.mid.toString() === mid);
+    sdp.setBundleMids([mid]);
     return sdp;
   }
 
