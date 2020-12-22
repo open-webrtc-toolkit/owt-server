@@ -44,7 +44,10 @@ Note that `externalip` and `network_interface` should be both set if there are e
     a) Launch a Docker container with following command to simply try OWT:
 
     ```shell
-    docker run -itd --name=owt --net=host owt:run /home/startowt.sh
+    docker run -itd --name=owt --net=host owt:run bash
+    docker exec -it owt bash
+    cd /home/
+    ./startowt.sh    ##default password for user owt is owt
     ```
     Then OWT service should be launched and you can connect to https://localhost:3004 to start your OWT journey.
 
