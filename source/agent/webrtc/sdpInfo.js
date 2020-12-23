@@ -24,7 +24,8 @@ class SdpInfo {
     this.obj = transform.parse(str);
     this.obj.media.forEach((media, i) => {
       if (media.mid === undefined) {
-        log.warn(`Media ${i} missing mid`);
+        log.info(`Media ${i} missing mid`);
+        media.mid = -1;
       }
     });
   }
@@ -90,6 +91,7 @@ class SdpInfo {
     let finalFmt = null;
     let selectedPayload = -1;
     const reservedCodecs = ['telephone-event', 'cn'];
+    const allowedFbTypes = [];
     const relatedPayloads = new Set();
     const rtpMap = new Map();
     const payloadOrder = new Map();
@@ -159,6 +161,8 @@ class SdpInfo {
       }
       if (mediaInfo.rtcpFb) {
         mediaInfo.rtcpFb = mediaInfo.rtcpFb.filter(
+          (rtcp) => allowedFbTypes.includes(rtcp.type));
+        mediaInfo.rtcpFb = mediaInfo.rtcpFb.filter(
           (rtcp) => relatedPayloads.has(rtcp.payload));
       }
       mediaInfo.payloads = mediaInfo.payloads.toString().split(' ')
@@ -179,6 +183,12 @@ class SdpInfo {
     const preferred = preference.preferred;
     const optionals = preference.optional || [];
     const relatedPayloads = new Set();
+    const allowedFbTypes = [
+      'ccm fir',
+      'nack',
+      'transport-cc',
+      'goog-remb',
+    ];
     const reservedCodecs = ['red', 'ulpfec'];
     const codecMap = new Map();
     const payloadOrder = new Map();
@@ -230,6 +240,8 @@ class SdpInfo {
           (fmtp) => relatedPayloads.has(fmtp.payload));
       }
       if (mediaInfo.rtcpFb) {
+        mediaInfo.rtcpFb = mediaInfo.rtcpFb.filter(
+          (rtcp) => allowedFbTypes.includes(rtcp.type));
         mediaInfo.rtcpFb = mediaInfo.rtcpFb.filter(
           (rtcp) => relatedPayloads.has(rtcp.payload));
       }
