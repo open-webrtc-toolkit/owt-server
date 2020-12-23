@@ -32,11 +32,16 @@ class VideoFramePacketizer : public FrameDestination,
     DECLARE_LOGGER();
 
 public:
-    VideoFramePacketizer(bool enableRed,
-        bool enableUlpfec,
-        bool enableTransportcc = true,
-        bool selfRequestKeyframe = false,
-        uint32_t transportccExt = 0);
+    struct Config {
+        bool enableRed = false;
+        bool enableUlpfec = false;
+        bool enableTransportcc = true;
+        bool selfRequestKeyframe = false;
+        uint32_t transportccExt = 0;
+        std::string mid = "";
+        uint32_t midExtId = 0;
+    };
+    VideoFramePacketizer(Config& config);
     ~VideoFramePacketizer();
 
     void bindTransport(erizo::MediaSink* sink);
@@ -59,7 +64,7 @@ public:
     void onAdapterData(char* data, int len) override;
 
 private:
-    bool init(bool enableRed, bool enableUlpfec, bool enableTransportcc, uint32_t transportccExt);
+    bool init(Config& config);
     void close();
 
     // Implement erizo::FeedbackSink

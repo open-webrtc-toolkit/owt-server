@@ -154,7 +154,7 @@ class Connection extends EventEmitter {
     this.sessionVersion = 0;
 
     this.wrtc.init((newStatus, mess, streamId) => {
-      log.info('message: WebRtcConnection status update, ' +
+      log.debug('message: WebRtcConnection status update, ' +
                'id: ' + this.id + ', status: ' + newStatus +
                 ', ' + logger.objectToLog(this.metadata) + mess);
       switch(newStatus) {
@@ -196,31 +196,6 @@ class Connection extends EventEmitter {
           if (!this.ready) {
             this.ready = true;
             this.emit('status_event', {type: 'ready'}, newStatus);
-          } else if (mess && streamId) {
-            log.debug('message: simulcast, rid: ', streamId, mess);
-
-            const ssrc = parseInt(mess);
-            if (ssrc > 0) {
-              if (this.simulcastInfo) {
-                log.debug('sdp simulcast:', JSON.stringify(this.simulcastInfo));
-
-                if (!this.firstRid) {
-                  // first RID stream
-                  this.firstRid = streamId;
-                  this.wrtc.setVideoSsrcList('', [ssrc]);
-                  this.wrtc.setRemoteSdp(this.latestSdp, this.id);
-                  this.emit('status_event', {type: 'firstrid', rid: streamId, ssrc}, newStatus);
-                } else {
-                  // create stream
-                  this.addMediaStream(streamId, {label: streamId}, true);
-                  this.wrtc.setVideoSsrcList(streamId, [ssrc]);
-                  this.wrtc.setRemoteSdp(this.latestSdp, streamId);
-                  this.emit('status_event', {type: 'rid', rid: streamId, ssrc}, newStatus);
-                }
-              } else {
-                log.warn('No simulcast info RID:', streamId);
-              }
-            }
           }
           break;
       }
@@ -251,14 +226,14 @@ class Connection extends EventEmitter {
       this.mediaStreams.get(id).close();
       this.mediaStreams.delete(id);
       log.debug(`removed mediaStreamId ${id}, remaining size ${this.getNumMediaStreams()}`);
-      this._maybeSendAnswer(CONN_SDP, id, true);
+      // this._maybeSendAnswer(CONN_SDP, id, true);
     } else {
       log.error(`message: Trying to remove mediaStream not found, id: ${id}`);
     }
   }
 
   setRemoteSdp(sdp, streamId) {
-    this.wrtc.setRemoteSdp(sdp, this.id);
+    this.wrtc.setRemoteSdp(sdp, streamId || this.id);
   }
 
   setSimulcastInfo(simulcastInfo) {
@@ -267,6 +242,14 @@ class Connection extends EventEmitter {
 
   setRemoteSsrc(audioSsrc, videoSsrcList, label) {
     this.wrtc.setAudioSsrc(label, audioSsrc);
+    this.wrtc.setVideoSsrcList(label, videoSsrcList);
+  }
+
+  setAudioSsrc(label, audioSsrc) {
+    this.wrtc.setAudioSsrc(label, audioSsrc);
+  }
+
+  setVideoSsrcList(label, videoSsrcList) {
     this.wrtc.setVideoSsrcList(label, videoSsrcList);
   }
 

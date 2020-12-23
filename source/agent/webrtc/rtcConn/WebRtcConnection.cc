@@ -141,9 +141,11 @@ NAN_METHOD(WebRtcConnection::New) {
         } else {
           continue;
         }
+        rtp_map.clock_rate = 0;
         if (it.value()["clockRate"].is_number()) {
           rtp_map.clock_rate = it.value()["clockRate"];
         }
+        rtp_map.channels = 0;
         if (rtp_map.media_type == erizo::AUDIO_TYPE) {
           if (it.value()["channels"].is_number()) {
             rtp_map.channels = it.value()["channels"];
@@ -364,7 +366,13 @@ NAN_METHOD(WebRtcConnection::removeMediaStream) {
 
   v8::String::Utf8Value param(Nan::To<v8::String>(info[0]).ToLocalChecked());
   std::string streamId = std::string(*param);
-  me->removeMediaStream(streamId);
+
+  me->forEachMediaStream([streamId] (const std::shared_ptr<erizo::MediaStream> &media_stream) {
+    if (media_stream->getId() == streamId) {
+      std::future<void> future = stopAsync(media_stream);
+      future.wait();
+    }
+  });
 }
 
 NAN_METHOD(WebRtcConnection::setAudioSsrc) {

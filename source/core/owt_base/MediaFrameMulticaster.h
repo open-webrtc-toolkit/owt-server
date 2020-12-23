@@ -21,11 +21,14 @@ public:
     // Implements FrameDestination.
     void onFrame(const Frame&);
 
+    // Implements FrameDestination.
+    void onMetaData(const MetaData&);
+
     // Implements JobTimerListener.
     void onTimeout();
 
 private:
-    boost::scoped_ptr<JobTimer> m_feedbackTimer;
+    std::shared_ptr<SharedJobTimer> m_feedbackTimer;
     uint32_t m_pendingKeyFrameRequests;
 };
 

@@ -67,6 +67,9 @@ private:
     // Listeners
     AdapterDataListener* m_rtpListener;
     AdapterStatsListener* m_statsListener;
+    // TODO: remove extensionMap and mid if frames do not carry rtp packets
+    webrtc::RtpHeaderExtensionMap m_extensions;
+    std::string m_mid;
 };
 }
 #endif /* RTC_ADAPTER_AUDIO_SEND_ADAPTER_ */

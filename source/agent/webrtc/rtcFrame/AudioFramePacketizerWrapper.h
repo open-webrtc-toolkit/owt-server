@@ -31,6 +31,8 @@ class AudioFramePacketizer : public FrameDestination {
 
   static void enable(const v8::FunctionCallbackInfo<v8::Value>& args);
   static void getSsrc(const v8::FunctionCallbackInfo<v8::Value>& args);
+
+  static void setOwner(const v8::FunctionCallbackInfo<v8::Value>& args);
 };
 
 #endif

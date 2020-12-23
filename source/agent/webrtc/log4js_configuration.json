@@ -19,6 +19,7 @@
     "WrtcConnection": "WARN",
     "Connection": "WARN",
     "Sdp": "INFO",
+    "SdpInfo": "INFO",
     "WorkingAgent": "INFO",
     "Connections": "INFO",
     "InternalConnectionFactory": "INFO"

@@ -1,0 +1,27 @@
+{
+  "appenders": [
+    {
+      "type": "console",
+      "layout": {
+        "type": "pattern",
+        "pattern": "%d  - %p: %c - %m",
+        "replaceConsole": true
+      }
+    }
+  ],
+  "levels": {
+    "ClusterWorker": "WARN",
+    "LoadCollector": "WARN",
+    "AmqpClient": "WARN",
+    "WorkingJS": "WARN",
+    "NodeManager": "WARN",
+    "QuicNode": "INFO",
+    "Connection": "WARN",
+    "WorkingAgent": "WARN",
+    "Connections": "WARN",
+    "InternalConnectionFactory": "WARN",
+    "QuicConnection": "WARN",
+    "QuicTransportServer": "WARN",
+    "QuicTransportStreamPipeline": "WARN"
+  }
+}

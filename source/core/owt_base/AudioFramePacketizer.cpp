@@ -11,7 +11,7 @@ namespace owt_base {
 
 DEFINE_LOGGER(AudioFramePacketizer, "owt.AudioFramePacketizer");
 
-AudioFramePacketizer::AudioFramePacketizer()
+AudioFramePacketizer::AudioFramePacketizer(AudioFramePacketizer::Config& config)
     : m_enabled(true)
     , m_frameFormat(FRAME_FORMAT_UNKNOWN)
     , m_lastOriginSeqNo(0)
@@ -19,9 +19,10 @@ AudioFramePacketizer::AudioFramePacketizer()
     , m_ssrc(0)
     , m_rtcAdapter(RtcAdapterFactory::CreateRtcAdapter())
     , m_audioSend(nullptr)
+    , m_firstFrame(false)
 {
     audio_sink_ = nullptr;
-    init();
+    init(config);
 }
 
 AudioFramePacketizer::~AudioFramePacketizer()
@@ -52,6 +53,12 @@ void AudioFramePacketizer::unbindTransport()
     }
 }
 
+void AudioFramePacketizer::setOwner(std::string owner)
+{
+    m_firstFrame = false;
+    m_owner = owner;
+}
+
 int AudioFramePacketizer::deliverFeedback_(std::shared_ptr<erizo::DataPacket> data_packet)
 {
     if (m_audioSend) {
@@ -78,6 +85,12 @@ void AudioFramePacketizer::onFrame(const Frame& frame)
         return;
     }
 
+    if (!m_firstFrame) {
+        m_firstFrame = true;
+        FeedbackMsg feedback = {.type = AUDIO_FEEDBACK, .cmd = REQUEST_OWNER_ID };
+        deliverFeedbackMsg(feedback);
+    }
+
     boost::shared_lock<boost::shared_mutex> lock1(m_transport_mutex);
     if (!audio_sink_) {
         return;
@@ -85,6 +98,9 @@ void AudioFramePacketizer::onFrame(const Frame& frame)
     lock1.unlock();
 
     if (frame.length <= 0)
+        return;
+
+    if (!m_sourceOwner.empty() && m_owner == m_sourceOwner)
         return;
 
     if (frame.format != m_frameFormat) {
@@ -96,13 +112,29 @@ void AudioFramePacketizer::onFrame(const Frame& frame)
     }
 }
 
-bool AudioFramePacketizer::init()
+void AudioFramePacketizer::onMetaData(const MetaData& metadata)
+{
+    if (!m_enabled) {
+        return;
+    }
+
+    if (metadata.type == META_DATA_OWNER_ID) {
+        m_sourceOwner = std::string((char*)metadata.payload, metadata.length);
+    }
+
+}
+
+bool AudioFramePacketizer::init(AudioFramePacketizer::Config& config)
 {
     if (!m_audioSend) {
         // Create Send audio Stream
         rtc_adapter::RtcAdapter::Config sendConfig;
         sendConfig.rtp_listener = this;
         sendConfig.stats_listener = this;
+        if (!config.mid.empty()) {
+            strncpy(sendConfig.mid, config.mid.c_str(), sizeof(sendConfig.mid) - 1);
+            sendConfig.mid_ext = config.midExtId;
+        }
         m_audioSend = m_rtcAdapter->createAudioSender(sendConfig);
         m_ssrc = m_audioSend->ssrc();
         return true;

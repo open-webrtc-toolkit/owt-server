@@ -9,6 +9,9 @@ var InternalOut = internalIO.Out;
 var MediaFrameMulticaster = require('../mediaFrameMulticaster/build/Release/mediaFrameMulticaster');
 var AudioMixer = require('../audioMixer/build/Release/audioMixer');
 
+var { SelectiveMixer } = require('./selectiveMixer');
+var { ActiveAudioSelector } = require('./activeAudioSelector');
+
 var logger = require('../logger').logger;
 
 // Logger
@@ -112,7 +115,12 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
     };
 
     var initEngine = function (config, belongToRoom, ctrlr, callback) {
-        engine = new AudioMixer(JSON.stringify(config));
+        var topK = global.config.mix.top_k;
+        if (view && topK > 0) {
+            engine = new SelectiveMixer(topK, JSON.stringify(config));
+        } else {
+            engine = new AudioMixer(JSON.stringify(config));
+        }
         belong_to_room = belongToRoom;
         controller = ctrlr;
 
@@ -123,6 +131,29 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
         log.debug('AudioMixer.init OK');
         callback('callback', {codecs: supported_codecs});
     };
+
+    const initSelector = function ({activeStreamIds}, belongToRoom, ctrlr, callback) {
+        if (!activeStreamIds || !activeStreamIds.length) {
+            callback('callback', 'error', 'No active stream IDs.');
+            return;
+        }
+        const selector = new ActiveAudioSelector(activeStreamIds.length);
+        selector.on('source-change', (i, owner, streamId, codec) => {
+            // Notify controller
+            const target = {id: activeStreamIds[i], owner, codec};
+            ctrlr && rpcClient.remoteCall(ctrlr, 'onAudioActiveness',
+                [belongToRoom, activeInput, target],
+                {callback: function(){}});
+        });
+        engine = selector;
+        for (let i = 0; i < activeStreamIds.length; i++) {
+            outputs[activeStreamIds[i]] = {
+                dispatcher: selector.getOutputs()[i],
+                connections: {}
+            };
+        }
+        callback('callback', {selectingNum: selector.getOutputs().length});
+    }
 
     that.deinit = function () {
         for (var stream_id in outputs) {
@@ -245,7 +276,7 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
         }
     };
 
-    that.linkup = function (connectionId, audio_stream_id, video_stream_id, callback) {
+    that.linkup = function (connectionId, audio_stream_id, video_stream_id, data_stream_id, callback) {
         log.debug('linkup, connectionId:', connectionId, 'audio_stream_id:', audio_stream_id);
         if (connections[connectionId] === undefined) {
             return callback('callback', 'error', 'connection does not exist');
@@ -275,7 +306,10 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
         log.debug('enableVAD, periodMS:', periodMS);
         engine.enableVAD(periodMS, function (activeInput) {
             log.debug('enableVAD, activeInput:', activeInput);
-            controller && rpcClient.remoteCall(controller, 'onAudioActiveness', [belong_to_room, activeInput, view], {callback: function(){}});
+            controller && rpcClient.remoteCall(
+                controller, 'onAudioActiveness',
+                [belong_to_room, activeInput, {view}],
+                {callback: function(){}});
         });
     };
 
@@ -296,6 +330,8 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
             initEngine(audioConfig, belongToRoom, controller, callback);
         } else if (service === 'transcoding') {
             initEngine(audioConfig, belongToRoom, controller, callback);
+        } else if (service === 'selecting') {
+            initSelector(config, belongToRoom, controller, callback);
         } else {
             log.error('Unknown service type to init an audio node:', service);
             callback('callback', 'error', 'Unknown service type to init an audio node.');
