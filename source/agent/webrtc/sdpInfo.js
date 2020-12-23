@@ -152,25 +152,38 @@ class SdpInfo {
         relatedPayloads.add(selectedPayload);
       }
 
-      // Remove non-selected audio payload
-      mediaInfo.rtp = mediaInfo.rtp.filter(
-        (rtp) => relatedPayloads.has(rtp.payload));
-      if (mediaInfo.fmtp) {
-        mediaInfo.fmtp = mediaInfo.fmtp.filter(
-          (fmtp) => relatedPayloads.has(fmtp.payload));
+      if (mediaInfo.direction === 'recvonly') {
+        // Reorder the codecs for subscription
+        const payloads = mediaInfo.payloads.toString().split(' ');
+        const selectedList = payloads
+            .filter((p) => relatedPayloads.has(parseInt(p)));
+        mediaInfo.payloads = selectedList.concat(payloads)
+            .filter((v, index, self) => self.indexOf(v) === index)
+            .join(' ');
+        // if (mediaInfo.rtcpFb) {
+        //   mediaInfo.rtcpFb = mediaInfo.rtcpFb.filter(
+        //     (rtcp) => allowedFbTypes.includes(rtcp.type));
+        // }
+      } else {
+        // Remove non-selected audio payload
+        mediaInfo.rtp = mediaInfo.rtp.filter(
+          (rtp) => relatedPayloads.has(rtp.payload));
+        if (mediaInfo.fmtp) {
+          mediaInfo.fmtp = mediaInfo.fmtp.filter(
+            (fmtp) => relatedPayloads.has(fmtp.payload));
+        }
+        if (mediaInfo.rtcpFb) {
+          mediaInfo.rtcpFb = mediaInfo.rtcpFb.filter(
+            (rtcp) => allowedFbTypes.includes(rtcp.type));
+          mediaInfo.rtcpFb = mediaInfo.rtcpFb.filter(
+            (rtcp) => relatedPayloads.has(rtcp.payload));
+        }
+        mediaInfo.payloads = mediaInfo.payloads.toString().split(' ')
+          .filter((p) => relatedPayloads.has(parseInt(p)))
+          .filter((v, index, self) => self.indexOf(v) === index)
+          .join(' ');
       }
-      if (mediaInfo.rtcpFb) {
-        mediaInfo.rtcpFb = mediaInfo.rtcpFb.filter(
-          (rtcp) => allowedFbTypes.includes(rtcp.type));
-        mediaInfo.rtcpFb = mediaInfo.rtcpFb.filter(
-          (rtcp) => relatedPayloads.has(rtcp.payload));
-      }
-      mediaInfo.payloads = mediaInfo.payloads.toString().split(' ')
-        .filter((p) => relatedPayloads.has(parseInt(p)))
-        .filter((v, index, self) => self.indexOf(v) === index)
-        .join(' ');
     }
-
     return finalFmt;
   }
 
@@ -202,6 +215,13 @@ class SdpInfo {
         .forEach((p, index) => {
           payloadOrder.set(parseInt(p), index);
         });
+      if (mediaInfo.direction === 'recvonly') {
+        // For subscription
+        // concat(optionals.map((fmt) => fmt.codec.toLowerCase()));
+        ['vp8', 'vp9', 'h264', 'h265'].forEach((name) => {
+          reservedCodecs.push(name);
+        });
+      }
 
       for (let i = 0; i < mediaInfo.rtp.length; i++) {
         rtp = mediaInfo.rtp[i];

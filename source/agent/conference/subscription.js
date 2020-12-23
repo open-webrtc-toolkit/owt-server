@@ -96,7 +96,7 @@ class Subscription {
   // Array of unique StreamId or TrackId of subscription
   froms() {
     return this.media.tracks.map(t => t.from)
-      .filter((t, i, self) => self.findIndex(v => v.id === t.id) === i);
+      .filter((t, i, self) => self.indexOf(t) === i);
   }
 
   // Merge source format and parameters
