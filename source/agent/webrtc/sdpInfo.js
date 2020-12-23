@@ -29,6 +29,16 @@ class SdpInfo {
     });
   }
 
+  bundleMids() {
+    const bundles = this.obj.groups.find(g => g.type === 'BUNDLE');
+    return bundles.mids.split(' ');
+  }
+
+  setBundleMids(mids) {
+    const bundles = this.obj.groups.find(g => g.type === 'BUNDLE');
+    bundles.mids = mids.join(' ');
+  }
+
   mids() {
     return this.obj.media.map(mediaInfo => mediaInfo.mid.toString());
   }
@@ -319,6 +329,30 @@ class SdpInfo {
         bundles.mids += ' ' + media.mid;
       }
     });
+  }
+
+  isMediaClosed(mid) {
+    const mediaInfo = this.media(mid);
+    if (!mediaInfo) {
+      return true;
+    }
+    if (mediaInfo.port === 0 && mediaInfo.direction === 'inactive') {
+      return true;
+    }
+    return false;
+  }
+
+  closeMedia(mid) {
+    const mediaInfo = this.media(mid);
+    if (mediaInfo) {
+      mediaInfo.direction = 'inactive';
+      mediaInfo.port = 0;
+      delete mediaInfo.ext;
+      delete mediaInfo.ssrcs;
+      delete mediaInfo.ssrcGroups;
+      delete mediaInfo.simulcast;
+      delete mediaInfo.rids;
+    }
   }
 
   compareMedia(sdp) {

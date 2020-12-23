@@ -1,4 +1,4 @@
-# Client-Portal Communication Protocol (version 1.1)
+# Client-Portal Communication Protocol (version 1.2)
 <!--
 |date | contributor | revision |
 | :-------: | :------------: | :------------: |
@@ -16,7 +16,10 @@ Here is a table describing the detailed name and definition.
 |:----|:-----------|
 | Portal | The MCU component listening at the Socket.io server port, accepting signaling connections initiated by Clients, receive/send signaling messages from/to Clients. |
 | Client | The program running on end-user’s device which interacts with MCU Server by messages defined in this documentation.|
-| Signaling Connection | The signaling channel between Client and Portal established by Client to send, receive and fetch signaling messages. |
+| Connection | A transport channel between client and server. Different kinds of connections may have different transport protocols. |
+| Signaling Connection | The signaling channel between client and Portal established by Client to send, receive and fetch signaling messages. |
+| WebRTC Connection | A WebRTC transport channel between client and WebRTC agent. It may carry audio and video data. Detailed information about WebRTC could be found [here](https://webrtc.org/). |
+| QUIC Connection | A QUIC transport channel between client and QUIC agent. Detailed information about QUIC could be found [here](https://quicwg.org/). |
 | Room | The logical entity of a conference in which all conference members (participants) exchange their video/audio streams, and where mixed streams are generated. Every room must be assigned with a unique identification **(RoomID)** in the MCU scope. |
 | User | The service account defined in the third-party integration application. The user ID and user role must be specified when asking for a token. |
 | Participant | The logical entity of a user when participating in a conference with a valid token. Every participant must be assigned with a unique identification **(ParticipantID)** in the room scope, and must be assigned a set of operation permissions according to its role. |
@@ -61,7 +64,7 @@ Given that Portal has accepted Clients connecting and the socket object is ready
 - **NotificationName** must be with type of string, and with value defined in this specification;
 - **NotificationData** must be with type of object, and with format defined in this specification, and will be absent if no notification data is present.
 
-## 3.2 Connection Maintenance
+## 3.2 Signaling Connection Maintenance
 ### 3.2.1 Client Connects
 Portal should be able to listen at either a secure or an insecure socket.io server port to accept Clients’ connecting requests.  If the secure socket.io server is enabled, the SSL certificate and private key store path must be correctly specified by configuration item portal.keystorePath in portal.toml.<br>
 
@@ -144,11 +147,13 @@ This a format for client reconnects.
         {
          publish: {
              audio: true | false,
-             video: true | false
+             video: true | false,
+             data:  true | false
          },
          subscribe: {
              audio: true | false,
-             video: true | false
+             video: true | false,
+             data:  true | false
          }
         }
 
@@ -164,7 +169,8 @@ This a format for client reconnects.
           {
            id: string(StreamID),
            type: "forward" | "augmented" |"mixed",
-           media: object(MediaInfo),
+           media: object(MediaInfo) | null,
+           data: true | false,
            info: object(PublicationInfo)/*If type equals "forward"*/
                 | object(AugmentInfo)/*If type equals "augmented"*/
                 | object(ViewInfo)/*If type equals "mixed"*/
@@ -243,7 +249,7 @@ This a format for client reconnects.
           object(PublicationInfo):
             {
              owner: string(ParticipantId),
-             type: "webrtc" | "streaming" | "sip",
+             type: "webrtc" | "streaming" | "sip" | "quic",
              inViews: [String(ViewLabel)],
              attributes: object(ClientDefinedAttributes)
             }
@@ -350,38 +356,48 @@ This a format for client reconnects.
      message: string(Message)
     }
 
-### 3.3.7 Participant Starts Publishing a WebRTC Stream to Room
+### 3.3.7 Participant Starts Publishing a Stream to Room
 **RequestName**: “publish”<br>
 
 **RequestData**: The PublicationRequest object with following definition:
 
+```
   object(PublicationRequest)::
     {
-     media: object(WebRTCMediaOptions),
-     attributes: object(ClientDefinedAttributes)
+     media: object(WebRTCMediaOptions) | null,
+     data: true | false,
+     transport: object(TransportOptions),
+     attributes: object(ClientDefinedAttributes) | null
     }
+```
 
-    object(WebRTCMediaOptions)::
-      {
-       audio: {
-              source: "mic" | "screen-cast" | "raw-file" | "encoded-file"
-             }
-             | false,
-       video: {
-              source: "camera"| "screen-cast"  | "raw-file" | "encoded-file",
-              parameters:
-                {
-                 resolution: object(Resolution),
-                 framerate: number(FramerateFPS)
-                }
-             }
-             | false
-      }
+A publication can send either media or data, but a QUIC *transport* channel can support multiple stream for both media and data. Setting `media:null` and `data:false` is meaningless, so it should be rejected by server. Protocol itself doesn't forbit to create WebRTC connection for data. However, SCTP data channel is not implemented at server side, so currently `data:true` is only support by QUIC transport channels. 
+
+```
+  object(WebRTCMediaOptions)::
+    {
+      audio: {
+            source: "mic" | "screen-cast" | "raw-file" | "encoded-file"
+            }
+            | false,
+      video: {
+            source: "camera"| "screen-cast"  | "raw-file" | "encoded-file",
+            parameters:
+              {
+                resolution: object(Resolution),
+                framerate: number(FramerateFPS)
+              }
+            }
+            | false
+    }
+```
+
 **ResponseData**: The PublicationResult object with following definition if **ResponseStatus** is “ok”:
 
   object(PublicationResult)::
     {
-     id: string(SessionId) //will be used as the stream id when it gets ready.
+      transportId: string(transportId),  // Can be reused in the following publication or subscription.
+     publicationId: string(SessionId) //will be used as the stream id when it gets ready.
     }
 ### 3.3.8 Participant Stops Publishing a Stream to Room
 **RequestName**: “unpublish”<br>
@@ -431,7 +447,8 @@ This a format for client reconnects.
 
   object(SubscriptionRequest)::
     {
-     media: object(MediaSubOptions)
+     media: object(MediaSubOptions),
+     transport: object(TransportOptions),
     }
 
     object(MediaSubOptions)::
@@ -464,7 +481,8 @@ This a format for client reconnects.
 
   object(SubscriptionResult)::
     {
-     id: string(SubscriptionId)
+      transportId: string(transportId),  // Can be reused in the following publication or subscription.
+     subscriptionId: string(SubscriptionId)
     }
 ### 3.3.12 Participant Stops a Self-Initiated Subscription
 **RequestName**: “unsubscribe”<br>
@@ -519,14 +537,14 @@ This a format for client reconnects.
 
   object(SOACMessage)::
     {
-     id: string(SessionId), /* StreamId returned in publishing or SubscriptionId returned in subscribing*/
+     id: string(transportId), /* Transport ID returned in publishing or subscribing*/
      signaling: object(OfferAnswer) | object(CandidateMessage) | object(RemovedCandidatesMessage)
     }
 
     object(OfferAnswer)::
       {
        type: "offer" | "answer",
-       sdp: string(SDP)
+       sdp: string(SDP) | null,  // WebRTC connection
       }
 
     object(CandidateMessage)::
@@ -547,24 +565,59 @@ This a format for client reconnects.
        sdpMLineIndex: number(mLineIndex),   // optional in RemovedCandidatesMessage
        candidate: string(candidateSdp)
       }
+
+    object(TransportOptions)::
+      {
+        type: "webrtc" | "quic",
+        id: string(transportId) | null,  // null will result to create a new transport channel. Always be null if transport type is webrtc because webrtc agent doesn't support multiple transceivers on a single PeerConnection at this time.
+      }
+
 **ResponseData**: undefined if **ResponseStatus** is “ok”.
 ### 3.3.15 Participant Receives Session Progress
 **NotificationName**: “progress”<br>
 
-**NotificationData**: The SessionProgress object with following definition.
+**NotificationData**: The SessionProgress or TransportProgress object with following definition.
+
+  object(TransportProgress)::
+    {
+      id: string(transportId),
+      status: "soac" | "ready" | "error",
+      data: object(OfferAnswer) | object(CandidateMessage)  /*If status equals “soac”*/
+          | (undefined/*If status equals “ready” and session is NOT for recording*/
+          | string(Reason)/*If status equals “error”*/
+    }
 
   object(SessionProgress)::
     {
      id: string(SessionId), /* StreamId returned in publishing or SubscriptionId returned in subscribing*/
-     status: "soac" | "ready" | "error",
-     data: object(OfferAnswer) | object(CandidateMessage)/*If status equals “soac”*/
-          | (undefined/*If status equals “ready” and session is NOT for recording*/
-             | object(RecorderInfo)/*If status equals “ready” and session is for recording*/ )
-          | string(Reason)/*If status equals “error”*/
+     status: "ready" | "error"
     }
 
-    object(RecorderInfo)::
-      {
-       host: string(HostnameOrIPOfRecorder),
-       file: string(FullPathNameOfRecordedFile)
-      }
+# 4. Examples
+
+This section provides a few examples of signaling messages for specific purposes.
+
+## 4.1 Forward data through data channel over QUIC
+
+An endpoint is joined the meeting, and it wants to publish a data stream over a QUIC transport channel.
+
+Step 1: Client sends a "publish" request.
+
+```
+{
+  media: null,
+  data: true,
+  transport: {type: 'quic'}
+}
+```
+
+Step 2: Receive a response from server.
+
+```
+{
+  transportId: undefined,
+  publicationId: '91e247051d494cddbd4ad461445637c4'
+}
+```
+
+Step 3: Create a new WebTransport or get an existing WebTransport, then create a new BidirectionalStream or SendStream. Write data to stream. The URL of WebTransport should be included in token. WebTransport is shared by all media streams, data streams and signaling which belong to the same client.
