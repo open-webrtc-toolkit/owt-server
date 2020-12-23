@@ -372,8 +372,6 @@ A publication can send either media or data, but a QUIC *transport* channel can 
     }
 ```
 
-    
->>>>>>> 65fde9b5c974ce8da4ee670d0c199704253b6ef1
 **ResponseData**: The PublicationResult object with following definition if **ResponseStatus** is “ok”:
 
   object(PublicationResult)::
@@ -439,7 +437,7 @@ A publication can send either media or data, but a QUIC *transport* channel can 
           {
             type: "audio" | "video",
             mid: string(MID),
-            from: string(TrackID),
+            from: string(TrackID) | string(StreamID),
             parameters: object(VideoParametersSpecification) | undefined,
           }
         ]
