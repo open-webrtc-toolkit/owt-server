@@ -67,7 +67,7 @@ const DEFAULT_VIDEO_PARAS = {
   resolution: { width: 640, height: 480 },
   bitrate: 500,
   framerate: 30,
-  keyFrameInterval: 60
+  keyFrameInterval: 100
 };
 
 /* Room configuration Object */
@@ -185,7 +185,6 @@ class Stream {
         track.optional.parameters = track.optional.parameters || {};
         track.optional.parameters.keyFrameInterval =
           mediaOut.video.parameters.keyFrameInterval
-          .filter(x => (x < baseParameters.keyFrameInterval))
       }
     }
     return track;

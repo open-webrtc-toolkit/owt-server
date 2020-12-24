@@ -24,9 +24,20 @@ class SdpInfo {
     this.obj = transform.parse(str);
     this.obj.media.forEach((media, i) => {
       if (media.mid === undefined) {
-        log.warn(`Media ${i} missing mid`);
+        log.info(`Media ${i} missing mid`);
+        media.mid = -1;
       }
     });
+  }
+
+  bundleMids() {
+    const bundles = this.obj.groups.find(g => g.type === 'BUNDLE');
+    return bundles.mids.split(' ');
+  }
+
+  setBundleMids(mids) {
+    const bundles = this.obj.groups.find(g => g.type === 'BUNDLE');
+    bundles.mids = mids.join(' ');
   }
 
   mids() {
@@ -80,6 +91,7 @@ class SdpInfo {
     let finalFmt = null;
     let selectedPayload = -1;
     const reservedCodecs = ['telephone-event', 'cn'];
+    const allowedFbTypes = [];
     const relatedPayloads = new Set();
     const rtpMap = new Map();
     const payloadOrder = new Map();
@@ -149,6 +161,8 @@ class SdpInfo {
       }
       if (mediaInfo.rtcpFb) {
         mediaInfo.rtcpFb = mediaInfo.rtcpFb.filter(
+          (rtcp) => allowedFbTypes.includes(rtcp.type));
+        mediaInfo.rtcpFb = mediaInfo.rtcpFb.filter(
           (rtcp) => relatedPayloads.has(rtcp.payload));
       }
       mediaInfo.payloads = mediaInfo.payloads.toString().split(' ')
@@ -169,6 +183,12 @@ class SdpInfo {
     const preferred = preference.preferred;
     const optionals = preference.optional || [];
     const relatedPayloads = new Set();
+    const allowedFbTypes = [
+      'ccm fir',
+      'nack',
+      'transport-cc',
+      'goog-remb',
+    ];
     const reservedCodecs = ['red', 'ulpfec'];
     const codecMap = new Map();
     const payloadOrder = new Map();
@@ -220,6 +240,8 @@ class SdpInfo {
           (fmtp) => relatedPayloads.has(fmtp.payload));
       }
       if (mediaInfo.rtcpFb) {
+        mediaInfo.rtcpFb = mediaInfo.rtcpFb.filter(
+          (rtcp) => allowedFbTypes.includes(rtcp.type));
         mediaInfo.rtcpFb = mediaInfo.rtcpFb.filter(
           (rtcp) => relatedPayloads.has(rtcp.payload));
       }
@@ -305,6 +327,7 @@ class SdpInfo {
   singleMediaSdp(mid) {
     const sdp = new SdpInfo(this.toString());
     sdp.obj.media = sdp.obj.media.filter(m => m.mid.toString() === mid);
+    sdp.setBundleMids([mid]);
     return sdp;
   }
 
@@ -319,6 +342,30 @@ class SdpInfo {
         bundles.mids += ' ' + media.mid;
       }
     });
+  }
+
+  isMediaClosed(mid) {
+    const mediaInfo = this.media(mid);
+    if (!mediaInfo) {
+      return true;
+    }
+    if (mediaInfo.port === 0 && mediaInfo.direction === 'inactive') {
+      return true;
+    }
+    return false;
+  }
+
+  closeMedia(mid) {
+    const mediaInfo = this.media(mid);
+    if (mediaInfo) {
+      mediaInfo.direction = 'inactive';
+      mediaInfo.port = 0;
+      delete mediaInfo.ext;
+      delete mediaInfo.ssrcs;
+      delete mediaInfo.ssrcGroups;
+      delete mediaInfo.simulcast;
+      delete mediaInfo.rids;
+    }
   }
 
   compareMedia(sdp) {
