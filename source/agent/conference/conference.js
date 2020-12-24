@@ -253,7 +253,7 @@ var Conference = function (rpcClient, selfRpcId) {
           });
         });
     } else if (direction === 'out') {
-      return addSubscription(sessionId, sessionInfo.locality, sessionInfo.transport, sessionInfo.media, sessionInfo.data, sessionInfo.info
+      return addSubscription(sessionId, sessionInfo.locality, sessionInfo.media, sessionInfo.data, sessionInfo.info, sessionInfo.transport
         ).then(() => {
           if (sessionInfo.info && sessionInfo.info.type !== 'webrtc') {
             if (sessionInfo.info.location) {
@@ -754,7 +754,7 @@ var Conference = function (rpcClient, selfRpcId) {
     return Promise.resolve('ok');
   };
 
-  const addSubscription = (id, locality, transport, mediaSpec, dataSpec, info) => {
+  const addSubscription = (id, locality, mediaSpec, dataSpec, info, transport) => {
     if (!participants[info.owner]) {
       return Promise.reject('Participant early left');
     }
@@ -1311,7 +1311,7 @@ var Conference = function (rpcClient, selfRpcId) {
     }
 
     if (subDesc.type === 'sip') {
-      return addSubscription(subscriptionId, subDesc.transport, subDesc.locality, subDesc.media, subDesc.data, {owner: participantId, type: 'sip'})
+      return addSubscription(subscriptionId, subDesc.locality, subDesc.media, subDesc.data, {owner: participantId, type: 'sip'}, subDesc.transport)
       .then((result) => {
         callback('callback', result);
       })
@@ -2459,6 +2459,7 @@ var Conference = function (rpcClient, selfRpcId) {
     var subUpdate;
     var muteReqs = [];
     for (const cmd of commands) {
+      var exe;
       switch (cmd.op) {
         case 'replace':
           if ((cmd.path === '/media/audio/status') && (cmd.value === 'inactive' || cmd.value === 'active')) {
@@ -2498,6 +2499,7 @@ var Conference = function (rpcClient, selfRpcId) {
           } else {
             return Promise.reject('Invalid path or value');
           }
+          break;
         default:
           return Promise.reject('Invalid subscription control operation');
       }

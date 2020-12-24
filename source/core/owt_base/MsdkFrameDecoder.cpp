@@ -466,9 +466,13 @@ void MsdkFrameDecoder::updateBitstream(const Frame& frame)
     }
 
     if(m_bitstream->DataOffset + m_bitstream->DataLength + frame.length > m_bitstream->MaxLength) {
-        memmove(m_bitstream->Data, m_bitstream->Data + m_bitstream->DataOffset, m_bitstream->DataLength);
-        m_bitstream->DataOffset = 0;
-        ELOG_TRACE_T("Move bitstream buffer offset");
+        if (m_bitstream->Data) {
+            memmove(m_bitstream->Data, m_bitstream->Data + m_bitstream->DataOffset, m_bitstream->DataLength);
+            m_bitstream->DataOffset = 0;
+            ELOG_TRACE_T("Move bitstream buffer offset");
+        } else { // make code scanner happy
+            return;
+        }
     }
 
     memcpy(m_bitstream->Data + m_bitstream->DataOffset + m_bitstream->DataLength, frame.payload, frame.length);
