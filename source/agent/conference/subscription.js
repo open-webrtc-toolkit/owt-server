@@ -105,6 +105,7 @@ class Subscription {
     this.media.tracks.forEach(track => {
       if (track.from === sourceId) {
         // Extract source track from stream
+        delete track.source;
         const source = stream.id === sourceId ?
           stream.media.tracks.find(t => t.type === track.type) :
           stream.media.tracks.find(t => t.id === sourceId);

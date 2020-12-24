@@ -1614,7 +1614,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                             if (streamId) {
                                 streams[streamId][kind].subscriber = streams[streamId][kind].subscribers || [];
                                 streams[streamId][kind].subscribers.push(terminal_id);
-                                terminals[terminal_id].subscribed[subscriptionId].audio = streamId;
+                                terminals[terminal_id].subscribed[subscriptionId][kind] = streamId;
                             }
                         }
                         on_ok('ok');
