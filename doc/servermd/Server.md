@@ -80,7 +80,7 @@ If you want to set up video conference service powered by GPU-accelerated OWT se
 The external stream output and mp4 format recording rely on AAC encoder libfdk_aac support in ffmpeg library, please see [Compile and deploy ffmpeg with libfdk_aac](#Conferencesection2_3_5) section for detailed instructions.
 
  **Table 2-2. Client compatibility**
-Application Name|Google Chrome\* 78|Mozilla Firefox\* 70|Microsoft Edge\* 44.18362.387.0|Safari\* 13.0|Open WebRTC Toolkit Client SDK for Android | Open WebRTC Toolkit Client SDK for iOS | Open WebRTC Toolkit Client SDK for Windows
+Application Name|Google Chrome\* 87|Mozilla Firefox\* 84|Microsoft Edge\* 87|Safari\* 14.0|Open WebRTC Toolkit Client SDK for Android | Open WebRTC Toolkit Client SDK for iOS | Open WebRTC Toolkit Client SDK for Windows
 --------|--------|--------|--------|--------|--------|--------|--------
 OWT Client|YES|YES|YES|YES|YES|YES|YES
 Management Console|YES|YES|YES|YES|N/A|N/A|N/A
