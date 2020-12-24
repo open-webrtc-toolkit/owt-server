@@ -49,13 +49,10 @@ For more information, visit the following Web pages:
     1. http://webrtc.intel.com
     2. https://software.intel.com/en-us/forums/webrtc
     3. https://software.intel.com/zh-cn/forums/webrtc
- - Intel<sup>®</sup> Visual Compute Accelerator
-    1. https://www.intel.com/content/www/us/en/servers/media-and-graphics/visual-compute-accelerator.html
-    2. https://www-ssl.intel.com/content/www/us/en/cloud-computing/visual-cloud.html
- - The Internet Engineering Task Force (IETF<sup>®</sup>) Working Group
-    1. https://tools.ietf.org/wg/rtcweb/
- - W3C WebRTC Working Group: http://www.w3.org/2011/04/webrtc/
- - WebRTC Open Project: http://www.webrtc.org
+ - Open WebRTC Toolkit: https://github.com/open-webrtc-toolkit
+ - The Internet Engineering Task Force (IETF<sup>®</sup>) Working Group: https://tools.ietf.org/wg/rtcweb/
+ - W3C WebRTC Working Group: https://www.w3.org/groups/wg/webrtc
+ - WebRTC website: http://www.webrtc.org
 
 # 2 OWT Server Installation {#Conferencesection2}
 
@@ -74,28 +71,16 @@ Application name|OS version
 -------------|--------------
 OWT server|CentOS* 7.6, Ubuntu 18.04 LTS
 
-The GPU-acceleration can only be enabled on kernel 4.14 or later (4.19 or later is recommended).
-
 If you want to set up video conference service with H.264 codec support powered by non GPU-accelerated OWT server, OpenH264 library is required. See [Deploy Cisco OpenH264* Library](#Conferencesection2_3_4) section for more details.
 
 If you want to set up video conference service with SVT-HEVC Encoder on Ubuntu 18.04 LTS. See [Deploy SVT-HEVC Encoder Library](#Conferencesection2_3_6) section for more details.
 
-If you want to set up video conference service powered by GPU-accelerated OWT server through Intel® Media SDK, please follow the below instructions to install server side SDK where the video-agents run.
-
-If you are working on the following platforms with the integrated graphics, please install Intel® Media SDK. The current release is fully tested on MediaSDK 2020 Q2(https://github.com/Intel-Media-SDK/MediaSDK/releases/tag/intel-mediasdk-20.2.1).
-
- - Intel® Xeon® E3-1200 v4 Family with C226 chipset
- - Intel® Xeon® E3-1200 and E3-1500 v5 Family with C236 chipset
- - 5th Generation Intel® CoreTM
- - 6th Generation Intel® CoreTM
- - 7th Generation Intel® CoreTM
-
-For download or installation instructions, please visit https://github.com/Intel-Media-SDK/MediaSDK.
+If you want to set up video conference service powered by GPU-accelerated OWT server, please install Intel<sup>®</sup> Media SDK where the video-agents run. The current release is fully tested on MediaSDK 2020 Q2. Please visit [MediaSDK 2020 Q2](https://github.com/Intel-Media-SDK/MediaSDK/releases/tag/intel-mediasdk-20.2.1) for supported hardwares, download or installation instructions.
 
 The external stream output and mp4 format recording rely on AAC encoder libfdk_aac support in ffmpeg library, please see [Compile and deploy ffmpeg with libfdk_aac](#Conferencesection2_3_5) section for detailed instructions.
 
  **Table 2-2. Client compatibility**
-Application Name|Google Chrome\* 78|Mozilla Firefox\* 70|Microsoft Edge\* 44.18362.387.0|Safari\* 13.0|Open WebRTC Toolkit Client SDK for Android | Open WebRTC Toolkit Client SDK for iOS | Open WebRTC Toolkit Client SDK for Windows
+Application Name|Google Chrome\* 87|Mozilla Firefox\* 84|Microsoft Edge\* 87|Safari\* 14.0|Open WebRTC Toolkit Client SDK for Android | Open WebRTC Toolkit Client SDK for iOS | Open WebRTC Toolkit Client SDK for Windows
 --------|--------|--------|--------|--------|--------|--------|--------
 OWT Client|YES|YES|YES|YES|YES|YES|YES
 Management Console|YES|YES|YES|YES|N/A|N/A|N/A
