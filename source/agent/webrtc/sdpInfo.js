@@ -554,20 +554,22 @@ class SdpInfo {
         mediaInfo.direction = 'recvonly';
       }
 
-      const extMappings = [
-        'urn:ietf:params:rtp-hdrext:ssrc-audio-level',
-        'http://www.ietf.org/id/draft-holmer-rmcat-transport-wide-cc-extensions-01',
-        'urn:ietf:params:rtp-hdrext:sdes:mid',
-        'urn:ietf:params:rtp-hdrext:sdes:rtp-stream-id',
-        'urn:ietf:params:rtp-hdrext:sdes:repaired-rtp-stream-id',
-        'urn:ietf:params:rtp-hdrext:toffset',
-        'http://www.webrtc.org/experiments/rtp-hdrext/abs-send-time',
-        // 'urn:3gpp:video-orientation',
-        // 'http://www.webrtc.org/experiments/rtp-hdrext/playout-delay',
-      ];
-      mediaInfo.ext = mediaInfo.ext.filter((e) => {
-        return extMappings.includes(e.uri);
-      });
+      if (mediaInfo.ext && Array.isArray(mediaInfo.ext)) {
+        const extMappings = [
+          'urn:ietf:params:rtp-hdrext:ssrc-audio-level',
+          'http://www.ietf.org/id/draft-holmer-rmcat-transport-wide-cc-extensions-01',
+          'urn:ietf:params:rtp-hdrext:sdes:mid',
+          'urn:ietf:params:rtp-hdrext:sdes:rtp-stream-id',
+          'urn:ietf:params:rtp-hdrext:sdes:repaired-rtp-stream-id',
+          'urn:ietf:params:rtp-hdrext:toffset',
+          'http://www.webrtc.org/experiments/rtp-hdrext/abs-send-time',
+          // 'urn:3gpp:video-orientation',
+          // 'http://www.webrtc.org/experiments/rtp-hdrext/playout-delay',
+        ];
+        mediaInfo.ext = mediaInfo.ext.filter((e) => {
+          return extMappings.includes(e.uri);
+        });
+      }
 
       if (mediaInfo.rids && Array.isArray(mediaInfo.rids)) {
         // Reverse rids direction
