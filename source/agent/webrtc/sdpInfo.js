@@ -139,7 +139,15 @@ class SdpInfo {
           }
         }
       }
-
+      if (mediaInfo.direction === 'recvonly') {
+        // For subscription
+        // concat(optionals.map((fmt) => fmt.codec.toLowerCase()));
+        mediaInfo.rtp.forEach((rtp) => {
+          if (optionals.findIndex(fmt => isAudioMatchRtp(fmt, rtp)) > -1) {
+            relatedPayloads.add(rtp.payload);
+          }
+        });
+      }
       if (rtpMap.has(selectedPayload)) {
         const selectedRtp = rtpMap.get(selectedPayload);
         rtpMap.forEach(rtp => {
@@ -152,37 +160,27 @@ class SdpInfo {
         relatedPayloads.add(selectedPayload);
       }
 
-      if (mediaInfo.direction === 'recvonly') {
-        // Reorder the codecs for subscription
-        const payloads = mediaInfo.payloads.toString().split(' ');
-        const selectedList = payloads
-            .filter((p) => relatedPayloads.has(parseInt(p)));
-        mediaInfo.payloads = selectedList.concat(payloads)
-            .filter((v, index, self) => self.indexOf(v) === index)
-            .join(' ');
-        // if (mediaInfo.rtcpFb) {
-        //   mediaInfo.rtcpFb = mediaInfo.rtcpFb.filter(
-        //     (rtcp) => allowedFbTypes.includes(rtcp.type));
-        // }
-      } else {
-        // Remove non-selected audio payload
-        mediaInfo.rtp = mediaInfo.rtp.filter(
-          (rtp) => relatedPayloads.has(rtp.payload));
-        if (mediaInfo.fmtp) {
-          mediaInfo.fmtp = mediaInfo.fmtp.filter(
-            (fmtp) => relatedPayloads.has(fmtp.payload));
-        }
-        if (mediaInfo.rtcpFb) {
-          mediaInfo.rtcpFb = mediaInfo.rtcpFb.filter(
-            (rtcp) => allowedFbTypes.includes(rtcp.type));
-          mediaInfo.rtcpFb = mediaInfo.rtcpFb.filter(
-            (rtcp) => relatedPayloads.has(rtcp.payload));
-        }
-        mediaInfo.payloads = mediaInfo.payloads.toString().split(' ')
-          .filter((p) => relatedPayloads.has(parseInt(p)))
-          .filter((v, index, self) => self.indexOf(v) === index)
-          .join(' ');
+      // Remove non-selected audio payload
+      mediaInfo.rtp = mediaInfo.rtp.filter(
+        (rtp) => relatedPayloads.has(rtp.payload));
+      if (mediaInfo.fmtp) {
+        mediaInfo.fmtp = mediaInfo.fmtp.filter(
+          (fmtp) => relatedPayloads.has(fmtp.payload));
       }
+      if (mediaInfo.rtcpFb) {
+        mediaInfo.rtcpFb = mediaInfo.rtcpFb.filter(
+          (rtcp) => allowedFbTypes.includes(rtcp.type));
+        mediaInfo.rtcpFb = mediaInfo.rtcpFb.filter(
+          (rtcp) => relatedPayloads.has(rtcp.payload));
+      }
+      const payloadList = mediaInfo.payloads.toString().split(' ');
+      if (selectedPayload !== -1) {
+        payloadList.unshift(selectedPayload);
+      }
+      mediaInfo.payloads = payloadList
+        .filter((p) => relatedPayloads.has(parseInt(p)))
+        .filter((v, index, self) => self.indexOf(v) === index)
+        .join(' ');
     }
     return finalFmt;
   }
@@ -218,8 +216,8 @@ class SdpInfo {
       if (mediaInfo.direction === 'recvonly') {
         // For subscription
         // concat(optionals.map((fmt) => fmt.codec.toLowerCase()));
-        ['vp8', 'vp9', 'h264', 'h265'].forEach((name) => {
-          reservedCodecs.push(name);
+        optionals.forEach((fmt) => {
+          reservedCodecs.push(fmt.codec.toLowerCase());
         });
       }
 
