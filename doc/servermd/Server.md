@@ -846,14 +846,14 @@ Your plugin class implementation must inherit from rvaPlugin interface as define
 #### 6.1.4.2 Deploy Your Plugin {#Conferencesection6_1_4_2}
 To deploy a plugin to OWT Server, you will need to generate a new GUID for your plugin. After that, copy your plugin .so files to analytics_agent/lib, or to the libpath as specified by agent.toml of analtyics agent. Also you need to add an entry into the plugin.cfg file under analytics_agent with the GUID you generated, for example:
 ```
-	[c842f499aa093c27cf1e328f2fc987c7]
-	description = 'my own plugin'
-	pluginversion = 1
-	apiversion =400
-	name = 'libsomeplugin.so' # full name of the plugin library
-	libpath = 'pluginlibs/' # relative to analytics_agent directory
-	configpath = 'pluginlibs/' # relative to analytics agent directory
-	modelpath = '/mnt/models/face-detection-retail-0004.xml'    # inference model path
+    [c842f499aa093c27cf1e328f2fc987c7]
+    description = 'my own plugin'
+    pluginversion = 1
+    apiversion =400
+    name = 'libsomeplugin.so' # full name of the plugin library
+    libpath = 'pluginlibs/' # relative to analytics_agent directory
+    configpath = 'pluginlibs/' # relative to analytics agent directory
+    modelpath = '/mnt/models/face-detection-retail-0004.xml'    # inference model path
     inferencewidth = 672    # inference input width.
     inferenceheight = 384   # inference input height.
     inferenceframerate = 5  # inference input framerate
