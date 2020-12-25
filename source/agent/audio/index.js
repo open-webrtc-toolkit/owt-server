@@ -142,7 +142,7 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
             // Notify controller
             const target = {id: activeStreamIds[i], owner, codec};
             ctrlr && rpcClient.remoteCall(ctrlr, 'onAudioActiveness',
-                [belongToRoom, activeInput, target],
+                [belongToRoom, streamId, target],
                 {callback: function(){}});
         });
         engine = selector;

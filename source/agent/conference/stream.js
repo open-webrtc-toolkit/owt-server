@@ -346,7 +346,7 @@ class SelectedStream extends ForwardStream {
       activeInput: 'unknown',
       type: 'selecting',
     };
-    super(id, media, info, null);
+    super(id, media, null, info, null);
   }
 }
 

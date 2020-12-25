@@ -139,7 +139,15 @@ class SdpInfo {
           }
         }
       }
-
+      if (mediaInfo.direction === 'recvonly') {
+        // For subscription
+        // concat(optionals.map((fmt) => fmt.codec.toLowerCase()));
+        mediaInfo.rtp.forEach((rtp) => {
+          if (optionals.findIndex(fmt => isAudioMatchRtp(fmt, rtp)) > -1) {
+            relatedPayloads.add(rtp.payload);
+          }
+        });
+      }
       if (rtpMap.has(selectedPayload)) {
         const selectedRtp = rtpMap.get(selectedPayload);
         rtpMap.forEach(rtp => {
@@ -165,12 +173,15 @@ class SdpInfo {
         mediaInfo.rtcpFb = mediaInfo.rtcpFb.filter(
           (rtcp) => relatedPayloads.has(rtcp.payload));
       }
-      mediaInfo.payloads = mediaInfo.payloads.toString().split(' ')
+      const payloadList = mediaInfo.payloads.toString().split(' ');
+      if (selectedPayload !== -1) {
+        payloadList.unshift(selectedPayload);
+      }
+      mediaInfo.payloads = payloadList
         .filter((p) => relatedPayloads.has(parseInt(p)))
         .filter((v, index, self) => self.indexOf(v) === index)
         .join(' ');
     }
-
     return finalFmt;
   }
 
@@ -202,6 +213,13 @@ class SdpInfo {
         .forEach((p, index) => {
           payloadOrder.set(parseInt(p), index);
         });
+      if (mediaInfo.direction === 'recvonly') {
+        // For subscription
+        // concat(optionals.map((fmt) => fmt.codec.toLowerCase()));
+        optionals.forEach((fmt) => {
+          reservedCodecs.push(fmt.codec.toLowerCase());
+        });
+      }
 
       for (let i = 0; i < mediaInfo.rtp.length; i++) {
         rtp = mediaInfo.rtp[i];
@@ -245,7 +263,11 @@ class SdpInfo {
         mediaInfo.rtcpFb = mediaInfo.rtcpFb.filter(
           (rtcp) => relatedPayloads.has(rtcp.payload));
       }
-      mediaInfo.payloads = mediaInfo.payloads.toString().split(' ')
+      const payloadList = mediaInfo.payloads.toString().split(' ');
+      if (selectedPayload !== -1) {
+        payloadList.unshift(selectedPayload);
+      }
+      mediaInfo.payloads = payloadList
         .filter((p) => relatedPayloads.has(parseInt(p)))
         .filter((v, index, self) => self.indexOf(v) === index)
         .join(' ');
@@ -528,6 +550,23 @@ class SdpInfo {
         delete mediaInfo.ssrcGroups;
         delete mediaInfo.ssrcs;
         mediaInfo.direction = 'recvonly';
+      }
+
+      if (mediaInfo.ext && Array.isArray(mediaInfo.ext)) {
+        const extMappings = [
+          'urn:ietf:params:rtp-hdrext:ssrc-audio-level',
+          'http://www.ietf.org/id/draft-holmer-rmcat-transport-wide-cc-extensions-01',
+          'urn:ietf:params:rtp-hdrext:sdes:mid',
+          'urn:ietf:params:rtp-hdrext:sdes:rtp-stream-id',
+          'urn:ietf:params:rtp-hdrext:sdes:repaired-rtp-stream-id',
+          'urn:ietf:params:rtp-hdrext:toffset',
+          'http://www.webrtc.org/experiments/rtp-hdrext/abs-send-time',
+          // 'urn:3gpp:video-orientation',
+          // 'http://www.webrtc.org/experiments/rtp-hdrext/playout-delay',
+        ];
+        mediaInfo.ext = mediaInfo.ext.filter((e) => {
+          return extMappings.includes(e.uri);
+        });
       }
 
       if (mediaInfo.rids && Array.isArray(mediaInfo.rids)) {
