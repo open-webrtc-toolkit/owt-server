@@ -845,6 +845,7 @@ OWT server allows you creating your own media analytics plugins and deploy them 
 Your plugin class implementation must inherit from rvaPlugin interface as defined in analytics_agent/plugins/include/pipeline.h. Besides the plugin class implementation, it is required to include the DECLARE_PLUGIN(ClassName) macro to export your plugin implementation.
 #### 6.1.4.2 Deploy Your Plugin {#Conferencesection6_1_4_2}
 To deploy a plugin to OWT Server, you will need to generate a new GUID for your plugin. After that, copy your plugin .so files to analytics_agent/lib, or to the libpath as specified by agent.toml of analtyics agent. Also you need to add an entry into the plugin.cfg file under analytics_agent with the GUID you generated, for example:
+```
 	[c842f499aa093c27cf1e328f2fc987c7]
 	description = 'my own plugin'
 	pluginversion = 1
@@ -856,7 +857,7 @@ To deploy a plugin to OWT Server, you will need to generate a new GUID for your 
     inferencewidth = 672    # inference input width.
     inferenceheight = 384   # inference input height.
     inferenceframerate = 5  # inference input framerate
-
+```
 
 Restart analytics agent and your plugin will be added to OWT server.
 
