@@ -988,6 +988,35 @@ class RoomModal extends React.Component {
     );
   }
 
+  renderActiveAudioSelecting() {
+    return e(
+      'div',
+      {className: 'panel panel-default'},
+      e('div', {className: 'panel-heading'}, 'Forwarding'),
+      e(
+        'div',
+        {className: 'panel-body'},
+        e(
+          'label',
+          {className: 'checkbox-inline'},
+          e(
+          'input',
+            {
+              type: 'checkbox',
+              onChange: (e) => {
+                let newRoom = _.cloneDeep(this.state.room);
+                newRoom.selectActiveAudio = e.target.checked;
+                this.setState({room: newRoom});
+              },
+              checked: this.state.room.selectActiveAudio
+            }
+          ),
+          'selectActiveAudio',
+        ),
+      ),
+    );
+  }
+
   render() {
     return e(
       'div',
@@ -1021,6 +1050,7 @@ class RoomModal extends React.Component {
           this.renderSip(),
           this.renderTranscoding(),
           this.renderNotifying(),
+          this.renderActiveAudioSelecting(),
           e(
             RoomView,
             {
