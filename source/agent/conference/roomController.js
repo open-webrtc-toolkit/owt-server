@@ -1380,12 +1380,18 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
     };
 
     var removeSubscriptions = function (stream_id) {
+        log.debug('removeSubscriptions:', stream_id);
         if (streams[stream_id]) {
             if (streams[stream_id].audio) {
                 streams[stream_id].audio.subscribers.forEach(function(terminal_id) {
                     if (terminals[terminal_id]) {
                         for (var subscription_id in terminals[terminal_id].subscribed) {
-                            unsubscribeStream(terminal_id, subscription_id);
+                            if (terminals[terminal_id].type !== 'aselect') {
+                                unsubscribeStream(terminal_id, subscription_id);
+                            } else if (terminals[terminal_id]
+                                .subscribed[subscription_id].audio === stream_id) {
+                                unsubscribeStream(terminal_id, subscription_id);
+                            }
                             if (terminals[terminal_id].type === 'axcoder') {
                                 for (var i in terminals[terminal_id].published) {
                                     unpublishStream(terminals[terminal_id].published[i]);
