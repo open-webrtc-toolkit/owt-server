@@ -265,7 +265,11 @@ class SdpInfo {
         mediaInfo.rtcpFb = mediaInfo.rtcpFb.filter(
           (rtcp) => relatedPayloads.has(rtcp.payload));
       }
-      mediaInfo.payloads = mediaInfo.payloads.toString().split(' ')
+      const payloadList = mediaInfo.payloads.toString().split(' ');
+      if (selectedPayload !== -1) {
+        payloadList.unshift(selectedPayload);
+      }
+      mediaInfo.payloads = payloadList
         .filter((p) => relatedPayloads.has(parseInt(p)))
         .filter((v, index, self) => self.indexOf(v) === index)
         .join(' ');
@@ -549,6 +553,21 @@ class SdpInfo {
         delete mediaInfo.ssrcs;
         mediaInfo.direction = 'recvonly';
       }
+
+      const extMappings = [
+        'urn:ietf:params:rtp-hdrext:ssrc-audio-level',
+        'http://www.ietf.org/id/draft-holmer-rmcat-transport-wide-cc-extensions-01',
+        'urn:ietf:params:rtp-hdrext:sdes:mid',
+        'urn:ietf:params:rtp-hdrext:sdes:rtp-stream-id',
+        'urn:ietf:params:rtp-hdrext:sdes:repaired-rtp-stream-id',
+        'urn:ietf:params:rtp-hdrext:toffset',
+        'http://www.webrtc.org/experiments/rtp-hdrext/abs-send-time',
+        // 'urn:3gpp:video-orientation',
+        // 'http://www.webrtc.org/experiments/rtp-hdrext/playout-delay',
+      ];
+      mediaInfo.ext = mediaInfo.ext.filter((e) => {
+        return extMappings.includes(e.uri);
+      });
 
       if (mediaInfo.rids && Array.isArray(mediaInfo.rids)) {
         // Reverse rids direction
