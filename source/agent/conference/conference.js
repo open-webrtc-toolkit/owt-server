@@ -1903,7 +1903,7 @@ var Conference = function (rpcClient, selfRpcId) {
         if (streams[activeAudioId] instanceof SelectedStream) {
           if (streams[activeAudioId].info.activeInput !== input) {
             streams[activeAudioId].info.activeInput = input;
-            streams[activeAudioId].info.owner = target.owner;
+            streams[activeAudioId].info.activeOwner = target.owner;
             room_config.notifying.streamChange &&
                 sendMsg('room', 'all', 'stream',
                     {id: activeAudioId, status: 'update', data: {field: 'activeInput', value: input}});

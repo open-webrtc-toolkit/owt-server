@@ -4,6 +4,7 @@
 
 #include "AudioRanker.h"
 #include <chrono>
+#include <future>
 
 namespace owt_base {
 
@@ -28,6 +29,9 @@ AudioRanker::AudioRanker(AudioRanker::Visitor* visitor, bool detectMute, uint32_
 
 AudioRanker::~AudioRanker()
 {
+    m_service->service().dispatch([this]() {
+        m_processors.clear();
+    });
 }
 
 void AudioRanker::addOutput(FrameDestination* output)
@@ -86,9 +90,11 @@ void AudioRanker::addInput(FrameSource* input, std::string streamId, std::string
 void AudioRanker::removeInput(std::string streamId)
 {
     ELOG_DEBUG("removeInput: %s", streamId.c_str());
-    m_service->service().dispatch([this, streamId]() {
+    auto promise = std::make_shared<std::promise<void>>();
+    m_service->service().dispatch([this, streamId, promise]() {
         if (m_processors.count(streamId) == 0) {
             // Not exist
+            promise->set_value();
             return;
         }
         auto audioProc = m_processors[streamId];
@@ -102,7 +108,13 @@ void AudioRanker::removeInput(std::string streamId)
             // Remove in others
             m_others.erase(audioProc->iter());
         }
+        audioProc.reset();
+        promise->set_value();
     });
+    std::chrono::milliseconds span (1000);
+    if (promise->get_future().wait_for(span) == std::future_status::timeout) {
+        ELOG_WARN("removeInput timeout: %s", streamId.c_str());
+    }
 }
 
 void AudioRanker::updateInput(std::string streamId, int level)
