@@ -66,7 +66,10 @@ void AudioSendAdapterImpl::onFrame(const Frame& frame)
             if (!m_mid.empty()) {
                 webrtc::RtpPacket packet(&m_extensions);
                 packet.Parse(frame.payload, frame.length);
-                packet.SetExtension<webrtc::RtpMid>(m_mid);
+                if (!packet.SetExtension<webrtc::RtpMid>(m_mid)) {
+                    // Remove the extension on set failure
+                    packet.RemoveExtension(kRtpExtensionMid);
+                }
                 m_rtpListener->onAdapterData(
                     reinterpret_cast<char*>(const_cast<uint8_t*>(packet.data())), packet.size());
             } else {

@@ -1672,6 +1672,10 @@ var Conference = function (rpcClient, selfRpcId) {
       if (update.audio.from && update.audio.from !== audioTrack.from) {
         audioTrack.from = update.audio.from;
         effective = true;
+        // TODO: limit format when updating source
+        if (oldSub.info && oldSub.info.type === 'webrtc') {
+          delete audioTrack.format;
+        }
       }
     }
 
@@ -1683,6 +1687,11 @@ var Conference = function (rpcClient, selfRpcId) {
       if (update.video.from && update.video.from !== videoTrack.from) {
         videoTrack.from = update.video.from;
         effective = true;
+        // TODO: limit format when updating source
+        if (oldSub.info && oldSub.info.type === 'webrtc') {
+          delete videoTrack.format;
+          videoTrack.parameters = {};
+        }
       }
       if (update.video.parameters && (Object.keys(update.video.parameters).length > 0)) {
         videoTrack.parameters = (videoTrack.parameters || {});
@@ -1714,10 +1723,10 @@ var Conference = function (rpcClient, selfRpcId) {
     }
     const err = {};
     if (videoTrack && !validateVideoRequest(oldSub.info.type, videoTrack, err)) {
-      return Promise.reject('Target video stream does NOT satisfy:', (err && err.message));
+      return Promise.reject('Target video stream does NOT satisfy:' + (err && err.message));
     }
     if (audioTrack && !validateAudioRequest(oldSub.info.type, audioTrack, err)) {
-      return Promise.reject('Target audio stream does NOT satisfy', (err && err.message));
+      return Promise.reject('Target audio stream does NOT satisfy' + (err && err.message));
     }
 
     return removeSubscription(subscriptionId)
@@ -1725,7 +1734,7 @@ var Conference = function (rpcClient, selfRpcId) {
         return addSubscription(subscriptionId, oldSub.locality, newSubMedia, oldSub.data, oldSub.info);
       }).catch((err) => {
         log.info('Update subscription failed:', err.message ? err.message : err);
-        log.info('And is recovering the previous subscription:', JSON.stringify(old_su));
+        log.info('And is recovering the previous subscription:', JSON.stringify(oldSub));
         return addSubscription(subscriptionId, oldSub.locality, oldSub.media, oldSub.data, oldSub.info)
           .then(() => {
             return Promise.reject('Update subscription failed');
@@ -1894,7 +1903,7 @@ var Conference = function (rpcClient, selfRpcId) {
         if (streams[activeAudioId] instanceof SelectedStream) {
           if (streams[activeAudioId].info.activeInput !== input) {
             streams[activeAudioId].info.activeInput = input;
-            streams[activeAudioId].info.owner = target.owner;
+            streams[activeAudioId].info.activeOwner = target.owner;
             room_config.notifying.streamChange &&
                 sendMsg('room', 'all', 'stream',
                     {id: activeAudioId, status: 'update', data: {field: 'activeInput', value: input}});

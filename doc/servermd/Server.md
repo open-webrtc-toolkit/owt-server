@@ -49,13 +49,10 @@ For more information, visit the following Web pages:
     1. http://webrtc.intel.com
     2. https://software.intel.com/en-us/forums/webrtc
     3. https://software.intel.com/zh-cn/forums/webrtc
- - Intel<sup>®</sup> Visual Compute Accelerator
-    1. https://www.intel.com/content/www/us/en/servers/media-and-graphics/visual-compute-accelerator.html
-    2. https://www-ssl.intel.com/content/www/us/en/cloud-computing/visual-cloud.html
- - The Internet Engineering Task Force (IETF<sup>®</sup>) Working Group
-    1. https://tools.ietf.org/wg/rtcweb/
- - W3C WebRTC Working Group: http://www.w3.org/2011/04/webrtc/
- - WebRTC Open Project: http://www.webrtc.org
+ - Open WebRTC Toolkit: https://github.com/open-webrtc-toolkit
+ - The Internet Engineering Task Force (IETF<sup>®</sup>) Working Group: https://tools.ietf.org/wg/rtcweb/
+ - W3C WebRTC Working Group: https://www.w3.org/groups/wg/webrtc
+ - WebRTC website: http://www.webrtc.org
 
 # 2 OWT Server Installation {#Conferencesection2}
 
@@ -74,28 +71,16 @@ Application name|OS version
 -------------|--------------
 OWT server|CentOS* 7.6, Ubuntu 18.04 LTS
 
-The GPU-acceleration can only be enabled on kernel 4.14 or later (4.19 or later is recommended).
-
 If you want to set up video conference service with H.264 codec support powered by non GPU-accelerated OWT server, OpenH264 library is required. See [Deploy Cisco OpenH264* Library](#Conferencesection2_3_4) section for more details.
 
 If you want to set up video conference service with SVT-HEVC Encoder on Ubuntu 18.04 LTS. See [Deploy SVT-HEVC Encoder Library](#Conferencesection2_3_6) section for more details.
 
-If you want to set up video conference service powered by GPU-accelerated OWT server through Intel® Media SDK, please follow the below instructions to install server side SDK where the video-agents run.
-
-If you are working on the following platforms with the integrated graphics, please install Intel® Media SDK. The current release is fully tested on MediaSDK 2020 Q2(https://github.com/Intel-Media-SDK/MediaSDK/releases/tag/intel-mediasdk-20.2.1).
-
- - Intel® Xeon® E3-1200 v4 Family with C226 chipset
- - Intel® Xeon® E3-1200 and E3-1500 v5 Family with C236 chipset
- - 5th Generation Intel® CoreTM
- - 6th Generation Intel® CoreTM
- - 7th Generation Intel® CoreTM
-
-For download or installation instructions, please visit https://github.com/Intel-Media-SDK/MediaSDK.
+If you want to set up video conference service powered by GPU-accelerated OWT server, please install Intel<sup>®</sup> Media SDK where the video-agents run. The current release is fully tested on MediaSDK 2020 Q2. Please visit [MediaSDK 2020 Q2](https://github.com/Intel-Media-SDK/MediaSDK/releases/tag/intel-mediasdk-20.2.1) for supported hardwares, download or installation instructions.
 
 The external stream output and mp4 format recording rely on AAC encoder libfdk_aac support in ffmpeg library, please see [Compile and deploy ffmpeg with libfdk_aac](#Conferencesection2_3_5) section for detailed instructions.
 
  **Table 2-2. Client compatibility**
-Application Name|Google Chrome\* 78|Mozilla Firefox\* 70|Microsoft Edge\* 44.18362.387.0|Safari\* 13.0|Open WebRTC Toolkit Client SDK for Android | Open WebRTC Toolkit Client SDK for iOS | Open WebRTC Toolkit Client SDK for Windows
+Application Name|Google Chrome\* 87|Mozilla Firefox\* 84|Microsoft Edge\* 87|Safari\* 14.0|Open WebRTC Toolkit Client SDK for Android | Open WebRTC Toolkit Client SDK for iOS | Open WebRTC Toolkit Client SDK for Windows
 --------|--------|--------|--------|--------|--------|--------|--------
 OWT Client|YES|YES|YES|YES|YES|YES|YES
 Management Console|YES|YES|YES|YES|N/A|N/A|N/A
@@ -822,10 +807,21 @@ For usage of media analytics REST API, refer to the REST API document.
 ### 6.1.2 Building Existing Plugins {#Conferencesection6_1_2}
 A few sample plugins are shipped with OWT server. After you build and install OWT server, the source of those analytics plugins will be placed under analytics_agent/plugins/ directory.
 
-Before you build those plugins, you need to install Intel Distribution of OpenVINO 2018 R5 from [https://software.intel.com/en-us/openvino-toolkit/](https://software.intel.com/en-us/openvino-toolkit/). After installation, make sure you go to /opt/intel/computer_vision_sdk/install_dependencies/ directory, and run:
-    sudo -E ./install_NEO_OCL_driver.sh
+Besides basic OWT dependencies, analytics agent requires OpenVINO and GStreamer to do video analytics. Please download OpenVINO 2021.1.110 and dlstreamer_gst 1.2.1 version and refer to option 3 steps in [dlstreamer_gst install guide](https://github.com/openvinotoolkit/dlstreamer_gst/wiki/Install-Guide#install-on-host-machine) to install OpenVINO, gst-video-analytics plugins and related dependencies. 
 
-Intel Distribution of OpenVINO 2018 R5 will require Intel Core 6th to 8th Generation with Intel HD graphics or Iris(Pro) graphics for inferencing on GPU with OpenCL as the backend. The supported OSes are Ubuntu 16.04 and higher, or CentOS 7.4 or higher. Make sure your hardware/software configuration is correct before building and deploying the sample plugins.
+For dlstreamer installation in CentOS, required version is >=3.1, if your system installed cmake version is < 3.1, build process will fail. In this case, following steps below:
+```
+yum remove cmake
+wget https://github.com/Kitware/CMake/releases/download/v3.14.5/cmake-3.14.5-Linux-x86_64.tar.gz
+tar zxf cmake-3.14.5-Linux-x86_64.tar.gz -C /opt/
+export CMAKE_HOME=/opt/cmake-3.14.5-Linux-x86_64
+export PATH=$PATH:$CMAKE_HOME/bin
+cmake --version
+```
+
+Then you can continue to build dlstreamer.
+
+Intel Distribution of OpenVINO 2021.1.110 will require Intel Core 6th to 11th Generation with Intel HD graphics or Iris(Pro) graphics for inferencing on GPU with OpenCL as the backend. The supported OSes are Ubuntu 18.04 and higher, or CentOS 7.4 or higher. Make sure your hardware/software configuration is correct before building and deploying the sample plugins.
 
 To build the plugins, simply go to analytics_agent/plugins/sample directory, and run:
     ./build_samples.sh
@@ -833,36 +829,36 @@ To build the plugins, simply go to analytics_agent/plugins/sample directory, and
 Copy all files under build/intel64/Release/lib/ to analytics_agent/lib/ directory, or to the libpath as specified in agent.toml in analytics_agent.
 
 ### 6.1.3 Using Pre-built Plugins {#Conferencesection6_1_3}
-The Server provides 4 plugins as source code which can be built by your own. To verify them, make sure you run ```source /opt/intel/computer_vision_sdk/bin/setupvars.sh``` before starting up OWT server.
+The Server provides 3 plugins as source code which can be built by your own. To verify them, make sure you run ```source /opt/intel/openvino/bin/setupvars.sh``` before starting up OWT server.
 
 #### 6.1.3.1 Face Detection Plugin {#Conferencesection6_1_3_1}
-Identified by GUID b849f44bee074b08bf3e627f3fc927c7. This plugin provides the capability of finding faces in current analyzed stream and annotates it with a rectangle boarder on the face.
+Identified by GUID dc51138a8284436f873418a21ba8cfa7. This plugin provides the capability of detect face in current stream using GPU and VPU. This sample needs to run on Intel GPU and VPU.
 #### 6.1.3.2 Face Recognition Plugin {#Conferencesection6_1_3_2}
-Identified by GUID 3f932ff2a80341faa0a73ebb3bcfb85d. This plugin provides the capability of identifying people's name in current stream and annotates them with a rectangle on the face, and also list the name and the confidence of the recognition result.
-To add new people for recognition, here are the steps:
-1. Take at least 3 pictures of one person and place them under the raw_photos directory with sub-directory name that identifies that person's name(no space in the directory name). The raw_photos should be under the same directory with the pre-process tool.
-2. Run the pre-process tool to process the raw photos (which is also built when you build the samples). Append the path of libcpu_extension.so you built to LD_LIBRARY_PATH before you run the tool. Put the output vectors.txt under analytics_agent direcotry of OWT server.
+Identified by GUID dc51138a8284436f873418a21ba8cfa8. This plugin provides the capability of basic adding stream in OWT server and save the the stream to a file using different GStreamer plugins.
 #### 6.1.3.3 Smart Class Room Plugin {#Conferencesection6_1_3_3}
-Identified by GUID 10c213f3d55249718d3bd44712488502. This plugin provides the capability of recognizing the gestures in the stream and annotates the gestures accordingly.
-#### 6.1.3.4 Dummy Plugin {#Conferencesection6_1_3_4}
-Identified by GUID dc51138a8284436f873418a21ba8cfa7. This plugin simply modifies part of the stream to demonstrate the working process of plugins.
+Identified by GUID dc51138a8284436f873418a21ba8cfa9. This plugin provides the capability of detect face in current stream and send back analyzed stream to OWT server.
 
 ### 6.1.4 Create and Deploy Your Own Media Analytics Plugin {#Conferencesection6_1_4}
-OWT server allows you creating your own media analytics plugins and deploy them to OWT server. Refer to the analytics_agent/plugins/include/plugin.h for more detailed API interface that each media analytics plugin needs to implement.
+OWT server allows you creating your own media analytics plugins and deploy them to OWT server. Refer to the analytics_agent/plugins/include/pipeline.h for more detailed API interface that each media analytics plugin needs to implement.
 
 #### 6.1.4.1 Create Plugin {#Conferencesection6_1_4_1}
-Your plugin class implementation must inherit from rvaPlugin interface as defined in analytics_agent/plugins/include/plugin.h. Besides the plugin class implementation, it is required to include the DECLARE_PLUGIN(ClassName) macro to export your plugin implementation.
+Your plugin class implementation must inherit from rvaPlugin interface as defined in analytics_agent/plugins/include/pipeline.h. Besides the plugin class implementation, it is required to include the DECLARE_PLUGIN(ClassName) macro to export your plugin implementation.
 #### 6.1.4.2 Deploy Your Plugin {#Conferencesection6_1_4_2}
 To deploy a plugin to OWT Server, you will need to generate a new GUID for your plugin. After that, copy your plugin .so files to analytics_agent/lib, or to the libpath as specified by agent.toml of analtyics agent. Also you need to add an entry into the plugin.cfg file under analytics_agent with the GUID you generated, for example:
-	[c842f499aa093c27cf1e328f2fc987c7]
-	description = 'my own plugin'
-	pluginversion = 1
-	apiversion =400
-	name = 'libsomeplugin.so' # full name of the plugin library
-	libpath = 'pluginlibs/' # relative to analytics_agent directory
-	configpath = 'pluginlibs/' # relative to analytics agent directory
-	messaging = true       # set to false if your plugin does not send notification
-	inputfourcc = 'I420'   # must be I420 for current version
-	outputfourcc = 'I420'  # set to "" if your plugin will not republish analyzed stream to OWT server.
+```
+    [c842f499aa093c27cf1e328f2fc987c7]
+    description = 'my own plugin'
+    pluginversion = 1
+    apiversion =400
+    name = 'libsomeplugin.so' # full name of the plugin library
+    libpath = 'pluginlibs/' # relative to analytics_agent directory
+    configpath = 'pluginlibs/' # relative to analytics agent directory
+    modelpath = '/mnt/models/face-detection-retail-0004.xml'    # inference model path
+    inferencewidth = 672    # inference input width.
+    inferenceheight = 384   # inference input height.
+    inferenceframerate = 5  # inference input framerate
+```
 
 Restart analytics agent and your plugin will be added to OWT server.
+
+For more detailed guide on analytics running environment and plugin development, please refer to doc in GitHub [AnalyticsGuide](https://github.com/open-webrtc-toolkit/owt-server/blob/master/doc/servermd/AnalyticsGuide.md)

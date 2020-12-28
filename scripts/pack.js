@@ -67,10 +67,7 @@ if (options.archive) {
 
 if (options.encrypt) {
   const encryptDeps = [
-    'uglify-js',
-    'babel-cli',
-    'babel-preset-es2015',
-    'babel-preset-stage-0',
+    'uglify-es',
   ];
 
   // Check encrypt deps
@@ -529,13 +526,7 @@ function encrypt(target) {
       return Promise.resolve();
     }
     var jsJobs = stdout.trim().split('\n').map((line) => {
-      return exec(`babel --presets es2015,stage-0 ${line} -o "${line}.es5"`, { env })
-        .then(() => {
-          return exec(`uglifyjs ${line}.es5 -o ${line} -c -m`, { env });
-        })
-        .then(() => {
-          return exec(`rm "${line}.es5"`);
-        });
+      return exec(`uglifyjs ${line} -o ${line} -c -m`, { env });
     });
     return Promise.all(jsJobs);
   })

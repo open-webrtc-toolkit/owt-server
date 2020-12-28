@@ -97,6 +97,8 @@ class ActiveAudioSelector extends EventEmitter {
     getOutputs() {
         return this.topK;
     }
+
+    close() {}
 }
 
 exports.ActiveAudioSelector = ActiveAudioSelector;
