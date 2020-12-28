@@ -203,6 +203,10 @@ void QuicTransportStream::SignalOnData()
     while (m_stream->ReadableBytes() > 0) {
         auto readableBytes = m_stream->ReadableBytes();
         uint8_t* buffer = new uint8_t[readableBytes];
+        if (buffer == nullptr) {
+            ELOG_ERROR("Failed to alloc buffer.");
+            return;
+        }
         owt_base::Frame frame;
         frame.format = owt_base::FRAME_FORMAT_DATA;
         frame.length = readableBytes;
