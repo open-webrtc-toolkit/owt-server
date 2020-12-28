@@ -24,7 +24,7 @@ class SdpInfo {
     this.obj = transform.parse(str);
     this.obj.media.forEach((media, i) => {
       if (media.mid === undefined) {
-        log.info(`Media ${i} missing mid`);
+        log.warn(`Media ${i} missing mid`);
         media.mid = -1;
       }
     });
@@ -366,12 +366,22 @@ class SdpInfo {
     });
   }
 
+  filterMedia(mids) {
+    this.obj.media = mids.map((mid) => {
+      const media = this.media(mid);
+      if (!media) {
+        log.warn(`Media ${i} missing mid`);
+      }
+      return media;
+    });
+  }
+
   isMediaClosed(mid) {
     const mediaInfo = this.media(mid);
     if (!mediaInfo) {
       return true;
     }
-    if (mediaInfo.port === 0 && mediaInfo.direction === 'inactive') {
+    if (mediaInfo.direction === 'inactive') {
       return true;
     }
     return false;
@@ -380,8 +390,10 @@ class SdpInfo {
   closeMedia(mid) {
     const mediaInfo = this.media(mid);
     if (mediaInfo) {
+      if (!mediaInfo.candidates) {
+        mediaInfo.port = 0;
+      }
       mediaInfo.direction = 'inactive';
-      mediaInfo.port = 0;
       delete mediaInfo.ext;
       delete mediaInfo.ssrcs;
       delete mediaInfo.ssrcGroups;

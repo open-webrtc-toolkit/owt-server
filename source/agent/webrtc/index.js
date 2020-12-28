@@ -88,7 +88,7 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
                 rid: trackInfo.rid,
                 active: true,
             };
-            log.warn('notifyTrackUpdate', controller, publicTrackId, updateInfo);
+            log.debug('notifyTrackUpdate', controller, publicTrackId, updateInfo);
             notifyTrackUpdate(controller, transportId, updateInfo);
 
         } else if (trackInfo.type === 'track-removed') {
@@ -350,7 +350,7 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
         if (conn) {
             promises = tracks.map(trackId => new Promise((resolve, reject) => {
                 if (mediaTracks.has(trackId)) {
-                    log.warn('got on off track:', trackId);
+                    log.debug('got on off track:', trackId);
                     mediaTracks.get(trackId).onTrackControl(
                         'av', direction, action, resolve, reject);
                 } else {

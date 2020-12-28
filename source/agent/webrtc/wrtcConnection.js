@@ -80,7 +80,6 @@ class WrtcStream extends EventEmitter {
         this.audioFramePacketizer = new AudioFramePacketizer(audio.mid, audio.midExtId);
         this.audioFramePacketizer.bindTransport(wrtc.getMediaStream(id));
         if (this.owner) {
-          log.warn('set owner!!!', this.owner);
           this.audioFramePacketizer.setOwner(this.owner);
         }
       }
@@ -276,6 +275,9 @@ module.exports = function (spec, on_status, on_track) {
         op.enabled = false;
         destroyTransport(mid);
         ret = true;
+        if (localSdp) {
+          localSdp.closeMedia(mid);
+        }
       }
     });
     if (msidMap.has(operationId)) {
@@ -442,6 +444,7 @@ module.exports = function (spec, on_status, on_track) {
     if (!operationMap.has(mid)) {
       log.warn(`MID ${mid} in offer has no mapped operations (disabled)`);
       remoteSdp.closeMedia(mid);
+      localSdp.closeMedia(mid);
       return;
     }
     if (operationMap.get(mid).sdpDirection !== remoteSdp.mediaDirection(mid)) {
@@ -498,7 +501,6 @@ module.exports = function (spec, on_status, on_track) {
     } else {
       // Later offer
       const laterSdp = new SdpInfo(sdp);
-      const changedMids = laterSdp.compareMedia(remoteSdp);
       const addedMids = [];
       const removedMids = [];
 
@@ -539,7 +541,10 @@ module.exports = function (spec, on_status, on_track) {
         // Should already be destroyed by 'removeTrackOperation'
         // destroyTransport(mid);
       }
-      localSdp.setBundleMids(remoteSdp.bundleMids());
+      remoteSdp.filterMedia(laterSdp.mids());
+      localSdp.filterMedia(laterSdp.mids());
+      remoteSdp.setBundleMids(laterSdp.bundleMids());
+      localSdp.setBundleMids(laterSdp.bundleMids());
       // Produce answer
       const message = localSdp.toString();
       log.debug('Answer SDP', message);
