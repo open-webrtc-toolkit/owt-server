@@ -1016,6 +1016,18 @@ var Conference = function (rpcClient, selfRpcId) {
       data: subDesc.data,
       legacy: subDesc.legacy,
     };
+    if (rtcSubInfo.legacy) {
+      // For legacy simulcast rid subscription
+      rtcSubInfo.tracks.forEach((subTrack) => {
+        if (subTrack.simulcastRid) {
+          const trackFrom = streams[subTrack.from].media.tracks.find((t) =>
+            (t.type === subTrack.type && t.rid === subTrack.simulcastRid));
+          if (trackFrom && trackFrom.id) {
+            subTrack.from = trackFrom.id;
+          }
+        }
+      });
+    }
     return rtcSubInfo;
   };
 
