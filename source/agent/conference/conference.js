@@ -28,6 +28,7 @@ const {
 const {
   ForwardStream,
   MixedStream,
+  SelectedStream,
   StreamConfigure,
 } = require('./stream');
 
@@ -252,7 +253,7 @@ var Conference = function (rpcClient, selfRpcId) {
           });
         });
     } else if (direction === 'out') {
-      return addSubscription(sessionId, sessionInfo.locality, sessionInfo.transport, sessionInfo.media, sessionInfo.data, sessionInfo.info
+      return addSubscription(sessionId, sessionInfo.locality, sessionInfo.media, sessionInfo.data, sessionInfo.info, sessionInfo.transport
         ).then(() => {
           if (sessionInfo.info && sessionInfo.info.type !== 'webrtc') {
             if (sessionInfo.info.location) {
@@ -311,6 +312,9 @@ var Conference = function (rpcClient, selfRpcId) {
   };
 
   var initRoom = function(roomId, origin) {
+    if (origin === undefined) {
+        origin = {isp:"isp", region:"region"};
+    }
     if (is_initializing) {
       return new Promise(function(resolve, reject) {
         var interval = setInterval(function() {
@@ -356,15 +360,24 @@ var Conference = function (rpcClient, selfRpcId) {
                   room_id = roomId;
                   is_initializing = false;
 
-                  room_config.views.forEach((viewSettings) => {
-                    var mixed_stream_id = room_id + '-' + viewSettings.label;
-                    var mixed_stream_info = new MixedStream(mixed_stream_id, viewSettings.label);
-
-                    streams[mixed_stream_id] = mixed_stream_info;
-                    streams[mixed_stream_id].info.origin = origin;
-                    log.debug('Mixed stream info:', mixed_stream_info);
+                  roomController.getMixedStreams().forEach(({streamId, view}) => {
+                    const mixedStreamInfo = new MixedStream(streamId, view);
+                    streams[streamId] = mixedStreamInfo;
+                    streams[streamId].info.origin = origin;
+                    log.debug('Mixed stream info:', mixedStreamInfo);
                     room_config.notifying.streamChange &&
-                      sendMsg('room', 'all', 'stream', {id: mixed_stream_id, status: 'add', data: mixed_stream_info.toPortalFormat()});
+                        sendMsg('room', 'all', 'stream',
+                            {id: streamId, status: 'add', data: mixedStreamInfo.toPortalFormat()});
+                  });
+
+                  roomController.getActiveAudioStreams().forEach((streamId) => {
+                    const selectedStreamInfo = new SelectedStream(streamId);
+                    streams[streamId] = selectedStreamInfo;
+                    streams[streamId].info.origin = origin;
+                    log.debug('Selected stream info:', selectedStreamInfo);
+                    room_config.notifying.streamChange &&
+                        sendMsg('room', 'all', 'stream',
+                            {id: streamId, status: 'add', data: selectedStreamInfo.toPortalFormat()});
                   });
 
                   participants['admin'] = Participant({
@@ -639,6 +652,15 @@ var Conference = function (rpcClient, selfRpcId) {
           streams[id] = fwdStream;
           pubArgs.forEach(pubArg => {
             trackOwners[pubArg.id] = id;
+            if (room_config.selectActiveAudio) {
+              if (pubArg.media.audio) {
+                roomController.selectAudio(pubArg.id, () => {
+                  log.debug('Select active audio ok:', pubArg.id);
+                }, (err) => {
+                  log.info('Select active audio error:', pubArg.id, err);
+                });
+              }
+            }
           });
           if (!isReadded) {
             setTimeout(() => {
@@ -659,7 +681,7 @@ var Conference = function (rpcClient, selfRpcId) {
     const pubArg = pubArgs[0];
     return new Promise((resolve, reject) => {
       roomController && roomController.publish(
-        pubArg.owner, pubArg.id, pubArg.locality, pubArg.media, pubArg.type,
+        pubArg.owner, pubArg.id, pubArg.locality, {origin: pubArg.media.origin, media:pubArg.media, data:pubArg.data}, pubArg.type,
         function() {
           if (participants[info.owner]) {
             streams[id] = fwdStream;
@@ -735,7 +757,7 @@ var Conference = function (rpcClient, selfRpcId) {
     return Promise.resolve('ok');
   };
 
-  const addSubscription = (id, locality, transport, mediaSpec, dataSpec, info) => {
+  const addSubscription = (id, locality, mediaSpec, dataSpec, info, transport) => {
     if (!participants[info.owner]) {
       return Promise.reject('Participant early left');
     }
@@ -1292,7 +1314,7 @@ var Conference = function (rpcClient, selfRpcId) {
     }
 
     if (subDesc.type === 'sip') {
-      return addSubscription(subscriptionId, subDesc.transport, subDesc.locality, subDesc.media, subDesc.data, {owner: participantId, type: 'sip'})
+      return addSubscription(subscriptionId, subDesc.locality, subDesc.media, subDesc.data, {owner: participantId, type: 'sip'}, subDesc.transport)
       .then((result) => {
         callback('callback', result);
       })
@@ -1653,6 +1675,10 @@ var Conference = function (rpcClient, selfRpcId) {
       if (update.audio.from && update.audio.from !== audioTrack.from) {
         audioTrack.from = update.audio.from;
         effective = true;
+        // TODO: limit format when updating source
+        if (oldSub.info && oldSub.info.type === 'webrtc') {
+          delete audioTrack.format;
+        }
       }
     }
 
@@ -1664,6 +1690,11 @@ var Conference = function (rpcClient, selfRpcId) {
       if (update.video.from && update.video.from !== videoTrack.from) {
         videoTrack.from = update.video.from;
         effective = true;
+        // TODO: limit format when updating source
+        if (oldSub.info && oldSub.info.type === 'webrtc') {
+          delete videoTrack.format;
+          videoTrack.parameters = {};
+        }
       }
       if (update.video.parameters && (Object.keys(update.video.parameters).length > 0)) {
         videoTrack.parameters = (videoTrack.parameters || {});
@@ -1695,10 +1726,10 @@ var Conference = function (rpcClient, selfRpcId) {
     }
     const err = {};
     if (videoTrack && !validateVideoRequest(oldSub.info.type, videoTrack, err)) {
-      return Promise.reject('Target video stream does NOT satisfy:', (err && err.message));
+      return Promise.reject('Target video stream does NOT satisfy:' + (err && err.message));
     }
     if (audioTrack && !validateAudioRequest(oldSub.info.type, audioTrack, err)) {
-      return Promise.reject('Target audio stream does NOT satisfy', (err && err.message));
+      return Promise.reject('Target audio stream does NOT satisfy' + (err && err.message));
     }
 
     return removeSubscription(subscriptionId)
@@ -1706,7 +1737,7 @@ var Conference = function (rpcClient, selfRpcId) {
         return addSubscription(subscriptionId, oldSub.locality, newSubMedia, oldSub.data, oldSub.info);
       }).catch((err) => {
         log.info('Update subscription failed:', err.message ? err.message : err);
-        log.info('And is recovering the previous subscription:', JSON.stringify(old_su));
+        log.info('And is recovering the previous subscription:', JSON.stringify(oldSub));
         return addSubscription(subscriptionId, oldSub.locality, oldSub.media, oldSub.data, oldSub.info)
           .then(() => {
             return Promise.reject('Update subscription failed');
@@ -1845,28 +1876,44 @@ var Conference = function (rpcClient, selfRpcId) {
     }
   };
 
-  that.onAudioActiveness = function(roomId, activeInputStream, view, callback) {
-    log.debug('onAudioActiveness, roomId:', roomId, 'activeInputStream:', activeInputStream, 'view:', view);
+  that.onAudioActiveness = function(roomId, activeInputStream, target, callback) {
+    log.debug('onAudioActiveness, roomId:', roomId, 'activeInputStream:', activeInputStream, 'target:', target);
     if ((room_id === roomId) && roomController) {
-      room_config.views.forEach((viewSettings) => {
-        if (viewSettings.label === view && viewSettings.video.keepActiveInputPrimary) {
-          roomController.setPrimary(activeInputStream, view);
-        }
-      });
+      if (typeof target.view === 'string') {
+        const view = target.view;
+        room_config.views.forEach((viewSettings) => {
+          if (viewSettings.label === view && viewSettings.video.keepActiveInputPrimary) {
+            roomController.setPrimary(activeInputStream, view);
+          }
+        });
 
-      var input = streams[activeInputStream] ? activeInputStream : trackOwners[activeInputStream];
-      if (input && streams[input]) {
-        for (var id in streams) {
-          if (streams[id].type === 'mixed' && streams[id].info.label === view) {
-            if (streams[id].info.activeInput !== input) {
-              streams[id].info.activeInput = input;
-              room_config.notifying.streamChange && sendMsg('room', 'all', 'stream', {id: id, status: 'update', data: {field: 'activeInput', value: input}});
-            }
-            break;
+        const input = streams[activeInputStream] ?
+            activeInputStream : trackOwners[activeInputStream];
+        const mixedId = roomController.getMixedStream(view);
+        if (streams[mixedId] instanceof MixedStream) {
+          if (streams[mixedId].info.activeInput !== input) {
+            streams[mixedId].info.activeInput = input;
+            room_config.notifying.streamChange &&
+                sendMsg('room', 'all', 'stream',
+                    {id: mixedId, status: 'update', data: {field: 'activeInput', value: input}});
           }
         }
+        callback('callback', 'ok');
+      } else {
+        const input = streams[activeInputStream] ?
+            activeInputStream : trackOwners[activeInputStream];
+        const activeAudioId = target.id;
+        if (streams[activeAudioId] instanceof SelectedStream) {
+          if (streams[activeAudioId].info.activeInput !== input) {
+            streams[activeAudioId].info.activeInput = input;
+            streams[activeAudioId].info.activeOwner = target.owner;
+            room_config.notifying.streamChange &&
+                sendMsg('room', 'all', 'stream',
+                    {id: activeAudioId, status: 'update', data: {field: 'activeInput', value: input}});
+          }
+        }
+        callback('callback', 'ok');
       }
-      callback('callback', 'ok');
     } else {
       log.info('onAudioActiveness, room does not exist');
       callback('callback', 'error', 'room is not in service');
@@ -2424,6 +2471,7 @@ var Conference = function (rpcClient, selfRpcId) {
     var subUpdate;
     var muteReqs = [];
     for (const cmd of commands) {
+      var exe;
       switch (cmd.op) {
         case 'replace':
           if ((cmd.path === '/media/audio/status') && (cmd.value === 'inactive' || cmd.value === 'active')) {
@@ -2463,6 +2511,7 @@ var Conference = function (rpcClient, selfRpcId) {
           } else {
             return Promise.reject('Invalid path or value');
           }
+          break;
         default:
           return Promise.reject('Invalid subscription control operation');
       }

@@ -23,11 +23,9 @@ add_library(${TARGET_NAME} SHARED ${SAMPLEPIPELINE_SRC})
 
 set_target_properties(${TARGET_NAME} PROPERTIES "CMAKE_CXX_FLAGS" "${CMAKE_CXX_FLAGS} -fPIE")
 
-target_link_libraries(${TARGET_NAME} boost_thread)
 target_link_libraries(${TARGET_NAME} gstreamer-1.0)
 target_link_libraries(${TARGET_NAME} gobject-2.0)
 target_link_libraries(${TARGET_NAME} glib-2.0)
 target_link_libraries(${TARGET_NAME} gstapp-1.0)
 target_link_libraries(${TARGET_NAME} gthread-2.0)
-target_link_libraries(${TARGET_NAME} boost_system)
 

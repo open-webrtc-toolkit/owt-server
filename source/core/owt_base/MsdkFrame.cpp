@@ -142,10 +142,15 @@ void MsdkFrame::sync(void)
 
     m_needSync = false;
 
-    if (!m_mainSession && !(m_mainSession = MsdkBase::get()->getMainSession())) {
-        ELOG_ERROR("Invalid main session!");
+    if (!m_mainSession) {
+        MsdkBase *msdkBase = MsdkBase::get();
+        if (msdkBase)
+            m_mainSession = msdkBase->getMainSession();
 
-        return;
+        if (!m_mainSession) {
+            ELOG_ERROR("Invalid main session!");
+            return;
+        }
     }
 
     sts = m_mainSession->SyncOperation(m_syncP, MFX_INFINITE);

@@ -30,7 +30,7 @@
  *   },
  *   info: object(PublicationInfo):: {
  *     owner: string(ParticipantId),
- *     type: 'webrtc' | 'streaming' | 'sip',
+ *     type: 'webrtc' | 'streaming' | 'sip' | 'selecting',
  *     inViews: [string(ViewLabel)],
  *     attributes: object(ExternalDefinedObj)
  *   } | object(ViewInfo):: {
@@ -67,7 +67,7 @@ const DEFAULT_VIDEO_PARAS = {
   resolution: { width: 640, height: 480 },
   bitrate: 500,
   framerate: 30,
-  keyFrameInterval: 60
+  keyFrameInterval: 100
 };
 
 /* Room configuration Object */
@@ -185,7 +185,6 @@ class Stream {
         track.optional.parameters = track.optional.parameters || {};
         track.optional.parameters.keyFrameInterval =
           mediaOut.video.parameters.keyFrameInterval
-          .filter(x => (x < baseParameters.keyFrameInterval))
       }
     }
     return track;
@@ -205,7 +204,8 @@ class Stream {
       owner: this.info.owner,
       type: this.info.type,
       inViews: this.info.inViews,
-      attributes: this.info.attributes
+      attributes: this.info.attributes,
+      activeInput: this.info.activeInput,
     };
     const portalFormat = {
       id: this.id,
@@ -335,6 +335,21 @@ class MixedStream extends Stream {
   }
 }
 
+class SelectedStream extends ForwardStream {
+
+  constructor(id) {
+    const media = {
+      tracks: [{type:'audio', format: {codec: 'unknown'}}],
+    };
+    const info = {
+      owner: 'unknown',
+      activeInput: 'unknown',
+      type: 'selecting',
+    };
+    super(id, media, null, info, null);
+  }
+}
+
 function StreamConfigure(roomConfig) {
   // Set room configuration
   config = roomConfig;
@@ -343,5 +358,6 @@ function StreamConfigure(roomConfig) {
 module.exports = {
   ForwardStream,
   MixedStream,
+  SelectedStream,
   StreamConfigure,
 };

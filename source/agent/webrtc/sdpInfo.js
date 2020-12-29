@@ -25,8 +25,19 @@ class SdpInfo {
     this.obj.media.forEach((media, i) => {
       if (media.mid === undefined) {
         log.warn(`Media ${i} missing mid`);
+        media.mid = -1;
       }
     });
+  }
+
+  bundleMids() {
+    const bundles = this.obj.groups.find(g => g.type === 'BUNDLE');
+    return bundles.mids.split(' ');
+  }
+
+  setBundleMids(mids) {
+    const bundles = this.obj.groups.find(g => g.type === 'BUNDLE');
+    bundles.mids = mids.join(' ');
   }
 
   mids() {
@@ -80,6 +91,7 @@ class SdpInfo {
     let finalFmt = null;
     let selectedPayload = -1;
     const reservedCodecs = ['telephone-event', 'cn'];
+    const allowedFbTypes = [];
     const relatedPayloads = new Set();
     const rtpMap = new Map();
     const payloadOrder = new Map();
@@ -127,7 +139,15 @@ class SdpInfo {
           }
         }
       }
-
+      if (mediaInfo.direction === 'recvonly') {
+        // For subscription
+        // concat(optionals.map((fmt) => fmt.codec.toLowerCase()));
+        mediaInfo.rtp.forEach((rtp) => {
+          if (optionals.findIndex(fmt => isAudioMatchRtp(fmt, rtp)) > -1) {
+            relatedPayloads.add(rtp.payload);
+          }
+        });
+      }
       if (rtpMap.has(selectedPayload)) {
         const selectedRtp = rtpMap.get(selectedPayload);
         rtpMap.forEach(rtp => {
@@ -149,14 +169,19 @@ class SdpInfo {
       }
       if (mediaInfo.rtcpFb) {
         mediaInfo.rtcpFb = mediaInfo.rtcpFb.filter(
+          (rtcp) => allowedFbTypes.includes(rtcp.type));
+        mediaInfo.rtcpFb = mediaInfo.rtcpFb.filter(
           (rtcp) => relatedPayloads.has(rtcp.payload));
       }
-      mediaInfo.payloads = mediaInfo.payloads.toString().split(' ')
+      const payloadList = mediaInfo.payloads.toString().split(' ');
+      if (selectedPayload !== -1) {
+        payloadList.unshift(selectedPayload);
+      }
+      mediaInfo.payloads = payloadList
         .filter((p) => relatedPayloads.has(parseInt(p)))
         .filter((v, index, self) => self.indexOf(v) === index)
         .join(' ');
     }
-
     return finalFmt;
   }
 
@@ -169,6 +194,12 @@ class SdpInfo {
     const preferred = preference.preferred;
     const optionals = preference.optional || [];
     const relatedPayloads = new Set();
+    const allowedFbTypes = [
+      'ccm fir',
+      'nack',
+      'transport-cc',
+      'goog-remb',
+    ];
     const reservedCodecs = ['red', 'ulpfec'];
     const codecMap = new Map();
     const payloadOrder = new Map();
@@ -182,6 +213,13 @@ class SdpInfo {
         .forEach((p, index) => {
           payloadOrder.set(parseInt(p), index);
         });
+      if (mediaInfo.direction === 'recvonly') {
+        // For subscription
+        // concat(optionals.map((fmt) => fmt.codec.toLowerCase()));
+        optionals.forEach((fmt) => {
+          reservedCodecs.push(fmt.codec.toLowerCase());
+        });
+      }
 
       for (let i = 0; i < mediaInfo.rtp.length; i++) {
         rtp = mediaInfo.rtp[i];
@@ -221,9 +259,15 @@ class SdpInfo {
       }
       if (mediaInfo.rtcpFb) {
         mediaInfo.rtcpFb = mediaInfo.rtcpFb.filter(
+          (rtcp) => allowedFbTypes.includes(rtcp.type));
+        mediaInfo.rtcpFb = mediaInfo.rtcpFb.filter(
           (rtcp) => relatedPayloads.has(rtcp.payload));
       }
-      mediaInfo.payloads = mediaInfo.payloads.toString().split(' ')
+      const payloadList = mediaInfo.payloads.toString().split(' ');
+      if (selectedPayload !== -1) {
+        payloadList.unshift(selectedPayload);
+      }
+      mediaInfo.payloads = payloadList
         .filter((p) => relatedPayloads.has(parseInt(p)))
         .filter((v, index, self) => self.indexOf(v) === index)
         .join(' ');
@@ -305,6 +349,7 @@ class SdpInfo {
   singleMediaSdp(mid) {
     const sdp = new SdpInfo(this.toString());
     sdp.obj.media = sdp.obj.media.filter(m => m.mid.toString() === mid);
+    sdp.setBundleMids([mid]);
     return sdp;
   }
 
@@ -319,6 +364,42 @@ class SdpInfo {
         bundles.mids += ' ' + media.mid;
       }
     });
+  }
+
+  filterMedia(mids) {
+    this.obj.media = mids.map((mid) => {
+      const media = this.media(mid);
+      if (!media) {
+        log.warn(`Media ${i} missing mid`);
+      }
+      return media;
+    });
+  }
+
+  isMediaClosed(mid) {
+    const mediaInfo = this.media(mid);
+    if (!mediaInfo) {
+      return true;
+    }
+    if (mediaInfo.direction === 'inactive') {
+      return true;
+    }
+    return false;
+  }
+
+  closeMedia(mid) {
+    const mediaInfo = this.media(mid);
+    if (mediaInfo) {
+      if (!mediaInfo.candidates) {
+        mediaInfo.port = 0;
+      }
+      mediaInfo.direction = 'inactive';
+      delete mediaInfo.ext;
+      delete mediaInfo.ssrcs;
+      delete mediaInfo.ssrcGroups;
+      delete mediaInfo.simulcast;
+      delete mediaInfo.rids;
+    }
   }
 
   compareMedia(sdp) {
@@ -481,6 +562,23 @@ class SdpInfo {
         delete mediaInfo.ssrcGroups;
         delete mediaInfo.ssrcs;
         mediaInfo.direction = 'recvonly';
+      }
+
+      if (mediaInfo.ext && Array.isArray(mediaInfo.ext)) {
+        const extMappings = [
+          'urn:ietf:params:rtp-hdrext:ssrc-audio-level',
+          'http://www.ietf.org/id/draft-holmer-rmcat-transport-wide-cc-extensions-01',
+          'urn:ietf:params:rtp-hdrext:sdes:mid',
+          'urn:ietf:params:rtp-hdrext:sdes:rtp-stream-id',
+          'urn:ietf:params:rtp-hdrext:sdes:repaired-rtp-stream-id',
+          'urn:ietf:params:rtp-hdrext:toffset',
+          'http://www.webrtc.org/experiments/rtp-hdrext/abs-send-time',
+          // 'urn:3gpp:video-orientation',
+          // 'http://www.webrtc.org/experiments/rtp-hdrext/playout-delay',
+        ];
+        mediaInfo.ext = mediaInfo.ext.filter((e) => {
+          return extMappings.includes(e.uri);
+        });
       }
 
       if (mediaInfo.rids && Array.isArray(mediaInfo.rids)) {

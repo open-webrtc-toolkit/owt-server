@@ -4,6 +4,7 @@
 
 #include "AudioRanker.h"
 #include <chrono>
+#include <future>
 
 namespace owt_base {
 
@@ -28,6 +29,9 @@ AudioRanker::AudioRanker(AudioRanker::Visitor* visitor, bool detectMute, uint32_
 
 AudioRanker::~AudioRanker()
 {
+    m_service->service().dispatch([this]() {
+        m_processors.clear();
+    });
 }
 
 void AudioRanker::addOutput(FrameDestination* output)
@@ -86,9 +90,11 @@ void AudioRanker::addInput(FrameSource* input, std::string streamId, std::string
 void AudioRanker::removeInput(std::string streamId)
 {
     ELOG_DEBUG("removeInput: %s", streamId.c_str());
-    m_service->service().dispatch([this, streamId]() {
+    auto promise = std::make_shared<std::promise<void>>();
+    m_service->service().dispatch([this, streamId, promise]() {
         if (m_processors.count(streamId) == 0) {
             // Not exist
+            promise->set_value();
             return;
         }
         auto audioProc = m_processors[streamId];
@@ -102,7 +108,13 @@ void AudioRanker::removeInput(std::string streamId)
             // Remove in others
             m_others.erase(audioProc->iter());
         }
+        audioProc.reset();
+        promise->set_value();
     });
+    std::chrono::milliseconds span (1000);
+    if (promise->get_future().wait_for(span) == std::future_status::timeout) {
+        ELOG_WARN("removeInput timeout: %s", streamId.c_str());
+    }
 }
 
 void AudioRanker::updateInput(std::string streamId, int level)
@@ -260,6 +272,7 @@ void AudioRanker::triggerRankChange()
     }
 }
 
+//=============================================================================
 
 AudioRanker::AudioLevelProcessor::AudioLevelProcessor(
     AudioRanker* parent, FrameSource* source,
@@ -279,15 +292,30 @@ AudioRanker::AudioLevelProcessor::~AudioLevelProcessor()
     m_source->removeAudioDestination(this);
 }
 
+void AudioRanker::AudioLevelProcessor::setLinkedOutput(FrameDestination* output)
+{
+    boost::mutex::scoped_lock lock(m_mutex);
+    if (m_linkedOutput) {
+        removeAudioDestination(m_linkedOutput);
+    }
+    m_linkedOutput = output;
+    if (m_linkedOutput) {
+        addAudioDestination(m_linkedOutput);
+    }
+    deliverOwnerData();
+}
+
+FrameDestination* AudioRanker::AudioLevelProcessor::linkedOutput()
+{
+    boost::mutex::scoped_lock lock(m_mutex);
+    return m_linkedOutput;
+}
+
 void AudioRanker::AudioLevelProcessor::onFrame(const Frame& frame)
 {
-    // Add lock for m_linkedOutput
-    {
-        boost::mutex::scoped_lock lock(m_mutex);
-        if (m_linkedOutput) {
-            m_linkedOutput->onFrame(frame);
-        }
-    }
+    // Pass frame to linked output
+    deliverFrame(frame);
+
     if (frame.additionalInfo.audio.voice) {
         uint64_t tsNow = std::chrono::duration_cast<std::chrono::milliseconds>(
             std::chrono::steady_clock::now().time_since_epoch()).count();
@@ -301,6 +329,22 @@ void AudioRanker::AudioLevelProcessor::onFrame(const Frame& frame)
     }
 }
 
+void AudioRanker::AudioLevelProcessor::onFeedback(const FeedbackMsg& msg)
+{
+    if (msg.type == AUDIO_FEEDBACK && msg.cmd == REQUEST_OWNER_ID) {
+        deliverOwnerData();
+    }
+}
+
+void AudioRanker::AudioLevelProcessor::deliverOwnerData()
+{
+    ELOG_DEBUG("deliver ownerID as metadata");
+    // Pass owner ID metadata to linkedoutput
+    MetaData ownerData;
+    ownerData.type = META_DATA_OWNER_ID;
+    ownerData.payload = (uint8_t*) m_ownerId.c_str();
+    ownerData.length = m_ownerId.length();
+    deliverMetaData(ownerData);
+}
 
 } // namespace owt_base
-

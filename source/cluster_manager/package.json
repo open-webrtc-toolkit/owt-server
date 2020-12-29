@@ -1,6 +1,6 @@
 {
   "name": "OWT-MCU-Cluster-Manager",
-  "version":"4.3.1",
+  "version":"5.0.0",
   "dependencies": {
     "amqp": "*",
     "log4js": "^1.1.1",

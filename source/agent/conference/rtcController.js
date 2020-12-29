@@ -151,7 +151,8 @@ class RtcController extends EventEmitter {
       this.emit('transport-established', transportId);
       // Emit pending completed tracks
       for (const [id, operation] of this.operations) {
-        if (operation.transportId === transportId) {
+        if (operation.transportId === transportId &&
+            operation.state === COMPLETED) {
           this.emit('session-established', operation);
         }
       }
@@ -283,7 +284,7 @@ class RtcController extends EventEmitter {
       const op = new Operation(sessionId, transport, direction, tracks, legacy);
       this.operations.set(sessionId, op);
       // Return promise for this operation
-      const options = {transportId, tracks, controller: this.roomRpcId};
+      const options = {transportId, tracks, controller: this.roomRpcId, owner: ownerId};
       return this.rpcReq.initiate(locality.node, sessionId, 'webrtc', direction, options);
     });
   }
@@ -315,15 +316,19 @@ class RtcController extends EventEmitter {
   terminateByOwner(ownerId) {
     log.debug(`terminateByOwner ${ownerId}`);
     const terminations = [];
-    const transports = new Set();
     this.operations.forEach((operation, operationId) => {
-      const transport = this.transports.get(operation.transportId);
-      if (transport.owner === ownerId) {
+      if (operation.transport.owner === ownerId) {
         const p = this.terminate(operationId, operation.direction, 'Owner leave');
         terminations.push(p);
+      }
+    });
+    const transports = new Set();
+    this.transports.forEach((transport, transportId) => {
+      if (transport.owner === ownerId) {
         transports.add(transport.id);
       }
     });
+
     return Promise.all(terminations).then(() => {
       transports.forEach((transportId) => {
         const status = {type: 'failed', reason: 'Owner leave'};
@@ -337,12 +342,18 @@ class RtcController extends EventEmitter {
     const terminations = [];
     const transports = new Set();
     this.operations.forEach((operation, operationId) => {
-      const l = this.transports.get(operation.transportId).locality;
+      const l = operation.transport.locality;
       if (l && ((type === 'worker' && l.agent === id) ||
           (type === 'node' && l.node === id))) {
         const p = this.terminate(operationId, operation.direction, 'Node lost');
         terminations.push(p);
-        transports.add(operation.transportId);
+      }
+    });
+    this.transports.forEach((transport, transportId) => {
+      const l = transport.locality;
+      if (l && ((type === 'worker' && l.agent === id) ||
+          (type === 'node' && l.node === id))) {
+        transports.add(transport.id);
       }
     });
     return Promise.all(terminations).then(() => {

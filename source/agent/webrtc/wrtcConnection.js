@@ -38,7 +38,7 @@ class WrtcStream extends EventEmitter {
    * audio: { format, ssrc, mid, midExtId }
    * video: { format, ssrc, mid, midExtId, transportcc, red, ulpfec }
    */
-  constructor(id, wrtc, direction, {audio, video}) {
+  constructor(id, wrtc, direction, {audio, video, owner}) {
     super();
     this.id = id;
     this.wrtc = wrtc;
@@ -50,6 +50,7 @@ class WrtcStream extends EventEmitter {
     this.videoFrameConstructor = null;
     this.videoFramePacketizer = null;
     this.closed = false;
+    this.owner = owner;
 
     if (direction === 'in') {
       wrtc.addMediaStream(id, {label: id}, true);
@@ -78,6 +79,9 @@ class WrtcStream extends EventEmitter {
       if (audio) {
         this.audioFramePacketizer = new AudioFramePacketizer(audio.mid, audio.midExtId);
         this.audioFramePacketizer.bindTransport(wrtc.getMediaStream(id));
+        if (this.owner) {
+          this.audioFramePacketizer.setOwner(this.owner);
+        }
       }
       if (video) {
         this.videoFramePacketizer = new VideoFramePacketizer(
@@ -239,6 +243,7 @@ module.exports = function (spec, on_status, on_track) {
   var threadPool = spec.threadPool;
   var ioThreadPool = spec.ioThreadPool;
   var networkInterfaces = spec.network_interfaces;
+  var owner = spec.owner;
 
   var remoteSdp = null;
   var localSdp = null;
@@ -270,6 +275,9 @@ module.exports = function (spec, on_status, on_track) {
         op.enabled = false;
         destroyTransport(mid);
         ret = true;
+        if (localSdp) {
+          localSdp.closeMedia(mid);
+        }
       }
     });
     if (msidMap.has(operationId)) {
@@ -337,6 +345,7 @@ module.exports = function (spec, on_status, on_track) {
     const trackSettings = remoteSdp.getMediaSettings(mid);
     const mediaType = remoteSdp.mediaType(mid);
 
+    trackSettings.owner = owner;
     if (opSettings.finalFormat) {
       trackSettings[mediaType].format = opSettings.finalFormat;
     }
@@ -402,6 +411,9 @@ module.exports = function (spec, on_status, on_track) {
   };
 
   const destroyTransport = function (mid) {
+    if (!remoteSdp) {
+      return;
+    }
     const rids = remoteSdp.rids(mid);
     if (rids) {
       // Simulcast
@@ -412,7 +424,7 @@ module.exports = function (spec, on_status, on_track) {
           trackMap.delete(trackId);
           on_track({type: 'track-removed', trackId});
         } else {
-          log.warn(`destroyTransport: No trackId ${trackId} for ${wrtcId}`);
+          log.info(`destroyTransport: No trackId ${trackId} for ${wrtcId}`);
         }
       });
     } else {
@@ -422,7 +434,7 @@ module.exports = function (spec, on_status, on_track) {
         trackMap.delete(mid);
         on_track({type: 'track-removed', trackId: mid});
       } else {
-        log.warn(`destroyTransport: No trackId ${mid} for ${wrtcId}`);
+        log.info(`destroyTransport: No trackId ${mid} for ${wrtcId}`);
       }
     }
   };
@@ -431,7 +443,8 @@ module.exports = function (spec, on_status, on_track) {
     // Check Media MID with saved operation
     if (!operationMap.has(mid)) {
       log.warn(`MID ${mid} in offer has no mapped operations (disabled)`);
-      remoteSdp.setMediaPort(mid, 0);
+      remoteSdp.closeMedia(mid);
+      localSdp.closeMedia(mid);
       return;
     }
     if (operationMap.get(mid).sdpDirection !== remoteSdp.mediaDirection(mid)) {
@@ -442,9 +455,10 @@ module.exports = function (spec, on_status, on_track) {
       log.warn(`MID ${mid} in offer has conflict media type with operation`);
       return;
     }
-    if (operationMap.get(mid).enabled && (remoteSdp.getMediaPort(mid) === 0)) {
-      log.warn(`MID ${mid} in offer has conflict port with operation (disabled)`);
+    if (operationMap.get(mid).enabled && remoteSdp.isMediaClosed(mid)) {
+      log.warn(`MID ${mid} in offer has conflict closed state (disabled)`);
       operationMap.get(mid).enabled = false;
+      return;
     }
 
     // Determine media format in offer
@@ -487,30 +501,23 @@ module.exports = function (spec, on_status, on_track) {
     } else {
       // Later offer
       const laterSdp = new SdpInfo(sdp);
-      const changedMids = laterSdp.compareMedia(remoteSdp);
       const addedMids = [];
       const removedMids = [];
 
-      for (let cmid of changedMids) {
+      for (let cmid of laterSdp.mids()) {
         const oldMedia = remoteSdp.media(cmid);
         if (!oldMedia) {
           // Add media
           const tempSdp = laterSdp.singleMediaSdp(cmid);
           remoteSdp.mergeMedia(tempSdp);
           addedMids.push(cmid);
-        } else if (laterSdp.getMediaPort(cmid) === 0) {
+        } else if (laterSdp.isMediaClosed(cmid)) {
           // Remove media
-          remoteSdp.setMediaPort(cmid, 0);
-          localSdp.setMediaPort(cmid, 0);
-          removedMids.push(cmid);
-        } else if (laterSdp.mediaDirection(cmid) === 'inactive') {
-          // Disable media
-          remoteSdp.media(cmid).direction = 'inactive';
-          localSdp.media(cmid).direction = 'inactive';
+          remoteSdp.closeMedia(cmid);
           removedMids.push(cmid);
         } else {
-          // May be port or direction change
-          log.debug(`MID ${cmid} port or direction change`);
+          // Treat as no change
+          log.debug(`MID ${cmid} no change`);
         }
       }
 
@@ -518,7 +525,7 @@ module.exports = function (spec, on_status, on_track) {
       for (let mid of addedMids) {
         processOfferMedia(mid);
         localSdp.mergeMedia(remoteSdp.singleMediaSdp(mid).answer());
-        if (remoteSdp.getMediaPort(mid) !== 0) {
+        if (!remoteSdp.isMediaClosed(mid)) {
           opId = setupTransport(mid);
         }
       }
@@ -530,10 +537,14 @@ module.exports = function (spec, on_status, on_track) {
       }
 
       for (let mid of removedMids) {
-        // processOfferMedia(mid);
+        localSdp.closeMedia(mid);
+        // Should already be destroyed by 'removeTrackOperation'
         // destroyTransport(mid);
       }
-
+      remoteSdp.filterMedia(laterSdp.mids());
+      localSdp.filterMedia(laterSdp.mids());
+      remoteSdp.setBundleMids(laterSdp.bundleMids());
+      localSdp.setBundleMids(laterSdp.bundleMids());
       // Produce answer
       const message = localSdp.toString();
       log.debug('Answer SDP', message);

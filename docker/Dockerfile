@@ -220,13 +220,18 @@ WORKDIR /home
 ARG NODE_VER=v10.21.0
 ARG NODE_REPO=https://nodejs.org/dist/${NODE_VER}/node-${NODE_VER}-linux-x64.tar.xz
 
-COPY --from=owt-build /home/owt-server/dist /home/owt
-COPY startowt.sh /home/
-
-RUN apt-get update && apt-get install -y -q --no-install-recommends ca-certificates wget xz-utils rabbitmq-server mongodb libboost-system-dev libboost-thread-dev liblog4cxx-dev libglib2.0-0 libfreetype6-dev curl
+RUN apt-get update && apt-get install -y -q --no-install-recommends ca-certificates wget xz-utils rabbitmq-server mongodb libboost-system-dev libboost-thread-dev liblog4cxx-dev libglib2.0-0 libfreetype6-dev curl sudo
 
 RUN wget ${NODE_REPO} && \
     tar xf node-${NODE_VER}-linux-x64.tar.xz && \
     cp node-*/* /usr/local -rf && rm -rf node-*
 
+RUN useradd -m owt && echo "owt:owt" | chpasswd && adduser owt sudo
+
+COPY --chown=owt:owt --from=owt-build /home/owt-server/dist /home/owt
+COPY --chown=owt:owt startowt.sh /home/
+
+USER owt
+
+CMD /bin/bash
 ENV LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/usr/local/lib/x86_64-linux-gnu

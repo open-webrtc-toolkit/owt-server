@@ -98,9 +98,8 @@ var Client = function(clientId, sigConnection, portal, version) {
             transportId = req.transport.id;
           } else {
             req.type = 'webrtc'; //FIXME: For backend compatibility with v3.4 clients.
-            req.transport = { type : 'webrtc', id : stream_id };
-            if (req.transportId) {
-                req.transport.id = req.transportId;
+            if (!req.transport || !req.transport.id) {
+              req.transport = { type : 'webrtc', id : stream_id };
             }
           }
           transportId = req.transport.id;
@@ -154,9 +153,8 @@ var Client = function(clientId, sigConnection, portal, version) {
             transportId = req.transport.id;
           } else {
             req.type = 'webrtc'; //FIXME: For backend compatibility with v3.4 clients.
-            req.transport = { type : 'webrtc', id : subscription_id };
-            if (req.transportId) {
-              req.transport.id = req.transportId;
+            if (!req.transport || !req.transport.id) {
+              req.transport = { type : 'webrtc', id : subscription_id };
             }
           }
           transportId = req.transport.id;

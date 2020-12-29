@@ -521,19 +521,14 @@ ARG IE_DIR=/home/build/opt/intel/dldt/inference-engine
 
 RUN mkdir -p ${IE_DIR}/include && \
     cp -r /opt/intel/openvino_2021/inference_engine/include/* ${IE_DIR}/include && \
-
     mkdir -p ${IE_DIR}/lib/intel64 && \
     cp -r /opt/intel/openvino_2021/inference_engine/lib/intel64/* ${IE_DIR}/lib/intel64 && \
-
     mkdir -p ${IE_DIR}/share && \
     cp -r  /opt/intel/openvino_2021/inference_engine/share/* ${IE_DIR}/share/ && \
-
     mkdir -p ${IE_DIR}/external/ && \
     cp -r /opt/intel/openvino_2021/inference_engine/external/* ${IE_DIR}/external && \
-
     mkdir -p ${IE_DIR}/external/opencv && \
     cp -r /opt/intel/openvino_2021/opencv/* ${IE_DIR}/external/opencv/ && \
-
     mkdir -p ${IE_DIR}/external/ngraph && \
     cp -r /opt/intel/openvino_2021/deployment_tools/ngraph/* ${IE_DIR}/external/ngraph/
 
@@ -585,7 +580,7 @@ RUN cd ${SERVER_PATH} && ./scripts/build.js -t mcu -r -c && \
 FROM ubuntu:18.04 AS owt-run
 LABEL Description="This is the base image for GSTREAMER & DLDT Ubuntu 18.04 LTS"
 LABEL Vendor="Intel Corporation"
-WORKDIR /root
+WORKDIR /home
 
 # Prerequisites
 RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y -q --no-install-recommends \
@@ -612,14 +607,12 @@ RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y -q --no-
     \
     libmpeg2-4-dev libopencore-amrnb-dev libopencore-amrwb-dev liba52-0.7.4-dev \
     \
-    libva-dev libxrandr-dev libudev-dev liblog4cxx-dev gstreamer1.0-plugins-ugly rabbitmq-server mongodb \
+    libva-dev libxrandr-dev libudev-dev liblog4cxx-dev gstreamer1.0-plugins-ugly rabbitmq-server mongodb sudo\
     \
+    && useradd -m owt && echo "owt:owt" | chpasswd && adduser owt sudo \
     && rm -rf /var/lib/apt/lists/* 
 
 # Install
-COPY --from=dldt-build /home/build /
-COPY --from=gst-build /home/build /
-COPY --from=owt-build /home/owt-server/dist /home/owt
 
 ARG LIBDIR=/usr/lib/x86_64-linux-gnu
 
@@ -653,7 +646,10 @@ ARG SOURCE_REV
 ARG DLSTREAMER_VERSION=1.2.1
 ARG DLSTREAM_SOURCE_REPO=https://github.com/openvinotoolkit/dlstreamer_gst/archive/v${DLSTREAMER_VERSION}.tar.gz
 
-COPY analyticspage /home/analyticspage
+COPY --chown=owt:owt --from=dldt-build /home/build /
+COPY --chown=owt:owt --from=gst-build /home/build /
+COPY --chown=owt:owt --from=owt-build /home/owt-server/dist /home/owt
+COPY --chown=owt:owt analyticspage /home/analyticspage
 ARG ENABLE_PAHO_INSTALLATION=false
 ARG ENABLE_RDKAFKA_INSTALLATION=false
 ARG BUILD_TYPE=Release
@@ -673,12 +669,14 @@ RUN wget ${DLSTREAM_SOURCE_REPO} && tar zxf v${DLSTREAMER_VERSION}.tar.gz &&  mv
         .. \
         && make -j $(nproc) \
         && make install \
-        && rm /root/v${DLSTREAMER_VERSION}.tar.gz
+        && rm /home/v${DLSTREAMER_VERSION}.tar.gz
 
 RUN cp /home/analyticspage/index.js /home/owt/apps/current_app/public/scripts/ \
     && cp /home/analyticspage/rest-sample.js /home/owt/apps/current_app/public/scripts/ \
     && cp /home/analyticspage/index.html /home/owt/apps/current_app/public/ \
     && cp /home/analyticspage/samplertcservice.js /home/owt/apps/current_app/
 
-ENV GST_PLUGIN_PATH=/root/gst-video-analytics/
-ENV PYTHONPATH=/root/gst-video-analytics/python:$PYTHONPATH
+USER owt
+
+ENV GST_PLUGIN_PATH=/home/gst-video-analytics/
+ENV PYTHONPATH=/home/gst-video-analytics/python:$PYTHONPATH

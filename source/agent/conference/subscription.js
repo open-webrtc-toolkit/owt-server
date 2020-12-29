@@ -96,7 +96,7 @@ class Subscription {
   // Array of unique StreamId or TrackId of subscription
   froms() {
     return this.media.tracks.map(t => t.from)
-      .filter((t, i, self) => self.findIndex(v => v.id === t.id) === i);
+      .filter((t, i, self) => self.indexOf(t) === i);
   }
 
   // Merge source format and parameters
@@ -105,6 +105,7 @@ class Subscription {
     this.media.tracks.forEach(track => {
       if (track.from === sourceId) {
         // Extract source track from stream
+        delete track.source;
         const source = stream.id === sourceId ?
           stream.media.tracks.find(t => t.type === track.type) :
           stream.media.tracks.find(t => t.id === sourceId);
