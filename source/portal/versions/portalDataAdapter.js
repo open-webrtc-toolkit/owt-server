@@ -95,6 +95,7 @@ const AdatperV1_1 = {
           mid: subReq.media.tracks.length.toString(),
           from: data.media.video.from,
           parameters: data.media.video.parameters,
+          simulcastRid: data.media.video.simulcastRid,
         });
       }
       return subReq;
