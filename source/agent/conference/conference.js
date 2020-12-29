@@ -312,6 +312,9 @@ var Conference = function (rpcClient, selfRpcId) {
   };
 
   var initRoom = function(roomId, origin) {
+    if (origin === undefined) {
+        origin = {isp:"isp", region:"region"};
+    }
     if (is_initializing) {
       return new Promise(function(resolve, reject) {
         var interval = setInterval(function() {
