@@ -200,14 +200,20 @@ void QuicTransportStream::SignalOnData()
         return;
     }
 
-    auto readableBytes = m_stream->ReadableBytes();
-    uint8_t* buffer = new uint8_t[readableBytes];
-    owt_base::Frame frame;
-    frame.format = owt_base::FRAME_FORMAT_DATA;
-    frame.length = readableBytes;
-    frame.payload = buffer;
-    m_stream->Read(frame.payload, readableBytes);
-    deliverFrame(frame);
+    while (m_stream->ReadableBytes() > 0) {
+        auto readableBytes = m_stream->ReadableBytes();
+        uint8_t* buffer = new uint8_t[readableBytes];
+        if (buffer == nullptr) {
+            ELOG_ERROR("Failed to alloc buffer.");
+            return;
+        }
+        owt_base::Frame frame;
+        frame.format = owt_base::FRAME_FORMAT_DATA;
+        frame.length = readableBytes;
+        frame.payload = buffer;
+        m_stream->Read(frame.payload, readableBytes);
+        deliverFrame(frame);
+    }
 }
 
 void QuicTransportStream::onFeedback(const owt_base::FeedbackMsg&)
