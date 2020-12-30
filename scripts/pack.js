@@ -40,8 +40,6 @@ const originCwd = cwd();
 const osScript = path.join(rootDir, 'scripts/detectOS.sh');
 const osType = execSync(`bash ${osScript}`).toString().toLowerCase();
 
-const experimentalTargets = ['quic-agent'];
-
 var allTargets = [];
 
 if (options.full) {
@@ -130,8 +128,7 @@ function getPackList(targets) {
   }
 
   var packList = targets.filter((element) => {
-    // Don't include QUIC agent by default until CI is added for QUIC SDK.
-    if (options.target.includes('all') && !experimentalTargets.includes(element.rules.name)) return true;
+    if (options.target.includes('all')) return true;
     return options.target.includes(element.rules.name);
   });
   if (packList.length === 0) {
@@ -418,7 +415,7 @@ function isLibAllowed(libSrc) {
   if (!libSrc)
     return false;
 
-  const whiteList = [
+  const allowList = [
     'rtcadapter',
     'libssl.so.1.1',
     'libcrypto',
@@ -428,18 +425,19 @@ function isLibAllowed(libSrc) {
     'libopenh264',
     'libre',
     'sipLib',
-    'librawquic'
+    'librawquic',
+    'libowt_quic_transport',
   ];
   if (!options['archive'] || options['with-ffmpeg']) {
-    whiteList.push('libav');
-    whiteList.push('libsw');
+    allowList.push('libav');
+    allowList.push('libsw');
   }
 
   const libName = path.basename(libSrc);
 
   var found = false;
-  for (let i in whiteList) {
-    if (libName.indexOf(whiteList[i]) === 0) {
+  for (let i in allowList) {
+    if (libName.indexOf(allowList[i]) === 0) {
       found = true;
       break;
     }
@@ -592,9 +590,6 @@ function packScripts() {
   }
   scriptItems.push('app');
   scriptItems.forEach((m) => {
-    if (experimentalTargets.includes(m)) {
-      return;
-    }
     startCommands += '${bin}/daemon.sh start ' + m + ' $1\n';
     stopCommands += '${bin}/daemon.sh stop ' + m + '\n';
   });
