@@ -4,7 +4,7 @@ superserviceID = "_auto_generated_ID_" #default: ""
 ssl = true #if use HTTPS
 port = 3000 #default: 3000, port of server
 numberOfProcess = 4 #default: 1
-enableWebTransport = false #default: false.
+enableWebTransport = true #default: true.
 
 [cluster]
 name = "owt-cluster"
