@@ -175,7 +175,7 @@ class SdpInfo {
       }
       const payloadList = mediaInfo.payloads.toString().split(' ');
       if (selectedPayload !== -1) {
-        payloadList.unshift(selectedPayload);
+        payloadList.unshift(selectedPayload.toString());
       }
       mediaInfo.payloads = payloadList
         .filter((p) => relatedPayloads.has(parseInt(p)))
@@ -265,7 +265,7 @@ class SdpInfo {
       }
       const payloadList = mediaInfo.payloads.toString().split(' ');
       if (selectedPayload !== -1) {
-        payloadList.unshift(selectedPayload);
+        payloadList.unshift(selectedPayload.toString());
       }
       mediaInfo.payloads = payloadList
         .filter((p) => relatedPayloads.has(parseInt(p)))
