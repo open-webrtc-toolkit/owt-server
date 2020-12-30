@@ -1463,7 +1463,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                                 rpcClient,
                                 terminals[t_id].locality.node,
                                 'linkup',
-                                [sub_id, undefined, streamId],
+                                [sub_id, undefined, streamId, undefined],
                                 function () {
                                     log.debug('resumed sub_id:', sub_id, 'for streamId:', streamId);
                                     streams[streamId].video.subscribers = streams[streamId].video.subscribers || [];
@@ -2104,7 +2104,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                                                     rpcClient,
                                                     terminals[t_id].locality.node,
                                                     'linkup',
-                                                    [sub_id, undefined, stream_id],
+                                                    [sub_id, undefined, stream_id, undefined],
                                                     function () {
                                                         streams[stream_id].video.subscribers = streams[stream_id].video.subscribers || [];
                                                         streams[stream_id].video.subscribers.push(t_id);
@@ -2193,7 +2193,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                                                     rpcClient,
                                                     terminals[t_id].locality.node,
                                                     'linkup',
-                                                    [sub_id, undefined, stream_id],
+                                                    [sub_id, undefined, stream_id, undefined],
                                                     function () {
                                                         streams[stream_id].video.subscribers = streams[stream_id].video.subscribers || [];
                                                         streams[stream_id].video.subscribers.push(t_id);
@@ -2324,7 +2324,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                                                         rpcClient,
                                                         terminals[t_id].locality.node,
                                                         'linkup',
-                                                        [sub_id, stream_id, undefined],
+                                                        [sub_id, stream_id, undefined, undefined],
                                                         function () {
                                                             streams[stream_id].audio.subscribers = streams[stream_id].audio.subscribers || [];
                                                             streams[stream_id].audio.subscribers.push(t_id);
@@ -2411,7 +2411,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                                                     rpcClient,
                                                     terminals[t_id].locality.node,
                                                     'linkup',
-                                                    [sub_id, stream_id, undefined],
+                                                    [sub_id, stream_id, undefined, undefined],
                                                     function () {
                                                         streams[stream_id].audio.subscribers = streams[stream_id].audio.subscribers || [];
                                                         streams[stream_id].audio.subscribers.push(t_id);

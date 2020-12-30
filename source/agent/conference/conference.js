@@ -312,6 +312,9 @@ var Conference = function (rpcClient, selfRpcId) {
   };
 
   var initRoom = function(roomId, origin) {
+    if (origin === undefined) {
+        origin = {isp:"isp", region:"region"};
+    }
     if (is_initializing) {
       return new Promise(function(resolve, reject) {
         var interval = setInterval(function() {
@@ -1013,6 +1016,18 @@ var Conference = function (rpcClient, selfRpcId) {
       data: subDesc.data,
       legacy: subDesc.legacy,
     };
+    if (rtcSubInfo.legacy) {
+      // For legacy simulcast rid subscription
+      rtcSubInfo.tracks.forEach((subTrack) => {
+        if (subTrack.simulcastRid) {
+          const trackFrom = streams[subTrack.from].media.tracks.find((t) =>
+            (t.type === subTrack.type && t.rid === subTrack.simulcastRid));
+          if (trackFrom && trackFrom.id) {
+            subTrack.from = trackFrom.id;
+          }
+        }
+      });
+    }
     return rtcSubInfo;
   };
 
