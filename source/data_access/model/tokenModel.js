@@ -15,7 +15,8 @@ var TokenSchema = new Schema({
   origin: {},
   code: String,
   secure: Boolean,
-  host: String
+  host: String,
+  webTransportUrl: String
 });
 
 module.exports = mongoose.model('Token', TokenSchema);

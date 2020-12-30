@@ -11,6 +11,7 @@ var logger = require('../../logger').logger;
 
 // Logger
 var log = logger.getLogger('StreamsResource');
+var convertStream = require('../streamAdapter').convertToV11Stream;
 
 exports.getList = function (req, res, next) {
     log.debug('Representing streams for room ', req.params.room, 'and service', req.authData.service._id);
@@ -18,6 +19,7 @@ exports.getList = function (req, res, next) {
         if (streams === 'error') {
             return next(new e.CloudError('Operation failed'));
         }
+        streams.map(convertStream);
         res.send(streams);
     });
 };
@@ -31,6 +33,7 @@ exports.get = function (req, res, next) {
         for (var index in streams) {
             if (streams[index].id === stream) {
                 log.debug('Found stream', stream);
+                convertStream(stream[index]);
                 res.send(streams[index]);
                 return;
             }
@@ -47,6 +50,7 @@ exports.addStreamingIn = function (req, res, next) {
         if (result === 'error') {
             return next(new e.CloudError('Operation failed'));
         }
+        convertStream(result);
         res.send(result);
     });
 };
@@ -58,6 +62,7 @@ exports.patch = function (req, res, next) {
         if (result === 'error') {
             return next(new e.CloudError('Operation failed'));
         }
+        convertStream(result);
         res.send(result);
     });
 };

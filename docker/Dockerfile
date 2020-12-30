@@ -8,7 +8,7 @@ FROM ubuntu:18.04 AS owt-build
 WORKDIR /home
 
 # COMMON BUILD TOOLS
-RUN DEBIAN_FRONTEND=noninteractive apt-get update && apt-get install -y -q --no-install-recommends build-essential autoconf make git wget pciutils cpio libtool lsb-release ca-certificates pkg-config bison flex libcurl4-gnutls-dev zlib1g-dev nasm yasm m4 autoconf libtool automake cmake libfreetype6-dev
+RUN DEBIAN_FRONTEND=noninteractive apt-get update && apt-get install -y -q --no-install-recommends build-essential autoconf make git wget pciutils cpio libtool lsb-release ca-certificates pkg-config bison flex libcurl4-gnutls-dev zlib1g-dev nasm yasm m4 autoconf libtool automake cmake libfreetype6-dev libgstreamer-plugins-base1.0-dev
 
 
 # Build libnice
@@ -33,20 +33,20 @@ RUN wget -O - ${NICE_REPO} | tar xz && \
 
 
 # Build open ssl
-ARG OPENSSL_BASE="1.0.2"
-ARG OPENSSL_VER="1.0.2t"
-ARG OPENSSL_REPO=http://www.openssl.org/source/old/${OPENSSL_BASE}/openssl-${OPENSSL_VER}.tar.gz
+ARG OPENSSL_BASE="1.1.1"
+ARG OPENSSL_VER="1.1.1h"
+ARG OPENSSL_REPO=https://www.openssl.org/source/openssl-${OPENSSL_VER}.tar.gz
 
 RUN wget -O - ${OPENSSL_REPO} | tar xz && \
     cd openssl-${OPENSSL_VER} && \
-    ./config no-ssl3 --prefix="/usr/local" -fPIC && \
+    ./config no-ssl3 --prefix=/usr/local/ssl --openssldir=/usr/local/ssl -Wl,-rpath=/usr/local/ssl/lib -fPIC && \
     make depend && \
     make -s V=0  && \
     make install
 
 
 # Build libre
-ARG LIBRE_VER="v0.4.16"
+ARG LIBRE_VER="v0.5.0"
 ARG LIBRE_REPO=https://github.com/creytiv/re.git
 
 RUN git clone ${LIBRE_REPO} && \
@@ -82,7 +82,7 @@ RUN curl -o libsrtp-${SRTP2_VER}.tar.gz ${SRTP2_REPO} && \
     cd libsrtp-${SRTP2_VER} && \
     export PKG_CONFIG_PATH="/usr/local/lib/x86_64-linux-gnu/pkgconfig" && \
     export CFLAGS="-fPIC" && \
-    ./configure --enable-openssl --prefix="/usr/local" --with-openssl-dir="/usr/local" && \
+    ./configure --enable-openssl --prefix="/usr/local" --with-openssl-dir="/usr/local/ssl" && \
     make -s V=0  && \
     make install
 
@@ -105,7 +105,7 @@ RUN cd /home/FFmpeg && \
 
 
 # Install node
-ARG NODE_VER=v8.15.0
+ARG NODE_VER=v10.21.0
 ARG NODE_REPO=https://nodejs.org/dist/${NODE_VER}/node-${NODE_VER}-linux-x64.tar.xz
 
 RUN wget ${NODE_REPO} && \
@@ -204,6 +204,8 @@ RUN cd /home && git clone --depth=1 -b ${OWT_BRANCH} ${OWT_SDK_REPO} && cd owt-c
     export LD_LIBRARY_PATH=/usr/local/lib/x86_64-linux-gnu && \
     cd ${SERVER_PATH}/third_party/quic-lib && wget https://github.com/open-webrtc-toolkit/owt-deps-quic/releases/download/v0.1/dist.tgz && tar xzf dist.tgz && \
     #Build and pack owt
+    sed -i "/lssl/i\'\-L\/usr\/local\/ssl\/lib\'," /home/owt-server/source/agent/webrtc/rtcConn/binding.gyp && \
+    sed -i "/lssl/i\'\-L\/usr\/local\/ssl\/lib\'," /home/owt-server/source/agent/webrtc/rtcFrame/binding.gyp && \
     cd ${SERVER_PATH} && export PKG_CONFIG_PATH=/usr/local/lib/x86_64-linux-gnu/pkgconfig && ./scripts/build.js -t mcu-all -r -c && \
     ./scripts/pack.js -t all --install-module --no-pseudo --app-path /home/owt-client-javascript/dist/samples/conference
 
@@ -215,16 +217,21 @@ WORKDIR /home
 
 # Prerequisites
 # Install node
-ARG NODE_VER=v8.15.0
+ARG NODE_VER=v10.21.0
 ARG NODE_REPO=https://nodejs.org/dist/${NODE_VER}/node-${NODE_VER}-linux-x64.tar.xz
 
-COPY --from=owt-build /home/owt-server/dist /home/owt
-COPY startowt.sh /home/
-
-RUN apt-get update && apt-get install -y -q --no-install-recommends ca-certificates wget xz-utils rabbitmq-server mongodb libboost-system-dev libboost-thread-dev liblog4cxx-dev libglib2.0-0 libfreetype6-dev curl
+RUN apt-get update && apt-get install -y -q --no-install-recommends ca-certificates wget xz-utils rabbitmq-server mongodb libboost-system-dev libboost-thread-dev liblog4cxx-dev libglib2.0-0 libfreetype6-dev curl sudo
 
 RUN wget ${NODE_REPO} && \
     tar xf node-${NODE_VER}-linux-x64.tar.xz && \
     cp node-*/* /usr/local -rf && rm -rf node-*
 
+RUN useradd -m owt && echo "owt:owt" | chpasswd && adduser owt sudo
+
+COPY --chown=owt:owt --from=owt-build /home/owt-server/dist /home/owt
+COPY --chown=owt:owt startowt.sh /home/
+
+USER owt
+
+CMD /bin/bash
 ENV LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/usr/local/lib/x86_64-linux-gnu

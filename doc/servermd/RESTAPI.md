@@ -130,6 +130,7 @@ Data Model:<br>
       mediaOut: object(MediaOut),          // the output media constraints
       transcoding: object(Transcoding),    // the transcoding control
       notifying: object(Notifying),        // notification control
+      selectActiveAudio: boolean,          // select 3 most active audio streams for the room
       sip: object(Sip)                     // SIP configuration
     }
 

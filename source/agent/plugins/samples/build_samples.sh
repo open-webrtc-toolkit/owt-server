@@ -17,25 +17,6 @@ trap 'error ${LINENO}' ERR
 
 SAMPLES_PATH="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
-if [[ -z "${InferenceEngine_DIR}" ]]; then
-    printf "\nInferenceEngine_DIR environment variable is not set. Trying to find setupvars.sh to set it. \n"
-    
-    setvars_path="/opt/intel/computer_vision_sdk"
-    if [ -e "$setvars_path/inference_engine/bin/setvars.sh" ]; then # for Intel Deep Learning Deployment Toolkit package
-        setvars_path="$setvars_path/inference_engine/bin/setvars.sh"
-    elif [ -e "$setvars_path/bin/setupvars.sh" ]; then # for OpenVINO package
-        setvars_path="$setvars_path/bin/setupvars.sh"
-    elif [ -e "$setvars_path/../setupvars.sh" ]; then
-        setvars_path="$setvars_path/../setupvars.sh"
-    else
-        printf "Error: setupvars.sh is not found in hardcoded paths. \n\n"
-        exit 1
-    fi 
-    if ! source $setvars_path ; then
-        printf "Unable to run ./setupvars.sh. Please check its presence. \n\n"
-        exit 1
-    fi
-fi
 
 if ! command -v cmake &>/dev/null; then
     printf "\n\nCMAKE is not installed. It is required to build Inference Engine samples. Please install it. \n\n"
@@ -43,6 +24,15 @@ if ! command -v cmake &>/dev/null; then
 fi
 
 build_dir=$PWD/build
+TOML11_PATH=https://github.com/ToruNiina/toml11.git
+
+if [ ! -d toml ]; then
+git clone ${TOML11_PATH}
+mkdir toml
+cp -r toml11/toml toml/
+cp -r toml11/toml.hpp toml/
+rm -rf toml11
+fi
 mkdir -p $build_dir
 cd $build_dir
 cmake -DCMAKE_BUILD_TYPE=Release $SAMPLES_PATH

@@ -35,7 +35,7 @@ typedef enum
 {
     RVA_ERR_OK                = 0,
    
-    RVA_ERR_UNKNOWN              = -1,
+    RVA_ERR_LINK              = -1,
     RVA_ERR_NULL_PTR             = -2,
     RVA_ERR_UNSUPPORTED          = -3,
     RVA_ERR_NOT_INITIALIZED      = -4,

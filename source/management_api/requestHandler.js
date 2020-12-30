@@ -33,28 +33,37 @@ var log = require('./logger').logger.getLogger('RequestHandler');
 var cluster_name = ((global.config || {}).cluster || {}).name || 'owt-cluster';
 var e = require('./errors');
 
-exports.schedulePortal = function (tokenCode, origin, callback) {
+const scheduleAgent = function(agentName, tokenCode, origin, attempts, callback) {
     var keepTrying = true;
 
-    var tryFetchingPortal = function (attempts) {
+    var tryFetchingAgent = function(attempts) {
         if (attempts <= 0) {
             return callback('timeout');
         }
 
-        rpc.callRpc(cluster_name, 'schedule', ['portal', tokenCode, origin, 60 * 1000], {callback: function (result) {
+        rpc.callRpc(cluster_name, 'schedule', [ agentName, tokenCode, origin, 60 * 1000 ], { callback : function(result) {
             if (result === 'timeout' || result === 'error') {
                 if (keepTrying) {
-                    log.info('Faild in scheduling portal, tokenCode:', tokenCode, ', keep trying.');
-                    setTimeout(function () {tryFetchingPortal(attempts - (result === 'timeout' ? 4 : 1));}, 1000);
+                    log.info('Faild in scheduling ', agentName, ' tokenCode:', tokenCode, ', keep trying.');
+                    setTimeout(function() { tryFetchingAgent(attempts - (result === 'timeout' ? 4 : 1)); }, 1000);
                 }
             } else {
                 callback(result.info);
                 keepTrying = false;
             }
-        }});
+        } });
     };
 
-    tryFetchingPortal(60);
+    tryFetchingAgent(attempts);
+};
+
+exports.schedulePortal = function(tokenCode, origin, callback) {
+    return scheduleAgent('portal', tokenCode, origin, 60, callback);
+};
+
+exports.scheduleQuicAgent = async function(tokenCode, origin, callback) {
+    // QUIC agent may not be enabled in all deployment environment, at least before CI for QUIC SDK is ready. Attempts less times to reduce response time for creating tokens.
+    return scheduleAgent('quic', tokenCode, origin, 5, callback);
 };
 
 const scheduleRoomController = function (roomId) {

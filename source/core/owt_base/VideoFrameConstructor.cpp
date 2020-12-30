@@ -92,7 +92,13 @@ void VideoFrameConstructor::unbindTransport()
 void VideoFrameConstructor::enable(bool enabled)
 {
     m_enabled = enabled;
-    RequestKeyFrame();
+    if(!m_enabled) {
+        m_ssrc = 0;
+        m_rtcAdapter->destoryVideoReceiver(m_videoReceive);
+        m_videoReceive = nullptr;
+    } else {
+        RequestKeyFrame();
+    }
 }
 
 int32_t VideoFrameConstructor::RequestKeyFrame()
@@ -114,7 +120,9 @@ bool VideoFrameConstructor::setBitrate(uint32_t kbps)
 
 void VideoFrameConstructor::onAdapterFrame(const Frame& frame)
 {
-    deliverFrame(frame);
+    if (m_enabled) {
+        deliverFrame(frame);
+    }
 }
 
 void VideoFrameConstructor::onAdapterStats(const AdapterStats& stats)
@@ -141,6 +149,10 @@ void VideoFrameConstructor::onAdapterData(char* data, int len)
 
 int VideoFrameConstructor::deliverVideoData_(std::shared_ptr<erizo::DataPacket> video_packet)
 {
+    if (!m_enabled) {
+        return 0;
+    }
+
     RTCPHeader* chead = reinterpret_cast<RTCPHeader*>(video_packet->data);
     uint8_t packetType = chead->getPacketType();
 

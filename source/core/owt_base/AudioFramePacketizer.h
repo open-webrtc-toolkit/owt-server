@@ -31,16 +31,22 @@ class AudioFramePacketizer : public FrameDestination,
     DECLARE_LOGGER();
 
 public:
-    AudioFramePacketizer();
+    struct Config {
+        std::string mid = "";
+        uint32_t midExtId = 0;
+    };
+    AudioFramePacketizer(Config& config);
     ~AudioFramePacketizer();
 
     void bindTransport(erizo::MediaSink* sink);
     void unbindTransport();
     void enable(bool enabled) { m_enabled = enabled; }
     uint32_t getSsrc() { return m_ssrc; }
+    void setOwner(std::string owner);
 
     // Implements FrameDestination.
     void onFrame(const Frame&);
+    void onMetaData(const MetaData&);
 
     // Implements RTPDataReceiver.
     void receiveRtpData(char*, int len, erizoExtra::DataType, uint32_t channelId);
@@ -51,7 +57,7 @@ public:
     void onAdapterData(char* data, int len) override;
 
 private:
-    bool init();
+    bool init(Config& config);
     void close();
 
     // Implement erizo::FeedbackSink
@@ -70,6 +76,9 @@ private:
 
     std::shared_ptr<rtc_adapter::RtcAdapter> m_rtcAdapter;
     rtc_adapter::AudioSendAdapter* m_audioSend;
+    std::string m_owner;
+    std::string m_sourceOwner;
+    bool m_firstFrame;
 };
 }
 #endif /* AudioFramePacketizer_h */

@@ -26,12 +26,19 @@ void MediaFrameMulticaster::onFeedback(const FeedbackMsg& msg)
             deliverFeedbackMsg(msg);
         }
         ++m_pendingKeyFrameRequests;
+    } else if (msg.type == AUDIO_FEEDBACK) {
+        deliverFeedbackMsg(msg);
     }
 }
 
 void MediaFrameMulticaster::onFrame(const Frame& frame)
 {
     deliverFrame(frame);
+}
+
+void MediaFrameMulticaster::onMetaData(const MetaData& metadata)
+{
+    deliverMetaData(metadata);
 }
 
 void MediaFrameMulticaster::onTimeout()

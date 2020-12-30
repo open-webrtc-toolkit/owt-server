@@ -151,7 +151,7 @@ install_openssl(){
 
   if [ -d $LIB_DIR ]; then
     local SSL_BASE_VERSION="1.1.1"
-    local SSL_VERSION="1.1.1g"
+    local SSL_VERSION="1.1.1h"
     cd $LIB_DIR
     rm -f ./build/lib/libssl.*
     rm -f ./build/lib/libcrypto.*
@@ -341,7 +341,7 @@ install_libsrtp2(){
 }
 
 install_node() {
-  local NODE_VERSION="v8.15.0"
+  local NODE_VERSION="v10.21.0"
   echo -e "\x1b[32mInstalling nvm...\x1b[0m"
   NVM_DIR="${HOME}/.nvm"
 

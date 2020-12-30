@@ -12,11 +12,13 @@
 #include <boost/thread/mutex.hpp>
 #include <logger.h>
 #include <queue>
+#include "IOService.h"
 
 namespace owt_base {
 
 const char TDT_FEEDBACK_MSG = 0x5A;
 const char TDT_MEDIA_FRAME = 0x8F;
+const char TDT_MEDIA_METADATA = 0x3A;
 
 enum Protocol {
     TCP = 0,
@@ -93,8 +95,7 @@ private:
     // the order of the member declarations here.
     // Alternatively, we may make the io_service object reference counted but it
     // introduces unnecessary complexity.
-    boost::asio::io_service m_ioService;
-    boost::thread m_workThread;
+    std::shared_ptr<IOService> m_service;
     struct Socket {
         Socket() { }
         ~Socket() { }

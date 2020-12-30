@@ -178,6 +178,14 @@ bool VideoSendAdapterImpl::init()
         m_rtpRtcp->RegisterRtpHeaderExtension(
             webrtc::RtpExtension::kTransportSequenceNumberUri, m_config.transport_cc);
     }
+    if (m_config.mid_ext) {
+        m_config.mid[sizeof(m_config.mid) - 1] = '\0';
+        std::string mid(m_config.mid);
+        // Register MID extension
+        m_rtpRtcp->RegisterRtpHeaderExtension(
+            webrtc::RtpExtension::kMidUri, m_config.mid_ext);
+        m_rtpRtcp->SetMid(mid);
+    }
 
     webrtc::RTPSenderVideo::Config video_config;
     m_playoutDelayOracle = std::make_unique<webrtc::PlayoutDelayOracle>();

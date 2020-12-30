@@ -1,0 +1,198 @@
+From 86caa772245508b11bc038006df5a8867dda2fc9 Mon Sep 17 00:00:00 2001
+From: Chen Li1 <li1.chen@intel.com>
+Date: Fri, 16 Oct 2020 10:22:37 +0800
+Subject: [PATCH] Add Rtp demuxer
+
+---
+ erizo/src/erizo/LibNiceConnection.cpp         |  2 +-
+ erizo/src/erizo/WebRtcConnection.cpp          | 34 ++++++++++++++++++++-------
+ erizo/src/erizo/WebRtcConnection.h            |  2 ++
+ erizo/src/erizo/rtp/RtpExtensionProcessor.cpp | 30 +++++++++++++++++++++++
+ erizo/src/erizo/rtp/RtpExtensionProcessor.h   |  9 +++++++
+ 5 files changed, 67 insertions(+), 10 deletions(-)
+
+diff --git a/erizo/src/erizo/LibNiceConnection.cpp b/erizo/src/erizo/LibNiceConnection.cpp
+index 3c4d777..bc38c22 100644
+--- a/erizo/src/erizo/LibNiceConnection.cpp
++++ b/erizo/src/erizo/LibNiceConnection.cpp
+@@ -407,7 +407,7 @@ void LibNiceConnection::updateComponentState(unsigned int component_id, IceState
+       }
+     }
+   } else if (state == IceState::FAILED) {
+-    if (receivedLastCandidate_) {
++    if (receivedLastCandidate_ || this->checkIceState() == IceState::READY) {
+       ELOG_WARN("%s message: component failed, ice_config_.transport_name: %s, componentId: %u",
+                 toLog(), ice_config_.transport_name.c_str(), component_id);
+       for (unsigned int i = 1; i <= ice_config_.ice_components; i++) {
+diff --git a/erizo/src/erizo/WebRtcConnection.cpp b/erizo/src/erizo/WebRtcConnection.cpp
+index 6eee9a8..5ff5156 100644
+--- a/erizo/src/erizo/WebRtcConnection.cpp
++++ b/erizo/src/erizo/WebRtcConnection.cpp
+@@ -310,6 +310,11 @@ bool WebRtcConnection::processRemoteSdp(std::string stream_id) {
+   // update remote_sdp_'s ssrc map
+   remote_sdp_->audio_ssrc_map = local_sdp_->audio_ssrc_map;
+   remote_sdp_->video_ssrc_map = local_sdp_->video_ssrc_map;
++  // Update extensions
++  local_sdp_->setOfferSdp(remote_sdp_);
++  extension_processor_.setSdpInfo(local_sdp_);
++  local_sdp_->updateSupportedExtensionMap(extension_processor_.getSupportedExtensionMap());
++
+ 
+   if (first_remote_sdp_processed_) {
+     setRemoteSdpsToMediaStreams(stream_id);
+@@ -317,9 +322,6 @@ bool WebRtcConnection::processRemoteSdp(std::string stream_id) {
+   }
+ 
+   bundle_ = remote_sdp_->isBundle;
+-  local_sdp_->setOfferSdp(remote_sdp_);
+-  extension_processor_.setSdpInfo(local_sdp_);
+-  local_sdp_->updateSupportedExtensionMap(extension_processor_.getSupportedExtensionMap());
+ 
+   if (remote_sdp_->dtlsRole == ACTPASS) {
+     local_sdp_->dtlsRole = ACTIVE;
+@@ -574,12 +576,26 @@ void WebRtcConnection::onTransportData(std::shared_ptr<DataPacket> packet, Trans
+   } else {
+     RtpHeader *head = reinterpret_cast<RtpHeader*> (buf);
+     uint32_t ssrc = head->getSSRC();
+-    auto ridSsrc = this->extension_processor_.checkNewRid(packet);
+-    if (!ridSsrc.first.empty()) {
+-      // find a new rid
+-      ELOG_DEBUG("%s message: Discovered New RID: %s, SSRC: %u",
+-                 toLog(), ridSsrc.first.c_str(), ridSsrc.second);
+-      maybeNotifyWebRtcConnectionEvent(global_state_, std::to_string(ridSsrc.second), ridSsrc.first);
++    this->extension_processor_.processRtpExtensions(packet);
++    std::string mid = this->extension_processor_.lastMid();
++    std::string rid = this->extension_processor_.lastRid();
++    if (!mid.empty()) {
++      std::string streamId = mid;
++      if (!rid.empty()) {
++        // Compose ID as js layer
++        streamId = mid + ":" + rid;
++      }
++
++      if (mapping_ssrcs_.count(streamId) == 0) {
++        // Set SSRC for mid/rsid
++        forEachMediaStream([this, streamId, ssrc] (const std::shared_ptr<MediaStream> &media_stream) {
++          if (media_stream->getId() == streamId) {
++            media_stream->setVideoSourceSSRC(ssrc);
++            media_stream->setVideoSourceSSRC(ssrc);
++            mapping_ssrcs_[streamId] = ssrc;
++          }
++        });
++      }
+     }
+     forEachMediaStream([packet, transport, ssrc] (const std::shared_ptr<MediaStream> &media_stream) {
+       if (media_stream->isSourceSSRC(ssrc) || media_stream->isSinkSSRC(ssrc)) {
+diff --git a/erizo/src/erizo/WebRtcConnection.h b/erizo/src/erizo/WebRtcConnection.h
+index 56e0bbb..4a9fa44 100644
+--- a/erizo/src/erizo/WebRtcConnection.h
++++ b/erizo/src/erizo/WebRtcConnection.h
+@@ -202,6 +202,8 @@ class WebRtcConnection: public TransportListener, public LogContext,
+   bool first_remote_sdp_processed_;
+ 
+   std::unique_ptr<BandwidthDistributionAlgorithm> distributor_;
++
++  std::map<std::string, uint32_t> mapping_ssrcs_;
+ };
+ 
+ }  // namespace erizo
+diff --git a/erizo/src/erizo/rtp/RtpExtensionProcessor.cpp b/erizo/src/erizo/rtp/RtpExtensionProcessor.cpp
+index 6ea37e8..6e1ae73 100644
+--- a/erizo/src/erizo/rtp/RtpExtensionProcessor.cpp
++++ b/erizo/src/erizo/rtp/RtpExtensionProcessor.cpp
+@@ -19,6 +19,7 @@ RtpExtensionProcessor::RtpExtensionProcessor(const std::vector<erizo::ExtMap> ex
+   translationMap_["urn:3gpp:video-orientation"] = VIDEO_ORIENTATION;
+   translationMap_["http://www.ietf.org/id/draft-holmer-rmcat-transport-wide-cc-extensions-01"] = TRANSPORT_CC;
+   translationMap_["http://www.webrtc.org/experiments/rtp-hdrext/playout-delay"]= PLAYBACK_TIME;
++  translationMap_["urn:ietf:params:rtp-hdrext:sdes:mid"]= MEDIA_ID;
+   translationMap_["urn:ietf:params:rtp-hdrext:sdes:rtp-stream-id"]= RTP_ID;
+   translationMap_["urn:ietf:params:rtp-hdrext:sdes:repaired-rtp-stream-id"]= REPARIED_RTP_ID;
+   ext_map_video_.fill(UNKNOWN);
+@@ -126,6 +127,9 @@ uint32_t RtpExtensionProcessor::processRtpExtensions(std::shared_ptr<DataPacket>
+   const RtpHeader* head = reinterpret_cast<const RtpHeader*>(p->data);
+   uint32_t len = p->length;
+   std::array<RTPExtensions, kRtpExtSize> extMap;
++
++  last_mid_.clear();
++  last_rid_.clear();
+   if (head->getExtension()) {
+     switch (p->type) {
+       case VIDEO_PACKET:
+@@ -158,6 +162,12 @@ uint32_t RtpExtensionProcessor::processRtpExtensions(std::shared_ptr<DataPacket>
+             case VIDEO_ORIENTATION:
+               processVideoOrientation(extBuffer);
+               break;
++            case MEDIA_ID:
++              processMid(extBuffer);
++              break;
++            case RTP_ID:
++              processRid(extBuffer);
++              break;
+             default:
+               break;
+           }
+@@ -196,6 +206,26 @@ uint32_t RtpExtensionProcessor::processAbsSendTime(char* buf) {
+   return 0;
+ }
+ 
++uint32_t RtpExtensionProcessor::processMid(char* extBuffer) {
++  uint8_t extByte = (uint8_t)(*extBuffer);
++  uint8_t extLength = extByte & 0x0F;
++  last_mid_.clear();
++  for (uint8_t i = 1; i <= extLength + 1; i++) {
++    last_mid_.push_back(*(extBuffer + i));
++  }
++  return 0;
++}
++
++uint32_t RtpExtensionProcessor::processRid(char* extBuffer) {
++  uint8_t extByte = (uint8_t)(*extBuffer);
++  uint8_t extLength = extByte & 0x0F;
++  last_rid_.clear();
++  for (uint8_t i = 1; i <= extLength + 1; i++) {
++    last_rid_.push_back(*(extBuffer + i));
++  }
++  return 0;
++}
++
+ uint32_t RtpExtensionProcessor::stripExtension(char* buf, int len) {
+   // TODO(pedro)
+   return len;
+diff --git a/erizo/src/erizo/rtp/RtpExtensionProcessor.h b/erizo/src/erizo/rtp/RtpExtensionProcessor.h
+index 1da8095..c7ab23b 100644
+--- a/erizo/src/erizo/rtp/RtpExtensionProcessor.h
++++ b/erizo/src/erizo/rtp/RtpExtensionProcessor.h
+@@ -20,6 +20,7 @@ enum RTPExtensions {
+   VIDEO_ORIENTATION,    // urn:3gpp:video-orientation
+   TRANSPORT_CC,         // http://www.ietf.org/id/draft-holmer-rmcat-transport-wide-cc-extensions-01
+   PLAYBACK_TIME,        // http:// www.webrtc.org/experiments/rtp-hdrext/playout-delay
++  MEDIA_ID,             // urn:ietf:params:rtp-hdrext:sdes:mid
+   RTP_ID,               // urn:ietf:params:rtp-hdrext:sdes:rtp-stream-id
+   REPARIED_RTP_ID       // urn:ietf:params:rtp-hdrext:sdes:repaired-rtp-stream-id
+ };
+@@ -50,14 +51,22 @@ class RtpExtensionProcessor{
+   }
+   bool isValidExtension(std::string uri);
+ 
++  std::string lastMid() { return last_mid_; }
++  std::string lastRid() { return last_rid_; }
++
+  private:
+   std::vector<ExtMap> ext_mappings_;
+   std::array<RTPExtensions, kRtpExtSize> ext_map_video_, ext_map_audio_;
+   std::map<std::string, uint8_t> translationMap_;
+   VideoRotation video_orientation_;
+   std::map<std::string, uint32_t> rids_;
++  std::string last_mid_;
++  std::string last_rid_;
++
+   uint32_t processAbsSendTime(char* buf);
+   uint32_t processVideoOrientation(char* buf);
++  uint32_t processMid(char* buf);
++  uint32_t processRid(char* buf);
+   uint32_t stripExtension(char* buf, int len);
+ };
+ 
+-- 
+2.7.4
+

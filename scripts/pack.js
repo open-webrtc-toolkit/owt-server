@@ -40,6 +40,8 @@ const originCwd = cwd();
 const osScript = path.join(rootDir, 'scripts/detectOS.sh');
 const osType = execSync(`bash ${osScript}`).toString().toLowerCase();
 
+const experimentalTargets = ['quic-agent'];
+
 var allTargets = [];
 
 if (options.full) {
@@ -65,10 +67,7 @@ if (options.archive) {
 
 if (options.encrypt) {
   const encryptDeps = [
-    'uglify-js',
-    'babel-cli',
-    'babel-preset-es2015',
-    'babel-preset-stage-0',
+    'uglify-es',
   ];
 
   // Check encrypt deps
@@ -131,7 +130,8 @@ function getPackList(targets) {
   }
 
   var packList = targets.filter((element) => {
-    if (options.target.includes('all')) return true;
+    // Don't include QUIC agent by default until CI is added for QUIC SDK.
+    if (options.target.includes('all') && !experimentalTargets.includes(element.rules.name)) return true;
     return options.target.includes(element.rules.name);
   });
   if (packList.length === 0) {
@@ -525,13 +525,7 @@ function encrypt(target) {
       return Promise.resolve();
     }
     var jsJobs = stdout.trim().split('\n').map((line) => {
-      return exec(`babel --presets es2015,stage-0 ${line} -o "${line}.es5"`, { env })
-        .then(() => {
-          return exec(`uglifyjs ${line}.es5 -o ${line} -c -m`, { env });
-        })
-        .then(() => {
-          return exec(`rm "${line}.es5"`);
-        });
+      return exec(`uglifyjs ${line} -o ${line} -c -m`, { env });
     });
     return Promise.all(jsJobs);
   })
@@ -598,6 +592,9 @@ function packScripts() {
   }
   scriptItems.push('app');
   scriptItems.forEach((m) => {
+    if (experimentalTargets.includes(m)) {
+      return;
+    }
     startCommands += '${bin}/daemon.sh start ' + m + ' $1\n';
     stopCommands += '${bin}/daemon.sh stop ' + m + '\n';
   });

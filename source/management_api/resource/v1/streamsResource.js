@@ -8,20 +8,9 @@ var requestHandler = require('../../requestHandler');
 var e = require('../../errors');
 
 var logger = require('../../logger').logger;
-
 // Logger
 var log = logger.getLogger('StreamsResource');
-
-// Convert from latest conference stream format to v1.
-function convertToV1Stream(stream) {
-    if (stream && stream.media && stream.media.video &&
-        stream.media.video.original && stream.media.video.original[0]) {
-        stream.media.video.format = stream.media.video.original[0].format;
-        stream.media.video.parameters = stream.media.video.original[0].parameters;
-        delete stream.media.video.original;
-    }
-    return stream;
-}
+var convertStream = require('../streamAdapter').convertToV10Stream;
 
 exports.getList = function (req, res, next) {
     log.debug('Representing streams for room ', req.params.room, 'and service', req.authData.service._id);
@@ -29,7 +18,7 @@ exports.getList = function (req, res, next) {
         if (streams === 'error') {
             return next(new e.CloudError('Operation failed'));
         }
-        streams.map(convertToV1Stream);
+        streams.map(convertStream);
         res.send(streams);
     });
 };
@@ -43,7 +32,7 @@ exports.get = function (req, res, next) {
         for (var index in streams) {
             if (streams[index].id === stream) {
                 log.debug('Found stream', stream);
-                convertToV1Stream(stream[index]);
+                convertStream(stream[index]);
                 res.send(streams[index]);
                 return;
             }
@@ -60,7 +49,7 @@ exports.addStreamingIn = function (req, res, next) {
         if (result === 'error') {
             return next(new e.CloudError('Operation failed'));
         }
-        convertToV1Stream(result);
+        convertStream(result);
         res.send(result);
     });
 };
@@ -72,7 +61,7 @@ exports.patch = function (req, res, next) {
         if (result === 'error') {
             return next(new e.CloudError('Operation failed'));
         }
-        convertToV1Stream(result);
+        convertStream(result);
         res.send(result);
     });
 };

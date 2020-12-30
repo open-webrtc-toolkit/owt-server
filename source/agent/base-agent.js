@@ -132,10 +132,11 @@ class BaseAgent {
     *@param {string} connectionId
     *@param {string} audioFrom
     *@param {string} videoFrom
+    *@param {string} dataFrom
     */
-  linkup(connectionId, audioFrom, videoFrom) {
+  linkup(connectionId, audioFrom, videoFrom, dataFrom) {
     log.debug('linkup, connectionId:', connectionId);
-    return this.connections.linkupConnection(connectionId, audioFrom, videoFrom);
+    return this.connections.linkupConnection(connectionId, audioFrom, videoFrom, dataFrom);
   }
 
   /**

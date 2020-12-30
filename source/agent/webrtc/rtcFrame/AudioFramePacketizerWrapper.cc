@@ -28,6 +28,7 @@ void AudioFramePacketizer::Init(v8::Local<v8::Object> exports) {
   NODE_SET_PROTOTYPE_METHOD(tpl, "unbindTransport", unbindTransport);
   NODE_SET_PROTOTYPE_METHOD(tpl, "enable", enable);
   NODE_SET_PROTOTYPE_METHOD(tpl, "ssrc", getSsrc);
+  NODE_SET_PROTOTYPE_METHOD(tpl, "setOwner", setOwner);
 
   constructor.Reset(isolate, tpl->GetFunction());
   exports->Set(String::NewFromUtf8(isolate, "AudioFramePacketizer"), tpl->GetFunction());
@@ -37,8 +38,18 @@ void AudioFramePacketizer::New(const FunctionCallbackInfo<Value>& args) {
   Isolate* isolate = Isolate::GetCurrent();
   HandleScope scope(isolate);
 
+  std::string mid;
+  int midExtId = -1;
+  if (args.Length() == 2) {
+    v8::String::Utf8Value param0(Nan::To<v8::String>(args[0]).ToLocalChecked());
+    mid = std::string(*param0);
+    midExtId = args[1]->IntegerValue();
+  }
   AudioFramePacketizer* obj = new AudioFramePacketizer();
-  obj->me = new owt_base::AudioFramePacketizer();
+  owt_base::AudioFramePacketizer::Config config;
+  config.mid = mid;
+  config.midExtId = midExtId;
+  obj->me = new owt_base::AudioFramePacketizer(config);
   obj->dest = obj->me;
 
   obj->Wrap(args.This());
@@ -96,4 +107,17 @@ void AudioFramePacketizer::getSsrc(const v8::FunctionCallbackInfo<v8::Value>& ar
 
   uint32_t ssrc = me->getSsrc();
   args.GetReturnValue().Set(Number::New(isolate, ssrc));
+}
+
+void AudioFramePacketizer::setOwner(const v8::FunctionCallbackInfo<v8::Value>& args) {
+  Isolate* isolate = Isolate::GetCurrent();
+  HandleScope scope(isolate);
+
+  AudioFramePacketizer* obj = ObjectWrap::Unwrap<AudioFramePacketizer>(args.Holder());
+  owt_base::AudioFramePacketizer* me = obj->me;
+
+  v8::String::Utf8Value param(Nan::To<v8::String>(args[0]).ToLocalChecked());
+  std::string ownerId = std::string(*param);
+
+  me->setOwner(ownerId);
 }

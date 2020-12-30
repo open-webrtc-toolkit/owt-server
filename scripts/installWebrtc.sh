@@ -39,6 +39,8 @@ rtc_include_internal_audio_device=false
 use_sysroot=false
 is_clang=false
 treat_warnings_as_errors=false
+rtc_enable_libevent=false
+rtc_build_libevent=false
 is_debug=false
 
 END

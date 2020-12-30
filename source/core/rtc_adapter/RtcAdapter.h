@@ -67,10 +67,14 @@ public:
     struct Config {
         // SSRC of target stream
         uint32_t ssrc = 0;
-        // Transport-cc externsion ID
+        // Transport-cc extension ID
         int transport_cc = 0;
         int red_payload = 0;
         int ulpfec_payload = 0;
+        // MID of target stream
+        char mid[32];
+        // MID extension ID
+        int mid_ext = 0;
         AdapterDataListener* rtp_listener = nullptr;
         AdapterStatsListener* stats_listener = nullptr;
         AdapterFrameListener* frame_listener = nullptr;
@@ -85,6 +89,7 @@ public:
     virtual void destoryAudioReceiver(AudioReceiveAdapter*) = 0;
     virtual AudioSendAdapter* createAudioSender(const Config&) = 0;
     virtual void destoryAudioSender(AudioSendAdapter*) = 0;
+    virtual ~RtcAdapter(){}
 };
 
 class RtcAdapterFactory {

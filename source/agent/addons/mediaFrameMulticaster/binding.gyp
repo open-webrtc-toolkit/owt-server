@@ -9,7 +9,8 @@
       '../../../core/common/JobTimer.cpp',
     ],
     'include_dirs': ['$(CORE_HOME)/common',
-                      '$(CORE_HOME)/owt_base'],
+                      '$(CORE_HOME)/owt_base',
+                      "<!(node -e \"require('nan')\")"],
     'libraries': [
       '-lboost_thread',
     ],
