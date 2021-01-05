@@ -1895,7 +1895,12 @@ var Conference = function (rpcClient, selfRpcId) {
         const view = target.view;
         room_config.views.forEach((viewSettings) => {
           if (viewSettings.label === view && viewSettings.video.keepActiveInputPrimary) {
-            roomController.setPrimary(activeInputStream, view);
+            const videoTrackId = streams[trackOwners[activeInputStream]].media.tracks
+                .filter(t => t.type === 'video')
+                .map(t => t.id).filter(id => !!id);
+            if(videoTrackId) {
+              roomController.setPrimary(videoTrackId, view);
+            }
           }
         });
 
