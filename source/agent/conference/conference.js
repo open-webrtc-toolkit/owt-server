@@ -1893,19 +1893,22 @@ var Conference = function (rpcClient, selfRpcId) {
     if ((room_id === roomId) && roomController) {
       if (typeof target.view === 'string') {
         const view = target.view;
+        const input = streams[activeInputStream] ?
+            activeInputStream : trackOwners[activeInputStream];
         room_config.views.forEach((viewSettings) => {
           if (viewSettings.label === view && viewSettings.video.keepActiveInputPrimary) {
-            const videoTrackId = streams[trackOwners[activeInputStream]].media.tracks
-                .filter(t => t.type === 'video')
-                .map(t => t.id).filter(id => !!id);
-            if(videoTrackId) {
-              roomController.setPrimary(videoTrackId, view);
+            if(streams[input].info.type === "webrtc") {
+                const videoTrackId = streams[input].media.tracks.filter(t => t.type === 'video').map(t => t.id).toString();
+                if(videoTrackId) {
+                  roomController.setPrimary(videoTrackId, view);
+                }
+            } else {
+                roomController.setPrimary(activeInputStream, view);
             }
+
           }
         });
 
-        const input = streams[activeInputStream] ?
-            activeInputStream : trackOwners[activeInputStream];
         const mixedId = roomController.getMixedStream(view);
         if (streams[mixedId] instanceof MixedStream) {
           if (streams[mixedId].info.activeInput !== input) {
