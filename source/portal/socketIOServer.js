@@ -355,6 +355,9 @@ var SocketIOServer = function(spec, portal, observer) {
   var startInsecure = function(port) {
     var server = require('http').createServer().listen(port);
     io = require('socket.io').listen(server, sioOptions);
+    io.origins((_, callback) => {
+      callback(null, true);
+    });
     run();
     return Promise.resolve('ok');
   };
@@ -372,6 +375,9 @@ var SocketIOServer = function(spec, portal, observer) {
           }
           var server = require('https').createServer(option).listen(port);
           io = require('socket.io').listen(server, sioOptions);
+          io.origins((_, callback) => {
+            callback(null, true);
+          });
           run();
           resolve('ok');
         } else {
