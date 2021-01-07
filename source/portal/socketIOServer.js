@@ -356,11 +356,10 @@ var SocketIOServer = function(spec, portal, observer) {
     var server = require('http').createServer().listen(port);
     io = require('socket.io').listen(server, sioOptions);
     io.origins((origin, callback) => {
-      if(cors !== '*'){
-        if (origin !== cors) {
-          return callback('origin not allowed', false);
-        }
+      if (cors.indexOf(origin) < 0 && cors.indexOf('*') < 0) {
+        return callback('origin not allowed', false);
       }
+
       callback(null, true);
     });
     run();
@@ -381,10 +380,8 @@ var SocketIOServer = function(spec, portal, observer) {
           var server = require('https').createServer(option).listen(port);
           io = require('socket.io').listen(server, sioOptions);
           io.origins((origin, callback) => {
-            if(cors !== '*'){
-              if (origin !== cors) {
-                return callback('origin not allowed', false);
-              }
+            if (cors.indexOf(origin) < 0 && cors.indexOf('*') < 0) {
+              return callback('origin not allowed', false);
             }
             callback(null, true);
           });
