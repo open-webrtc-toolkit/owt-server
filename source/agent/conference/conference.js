@@ -1898,10 +1898,10 @@ var Conference = function (rpcClient, selfRpcId) {
         room_config.views.forEach((viewSettings) => {
           if (viewSettings.label === view && viewSettings.video.keepActiveInputPrimary) {
             if(streams[input].info.type === "webrtc") {
-                const videoTrackId = streams[input].media.tracks.filter(t => t.type === 'video').map(t => t.id).toString();
-                if(videoTrackId) {
-                  roomController.setPrimary(videoTrackId, view);
-                }
+                const videoTrackIds = streams[input].media.tracks.filter(t => t.type === 'video').map(t => t.id);
+                videoTrackIds.forEach(id => {
+                  roomController.setPrimary(id, view);
+                });
             } else {
                 roomController.setPrimary(activeInputStream, view);
             }
