@@ -26,6 +26,7 @@ config.portal.ssl = config.portal.ssl || false;
 config.portal.force_tls_v12 = config.portal.force_tls_v12 || false;
 config.portal.reconnection_ticket_lifetime = config.portal.reconnection_ticket_lifetime || 600;
 config.portal.reconnection_timeout = Number.isInteger(config.portal.reconnection_timeout) ? config.portal.reconnection_timeout : 60;
+config.portal.cors = config.portal.cors || '*';
 
 config.cluster = config.cluster || {};
 config.cluster.name = config.cluster.name || 'owt-cluster';
@@ -193,6 +194,7 @@ var startServers = function(id, tokenKey) {
                                 selfRpcId: id},
                                 rpcReq);
   socketio_server = require('./socketIOServer')({port: config.portal.port,
+                                                 cors: config.portal.cors,
                                                  ssl: config.portal.ssl,
                                                  forceTlsv12: config.portal.force_tls_v12,
                                                  keystorePath: config.portal.keystorePath,

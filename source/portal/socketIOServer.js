@@ -352,17 +352,22 @@ var SocketIOServer = function(spec, portal, observer) {
     sioOptions.pingTimeout = spec.pingTimeout * 1000;
   }
 
-  var startInsecure = function(port) {
+  var startInsecure = function(port, cors) {
     var server = require('http').createServer().listen(port);
     io = require('socket.io').listen(server, sioOptions);
-    io.origins((_, callback) => {
+    io.origins((origin, callback) => {
+      if(cors !== '*'){
+        if (origin !== cors) {
+          return callback('origin not allowed', false);
+        }
+      }
       callback(null, true);
     });
     run();
     return Promise.resolve('ok');
   };
 
-  var startSecured = function(port, keystorePath, forceTlsv12) {
+  var startSecured = function(port, cors, keystorePath, forceTlsv12) {
     return new Promise(function(resolve, reject) {
       var cipher = require('./cipher');
       var keystore = path.resolve(path.dirname(keystorePath), cipher.kstore);
@@ -375,7 +380,12 @@ var SocketIOServer = function(spec, portal, observer) {
           }
           var server = require('https').createServer(option).listen(port);
           io = require('socket.io').listen(server, sioOptions);
-          io.origins((_, callback) => {
+          io.origins((origin, callback) => {
+            if(cors !== '*'){
+              if (origin !== cors) {
+                return callback('origin not allowed', false);
+              }
+            }
             callback(null, true);
           });
           run();
@@ -423,9 +433,9 @@ var SocketIOServer = function(spec, portal, observer) {
 
   that.start = function() {
     if (!spec.ssl) {
-      return startInsecure(spec.port);
+      return startInsecure(spec.port, spec.cors);
     } else {
-      return startSecured(spec.port, spec.keystorePath, spec.forceTlsv12);
+      return startSecured(spec.port, spec.cors, spec.keystorePath, spec.forceTlsv12);
     }
   };
 
