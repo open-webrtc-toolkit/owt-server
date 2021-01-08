@@ -80,7 +80,7 @@ download_and_build(){
   fi
 
   export PATH="$PATH:$DEPOT_TOOLS"
-  gclient sync
+  gclient sync  --no-history
   pushd src >/dev/null  
   gn gen out --args="$GN_ARGS"
   ninja -C out call default_task_queue_factory
