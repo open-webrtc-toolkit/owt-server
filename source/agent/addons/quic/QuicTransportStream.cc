@@ -28,6 +28,8 @@ QuicTransportStream::QuicTransportStream(owt::quic::QuicTransportStreamInterface
     , m_contentSessionId()
     , m_receivedContentSessionId(false)
     , m_isPiped(false)
+    , m_buffer(nullptr)
+    , m_bufferSize(0)
 {
 }
 
@@ -40,6 +42,7 @@ QuicTransportStream::~QuicTransportStream()
         uv_close(reinterpret_cast<uv_handle_t*>(&m_asyncOnData), NULL);
     }
     m_stream->SetVisitor(nullptr);
+    delete[] m_buffer;
 }
 
 void QuicTransportStream::OnCanRead()
@@ -202,17 +205,27 @@ void QuicTransportStream::SignalOnData()
 
     while (m_stream->ReadableBytes() > 0) {
         auto readableBytes = m_stream->ReadableBytes();
-        uint8_t* buffer = new uint8_t[readableBytes];
-        if (buffer == nullptr) {
-            ELOG_ERROR("Failed to alloc buffer.");
-            return;
+        if (readableBytes > m_bufferSize) {
+            ReallocateBuffer(readableBytes);
         }
         owt_base::Frame frame;
         frame.format = owt_base::FRAME_FORMAT_DATA;
         frame.length = readableBytes;
-        frame.payload = buffer;
+        frame.payload = m_buffer;
         m_stream->Read(frame.payload, readableBytes);
         deliverFrame(frame);
+    }
+}
+
+void QuicTransportStream::ReallocateBuffer(size_t size)
+{
+    if (size > m_bufferSize) {
+        delete[] m_buffer;
+    }
+    m_buffer = new uint8_t[size];
+    m_bufferSize = size;
+    if (!m_buffer) {
+        ELOG_ERROR("Failed to allocate buffer.");
     }
 }
 
