@@ -38,14 +38,16 @@
       '../../../core/common',
       '../../../core/owt_base',
       '../../../../build/libdeps/build/include',
-      '../../../../third_party/quic-transport/include',
+      # TODO: Fix it when CI for QUIC SDK is ready.
+      '/home/jianjunz/code/quic/src/owt/quic_transport/api',
       '<!@(pkg-config glib-2.0 --cflags-only-I | sed s/-I//g)',
     ],
     'ldflags': [
       '-Wl,--no-as-needed',
+      '-Wl,-rpath,/home/jianjunz/code/quic/src/out/debug',
       '-L$(CORE_HOME)/../../build/libdeps/build/lib',
       '-fPIC',
-      '-L<(module_root_dir)/../../../../third_party/quic-transport/bin/release',
+      '-L/home/jianjunz/code/quic/src/out/debug',
     ],
     'cflags_cc!': [
       '-std=gnu++0x',
