@@ -447,7 +447,7 @@ Customers must be familiar with industry standards and best practices for deploy
 
 The following instructions are provided only as recommendations regarding security best practices and by no means are they fully complete:
 
-1. For the key pair access on OWT server, make sure only people with high enough privilege can have the clearance.
+1. For the key pair access on OWT server, make sure only people/process with high enough privilege can have the clearance. For service key, authentication service is recommended to integrate with OWT server and access it. For cipher key, hardware security storage is recommended.
 2. Regular system state audits or system change auto-detection. For example, OWT server system changes notification mechanism by third-party tool.
 3. Establish policy of file based operation history for the tracking purpose.
 4. Establish policy disallowing saving credentials for remote system access on OWT server.
