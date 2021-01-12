@@ -19,7 +19,7 @@ optParser.addOption('r', 'repack', 'boolean', 'Whether clean dist before pack (E
 optParser.addOption('e', 'encrypt', 'boolean', 'Whether encrypt during pack (Eg. pack.js -t portal -e)');
 optParser.addOption('d', 'debug', 'boolean', '(Disabled)');
 optParser.addOption('o', 'addon-debug', 'boolean', 'Whether pack debug addon (Eg. pack.js -t webrtc-agent -o)');
-optParser.addOption('f', 'full', 'boolean', 'Whether perform a full pack (--full is the equalivation of pack.js -t all -r -i)');
+optParser.addOption('f', 'full', 'boolean', 'Whether perform a full pack (--full is the equalivation of pack.js -t all -r -i). Experimental features are not included, please include them explicitly with -t.');
 optParser.addOption('p', 'app-path', 'string', 'Specify app path (Eg. pack.js -t all --app-path ${appPath})');
 optParser.addOption('a', 'archive', 'string', 'Specify archive name (Eg. pack.js -t all -a ${archiveName})');
 optParser.addOption('n', 'node-module-path', 'string', 'Specify shared-node-module directory');
@@ -45,7 +45,10 @@ const experimentalTargets = ['quic-agent'];
 var allTargets = [];
 
 if (options.full) {
-  options.target = ['all'];
+  if (!options.target) {
+    options.target = [];
+  }
+  options.target.push('all');
   options.repack = true;
   options['install-module'] = true;
 }
@@ -119,7 +122,11 @@ function getPackList(targets) {
     console.log('Avalible Targets Are:');
     console.log('---------------------');
     for (const target of targets) {
-      console.log(`\x1b[32m${target.rules.name}\x1b[0m`);
+      let targetTitle = `\x1b[32m${target.rules.name}\x1b[0m`;
+      if (experimentalTargets.includes(target.rules.name)) {
+        targetTitle += ' (experimental feature)'
+      }
+      console.log(targetTitle);
       console.log(' ->', target.path);
     }
     process.exit(0);
@@ -130,7 +137,7 @@ function getPackList(targets) {
   }
 
   var packList = targets.filter((element) => {
-    // Don't include QUIC agent by default until CI is added for QUIC SDK.
+    // Experimental features are not included by default.
     if (options.target.includes('all') && !experimentalTargets.includes(element.rules.name)) return true;
     return options.target.includes(element.rules.name);
   });
@@ -592,7 +599,7 @@ function packScripts() {
   }
   scriptItems.push('app');
   scriptItems.forEach((m) => {
-    if (experimentalTargets.includes(m)) {
+    if (!options.target.includes(m) && experimentalTargets.includes(m)) {
       return;
     }
     startCommands += '${bin}/daemon.sh start ' + m + ' $1\n';
