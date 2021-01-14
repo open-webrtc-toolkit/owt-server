@@ -744,6 +744,27 @@ describe('Notifying events to clients.', function() {
       });
     });
   });
+
+  it('Broadcasting the joined clients should succeed.', function(done) {
+    var client = sioClient.connect(serverUrl, {reconnect: false, secure: false, 'force new connection': true});
+
+    client.on('broadcast-event', function(data) {
+      expect(data).to.equal('broadcast-data');
+      done();
+    });
+
+    client.on('connect', function() {
+      mockPortal.join = sinon.stub();
+      mockPortal.join.resolves(JSON.parse(JSON.stringify(presenter_join_result)));
+
+      client.emit('login', jsLoginInfo, function(status, resp) {
+        mockPortal.join = null;
+        expect(status).to.equal('ok');
+        server.broadcast(['excludeClient'], 'broadcast-event', 'broadcast-data');
+      });
+    });
+  });
+
 });
 
 describe('Drop users from sessions.', function() {

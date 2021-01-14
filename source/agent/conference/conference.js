@@ -528,16 +528,18 @@ var Conference = function (rpcClient, selfRpcId) {
 
   const sendMsg = function(from, to, msg, data) {
     log.debug('sendMsg, from:', from, 'to:', to, 'msg:', msg, 'data:', data);
-    if (to === 'all') {
-      for (var participant_id in participants) {
-        sendMsgTo(participant_id, msg, data);
+    if (to === 'all' || to === 'others') {
+      // Broadcast message to portal
+      let excludes = (to === 'others') ? [from] : [];
+      let portals = new Set();
+      for (let pptId in participants) {
+        portals.add(participants[pptId].getPortal());
       }
-    } else if (to === 'others') {
-      for (var participant_id in participants) {
-        if (participant_id !== from) {
-          sendMsgTo(participant_id, msg, data);
+      portals.forEach((portal) => {
+        if (portal) {
+          rpcReq.broadcast(portal, selfRpcId, excludes, msg, data);
         }
-      }
+      });
     } else {
       sendMsgTo(to, msg, data);
     }

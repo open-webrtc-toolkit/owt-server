@@ -241,6 +241,10 @@ var rpcPublic = {
     } else {
       callback('callback', 'error', 'Invalid token for WebTransport.');
     }
+  },
+  broadcast: function(controller, excludeList, event, data, callback) {
+    socketio_server && socketio_server.broadcast(controller, excludeList, event, data);
+    callback('callback', 'ok');
   }
 };
 
