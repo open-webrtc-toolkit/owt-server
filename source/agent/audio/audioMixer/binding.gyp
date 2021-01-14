@@ -19,6 +19,7 @@
       '../../addons/common/NodeEventRegistry.cc',
       '../../../core/owt_base/MediaFramePipeline.cpp',
       '../../../core/owt_base/AudioUtilities.cpp',
+      '../../../core/common/JobTimer.cpp',
     ],
     'cflags_cc': [
         '-Wall',

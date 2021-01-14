@@ -355,7 +355,7 @@ module.exports = function (rpcC, selfRpcId, parentRpcId, clusterWorkerIP) {
                     //check resolution
                     var fmtp = info.videoResolution,
                         preferred_resolution,
-                        optional_resolutions = calls[client_id].videoSource.media.video.optional.parameters.resolution;
+                        optional_resolutions = calls[client_id].videoSource.media.tracks.find(t => t.type === "video").optional.parameters.resolution;
 
                     const isResolutionEqual = (r1, r2) => {return r1.width === r2.width && r1.height === r2.height;};
                     //TODO: currently we only check CIF/QCIF, there might be other options in fmtp from other devices.
@@ -818,7 +818,7 @@ module.exports = function (rpcC, selfRpcId, parentRpcId, clusterWorkerIP) {
         }
     };
 
-    that.linkup = function (connectionId, audioFrom, videoFrom, callback) {
+    that.linkup = function (connectionId, audioFrom, videoFrom, dataFrom, callback) {
         log.debug('linkup, connectionId:', connectionId, ', audioFrom:', audioFrom, ', videoFrom:', videoFrom);
 
         if (audioFrom && streams[audioFrom] === undefined) {

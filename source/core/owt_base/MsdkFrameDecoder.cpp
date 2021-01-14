@@ -417,6 +417,12 @@ void MsdkFrameDecoder::updateBitstream(const Frame& frame)
         memset((void *)m_bitstream.get(), 0, sizeof(mfxBitstream));
 
         m_bitstream->Data         = (mfxU8 *)malloc(size);
+        if (m_bitstream->Data == nullptr) {
+            m_bitstream.reset();
+            ELOG_ERROR_T("OOM! Allocate size %d", size);
+            return;
+        }
+
         m_bitstream->MaxLength    = size;
         m_bitstream->DataOffset   = 0;
         m_bitstream->DataLength   = 0;
@@ -450,13 +456,23 @@ void MsdkFrameDecoder::updateBitstream(const Frame& frame)
                 );
 
         m_bitstream->Data         = (mfxU8 *)realloc(m_bitstream->Data, newSize);
+        if (m_bitstream->Data == nullptr) {
+            m_bitstream.reset();
+            ELOG_ERROR_T("OOM! Allocate size %d", newSize);
+            return;
+        }
+
         m_bitstream->MaxLength    = newSize;
     }
 
     if(m_bitstream->DataOffset + m_bitstream->DataLength + frame.length > m_bitstream->MaxLength) {
-        memmove(m_bitstream->Data, m_bitstream->Data + m_bitstream->DataOffset, m_bitstream->DataLength);
-        m_bitstream->DataOffset = 0;
-        ELOG_TRACE_T("Move bitstream buffer offset");
+        if (m_bitstream->Data) {
+            memmove(m_bitstream->Data, m_bitstream->Data + m_bitstream->DataOffset, m_bitstream->DataLength);
+            m_bitstream->DataOffset = 0;
+            ELOG_TRACE_T("Move bitstream buffer offset");
+        } else { // make code scanner happy
+            return;
+        }
     }
 
     memcpy(m_bitstream->Data + m_bitstream->DataOffset + m_bitstream->DataLength, frame.payload, frame.length);

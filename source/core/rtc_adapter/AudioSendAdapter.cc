@@ -4,9 +4,11 @@
 
 #include "AudioSendAdapter.h"
 #include "AudioUtilitiesNew.h"
-#include "WebRTCTaskRunner.h"
+#include "TaskRunnerPool.h"
 
 #include <rtc_base/logging.h>
+#include <modules/rtp_rtcp/source/rtp_packet.h>
+
 #include <rtputils.h>
 
 using namespace webrtc;
@@ -22,20 +24,19 @@ AudioSendAdapterImpl::AudioSendAdapterImpl(CallOwner* owner, const RtcAdapter::C
     , m_seqNo(0)
     , m_ssrc(0)
     , m_ssrc_generator(SsrcGenerator::GetSsrcGenerator())
+    , m_config(config)
     , m_rtpListener(config.rtp_listener)
     , m_statsListener(config.stats_listener)
 {
     m_ssrc = m_ssrc_generator->CreateSsrc();
     m_ssrc_generator->RegisterSsrc(m_ssrc);
-    m_taskRunner.reset(new owt_base::WebRTCTaskRunner("AudioSendAdapterImpl"));
-    m_taskRunner->Start();
+    m_taskRunner = TaskRunnerPool::GetInstance().GetTaskRunner();
     init();
 }
 
 AudioSendAdapterImpl::~AudioSendAdapterImpl()
 {
     close();
-    m_taskRunner->Stop();
     m_ssrc_generator->ReturnSsrc(m_ssrc);
     boost::unique_lock<boost::shared_mutex> lock(m_rtpRtcpMutex);
 }
@@ -62,7 +63,19 @@ void AudioSendAdapterImpl::onFrame(const Frame& frame)
         // due to the premature AudioFrameConstructor implementation.
         updateSeqNo(frame.payload);
         if (m_rtpListener) {
-            m_rtpListener->onAdapterData(reinterpret_cast<char*>(frame.payload), frame.length);
+            if (!m_mid.empty()) {
+                webrtc::RtpPacket packet(&m_extensions);
+                packet.Parse(frame.payload, frame.length);
+                if (!packet.SetExtension<webrtc::RtpMid>(m_mid)) {
+                    // Remove the extension on set failure
+                    packet.RemoveExtension(kRtpExtensionMid);
+                }
+                m_rtpListener->onAdapterData(
+                    reinterpret_cast<char*>(const_cast<uint8_t*>(packet.data())), packet.size());
+            } else {
+                m_rtpListener->onAdapterData(
+                    reinterpret_cast<char*>(frame.payload), frame.length);
+            }
         }
 
     } else {
@@ -105,6 +118,17 @@ bool AudioSendAdapterImpl::init()
     // Set NACK.
     m_rtpRtcp->SetStorePacketsStatus(true, 600);
 
+    if (m_config.mid_ext) {
+        m_config.mid[sizeof(m_config.mid) - 1] = '\0';
+        std::string mid(m_config.mid);
+        // Register MID extension
+        m_rtpRtcp->RegisterRtpHeaderExtension(
+            webrtc::RtpExtension::kMidUri, m_config.mid_ext);
+        m_rtpRtcp->SetMid(mid);
+        // TODO: Remove m_extensions if frames do not carry rtp
+        m_extensions.Register<webrtc::RtpMid>(m_config.mid_ext);
+        m_mid = mid;
+    }
     m_senderAudio = std::make_unique<RTPSenderAudio>(
         configuration.clock, m_rtpRtcp->RtpSender());
     m_taskRunner->RegisterModule(m_rtpRtcp.get());

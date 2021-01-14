@@ -1,0 +1,32 @@
+From 50f135d22519037408e4fbd64ae8615e2d6d8379 Mon Sep 17 00:00:00 2001
+From: Chen Li1 <li1.chen@intel.com>
+Date: Tue, 22 Dec 2020 16:55:51 +0800
+Subject: [PATCH] Allow SDP info re-init
+
+---
+ erizo/src/erizo/SdpInfo.cpp | 8 ++++++++
+ 1 file changed, 8 insertions(+)
+
+diff --git a/erizo/src/erizo/SdpInfo.cpp b/erizo/src/erizo/SdpInfo.cpp
+index 4e139511..393e48a8 100644
+--- a/erizo/src/erizo/SdpInfo.cpp
++++ b/erizo/src/erizo/SdpInfo.cpp
+@@ -69,7 +69,15 @@ namespace erizo {
+   }
+ 
+   bool SdpInfo::initWithSdp(const std::string& sdp, const std::string& media) {
++    payloadVector.clear();
++    bundleTags.clear();
++    extMapVector.clear();
++    candidateVector_.clear();
++    cryptoVector_.clear();
++    payload_parsed_map_.clear();
++    supported_ext_map_.clear();
+     rids_.clear();
++    parsed_order_map.clear();
+     return processSdp(sdp, media);
+   }
+   std::string SdpInfo::addCandidate(const CandidateInfo& info) {
+-- 
+2.17.1
+

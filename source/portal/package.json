@@ -1,15 +1,16 @@
 {
   "name": "OWT-MCU-Portal",
-  "version":"4.3.0",
+  "version":"5.0.0",
   "dependencies": {
     "amqp": "*",
     "socket.io": "^2.2.0",
     "log4js": "^1.1.1",
     "toml": "*",
     "sprintf-js": "^1.0.3",
-    "ajv": "^5.2.2",
-    "mongoose": "^4.13.6",
-    "fraction.js": "^4.0.12"
+    "ajv": "^6.12.3",
+    "mongoose": "^5.9.6",
+    "fraction.js": "^4.0.12",
+    "uuid": "^8.0.0"
   },
   "devDependencies": {
     "mocha": "^6.0.2",

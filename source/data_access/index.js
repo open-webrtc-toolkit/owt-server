@@ -14,9 +14,10 @@ var cipher = require('../cipher');
 
 // Connect to MongoDB
 var connectOption = {
-  useMongoClient: true,
-  reconnectTries: 60 * 15,
-  reconnectInterval: 1000
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+  useCreateIndex: true,
+  useFindAndModify: false,
 };
 
 var mongoose = require('mongoose');

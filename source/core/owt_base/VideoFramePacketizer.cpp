@@ -16,14 +16,8 @@ static const int TRANSMISSION_MAXBITRATE_MULTIPLIER = 2;
 
 DEFINE_LOGGER(VideoFramePacketizer, "owt.VideoFramePacketizer");
 
-VideoFramePacketizer::VideoFramePacketizer(
-    bool enableRed,
-    bool enableUlpfec,
-    bool enableTransportcc,
-    bool selfRequestKeyframe,
-    uint32_t transportccExtId)
+VideoFramePacketizer::VideoFramePacketizer(VideoFramePacketizer::Config& config)
     : m_enabled(true)
-    , m_selfRequestKeyframe(selfRequestKeyframe)
     , m_frameFormat(FRAME_FORMAT_UNKNOWN)
     , m_frameWidth(0)
     , m_frameHeight(0)
@@ -33,7 +27,7 @@ VideoFramePacketizer::VideoFramePacketizer(
     , m_videoSend(nullptr)
 {
     video_sink_ = nullptr;
-    init(enableRed, enableUlpfec, enableTransportcc, transportccExtId);
+    init(config);
 }
 
 VideoFramePacketizer::~VideoFramePacketizer()
@@ -46,19 +40,23 @@ VideoFramePacketizer::~VideoFramePacketizer()
     }
 }
 
-bool VideoFramePacketizer::init(bool enableRed, bool enableUlpfec, bool enableTransportcc, uint32_t transportccExtId)
+bool VideoFramePacketizer::init(VideoFramePacketizer::Config& config)
 {
     if (!m_videoSend) {
         // Create Send Video Stream
         rtc_adapter::RtcAdapter::Config sendConfig;
-        if (enableTransportcc) {
-            sendConfig.transport_cc = transportccExtId;
+        if (config.enableTransportcc) {
+            sendConfig.transport_cc = config.transportccExt;
         }
-        if (enableRed) {
+        if (config.enableRed) {
             sendConfig.red_payload = RED_90000_PT;
         }
-        if (enableUlpfec) {
+        if (config.enableUlpfec) {
             sendConfig.ulpfec_payload = ULP_90000_PT;
+        }
+        if (!config.mid.empty()) {
+            strncpy(sendConfig.mid, config.mid.c_str(), sizeof(sendConfig.mid) - 1);
+            sendConfig.mid_ext = config.midExtId;
         }
         sendConfig.feedback_listener = this;
         sendConfig.rtp_listener = this;

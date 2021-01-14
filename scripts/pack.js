@@ -19,7 +19,7 @@ optParser.addOption('r', 'repack', 'boolean', 'Whether clean dist before pack (E
 optParser.addOption('e', 'encrypt', 'boolean', 'Whether encrypt during pack (Eg. pack.js -t portal -e)');
 optParser.addOption('d', 'debug', 'boolean', '(Disabled)');
 optParser.addOption('o', 'addon-debug', 'boolean', 'Whether pack debug addon (Eg. pack.js -t webrtc-agent -o)');
-optParser.addOption('f', 'full', 'boolean', 'Whether perform a full pack (--full is the equalivation of pack.js -t all -r -i)');
+optParser.addOption('f', 'full', 'boolean', 'Whether perform a full pack (--full is the equalivation of pack.js -t all -r -i). Experimental features are not included, please include them explicitly with -t.');
 optParser.addOption('p', 'app-path', 'string', 'Specify app path (Eg. pack.js -t all --app-path ${appPath})');
 optParser.addOption('a', 'archive', 'string', 'Specify archive name (Eg. pack.js -t all -a ${archiveName})');
 optParser.addOption('n', 'node-module-path', 'string', 'Specify shared-node-module directory');
@@ -40,10 +40,15 @@ const originCwd = cwd();
 const osScript = path.join(rootDir, 'scripts/detectOS.sh');
 const osType = execSync(`bash ${osScript}`).toString().toLowerCase();
 
+const experimentalTargets = ['quic-agent'];
+
 var allTargets = [];
 
 if (options.full) {
-  options.target = ['all'];
+  if (!options.target) {
+    options.target = [];
+  }
+  options.target.push('all');
   options.repack = true;
   options['install-module'] = true;
 }
@@ -65,10 +70,7 @@ if (options.archive) {
 
 if (options.encrypt) {
   const encryptDeps = [
-    'uglify-js',
-    'babel-cli',
-    'babel-preset-es2015',
-    'babel-preset-stage-0',
+    'uglify-es',
   ];
 
   // Check encrypt deps
@@ -120,7 +122,11 @@ function getPackList(targets) {
     console.log('Avalible Targets Are:');
     console.log('---------------------');
     for (const target of targets) {
-      console.log(`\x1b[32m${target.rules.name}\x1b[0m`);
+      let targetTitle = `\x1b[32m${target.rules.name}\x1b[0m`;
+      if (experimentalTargets.includes(target.rules.name)) {
+        targetTitle += ' (experimental feature)'
+      }
+      console.log(targetTitle);
       console.log(' ->', target.path);
     }
     process.exit(0);
@@ -131,7 +137,8 @@ function getPackList(targets) {
   }
 
   var packList = targets.filter((element) => {
-    if (options.target.includes('all')) return true;
+    // Experimental features are not included by default.
+    if (options.target.includes('all') && !experimentalTargets.includes(element.rules.name)) return true;
     return options.target.includes(element.rules.name);
   });
   if (packList.length === 0) {
@@ -393,6 +400,17 @@ function getAddonLibs(addonPath) {
                   return line;
                 }).catch((e) => line);
             }
+          })
+          .catch((e) => {
+            // give more detail when ldd returns somelib.so => not found
+            if (!line.startsWith('/')) {
+              return exec(`ldd ${addonPath} | grep '=>' | grep -v '=> /'`).then(stdout => {
+                e.message = `library dependency not found for\n  ${addonPath}:\n${stdout}` +
+                  'Something failed to build. Try nvm use v8.15.0 and rerun build.js.';
+                throw e;
+              });
+            }
+            throw e;
           });
         checks.push(checkPros[line]);
       }
@@ -409,6 +427,8 @@ function isLibAllowed(libSrc) {
 
   const whiteList = [
     'rtcadapter',
+    'libssl.so.1.1',
+    'libcrypto',
     'libnice',
     'libSvtHevcEnc',
     'libusrsctp',
@@ -512,13 +532,7 @@ function encrypt(target) {
       return Promise.resolve();
     }
     var jsJobs = stdout.trim().split('\n').map((line) => {
-      return exec(`babel --presets es2015,stage-0 ${line} -o "${line}.es5"`, { env })
-        .then(() => {
-          return exec(`uglifyjs ${line}.es5 -o ${line} -c -m`, { env });
-        })
-        .then(() => {
-          return exec(`rm "${line}.es5"`);
-        });
+      return exec(`uglifyjs ${line} -o ${line} -c -m`, { env });
     });
     return Promise.all(jsJobs);
   })
@@ -585,6 +599,9 @@ function packScripts() {
   }
   scriptItems.push('app');
   scriptItems.forEach((m) => {
+    if (!options.target.includes(m) && experimentalTargets.includes(m)) {
+      return;
+    }
     startCommands += '${bin}/daemon.sh start ' + m + ' $1\n';
     stopCommands += '${bin}/daemon.sh stop ' + m + '\n';
   });

@@ -16,6 +16,8 @@ force_tls_v12 = false #default: false, tls1 and tls1.1 will not be allowed if se
 reconnection_ticket_lifetime = 600 #default: 600
 # Client will leave conference if it cannot reconnect to Socket.IO server after |reconnection_timeout| seconds.
 reconnection_timeout = 60 #default: 60
+#default: *, allow cross origin request share list. Add http(s)://web-app-server-ip-or-hostname:port to cors list in product deployment, example: ["http://web-app-server-ip-or-hostname:3001", "https://web-app-server-ip-or-hostname:3004"].
+cors = ["*"]
 
 
 [cluster]

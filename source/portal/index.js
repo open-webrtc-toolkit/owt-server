@@ -21,16 +21,18 @@ config.portal = config.portal || {};
 config.portal.ip_address = config.portal.ip_address || '';
 config.portal.hostname = config.portal.hostname|| '';
 config.portal.port = config.portal.port || 8080;
+config.portal.via_host = config.portal.via_host || '';
 config.portal.ssl = config.portal.ssl || false;
 config.portal.force_tls_v12 = config.portal.force_tls_v12 || false;
 config.portal.reconnection_ticket_lifetime = config.portal.reconnection_ticket_lifetime || 600;
 config.portal.reconnection_timeout = Number.isInteger(config.portal.reconnection_timeout) ? config.portal.reconnection_timeout : 60;
+config.portal.cors = config.portal.cors || [];
 
 config.cluster = config.cluster || {};
 config.cluster.name = config.cluster.name || 'owt-cluster';
 config.cluster.join_retry = config.cluster.join_retry || 60;
 config.cluster.report_load_interval = config.cluster.report_load_interval || 1000;
-config.cluster.max_load = config.cluster.max_laod || 0.85;
+config.cluster.max_load = config.cluster.max_load || 0.85;
 config.cluster.network_max_scale = config.cluster.network_max_scale || 1000;
 
 config.capacity = config.capacity || {};
@@ -50,6 +52,10 @@ if (config.portal.ip_address.indexOf('$') == 0) {
 if (config.portal.hostname.indexOf('$') == 0) {
     config.portal.hostname = process.env[config.portal.hostname.substr(1)];
     log.info('ENV: config.portal.hostname=' + config.portal.hostname);
+}
+if(process.env.owt_via_host !== undefined) {
+    config.portal.via_host = process.env.owt_via_host;
+    log.info('ENV: config.portal.via_address=' + config.portal.via_host);
 }
 
 global.config = config;
@@ -136,6 +142,7 @@ var joinCluster = function (on_ok) {
               info: {ip: ip_address,
                      hostname: config.portal.hostname,
                      port: config.portal.port,
+                     via_host: config.portal.via_host,
                      ssl: config.portal.ssl,
                      state: 2,
                      max_load: config.cluster.max_load,
@@ -187,6 +194,7 @@ var startServers = function(id, tokenKey) {
                                 selfRpcId: id},
                                 rpcReq);
   socketio_server = require('./socketIOServer')({port: config.portal.port,
+                                                 cors: config.portal.cors,
                                                  ssl: config.portal.ssl,
                                                  forceTlsv12: config.portal.force_tls_v12,
                                                  keystorePath: config.portal.keystorePath,
@@ -225,6 +233,17 @@ var rpcPublic = {
     // there must be one failure, ignore this notify error here.
     var notifyFail = (err) => {};
     socketio_server && socketio_server.notify(participantId, event, data).catch(notifyFail);
+    callback('callback', 'ok');
+  },
+  validateAndDeleteWebTransportToken: (token, callback) => {
+    if(portal.validateAndDeleteWebTransportToken(token)) {
+      callback('callback','ok');
+    } else {
+      callback('callback', 'error', 'Invalid token for WebTransport.');
+    }
+  },
+  broadcast: function(controller, excludeList, event, data, callback) {
+    socketio_server && socketio_server.broadcast(controller, excludeList, event, data);
     callback('callback', 'ok');
   }
 };

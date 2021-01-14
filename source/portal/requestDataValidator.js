@@ -48,7 +48,7 @@ function getErrorMessage(errors) {
 }
 
 const Resolution = {
-  id: '/Resolution',
+  $id: 'Resolution.json',
   type: 'object',
   properties: {
     'width': { type: 'number' },
@@ -66,7 +66,16 @@ const PublicationRequest = {
       type: 'object',
       properties: {
         'media': { $ref: '#/definitions/WebRTCMediaOptions' },
-        'attributes': { type: 'object' }
+        'data': {type: 'boolean' },
+        'attributes': { type: 'object' },
+        'transport': {
+          type: 'object',
+          properties: {
+            'type': {type: 'string'},
+            'id': {type: 'string'},
+          },
+          additionalProperties: false,
+        }
       },
       additionalProperties: false,
       required: ['media']
@@ -75,7 +84,7 @@ const PublicationRequest = {
 
   definitions: {
     'WebRTCMediaOptions': {
-      type: 'object',
+      type: ['object', 'null'],
       properties: {
         'audio': {
           anyOf: [
@@ -99,7 +108,7 @@ const PublicationRequest = {
                 'parameters': {
                   type: 'object',
                   properties: {
-                    'resolution': { $ref: '/Resolution' },
+                    'resolution': { $ref: 'Resolution.json' },
                     'framerate': { type: 'number' }
                   }
                 }
@@ -168,6 +177,14 @@ const SubscriptionRequest = {
       type: 'object',
       properties: {
         'media': { $ref: '#/definitions/MediaSubOptions' },
+        'data': { $ref: '#/definitions/DataSubOptions' },
+        'transport': {
+          type: 'object',
+          properties: {
+            'type': {type: 'string'},
+            'id': {type: 'string'},
+          },
+        },
       },
       additionalProperties: false,
       required: ['media']
@@ -176,7 +193,7 @@ const SubscriptionRequest = {
 
   definitions: {
     'MediaSubOptions': {
-      type: 'object',
+      type: ['object', 'null'],
       properties: {
         'audio': {
           anyOf: [
@@ -193,6 +210,15 @@ const SubscriptionRequest = {
       },
       additionalProperties: false,
       required: ['audio', 'video']
+    },
+
+    'DataSubOptions': {
+      type: 'object',
+      properties: {
+        'from': {type: 'string'}
+      },
+      additionalProperties: false,
+      required: ['from']
     },
 
     'AudioSubOptions': {
@@ -241,7 +267,7 @@ const SubscriptionRequest = {
     'VideoParametersSpecification': {
       type: 'object',
       properties: {
-        'resolution': { $ref: '/Resolution' },
+        'resolution': { $ref: 'Resolution.json' },
         'framerate': { type: 'number' },
         'bitrate': { type: ['string', 'number'] },
         'keyFrameInterval': { type: 'number' }
@@ -305,7 +331,7 @@ const SubscriptionControlInfo = {
     'VideoUpdateSpecification': {
       type: 'object',
       properties: {
-        resolution: { $ref: '/Resolution' },
+        resolution: { $ref: 'Resolution.json' },
         framerate: { type: 'number' },
         bitrate: { type: ['number', 'string'] },
         keyFrameInterval: { type: 'number' }

@@ -1,0 +1,25 @@
+From 6118c5ab05e5c11cefcadaa1264f791dfafdd2f4 Mon Sep 17 00:00:00 2001
+From: Chen Li1 <li1.chen@intel.com>
+Date: Wed, 5 Aug 2020 16:33:27 +0800
+Subject: [PATCH] Set x509 version
+
+---
+ erizo/src/erizo/dtls/DtlsClient.cpp | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/erizo/src/erizo/dtls/DtlsClient.cpp b/erizo/src/erizo/dtls/DtlsClient.cpp
+index bdad722..e77bdd1 100644
+--- a/erizo/src/erizo/dtls/DtlsClient.cpp
++++ b/erizo/src/erizo/dtls/DtlsClient.cpp
+@@ -210,7 +210,7 @@ int createCert(const std::string& pAor, int expireDays, int keyLen, X509*& outCe
+   X509_EXTENSION* ext = X509_EXTENSION_new();
+ 
+   // set version to X509v3 (starts from 0)
+-  // X509_set_version(cert, 0L);
++  X509_set_version(cert, 2L);
+   std::string thread_id = boost::lexical_cast<std::string>(boost::this_thread::get_id());
+   unsigned int thread_number = 0;
+   sscanf(thread_id.c_str(), "%x", &thread_number);
+-- 
+2.7.4
+

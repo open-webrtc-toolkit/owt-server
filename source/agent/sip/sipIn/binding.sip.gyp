@@ -6,6 +6,7 @@
       'SipGateway.cc',
       'SipCallConnection.cpp',
       '../../addons/common/NodeEventRegistry.cc',
+      '../../../core/common/JobTimer.cpp',
     ],
     'dependencies': ['sipLib'],
     'cflags_cc': ['-DWEBRTC_POSIX', '-DWEBRTC_LINUX'],

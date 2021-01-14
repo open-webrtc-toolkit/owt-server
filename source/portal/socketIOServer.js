@@ -10,8 +10,7 @@ var crypto = require('crypto');
 var vsprintf = require("sprintf-js").vsprintf;
 
 var LegacyClient = require('./legacyClient');
-var V10Client = require('./v10Client');
-var V11Client = require('./v11Client');
+var Client = require('./client');
 
 function safeCall () {
   var callback = arguments[0];
@@ -143,22 +142,17 @@ var Connection = function(spec, socket, reconnectionKey, portal, dock) {
       if (login_info.protocol === undefined) {
         protocol_version = 'legacy';
         client = new LegacyClient(client_id, that, portal);
-      } else if (login_info.protocol === '1.1') {
+      } else if (login_info.protocol === '1.0' ||
+          login_info.protocol === '1.1' ||
+          login_info.protocol === '1.2') {
         //FIXME: Reject connection from 3.5 client
-        if (login_info.userAgent && login_info.userAgent.sdk && login_info.userAgent.sdk.version === '3.5') {
+        if (login_info.userAgent && login_info.userAgent.sdk &&
+            login_info.userAgent.sdk.version === '3.5') {
           safeCall(callback, 'error', 'Deprecated client version');
           return socket.disconnect();
         }
-        protocol_version = '1.1';
-        client = new V11Client(client_id, that, portal);
-      } else if (login_info.protocol === '1.0') {
-        //FIXME: Reject connection from 3.5 client
-        if (login_info.userAgent && login_info.userAgent.sdk && login_info.userAgent.sdk.version === '3.5') {
-          safeCall(callback, 'error', 'Deprecated client version');
-          return socket.disconnect();
-        }
-        protocol_version = '1.0';
-        client = new V10Client(client_id, that, portal);
+        protocol_version = login_info.protocol;
+        client = new Client(client_id, that, portal, protocol_version);
       } else {
         safeCall(callback, 'error', 'Unknown client protocol');
         return socket.disconnect();
@@ -358,14 +352,21 @@ var SocketIOServer = function(spec, portal, observer) {
     sioOptions.pingTimeout = spec.pingTimeout * 1000;
   }
 
-  var startInsecure = function(port) {
+  var startInsecure = function(port, cors) {
     var server = require('http').createServer().listen(port);
     io = require('socket.io').listen(server, sioOptions);
+    io.origins((origin, callback) => {
+      if (cors.indexOf(origin) < 0 && cors.indexOf('*') < 0) {
+        return callback('origin not allowed', false);
+      }
+
+      callback(null, true);
+    });
     run();
     return Promise.resolve('ok');
   };
 
-  var startSecured = function(port, keystorePath, forceTlsv12) {
+  var startSecured = function(port, cors, keystorePath, forceTlsv12) {
     return new Promise(function(resolve, reject) {
       var cipher = require('./cipher');
       var keystore = path.resolve(path.dirname(keystorePath), cipher.kstore);
@@ -378,6 +379,12 @@ var SocketIOServer = function(spec, portal, observer) {
           }
           var server = require('https').createServer(option).listen(port);
           io = require('socket.io').listen(server, sioOptions);
+          io.origins((origin, callback) => {
+            if (cors.indexOf(origin) < 0 && cors.indexOf('*') < 0) {
+              return callback('origin not allowed', false);
+            }
+            callback(null, true);
+          });
           run();
           resolve('ok');
         } else {
@@ -423,9 +430,9 @@ var SocketIOServer = function(spec, portal, observer) {
 
   that.start = function() {
     if (!spec.ssl) {
-      return startInsecure(spec.port);
+      return startInsecure(spec.port, spec.cors);
     } else {
-      return startSecured(spec.port, spec.keystorePath, spec.forceTlsv12);
+      return startSecured(spec.port, spec.cors, spec.keystorePath, spec.forceTlsv12);
     }
   };
 
@@ -447,6 +454,18 @@ var SocketIOServer = function(spec, portal, observer) {
       return Promise.reject('participant does not exist');
     }
   };
+
+  that.broadcast = function(controller, excludeList, event, data) {
+    log.debug('broadcast controller:', controller, 'exclude:', excludeList, 'event:', event, 'data:', data);
+    portal.getParticipantsByController('node', controller)
+      .then(function (receivers) {
+        for (let clientId of receivers) {
+          if (!excludeList.includes(clientId)) {
+            clients[clientId].notify(event, data);
+          }
+        }
+      });
+  }
 
   that.drop = function(participantId) {
     if (participantId === 'all') {

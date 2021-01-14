@@ -50,9 +50,13 @@ var RpcRequest = function(rpcChannel) {
     }
   };
 
-  that.onSessionSignaling = function(accessNode, sessionId, signaling) {
-    return rpcChannel.makeRPC(accessNode, 'onSessionSignaling', [sessionId, signaling]);
+  that.onTransportSignaling = function(accessNode, transportId, signaling) {
+    return rpcChannel.makeRPC(accessNode, 'onTransportSignaling', [transportId, signaling]);
   };
+
+  that.destroyTransport = function(accessNode, transportId) {
+    return rpcChannel.makeRPC(accessNode, 'destroyTransport', [transportId]);
+  }
 
   that.mediaOnOff = function(accessNode, sessionId, track, direction, onOff) {
     return rpcChannel.makeRPC(accessNode, 'mediaOnOff', [sessionId, track, direction, onOff]);
@@ -60,6 +64,10 @@ var RpcRequest = function(rpcChannel) {
 
   that.sendMsg = function(portal, participantId, event, data) {
     return rpcChannel.makeRPC(portal, 'notify', [participantId, event, data]);
+  };
+
+  that.broadcast = function(portal, controller, excludeList, event, data) {
+    return rpcChannel.makeRPC(portal, 'broadcast', [controller, excludeList, event, data]);
   };
 
   that.dropUser = function(portal, participantId) {

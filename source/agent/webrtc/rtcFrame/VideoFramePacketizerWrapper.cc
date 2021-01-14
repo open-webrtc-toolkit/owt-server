@@ -40,15 +40,35 @@ void VideoFramePacketizer::New(const FunctionCallbackInfo<Value>& args) {
 
   bool supportRED = (args[0]->ToBoolean())->BooleanValue();
   bool supportULPFEC = (args[1]->ToBoolean())->BooleanValue();
-  VideoFramePacketizer* obj = new VideoFramePacketizer();
   int transportccExt = (args.Length() == 3) ? args[2]->IntegerValue() : -1;
-  bool selfRequestKeyframe = (args.Length() == 4) ? (args[3]->ToBoolean())->BooleanValue() : false;
+  std::string mid;
+  int midExtId = -1;
+  if (args.Length() >= 5) {
+    v8::String::Utf8Value param4(Nan::To<v8::String>(args[3]).ToLocalChecked());
+    mid = std::string(*param4);
+    midExtId = args[4]->IntegerValue();
+  }
+  bool selfRequestKeyframe = (args.Length() == 6) ? (args[5]->ToBoolean())->BooleanValue() : false;
+
+  VideoFramePacketizer* obj = new VideoFramePacketizer();
+  owt_base::VideoFramePacketizer::Config config;
+  config.enableRed = supportRED;
+  config.enableUlpfec = supportULPFEC;
+  config.transportccExt = transportccExt;
+  config.mid = mid;
+  config.midExtId = midExtId;
+
   if (transportccExt > 0) {
-    obj->me = new owt_base::VideoFramePacketizer(supportRED, supportULPFEC, true, false, transportccExt);
+    config.enableTransportcc = true;
+    config.selfRequestKeyframe = false;
+    obj->me = new owt_base::VideoFramePacketizer(config);
   } else if (selfRequestKeyframe) {
-    obj->me = new owt_base::VideoFramePacketizer(supportRED, supportULPFEC, false, true);
+    config.enableTransportcc = false;
+    config.selfRequestKeyframe = true;
+    obj->me = new owt_base::VideoFramePacketizer(config);
   } else {
-    obj->me = new owt_base::VideoFramePacketizer(supportRED, supportULPFEC);
+    config.enableTransportcc = false;
+    obj->me = new owt_base::VideoFramePacketizer(config);
   }
   obj->dest = obj->me;
 

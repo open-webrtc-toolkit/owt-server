@@ -1,0 +1,25 @@
+From 3609eb3f64976ea3a55ed9ed22f376ec450dc99a Mon Sep 17 00:00:00 2001
+From: Shining Dong <dongshining1990@gmail.com>
+Date: Tue, 2 Apr 2019 15:41:20 +0800
+Subject: [PATCH] change DTLSv1_2_method to DTLS_method (#1386)
+
+---
+ erizo/src/erizo/dtls/DtlsClient.cpp | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/erizo/src/erizo/dtls/DtlsClient.cpp b/erizo/src/erizo/dtls/DtlsClient.cpp
+index e72df66..a2ff18f 100644
+--- a/erizo/src/erizo/dtls/DtlsClient.cpp
++++ b/erizo/src/erizo/dtls/DtlsClient.cpp
+@@ -217,7 +217,7 @@ int createCert(const std::string& pAor, int expireDays, int keyLen, X509*& outCe
+ 
+     ELOG_DEBUG("Creating Dtls factory, Openssl v %s", OPENSSL_VERSION_TEXT);
+ 
+-    mContext = SSL_CTX_new(DTLSv1_2_method());
++    mContext = SSL_CTX_new(DTLS_method());
+     assert(mContext);
+ 
+     int r = SSL_CTX_use_certificate(mContext, mCert);
+-- 
+2.7.4
+
