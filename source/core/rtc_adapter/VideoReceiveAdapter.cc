@@ -191,6 +191,7 @@ void VideoReceiveAdapterImpl::CreateReceiveVideo()
             default_config.rtp.rtcp_mode = webrtc::RtcpMode::kReducedSize;
             default_config.rtp.remote_ssrc = m_config.ssrc;
             default_config.rtp.red_payload_type = RED_90000_PT;
+            default_config.rtp.nack.rtp_history_ms = 500;
             if (m_config.transport_cc) {
                 RTC_LOG(LS_INFO) << "TransportSequenceNumber Extension Enabled";
                 default_config.rtp.transport_cc = true;
