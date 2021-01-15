@@ -51,7 +51,6 @@ module.exports = class QuicTransportStreamPipeline {
     };
 
     this.close = function(){
-      return;
       this._quicStream.close();
     }
   }

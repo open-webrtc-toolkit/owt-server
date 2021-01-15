@@ -32,6 +32,7 @@ public:
     static NAN_MODULE_INIT(init);
     static NAN_METHOD(newInstance);
     static NAN_METHOD(write);
+    static NAN_METHOD(close);
     static NAN_METHOD(addDestination);
     static NAN_METHOD(removeDestination);
     static NAUV_WORK_CB(onContentSessionId);
