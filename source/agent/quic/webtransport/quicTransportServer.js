@@ -126,6 +126,8 @@ module.exports = class QuicTransportServer extends EventEmitter {
                   stream.transportId = token.transportId;
                   this._connections.set(connection.transportId, connection);
                   this.emit('connectionadded', connection);
+                  const uuidBytes = this._uuidStringToUint8Array(zeroUuid);
+                  stream.write(uuidBytes, uuidBytes.length);
                 });
                 return;
               } else {  // Store the data.
