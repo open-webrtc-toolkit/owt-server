@@ -56,12 +56,15 @@ private:
     // Try to read content session ID from data buffered.
     void MaybeReadContentSessionId();
     void SignalOnData();
+    void ReallocateBuffer(size_t size);
 
     owt::quic::QuicTransportStreamInterface* m_stream;
     std::vector<uint8_t> m_contentSessionId;
     bool m_receivedContentSessionId;
     // True if it's piped to a receiver in C++ layer. In this case, data will not be sent to JavaScript code.
     bool m_isPiped;
+    uint8_t* m_buffer;
+    size_t m_bufferSize;
 
     uv_async_t m_asyncOnContentSessionId;
     uv_async_t m_asyncOnData;
