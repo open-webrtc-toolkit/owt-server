@@ -148,7 +148,7 @@ var generateToken = function(currentRoom, authData, origin, callback) {
                         hostname = info.ip;
                     }
                     // TODO: Rename "echo".
-                    token.webTransportUrl = 'quic-transport://' + hostname + ':' + info.port + '/echo';
+                    token.webTransportUrl = 'quic-transport://' + hostname + ':' + info.port + '/';
                 }
                 databaseGenerateToken(token).then(tokenS => {
                     callback(tokenS);
