@@ -38,5 +38,16 @@ ip_address = "" #default: ""
 maxport = 0 #default: 0
 minport = 0 #default: 0
 
+[external]
+#The IP address used for SRT listener address. Will use the IP got from the 'network_interface' item on the device if 'ip_address' is not specified or equal to "".
+ip_address = "" #default: ""
+
+#The network_interface whose SRT listener address to listen to SRT caller. The first 'IPv4' enumerated network interface in the system will be adopted if this item is not specified.
+network_interface = "" # default: undefined
+
+# The SRT listening UDP port range
+maxport = 0 #default: 0
+minport = 0 #default: 0
+
 [avstream]
 initialize_timeout = 3000 #default: 3000

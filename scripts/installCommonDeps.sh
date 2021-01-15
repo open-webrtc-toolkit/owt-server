@@ -20,6 +20,21 @@ check_proxy(){
   fi
 }
 
+install_srt(){
+  local VERSION="1.4.1"
+  local SRC="v${VERSION}.tar.gz"
+  local SRC_URL=" https://github.com/Haivision/srt/archive/${SRC}"
+  local SRC_DIR="srt-${VERSION}"
+  mkdir -p ${LIB_DIR}
+  pushd ${LIB_DIR}
+  wget ${SRC_URL}
+  rm -fr ${SRC_DIR}
+  tar xf ${SRC}
+  pushd ${SRC_DIR}
+  ./configure --prefix=${PREFIX_DIR}
+  make && make install
+}
+
 install_fdkaac(){
   local VERSION="0.1.6"
   local SRC="fdk-aac-${VERSION}.tar.gz"
@@ -67,8 +82,8 @@ install_ffmpeg(){
   tar xf ${SRC}
   pushd ${DIR}
   [[ "${DISABLE_NONFREE}" == "true" ]] && \
-  PKG_CONFIG_PATH=${PREFIX_DIR}/lib/pkgconfig CFLAGS=-fPIC ./configure --prefix=${PREFIX_DIR} --enable-shared --disable-static --disable-libvpx --disable-vaapi --enable-libfreetype || \
-  PKG_CONFIG_PATH=${PREFIX_DIR}/lib/pkgconfig CFLAGS=-fPIC ./configure --prefix=${PREFIX_DIR} --enable-shared --disable-static --disable-libvpx --disable-vaapi --enable-libfreetype --enable-libfdk-aac --enable-nonfree && \
+  PKG_CONFIG_PATH=${PREFIX_DIR}/lib/pkgconfig CFLAGS=-fPIC ./configure --prefix=${PREFIX_DIR} --enable-shared --disable-static --disable-libvpx --disable-vaapi --enable-libfreetype --enable-libsrt || \
+  PKG_CONFIG_PATH=${PREFIX_DIR}/lib/pkgconfig CFLAGS=-fPIC ./configure --prefix=${PREFIX_DIR} --enable-shared --disable-static --disable-libvpx --disable-vaapi --enable-libfreetype --enable-libfdk-aac --enable-nonfree --enable-libsrt && \
   make -j4 -s V=0 && make install
   popd
   popd
