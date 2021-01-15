@@ -42,6 +42,8 @@ router.patch('/rooms/:room/streams/:stream', streamsResource.patch);
 router.delete('/rooms/:room/streams/:stream', streamsResource.delete);
 router.post('/rooms/:room/streaming-ins', streamsResource.addStreamingIn);//FIXME: Validation on body.type === 'streaming' is needed.
 router.delete('/rooms/:room/streaming-ins/:stream', streamsResource.delete);
+router.post('/rooms/:room/streaming-ins-srt', streamsResource.addStreamingInSRT);//FIXME: Validation on body.type === 'srt' is needed.
+router.delete('/rooms/:room/streaming-ins-srt/:stream', streamsResource.delete);
 
 //External streaming-out management
 router.get('/rooms/:room/streaming-outs', streamingOutsResource.getList);

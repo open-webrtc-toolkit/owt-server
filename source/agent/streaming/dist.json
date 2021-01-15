@@ -2,7 +2,7 @@
     "name": "streaming-agent",
     "dest": "streaming_agent",
     "common": {
-        "package": "../package.json",
+        "package": "package.json",
         "files": [
             "agent.toml",
             "log4js_configuration.json",

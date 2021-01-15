@@ -659,6 +659,8 @@ Resources:
 
 - /v1.1/rooms/{roomId}/streaming-ins
 - /v1.1/rooms/{roomId}/streaming-ins/{streamId}
+- /v1.1/rooms/{roomId}/streaming-ins-srt
+- /v1.1/rooms/{roomId}/streaming-ins-srt/{streamId}
 
 ### Start Streaming-in {#RESTAPIsection5_4_1}
 **POST ${host}/v1.1/rooms/{roomId}/streaming-ins**
@@ -697,6 +699,60 @@ response body:
 
 Description:<br>
 Stop the specified external streaming-in in the specified room.<br>
+
+request body:
+
+  **Empty**
+
+response body:
+
+  **Empty**
+
+### Start SRT Streaming-in {#RESTAPIsection5_4_3}
+**POST ${host}/v1.1/rooms/{roomId}/streaming-ins-srt**
+
+Description:<br>
+Add an external SRT stream to the specified room.<br>
+
+request body:
+
+| type | content |
+|:-------------|:-------|
+|  json | object(StreamingInSRTRequest) |
+
+**Note**: Here is a definition of *StreamingInSRTRequest*.<br>
+
+    Object(StreamingInSRTRequest) {
+        connection: {
+          url: string(url),                    // string, e.g. "srt://...."
+          mode: "listener" | "caller" | "rendezvous",    // "listener" by default.
+          latency: number(bytes)            // The SRT latency with microseconds.
+        },
+        media: {
+          audio: "auto" | true | false,
+          video: "auto" | true | false
+        }
+    }
+
+response body:
+
+| type | content |
+|:-------------|:-------|
+|  json | object(PeerInfo) |
+
+**Note**: Here is a definition of *PeerInfo*.<br>
+
+    Object(StreamingInSRTResponse) {
+        ip: ip of peer device | undefined, //only available when mode is listener
+        port: srt listener port | undefined, //only available when mode is listener
+        streamID: srt stream id in OWT
+    }
+
+### Stop SRT Streaming-in {#RESTAPIsection5_4_4}
+**DELETE ${host}/v1.1/rooms/{roomId}/streaming-ins-srt/{streamId}**
+
+Description:<br>
+Stop the specified external SRT streaming-in in the specified room.<br>
 
 request body:
 
