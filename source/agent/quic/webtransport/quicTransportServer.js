@@ -38,7 +38,7 @@ module.exports = class QuicTransportServer extends EventEmitter {
         if (!connection.transportId) {
           connection.close();
         }
-      }, authenticationTimeout * 1000000);
+      }, authenticationTimeout * 1000);
       connection.onincomingstream = (stream) => {
         log.info('New incoming stream.');
         stream.oncontentsessionid = (id) => {
@@ -46,12 +46,17 @@ module.exports = class QuicTransportServer extends EventEmitter {
           stream.contentSessionId = streamId;
           stream.transportId = connection.transportId;
           if (streamId === zeroUuid) {
-            // Signaling stream. Waiting for transport ID.
-            log.info('Zero content session ID.');
+            if (connection.transportId) {
+              log.error(
+                  'Received a new signaling stream on an authenticated connection. Close connection.')
+              connection.close();
+            }
+            // Signaling stream. Waiting for transport ID then.
           } else if (!connection.transportId) {
             log.error(
                 'Stream ' + streamId +
-                ' added on unauthroized transport. Close connection.');
+                ' added on unauthenticated transport. Close connection.');
+            connection.close();
           } else {
             log.debug(
                 'A new stream ' + streamId + ' is created on transport ' +

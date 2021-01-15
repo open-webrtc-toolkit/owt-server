@@ -101,6 +101,12 @@ NAN_METHOD(QuicTransportStream::write)
     info.GetReturnValue().Set(Nan::New(static_cast<int>(written)));
 }
 
+NAN_METHOD(QuicTransportStream::close)
+{
+    QuicTransportStream* obj = Nan::ObjectWrap::Unwrap<QuicTransportStream>(info.Holder());
+    obj->m_stream->Close();
+}
+
 NAN_METHOD(QuicTransportStream::addDestination)
 {
     QuicTransportStream* obj = Nan::ObjectWrap::Unwrap<QuicTransportStream>(info.Holder());
