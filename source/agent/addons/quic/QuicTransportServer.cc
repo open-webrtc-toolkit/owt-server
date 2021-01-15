@@ -7,6 +7,7 @@
 #include "QuicTransportServer.h"
 #include "QuicFactory.h"
 #include "QuicTransportStream.h"
+#include "Utils.h"
 #include "owt/quic/quic_transport_factory.h"
 #include "owt/quic/quic_transport_session_interface.h"
 
@@ -55,6 +56,7 @@ NAN_METHOD(QuicTransportServer::newInstance)
     v8::String::Utf8Value pfxPath(Nan::To<v8::String>(info[1]).ToLocalChecked());
     v8::String::Utf8Value password(Nan::To<v8::String>(info[2]).ToLocalChecked());
     QuicTransportServer* obj = new QuicTransportServer(port, *pfxPath, *password);
+    owt_base::Utils::ZeroMemory(*password, password.length());
     obj->Wrap(info.This());
     uv_async_init(uv_default_loop(), &obj->m_asyncOnConnection, &QuicTransportServer::onConnectionCallback);
     info.GetReturnValue().Set(info.This());

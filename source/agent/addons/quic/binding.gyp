@@ -9,6 +9,7 @@
       'QuicTransportConnection.cc',
       '../../../core/owt_base/MediaFramePipeline.cpp',
       '../../../core/owt_base/MediaFrameMulticaster.cpp',
+      '../../../core/owt_base/Utils.cc',
     ],
     'defines':[
       'OWT_ENABLE_QUIC=1',
