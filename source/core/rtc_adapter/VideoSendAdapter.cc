@@ -40,6 +40,12 @@ static int getNextNaluPosition(uint8_t* buffer, int buffer_size, bool& is_aud_or
             continue;
         }
         if (head[2]) {
+            if (head[2] == 0x01) {
+                if (((head[3] & 0x1F) == 9) || ((head[3] & 0x1F) == 6)) {
+                    is_aud_or_sei = true;
+                }
+                return static_cast<int>(head - buffer);
+            }
             head += 3;
             continue;
         }
