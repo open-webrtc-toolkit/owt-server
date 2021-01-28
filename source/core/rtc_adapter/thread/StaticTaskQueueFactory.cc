@@ -36,7 +36,10 @@ public:
     {
         if (auto owner = m_owner.lock()) {
             // Only run when owner exists
-            return m_task->Run();
+            QueuedTask* raw = m_task.release();
+            if (raw->Run()) {
+                delete raw;
+            }
         }
         return true;
     }
