@@ -35,21 +35,35 @@ do_update() {
   fi
 }
 
-install_glib() {
+install_boost() {
+  echo -e "\x1b[32mInstalling boost...\x1b[0m"
+  pushd ${this} >/dev/null
+  wget -c http://iweb.dl.sourceforge.net/project/boost/boost/1.65.0/boost_1_65_0.tar.bz2
+  tar xvf boost_1_65_0.tar.bz2
+  pushd boost_1_65_0 >/dev/null
+  ./bootstrap.sh
+  ./b2 --with-thread --with-system
+  cp stage/lib/libboost_*.so* ${this}/lib
+  popd
+  popd
+}
+
+install_libs() {
   if [[ "$OS" =~ .*centos.* ]]
   then
-    echo -e "\x1b[32mInstalling GLib2.0 via yum install...\x1b[0m"
-    ${SUDO} yum install boost-system boost-thread log4cxx glib2 -y
+    echo -e "\x1b[32mInstalling deps via yum install...\x1b[0m"
+    ${SUDO} yum install log4cxx glib2 -y
+    install_boost
   elif [[ "$OS" =~ .*ubuntu.* ]]
   then
-    echo -e "\x1b[32mInstalling GLib2.0 via apt-get install...\x1b[0m"
+    echo -e "\x1b[32mInstalling deps via apt-get install...\x1b[0m"
     ${SUDO} apt-get install libboost-system-dev libboost-thread-dev liblog4cxx-dev libglib2.0-0 -y
   fi
 }
 
 install_all() {
   ${OWT_UPDATE_DONE} || do_update
-  install_glib
+  install_libs
 }
 
 shopt -s extglob
