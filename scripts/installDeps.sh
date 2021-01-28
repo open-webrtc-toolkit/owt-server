@@ -67,6 +67,13 @@ then
     [Yy]* ) installYumDeps;;
     * ) installYumDeps;;
   esac
+
+  read -p "Installing boost [Yes/no]" yn
+  case $yn in
+    [Nn]* ) ;;
+    [Yy]* ) install_boost;;
+    * ) install_boost;;
+  esac
 elif [[ "$OS" =~ .*ubuntu.* ]]
 then
   . installUbuntuDeps.sh

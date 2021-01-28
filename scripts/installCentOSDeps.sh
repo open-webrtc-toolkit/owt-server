@@ -34,9 +34,9 @@ install_glib2(){
 install_boost(){
   if [ -d $LIB_DIR ]; then
     cd $LIB_DIR
-    wget -c http://iweb.dl.sourceforge.net/project/boost/boost/1.50.0/boost_1_50_0.tar.bz2
-    tar xvf boost_1_50_0.tar.bz2
-    cd boost_1_50_0
+    wget -c http://iweb.dl.sourceforge.net/project/boost/boost/1.65.0/boost_1_65_0.tar.bz2
+    tar xvf boost_1_65_0.tar.bz2
+    cd boost_1_65_0
     chmod +x bootstrap.sh
     ./bootstrap.sh
     ./b2 && ./b2 install --prefix=$PREFIX_DIR
