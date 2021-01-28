@@ -2,7 +2,6 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-#include <boost/filesystem.hpp>
 #include <fstream>
 #include <netinet/in.h>
 #include "RawTransport.h"
