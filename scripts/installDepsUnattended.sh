@@ -58,6 +58,7 @@ then
   if [ "$NIGHTLY" != "true" ]; then
     installRepo
     installYumDeps
+    install_boost
   fi
 elif [[ "$OS" =~ .*ubuntu.* ]]
 then
