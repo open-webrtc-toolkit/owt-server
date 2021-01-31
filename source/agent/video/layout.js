@@ -264,21 +264,10 @@ LayoutProcessor.prototype.getRegions = function() {
 
 LayoutProcessor.prototype.setLayout = function(layout, on_ok, on_error) {
   log.debug('setLayout, layout:', JSON.stringify(layout));
-  this.templates = {};
-  this.maxCover = layout.length;
+  this.maxCover < layout.length && (this.maxCover = layout.length);
   this.templates[layout.length] = layout.map((obj) => {return obj.region;});
-  this.currentRegions = this.templates[layout.length];
-
-  this.inputList = [];
-  this.layoutSolution = layout;
-  layout.forEach((obj) => {
-    if (obj.input !== undefined) {
-      this.inputList.push(obj.input);
-    }
-  });
-
-  on_ok(this.layoutSolution);
-  this.emit('layoutChange', this.layoutSolution);
+  this.choseTemplate(this.inputList.length);
+  this.updateInputPositions();
 };
 
 exports.LayoutProcessor = LayoutProcessor;
