@@ -19,6 +19,19 @@ usage() {
   echo
 }
 
+install_boost() {
+  echo -e "\x1b[32mInstalling boost...\x1b[0m"
+  pushd ${this} >/dev/null
+  wget -c http://iweb.dl.sourceforge.net/project/boost/boost/1.65.0/boost_1_65_0.tar.bz2
+  tar xvf boost_1_65_0.tar.bz2
+  pushd boost_1_65_0 >/dev/null
+  ./bootstrap.sh
+  ./b2 --with-thread --with-system
+  cp stage/lib/libboost_*.so* ${this}/lib
+  popd
+  popd
+}
+
 install_deps() {
   local OS=$(${this}/detectOS.sh | awk '{print tolower($0)}')
   echo $OS
@@ -38,8 +51,9 @@ install_deps() {
       ${SUDO} rpm -Uvh epel-release-latest-7*.rpm
     fi
     ${SUDO} sed -i 's/https/http/g' /etc/yum.repos.d/epel.repo
-    ${SUDO} yum install boost-system boost-thread log4cxx bzip2 -y
+    ${SUDO} yum install log4cxx bzip2 -y
     ${SUDO} yum install intel-gpu-tools -y
+    install_boost
 
   elif [[ "$OS" =~ .*ubuntu.* ]]
   then

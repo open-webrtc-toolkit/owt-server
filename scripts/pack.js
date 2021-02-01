@@ -440,6 +440,9 @@ function isLibAllowed(libSrc) {
   if (!options['archive'] || options['with-ffmpeg']) {
     whiteList.push('libav');
     whiteList.push('libsw');
+    if (osType.includes('centos')) {
+      whiteList.push('libboost');
+    }
   }
 
   const libName = path.basename(libSrc);
