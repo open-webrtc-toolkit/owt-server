@@ -1001,6 +1001,7 @@ var Conference = function (rpcClient, selfRpcId) {
       transportId: pubInfo.transport.id,
       tracks: pubInfo.media.tracks,
       legacy: pubInfo.legacy,
+      attributes: pubInfo.attributes,
       data: pubInfo.data
     };
     return rtcPubInfo;
