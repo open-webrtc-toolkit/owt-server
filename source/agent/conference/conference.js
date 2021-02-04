@@ -413,7 +413,7 @@ var Conference = function (rpcClient, selfRpcId) {
                       locality: transport.locality,
                       media: media,
                       data: rtcInfo.data,
-                      info: { type: 'webrtc', owner: transport.owner }
+                      info: { type: 'webrtc', owner: transport.owner, attributes: rtcInfo.attributes }
                     };
                     sendMsgTo(transport.owner, 'progress', {id: transport.id, sessionId, status: 'ready'});
                     onSessionEstablished(transport.owner, sessionId, direction, sessionInfo);
