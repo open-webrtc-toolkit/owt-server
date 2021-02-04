@@ -354,7 +354,7 @@ var SocketIOServer = function(spec, portal, observer) {
 
   var startInsecure = function(port, cors) {
     var server = require('http').createServer().listen(port);
-    io = require('socket.io').listen(server, sioOptions);
+    io = require('socket.io')(server, sioOptions);
     io.origins((origin, callback) => {
       if (cors.indexOf(origin) < 0 && cors.indexOf('*') < 0) {
         return callback('origin not allowed', false);
@@ -378,7 +378,7 @@ var SocketIOServer = function(spec, portal, observer) {
             option.secureOptions = (constants.SSL_OP_NO_TLSv1 | constants.SSL_OP_NO_TLSv1_1);
           }
           var server = require('https').createServer(option).listen(port);
-          io = require('socket.io').listen(server, sioOptions);
+          io = require('socket.io')(server, sioOptions);
           io.origins((origin, callback) => {
             if (cors.indexOf(origin) < 0 && cors.indexOf('*') < 0) {
               return callback('origin not allowed', false);
