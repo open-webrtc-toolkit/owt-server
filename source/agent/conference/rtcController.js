@@ -65,13 +65,14 @@ class Track {
 
 class Operation {
 
-  constructor(id, transport, direction, tracks, legacy) {
+  constructor(id, transport, direction, tracks, legacy, attributes) {
     this.id = id;
     this.transport = transport;
     this.transportId = transport.id;
     this.direction = direction;
     this.tracks = tracks.map(t => new Track(this, t));
     this.legacy = legacy;
+    this.attributes = attributes;
     this.promise = Promise.resolve();
   }
 
@@ -265,9 +266,9 @@ class RtcController extends EventEmitter {
 
   // tracks = [ {mid, type, formatPreference, from} ]
   // Return Promise
-  initiate(ownerId, sessionId, direction, origin, {transportId, tracks, legacy}) {
+  initiate(ownerId, sessionId, direction, origin, {transportId, tracks, legacy, attributes}) {
     log.debug(`initiate, ownerId:${ownerId}, sessionId:${sessionId}, origin:${origin}, ` +
-      `transportId:${transportId}, tracks:${JSON.stringify(tracks)}, legacy:${legacy}`);
+      `transportId:${transportId}, tracks:${JSON.stringify(tracks)}, legacy:${legacy}, attributes:${attributes}`);
 
     return this._createTransportIfNeeded(ownerId, sessionId, origin, transportId)
     .then(transport => {
@@ -281,7 +282,7 @@ class RtcController extends EventEmitter {
         log.debug(`operation exists:${sessionId}`);
         return Promise.reject(`operation exists:${sessionId}`);
       }
-      const op = new Operation(sessionId, transport, direction, tracks, legacy);
+      const op = new Operation(sessionId, transport, direction, tracks, legacy, attributes);
       this.operations.set(sessionId, op);
       // Return promise for this operation
       const options = {transportId, tracks, controller: this.roomRpcId, owner: ownerId};
