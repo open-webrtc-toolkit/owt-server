@@ -36,6 +36,12 @@ rvaStatus MyPipeline::PipelineConfig(std::unordered_map<std::string, std::string
     else
         inputframerate = std::atoi(framerate->second.c_str());
 
+    std::unordered_map<std::string,std::string>::const_iterator codec = params.find ("inputcodec");
+    if ( codec == params.end() )
+        std::cout << "inputcodec is not found" << std::endl;
+    else
+        inputcodec = codec->second;
+
     std::unordered_map<std::string,std::string>::const_iterator name = params.find ("pipelinename");
     if ( name == params.end() )
         std::cout << "pipeline name is not found" << std::endl;
