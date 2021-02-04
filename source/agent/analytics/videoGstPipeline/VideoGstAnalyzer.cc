@@ -175,6 +175,7 @@ int VideoGstAnalyzer::createPipeline() {
         {"inputwidth", std::to_string(width)},
         {"inputheight", std::to_string(height)},
         {"inputframerate", std::to_string(framerate)},
+        {"inputcodec", codec},
         {"pipelinename", algo} };
     pipeline_->PipelineConfig(plugin_config_map);
 
