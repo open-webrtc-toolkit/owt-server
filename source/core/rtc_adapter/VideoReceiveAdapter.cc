@@ -140,6 +140,7 @@ int32_t VideoReceiveAdapterImpl::AdapterDecoder::Decode(const webrtc::EncodedIma
         }
         // Request key frame
         if (m_parent->m_isWaitingKeyFrame) {
+            m_parent->m_isWaitingKeyFrame = false;
             return WEBRTC_VIDEO_CODEC_OK_REQUEST_KEYFRAME;
         }
     }
