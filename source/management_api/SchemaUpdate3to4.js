@@ -11,10 +11,31 @@ if (!databaseUrl) {
   databaseUrl = 'localhost/owtdb';
 }
 
-var db = require('mongojs')(databaseUrl, ['rooms', 'services']);
+var MongoClient = require('mongodb').MongoClient;
+var connectOption = {
+  useUnifiedTopology: true,
+};
+var db;
 var Fraction = require('fraction.js');
 var DefaultUtil = require('./data_access/defaults');
 var Room = require('./data_access/model/roomModel');
+
+function prepareDB(next) {
+  if (dbURL.indexOf('mongodb://') !== 0) {
+    dbURL = 'mongodb://' + dbURL;
+  }
+  MongoClient.connect(dbURL, connectOption, function(err, client) {
+    if (!err) {
+      db = client.db();
+      db.close = client.close;
+      db.rooms = db.collection('rooms');
+      db.services = db.collection('services');
+      next();
+    } else {
+      console.error('Failed to connect mongodb:', err);
+    }
+  });
+}
 
 function fracString(num) {
   var frac = Fraction(0);
@@ -143,7 +164,7 @@ function processRoom(rooms, i, onFinishRoom) {
   }
 
   var room = upgradeRoom(rooms[i]);
-  db.rooms.save(room, function (err, saved) {
+  db.rooms.updateOne({_id: room._id}, room, function (err, saved) {
     if (err) {
       console.log('Error in updating room:', room._id, err.message);
     } else {
@@ -167,7 +188,7 @@ function processServices(services, i, onFinishService) {
   var processNext = function() {
     service.__v = 0;
     service.rooms = service.rooms.map((room) => (room._id ? room._id : room));
-    db.services.save(service, function (e, saved) {
+    db.services.updateOne({_id: service._id}, service, function (e, saved) {
       if (e) {
         console.log('Error in updating service:', service._id, e.message);
       } else {
@@ -195,17 +216,19 @@ function processServices(services, i, onFinishService) {
 }
 
 function processAll(finishCb) {
-  db.services.find({}).toArray(function (err, services) {
-    console.log('Starting');
-    if (err) {
-      console.log('Error in getting services:', err.message);
-      db.close();
-      return;
-    }
-    processServices(services, 0, function() {
-      db.close();
-      if (typeof finishCb === 'function')
-        finishCb();
+  prepareDB(function() {
+    db.services.find({}).toArray(function (err, services) {
+      console.log('Starting');
+      if (err) {
+        console.log('Error in getting services:', err.message);
+        db.close();
+        return;
+      }
+      processServices(services, 0, function() {
+        db.close();
+        if (typeof finishCb === 'function')
+          finishCb();
+      });
     });
   });
 }
