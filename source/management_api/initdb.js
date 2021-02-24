@@ -143,7 +143,7 @@ function checkVersion (next) {
         var upgradeNext = function(next) {
           upgradeH264(function() {
             info = {_id: 1, version: currentVersion};
-            db.collection('infos').save(info, function cb (e, s) {
+            db.collection('infos').insertOne(info, function cb (e, s) {
               if (e) {
                 console.log('mongodb: error in updating version');
                 return client.close();
@@ -189,7 +189,7 @@ function prepareService (serviceName, next) {
       var crypto = require('crypto');
       var key = crypto.pbkdf2Sync(crypto.randomBytes(64).toString('hex'), crypto.randomBytes(32).toString('hex'), 4000, 128, 'sha256').toString('base64');
       service = {name: serviceName, key: cipher.encrypt(cipher.k, key), encrypted: true, rooms: [], __v: 0};
-      db.collection('services').save(service, function cb (err, saved) {
+      db.collection('services').insertOne(service, function cb (err, saved) {
         if (err) {
           console.log('mongodb: error in adding', serviceName);
           return client.close();
