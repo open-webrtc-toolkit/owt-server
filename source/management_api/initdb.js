@@ -189,13 +189,12 @@ function prepareService (serviceName, next) {
       var crypto = require('crypto');
       var key = crypto.pbkdf2Sync(crypto.randomBytes(64).toString('hex'), crypto.randomBytes(32).toString('hex'), 4000, 128, 'sha256').toString('base64');
       service = {name: serviceName, key: cipher.encrypt(cipher.k, key), encrypted: true, rooms: [], __v: 0};
-      db.collection('services').insertOne(service, function cb (err, saved) {
+      db.collection('services').insertOne(service, function cb (err, result) {
         if (err) {
           console.log('mongodb: error in adding', serviceName);
           return client.close();
         }
-        saved.key = key;
-        next(saved);
+        next(result.ops[0]);
       });
     } else {
       if (service.encrypted === true) {
