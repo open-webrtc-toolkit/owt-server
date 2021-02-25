@@ -18,6 +18,7 @@
           "../../common/clusterWorker.js",
           "../../common/loadCollector.js",
           "../../common/logger.js",
+          "../../common/makeRPC.js",
           "../../../scripts/release/initcert.js",
           "../../../scripts/release/initauth.js",
           "../../../scripts/detectOS.sh"
