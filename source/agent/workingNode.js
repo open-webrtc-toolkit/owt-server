@@ -13,7 +13,7 @@ try {
     log.debug('No native logger for reconfiguration');
 }
 
-var rpc = require('./amqp_client')();
+var rpc = require('./amqpClient')();
 
 var controller;
 function init_controller() {

@@ -6,7 +6,7 @@
 
 var fs = require('fs');
 var toml = require('toml');
-var amqper = require('./amqp_client')();
+var amqper = require('./amqpClient')();
 var rpcClient;
 var makeRPC = require('./makeRPC').makeRPC;
 var logger = require('./logger').logger;

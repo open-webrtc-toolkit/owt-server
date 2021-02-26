@@ -2,7 +2,7 @@
   "name": "OWT-MCU-Portal",
   "version":"5.0.0",
   "dependencies": {
-    "amqp": "*",
+    "amqplib": "^0.7.0",
     "socket.io": "^2.2.0",
     "log4js": "^1.1.1",
     "toml": "*",

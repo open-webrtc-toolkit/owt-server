@@ -61,7 +61,7 @@ if(process.env.owt_via_host !== undefined) {
 global.config = config;
 
 
-var amqper = require('./amqp_client')();
+var amqper = require('./amqpClient')();
 var rpcClient;
 var socketio_server;
 var portal;

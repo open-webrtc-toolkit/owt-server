@@ -4,7 +4,7 @@
 
 'use strict';
 
-var amqper = require('./amqp_client')();
+var amqper = require('./amqpClient')();
 var logger = require('./logger').logger;
 var log = logger.getLogger('Main');
 var ClusterManager = require('./clusterManager');

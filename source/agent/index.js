@@ -52,7 +52,7 @@ for (var prop in opt.options) {
 
 var clusterWorker = require('./clusterWorker');
 var nodeManager = require('./nodeManager');
-var amqper = require('./amqp_client')();
+var amqper = require('./amqpClient')();
 var rpcClient;
 var monitoringTarget;
 
