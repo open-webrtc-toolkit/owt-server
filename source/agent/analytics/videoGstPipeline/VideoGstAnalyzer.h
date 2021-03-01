@@ -86,6 +86,8 @@ private:
     int framerate,bitrate;
     int kfi; //keyFrameInterval
     bool addlistener;
+    bool m_dumpOut;
+    FILE *fp;
 };
 
 }

@@ -33,8 +33,10 @@ public:
 private:
     bool m_start;
     bool m_needKeyFrame;
+    bool m_dumpIn;
     GstAppSrc *appsrc;
     boost::shared_ptr<owt_base::RawTransportInterface> m_transport;
+    FILE *fp;
 };
 
 #endif /* GstInternalIn_h */

@@ -20,7 +20,13 @@ GstInternalIn::GstInternalIn(GstAppSrc *data, unsigned int minPort, unsigned int
     appsrc = data;
     m_needKeyFrame = true;
     m_start = false;
-
+    m_dumpIn = false;
+    fp = NULL;
+    char* pIn = std::getenv("DUMP_ANALYTICS_IN");
+    if(pIn != NULL) {
+        ELOG_INFO("Dump analytics in stream");
+        m_dumpIn = true;
+    }
 }
 
 GstInternalIn::~GstInternalIn()
@@ -87,6 +93,16 @@ void GstInternalIn::onTransportData(char* buf, int len)
             gst_buffer_map(buffer, &map, GST_MAP_WRITE);
             memcpy(map.data, frame, headerLength);
             memcpy(map.data + headerLength, frame->payload, payloadLength);
+
+            if(m_dumpIn) {
+                if(fp == NULL) {
+                    char name[40];
+                    tmpnam(name);
+                    ELOG_DEBUG("Dump analytics input stream to file %s ", name);
+                    fp = fopen(name,"w+b");
+                }
+                fwrite(map.data,sizeof(char),map.size,fp);
+            }
 
             gst_buffer_unmap(buffer, &map);
             g_signal_emit_by_name(appsrc, "push-buffer", buffer, &ret);
