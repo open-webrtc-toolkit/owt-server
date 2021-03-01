@@ -29,6 +29,11 @@ const MONITOR_EXC = {
   },
 };
 
+const Q_OPTION = {
+  durable: false,
+  autoDelete: true,
+};
+
 class RpcClient {
   constructor(amqpCli) {
     this.bus = amqpCli;
@@ -43,7 +48,7 @@ class RpcClient {
     this.channel = this.bus.channel;
     return this.channel.assertExchange(
         RPC_EXC.name, RPC_EXC.type, RPC_EXC.options).then(() => {
-      return this.channel.assertQueue('');
+      return this.channel.assertQueue('', Q_OPTION);
     }).then((result) => {
       this.replyQ = result.queue;
       return this.channel.bindQueue(this.replyQ, RPC_EXC.name, this.replyQ);
@@ -129,19 +134,10 @@ class RpcClient {
       clearTimeout(this.callMap[i].timer);
     }
     this.callMap = {};
-    this.channel.unbindQueue(this.replyQ, RPC_EXC.name, this.replyQ)
-      .then(() => {
-        if (this.consumerTag) {
-          return this.channel.cancel(this.consumerTag)
-        }
-      })
-      .then(() => {
-        return this.channel.deleteQueue(this.replyQ);
-      })
+    return this.channel.cancel(this.consumerTag)
       .catch((err) => {
-        log.error('Failed to destroy queue:', this.replyQ);
+        log.error('Failed during close RpcClient:', this.replyQ);
       });
-    //this.channel.deleteExchange(RPC_EXC.name);
   }
 }
 
@@ -157,7 +153,7 @@ class RpcServer {
     this.channel = this.bus.channel;
     return this.channel.assertExchange(
         RPC_EXC.name, RPC_EXC.type, RPC_EXC.options).then(() => {
-      return this.channel.assertQueue(this.requestQ);
+      return this.channel.assertQueue(this.requestQ, Q_OPTION);
     }).then((result) => {
       this.requestQ = result.queue;
       return this.channel.bindQueue(this.requestQ, RPC_EXC.name, this.requestQ);
@@ -208,19 +204,10 @@ class RpcServer {
   }
 
   close() {
-    this.channel.unbindQueue(this.requestQ, RPC_EXC.name, this.requestQ)
-      .then(() => {
-        if (this.consumerTag) {
-          return this.channel.cancel(this.consumerTag)
-        }
-      })
-      .then(() => {
-        return this.channel.deleteQueue(this.requestQ, {ifUnused: true});
-      })
+    return this.channel.cancel(this.consumerTag)
       .catch((err) => {
-        log.error('Failed to destroy queue:', this.requestQ); 
+        log.error('Failed to during close RpcServer:', this.requestQ); 
       });
-    //this.channel.deleteExchange(RPC_EXC.name);
   }
 }
 
@@ -238,7 +225,7 @@ class TopicParticipant {
     this.channel = this.bus.channel;
     return this.channel.assertExchange(
         this.name, 'topic', MONITOR_EXC.options).then(() => {
-      return this.channel.assertQueue('');
+      return this.channel.assertQueue('', {durable: false});
     }).then((result) => {
       this.queue = result.queue;
       this.ready = true;
@@ -246,6 +233,7 @@ class TopicParticipant {
   }
 
   subscribe(patterns, onMessage, onOk) {
+    log.debug('subscribe:', this.queue, patterns);
     if (this.queue) {
       patterns.map((pattern) => {
         this.channel.bindQueue(this.queue, this.name, pattern)
@@ -270,6 +258,7 @@ class TopicParticipant {
   }
 
   unsubscribe(patterns) {
+    log.debug('unsubscribe:', patterns);
     if (this.queue) {
       patterns.map((pattern) => {
         this.channel.unbindQueue(this.queue, this.name, pattern)
@@ -285,9 +274,10 @@ class TopicParticipant {
   }
 
   publish(topic, data) {
-    log.debug('topic send:', topic, data);
+    log.debug('topic send:', topic, data, this.ready);
     if (this.ready) {
       const content = JSON.stringify(data);
+      log.debug('publish:', this.name, topic);
       this.channel.publish(this.name, topic, Buffer.from(content));
     }
   }
@@ -297,11 +287,10 @@ class TopicParticipant {
   }
 
   close() {
-    this.channel.deleteQueue(this.queue)
+    return this.channel.deleteQueue(this.queue)
       .catch((err) => {
         log.error('Failed to destroy queue:', this.queue); 
-      });
-    this.channel.deleteExchange(this.name, {ifUnused: true})
+      })
       .catch((err) => log.error('Failed to delete exchange:', this.name));
   }
 }
@@ -319,7 +308,7 @@ class Monitor {
     this.channel = this.bus.channel;
     return this.channel.assertExchange(
         MONITOR_EXC.name, MONITOR_EXC.type, MONITOR_EXC.options).then(() => {
-      return this.channel.assertQueue('');
+      return this.channel.assertQueue('', Q_OPTION);
     }).then((result) => {
       this.queue = result.queue;
       return this.channel.bindQueue(this.queue, MONITOR_EXC.name, 'exit.#');
@@ -348,20 +337,9 @@ class Monitor {
   }
 
   close() {
-    this.channel.unbindQueue(this.queue, MONITOR_EXC.name, this.queue)
-      .then(() => {
-        if (this.consumerTag) {
-          return this.channel.cancel(this.consumerTag)
-        }
-      })
-      .then(() => {
-        return this.channel.deleteQueue(this.queue);
-      })
+    return this.channel.cancel(this.consumerTag)
       .catch((err) => {
-        log.error('Failed to destroy queue:', this.queue); 
-      })
-      .then(() => {
-        return this.channel.deleteExchange(MONITOR_EXC.name, {ifUnused: true})
+        log.error('Failed to cancel consumer on queue:', this.queue); 
       })
       .catch((err) => log.error('Failed to delete exchange:', this.name));
   };
@@ -395,8 +373,8 @@ class MonitoringTarget {
   }
 
   close() {
-    this.channel.deleteExchange(MONITOR_EXC.name, {ifUnused: true})
-      .catch((err) => log.error('Failed to delete exchange:', this.name));
+    // return this.channel.deleteExchange(MONITOR_EXC.name, {ifUnused: true})
+    //   .catch((err) => log.error('Failed to delete exchange:', this.name));
   }
 }
 
@@ -489,9 +467,10 @@ class AmqpCli {
     if (this.monitoringTarget) {
       this.monitoringTarget.disable();
     }
-    setTimeout(() => {
-      this.connect(this.options, () => {}, this.failureCb);
-    }, RECONNECT_INTERVAL);
+    this.close();
+    // setTimeout(() => {
+    //   this.connect(this.options, () => {}, this.failureCb);
+    // }, RECONNECT_INTERVAL);
   }
 
   asRpcClient(onOk, onFailure) {
@@ -560,28 +539,38 @@ class AmqpCli {
     }
   }
 
-  disconnect() {
-    this.close();
-    this.connection.close()
-      .catch((err) => log.warn('Error closing AMQP connection:', err));
+  async disconnect() {
+    try {
+      await this.close();
+      await this.connection.close();
+    } catch (err) {
+      log.warn('Error closing AMQP connection:', err);
+    }
   }
 
   close() {
+    const closingOps = [];
     if (this.rpcClient) {
-      this.rpcClient.close();
+      closingOps.push(this.rpcClient.close());
+      this.rpcClient = null;
     }
     if (this.rpcServer) {
-      this.rpcServer.close();
+      closingOps.push(this.rpcServer.close());
+      this.rpcServer = null;
     }
     if (this.monitor) {
-      this.monitor.close();
+      closingOps.push(this.monitor.close());
+      this.monitor = null;
     }
     if (this.monitoringTarget) {
-      this.monitoringTarget.close();
+      closingOps.push(this.monitoringTarget.close());
+      this.monitoringTarget = null;
     }
     this.topicParticipants.forEach((tp) => {
-      tp.close();
+      closingOps.push(tp.close());
     });
+    this.topicParticipants.clear();
+    return Promise.all(closingOps);
   }
 }
 

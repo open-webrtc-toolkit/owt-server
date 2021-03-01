@@ -220,6 +220,14 @@ function startup () {
 
 startup();
 
+['SIGINT', 'SIGTERM'].map(function (sig) {
+  process.on(sig, async function () {
+    log.warn('Exiting on', sig);
+    await amqper.disconnect();
+    process.exit();
+  });
+});
+
 process.on('SIGUSR2', function() {
     logger.reconfigure();
 });

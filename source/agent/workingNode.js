@@ -66,11 +66,12 @@ function init_controller() {
 };
 
 ['SIGINT', 'SIGTERM'].map(function (sig) {
-    process.on(sig, function () {
+    process.on(sig, async function () {
         log.warn('Exiting on', sig);
         if (controller && typeof controller.close === 'function') {
             controller.close();
         }
+        await rpc.disconnect();
         process.exit();
     });
 });
