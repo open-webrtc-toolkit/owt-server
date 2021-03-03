@@ -6,6 +6,7 @@
       'InternalInWrapper.cc',
       'InternalOutWrapper.cc',
       'InternalIOWrapper.cc',
+      'InternalConfig.cc',
       '../../../core/owt_base/InternalIn.cpp',
       '../../../core/owt_base/InternalOut.cpp',
       '../../../core/owt_base/InternalSctp.cpp',

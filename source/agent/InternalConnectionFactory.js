@@ -22,6 +22,21 @@ try {
 
 var cf = 'leaf_cert.pem';
 var kf = 'leaf_cert.pkcs8';
+var cipher;
+try {
+    cipher = require('../cipher');
+    cipher.unlock(cipher.k, cipher.astore, function cb (err, authConfig) {
+        if (!err) {
+            if (authConfig.internalPass) {
+                internalIO.setPassphrase(authConfig.internalPass);
+            }
+        } else {
+            log.debug('Unlock error:', err);
+        }
+    });
+} catch (e) {
+    log.info('Failed to set secure for internal IO');
+}
 
 // Wrapper object for sctp-connection and tcp/udp-connection
 function InConnection(prot, minport, maxport) {

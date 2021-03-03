@@ -6,6 +6,7 @@
 #define RawTransport_h
 
 #include <boost/asio.hpp>
+#include <boost/asio/ssl.hpp>
 #include <boost/scoped_ptr.hpp>
 #include <boost/shared_array.hpp>
 #include <boost/thread.hpp>
@@ -62,6 +63,8 @@ public:
 
     unsigned short getListeningPort();
 
+    static void setPassphrase(std::string p);
+
 private:
     typedef struct {
         boost::shared_array<char> buffer;
@@ -75,6 +78,7 @@ private:
     void writeHandler(const boost::system::error_code&, std::size_t);
     void connectHandler(const boost::system::error_code&);
     void acceptHandler(const boost::system::error_code&);
+    void handshakeHandler(const boost::system::error_code&);
     void dumpTcpSSLv3Header(const char*, int len);
 
     bool m_isClosing;
@@ -96,6 +100,8 @@ private:
     // Alternatively, we may make the io_service object reference counted but it
     // introduces unnecessary complexity.
     std::shared_ptr<IOService> m_service;
+
+    typedef boost::asio::ssl::stream<boost::asio::ip::tcp::socket> ssl_socket;
     struct Socket {
         Socket() { }
         ~Socket() { }
@@ -115,10 +121,19 @@ private:
             boost::scoped_ptr<boost::asio::ip::tcp::socket> socket;
             boost::scoped_ptr<boost::asio::ip::tcp::acceptor> acceptor;
         } tcp;
+        struct SSLSocket {
+            SSLSocket() { }
+            ~SSLSocket() { }
+
+            boost::scoped_ptr<boost::asio::ssl::context> context;
+            boost::scoped_ptr<ssl_socket> socket;
+            boost::scoped_ptr<boost::asio::ip::tcp::acceptor> acceptor;
+        } ssl;
     } m_socket;
 
     RawTransportListener* m_listener;
     uint32_t m_receivedBytes;
+    bool m_ssl;
 };
 
 } /* namespace owt_base */
