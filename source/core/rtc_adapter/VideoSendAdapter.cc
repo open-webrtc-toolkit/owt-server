@@ -21,6 +21,7 @@ namespace rtc_adapter {
 // To make it consistent with the webrtc library, we allow packets to be transmitted
 // in up to 2 times max video bitrate if the bandwidth estimate allows it.
 static const int TRANSMISSION_MAXBITRATE_MULTIPLIER = 2;
+static const int kMaxRtpPacketSize = 1200;
 
 static int getNextNaluPosition(uint8_t* buffer, int buffer_size, bool& is_aud_or_sei, int& sc_len)
 {
@@ -198,7 +199,7 @@ bool VideoSendAdapterImpl::init()
         m_rtpRtcp->SetMid(mid);
     }
 
-    m_rtpRtcp->SetMaxRtpPacketSize(1200);
+    m_rtpRtcp->SetMaxRtpPacketSize(kMaxRtpPacketSize);
 
     webrtc::RTPSenderVideo::Config video_config;
     m_playoutDelayOracle = std::make_unique<webrtc::PlayoutDelayOracle>();
