@@ -198,6 +198,8 @@ bool VideoSendAdapterImpl::init()
         m_rtpRtcp->SetMid(mid);
     }
 
+    m_rtpRtcp->SetMaxRtpPacketSize(1200);
+
     webrtc::RTPSenderVideo::Config video_config;
     m_playoutDelayOracle = std::make_unique<webrtc::PlayoutDelayOracle>();
     m_fieldTrialConfig = std::make_unique<webrtc::FieldTrialBasedConfig>();
