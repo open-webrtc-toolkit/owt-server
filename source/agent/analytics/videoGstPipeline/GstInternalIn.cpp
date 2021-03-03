@@ -6,6 +6,17 @@
 #include <gst/gst.h>
 #include <stdio.h>
 
+static void dump(void* index, uint8_t* buf, int len)
+{
+    char dumpFileName[128];
+
+    snprintf(dumpFileName, 128, "/tmp/analyticsIn-%p", index);
+    FILE* bsDumpfp = fopen(dumpFileName, "ab");
+    if (bsDumpfp) {
+        fwrite(buf, 1, len, bsDumpfp);
+        fclose(bsDumpfp);
+    }
+}
 
 DEFINE_LOGGER(GstInternalIn, "GstInternalIn");
 GstInternalIn::GstInternalIn(GstAppSrc *data, unsigned int minPort, unsigned int maxPort)
@@ -21,7 +32,6 @@ GstInternalIn::GstInternalIn(GstAppSrc *data, unsigned int minPort, unsigned int
     m_needKeyFrame = true;
     m_start = false;
     m_dumpIn = false;
-    fp = NULL;
     char* pIn = std::getenv("DUMP_ANALYTICS_IN");
     if(pIn != NULL) {
         ELOG_INFO("Dump analytics in stream");
@@ -55,8 +65,6 @@ void GstInternalIn::onTransportData(char* buf, int len)
 {
     if(!m_start) {
         ELOG_INFO("Not start yet, stop pushing data to appsrc\n");
-        pthread_t tid;
-        tid = pthread_self();
         return;
     }
 
@@ -95,13 +103,7 @@ void GstInternalIn::onTransportData(char* buf, int len)
             memcpy(map.data + headerLength, frame->payload, payloadLength);
 
             if(m_dumpIn) {
-                if(fp == NULL) {
-                    char name[40];
-                    tmpnam(name);
-                    ELOG_DEBUG("Dump analytics input stream to file %s ", name);
-                    fp = fopen(name,"w+b");
-                }
-                fwrite(map.data,sizeof(char),map.size,fp);
+                dump(this, map.data, map.size);
             }
 
             gst_buffer_unmap(buffer, &map);

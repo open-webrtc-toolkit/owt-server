@@ -67,6 +67,18 @@ inline bool isVp8KeyFrame(uint8_t *data, size_t len)
     return (key_frame == 0);
 }
 
+static void dump(void* index, uint8_t* buf, int len)
+{
+    char dumpFileName[128];
+
+    snprintf(dumpFileName, 128, "/tmp/analyticsOut-%p", index);
+    FILE* bsDumpfp = fopen(dumpFileName, "ab");
+    if (bsDumpfp) {
+        fwrite(buf, 1, len, bsDumpfp);
+        fclose(bsDumpfp);
+    }
+}
+
 VideoGstAnalyzer::VideoGstAnalyzer() {
     ELOG_INFO("Init");
     sourceid = 0;
@@ -75,7 +87,6 @@ VideoGstAnalyzer::VideoGstAnalyzer() {
     addlistener = false;
     m_frameCount = 0;
     m_dumpOut = false;
-    fp = NULL;
     char* pOut = std::getenv("DUMP_ANALYTICS_OUT");
     if(pOut != NULL) {
         ELOG_INFO("Dump analytics Out stream");
@@ -245,13 +256,7 @@ void VideoGstAnalyzer::new_sample_from_sink (GstElement * source, gpointer data)
 
     pStreamObj->m_gstinternalout->onFrame(outFrame);
     if(pStreamObj->m_dumpOut) {
-        if(pStreamObj->fp == NULL){
-            char name[40];
-            tmpnam(name);
-            ELOG_DEBUG("Dump analytics output stream to file %s ", name);
-            pStreamObj->fp = fopen(name,"w+b");
-       }
-        fwrite(map.data,sizeof(char),map.size,pStreamObj->fp);
+        dump(pStreamObj, map.data, map.size);
     }
 
     gst_buffer_unmap(buffer, &map);
