@@ -311,6 +311,7 @@ install_quic(){
   # QUIC transport
   local QUIC_SDK_VERSION=`cat ${ROOT}/source/agent/addons/quic/quic_sdk_version`
   local QUIC_TRANSPORT_PATH=${ROOT}/third_party/quic-transport
+  local QUIC_HEADERS_DIR=${ROOT}/build/libdeps/build/include/owt
   if [ -d ${QUIC_TRANSPORT_PATH} ]; then
     rm -r ${QUIC_TRANSPORT_PATH}
   fi
@@ -321,6 +322,10 @@ install_quic(){
     unzip ${QUIC_SDK_VERSION}.zip
     rm ${QUIC_SDK_VERSION}.zip
     cp bin/release/libowt_quic_transport.so ${ROOT}/build/libdeps/build/lib
+    if [ -d ${QUIC_HEADERS_DIR} ]; then
+      rm -r ${QUIC_HEADERS_DIR}
+    fi
+    cp -r include/owt ${QUIC_HEADERS_DIR}
   else
     read -p "Failed to download prebuild QUIC SDK. Please download and compile QUIC SDK version ${QUIC_SDK_VERSION} from https://github.com/open-webrtc-toolkit/owt-deps-quic."
   fi
