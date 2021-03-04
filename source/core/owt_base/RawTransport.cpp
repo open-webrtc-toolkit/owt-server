@@ -85,7 +85,7 @@ void RawTransport<prot>::close()
 template<Protocol prot>
 bool RawTransport<prot>::initTicket(const std::string& ticket)
 {
-    ELOG_WARN("initTicket %s:", ticket.c_str());
+    ELOG_DEBUG("initTicket");
     m_connectTicket = ticket;
     if (m_connectTicket.length() > kMaxTicketLen) {
         m_connectTicket.resize(kMaxTicketLen);
