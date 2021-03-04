@@ -7,7 +7,6 @@
 
 #include <boost/asio.hpp>
 #include <boost/asio/ssl.hpp>
-#include <boost/atomic.hpp>
 #include <boost/scoped_ptr.hpp>
 #include <boost/shared_array.hpp>
 #include <boost/thread.hpp>
@@ -141,7 +140,7 @@ private:
     uint32_t m_receivedBytes;
     bool m_ssl;
     bool m_isListener;
-    boost::atomic<bool> m_verified;
+    bool m_verified;
     std::string m_connectTicket;
 };
 
