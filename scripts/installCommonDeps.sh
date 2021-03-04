@@ -160,7 +160,7 @@ install_openssl(){
     wget -c https://www.openssl.org/source/openssl-${SSL_VERSION}.tar.gz
     tar xf openssl-${SSL_VERSION}.tar.gz
     cd openssl-${SSL_VERSION}
-    ./config no-ssl3 --prefix=$PREFIX_DIR -fPIC
+    ./config no-ssl3 --prefix=$PREFIX_DIR -fPIC --libdir=lib
     make depend
     make -s V=0
     make install
