@@ -67,6 +67,18 @@ inline bool isVp8KeyFrame(uint8_t *data, size_t len)
     return (key_frame == 0);
 }
 
+static void dump(void* index, uint8_t* buf, int len)
+{
+    char dumpFileName[128];
+
+    snprintf(dumpFileName, 128, "/tmp/analyticsOut-%p", index);
+    FILE* bsDumpfp = fopen(dumpFileName, "ab");
+    if (bsDumpfp) {
+        fwrite(buf, 1, len, bsDumpfp);
+        fclose(bsDumpfp);
+    }
+}
+
 VideoGstAnalyzer::VideoGstAnalyzer() {
     ELOG_INFO("Init");
     sourceid = 0;
@@ -74,6 +86,12 @@ VideoGstAnalyzer::VideoGstAnalyzer() {
     encoder_pad = NULL;
     addlistener = false;
     m_frameCount = 0;
+    m_dumpOut = false;
+    char* pOut = std::getenv("DUMP_ANALYTICS_OUT");
+    if(pOut != NULL) {
+        ELOG_INFO("Dump analytics Out stream");
+        m_dumpOut = true;
+    }
 }
 
 VideoGstAnalyzer::~VideoGstAnalyzer() {
@@ -100,7 +118,6 @@ gboolean VideoGstAnalyzer::StreamEventCallBack(GstBus *bus, GstMessage *message,
             g_error_free(err);
             g_free(debug);
             g_main_loop_quit(pStreamObj->loop);
-    
             break;
         }
         case GST_MESSAGE_EOS:
@@ -238,6 +255,9 @@ void VideoGstAnalyzer::new_sample_from_sink (GstElement * source, gpointer data)
     outFrame.payload = map.data;
 
     pStreamObj->m_gstinternalout->onFrame(outFrame);
+    if(pStreamObj->m_dumpOut) {
+        dump(pStreamObj, map.data, map.size);
+    }
 
     gst_buffer_unmap(buffer, &map);
     gst_sample_unref(sample);
