@@ -204,6 +204,7 @@ class RpcServer {
   }
 
   close() {
+    this.ready = false;
     return this.channel.cancel(this.consumerTag)
       .catch((err) => {
         log.error('Failed to during close RpcServer:', this.requestQ); 
@@ -287,6 +288,7 @@ class TopicParticipant {
   }
 
   close() {
+    this.ready = false;
     return this.channel.deleteQueue(this.queue)
       .catch((err) => {
         log.error('Failed to destroy queue:', this.queue); 
@@ -337,6 +339,7 @@ class Monitor {
   }
 
   close() {
+    this.ready = false;
     return this.channel.cancel(this.consumerTag)
       .catch((err) => {
         log.error('Failed to cancel consumer on queue:', this.queue); 
@@ -373,6 +376,7 @@ class MonitoringTarget {
   }
 
   close() {
+    this.ready = false;
     // return this.channel.deleteExchange(MONITOR_EXC.name, {ifUnused: true})
     //   .catch((err) => log.error('Failed to delete exchange:', this.name));
   }

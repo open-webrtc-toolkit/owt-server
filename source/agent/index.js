@@ -223,7 +223,11 @@ amqper.connect(config.rabbit, function () {
 ['SIGINT', 'SIGTERM'].map(function (sig) {
     process.on(sig, async function () {
         log.warn('Exiting on', sig);
-        await amqper.disconnect();
+        try {
+            await amqper.disconnect();
+        } catch(e) {
+            log.warn('Exiting e:', e);
+        }
         process.exit();
     });
 });

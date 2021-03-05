@@ -71,7 +71,11 @@ function init_controller() {
         if (controller && typeof controller.close === 'function') {
             controller.close();
         }
-        await rpc.disconnect();
+        try {
+            await amqper.disconnect();
+        } catch(e) {
+            log.warn('Exiting e:', e);
+        }
         process.exit();
     });
 });
