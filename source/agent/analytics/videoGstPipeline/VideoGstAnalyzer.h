@@ -17,16 +17,18 @@
 #include "AnalyticsPipeline.h"
 #include <stdio.h>
 #include "MediaFramePipeline.h"
+#include <EventRegistry.h>
 
 namespace mcu {
 
-class VideoGstAnalyzer{
+class VideoGstAnalyzer : public EventRegistry {
     DECLARE_LOGGER();
 public:
-    VideoGstAnalyzer();
-    virtual ~VideoGstAnalyzer();
+    VideoGstAnalyzer(EventRegistry* handle);
+    ~VideoGstAnalyzer();
     int createPipeline();
     void clearPipeline();
+    void destroyPipeline();
     int getListeningPort();
     void emitListenTo(int minPort,int maxPort);
     int setPlaying();
@@ -55,6 +57,10 @@ protected:
     static GMainLoop *loop;
     static gboolean StreamEventCallBack(GstBus *bus, GstMessage *message, gpointer data);
     void setState(GstState newstate);
+    // EventRegistry
+    bool notifyAsyncEvent(const std::string& event, const std::string& data) override;
+    bool notifyAsyncEventInEmergency(const std::string& event, const std::string& data) override;
+
     boost::scoped_ptr<GstInternalIn> m_internalin;
     boost::scoped_ptr<GstInternalOut> m_gstinternalout;
     //std::list<owt_base::InternalOut*> m_internalout;
@@ -67,6 +73,7 @@ private:
     rvaPipeline* pipeline_;
     rva_create_t* createPlugin;
     rva_destroy_t* destroyPlugin;
+    EventRegistry *m_asyncHandle;
     
     GstStateChangeReturn ret;
 
