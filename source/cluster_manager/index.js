@@ -56,7 +56,7 @@ function startup () {
             ClusterManager.run(channel, config.manager.name, id, spec);
         }, function(reason) {
             log.error('Cluster manager initializing failed, reason:', reason);
-            process.exit();
+            process.kill(process.pid, 'SIGINT');
         });
     };
 
@@ -64,7 +64,7 @@ function startup () {
         enableService();
     }, function(reason) {
         log.error('Cluster manager connect to rabbitMQ server failed, reason:', reason);
-        process.exit();
+        process.kill(process.pid, 'SIGINT');
     });
 }
 
@@ -73,13 +73,18 @@ startup();
 ['SIGINT', 'SIGTERM'].map(function (sig) {
     process.on(sig, async function () {
         log.warn('Exiting on', sig);
-        await amqper.disconnect();
+        try {
+            await amqper.disconnect();
+        } catch (e) {
+            log.warn('Disconnect:', e);
+        }
         process.exit();
     });
 });
 
 process.on('exit', function () {
-    amqper.disconnect();
+    log.info('Process exit');
+    // amqper.disconnect();
 });
 
 process.on('SIGUSR2', function() {

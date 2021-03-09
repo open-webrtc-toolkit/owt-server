@@ -314,7 +314,7 @@ process.on('SIGPIPE', function () {
 });
 
 process.on('exit', function () {
-    amqper.disconnect();
+  log.info('Process exit');
 });
 
 process.on('unhandledRejection', (reason) => {

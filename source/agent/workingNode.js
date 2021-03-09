@@ -65,14 +65,19 @@ function init_controller() {
     });
 };
 
+var exiting = false;
 ['SIGINT', 'SIGTERM'].map(function (sig) {
     process.on(sig, async function () {
+        if (exiting) {
+            return;
+        }
+        exiting = true;
         log.warn('Exiting on', sig);
         if (controller && typeof controller.close === 'function') {
             controller.close();
         }
         try {
-            await amqper.disconnect();
+            await rpc.disconnect();
         } catch(e) {
             log.warn('Exiting e:', e);
         }
@@ -87,7 +92,8 @@ function init_controller() {
 });
 
 process.on('exit', function () {
-    rpc.disconnect();
+    log.info('Process exit');
+    //rpc.disconnect();
 });
 
 process.on('unhandledRejection', (reason) => {

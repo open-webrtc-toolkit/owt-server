@@ -44,7 +44,6 @@ class RpcClient {
   }
 
   setup() {
-    log.debug('rpc client setup');
     this.channel = this.bus.channel;
     return this.channel.assertExchange(
         RPC_EXC.name, RPC_EXC.type, RPC_EXC.options).then(() => {
@@ -53,7 +52,7 @@ class RpcClient {
       this.replyQ = result.queue;
       return this.channel.bindQueue(this.replyQ, RPC_EXC.name, this.replyQ);
     }).then(() => {
-      log.info('Start consume', this.replyQ, RPC_EXC.name);
+      log.debug('Start consume', this.replyQ, RPC_EXC.name);
       return this.channel.consume(this.replyQ, (rawMessage) => {
         try {
           const msg = JSON.parse(rawMessage.content.toString());
@@ -105,7 +104,11 @@ class RpcClient {
         replyTo: this.replyQ,
       });
       log.debug('pub content:', content);
-      this.channel.publish('', to, Buffer.from(content));
+      try {
+        this.channel.publish('', to, Buffer.from(content));
+      } catch (e) {
+        log.warn('Failed to publish:', e);
+      }
     } else {
       for (const i in callbacks) {
         if (typeof callbacks[i] === 'function') {
@@ -121,7 +124,11 @@ class RpcClient {
         method,
         args,
       });
-      this.channel.publish(RPC_EXC.name, to, Buffer.from(content));
+      try {
+        this.channel.publish(RPC_EXC.name, to, Buffer.from(content));
+      } catch (e) {
+        log.warn('Failed to publish:', e);
+      }
     }
   }
 
@@ -249,7 +256,7 @@ class TopicParticipant {
             onMessage(msg);
           }
         } catch (error) {
-          log.error('Error processing topic message:', message, 'and error:', error);
+          log.error('Error processing topic message:', rawMessage, 'and error:', error);
         }
       }).then((ok) => {
         this.consumers.set(patterns.toString(), ok.consumerTag);
@@ -279,7 +286,12 @@ class TopicParticipant {
     if (this.ready) {
       const content = JSON.stringify(data);
       log.debug('publish:', this.name, topic);
-      this.channel.publish(this.name, topic, Buffer.from(content));
+      try {
+        this.channel.publish(this.name, topic, Buffer.from(content));
+      } catch (e) {
+        log.warn('Failed to publish:', e);
+      }
+
     }
   }
 
@@ -367,7 +379,11 @@ class MonitoringTarget {
     if (this.ready) {
       const pattern = 'exit.' + reason;
       const content = JSON.stringify({reason, message});
-      this.channel.publish(MONITOR_EXC.name, pattern, Buffer.from(content));
+      try {
+        this.channel.publish(MONITOR_EXC.name, pattern, Buffer.from(content));
+      } catch (e) {
+        log.warn('Failed to publish:', e);
+      }
     }
   }
 
@@ -433,6 +449,13 @@ class AmqpCli {
     return conn.createChannel().then((ch) => {
       conn.on('error', this._errorHandler);
       this.channel = ch;
+      this.channel.on('error', (e) => {
+        log.warn('Channel closed:', e);
+        this.rpcClient && this.rpcClient.disable();
+        this.rpcServer && this.rpcServer.disable();
+        this.monitor && this.monitor.disable();
+        this.monitoringTarget && this.monitoringTarget.disable();
+      });
       // Rebuild components on connected
       if (this.rpcClient) {
         this.rpcClient.setup().catch(function(e) {
@@ -471,7 +494,9 @@ class AmqpCli {
     if (this.monitoringTarget) {
       this.monitoringTarget.disable();
     }
-    this.close();
+    this.close().catch((e) => {
+      log.warn('Error during closing:', e);
+    });
     // setTimeout(() => {
     //   this.connect(this.options, () => {}, this.failureCb);
     // }, RECONNECT_INTERVAL);

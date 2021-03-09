@@ -223,6 +223,8 @@ amqper.connect(config.rabbit, function () {
 ['SIGINT', 'SIGTERM'].map(function (sig) {
     process.on(sig, async function () {
         log.warn('Exiting on', sig);
+        manager && manager.dropAllNodes(true);
+        worker && worker.quit();
         try {
             await amqper.disconnect();
         } catch(e) {
@@ -233,9 +235,7 @@ amqper.connect(config.rabbit, function () {
 });
 
 process.on('exit', function () {
-    manager && manager.dropAllNodes(true);
-    worker && worker.quit();
-    amqper.disconnect();
+    log.info('Process exit');
 });
 
 process.on('unhandledRejection', (reason) => {
