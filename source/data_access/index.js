@@ -43,7 +43,7 @@ if (fs.existsSync(cipher.astore)) {
       }
       setupConnection();
     } else {
-      log.error('Failed to get mongodb auth:', err);
+      console.error('Failed to get mongodb auth:', err);
       setupConnection();
     }
   });

@@ -6,6 +6,17 @@
 #include <gst/gst.h>
 #include <stdio.h>
 
+static void dump(void* index, uint8_t* buf, int len)
+{
+    char dumpFileName[128];
+
+    snprintf(dumpFileName, 128, "/tmp/analyticsIn-%p", index);
+    FILE* bsDumpfp = fopen(dumpFileName, "ab");
+    if (bsDumpfp) {
+        fwrite(buf, 1, len, bsDumpfp);
+        fclose(bsDumpfp);
+    }
+}
 
 DEFINE_LOGGER(GstInternalIn, "GstInternalIn");
 GstInternalIn::GstInternalIn(GstAppSrc *data, unsigned int minPort, unsigned int maxPort, std::string ticket)
@@ -21,7 +32,12 @@ GstInternalIn::GstInternalIn(GstAppSrc *data, unsigned int minPort, unsigned int
     appsrc = data;
     m_needKeyFrame = true;
     m_start = false;
-
+    m_dumpIn = false;
+    char* pIn = std::getenv("DUMP_ANALYTICS_IN");
+    if(pIn != NULL) {
+        ELOG_INFO("Dump analytics in stream");
+        m_dumpIn = true;
+    }
 }
 
 GstInternalIn::~GstInternalIn()
@@ -50,8 +66,6 @@ void GstInternalIn::onTransportData(char* buf, int len)
 {
     if(!m_start) {
         ELOG_INFO("Not start yet, stop pushing data to appsrc\n");
-        pthread_t tid;
-        tid = pthread_self();
         return;
     }
 
@@ -88,6 +102,10 @@ void GstInternalIn::onTransportData(char* buf, int len)
             gst_buffer_map(buffer, &map, GST_MAP_WRITE);
             memcpy(map.data, frame, headerLength);
             memcpy(map.data + headerLength, frame->payload, payloadLength);
+
+            if(m_dumpIn) {
+                dump(this, map.data, map.size);
+            }
 
             gst_buffer_unmap(buffer, &map);
             g_signal_emit_by_name(appsrc, "push-buffer", buffer, &ret);

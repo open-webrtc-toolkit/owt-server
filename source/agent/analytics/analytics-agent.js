@@ -118,6 +118,13 @@ createInternalConnection(connectionId, direction, internalOpt) {
           this.onStreamDestroyed(options.controller, newStreamId);
       }
       this.inputs[connectionId] = true;
+
+      var notifyStatus = this.onStatus;
+      this.engine.addEventListener('fatal', function (error) {
+          log.error('GStreamer pipeline error:', error);
+          notifyStatus(options.controller, connectionId, 'out', {type: 'failed', reason: 'Analytics error: ' + error});
+      });
+
       return Promise.resolve();
     }
     return Promise.reject('Connection already exist: ' + connectionId);
