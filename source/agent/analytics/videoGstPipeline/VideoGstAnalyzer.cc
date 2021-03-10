@@ -301,9 +301,9 @@ int VideoGstAnalyzer::setPlaying() {
     return 0;
 }
 
-void VideoGstAnalyzer::emitListenTo(int minPort, int maxPort) {
+void VideoGstAnalyzer::emitListenTo(int minPort, int maxPort, std::string ticket) {
     ELOG_DEBUG("Listening\n");
-    m_internalin.reset(new GstInternalIn((GstAppSrc*)source, minPort, maxPort));  
+    m_internalin.reset(new GstInternalIn((GstAppSrc*)source, minPort, maxPort, ticket));
 }
 
 void VideoGstAnalyzer::addOutput(int connectionID, owt_base::FrameDestination* out) {

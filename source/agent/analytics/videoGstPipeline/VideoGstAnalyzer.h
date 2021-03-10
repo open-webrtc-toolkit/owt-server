@@ -28,7 +28,7 @@ public:
     int createPipeline();
     void clearPipeline();
     int getListeningPort();
-    void emitListenTo(int minPort,int maxPort);
+    void emitListenTo(int minPort, int maxPort, std::string ticket);
     int setPlaying();
 
     int addElementMany();

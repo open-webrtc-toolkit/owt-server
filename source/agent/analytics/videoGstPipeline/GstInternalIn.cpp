@@ -8,10 +8,11 @@
 
 
 DEFINE_LOGGER(GstInternalIn, "GstInternalIn");
-GstInternalIn::GstInternalIn(GstAppSrc *data, unsigned int minPort, unsigned int maxPort)
+GstInternalIn::GstInternalIn(GstAppSrc *data, unsigned int minPort, unsigned int maxPort, std::string ticket)
 {
     m_transport.reset(new owt_base::RawTransport<owt_base::TCP>(this));
 
+    m_transport->initTicket(ticket);
     if (minPort > 0 && minPort <= maxPort) {
         m_transport->listenTo(minPort, maxPort);
     } else {

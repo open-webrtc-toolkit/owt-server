@@ -16,7 +16,7 @@
 class GstInternalIn : public owt_base::RawTransportListener{
     DECLARE_LOGGER();
 public:
-    GstInternalIn(GstAppSrc *data, unsigned int minPort = 0, unsigned int maxPort = 0);
+    GstInternalIn(GstAppSrc *data, unsigned int minPort = 0, unsigned int maxPort = 0, std::string ticket = NULL);
     virtual ~GstInternalIn();
 
     unsigned int getListeningPort();
