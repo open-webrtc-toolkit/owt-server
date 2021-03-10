@@ -345,6 +345,8 @@ var SocketIOServer = function(spec, portal, observer) {
   // A Socket.IO server has a unique reconnection key. Client cannot reconnect to another Socket.IO server in the cluster.
   var reconnection_key = require('crypto').randomBytes(64).toString('hex');
   var sioOptions = {};
+  // TODO: remove allowEIO3
+  sioOptions.allowEIO3 = true;
   if (spec.pingInterval) {
     sioOptions.pingInterval = spec.pingInterval * 1000;
   }
@@ -352,7 +354,8 @@ var SocketIOServer = function(spec, portal, observer) {
     sioOptions.pingTimeout = spec.pingTimeout * 1000;
   }
   if (spec.cors) {
-    sioOptions.origins = (origin, callback) => {
+    sioOptions.cors = {credentials: true};
+    sioOptions.cors.origin = (origin, callback) => {
       if (spec.cors.indexOf(origin) < 0 && spec.cors.indexOf('*') < 0) {
         return callback('origin not allowed', false);
       }
