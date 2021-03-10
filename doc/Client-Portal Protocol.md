@@ -93,6 +93,7 @@ This a format for client reconnects.
 
 **RequestData**: The ReconnectionTicket object defined in 3.3.1 section and PendingMessages:
 
+```
   object(ReloginResponse)::
     {
       ticket: string(Base64Encoded(object(ReconnectionTicket)))
@@ -100,10 +101,11 @@ This a format for client reconnects.
         {
           event: string(NotificationName),
           data: object(NotificationData),
-          seq: number(InternalSeqNo)
+          seq: number(InternalSeqNo) // Back to 0 if exceed max value 2147483647
         }
       ]
     }
+```
 
 **ResponseData**: A refreshed base64-encoded ReconnectionTicket object if ResponseStatus is "ok".
 ## 3.3 Conferencing
