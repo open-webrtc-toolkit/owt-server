@@ -3,7 +3,7 @@
   "version":"5.0.0",
   "dependencies": {
     "amqp": "*",
-    "socket.io": "^2.2.0",
+    "socket.io": "^3.1.1",
     "log4js": "^1.1.1",
     "toml": "*",
     "sprintf-js": "^1.0.3",
@@ -21,7 +21,7 @@
     "istanbul": "*",
     "request": "*",
     "mockery": "*",
-    "socket.io-client": "2.2.0"
+    "socket.io-client": "3.1.1"
   },
   "scripts": {
     "test": "mocha ./test -R spec --timeout 5000 --exit",
