@@ -246,7 +246,7 @@ class TopicParticipant {
   subscribe(patterns, onMessage, onOk) {
     log.debug('subscribe:', this.queue, patterns);
     const channel = this.bus.channel;
-    if (this.queue) {
+    if (this.queue && channel) {
       patterns.map((pattern) => {
         channel.bindQueue(this.queue, this.name, pattern)
           .then(() => log.debug('Follow topic [' + pattern + '] ok.'))
@@ -267,13 +267,15 @@ class TopicParticipant {
         this.subscriptions.set(ok.consumerTag, {patterns, cb: onMessage});
         onOk();
       });
+    } else {
+      this.ready = false;
     }
   }
 
   unsubscribe(patterns) {
     log.debug('unsubscribe:', patterns);
     const channel = this.bus.channel;
-    if (this.queue) {
+    if (this.queue && channel) {
       patterns.map((pattern) => {
         channel.unbindQueue(this.queue, this.name, pattern)
           .catch((err) => log.error('Failed to unbind queue on topic'));
@@ -286,6 +288,8 @@ class TopicParticipant {
         channel.cancel(consumerTag)
           .catch((err) => log.error('Failed to cancel:', consumerTag));
       }
+    } else {
+      this.ready = false;
     }
   }
 
