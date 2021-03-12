@@ -44,16 +44,16 @@ class RpcClient {
   }
 
   setup() {
-    this.channel = this.bus.channel;
-    return this.channel.assertExchange(
+    const channel = this.bus.channel;
+    return channel.assertExchange(
         RPC_EXC.name, RPC_EXC.type, RPC_EXC.options).then(() => {
-      return this.channel.assertQueue('', Q_OPTION);
+      return channel.assertQueue('', Q_OPTION);
     }).then((result) => {
       this.replyQ = result.queue;
-      return this.channel.bindQueue(this.replyQ, RPC_EXC.name, this.replyQ);
+      return channel.bindQueue(this.replyQ, RPC_EXC.name, this.replyQ);
     }).then(() => {
       log.debug('Start consume', this.replyQ, RPC_EXC.name);
-      return this.channel.consume(this.replyQ, (rawMessage) => {
+      return channel.consume(this.replyQ, (rawMessage) => {
         try {
           const msg = JSON.parse(rawMessage.content.toString());
           log.debug('New message received', msg);
@@ -79,17 +79,17 @@ class RpcClient {
 
   remoteCall(to, method, args, callbacks, timeout) {
     log.debug('remoteCall, corrID:', this.corrID, 'to:', to, 'method:', method);
-    if (this.ready) {
+    const channel = this.bus.channel;
+    if (this.ready && channel) {
       const corrID = this.corrID++;
       this.callMap[corrID] = {};
       this.callMap[corrID].fn = callbacks || {
         callback: function () {}
       };
       this.callMap[corrID].timer = setTimeout(() => {
-        log.debug('remoteCall timeout, corrID:', corrID);
         if (this.callMap[corrID]) {
           for (const i in this.callMap[corrID].fn) {
-            if (this.callMap[corrID].fn[i] === 'function') {
+            if (typeof this.callMap[corrID].fn[i] === 'function') {
               this.callMap[corrID].fn[i]('timeout');
             }
           }
@@ -103,13 +103,14 @@ class RpcClient {
         corrID,
         replyTo: this.replyQ,
       });
-      log.debug('pub content:', content);
+      log.debug('Publish content:', content);
       try {
-        this.channel.publish('', to, Buffer.from(content));
+        channel.publish('', to, Buffer.from(content));
       } catch (e) {
         log.warn('Failed to publish:', e);
       }
     } else {
+      this.ready = false;
       for (const i in callbacks) {
         if (typeof callbacks[i] === 'function') {
           callbacks[i]('error', 'rpc client is not ready');
@@ -119,29 +120,29 @@ class RpcClient {
   }
 
   remoteCast(to, method, args) {
-    if (this.ready) {
+    const channel = this.bus.channel;
+    if (this.ready && channel) {
       const content = JSON.stringify({
         method,
         args,
       });
       try {
-        this.channel.publish(RPC_EXC.name, to, Buffer.from(content));
+        channel.publish(RPC_EXC.name, to, Buffer.from(content));
       } catch (e) {
         log.warn('Failed to publish:', e);
       }
+    } else {
+      this.ready = false;
     }
   }
 
-  disable() {
-    this.ready = false;
-  }
-
   close() {
+    log.debug('RpcClient close');
     for (const i in this.callMap) {
       clearTimeout(this.callMap[i].timer);
     }
     this.callMap = {};
-    return this.channel.cancel(this.consumerTag)
+    return this.bus.channel.cancel(this.consumerTag)
       .catch((err) => {
         log.error('Failed during close RpcClient:', this.replyQ);
       });
@@ -157,15 +158,15 @@ class RpcServer {
   }
 
   setup() {
-    this.channel = this.bus.channel;
-    return this.channel.assertExchange(
+    const channel = this.bus.channel;
+    return channel.assertExchange(
         RPC_EXC.name, RPC_EXC.type, RPC_EXC.options).then(() => {
-      return this.channel.assertQueue(this.requestQ, Q_OPTION);
+      return channel.assertQueue(this.requestQ, Q_OPTION);
     }).then((result) => {
       this.requestQ = result.queue;
-      return this.channel.bindQueue(this.requestQ, RPC_EXC.name, this.requestQ);
+      return channel.bindQueue(this.requestQ, RPC_EXC.name, this.requestQ);
     }).then(() => {
-      return this.channel.consume(this.requestQ, (rawMessage) => {
+      return channel.consume(this.requestQ, (rawMessage) => {
         try {
           const msg = JSON.parse(rawMessage.content.toString());
           log.debug('New message received', msg);
@@ -178,7 +179,7 @@ class RpcServer {
                 type: type,
                 err: err,
               });
-              this.channel.publish(RPC_EXC.name, msg.replyTo, Buffer.from(content));
+              channel.publish(RPC_EXC.name, msg.replyTo, Buffer.from(content));
             });
           }
           if (typeof this.methods[msg.method] === 'function') {
@@ -192,7 +193,7 @@ class RpcServer {
                 type: 'callback',
                 err: 'Not support method',
               });
-              this.channel.publish(RPC_EXC.name, msg.replyTo, Buffer.from(content));
+              channel.publish(RPC_EXC.name, msg.replyTo, Buffer.from(content));
             }
           }
         } catch (error) {
@@ -201,18 +202,15 @@ class RpcServer {
         }
       });
     }).then((ok) => {
+      log.debug('Setup rpc server ok:', this.requestQ);
       this.consumerTag = ok.consumerTag;
       this.ready = true;
     });
   }
 
-  disable() {
-    this.ready = false;
-  }
-
   close() {
     this.ready = false;
-    return this.channel.cancel(this.consumerTag)
+    return this.bus.channel.cancel(this.consumerTag)
       .catch((err) => {
         log.error('Failed to during close RpcServer:', this.requestQ); 
       });
@@ -226,33 +224,39 @@ class TopicParticipant {
     this.queue = '';
     this.onMessage = null;
     this.consumers = new Map();
+    this.subscriptions = new Map(); // {patterns, cb}
     this.ready = false;
   }
 
   setup() {
-    this.channel = this.bus.channel;
-    return this.channel.assertExchange(
+    const channel = this.bus.channel;
+    return channel.assertExchange(
         this.name, 'topic', MONITOR_EXC.options).then(() => {
-      return this.channel.assertQueue('', {durable: false});
+      return channel.assertQueue('', {durable: false});
     }).then((result) => {
       this.queue = result.queue;
       this.ready = true;
+      this.consumers.clear();
+      this.subscriptions.forEach((sub, tag) => {
+        this.subscribe(sub.patterns, sub.cb, () => {});
+      });
     });
   }
 
   subscribe(patterns, onMessage, onOk) {
     log.debug('subscribe:', this.queue, patterns);
+    const channel = this.bus.channel;
     if (this.queue) {
       patterns.map((pattern) => {
-        this.channel.bindQueue(this.queue, this.name, pattern)
+        channel.bindQueue(this.queue, this.name, pattern)
           .then(() => log.debug('Follow topic [' + pattern + '] ok.'))
           .catch((err) => log.error('Failed to bind queue on topic'));
       });
-      this.channel.consume(this.queue, (rawMessage) => {
+      channel.consume(this.queue, (rawMessage) => {
         try {
           const msg = JSON.parse(rawMessage.content.toString());
           if (onMessage) {
-            log.debug('topic on message:', msg);
+            log.debug('Topic on message:', msg);
             onMessage(msg);
           }
         } catch (error) {
@@ -260,6 +264,7 @@ class TopicParticipant {
         }
       }).then((ok) => {
         this.consumers.set(patterns.toString(), ok.consumerTag);
+        this.subscriptions.set(ok.consumerTag, {patterns, cb: onMessage});
         onOk();
       });
     }
@@ -267,41 +272,43 @@ class TopicParticipant {
 
   unsubscribe(patterns) {
     log.debug('unsubscribe:', patterns);
+    const channel = this.bus.channel;
     if (this.queue) {
       patterns.map((pattern) => {
-        this.channel.unbindQueue(this.queue, this.name, pattern)
+        channel.unbindQueue(this.queue, this.name, pattern)
           .catch((err) => log.error('Failed to unbind queue on topic'));
         log.debug('Ignore topic [' + pattern + ']');
       });
       const consumerTag = this.consumers.get(patterns.toString());
       if (consumerTag) {
-        this.channel.cancel(consumerTag)
+        this.consumers.delete(patterns.toString());
+        this.subscriptions.delete(consumerTag);
+        channel.cancel(consumerTag)
           .catch((err) => log.error('Failed to cancel:', consumerTag));
       }
     }
   }
 
   publish(topic, data) {
-    log.debug('topic send:', topic, data, this.ready);
-    if (this.ready) {
+    log.debug('Topic send:', topic, data, this.ready);
+    const channel = this.bus.channel;
+    if (this.ready && channel) {
       const content = JSON.stringify(data);
-      log.debug('publish:', this.name, topic);
+      log.debug('Publish:', this.name, topic);
       try {
-        this.channel.publish(this.name, topic, Buffer.from(content));
+        channel.publish(this.name, topic, Buffer.from(content));
       } catch (e) {
         log.warn('Failed to publish:', e);
       }
-
+    } else {
+      log.debug('TopicParticipant is not ready');
+      this.ready = false;
     }
-  }
-
-  disable() {
-    this.ready = false;
   }
 
   close() {
     this.ready = false;
-    return this.channel.deleteQueue(this.queue)
+    return this.bus.channel.deleteQueue(this.queue)
       .catch((err) => {
         log.error('Failed to destroy queue:', this.queue); 
       })
@@ -311,26 +318,24 @@ class TopicParticipant {
 
 class Monitor {
   constructor(amqpCli) {
-    log.debug('monitor cons');
     this.bus = amqpCli;
     this.queue = '';
     this.ready = false;
   }
 
   setup() {
-    log.debug('as monitor setup');
-    this.channel = this.bus.channel;
-    return this.channel.assertExchange(
+    const channel = this.bus.channel;
+    return channel.assertExchange(
         MONITOR_EXC.name, MONITOR_EXC.type, MONITOR_EXC.options).then(() => {
-      return this.channel.assertQueue('', Q_OPTION);
+      return channel.assertQueue('', Q_OPTION);
     }).then((result) => {
       this.queue = result.queue;
-      return this.channel.bindQueue(this.queue, MONITOR_EXC.name, 'exit.#');
+      return channel.bindQueue(this.queue, MONITOR_EXC.name, 'exit.#');
     }).then(() => {
-      return this.channel.consume(this.queue, (rawMessage) => {
+      return channel.consume(this.queue, (rawMessage) => {
         try {
           const msg = JSON.parse(rawMessage.content.toString());
-          log.debug('received monitoring message:', msg);
+          log.debug('Received monitoring message:', msg);
           this.onMessage && this.onMessage(msg);
         } catch (error) {
           log.error('Error processing monitored message:', msg, 'and error:', error);
@@ -346,13 +351,9 @@ class Monitor {
     this.onMessage = onMessage;
   };
 
-  disable() {
-    this.ready = false;
-  }
-
   close() {
     this.ready = false;
-    return this.channel.cancel(this.consumerTag)
+    return this.bus.channel.cancel(this.consumerTag)
       .catch((err) => {
         log.error('Failed to cancel consumer on queue:', this.queue); 
       })
@@ -367,8 +368,7 @@ class MonitoringTarget {
   }
 
   setup() {
-    this.channel = this.bus.channel;
-    return this.channel.assertExchange(
+    return this.bus.channel.assertExchange(
         MONITOR_EXC.name, MONITOR_EXC.type, MONITOR_EXC.options)
       .then(() => {
         this.ready = true;
@@ -376,19 +376,19 @@ class MonitoringTarget {
   }
 
   notify(reason, message) {
-    if (this.ready) {
+    const channel = this.bus.channel;
+    if (this.ready && channel) {
       const pattern = 'exit.' + reason;
       const content = JSON.stringify({reason, message});
       try {
-        this.channel.publish(MONITOR_EXC.name, pattern, Buffer.from(content));
+        channel.publish(
+            MONITOR_EXC.name, pattern, Buffer.from(content));
       } catch (e) {
         log.warn('Failed to publish:', e);
       }
+    } else {
+      this.ready = false;
     }
-  }
-
-  disable() {
-    this.ready = false;
   }
 
   close() {
@@ -398,6 +398,7 @@ class MonitoringTarget {
   }
 }
 
+const RECONNECT = true;
 const RECONNECT_INTERVAL = 1000;
 
 class AmqpCli {
@@ -410,96 +411,87 @@ class AmqpCli {
     this.monitor = null;
     this.monitoringTarget = null;
     this.topicParticipants = new Map();
+    this.connected = false;
+    this.successCb = () => {};
     this.failureCb = () => {};
     this.reconnectAttempts = 0;
-    this._connectHandler = this._connectHandler.bind(this);
     this._errorHandler = this._errorHandler.bind(this);
   }
 
   connect(options, onOk, onFailure) {
     this.options = options;
+    this.options.hostname = options.host;
+    this.successCb = onOk;
     this.failureCb = onFailure;
-
-    options.hostname = options.host;
     if (fs.existsSync(cipher.astore)) {
       cipher.unlock(cipher.k, cipher.astore, (err, authConfig) => {
         if (!err) {
           if (authConfig.rabbit) {
-            options.username = authConfig.rabbit.username;
-            options.password = authConfig.rabbit.password;
+            this.options.username = authConfig.rabbit.username;
+            this.options.password = authConfig.rabbit.password;
           }
         } else {
           log.warn('Failed to get rabbitmq auth:', err);
         }
-        amqp.connect(options)
-          .then(this._connectHandler)
-          .then(onOk)
-          .catch(this._errorHandler);
+        this._connect();
       });
     } else {
-      amqp.connect(options)
-        .then(this._connectHandler)
-        .then(onOk)
-        .catch(this._errorHandler);
+      this._connect();
     }
   }
 
-  _connectHandler(conn) {
-    this.connection = conn;
-    return conn.createChannel().then((ch) => {
+  _connect() {
+    amqp.connect(this.options).then((conn) => {
+      log.debug('Connect OK');
       conn.on('error', this._errorHandler);
+      this.connection = conn;
+      return conn.createChannel();
+    })
+    .then((ch) => {
       this.channel = ch;
       this.channel.on('error', (e) => {
         log.warn('Channel closed:', e);
-        this.rpcClient && this.rpcClient.disable();
-        this.rpcServer && this.rpcServer.disable();
-        this.monitor && this.monitor.disable();
-        this.monitoringTarget && this.monitoringTarget.disable();
+        this.channel = null;
       });
-      // Rebuild components on connected
-      if (this.rpcClient) {
-        this.rpcClient.setup().catch(function(e) {
-          log.error('Failed to setup rpc client:', e);
-        });
+      if (!this.connected) {
+        this.connected = true;
+        this.successCb();
+      } else {
+        Promise.resolve().then(() => {
+          return (this.rpcServer && this.rpcServer.setup());
+        }).then(() => {
+          return (this.rpcClient && this.rpcClient.setup());
+        }).then(() => {
+          return (this.monitor && this.monitor.setup());
+        }).then(() => {
+          return (this.monitoringTarget && this.monitoringTarget.setup());
+        }).then(() => {
+          const setups = [];
+          this.topicParticipants.forEach((tp) => {
+            setups.push(tp.setup());
+          });
+          return Promise.all(setups);
+        }).catch((e) => {
+          log.warn('Error after reconnect:', e);
+        })
       }
-      if (this.rpcServer) {
-        this.rpcServer.setup().catch(function(e) {
-          log.error('Failed to setup rpc client');
-        });
-      }
-      if (this.monitor) {
-        this.monitor.setup().catch(function(e) {
-          log.error('Failed to setup monitor');
-        });
-      }
-      if (this.monitoringTarget) {
-        this.monitoringTarget.setup().catch(function(e) {
-          log.error('Failed to setup monitoringTarget');
-        });
-      }
-    });
+    })
+    .catch(this._errorHandler);
   }
 
   _errorHandler(err) {
     log.warn('Connecting error:', err);
-    if (this.rpcClient) {
-      this.rpcClient.disable();
+    this.channel = null;
+    if (RECONNECT) {
+      setTimeout(() => {
+        this._connect();
+      }, RECONNECT_INTERVAL);
+    } else {
+      this.failureCb();
+      this.close().catch((e) => {
+        log.warn('Error during closing:', e);
+      });
     }
-    if (this.rpcServer) {
-      this.rpcServer.disable();
-    }
-    if (this.monitor) {
-      this.monitor.disable();
-    }
-    if (this.monitoringTarget) {
-      this.monitoringTarget.disable();
-    }
-    this.close().catch((e) => {
-      log.warn('Error during closing:', e);
-    });
-    // setTimeout(() => {
-    //   this.connect(this.options, () => {}, this.failureCb);
-    // }, RECONNECT_INTERVAL);
   }
 
   asRpcClient(onOk, onFailure) {
