@@ -27,13 +27,13 @@ RUN wget -O - ${NICE_REPO} | tar xz && \
     patch -p1 < owt-server-${LIBNICE_PATCH_VER}/scripts/patches/libnice014-removecandidate.patch && \
     patch -p1 < owt-server-${LIBNICE_PATCH_VER}/scripts/patches/libnice014-keepalive.patch && \
     patch -p1 < owt-server-${LIBNICE_PATCH_VER}/scripts/patches/libnice014-startcheck.patch && \
+    patch -p1 < owt-server-${LIBNICE_PATCH_VER}/scripts/patches/libnice014-closelock.patch && \
     ./configure --prefix="/usr/local" --libdir=/usr/local/lib/x86_64-linux-gnu && \
     make -s V=0 && \
     make install
 
 
 # Build open ssl
-ARG OPENSSL_BASE="1.1.1"
 ARG OPENSSL_VER="1.1.1h"
 ARG OPENSSL_REPO=https://www.openssl.org/source/openssl-${OPENSSL_VER}.tar.gz
 
@@ -92,7 +92,6 @@ ARG FFMPEG_VER="4.1.3"
 ARG FFMPEG_DIR="ffmpeg-${FFMPEG_VER}"
 ARG FFMPEG_SRC="${FFMPEG_DIR}.tar.bz2"
 ARG FFMPEG_SRC_URL="http://ffmpeg.org/releases/${FFMPEG_SRC}"
-ARG FFMPEG_SRC_MD5SUM="9985185a8de3678e5b55b1c63276f8b5"
 
 RUN wget ${FFMPEG_SRC_URL} && tar xf ${FFMPEG_SRC} && mv ${FFMPEG_DIR} FFmpeg && \
     cd FFmpeg  ;
@@ -154,7 +153,7 @@ ARG OWT_BRANCH=master
 ARG IMG_APP_PATH=/app_data/
 ENV APP_PATH=${IMG_APP_PATH}
 
-RUN apt-get update && apt-get install -y -q --no-install-recommends python libglib2.0-dev rabbitmq-server mongodb libboost-thread-dev libboost-system-dev liblog4cxx-dev
+RUN apt-get update && apt-get install -y -q --no-install-recommends python libglib2.0-dev rabbitmq-server mongodb libboost-thread-dev libboost-system-dev liblog4cxx-dev libgstreamer-plugins-base1.0-dev
 
 # 1. Clone OWT server source code 
 # 2. Clone licode source code and patch
