@@ -19,7 +19,7 @@ get_nvm_node() {
     ${SUDO} apt-get update
     ${SUDO} apt-get install wget -y
   fi
-  local VERSION="v8.15.0"
+  local VERSION="v10.21.0"
   wget -qO- https://raw.githubusercontent.com/creationix/nvm/v0.34.0/install.sh | bash
   . ~/.nvm/nvm.sh
   nvm install ${VERSION}

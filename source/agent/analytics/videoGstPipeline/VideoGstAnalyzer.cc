@@ -67,88 +67,132 @@ inline bool isVp8KeyFrame(uint8_t *data, size_t len)
     return (key_frame == 0);
 }
 
-VideoGstAnalyzer::VideoGstAnalyzer() {
+static void dump(void* index, uint8_t* buf, int len)
+{
+    char dumpFileName[128];
+
+    snprintf(dumpFileName, 128, "/tmp/analyticsOut-%p", index);
+    FILE* bsDumpfp = fopen(dumpFileName, "ab");
+    if (bsDumpfp) {
+        fwrite(buf, 1, len, bsDumpfp);
+        fclose(bsDumpfp);
+    }
+}
+
+VideoGstAnalyzer::VideoGstAnalyzer(EventRegistry *handle) : m_asyncHandle(handle)
+{
     ELOG_INFO("Init");
     sourceid = 0;
     sink = NULL;
     encoder_pad = NULL;
     addlistener = false;
     m_frameCount = 0;
+    m_dumpOut = false;
+    char* pOut = std::getenv("DUMP_ANALYTICS_OUT");
+    if(pOut != NULL) {
+        ELOG_INFO("Dump analytics Out stream");
+        m_dumpOut = true;
+    }
 }
 
-VideoGstAnalyzer::~VideoGstAnalyzer() {
+VideoGstAnalyzer::~VideoGstAnalyzer()
+{
     ELOG_DEBUG("Closed all media in this Analyzer");
-    if (pipeline_ != nullptr && pipelineHandle != nullptr) {
-         destroyPlugin(pipeline_);
-         dlclose(pipelineHandle);
+    destroyPipeline();
+}
+
+bool VideoGstAnalyzer::notifyAsyncEvent(const std::string& event, const std::string& data)
+{
+    if (m_asyncHandle) {
+        return m_asyncHandle->notifyAsyncEvent(event, data);
+    } else {
+        return false;
     }
-    stopLoop();
+}
+
+bool VideoGstAnalyzer::notifyAsyncEventInEmergency(const std::string& event, const std::string& data)
+{
+    if (m_asyncHandle) {
+            return m_asyncHandle->notifyAsyncEventInEmergency(event, data);
+        } else {
+            return false;
+        }
 }
 
 gboolean VideoGstAnalyzer::StreamEventCallBack(GstBus *bus, GstMessage *message, gpointer data)
-    {
-        ELOG_DEBUG("Got %s message\n", GST_MESSAGE_TYPE_NAME(message));
- 
-        VideoGstAnalyzer* pStreamObj = static_cast<VideoGstAnalyzer*>(data);
- 
-        switch (GST_MESSAGE_TYPE(message)) {
-        case GST_MESSAGE_ERROR: {
-            GError *err;
-            gchar *debug;
-            gst_message_parse_error(message, &err, &debug);
-            ELOG_ERROR("Error: %s\n", err->message);
-            g_error_free(err);
-            g_free(debug);
-            g_main_loop_quit(pStreamObj->loop);
-    
-            break;
-        }
-        case GST_MESSAGE_EOS:
-            /* end-of-stream */
-            ELOG_ERROR("End of stream\n");
-            g_main_loop_quit(pStreamObj->loop);
-            break;
-        case GST_MESSAGE_TAG:{
-            /* end-of-stream */
-            GstTagList *tags = NULL;
-            gst_message_parse_tag (message, &tags);
+{
+    ELOG_DEBUG("Got %s message\n", GST_MESSAGE_TYPE_NAME(message));
 
-            ELOG_DEBUG("Got tags from element %s:\n", GST_OBJECT_NAME (message->src));
-            gst_tag_list_unref (tags);
-            break;
-        }
-        case GST_MESSAGE_QOS:{
-            /* end-of-stream */
-            ELOG_DEBUG("Got QOS message from %s \n",message->src->name);
-            break;
-        }
-        case GST_MESSAGE_STATE_CHANGED:{
-            GstState old_state, new_state, pending_state;
-            gst_message_parse_state_changed(message, &old_state, &new_state, &pending_state);
-            ELOG_DEBUG("State change from %d to %d, play:%d \n",old_state, new_state, GST_STATE_PAUSED);
-            break;
-        }
-        default:
-            /* unhandled message */
-            break;
-        }
-        return true;
+    VideoGstAnalyzer* pStreamObj = static_cast<VideoGstAnalyzer*>(data);
+
+    switch (GST_MESSAGE_TYPE(message)) {
+    case GST_MESSAGE_ERROR: {
+        GError *err;
+        gchar *debug;
+        gst_message_parse_error(message, &err, &debug);
+        ELOG_ERROR("Error: %s\n", err->message);
+        g_error_free(err);
+        g_free(debug);
+        pStreamObj->notifyAsyncEvent("fatal", "GStreamer pipeline error");
+        break;
     }
+    case GST_MESSAGE_EOS:
+        /* end-of-stream */
+        ELOG_ERROR("End of stream\n");
+        g_main_loop_quit(pStreamObj->loop);
+        break;
+    case GST_MESSAGE_TAG:{
+        /* end-of-stream */
+        GstTagList *tags = NULL;
+        gst_message_parse_tag (message, &tags);
+
+        ELOG_DEBUG("Got tags from element %s:\n", GST_OBJECT_NAME (message->src));
+        gst_tag_list_unref (tags);
+        break;
+    }
+    case GST_MESSAGE_QOS:{
+        /* end-of-stream */
+        ELOG_DEBUG("Got QOS message from %s \n",message->src->name);
+        break;
+    }
+    case GST_MESSAGE_STATE_CHANGED:{
+        GstState old_state, new_state, pending_state;
+        gst_message_parse_state_changed(message, &old_state, &new_state, &pending_state);
+        ELOG_DEBUG("State change from %d to %d, play:%d \n",old_state, new_state, GST_STATE_PAUSED);
+        break;
+    }
+    default:
+        /* unhandled message */
+        break;
+    }
+    return true;
+}
 
 void VideoGstAnalyzer::clearPipeline()
-    {
-        if (pipeline != nullptr){
-            gst_element_set_state(pipeline, GST_STATE_NULL);
-            gst_object_unref(GST_OBJECT(pipeline));
-            g_source_remove(m_bus_watch_id);
-            g_main_loop_unref(loop);
-            gst_object_unref(m_bus);
-        }
- 
+{
+    if (pipeline != nullptr){
+        gst_element_set_state(pipeline, GST_STATE_NULL);
+        gst_object_unref(GST_OBJECT(pipeline));
+        g_source_remove(m_bus_watch_id);
+        g_main_loop_unref(loop);
+        gst_object_unref(m_bus);
     }
 
-int VideoGstAnalyzer::createPipeline() {
+}
 
+void VideoGstAnalyzer::destroyPipeline()
+{
+    ELOG_DEBUG("Closed all media in this Analyzer");
+    setState(GST_STATE_NULL);
+    if (pipeline_ != nullptr && pipelineHandle != nullptr) {
+         destroyPlugin(pipeline_);
+         dlclose(pipelineHandle);
+         stopLoop();
+    }
+}
+
+int VideoGstAnalyzer::createPipeline()
+{
     pipelineHandle = dlopen(libraryName.c_str(), RTLD_LAZY);
     if (pipelineHandle == nullptr) {
         ELOG_ERROR_T("Failed to open the plugin.(%s)", libraryName.c_str());
@@ -238,12 +282,16 @@ void VideoGstAnalyzer::new_sample_from_sink (GstElement * source, gpointer data)
     outFrame.payload = map.data;
 
     pStreamObj->m_gstinternalout->onFrame(outFrame);
+    if(pStreamObj->m_dumpOut) {
+        dump(pStreamObj, map.data, map.size);
+    }
 
     gst_buffer_unmap(buffer, &map);
     gst_sample_unref(sample);
 }
 
-int VideoGstAnalyzer::addElementMany() {
+int VideoGstAnalyzer::addElementMany()
+{
     if(pipeline_){
         rvaStatus status = pipeline_->LinkElements();
         if(status != RVA_ERR_OK) {
@@ -270,20 +318,22 @@ int VideoGstAnalyzer::addElementMany() {
 }
 
 
-void VideoGstAnalyzer::stopLoop(){
+void VideoGstAnalyzer::stopLoop()
+{
     if(loop){
         ELOG_DEBUG("main loop quit\n");
         g_main_loop_quit(loop);
     }
-    g_thread_join(m_thread);
 }
 
-void VideoGstAnalyzer::main_loop_thread(gpointer data){
+void VideoGstAnalyzer::main_loop_thread(gpointer data)
+{
     g_main_loop_run(loop);
     g_thread_exit(0);
 }
 
-void VideoGstAnalyzer::setState(GstState newstate) {
+void VideoGstAnalyzer::setState(GstState newstate)
+{
     ret = gst_element_set_state(pipeline, newstate);
     if (ret == GST_STATE_CHANGE_FAILURE) {
         ELOG_ERROR("Unable to set the pipeline to the PLAYING state.\n");
@@ -292,7 +342,8 @@ void VideoGstAnalyzer::setState(GstState newstate) {
 } 
 
 
-int VideoGstAnalyzer::setPlaying() {
+int VideoGstAnalyzer::setPlaying()
+{
 
     setState(GST_STATE_PLAYING);
 
@@ -301,12 +352,14 @@ int VideoGstAnalyzer::setPlaying() {
     return 0;
 }
 
-void VideoGstAnalyzer::emitListenTo(int minPort, int maxPort) {
+void VideoGstAnalyzer::emitListenTo(int minPort, int maxPort)
+{
     ELOG_DEBUG("Listening\n");
     m_internalin.reset(new GstInternalIn((GstAppSrc*)source, minPort, maxPort));  
 }
 
-void VideoGstAnalyzer::addOutput(int connectionID, owt_base::FrameDestination* out) {
+void VideoGstAnalyzer::addOutput(int connectionID, owt_base::FrameDestination* out)
+{
     ELOG_DEBUG("Add analyzed stream back to OWT\n");
     if (sink != nullptr){
 
@@ -318,8 +371,7 @@ void VideoGstAnalyzer::addOutput(int connectionID, owt_base::FrameDestination* o
             }
             m_gstinternalout->setPad(encoder_pad);
         }
-        //gst_pad_send_event(encoder_pad, gst_event_new_custom( GST_EVENT_CUSTOM_UPSTREAM, gst_structure_new( "GstForceKeyUnit", "all-headers", G_TYPE_BOOLEAN, TRUE, NULL)));
-        //m_internalout.push_back(out);
+
         m_gstinternalout->addVideoDestination(out);
         if(!addlistener) {
             g_object_set (G_OBJECT (sink), "emit-signals", TRUE, "sync", FALSE, NULL);
@@ -332,13 +384,14 @@ void VideoGstAnalyzer::addOutput(int connectionID, owt_base::FrameDestination* o
     
 }
 
-void VideoGstAnalyzer::disconnect(owt_base::FrameDestination* out){
+void VideoGstAnalyzer::disconnect(owt_base::FrameDestination* out)
+{
     ELOG_DEBUG("Disconnect remote connection\n");
-    //m_internalout.remove(out);
     m_gstinternalout->removeVideoDestination(out);
 }
 
-int VideoGstAnalyzer::getListeningPort() {
+int VideoGstAnalyzer::getListeningPort()
+{
     int listeningPort; 
     listeningPort = m_internalin->getListeningPort();
     ELOG_DEBUG(">>>>>Listen port is :%d\n", listeningPort);
@@ -346,8 +399,8 @@ int VideoGstAnalyzer::getListeningPort() {
 }
 
 void VideoGstAnalyzer::setOutputParam(std::string codec, int width, int height, 
-    int framerate, int bitrate, int kfi, std::string algo, std::string libraryName){
-
+    int framerate, int bitrate, int kfi, std::string algo, std::string libraryName)
+{
     this->codec = codec;
     this->width = width;
     this->height = height;

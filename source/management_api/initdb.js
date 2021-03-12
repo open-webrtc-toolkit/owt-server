@@ -41,9 +41,9 @@ function prepareDB(next) {
     cipher.unlock(cipher.k, cipher.astore, function cb (err, authConfig) {
       if (!err) {
         if (authConfig.mongo && !dbURL.includes('@')) {
-          dbURL = authConfig.mongo.username
+          dbURL = "mongodb://" + authConfig.mongo.username
             + ':' + authConfig.mongo.password
-            + '@' + dbURL;
+            + '@' + dbURL.replace("mongodb://", "");
         }
       } else {
         console.error('Failed to get mongodb auth:', err);
@@ -194,6 +194,7 @@ function prepareService (serviceName, next) {
           console.log('mongodb: error in adding', serviceName);
           return client.close();
         }
+        result.ops[0].key = key;
         next(result.ops[0]);
       });
     } else {

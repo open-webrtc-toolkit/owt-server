@@ -345,28 +345,32 @@ var SocketIOServer = function(spec, portal, observer) {
   // A Socket.IO server has a unique reconnection key. Client cannot reconnect to another Socket.IO server in the cluster.
   var reconnection_key = require('crypto').randomBytes(64).toString('hex');
   var sioOptions = {};
+  // TODO: remove allowEIO3
+  sioOptions.allowEIO3 = true;
   if (spec.pingInterval) {
     sioOptions.pingInterval = spec.pingInterval * 1000;
   }
   if (spec.pingTimeout) {
     sioOptions.pingTimeout = spec.pingTimeout * 1000;
   }
-
-  var startInsecure = function(port, cors) {
-    var server = require('http').createServer().listen(port);
-    io = require('socket.io').listen(server, sioOptions);
-    io.origins((origin, callback) => {
-      if (cors.indexOf(origin) < 0 && cors.indexOf('*') < 0) {
+  if (spec.cors) {
+    sioOptions.cors = {credentials: true};
+    sioOptions.cors.origin = (origin, callback) => {
+      if (spec.cors.indexOf(origin) < 0 && spec.cors.indexOf('*') < 0) {
         return callback('origin not allowed', false);
       }
-
       callback(null, true);
-    });
+    };
+  }
+
+  var startInsecure = function(port) {
+    var server = require('http').createServer().listen(port);
+    io = require('socket.io')(server, sioOptions);
     run();
     return Promise.resolve('ok');
   };
 
-  var startSecured = function(port, cors, keystorePath, forceTlsv12) {
+  var startSecured = function(port, keystorePath, forceTlsv12) {
     return new Promise(function(resolve, reject) {
       var cipher = require('./cipher');
       var keystore = path.resolve(path.dirname(keystorePath), cipher.kstore);
@@ -378,13 +382,7 @@ var SocketIOServer = function(spec, portal, observer) {
             option.secureOptions = (constants.SSL_OP_NO_TLSv1 | constants.SSL_OP_NO_TLSv1_1);
           }
           var server = require('https').createServer(option).listen(port);
-          io = require('socket.io').listen(server, sioOptions);
-          io.origins((origin, callback) => {
-            if (cors.indexOf(origin) < 0 && cors.indexOf('*') < 0) {
-              return callback('origin not allowed', false);
-            }
-            callback(null, true);
-          });
+          io = require('socket.io')(server, sioOptions);
           run();
           resolve('ok');
         } else {
@@ -430,9 +428,9 @@ var SocketIOServer = function(spec, portal, observer) {
 
   that.start = function() {
     if (!spec.ssl) {
-      return startInsecure(spec.port, spec.cors);
+      return startInsecure(spec.port);
     } else {
-      return startSecured(spec.port, spec.cors, spec.keystorePath, spec.forceTlsv12);
+      return startSecured(spec.port, spec.keystorePath, spec.forceTlsv12);
     }
   };
 

@@ -28,17 +28,21 @@ readline.on('SIGINT', () => {
   readline.close();
 });
 
-const question = input => new Promise((resolve) => {
+const question = (input) => new Promise((resolve) => {
   readline.question(input, (answer) => {
     resolve(answer);
   });
 });
 
-const saveAuth = (obj, filename, cb) => {
+const saveAuth = (obj, filename) => new Promise((resolve, reject) => {
   const lock = (obj) => {
     cipher.lock(cipher.k, obj, filename, (err) => {
-      process.stdout.write(err || 'done!\n');
-      cb(err);
+      if (!err) {
+        process.stdout.write(err || 'done!\n');
+        resolve();
+      } else {
+        reject(err);
+      }
     });
   };
   if (fs.existsSync(filename)) {
@@ -47,20 +51,20 @@ const saveAuth = (obj, filename, cb) => {
         res = Object.assign(res, obj);
         lock(res);
       } else {
-        cb(err);
+        reject(err);
       }
     });
   } else {
     lock(obj);
   }
-};
+});
 
-const updateRabbit = (cb) => {
+const updateRabbit = () => new Promise((resolve, reject) => {
   question('Update RabbitMQ account?[yes/no]')
     .then((answer) => {
       answer = answer.toLowerCase();
       if (answer !== 'y' && answer !== 'yes') {
-        cb();
+        resolve();
         return;
       }
       question(`(${authBase}) Enter username of rabbitmq: `)
@@ -68,19 +72,21 @@ const updateRabbit = (cb) => {
           question(`(${authBase}) Enter password of rabbitmq: `)
             .then((password) => {
               mutableStdout.muted = false;
-              saveAuth({ rabbit: { username, password } }, authStore, cb);
+              saveAuth({ rabbit: { username, password } }, authStore)
+                .then(resolve)
+                .catch(reject);
             });
           mutableStdout.muted = true;
         });
     });
-};
+});
 
-const updateMongo = (cb) => {
+const updateMongo = () => new Promise((resolve, reject) => {
   question('Update MongoDB account?[yes/no]')
     .then((answer) => {
       answer = answer.toLowerCase();
       if (answer !== 'y' && answer !== 'yes') {
-        cb();
+        resolve();
         return;
       }
       question(`(${authBase}) Enter username of mongodb: `)
@@ -88,13 +94,66 @@ const updateMongo = (cb) => {
           question(`(${authBase}) Enter password of mongodb: `)
             .then((password) => {
               mutableStdout.muted = false;
-              saveAuth({ mongo: { username, password } }, authStore, cb);
+              saveAuth({ mongo: { username, password } }, authStore)
+                .then(resolve)
+                .catch(reject);
             });
           mutableStdout.muted = true;
         });
     });
-};
-
-updateRabbit(() => {
-  updateMongo(()=> readline.close())
 });
+
+const updateInternal = () => new Promise((resolve, reject) => {
+  question('Update internal passphrase?[yes/no]')
+    .then((answer) => {
+      answer = answer.toLowerCase();
+      if (answer !== 'y' && answer !== 'yes') {
+        resolve();
+        return;
+      }
+      question(`(${authBase}) Enter internal passphrase: `)
+        .then((passphrase) => {
+          mutableStdout.muted = false;
+          saveAuth({ internalPass: passphrase }, authStore)
+            .then(resolve)
+            .catch(reject);
+        });
+      mutableStdout.muted = true;
+    });
+});
+
+const options = {};
+const parseArgs = () => {
+  if (process.argv.includes('--rabbitmq')) {
+    options.rabbit = true;
+  }
+  if (process.argv.includes('--mongodb')) {
+    options.mongo = true;
+  }
+  if (process.argv.includes('--internal')) {
+    options.internal = true;
+  }
+  if (Object.keys(options).length === 0) {
+    options.rabbit = true;
+    options.mongo = true;
+  }
+  return Promise.resolve();
+}
+
+parseArgs()
+  .then(() => {
+    if (options.rabbit) {
+      return updateRabbit();
+    }
+  })
+  .then(() => {
+    if (options.mongo) {
+      return updateMongo();
+    }
+  })
+  .then(() => {
+    if (options.internal) {
+      return updateInternal();
+    }
+  })
+  .finally(() => readline.close());
