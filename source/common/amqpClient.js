@@ -65,7 +65,7 @@ class RpcClient {
               delete this.callMap[msg.corrID];
             }
           } else {
-            log.warn('Late rpc reply:', message);
+            log.warn('Late rpc reply:', msg);
           }
         } catch (err) {
           log.error('Error processing response: ', err);
@@ -321,10 +321,11 @@ class TopicParticipant {
 }
 
 class Monitor {
-  constructor(amqpCli) {
+  constructor(amqpCli, onMessage) {
     this.bus = amqpCli;
     this.queue = '';
     this.ready = false;
+    this.onMessage = onMessage;
   }
 
   setup() {
@@ -350,10 +351,6 @@ class Monitor {
       this.ready = true;
     });
   }
-
-  setMsgReceiver(onMessage) {
-    this.onMessage = onMessage;
-  };
 
   close() {
     this.ready = false;
