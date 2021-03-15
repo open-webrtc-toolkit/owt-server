@@ -61,7 +61,7 @@ if(process.env.owt_via_host !== undefined) {
 global.config = config;
 
 
-var amqper = require('./amqp_client')();
+var amqper = require('./amqpClient')();
 var rpcClient;
 var socketio_server;
 var portal;
@@ -301,9 +301,10 @@ amqper.connect(config.rabbit, function () {
 });
 
 ['SIGINT', 'SIGTERM'].map(function (sig) {
-  process.on(sig, function () {
+  process.on(sig, async function () {
     log.warn('Exiting on', sig);
     stopServers();
+    amqper.disconnect();
     process.exit();
   });
 });
@@ -313,7 +314,7 @@ process.on('SIGPIPE', function () {
 });
 
 process.on('exit', function () {
-    amqper.disconnect();
+  log.info('Process exit');
 });
 
 process.on('unhandledRejection', (reason) => {

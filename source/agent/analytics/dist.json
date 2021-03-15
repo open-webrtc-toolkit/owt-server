@@ -16,7 +16,7 @@
             "../nodeManager.js",
             "../workingNode.js",
             "../../common/cipher.js",
-            "../../common/amqp_client.js",
+            "../../common/amqpClient.js",
             "../../common/cipher.js",
             "../../common/clusterWorker.js",
             "../../common/loadCollector.js",

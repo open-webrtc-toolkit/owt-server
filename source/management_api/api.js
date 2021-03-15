@@ -175,10 +175,11 @@ if (cluster.isMaster) {
     log.info(`Worker ${process.pid} started`);
 
     ['SIGINT', 'SIGTERM'].map(function (sig) {
-        process.on(sig, function () {
+        process.on(sig, async function () {
             // This log won't be showed in server log,
             // because worker process disconnected.
             log.warn('Worker exiting on', sig);
+            await rpc.disconnect();
             process.exit();
         });
     });

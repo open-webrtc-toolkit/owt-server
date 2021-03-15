@@ -9,7 +9,7 @@
             "sip_portal.js",
             "sip_portal.toml",
             "../common/cipher.js",
-            "../common/amqp_client.js",
+            "../common/amqpClient.js",
             "../common/logger.js",
             "../common/makeRPC.js"
         ],

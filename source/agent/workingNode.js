@@ -13,7 +13,7 @@ try {
     log.debug('No native logger for reconfiguration');
 }
 
-var rpc = require('./amqp_client')();
+var rpc = require('./amqpClient')();
 
 var controller;
 function init_controller() {
@@ -65,11 +65,21 @@ function init_controller() {
     });
 };
 
+var exiting = false;
 ['SIGINT', 'SIGTERM'].map(function (sig) {
-    process.on(sig, function () {
+    process.on(sig, async function () {
+        if (exiting) {
+            return;
+        }
+        exiting = true;
         log.warn('Exiting on', sig);
         if (controller && typeof controller.close === 'function') {
             controller.close();
+        }
+        try {
+            await rpc.disconnect();
+        } catch(e) {
+            log.warn('Exiting e:', e);
         }
         process.exit();
     });
@@ -82,7 +92,8 @@ function init_controller() {
 });
 
 process.on('exit', function () {
-    rpc.disconnect();
+    log.info('Process exit');
+    //rpc.disconnect();
 });
 
 process.on('unhandledRejection', (reason) => {
