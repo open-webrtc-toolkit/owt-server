@@ -34,7 +34,7 @@ RUN wget -O - ${NICE_REPO} | tar xz && \
 
 
 # Build open ssl
-ARG OPENSSL_VER="1.1.1h"
+ARG OPENSSL_VER="1.1.1j"
 ARG OPENSSL_REPO=https://www.openssl.org/source/openssl-${OPENSSL_VER}.tar.gz
 
 RUN wget -O - ${OPENSSL_REPO} | tar xz && \
