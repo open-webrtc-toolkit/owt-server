@@ -3,8 +3,9 @@
     'target_name': 'videoAnalyzer-pipeline',
     'sources': [
       './addon.cc',
-      './VideoGstAnalyzerWrapper.cc',
+      './VideoGstAnalyzerWrap.cc',
       './VideoGstAnalyzer.cpp',
+      '../../addons/common/NodeEventRegistry.cc',
       '../../../core/owt_base/MediaFramePipeline.cpp',
       '../../../core/owt_base/RawTransport.cpp',
       '../../../core/common/IOService.cpp',
