@@ -28,6 +28,7 @@ optParser.addOption('b', 'binary', 'boolean', 'Pack binary');
 optParser.addOption('np', 'no-pseudo', 'boolean', 'Whether use pseudo library');
 optParser.addOption('wf', 'with-ffmpeg', 'boolean', 'Whether pack ffmpeg library');
 optParser.addOption('h', 'help', 'boolean', 'Show help');
+optParser.addOption('li', 'lint', 'boolean', 'Whether lint code with eslint');
 
 const options = optParser.parseArgs(process.argv);
 
@@ -56,6 +57,26 @@ if (options.full) {
 if (options.help || Object.keys(options).length === 0) {
   optParser.printHelp();
   process.exit(0);
+}
+
+if (options.lint) {
+  // Check lint deps
+  const lintDeps = ['eslint'];
+  console.log('Checking lint dependencies...');
+  const npmRoot = execSync(`npm root -g`).toString().trim();
+  const missingLintDeps = lintDeps.filter((dep) => {
+    return !fs.existsSync(path.join(npmRoot, dep));
+  });
+
+  if (missingLintDeps.length === 0) {
+    console.log('Lint dependencies OK.');
+  } else {
+    for (const dep of missingLintDeps) {
+      console.log('Installing eslint');
+      execSync(`npm install eslint --global --save-dev`);
+      execSync('npm init --yes');
+    }
+  }
 }
 
 var npmInstallOption = '';
@@ -237,9 +258,30 @@ function packCommon(target) {
     }
   }
   if (common.files) {
+    let eslint;
+    if (options.lint) {
+      const { ESLint } = require('eslint');
+      eslint = new ESLint({ overrideConfigFile: `${rootDir}/source/.eslintrc.json` });
+    }
     // Copy common files
     for (const file of common.files) {
       const filePath = path.join(packSrc, file);
+      const extname = path.extname(filePath);
+      if (options.lint && extname === '.js') {
+        eslint.lintFiles(filePath)
+          .then((results) => {
+            eslint.loadFormatter('stylish')
+              .then((formatter) => {
+                console.log(formatter.format(results));
+              })
+              .catch((err) => {
+                console.log(err);
+              })
+          })
+          .catch((err) => {
+            console.log(err);
+          })
+      }
       execSync(`cp -a ${filePath} ${packDist}`);
     }
   }
