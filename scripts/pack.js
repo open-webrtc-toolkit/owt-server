@@ -74,7 +74,6 @@ if (options.lint) {
     for (const dep of missingLintDeps) {
       console.log('Installing eslint');
       execSync(`npm install eslint --global --save-dev`);
-      execSync('npm init --yes');
     }
   }
 }
