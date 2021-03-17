@@ -258,29 +258,16 @@ function packCommon(target) {
     }
   }
   if (common.files) {
-    let eslint;
-    if (options.lint) {
-      const { ESLint } = require('eslint');
-      eslint = new ESLint({ overrideConfigFile: `${rootDir}/source/.eslintrc.json` });
-    }
     // Copy common files
     for (const file of common.files) {
       const filePath = path.join(packSrc, file);
       const extname = path.extname(filePath);
       if (options.lint && extname === '.js') {
-        eslint.lintFiles(filePath)
-          .then((results) => {
-            eslint.loadFormatter('stylish')
-              .then((formatter) => {
-                console.log(formatter.format(results));
-              })
-              .catch((err) => {
-                console.log(err);
-              })
-          })
-          .catch((err) => {
-            console.log(err);
-          })
+        try {
+          execSync(`eslint -c ${rootDir}/source/.eslintrc.json ${filePath}`);
+        } catch(error) {
+          console.error(error.stdout.toString());
+        }
       }
       execSync(`cp -a ${filePath} ${packDist}`);
     }
