@@ -385,7 +385,7 @@ var runAsMaster = function(topicChannel, manager) {
                     //FIXME: This occasion should be handled more elegantly.
                     if (message.data.life_time > life_time) {
                         log.error('Another master is more senior than me, I quit.');
-                        process.exit(1);
+                        process.kill(process.pid, 'SIGINT');
                     }
                 }
             };
@@ -398,11 +398,11 @@ var runAsMaster = function(topicChannel, manager) {
             });
         }, function(reason) {
             log.error('Cluster manager running as monitoring target failed, reason:', reason);
-            process.exit();
+            process.kill(process.pid, 'SIGINT');
         });
     }, function(reason) {
         log.error('Cluster manager running as RPC server failed, reason:', reason);
-        process.exit();
+        process.kill(process.pid, 'SIGINT');
     });
 };
 

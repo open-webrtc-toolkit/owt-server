@@ -309,6 +309,7 @@ module.exports = function (spec, spawnOptions, onNodeAbnormallyQuit, onTaskAdded
   };
   
   that.dropAllNodes = function(quietly) {
+      spawn_failed = true;
       Object.keys(processes).map(function (k) {
           !quietly && onNodeAbnormallyQuit && onNodeAbnormallyQuit(k, tasksOnNode(k));
           dropNode(k);

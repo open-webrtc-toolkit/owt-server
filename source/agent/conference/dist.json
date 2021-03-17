@@ -22,7 +22,7 @@
             "../networkHelper.js",
             "../../common/formatUtil.js",
             "../../common/cipher.js",
-            "../../common/amqp_client.js",
+            "../../common/amqpClient.js",
             "../../common/clusterWorker.js",
             "../../common/loadCollector.js",
             "../../common/logger.js",

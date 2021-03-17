@@ -6,7 +6,7 @@
 
 var fs = require('fs');
 var toml = require('toml');
-var amqper = require('./amqp_client')();
+var amqper = require('./amqpClient')();
 var rpcClient;
 var makeRPC = require('./makeRPC').makeRPC;
 var logger = require('./logger').logger;
@@ -219,6 +219,14 @@ function startup () {
 }
 
 startup();
+
+['SIGINT', 'SIGTERM'].map(function (sig) {
+  process.on(sig, async function () {
+    log.warn('Exiting on', sig);
+    await amqper.disconnect();
+    process.exit();
+  });
+});
 
 process.on('SIGUSR2', function() {
     logger.reconfigure();

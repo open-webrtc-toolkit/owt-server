@@ -509,7 +509,7 @@ var Conference = function (rpcClient, selfRpcId) {
     return Promise.all(pl)
       .then(() => {
         doClean();
-        process.exit();
+        process.kill(process.pid, 'SIGINT');
       });
   };
 
