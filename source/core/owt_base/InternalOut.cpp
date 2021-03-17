@@ -16,6 +16,21 @@ InternalOut::InternalOut(const std::string& protocol, const std::string& dest_ip
     m_transport->createConnection(dest_ip, dest_port);
 }
 
+InternalOut::InternalOut(
+    const std::string& protocol,
+    const std::string& ticket,
+    const std::string& dest_ip,
+    unsigned int dest_port)
+{
+    if (protocol == "tcp")
+        m_transport.reset(new owt_base::RawTransport<TCP>(this));
+    else
+        m_transport.reset(new owt_base::RawTransport<UDP>(this));
+
+    m_transport->initTicket(ticket);
+    m_transport->createConnection(dest_ip, dest_port);
+}
+
 InternalOut::~InternalOut()
 {
     m_transport->close();
@@ -50,7 +65,6 @@ void InternalOut::onTransportData(char* buf, int len)
             break;
     }
 }
-
 
 } /* namespace owt_base */
 

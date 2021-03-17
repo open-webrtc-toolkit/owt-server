@@ -43,6 +43,7 @@ public:
     virtual void sendData(const char*, int len) = 0;
     virtual void sendData(const char* header, int headerLength, const char* payload, int payloadLength) = 0;
     virtual void close() = 0;
+    virtual bool initTicket(const std::string& ticket) = 0;
 
     virtual unsigned short getListeningPort() = 0;
 };
@@ -60,6 +61,8 @@ public:
     void sendData(const char*, int len);
     void sendData(const char* header, int headerLength, const char* payload, int payloadLength);
     void close();
+    bool initTicket(const std::string& ticket);
+
 
     unsigned short getListeningPort();
 
@@ -80,6 +83,8 @@ private:
     void acceptHandler(const boost::system::error_code&);
     void handshakeHandler(const boost::system::error_code&);
     void dumpTcpSSLv3Header(const char*, int len);
+    void sendTicket();
+    void receiveTicket(char*, int len);
 
     bool m_isClosing;
     bool m_tag;
@@ -134,6 +139,9 @@ private:
     RawTransportListener* m_listener;
     uint32_t m_receivedBytes;
     bool m_ssl;
+    bool m_isListener;
+    bool m_verified;
+    std::string m_connectTicket;
 };
 
 } /* namespace owt_base */
