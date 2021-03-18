@@ -707,6 +707,15 @@ var Conference = function (rpcClient, selfRpcId) {
       media.video.bitrate && (result.video.parameters || (result.video.parameters = {})) && (result.video.parameters.bitrate = media.video.bitrate);
       media.video.keyFrameInterval && (result.video.parameters || (result.video.parameters = {})) && (result.video.parameters.keyFrameInterval = media.video.keyFrameInterval);
 
+      result.video.optional = {
+        format: [],
+        parameters: {
+          resolution: [],
+          framerate: [],
+          bitrate: [],
+          keyFrameInterval: [],
+        }
+      };
       if (room_config.transcoding.video && room_config.transcoding.video.format) {
         result.video.optional = {format: []};
         room_config.mediaOut.video.format.forEach((fmt) => {
@@ -1701,6 +1710,7 @@ var Conference = function (rpcClient, selfRpcId) {
       }
 
       new_su.media.audio = (new_su.media.audio || {});
+      delete new_su.media.audio.format;
       if (update.audio.from && (update.audio.from !== new_su.media.audio.from)) {
         new_su.media.audio.from = update.audio.from;
         effective = true;
@@ -1713,6 +1723,7 @@ var Conference = function (rpcClient, selfRpcId) {
       }
 
       new_su.media.video = (new_su.media.video || {});
+      delete new_su.media.video.format;
       if (update.video.from && (update.video.from !== new_su.media.video.from)) {
         new_su.media.video.from = update.video.from;
         effective = true;

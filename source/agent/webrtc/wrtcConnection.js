@@ -180,7 +180,8 @@ module.exports = function (spec, on_status, on_mediaUpdate) {
                 var reserved_codes = [fmtcode];
                 fmts.forEach(function (f) {
                     if ((f.fmt.codec === 'telephone-event')
-                        || ((f.fmt.codec === 'cn') && f.fmt.sampleRate && (f.fmt.sampleRate === audio_fmt.sampleRate))) {
+                        || ((f.fmt.codec === 'cn') && f.fmt.sampleRate && (f.fmt.sampleRate === audio_fmt.sampleRate))
+                        || direction === 'out') {
                         reserved_codes.push(f.code);
                     }
                 });
@@ -256,7 +257,8 @@ module.exports = function (spec, on_status, on_mediaUpdate) {
                 fmts.forEach(function (f) {
                     if ((f.fmt.codec === 'red')
                         || (f.fmt.codec === 'ulpfec')
-                        || ((f.fmt.codec === 'rtx') && (f.main_code === fmtcode))) {
+                        || ((f.fmt.codec === 'rtx') && (f.main_code === fmtcode))
+                        || direction === 'out') {
                         reserved_codes.push(f.code);
                     }
                 });
