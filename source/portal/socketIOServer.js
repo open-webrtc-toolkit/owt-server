@@ -41,6 +41,11 @@ var Connection = function(spec, socket, reconnectionKey, portal, dock) {
   var client_id;
   var protocol_version;
   var waiting_for_reconnecting_timer = null;
+  // [{ event, data, seq, time }]
+  // Use queue instead of array if its size is very large
+  var message_seq = 0;
+  var message_buffer = [];
+  var message_keep_time = spec.pingInterval + spec.pingTimeout + 1;
   var pending_messages = [];
 
   let reconnection = {
@@ -144,13 +149,13 @@ var Connection = function(spec, socket, reconnectionKey, portal, dock) {
       if (login_info.protocol === undefined) {
         protocol_version = 'legacy';
         client = new LegacyClient(client_id, that, portal);
-      } else if (login_info.protocol === '1.0') {
+      } else if (login_info.protocol === '1.0' || login_info.protocol === '1.0.1') {
         //FIXME: Reject connection from 3.5 client
         if (login_info.userAgent && login_info.userAgent.sdk && login_info.userAgent.sdk.version === '3.5') {
           safeCall(callback, 'error', 'Deprecated client version');
           return socket.disconnect();
         }
-        protocol_version = '1.0';
+        protocol_version = login_info.protocol;
         client = new V10Client(client_id, that, portal);
       } else {
         safeCall(callback, 'error', 'Unknown client protocol');
@@ -221,14 +226,24 @@ var Connection = function(spec, socket, reconnectionKey, portal, dock) {
           client_id = connectionInfo.clientId + '';
           protocol_version = connectionInfo.protocolVersion + '';
           pending_messages = connectionInfo.pendingMessages;
+          message_seq = connectionInfo.messageSeq;
+          message_buffer = connectionInfo.messageBuffer;
           reconnection.enabled = true;
           return client.resetConnection(that);
         }
       }).then(() => {
         let ticket = generateReconnectionTicket();
+        let messages = message_buffer.map(msg => {
+          delete msg.time;
+          return msg;
+        });
         state = 'connected';
-        safeCall(callback, okWord(), ticket);
-        drainPendingMessages();
+        if (protocol_version === '1.0.1') {
+          safeCall(callback, okWord(), {ticket, messages});
+        } else {
+          safeCall(callback, okWord(), ticket);
+          drainPendingMessages();
+        }
       }).catch((err) => {
         state = 'initialized';
         const err_message = getErrorMessage(err);
@@ -293,6 +308,8 @@ var Connection = function(spec, socket, reconnectionKey, portal, dock) {
 
     return {
       pendingMessages: pending_messages,
+      messageSeq: message_seq,
+      messageBuffer: message_buffer,
       clientId: client_id,
       protocolVersion: protocol_version,
       reconnection: reconnection
@@ -309,6 +326,16 @@ var Connection = function(spec, socket, reconnectionKey, portal, dock) {
       }
     } else {
       pending_messages.push({event: event, data: data});
+    }
+    let currentTime = process.hrtime()[0];
+    message_seq++;
+    message_buffer.push({event, data, seq: message_seq, time: currentTime});
+    while (message_buffer[0]) {
+      if (currentTime - message_buffer[0].time > message_keep_time) {
+        message_buffer.shift();
+      } else {
+        break;
+      }
     }
   };
 

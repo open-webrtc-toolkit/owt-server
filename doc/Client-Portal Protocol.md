@@ -5,6 +5,8 @@
 |12-06-2017 |Xiande|draft|
 |28-06-2017 |Xiande|1.0 reviewed|
 |08-04-2018 |Tianfang|1.0 final|
+|12-11-2019 ||1.0.1|draft|
+
 -->
 # 1. Overview {#CPCPSsection1}
 This documentation covers all signaling messages between Client and MCU component through Socket.io connections.
@@ -86,7 +88,19 @@ This a format for client reconnects.
 
 **RequestName**: "relogin"<br>
 
-**RequestData**: The ReconnectionTicket object defined in 3.3.1 section.<br>
+**RequestData**: The ReconnectionTicket object defined in 3.3.1 section and PendingMessages:
+
+  object(ReloginResponse)::
+    {
+      ticket: string(Base64Encoded(object(ReconnectionTicket)))
+      messages: [
+        {
+          event: string(NotificationName),
+          data: object(NotificationData),
+          seq: number(InternalSeqNo)
+        }
+      ]
+    }
 
 **ResponseData**: A refreshed base64-encoded ReconnectionTicket object if ResponseStatus is "ok".
 ## 3.3 Conferencing {#CPCPSsection3_3}
@@ -102,7 +116,7 @@ This a format for client reconnects.
 	   reconnection: object(ReconnectionOptions)/*If reconnection is required*/
 	                 | false/*If reconnection is not required*/
 	                 | undefined/*For compatibility (with 3.4 clients) purpose, will be considered as false or {keepTime: -1}*/,
-	   protocol: string(ProtocolVersion)/*e.g.  “1.0”*/
+	   protocol: string(ProtocolVersion)/*e.g.  “1.0.1”*/
 	             | undefined/*For compatibility (with 3.4 clients) purpose, will be considered as "legacy"*/
 	  }
 
