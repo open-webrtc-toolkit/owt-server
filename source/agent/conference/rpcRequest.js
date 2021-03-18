@@ -62,6 +62,10 @@ var RpcRequest = function(rpcChannel) {
     return rpcChannel.makeRPC(portal, 'notify', [participantId, event, data]);
   };
 
+  that.broadcast = function(portal, controller, excludeList, event, data) {
+    return rpcChannel.makeRPC(portal, 'broadcast', [controller, excludeList, event, data]);
+  };
+
   that.dropUser = function(portal, participantId) {
     return rpcChannel.makeRPC(portal, 'drop', [participantId]);
   };

@@ -437,6 +437,18 @@ var SocketIOServer = function(spec, portal, observer) {
     }
   };
 
+  that.broadcast = function(controller, excludeList, event, data) {
+    log.debug('broadcast controller:', controller, 'exclude:', excludeList, 'event:', event, 'data:', data);
+    portal.getParticipantsByController('node', controller)
+      .then(function (receivers) {
+        for (let clientId of receivers) {
+          if (!excludeList.includes(clientId)) {
+            clients[clientId].notify(event, data);
+          }
+        }
+      });
+  }
+
   that.drop = function(participantId) {
     if (participantId === 'all') {
       for(var pid in clients) {
