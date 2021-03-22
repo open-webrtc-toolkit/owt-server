@@ -4,17 +4,18 @@
 // SPDX-License-Identifier: Apache-2.0
 'use strict';
 
-(function () {
-  var readline = require('readline').createInterface({
+(function() {
+  const readline = require('readline').createInterface({
     input: process.stdin,
-    output: process.stdout
+    output: process.stdout,
   });
-  var cipher = require('./cipher');
-  var dirName = !process.pkg ? __dirname : require('path').dirname(process.execPath);
-  var keystore = require('path').resolve(dirName, 'cert/' + cipher.kstore);
-  readline.question('Enter passphrase of certificate: ', function (res) {
+  const cipher = require('./cipher');
+  const dirName =
+    !process.pkg ? __dirname : require('path').dirname(process.execPath);
+  const keystore = require('path').resolve(dirName, 'cert/' + cipher.kstore);
+  readline.question('Enter passphrase of certificate: ', function(res) {
     readline.close();
-    cipher.lock(cipher.k, res, keystore, function cb (err) {
+    cipher.lock(cipher.k, res, keystore, function cb(err) {
       console.log(err||'done!');
     });
   });

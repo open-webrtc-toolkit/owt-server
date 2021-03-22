@@ -4,14 +4,14 @@
 
 'use strict';
 
-var RpcChannel = function(amqpClient) {
-  var that = {};
-  var amqp_client = amqpClient;
+const RpcChannel = function(amqpClient) {
+  const that = {};
+  const amqp_client = amqpClient;
 
-  that.makeRPC = function (node, method, args, timeout, onStatus) {
+  that.makeRPC = function(node, method, args, timeout, onStatus) {
     return new Promise(function(resolve, reject) {
-      var callbacks = {
-        callback: function (result, error_reason) {
+      const callbacks = {
+        callback: function(result, error_reason) {
           if (result === 'error') {
             reject(error_reason ? error_reason : 'unknown reason');
           } else if (result === 'timeout') {
@@ -19,22 +19,21 @@ var RpcChannel = function(amqpClient) {
           } else {
             resolve(result);
           }
-         }
+        },
       };
 
       if (onStatus) {
-        callbacks.onStatus = function (status) {
-          onStatus(status).catch((e) => {});
+        callbacks.onStatus = function(status) {
+          onStatus(status).catch(() => {});
         };
       }
 
       amqp_client.remoteCall(
-        node,
-        method,
-        args,
-        callbacks,
-        timeout
-      );
+          node,
+          method,
+          args,
+          callbacks,
+          timeout);
     });
   };
 
