@@ -129,8 +129,12 @@ module.exports = function (spec, spawnOptions, onNodeAbnormallyQuit, onTaskAdded
           } else {
               child.READY = false;
               child.kill();
-              fs.closeSync(child.out_log_fd);
-              fs.closeSync(child.err_log_fd);
+              try {
+                  fs.closeSync(child.out_log_fd);
+                  fs.closeSync(child.err_log_fd);
+              } catch (e) {
+                  log.warn('Close fd failed');
+              }
               cleanupNode(id);
           }
       });

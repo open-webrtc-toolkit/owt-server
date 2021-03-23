@@ -31,6 +31,7 @@ const MONITOR_EXC = {
 
 const Q_OPTION = {
   durable: false,
+  exclusive: true,
   autoDelete: true,
 };
 
@@ -41,6 +42,7 @@ class RpcClient {
     this.corrID = 0;
     this.replyQ = '';
     this.ready = false;
+    this.closed = false;
   }
 
   setup() {
@@ -52,6 +54,9 @@ class RpcClient {
       this.replyQ = result.queue;
       return channel.bindQueue(this.replyQ, RPC_EXC.name, this.replyQ);
     }).then(() => {
+      if (this.closed) {
+        return;
+      }
       log.debug('Start consume', this.replyQ, RPC_EXC.name);
       return channel.consume(this.replyQ, (rawMessage) => {
         try {
@@ -138,14 +143,17 @@ class RpcClient {
 
   close() {
     log.debug('RpcClient close');
+    this.closed = true;
     for (const i in this.callMap) {
       clearTimeout(this.callMap[i].timer);
     }
     this.callMap = {};
-    return this.bus.channel.cancel(this.consumerTag)
-      .catch((err) => {
-        log.error('Failed during close RpcClient:', this.replyQ);
-      });
+    if (this.consumerTag) {
+      return this.bus.channel.cancel(this.consumerTag)
+        .catch((err) => {
+          log.error('Failed during close RpcClient:', this.replyQ);
+        });
+    }
   }
 }
 
@@ -155,6 +163,7 @@ class RpcServer {
     this.requestQ = id;
     this.methods = methods;
     this.ready = false;
+    this.closed = false;
   }
 
   setup() {
@@ -166,6 +175,9 @@ class RpcServer {
       this.requestQ = result.queue;
       return channel.bindQueue(this.requestQ, RPC_EXC.name, this.requestQ);
     }).then(() => {
+      if (this.closed) {
+        return;
+      }
       return channel.consume(this.requestQ, (rawMessage) => {
         try {
           const msg = JSON.parse(rawMessage.content.toString());
@@ -210,10 +222,13 @@ class RpcServer {
 
   close() {
     this.ready = false;
-    return this.bus.channel.cancel(this.consumerTag)
-      .catch((err) => {
-        log.error('Failed to during close RpcServer:', this.requestQ); 
-      });
+    this.closed = true;
+    if (this.consumerTag) {
+      return this.bus.channel.cancel(this.consumerTag)
+        .catch((err) => {
+          log.error('Failed to during close RpcServer:', this.requestQ);
+        });
+    }
   }
 }
 
@@ -312,11 +327,12 @@ class TopicParticipant {
 
   close() {
     this.ready = false;
-    return this.bus.channel.deleteQueue(this.queue)
-      .catch((err) => {
-        log.error('Failed to destroy queue:', this.queue); 
-      })
-      .catch((err) => log.error('Failed to delete exchange:', this.name));
+    if (this.queue) {
+      return this.bus.channel.deleteQueue(this.queue)
+        .catch((err) => {
+          log.error('Failed to destroy queue:', this.queue);
+        });
+    }
   }
 }
 
@@ -354,11 +370,12 @@ class Monitor {
 
   close() {
     this.ready = false;
-    return this.bus.channel.cancel(this.consumerTag)
-      .catch((err) => {
-        log.error('Failed to cancel consumer on queue:', this.queue); 
-      })
-      .catch((err) => log.error('Failed to delete exchange:', this.name));
+    if (this.consumerTag) {
+      return this.bus.channel.cancel(this.consumerTag)
+        .catch((err) => {
+          log.error('Failed to cancel consumer on queue:', this.queue);
+        });
+    }
   };
 }
 
