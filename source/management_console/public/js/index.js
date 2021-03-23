@@ -61,6 +61,7 @@ $('button#saveServiceInfo').click(function() {
   }
   if (restApi) {
     $("#myModal").modal("hide");
+    renderRoom();
   }
 });
 
@@ -117,4 +118,8 @@ var login = new Promise((resolve, reject) => {
     }
   });
   checkProfile(()=>resolve());
+});
+
+login.then(()=> {
+  renderRoom();
 });

@@ -1310,7 +1310,3 @@ function renderService() {
   ReactDOM.unmountComponentAtNode(domContainer);
   ReactDOM.render(e(ServiceApp, {count: roomTotal || 1, modalId: 'mainModal'}), domContainer);
 }
-
-login.then(()=> {
-  renderRoom();
-});
