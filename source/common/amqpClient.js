@@ -31,7 +31,6 @@ const MONITOR_EXC = {
 
 const Q_OPTION = {
   durable: false,
-  exclusive: true,
   autoDelete: true,
 };
 
@@ -75,7 +74,7 @@ class RpcClient {
         } catch (err) {
           log.error('Error processing response: ', err);
         }
-      });
+      }, {noAck: true});
     }).then((ok) => {
       this.consumerTag = ok.consumerTag;
       this.ready = true;
@@ -212,7 +211,7 @@ class RpcServer {
           log.error('Error processing call: ', error);
           log.error('message:', rawMessage.content.toString());
         }
-      });
+      }, {noAck: true});
     }).then((ok) => {
       log.debug('Setup rpc server ok:', this.requestQ);
       this.consumerTag = ok.consumerTag;
@@ -247,8 +246,9 @@ class TopicParticipant {
     const channel = this.bus.channel;
     return channel.assertExchange(
         this.name, 'topic', MONITOR_EXC.options).then(() => {
-      return channel.assertQueue('', {durable: false});
+      return channel.assertQueue('', {exclusive: true, durable: false});
     }).then((result) => {
+      log.debug('TopicQueue:', result.queue);
       this.queue = result.queue;
       this.ready = true;
       this.consumers.clear();
@@ -277,7 +277,7 @@ class TopicParticipant {
         } catch (error) {
           log.error('Error processing topic message:', rawMessage, 'and error:', error);
         }
-      }).then((ok) => {
+      }, {noAck: true}).then((ok) => {
         this.consumers.set(patterns.toString(), ok.consumerTag);
         this.subscriptions.set(ok.consumerTag, {patterns, cb: onMessage});
         onOk();
@@ -361,7 +361,7 @@ class Monitor {
         } catch (error) {
           log.error('Error processing monitored message:', msg, 'and error:', error);
         }
-      });
+      }, {noAck: true});
     }).then((ok) => {
       this.consumerTag = ok.consumerTag;
       this.ready = true;
