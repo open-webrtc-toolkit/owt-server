@@ -29,6 +29,8 @@ function checkProfile(callback) {
     } else {
       var myService = JSON.parse(text);
       roomTotal = myService.rooms.length;
+      serviceId = myService._id;
+      document.getElementById("inputId").value = serviceId;
       judgePermissions();
       callback();
     }

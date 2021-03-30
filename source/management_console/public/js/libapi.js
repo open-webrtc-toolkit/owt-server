@@ -63,7 +63,7 @@ function ManagementApi (spec) {
     };
 }
 
-ManagementApi.init = function (serviceId, servicekey) {
+ManagementApi.init = function () {
     return new ManagementApi({});
 };
 
