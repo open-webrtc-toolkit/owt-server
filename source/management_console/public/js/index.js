@@ -18,31 +18,31 @@ var serviceKey = "";
 var roomTotal = 1;
 
 function checkProfile(callback) {
-  var serviceId = getCookie('serviceId') === '' ? top.serviceId : getCookie('serviceId');
-  var serviceKey = getCookie('serviceKey') === '' ? top.serviceKey : getCookie('serviceKey');
-  top.serviceId = serviceId;
-  $('#inputId').val(serviceId);
-  $('#inputKey').val(serviceKey);
-  if (serviceId === '' || serviceKey === '') {
-    $('#myModal').modal('show');
-    return;
-  }
-  restApi = ManagementApi.init(serviceId, serviceKey);
-  restApi.getService(serviceId, function (err, text) {
-    if (err) {
+  restApi = ManagementApi.init();
+  restApi.loginCheck(function(err, text) {
+    if (err === 401) {
+      $('#myModal').modal('show');
+      return;
+    } else if (err) {
       notify('error', 'Failed to get service information', err);
+      return;
     } else {
       var myService = JSON.parse(text);
       roomTotal = myService.rooms.length;
+      judgePermissions();
+      callback();
     }
-    judgePermissions();
-    callback();
   });
 }
 
 $('button#clearCookie').click(function() {
-  document.cookie = 'serviceId=; expires=Thu, 01 Jan 1970 00:00:00 UTC';
-  document.cookie = 'serviceKey=; expires=Thu, 01 Jan 1970 00:00:00 UTC';
+  restApi = ManagementApi.init();
+  restApi.logout(function(err) {
+    if (err) {
+      notify('error', 'Failed to logout', err);
+      return;
+    }
+  });
   document.getElementById("inputId").value = "";
   document.getElementById("inputKey").value = "";
 });
@@ -50,21 +50,23 @@ $('button#clearCookie').click(function() {
 $('button#saveServiceInfo').click(function() {
   serviceId = $('.modal-body #inputId').val();
   serviceKey = $('.modal-body #inputKey').val();
-  var rememberMe = $('.modal-body .checkbox input').prop('checked');
   if (serviceId !== '' && serviceKey !== '') {
-    if (rememberMe) {
-      setCookie('serviceId', serviceId, 365);
-      setCookie('serviceKey', serviceKey, 365);
+    restApi = ManagementApi.init();
+    restApi.login(serviceId, serviceKey, function(err) {
+      if (err) {
+        notify('error', 'Failed to login', err);
+        return;
+      }
+      judgePermissions();
+    });
+    if (restApi) {
+      $("#myModal").modal("hide");
+      renderRoom();
     }
-    restApi = ManagementApi.init(serviceId, serviceKey);
-    judgePermissions();
-  }
-  if (restApi) {
-    $("#myModal").modal("hide");
   }
 });
 
-function judgePermissions() {
+function judgePermissions(flag) {
   restApi.getServices(function(err, text) {
     if (!err) {
       $(".li").removeClass("hideLi");
