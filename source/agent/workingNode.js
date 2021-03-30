@@ -96,6 +96,16 @@ process.on('exit', function () {
     //rpc.disconnect();
 });
 
+process.on('uncaughtException', async (err) => {
+    log.error(err);
+    try {
+        await rpc.disconnect();
+    } catch(e) {
+        log.warn('Exiting e:', e);
+    }
+    process.exit(1);
+});
+
 process.on('unhandledRejection', (reason) => {
     log.info('Reason: ' + reason);
 });
