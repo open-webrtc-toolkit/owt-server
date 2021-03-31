@@ -67,7 +67,9 @@ void RawTransport<prot>::close()
             m_socket.tcp.socket->close();
         }
         if (m_socket.ssl.socket) {
-            m_socket.ssl.socket->shutdown();
+            m_socket.ssl.socket->shutdown(ec);
+            m_socket.ssl.socket->lowest_layer().shutdown(
+                tcp::socket::shutdown_both, ec);
         }
         break;
     case UDP:
