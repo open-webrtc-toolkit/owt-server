@@ -384,16 +384,34 @@ void VCMFrameEncoder::encode(boost::shared_ptr<webrtc::VideoFrame> frame)
     }
 
     if (m_width != frame->width() || m_height != frame->height()) {
-        ELOG_DEBUG_T("Update encoder resolution %dx%d->%dx%d", m_width, m_height, frame->width(), frame->height());
 
-        ret = m_encoder->SetResolution(frame->width(), frame->height());
+    	int new_width = 0;
+    	int new_height = 0;
+
+        if(maxWidth > 0 && frame->width() > maxWidth){
+            new_width = maxWidth;
+            new_height = (int) ( static_cast<double>(new_width) /  (static_cast<double>(frame->width()) / static_cast<double>(frame->height())) );
+        }else if(maxHeight > 0 && frame->height() > maxHeight){
+            new_height = maxHeight;
+            new_width = (int) ( static_cast<double>(new_height) *  ( static_cast<double>(frame->width()) / static_cast<double>(frame->height()) ) );
+        }else{
+			new_width = frame->width();
+			new_height = frame->height();
+        }
+
+
+        ELOG_DEBUG_T("Update encoder resolution %dx%d, %dx%d->%dx%d", frame->width(), frame->height(), m_width, m_height, new_width, new_height);
+
+        ret = m_encoder->SetResolution(new_width, new_height);
         if (ret != 0) {
             ELOG_WARN_T("Update Encode size error: %d", ret);
         }
 
         m_width = frame->width();
         m_height = frame->height();
-        m_updateBitrateKbps = calcBitrate(m_width, m_height, m_frameRate);
+
+        m_updateBitrateKbps = calcBitrate(new_width, new_height, m_frameRate);        
+        
     }
 
     if (m_updateBitrateKbps) {

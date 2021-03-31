@@ -233,6 +233,14 @@ case $startStop in
     fi
     ;;
 
+  (restart)
+     echo restarting $command
+
+     ${0} stop $command
+     ${0} start $command
+     ;;
+
+
   (status)
     if [ -f $pid ]; then
       if ps -p `cat $pid` > /dev/null 2>&1; then

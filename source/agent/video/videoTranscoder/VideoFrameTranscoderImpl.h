@@ -66,6 +66,7 @@ public:
     void removeOutput(int output);
 
     void requestKeyFrame(int output);
+    void setMaxResolution(int output, int width, int height);
 #ifndef BUILD_FOR_ANALYTICS
     void drawText(const std::string& textSpec);
     void clearText();
@@ -283,6 +284,15 @@ inline void VideoFrameTranscoderImpl::requestKeyFrame(int output)
     if (it != m_outputs.end())
         it->second.encoder->requestKeyFrame(it->second.streamId);
 }
+    
+inline void VideoFrameTranscoderImpl::setMaxResolution(int output, int width, int height)
+{
+    boost::shared_lock<boost::shared_mutex> lock(m_outputMutex);
+    auto it = m_outputs.find(output);
+    if (it != m_outputs.end())
+        it->second.encoder->setMaxResolution(it->second.streamId, width, height);
+}
+    
 
 #ifndef BUILD_FOR_ANALYTICS
 inline void VideoFrameTranscoderImpl::drawText(const std::string& textSpec)

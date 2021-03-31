@@ -163,6 +163,7 @@ void AVStreamOut::onFrame(const owt_base::Frame& frame)
         }
 
         if (!m_videoSourceChanged
+                && frame.additionalInfo.video.width != 0
                 && (m_width != frame.additionalInfo.video.width || m_height != frame.additionalInfo.video.height)) {
 
             ELOG_DEBUG("Video resolution changed %dx%d -> %dx%d",

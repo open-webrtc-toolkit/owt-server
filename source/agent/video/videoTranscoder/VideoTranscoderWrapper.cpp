@@ -176,6 +176,26 @@ void VideoTranscoder::forceKeyFrame(const v8::FunctionCallbackInfo<v8::Value>& a
   me->forceKeyFrame(outStreamID);
 }
 
+void VideoTranscoder::setMaxResolution(const v8::FunctionCallbackInfo<v8::Value>& args){
+
+  Isolate* isolate = Isolate::GetCurrent();
+  HandleScope scope(isolate);
+
+  VideoTranscoder* obj = ObjectWrap::Unwrap<VideoTranscoder>(args.Holder());
+  mcu::VideoTranscoder* me = obj->me;
+
+  String::Utf8Value param0(args[0]->ToString());
+  String::Utf8Value param1(args[1]->ToString());
+  String::Utf8Value param2(args[2]->ToString());
+
+  std::string outStreamID = std::string(*param0);
+  int width = std::stoi(std::string(*param1));
+  int height = std::stoi(std::string(*param2));
+
+  me->setMaxResolution(outStreamID, width, height);
+}
+
+
 #ifndef BUILD_FOR_ANALYTICS
 void VideoTranscoder::drawText(const v8::FunctionCallbackInfo<v8::Value>& args) {
   Isolate* isolate = Isolate::GetCurrent();

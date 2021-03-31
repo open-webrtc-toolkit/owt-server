@@ -33,6 +33,7 @@ class VideoTranscoder : public node::ObjectWrap {
   static void addOutput(const v8::FunctionCallbackInfo<v8::Value>& args);
   static void removeOutput(const v8::FunctionCallbackInfo<v8::Value>& args);
   static void forceKeyFrame(const v8::FunctionCallbackInfo<v8::Value>& args);
+  static void setMaxResolution(const v8::FunctionCallbackInfo<v8::Value>& args);
 #ifndef BUILD_FOR_ANLAYTICS
   static void drawText(const v8::FunctionCallbackInfo<v8::Value>& args);
   static void clearText(const v8::FunctionCallbackInfo<v8::Value>& args);
