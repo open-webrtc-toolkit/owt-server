@@ -59,6 +59,7 @@ $('button#saveServiceInfo').click(function() {
         notify('error', 'Failed to login', err);
         return;
       }
+      document.getElementById("inputKey").value = "";
       judgePermissions();
     });
     if (restApi) {

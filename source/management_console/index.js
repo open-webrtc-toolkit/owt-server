@@ -7,6 +7,7 @@
 var fs = require('fs');
 var toml = require('toml');
 var url = require('url');
+const crypto = require('crypto');
 
 var config;
 try {
@@ -35,15 +36,20 @@ app.use(session({
   genid: function(req) {
     return uuidv4();
   },
+  resave: true,
+  saveUninitialized: true,
   cookie: {
     httpOnly: true,
     secure: true,
     sameSite: true,
-    maxAge: 600000,
-    resave: true,
-    saveUninitialized: true
+    maxAge: 600000
   }
 }));
+
+app.use((req, res, next) => {
+  res.set('Cache-Control', 'no-store, no-cache');
+  next();
+});
 
 var bodyParser = require('body-parser');
 // parse application/x-www-form-urlencoded
@@ -64,8 +70,8 @@ proxy.on('error', function(e) {
 });
 
 function calculateSignature(toSign, key) {
-  var hash = CryptoJS.HmacSHA256(toSign, key);
-  var hex = hash.toString(CryptoJS.enc.Hex);
+  const hash = crypto.createHmac("sha256", key).update(toSign);
+  const hex = hash.digest('hex');
   return Buffer.from(hex).toString('base64');
 }
 
