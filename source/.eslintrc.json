@@ -1,13 +1,29 @@
+// Copyright (C) <2018> Intel Corporation
+//
+// SPDX-License-Identifier: Apache-2.0
 {
     "env": {
-        "browser": true,
-        "es2021": true
+        "es2021": true,
+        "node": true
     },
-    "extends": "eslint:recommended",
+    "extends": ["eslint:recommended", "google"],
     "parserOptions": {
-        "ecmaVersion": 12,
-        "sourceType": "module"
+      "ecmaVersion": 12,
+      "sourceType": "module"
     },
     "rules": {
+      "max-len": ["error", {
+        // This line is part of the MIT license.
+        "ignorePattern": "The above copyright notice and this permission notice shall be included in all",
+        // Some lines for JSDoc is longer than 80.
+        "ignoreComments": true
+      }],
+      "indent": ["warn"],
+      "camelcase": 0,
+      "prefer-promise-reject-errors": "off",
+      "guard-for-in": "off",
+      "require-jsdoc": "off",
+      "no-invalid-this": "off",
+      "new-cap": "off"
     }
 }

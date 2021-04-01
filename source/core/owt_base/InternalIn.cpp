@@ -20,6 +20,25 @@ InternalIn::InternalIn(const std::string& protocol, unsigned int minPort, unsign
     }
 }
 
+InternalIn::InternalIn(
+    const std::string& protocol,
+    const std::string& ticket,
+    unsigned int minPort,
+    unsigned int maxPort)
+{
+    if (protocol == "tcp")
+        m_transport.reset(new owt_base::RawTransport<TCP>(this));
+    else
+        m_transport.reset(new owt_base::RawTransport<UDP>(this, 64 * 1024));
+
+    m_transport->initTicket(ticket);
+    if (minPort > 0 && minPort <= maxPort) {
+        m_transport->listenTo(minPort, maxPort);
+    } else {
+        m_transport->listenTo(0);
+    }
+}
+
 InternalIn::~InternalIn()
 {
     m_transport->close();

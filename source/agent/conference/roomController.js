@@ -11,6 +11,8 @@ var makeRPC = require('./makeRPC').makeRPC;
 // Logger
 var log = logger.getLogger('RoomController');
 
+const { v4 : uuid } = require('uuid');
+
 const {
     isVideoFmtCompatible,
     isResolutionEqual,
@@ -40,11 +42,13 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
         rpcClient = spec.rpcClient,
         config = spec.config,
         room_id = spec.room,
-	origin = spec.origin,
+        origin = spec.origin,
         selfRpcId = spec.selfRpcId,
         enable_audio_transcoding = config.transcoding && !!config.transcoding.audio,
         enable_video_transcoding = config.transcoding && !!config.transcoding.video,
         internal_conn_protocol = config.internalConnProtocol;
+
+    var internalTicket = uuid().replace(/-/g, '');
 
     /*
     mix_views = {
@@ -524,7 +528,8 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
 
         // Transport protocol for creating internal connection
         var internalOpt = {
-            protocol: internal_conn_protocol
+            protocol: internal_conn_protocol,
+            ticket: internalTicket,
         };
         var from, to, has_published, has_subscribed;
 

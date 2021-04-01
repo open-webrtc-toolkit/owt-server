@@ -36,9 +36,18 @@ void InternalOut::New(const v8::FunctionCallbackInfo<v8::Value>& args) {
   String::Utf8Value param1(args[1]->ToString());
   std::string dest_ip = std::string(*param1);
   unsigned int dest_port = args[2]->Uint32Value();
+  std::string ticket;
+  if (args.Length() > 3) {
+    String::Utf8Value param3(args[3]->ToString());
+    ticket = std::string(*param3);
+  }
 
   InternalOut* obj = new InternalOut();
-  obj->me = new owt_base::InternalOut(protocol, dest_ip, dest_port);
+  if (ticket.empty()) {
+    obj->me = new owt_base::InternalOut(protocol, dest_ip, dest_port);
+  } else {
+    obj->me = new owt_base::InternalOut(protocol, ticket, dest_ip, dest_port);
+  }
   obj->dest = obj->me;
 
   obj->Wrap(args.This());

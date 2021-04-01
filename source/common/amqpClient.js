@@ -41,6 +41,7 @@ class RpcClient {
     this.corrID = 0;
     this.replyQ = '';
     this.ready = false;
+    this.closed = false;
   }
 
   setup() {
@@ -52,6 +53,9 @@ class RpcClient {
       this.replyQ = result.queue;
       return channel.bindQueue(this.replyQ, RPC_EXC.name, this.replyQ);
     }).then(() => {
+      if (this.closed) {
+        return;
+      }
       log.debug('Start consume', this.replyQ, RPC_EXC.name);
       return channel.consume(this.replyQ, (rawMessage) => {
         try {
@@ -70,7 +74,7 @@ class RpcClient {
         } catch (err) {
           log.error('Error processing response: ', err);
         }
-      });
+      }, {noAck: true});
     }).then((ok) => {
       this.consumerTag = ok.consumerTag;
       this.ready = true;
@@ -138,14 +142,17 @@ class RpcClient {
 
   close() {
     log.debug('RpcClient close');
+    this.closed = true;
     for (const i in this.callMap) {
       clearTimeout(this.callMap[i].timer);
     }
     this.callMap = {};
-    return this.bus.channel.cancel(this.consumerTag)
-      .catch((err) => {
-        log.error('Failed during close RpcClient:', this.replyQ);
-      });
+    if (this.consumerTag) {
+      return this.bus.channel.cancel(this.consumerTag)
+        .catch((err) => {
+          log.error('Failed during close RpcClient:', this.replyQ);
+        });
+    }
   }
 }
 
@@ -155,6 +162,7 @@ class RpcServer {
     this.requestQ = id;
     this.methods = methods;
     this.ready = false;
+    this.closed = false;
   }
 
   setup() {
@@ -166,6 +174,9 @@ class RpcServer {
       this.requestQ = result.queue;
       return channel.bindQueue(this.requestQ, RPC_EXC.name, this.requestQ);
     }).then(() => {
+      if (this.closed) {
+        return;
+      }
       return channel.consume(this.requestQ, (rawMessage) => {
         try {
           const msg = JSON.parse(rawMessage.content.toString());
@@ -200,7 +211,7 @@ class RpcServer {
           log.error('Error processing call: ', error);
           log.error('message:', rawMessage.content.toString());
         }
-      });
+      }, {noAck: true});
     }).then((ok) => {
       log.debug('Setup rpc server ok:', this.requestQ);
       this.consumerTag = ok.consumerTag;
@@ -210,10 +221,13 @@ class RpcServer {
 
   close() {
     this.ready = false;
-    return this.bus.channel.cancel(this.consumerTag)
-      .catch((err) => {
-        log.error('Failed to during close RpcServer:', this.requestQ); 
-      });
+    this.closed = true;
+    if (this.consumerTag) {
+      return this.bus.channel.cancel(this.consumerTag)
+        .catch((err) => {
+          log.error('Failed to during close RpcServer:', this.requestQ);
+        });
+    }
   }
 }
 
@@ -232,8 +246,9 @@ class TopicParticipant {
     const channel = this.bus.channel;
     return channel.assertExchange(
         this.name, 'topic', MONITOR_EXC.options).then(() => {
-      return channel.assertQueue('', {durable: false});
+      return channel.assertQueue('', {exclusive: true, durable: false});
     }).then((result) => {
+      log.debug('TopicQueue:', result.queue);
       this.queue = result.queue;
       this.ready = true;
       this.consumers.clear();
@@ -262,7 +277,7 @@ class TopicParticipant {
         } catch (error) {
           log.error('Error processing topic message:', rawMessage, 'and error:', error);
         }
-      }).then((ok) => {
+      }, {noAck: true}).then((ok) => {
         this.consumers.set(patterns.toString(), ok.consumerTag);
         this.subscriptions.set(ok.consumerTag, {patterns, cb: onMessage});
         onOk();
@@ -312,11 +327,12 @@ class TopicParticipant {
 
   close() {
     this.ready = false;
-    return this.bus.channel.deleteQueue(this.queue)
-      .catch((err) => {
-        log.error('Failed to destroy queue:', this.queue); 
-      })
-      .catch((err) => log.error('Failed to delete exchange:', this.name));
+    if (this.queue) {
+      return this.bus.channel.deleteQueue(this.queue)
+        .catch((err) => {
+          log.error('Failed to destroy queue:', this.queue);
+        });
+    }
   }
 }
 
@@ -345,7 +361,7 @@ class Monitor {
         } catch (error) {
           log.error('Error processing monitored message:', msg, 'and error:', error);
         }
-      });
+      }, {noAck: true});
     }).then((ok) => {
       this.consumerTag = ok.consumerTag;
       this.ready = true;
@@ -354,11 +370,12 @@ class Monitor {
 
   close() {
     this.ready = false;
-    return this.bus.channel.cancel(this.consumerTag)
-      .catch((err) => {
-        log.error('Failed to cancel consumer on queue:', this.queue); 
-      })
-      .catch((err) => log.error('Failed to delete exchange:', this.name));
+    if (this.consumerTag) {
+      return this.bus.channel.cancel(this.consumerTag)
+        .catch((err) => {
+          log.error('Failed to cancel consumer on queue:', this.queue);
+        });
+    }
   };
 }
 

@@ -123,3 +123,7 @@ var login = new Promise((resolve, reject) => {
   });
   checkProfile(()=>resolve());
 });
+
+login.then(()=> {
+  renderRoom();
+});

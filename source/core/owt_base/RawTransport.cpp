@@ -13,6 +13,7 @@ using boost::asio::ip::tcp;
 
 DEFINE_TEMPLATE_LOGGER(template<Protocol prot>, RawTransport<prot>, "owt.RawTransport");
 
+static constexpr const uint32_t kMaxTicketLen = 64;
 static constexpr const char kServerCrt[] = "cert/server.crt";
 static constexpr const char kServerKey[] = "cert/server.key";
 static constexpr const char kDHParams[] = "cert/dh2048.pem";
@@ -35,6 +36,8 @@ RawTransport<prot>::RawTransport(RawTransportListener* listener, size_t initialB
     , m_listener(listener)
     , m_receivedBytes(0)
     , m_ssl(false)
+    , m_isListener(false)
+    , m_verified(false)
 {
 }
 
@@ -80,10 +83,78 @@ void RawTransport<prot>::close()
 }
 
 template<Protocol prot>
+bool RawTransport<prot>::initTicket(const std::string& ticket)
+{
+    ELOG_DEBUG("initTicket");
+    m_connectTicket = ticket;
+    if (m_connectTicket.length() > kMaxTicketLen) {
+        m_connectTicket.resize(kMaxTicketLen);
+        return false;
+    }
+    return true;
+}
+
+template<Protocol prot>
+void RawTransport<prot>::sendTicket()
+{
+    if (!m_verified) {
+        ELOG_DEBUG("Send ticket");
+        int len = m_connectTicket.length();
+        TransportData data;
+        if (m_tag) {
+            data.buffer.reset(new char[len + 4]);
+            *(reinterpret_cast<uint32_t*>(data.buffer.get())) = htonl(len);
+            memcpy(data.buffer.get() + 4, m_connectTicket.c_str(), len);
+            data.length = len + 4;
+        } else {
+            data.buffer.reset(new char[len]);
+            memcpy(data.buffer.get(), m_connectTicket.c_str(), len);
+            data.length = len;
+        }
+        boost::lock_guard<boost::mutex> lock(m_sendQueueMutex);
+        m_sendQueue.push(data);
+        assert(m_sendQueue.size() == 1);
+        doSend();
+        m_verified = true;
+    }
+}
+
+template<Protocol prot>
+void RawTransport<prot>::receiveTicket(char* data, int len)
+{
+    ELOG_DEBUG("Receive ticket");
+    std::string receivedTicket(data, len);
+
+    if (m_connectTicket == receivedTicket) {
+        m_verified = true;
+    } else {
+        boost::system::error_code ec;
+        if (m_socket.tcp.socket) {
+            m_socket.tcp.socket->shutdown(tcp::socket::shutdown_both, ec);
+            m_socket.tcp.socket->close();
+        }
+        if (m_socket.ssl.socket) {
+            m_socket.ssl.socket->shutdown();
+        }
+        if (m_socket.udp.socket) {
+            m_socket.udp.socket->shutdown(udp::socket::shutdown_both, ec);
+            m_socket.udp.socket->close();
+        }
+        ELOG_WARN("Wrong connect ticket");
+        if (ec) {
+            ELOG_DEBUG("receiveTicket shutdown error: %s", ec.message().c_str());
+        }
+    }
+}
+
+template<Protocol prot>
 void RawTransport<prot>::createConnection(const std::string& ip, uint32_t port)
 {
     if (std::fstream{kServerCrt}) {
         m_ssl = true;
+    }
+    if (m_connectTicket.empty()) {
+        m_verified = true;
     }
     switch (prot) {
     case TCP: {
@@ -177,6 +248,7 @@ void RawTransport<prot>::connectHandler(const boost::system::error_code& ec)
             break;
         }
 
+        sendTicket();
         m_listener->onTransportConnected();
         receiveData();
     } else {
@@ -231,6 +303,9 @@ void RawTransport<prot>::handshakeHandler(const boost::system::error_code& ec)
 {
     if (!ec) {
         ELOG_DEBUG("Handshake completed");
+        if (!m_isListener) {
+            sendTicket();
+        }
         m_listener->onTransportConnected();
         receiveData();
     } else {
@@ -243,10 +318,14 @@ void RawTransport<prot>::handshakeHandler(const boost::system::error_code& ec)
 template<Protocol prot>
 void RawTransport<prot>::listenTo(uint32_t port)
 {
+    m_isListener = true;
     if (std::fstream{kServerCrt} &&
         std::fstream{kServerKey} &&
         std::fstream{kDHParams}) {
         m_ssl = true;
+    }
+    if (m_connectTicket.empty()) {
+        m_verified = true;
     }
     switch (prot) {
     case TCP: {
@@ -304,10 +383,14 @@ void RawTransport<prot>::listenTo(uint32_t port)
 template<Protocol prot>
 void RawTransport<prot>::listenTo(uint32_t minPort, uint32_t maxPort)
 {
+    m_isListener = true;
     if (std::fstream{kServerCrt} &&
         std::fstream{kServerKey} &&
         std::fstream{kDHParams}) {
         m_ssl = true;
+    }
+    if (m_connectTicket.empty()) {
+        m_verified = true;
     }
     switch (prot) {
     case TCP: {
@@ -405,7 +488,11 @@ void RawTransport<prot>::readHandler(const boost::system::error_code& ec, std::s
 
     if (!ec || ec == boost::asio::error::message_size) {
         if (!m_tag) {
-            m_listener->onTransportData(m_receiveData.buffer.get(), bytes);
+            if (!m_verified && m_isListener) {
+                receiveTicket(m_receiveData.buffer.get(), bytes);
+            } else {
+                m_listener->onTransportData(m_receiveData.buffer.get(), bytes);
+            }
             receiveData();
             return;
         }
@@ -467,9 +554,12 @@ void RawTransport<prot>::readHandler(const boost::system::error_code& ec, std::s
             } else {
                 unsigned char *p = reinterpret_cast<unsigned char*>(&(m_receiveData.buffer.get())[4]);
                 ELOG_DEBUG("readHandler(%zu): [%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x,%x...%x,%x,%x,%x]", bytes, p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7], p[8], p[9], p[10], p[11], p[12], p[13], p[14], p[15], p[payloadlen-4], p[payloadlen-3], p[payloadlen-2], p[payloadlen-1]);
-                m_listener->onTransportData(m_receiveData.buffer.get() + 4, payloadlen);
+                if (!m_verified && m_isListener) {
+                    receiveTicket(m_receiveData.buffer.get() + 4, payloadlen);
+                } else {
+                    m_listener->onTransportData(m_receiveData.buffer.get() + 4, payloadlen);
+                }
             }
-
             receiveData();
             break;
         default:
@@ -512,7 +602,11 @@ void RawTransport<prot>::readPacketHandler(const boost::system::error_code& ec, 
                 }
             } else {
                 m_receivedBytes = 0;
-                m_listener->onTransportData(m_receiveData.buffer.get(), expectedLen);
+                if (!m_verified && m_isListener) {
+                    receiveTicket(m_receiveData.buffer.get(), expectedLen);
+                } else {
+                    m_listener->onTransportData(m_receiveData.buffer.get(), expectedLen);
+                }
                 receiveData();
             }
             break;
@@ -633,6 +727,10 @@ void RawTransport<prot>::dumpTcpSSLv3Header(const char* buf, int len)
 template<Protocol prot>
 void RawTransport<prot>::sendData(const char* buf, int len)
 {
+    if (!m_verified) {
+        return;
+    }
+
     TransportData data;
     if (m_tag) {
         data.buffer.reset(new char[len + 4]);
@@ -654,6 +752,10 @@ void RawTransport<prot>::sendData(const char* buf, int len)
 template<Protocol prot>
 void RawTransport<prot>::sendData(const char* header, int headerLength, const char* payload, int payloadLength)
 {
+    if (!m_verified) {
+        return;
+    }
+
     TransportData data;
     if (m_tag) {
         data.buffer.reset(new char[headerLength + payloadLength + 4]);
