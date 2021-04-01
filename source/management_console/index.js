@@ -7,6 +7,7 @@
 var fs = require('fs');
 var toml = require('toml');
 var url = require('url');
+const crypto = require('crypto');
 
 var config;
 try {
@@ -26,6 +27,36 @@ var app = express();
 
 app.use('/console', express.static(__dirname + '/public'));
 
+const session = require('express-session');
+const {v4: uuidv4} = require('uuid');
+
+app.use(session({
+  secret: 'servicesecret',
+  name: 'owtserver',
+  genid: function(req) {
+    return uuidv4();
+  },
+  resave: true,
+  saveUninitialized: true,
+  cookie: {
+    httpOnly: true,
+    secure: true,
+    sameSite: true,
+    maxAge: 600000
+  }
+}));
+
+app.use((req, res, next) => {
+  res.set('Cache-Control', 'no-store, no-cache');
+  next();
+});
+
+var bodyParser = require('body-parser');
+// parse application/x-www-form-urlencoded
+app.use('/login', bodyParser.urlencoded({ extended: true }));
+// parse application/json
+app.use('/login', bodyParser.json());
+
 var httpProxy = require('http-proxy');
 var proxyOption = {};
 
@@ -38,6 +69,12 @@ proxy.on('error', function(e) {
   console.log(e);
 });
 
+function calculateSignature(toSign, key) {
+  const hash = crypto.createHmac("sha256", key).update(toSign);
+  const hex = hash.digest('hex');
+  return Buffer.from(hex).toString('base64');
+}
+
 // Only following paths allowed.
 var allowedPaths = ['/v1/rooms', '/services'];
 var isAllowed = function (path) {
@@ -49,10 +86,57 @@ var isAllowed = function (path) {
   return false;
 };
 
+app.post('/login', function(req, res) {
+  req.session.serviceid = req.body.id;
+  req.session.servicekey = req.body.key;
+  res.status(200).send('Successfully logged in');
+});
+
+app.get('/login', function(req, res) {
+    if (req.session.serviceid) {
+      let header = req.headers.authorization;
+      const timestamp = new Date().getTime();
+      const cnounce = Math.floor(Math.random() * 99999);
+      const toSign = timestamp + ',' + cnounce;
+      header += ',mauth_serviceid=';
+      header += req.session.serviceid;
+      header += ',mauth_cnonce=';
+      header += cnounce;
+      header += ',mauth_timestamp=';
+      header += timestamp;
+      header += ',mauth_signature=';
+      header += calculateSignature(toSign, req.session.servicekey);
+      req.headers.authorization = header;
+      req.url = '/services/' + req.session.serviceid;
+      proxy.web(req, res, {target: apiHost});
+    } else {
+      res.status(401).send('No session existed');
+    }
+});
+
+app.get('/logout', function(req, res) {
+  req.session.destroy(function(err) {
+    res.clearCookie('secretname', {path: '/'}).status(200).send('Successfully logged out');
+  });
+})
+
 app.use(function (req, res) {
   //proxyRequest(req, res);
   if (isAllowed(req.path)) {
     try {
+      let header = req.headers.authorization;
+      const timestamp = new Date().getTime();
+      const cnounce = Math.floor(Math.random() * 99999);
+      const toSign = timestamp + ',' + cnounce;
+      header += ',mauth_serviceid=';
+      header += req.session.serviceid;
+      header += ',mauth_cnonce=';
+      header += cnounce;
+      header += ',mauth_timestamp=';
+      header += timestamp;
+      header += ',mauth_signature=';
+      header += calculateSignature(toSign, req.session.servicekey);
+      req.headers.authorization = header;
       proxy.web(req, res, {target: apiHost});
     } catch (e) {
       res.status(400).send('Invalid path');
@@ -73,7 +157,6 @@ if (config.console.ssl) {
           pfx: require('fs').readFileSync(keystorePath),
           passphrase: passphrase
         }, app).listen(port);
-
         console.log('Start management-console HTTPS server');
       } catch (e) {
         err = e;
