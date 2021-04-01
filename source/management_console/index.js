@@ -121,7 +121,8 @@ app.get('/logout', function(req, res) {
 })
 
 app.use(function (req, res) {
-  //proxyRequest(req, res);
+  res.header('Strict-Transport-Security', 'max-age=1024000; includeSubDomain');
+  res.header('X-Content-Type-Options', 'nosniff');
   if (isAllowed(req.path)) {
     try {
       let header = req.headers.authorization;
