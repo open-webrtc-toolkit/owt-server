@@ -90,8 +90,10 @@ void JobTimer::onTimeout(const boost::system::error_code& ec)
 {
     if (!ec) {
         if (!m_isClosing) {
-            m_timer->expires_from_now(boost::posix_time::milliseconds(m_interval));
-            m_timer->async_wait(boost::bind(&JobTimer::onTimeout, this, boost::asio::placeholders::error));
+            m_timer->expires_at(m_timer->expires_at() +
+                                boost::posix_time::milliseconds(m_interval));
+            m_timer->async_wait(boost::bind(&JobTimer::onTimeout, this,
+                                            boost::asio::placeholders::error));
             handleJob();
         }
     }
