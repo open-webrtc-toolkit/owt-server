@@ -97,11 +97,17 @@ void VideoGstAnalyzerWrap::emitListenTo(const FunctionCallbackInfo<Value>& args)
   mcu::VideoGstAnalyzer* me = obj->me;
 
   unsigned int minPort = 0, maxPort = 0;
+  std::string ticket;
 
+  if (args.Length() >= 3) {
     minPort = args[0]->Uint32Value();
     maxPort = args[1]->Uint32Value();
 
-  me->emitListenTo(minPort,maxPort);
+    String::Utf8Value param3(args[2]->ToString());
+    ticket = std::string(*param3);
+  }
+  me->emitListenTo(minPort, maxPort, ticket);
+
 }
 
 

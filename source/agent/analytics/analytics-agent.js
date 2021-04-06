@@ -25,14 +25,16 @@ class AnalyticsAgent extends BaseAgent {
     this.engine = new VideoAnalyzer();
 
     this.flag = 0;
+    this.ticket = null;
   }
 
 // override
 createInternalConnection(connectionId, direction, internalOpt) {
     internalOpt.minport = global.config.internal.minport;
     internalOpt.maxport = global.config.internal.maxport;
+    this.ticket = internalOpt.ticket;
     if (direction == 'in') {
-      this.engine.emitListenTo(internalOpt.minport,internalOpt.maxport);
+      this.engine.emitListenTo(internalOpt.minport,internalOpt.maxport, this.ticket);
       const portInfo = this.engine.getListeningPort();
       // Create internal connection always success
       return Promise.resolve({ip: global.config.internal.ip_address, port: portInfo});

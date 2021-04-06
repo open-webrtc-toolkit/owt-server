@@ -30,7 +30,7 @@ public:
     void clearPipeline();
     void destroyPipeline();
     int getListeningPort();
-    void emitListenTo(int minPort,int maxPort);
+    void emitListenTo(int minPort, int maxPort, std::string ticket);
     int setPlaying();
 
     int addElementMany();
