@@ -146,19 +146,12 @@ class RpcClient {
       clearTimeout(this.callMap[i].timer);
     }
     this.callMap = {};
-<<<<<<< HEAD
-    return this.bus.channel.cancel(this.consumerTag)
-        .catch(() => {
-          log.error('Failed during close RpcClient:', this.replyQ);
-        });
-=======
     if (this.consumerTag) {
       return this.bus.channel.cancel(this.consumerTag)
         .catch((err) => {
           log.error('Failed during close RpcClient:', this.replyQ);
         });
     }
->>>>>>> 37bc75675b9b28e638abc532b3ef0b37704eb4e3
   }
 }
 
@@ -334,20 +327,12 @@ class TopicParticipant {
 
   close() {
     this.ready = false;
-<<<<<<< HEAD
-    return this.bus.channel.deleteQueue(this.queue)
-        .catch(() => {
-          log.error('Failed to destroy queue:', this.queue);
-        })
-        .catch(() => log.error('Failed to delete exchange:', this.name));
-=======
     if (this.queue) {
       return this.bus.channel.deleteQueue(this.queue)
         .catch((err) => {
           log.error('Failed to destroy queue:', this.queue);
         });
     }
->>>>>>> 37bc75675b9b28e638abc532b3ef0b37704eb4e3
   }
 }
 
@@ -386,14 +371,6 @@ class Monitor {
 
   close() {
     this.ready = false;
-<<<<<<< HEAD
-    return this.bus.channel.cancel(this.consumerTag)
-        .catch((err) => {
-          log.error('Failed to cancel consumer on queue:', this.queue);
-        })
-        .catch((err) => log.error('Failed to delete exchange:', this.name));
-  }
-=======
     if (this.consumerTag) {
       return this.bus.channel.cancel(this.consumerTag)
         .catch((err) => {
@@ -401,7 +378,6 @@ class Monitor {
         });
     }
   };
->>>>>>> 37bc75675b9b28e638abc532b3ef0b37704eb4e3
 }
 
 class MonitoringTarget {
