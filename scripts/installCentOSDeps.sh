@@ -31,21 +31,6 @@ install_glib2(){
   fi
 }
 
-install_boost(){
-  if [ -d $LIB_DIR ]; then
-    cd $LIB_DIR
-    wget -c http://iweb.dl.sourceforge.net/project/boost/boost/1.65.0/boost_1_65_0.tar.bz2
-    tar xvf boost_1_65_0.tar.bz2
-    cd boost_1_65_0
-    chmod +x bootstrap.sh
-    ./bootstrap.sh
-    ./b2 && ./b2 install --prefix=$PREFIX_DIR
-  else
-    mkdir -p $LIB_DIR
-    install_boost
-  fi
-}
-
 installYumDeps(){
   ${SUDO} yum groupinstall " Development Tools" "Development Libraries " -y
   ${SUDO} yum install zlib-devel pkgconfig git libcurl-devel.x86_64 curl log4cxx-devel gcc gcc-c++ bzip2 bzip2-devel bzip2-libs python-devel nasm libXext-devel libXfixes-devel libpciaccess-devel libX11-devel yasm cmake -y
