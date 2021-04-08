@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -e
 
 install_glib2(){
   if [ -d $LIB_DIR ]; then
@@ -62,7 +62,7 @@ install_glibc(){
   wget -c http://gnu.mirrors.pair.com/gnu/libc/glibc-2.14.tar.xz
   tar xvf glibc-2.14.tar.xz
   cd glibc-2.14
-  mkdir build && cd build/
+  mkdir -p build && cd build/
   ../configure --prefix=$PREFIX_DIR
   make -j4 -s && make install
 }

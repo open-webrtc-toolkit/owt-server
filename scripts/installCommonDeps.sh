@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -e
 
 pause() {
   read -p "$*"
@@ -509,7 +509,7 @@ install_svt_hevc(){
     pushd SVT-HEVC >/dev/null
     git checkout v1.3.0
 
-    mkdir build
+    mkdir -p build
     pushd build >/dev/null
     cmake -DCMAKE_C_FLAGS="-std=gnu99" -DCMAKE_INSTALL_PREFIX=${PREFIX_DIR} ..
     make && make install

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -e
 # get origin source code
 # wget -c https://raw.github.com/creationix/nvm/master/install.sh
 
