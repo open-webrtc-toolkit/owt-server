@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -e
 #
 # http://eh.meklu.org/script/meksysinfo
 

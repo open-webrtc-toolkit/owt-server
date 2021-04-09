@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -e
 
 install_apt_deps(){
   ${SUDO} apt-get update -y
