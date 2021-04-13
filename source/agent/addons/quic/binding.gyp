@@ -39,6 +39,7 @@
       '../../../core/common',
       '../../../core/owt_base',
       '../../../../build/libdeps/build/include',
+      '$(BUILD_PATH)',
       '<!@(pkg-config glib-2.0 --cflags-only-I | sed s/-I//g)',
     ],
     'ldflags': [

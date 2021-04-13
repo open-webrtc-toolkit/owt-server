@@ -20,6 +20,7 @@ optParser.addOption('v', 'verbose', 'boolean', 'Whether use verbose level in bui
 optParser.addOption('r', 'rebuild', 'boolean', 'Whether clean before build');
 optParser.addOption('c', 'check', 'boolean', 'Whether check after build');
 optParser.addOption('j', 'jobs', 'string', 'Number of concurrent build jobs');
+optParser.addOption('p', 'path', 'string', 'Specify path for header files');
 
 const options = optParser.parseArgs(process.argv);
 
@@ -78,6 +79,11 @@ function constructBuildEnv() {
       ':' + (env['PKG_CONFIG_PATH'] || '');
   usergcc = path.join(depsDir, 'bin/gcc');
   usergxx = path.join(depsDir, 'bin/g++');
+  if (options.path) {
+    env['BUILD_PATH'] = options.path;
+  } else {
+    env['BUILD_PATH'] = depsDir + '/include';
+  }
   // Use user compiler if exists
   if (fs.existsSync(usergcc) && fs.existsSync(usergxx)) {
     env['CC'] = usergcc;

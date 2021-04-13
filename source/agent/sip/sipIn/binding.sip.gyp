@@ -56,6 +56,7 @@
         '$(CORE_HOME)/common',
         '../../../../third_party/licode/erizo/src/erizo',
         '$(CORE_HOME)/../../build/libdeps/build/include',
+        '$(BUILD_PATH)'
     ],
     'libraries': [
         '-L<!(pwd)/sip_gateway/sipua', '-lsipua',

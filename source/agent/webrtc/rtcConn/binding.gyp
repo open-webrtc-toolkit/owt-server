@@ -50,6 +50,7 @@
       '<(source_rel_dir)/core/common',
       '<(source_rel_dir)/core/owt_base',
       '<(source_rel_dir)/../build/libdeps/build/include',
+      '$(BUILD_PATH)',
       '<!@(pkg-config glib-2.0 --cflags-only-I | sed s/-I//g)',
     ],
     'libraries': [

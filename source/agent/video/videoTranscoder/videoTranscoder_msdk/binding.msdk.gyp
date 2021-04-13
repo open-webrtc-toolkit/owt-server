@@ -42,6 +42,7 @@
                       '$(CORE_HOME)/../../third_party/webrtc/src/third_party/libyuv/include',
                       '$(CORE_HOME)/../../third_party/mediasdk/samples/sample_common/include',
                       '$(CORE_HOME)/../../build/libdeps/build/include',
+                      '$(BUILD_PATH)'
                       '/opt/intel/mediasdk/include',
     ],
     'libraries': [
