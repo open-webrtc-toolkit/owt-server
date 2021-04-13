@@ -35,7 +35,7 @@
                       '$(CORE_HOME)/owt_base',
                       '$(CORE_HOME)/../../third_party/webrtc/src',
                       '$(CORE_HOME)/../../build/libdeps/build/include',
-                      '$(BUILD_PATH)'
+                      '$(DEPENDENCY_PATH)'
     ],
     'libraries': [
       '-L$(CORE_HOME)/../../third_party/webrtc', '-lwebrtc',

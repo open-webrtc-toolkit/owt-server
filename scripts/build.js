@@ -79,11 +79,13 @@ function constructBuildEnv() {
       ':' + (env['PKG_CONFIG_PATH'] || '');
   usergcc = path.join(depsDir, 'bin/gcc');
   usergxx = path.join(depsDir, 'bin/g++');
+
   if (options.path) {
-    env['BUILD_PATH'] = options.path;
+    env['DEPENDENCY_PATH'] = options.path;
   } else {
-    env['BUILD_PATH'] = depsDir + '/include';
+    env['DEPENDENCY_PATH'] = './';
   }
+
   // Use user compiler if exists
   if (fs.existsSync(usergcc) && fs.existsSync(usergxx)) {
     env['CC'] = usergcc;
