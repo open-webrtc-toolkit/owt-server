@@ -22,6 +22,7 @@
       '-lboost_system',
       # Add following arguments to help ldd find libraries during packing
       '-L$(CORE_HOME)/../../build/libdeps/build/lib',
+      '-L$(DEFAULT_LIBRARY_PATH)',
       '-lre',
       '-Wl,-rpath,<!(pwd)/build/$(BUILDTYPE)',
     ],
@@ -56,10 +57,12 @@
         '$(CORE_HOME)/common',
         '../../../../third_party/licode/erizo/src/erizo',
         '$(CORE_HOME)/../../build/libdeps/build/include',
+        '$(CUSTOM_INCLUDE_PATH)'
     ],
     'libraries': [
         '-L<!(pwd)/sip_gateway/sipua', '-lsipua',
         '-L$(CORE_HOME)/../../build/libdeps/build/lib',
+        '-L$(DEFAULT_LIBRARY_PATH)',
         '-lre',
         '-llog4cxx',
         '-lboost_thread',

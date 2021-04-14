@@ -18,13 +18,15 @@
     'include_dirs': [
       '$(CORE_HOME)/common',
       '$(CORE_HOME)/owt_base',
-      '$(CORE_HOME)/../../build/libdeps/build/include'
+      '$(CORE_HOME)/../../build/libdeps/build/include',
+      '$(CUSTOM_INCLUDE_PATH)'
     ],
     'libraries': [
       '-lboost_system',
       '-lboost_thread',
       '-llog4cxx',
       '-L$(CORE_HOME)/../../build/libdeps/build/lib',
+      '-L$(DEFAULT_LIBRARY_PATH)',
       '-lusrsctp'
     ],
     # 'INET', 'INET6' flags must be added for usrsctp lib, otherwise the arguments of receive callback would shift
