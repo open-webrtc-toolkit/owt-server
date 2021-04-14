@@ -283,7 +283,7 @@ module.exports = function (spec, spawnOptions, onNodeAbnormallyQuit, onTaskAdded
       })
       .then((nodeId) => {
         log.debug('got nodeId:', nodeId);
-        return waitTillNodeReady(nodeId, 1500/*FIXME: Use a more reasonable timeout value instead of hard coding*/);
+        return waitTillNodeReady(nodeId, 3000/*FIXME: Use a more reasonable timeout value instead of hard coding*/);
       }).then((nodeId) => {
         addTask(nodeId, task);
         return nodeId;
