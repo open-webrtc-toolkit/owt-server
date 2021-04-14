@@ -24,20 +24,31 @@ class SdpInfo {
     this.obj = transform.parse(str);
     this.obj.media.forEach((media, i) => {
       if (media.mid === undefined) {
-        log.warn(`Media ${i} missing mid`);
-        media.mid = -1;
+        log.debug(`Bundle media ${i} missing mid`);
+        media.mid = -(i+1);
       }
     });
   }
 
   bundleMids() {
-    const bundles = this.obj.groups.find(g => g.type === 'BUNDLE');
-    return bundles.mids.split(' ');
+    const bundles = this.obj.groups ?
+        this.obj.groups.find(g => g.type === 'BUNDLE') : null;
+    return bundles ? bundles.mids.toString().split(' ') : null;
   }
 
   setBundleMids(mids) {
-    const bundles = this.obj.groups.find(g => g.type === 'BUNDLE');
-    bundles.mids = mids.join(' ');
+    if (!this.obj.groups) {
+      this.obj.groups = [];
+    }
+    if (!mids) {
+      this.obj.groups = this.obj.groups.filter(g => g.type !== 'BUNDLE');
+    } else {
+      const bundles = this.obj.groups.find(g => g.type === 'BUNDLE');
+      if (bundles) {
+        bundles.mids += '';
+        bundles.mids = mids.join(' ');
+      }
+    }
   }
 
   mids() {
@@ -325,11 +336,13 @@ class SdpInfo {
     }
   }
 
-  setCredentials({iceUfrag, icePwd, fingerprint}) {
+  setCredentials({iceUfrag, icePwd, fingerprint}, type) {
     this.obj.media.forEach(mediaInfo => {
-      mediaInfo.iceUfrag = iceUfrag;
-      mediaInfo.icePwd = icePwd;
-      mediaInfo.fingerprint = fingerprint;
+      if (!type || type === mediaInfo.type) {
+        mediaInfo.iceUfrag = iceUfrag;
+        mediaInfo.icePwd = icePwd;
+        mediaInfo.fingerprint = fingerprint;
+      }
     });
   }
 
@@ -350,9 +363,11 @@ class SdpInfo {
     }
   }
 
-  setCandidates(candidates) {
+  setCandidates(candidates, type) {
     this.obj.media.forEach(mediaInfo => {
-      mediaInfo.candidates = candidates;
+      if (!type || type === mediaInfo.type) {
+        mediaInfo.candidates = candidates;
+      }
     });
   }
 
@@ -577,7 +592,6 @@ class SdpInfo {
       if (mediaInfo.ext && Array.isArray(mediaInfo.ext)) {
         const extMappings = [
           'urn:ietf:params:rtp-hdrext:ssrc-audio-level',
-          'http://www.ietf.org/id/draft-holmer-rmcat-transport-wide-cc-extensions-01',
           'urn:ietf:params:rtp-hdrext:sdes:mid',
           'urn:ietf:params:rtp-hdrext:sdes:rtp-stream-id',
           'urn:ietf:params:rtp-hdrext:sdes:repaired-rtp-stream-id',
@@ -586,6 +600,11 @@ class SdpInfo {
           // 'urn:3gpp:video-orientation',
           // 'http://www.webrtc.org/experiments/rtp-hdrext/playout-delay',
         ];
+        if (mediaInfo.type === 'video') {
+          extMappings.push(
+            'http://www.ietf.org/id/draft-holmer-rmcat-transport-wide-cc-extensions-01'
+          );
+        }
         mediaInfo.ext = mediaInfo.ext.filter((e) => {
           return extMappings.includes(e.uri);
         });

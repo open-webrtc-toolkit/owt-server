@@ -88,6 +88,8 @@ NAN_MODULE_INIT(WebRtcConnection::Init) {
   Nan::SetPrototypeMethod(tpl, "setVideoSsrcList", setVideoSsrcList);
   Nan::SetPrototypeMethod(tpl, "getVideoSsrcMap", getVideoSsrcMap);
 
+  Nan::SetPrototypeMethod(tpl, "setUnbundleMediaPort", setUnbundleMediaPort);
+
   constructor.Reset(tpl->GetFunction());
   Nan::Set(target, Nan::New("WebRtcConnection").ToLocalChecked(), Nan::GetFunction(tpl).ToLocalChecked());
 }
@@ -455,6 +457,19 @@ NAN_METHOD(WebRtcConnection::getCurrentState) {
   int state = me->getCurrentState();
 
   info.GetReturnValue().Set(Nan::New(state));
+}
+
+NAN_METHOD(WebRtcConnection::setUnbundleMediaPort) {
+WebRtcConnection* obj = Nan::ObjectWrap::Unwrap<WebRtcConnection>(info.Holder());
+  std::shared_ptr<erizo::WebRtcConnection> me = obj->me;
+
+  int audioMinPort = Nan::To<int>(info[0]).FromJust();;
+  int audioMaxPort = Nan::To<int>(info[1]).FromJust();;
+  int videoMinPort = Nan::To<int>(info[2]).FromJust();;
+  int videoMaxPort = Nan::To<int>(info[3]).FromJust();;
+
+  me->setUnbundleAudioPort(audioMinPort, audioMaxPort);
+  me->setUnbundleVideoPort(videoMinPort, videoMaxPort);
 }
 
 // Async methods

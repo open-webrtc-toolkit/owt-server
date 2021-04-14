@@ -98,6 +98,18 @@ class Connection extends EventEmitter {
       this.ipAddresses
     );
 
+    if (global.config.webrtc.audio_minport ||
+        global.config.webrtc.audio_maxport ||
+        global.config.webrtc.video_minport ||
+        global.config.webrtc.video_maxport) {
+      wrtc.setUnbundleMediaPort(
+        global.config.webrtc.audio_minport,
+        global.config.webrtc.audio_maxport,
+        global.config.webrtc.video_minport,
+        global.config.webrtc.video_maxport
+      );
+    }
+
     return wrtc;
   }
 

@@ -484,6 +484,30 @@ module.exports = function (spec, on_status, on_track) {
       }
       localSdp = remoteSdp.answer();
 
+      const bundles = remoteSdp.bundleMids();
+      if (!bundles) {
+        // No bundle
+        wrtc.wrtc.setUnbundleMediaPort(config)
+        if (bundles) {
+          if (bundles.length > 2) {
+            log.warn('More than 2 media sections in no-bundle SDP');
+            for (const i = 2; i < bundles.length; i++) {
+              log.warn(`MID ${bundles[i]} disabled (no-bundle)`);
+              remoteSdp.closeMedia(bundles[i]);
+              localSdp.closeMedia(bundles[i]);
+            }
+          }
+        }
+        if (mids.length >= 2) {
+          // Initialize no-bundle transports in native
+          const tmpSdp = new SdpInfo(remoteSdp.toString());
+          tmpSdp.filterMedia([mids[0], mids[1]]);
+          tmpSdp.setBundleMids(null);
+          wrtc.setRemoteSdp(tmpSdp.toString(), '');
+        }
+        localSdp.setBundleMids(null);
+      }
+
       // Setup transport
       let opId = null;
       for (const mid of mids) {
@@ -563,14 +587,15 @@ module.exports = function (spec, on_status, on_track) {
 
       const tempSdp = new SdpInfo(sdpMsg);
       if (tempSdp.mids().length > 0) {
-        const tempMid = tempSdp.mids()[0];
         localSdp.setMsidSemantic(tempSdp.getMsidSemantic());
-        localSdp.setCredentials(tempSdp.getCredentials(tempMid));
-        localSdp.setCandidates(tempSdp.getCandidates(tempMid));
+        for (const tempMid of tempSdp.mids()) {
+          const mtype = tempSdp.mediaType(tempMid);
+          localSdp.setCredentials(tempSdp.getCredentials(tempMid), mtype);
+          localSdp.setCandidates(tempSdp.getCandidates(tempMid), mtype);
+        }
       } else {
         log.warn('No mid in answer', wrtcId);
       }
-
     }
   };
 
