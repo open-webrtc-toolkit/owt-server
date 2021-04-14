@@ -31,6 +31,7 @@
     ],
     'libraries': [
       '-L<(source_abs_dir)/../build/libdeps/build/lib',
+      '-L$(CUSTOM_LIBRARY_PATH)',
       '-lsrtp2',
       '-lssl',
       '-ldl',
@@ -86,6 +87,7 @@
     ],
     'libraries': [
       '-L<(source_abs_dir)/../build/libdeps/build/lib',
+      '-L$(CUSTOM_LIBRARY_PATH)',
       '-lsrtp2',
       '-lssl',
       '-ldl',
