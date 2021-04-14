@@ -26,12 +26,12 @@
       '<(source_rel_dir)/core/common',
       '<(source_rel_dir)/core/owt_base',
       '<(source_rel_dir)/core/rtc_adapter',
-      '<(source_rel_dir)/../build/libdeps/build/include',
+      '$(DEFAULT_DEPENDENCY_PATH)/include',
       '$(CUSTOM_INCLUDE_PATH)',
       '<!@(pkg-config glib-2.0 --cflags-only-I | sed s/-I//g)',
     ],
     'libraries': [
-      '-L$(DEFAULT_LIBRARY_PATH)',
+      '-L$(DEFAULT_DEPENDENCY_PATH)/lib',
       '-L$(CUSTOM_LIBRARY_PATH)',
       '-lsrtp2',
       '-lssl',
@@ -83,12 +83,12 @@
       '<(source_rel_dir)/core/rtc_adapter',
       '<(webrtc_abs_dir)/src', # webrtc include files
       '<(webrtc_abs_dir)/src/third_party/abseil-cpp', # abseil-cpp include files used by webrtc
-      '<(source_rel_dir)/../build/libdeps/build/include',
+      '$(DEFAULT_DEPENDENCY_PATH)/include',
       '$(CUSTOM_INCLUDE_PATH)',
       '<!@(pkg-config glib-2.0 --cflags-only-I | sed s/-I//g)',
     ],
     'libraries': [
-      '-L$(DEFAULT_LIBRARY_PATH)',
+      '-L$(DEFAULT_DEPENDENCY_PATH)/lib',
       '-L$(CUSTOM_LIBRARY_PATH)',
       '-lsrtp2',
       '-lssl',

@@ -86,7 +86,7 @@ function constructBuildEnv() {
     env['CXX'] = usergxx;
   }
 
-  env['DEFAULT_LIBRARY_PATH'] = depsDir + '/lib';
+  env['DEFAULT_DEPENDENCY_PATH'] = depsDir;
   if (options.incpath) {
     env['CUSTOM_INCLUDE_PATH'] = options.incpath;
   } else {

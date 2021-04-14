@@ -34,7 +34,7 @@
                       '$(CORE_HOME)/owt_base',
                       '$(CORE_HOME)/../../third_party/webrtc/src',
                       '$(CORE_HOME)/../../third_party/webrtc/src/third_party/libyuv/include',
-                      '$(CORE_HOME)/../../build/libdeps/build/include',
+                      '$(DEFAULT_DEPENDENCY_PATH)/include',
                       '$(CUSTOM_INCLUDE_PATH)'
     ],
     'libraries': [
@@ -46,8 +46,7 @@
       '<!@(pkg-config --libs libavcodec)',
       '<!@(pkg-config --libs libavformat)',
       '<!@(pkg-config --libs libavfilter)',
-      '-L$(CORE_HOME)/../../build/libdeps/build/lib',
-      '-L$(DEFAULT_LIBRARY_PATH)',
+      '-L$(DEFAULT_DEPENDENCY_PATH)/lib',
       '-lSvtHevcEnc',
     ],
   }]

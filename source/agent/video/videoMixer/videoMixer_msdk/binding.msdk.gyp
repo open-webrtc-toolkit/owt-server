@@ -41,7 +41,7 @@
                       '$(CORE_HOME)/../../third_party/webrtc/src',
                       '$(CORE_HOME)/../../third_party/webrtc/src/third_party/libyuv/include',
                       '$(CORE_HOME)/../../third_party/mediasdk/samples/sample_common/include',
-                      '$(CORE_HOME)/../../build/libdeps/build/include',
+                      '$(DEFAULT_DEPENDENCY_PATH)/include',
                       '$(CUSTOM_INCLUDE_PATH)'
     ],
     'libraries': [
