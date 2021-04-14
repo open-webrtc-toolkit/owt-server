@@ -317,8 +317,7 @@ install_quic(){
   fi
   mkdir ${QUIC_TRANSPORT_PATH}
   pushd ${QUIC_TRANSPORT_PATH}
-  wget ${QUIC_TRANSPORT_PACKAGE_URL_PREFIX}/linux/${QUIC_SDK_VERSION}.zip
-  if [ $? -eq 0 ]; then
+  if wget ${QUIC_TRANSPORT_PACKAGE_URL_PREFIX}/linux/${QUIC_SDK_VERSION}.zip; then
     unzip ${QUIC_SDK_VERSION}.zip
     rm ${QUIC_SDK_VERSION}.zip
     cp bin/release/libowt_quic_transport.so ${ROOT}/build/libdeps/build/lib
