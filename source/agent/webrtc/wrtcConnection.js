@@ -244,6 +244,7 @@ module.exports = function (spec, on_status, on_track) {
   var ioThreadPool = spec.ioThreadPool;
   var networkInterfaces = spec.network_interfaces;
   var owner = spec.owner;
+  var isScreen = spec.isScreen || false;
 
   var remoteSdp = null;
   var localSdp = null;
@@ -640,7 +641,7 @@ module.exports = function (spec, on_status, on_track) {
       ipAddresses.push(i.ip_address);
     }
   });
-  wrtc = new Connection(wrtcId, threadPool, ioThreadPool, { ipAddresses });
+  wrtc = new Connection(wrtcId, threadPool, ioThreadPool, { ipAddresses, isScreen });
   // wrtc.addMediaStream(wrtcId, {label: ''}, direction === 'in');
 
   initWebRtcConnection(wrtc);

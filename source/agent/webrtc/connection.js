@@ -66,6 +66,7 @@ class Connection extends EventEmitter {
     this.metadata = this.options.metadata || {};
     this.isProcessingRemoteSdp = false;
     this.ready = false;
+    this.isScreen = options.isScreen || false;
     this.wrtc = this._createWrtc();
   }
 
@@ -102,11 +103,17 @@ class Connection extends EventEmitter {
         global.config.webrtc.audio_maxport ||
         global.config.webrtc.video_minport ||
         global.config.webrtc.video_maxport) {
+      const videoMinPort = this.isScreen ?
+          global.config.webrtc.screen_minport :
+          global.config.webrtc.video_minport;
+      const videoMaxPort = this.isScreen ?
+          global.config.webrtc.screen_maxport :
+          global.config.webrtc.video_maxport;
       wrtc.setUnbundleMediaPort(
         global.config.webrtc.audio_minport,
         global.config.webrtc.audio_maxport,
-        global.config.webrtc.video_minport,
-        global.config.webrtc.video_maxport
+        videoMinPort,
+        videoMaxPort,
       );
     }
 
