@@ -15,7 +15,8 @@
     'include_dirs': [ "<!(node -e \"require('nan')\")",
                       '$(CORE_HOME)/common',
                       '$(CORE_HOME)/owt_base',
-                      '$(CORE_HOME)/../../build/libdeps/build/include' ],
+                      '$(DEFAULT_DEPENDENCY_PATH)/include',
+                      '$(CUSTOM_INCLUDE_PATH)'],
     'libraries': [
       '-lboost_thread',
       '-llog4cxx',
