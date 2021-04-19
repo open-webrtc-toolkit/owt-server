@@ -78,7 +78,7 @@ NAN_METHOD(AudioFrameConstructor::addDestination) {
   AudioFrameConstructor* obj = Nan::ObjectWrap::Unwrap<AudioFrameConstructor>(info.Holder());
   owt_base::AudioFrameConstructor* me = obj->me;
 
-  FrameDestination* param = node::ObjectWrap::Unwrap<FrameDestination>(info[0]->ToObject());
+  FrameDestination* param = node::ObjectWrap::Unwrap<FrameDestination>(info[0]->ToObject(Nan::GetCurrentContext()).ToLocalChecked());
   owt_base::FrameDestination* dest = param->dest;
 
   me->addAudioDestination(dest);
@@ -88,7 +88,7 @@ NAN_METHOD(AudioFrameConstructor::removeDestination) {
   AudioFrameConstructor* obj = Nan::ObjectWrap::Unwrap<AudioFrameConstructor>(info.Holder());
   owt_base::AudioFrameConstructor* me = obj->me;
 
-  FrameDestination* param = node::ObjectWrap::Unwrap<FrameDestination>(info[0]->ToObject());
+  FrameDestination* param = node::ObjectWrap::Unwrap<FrameDestination>(info[0]->ToObject(Nan::GetCurrentContext()).ToLocalChecked());
   owt_base::FrameDestination* dest = param->dest;
 
   me->removeAudioDestination(dest);
@@ -98,7 +98,7 @@ NAN_METHOD(AudioFrameConstructor::enable) {
   AudioFrameConstructor* obj = Nan::ObjectWrap::Unwrap<AudioFrameConstructor>(info.Holder());
   owt_base::AudioFrameConstructor* me = obj->me;
 
-  bool b = (info[0]->ToBoolean())->BooleanValue();
+  bool b = (info[0]->ToBoolean(Nan::GetCurrentContext()).ToLocalChecked())->BooleanValue();
   me->enable(b);
 }
 

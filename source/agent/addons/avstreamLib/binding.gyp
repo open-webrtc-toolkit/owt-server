@@ -12,7 +12,8 @@
       '../../../core/owt_base/LiveStreamOut.cpp',
       '../../../core/owt_base/LiveStreamIn.cpp',
     ],
-    'include_dirs': [ '$(CORE_HOME)/common',
+    'include_dirs': [ "<!(node -e \"require('nan')\")",
+                      '$(CORE_HOME)/common',
                       '$(CORE_HOME)/owt_base',
                       '$(CORE_HOME)/../../build/libdeps/build/include' ],
     'libraries': [

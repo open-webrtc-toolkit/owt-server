@@ -31,7 +31,7 @@ void MulticasterSource::New(const FunctionCallbackInfo<Value>& args) {
   HandleScope scope(isolate);
 
   if (args.Length() > 0) {
-    MediaFrameMulticaster* parent = ObjectWrap::Unwrap<MediaFrameMulticaster>(args[0]->ToObject());
+    MediaFrameMulticaster* parent = ObjectWrap::Unwrap<MediaFrameMulticaster>(args[0]->ToObject(Nan::GetCurrentContext()).ToLocalChecked());
     MulticasterSource* obj = new MulticasterSource();
     obj->me = parent->me;
     obj->src = obj->me;
@@ -91,10 +91,10 @@ void MediaFrameMulticaster::addDestination(const FunctionCallbackInfo<Value>& ar
   MediaFrameMulticaster* obj = ObjectWrap::Unwrap<MediaFrameMulticaster>(args.Holder());
   owt_base::MediaFrameMulticaster* me = obj->me;
 
-  String::Utf8Value param0(args[0]->ToString());
+  String::Utf8Value param0(isolate, args[0]->ToString());
   std::string track = std::string(*param0);
 
-  FrameDestination* param = ObjectWrap::Unwrap<FrameDestination>(args[1]->ToObject());
+  FrameDestination* param = ObjectWrap::Unwrap<FrameDestination>(args[1]->ToObject(Nan::GetCurrentContext()).ToLocalChecked());
   owt_base::FrameDestination* dest = param->dest;
 
   if (track == "audio") {
@@ -111,10 +111,10 @@ void MediaFrameMulticaster::removeDestination(const FunctionCallbackInfo<Value>&
   MediaFrameMulticaster* obj = ObjectWrap::Unwrap<MediaFrameMulticaster>(args.Holder());
   owt_base::MediaFrameMulticaster* me = obj->me;
 
-  String::Utf8Value param0(args[0]->ToString());
+  String::Utf8Value param0(isolate, args[0]->ToString());
   std::string track = std::string(*param0);
 
-  FrameDestination* param = ObjectWrap::Unwrap<FrameDestination>(args[1]->ToObject());
+  FrameDestination* param = ObjectWrap::Unwrap<FrameDestination>(args[1]->ToObject(Nan::GetCurrentContext()).ToLocalChecked());
   owt_base::FrameDestination* dest = param->dest;
 
   if (track == "audio") {

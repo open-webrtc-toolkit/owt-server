@@ -7,6 +7,7 @@
 
 #include "../../addons/common/NodeEventRegistry.h"
 #include <MediaFramePipeline.h>
+#include <nan.h>
 
 /*
  * Wrapper class of owt_base::FrameSource
