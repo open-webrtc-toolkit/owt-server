@@ -60,6 +60,14 @@ keystorePath = "./cert/certificate.pfx"
 maxport = 0 #default: 0
 minport = 0 #default: 0
 
+# The webrtc unbundle port range
+#audio_minport = 10000
+#audio_maxport = 11000
+#video_minport = 20000
+#video_maxport = 21000
+#screen_minport = 30000
+#screen_maxport = 31000
+
 #STUN server IP address and port to be used by the server.
 #if "" is used, the address is discovered locally
 stunport = 0 #default: 0
