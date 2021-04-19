@@ -34,7 +34,8 @@
     'include_dirs': [ '$(CORE_HOME)/common',
                       '$(CORE_HOME)/owt_base',
                       '$(CORE_HOME)/../../third_party/webrtc/src',
-                      '$(CORE_HOME)/../../build/libdeps/build/include',
+                      '$(DEFAULT_DEPENDENCY_PATH)/include',
+                      '$(CUSTOM_INCLUDE_PATH)'
     ],
     'libraries': [
       '-L$(CORE_HOME)/../../third_party/webrtc', '-lwebrtc',
