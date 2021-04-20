@@ -4,25 +4,25 @@
 
 'use strict';
 
-var log = require('./logger').logger.getLogger('Client');
-var ReqType = require('./versions/requestType');
-var dataAdapter = require('./versions/portalDataAdapter');
-const { v4: uuid } = require('uuid');
+const log = require('./logger').logger.getLogger('Client');
+const ReqType = require('./versions/requestType');
+const dataAdapter = require('./versions/portalDataAdapter');
+const {v4: uuid} = require('uuid');
 
-var idPattern = /^[0-9a-zA-Z\-]+$/;
-function isValidIdString(str) {
-  return (typeof str === 'string') && idPattern.test(str);
-}
+// var idPattern = /^[0-9a-zA-Z\-]+$/;
+// function isValidIdString(str) {
+//   return (typeof str === 'string') && idPattern.test(str);
+// }
 
-function safeCall () {
-  var callback = arguments[0];
+function safeCall(...args) {
+  const callback = args[0];
   if (typeof callback === 'function') {
-    var args = Array.prototype.slice.call(arguments, 1);
-    callback.apply(null, args);
+    const callbackArgs = Array.prototype.slice.call(args, 1);
+    callback(...callbackArgs);
   }
 }
 
-const getErrorMessage = function (err) {
+const getErrorMessage = function(err) {
   if (typeof err === 'string') {
     return err;
   } else if (err && err.message) {
@@ -33,13 +33,13 @@ const getErrorMessage = function (err) {
   }
 };
 
-var Client = function(clientId, sigConnection, portal, version) {
-  var that = {
+const Client = function(clientId, sigConnection, portal, version) {
+  const that = {
     id: clientId,
     connection: sigConnection,
-    version: version
+    version: version,
   };
-  var adapter = dataAdapter(version);
+  const adapter = dataAdapter(version);
 
   const sendMsg = (evt, data) => {
     that.connection.sendMessage(evt, data);
@@ -53,7 +53,7 @@ var Client = function(clientId, sigConnection, portal, version) {
     };
   };
 
-  const idPattern = /^[0-9a-zA-Z\-]+$/;
+  const idPattern = /^[0-9a-zA-Z-]+$/;
   const validateId = (type, id) => {
     if ((typeof id === 'string') && idPattern.test(id)) {
       return Promise.resolve(id);
@@ -68,139 +68,147 @@ var Client = function(clientId, sigConnection, portal, version) {
 
   const listenAt = (socket) => {
     socket.on('text', function(textReq, callback) {
-      if(!that.inRoom){
+      if (!that.inRoom) {
         return safeCall(callback, 'error', 'Illegal request');
       }
 
       return adapter.translateReq(ReqType.Text, textReq)
-        .then((req) => {
-          return portal.text(clientId, req.to, req.message);
-        }).then((result) => {
-          safeCall(callback, 'ok');
-        }).catch(onError('text', callback));
+          .then((req) => {
+            return portal.text(clientId, req.to, req.message);
+          }).then(() => {
+            safeCall(callback, 'ok');
+          }).catch(onError('text', callback));
     });
 
     socket.on('publish', function(pubReq, callback) {
-      if(!that.inRoom){
+      if (!that.inRoom) {
         return safeCall(callback, 'error', 'Illegal request');
       }
 
-      //FIXME: move the id assignment to conference
-      var stream_id = uuidWithoutDash();
-      var transportId;
+      // FIXME: move the id assignment to conference
+      const stream_id = uuidWithoutDash();
+      let transportId;
       return adapter.translateReq(ReqType.Pub, pubReq)
-        .then((req) => {
-          if (req.transport && req.transport.type == 'quic') {
-            req.type = 'quic';
-            if (!req.transport.id) {
+          .then((req) => {
+            if (req.transport && req.transport.type == 'quic') {
+              req.type = 'quic';
+              if (!req.transport.id) {
                 req.transport.id = uuidWithoutDash();
+              }
+              transportId = req.transport.id;
+            } else {
+              req.type = 'webrtc'; // FIXME: For backend compatibility with v3.4 clients.
+              if (!req.transport || !req.transport.id) {
+                req.transport = {type: 'webrtc', id: stream_id};
+              }
             }
             transportId = req.transport.id;
-          } else {
-            req.type = 'webrtc'; //FIXME: For backend compatibility with v3.4 clients.
-            if (!req.transport || !req.transport.id) {
-              req.transport = { type : 'webrtc', id : stream_id };
-            }
-          }
-          transportId = req.transport.id;
-          return portal.publish(clientId, stream_id, req);
-        }).then((result) => {
-          safeCall(callback, 'ok', {id: stream_id, transportId});
-        }).catch(onError('publish', callback));
+            return portal.publish(clientId, stream_id, req);
+          }).then(() => {
+            safeCall(callback, 'ok', {id: stream_id, transportId});
+          }).catch(onError('publish', callback));
     });
 
     socket.on('unpublish', function(unpubReq, callback) {
-      if(!that.inRoom){
+      if (!that.inRoom) {
         return safeCall(callback, 'error', 'Illegal request');
       }
 
       return validateId('stream id', unpubReq.id)
-        .then((streamId) => {
-          return portal.unpublish(clientId, streamId);
-        }).then((result) => {
-          safeCall(callback, 'ok');
-        }).catch(onError('unpublish', callback));
+          .then((streamId) => {
+            return portal.unpublish(clientId, streamId);
+          }).then(() => {
+            safeCall(callback, 'ok');
+          }).catch(onError('unpublish', callback));
     });
 
     socket.on('stream-control', function(streamCtrlReq, callback) {
-      if(!that.inRoom){
+      if (!that.inRoom) {
         return safeCall(callback, 'error', 'Illegal request');
       }
 
       return adapter.translateReq(ReqType.StreamCtrl, streamCtrlReq)
-        .then((req) => {
-          return portal.streamControl(clientId, req.id, {operation: req.operation, data: req.data});
-        }).then((result) => {
-          safeCall(callback, 'ok', result);
-        }).catch(onError('stream-control', callback));
+          .then((req) => {
+            return portal.streamControl(
+                clientId,
+                req.id,
+                {operation: req.operation, data: req.data},
+            );
+          }).then((result) => {
+            safeCall(callback, 'ok', result);
+          }).catch(onError('stream-control', callback));
     });
 
     socket.on('subscribe', function(subReq, callback) {
-      if(!that.inRoom){
+      if (!that.inRoom) {
         return safeCall(callback, 'error', 'Illegal request');
       }
 
-      //FIXME: move the id assignment to conference
-      var subscription_id = uuidWithoutDash();
-      var transportId;
+      // FIXME: move the id assignment to conference
+      const subscription_id = uuidWithoutDash();
+      let transportId;
       return adapter.translateReq(ReqType.Sub, subReq)
-        .then((req) => {
-          if (req.transport && req.transport.type == 'quic') {
-            req.type = 'quic';
-            if (!req.transport.id) {
+          .then((req) => {
+            if (req.transport && req.transport.type == 'quic') {
+              req.type = 'quic';
+              if (!req.transport.id) {
                 req.transport.id = uuidWithoutDash();
+              }
+              transportId = req.transport.id;
+            } else {
+              req.type = 'webrtc'; // FIXME: For backend compatibility with v3.4 clients.
+              if (!req.transport || !req.transport.id) {
+                req.transport = {type: 'webrtc', id: subscription_id};
+              }
             }
             transportId = req.transport.id;
-          } else {
-            req.type = 'webrtc'; //FIXME: For backend compatibility with v3.4 clients.
-            if (!req.transport || !req.transport.id) {
-              req.transport = { type : 'webrtc', id : subscription_id };
-            }
-          }
-          transportId = req.transport.id;
-          return portal.subscribe(clientId, subscription_id, req);
-        }).then((result) => {
-          safeCall(callback, 'ok', {id: subscription_id, transportId});
-        }).catch(onError('subscribe', callback));
+            return portal.subscribe(clientId, subscription_id, req);
+          }).then(() => {
+            safeCall(callback, 'ok', {id: subscription_id, transportId});
+          }).catch(onError('subscribe', callback));
     });
 
     socket.on('unsubscribe', function(unsubReq, callback) {
-      if(!that.inRoom){
+      if (!that.inRoom) {
         return safeCall(callback, 'error', 'Illegal request');
       }
 
       return validateId('subscription id', unsubReq.id)
-        .then((subscriptionId) => {
-          return portal.unsubscribe(clientId, subscriptionId);
-        }).then((result) => {
-          safeCall(callback, 'ok');
-        }).catch(onError('unsubscribe', callback));
+          .then((subscriptionId) => {
+            return portal.unsubscribe(clientId, subscriptionId);
+          }).then(() => {
+            safeCall(callback, 'ok');
+          }).catch(onError('unsubscribe', callback));
     });
 
     socket.on('subscription-control', function(subCtrlReq, callback) {
-      if(!that.inRoom){
+      if (!that.inRoom) {
         return safeCall(callback, 'error', 'Illegal request');
       }
 
       return adapter.translateReq(ReqType.SubscriptionCtrl, subCtrlReq)
-        .then((req) => {
-          return portal.subscriptionControl(clientId, req.id, {operation: req.operation, data: req.data});
-        }).then((result) => {
-          safeCall(callback, 'ok');
-        }).catch(onError('subscription-control', callback));
+          .then((req) => {
+            return portal.subscriptionControl(
+                clientId,
+                req.id,
+                {operation: req.operation, data: req.data},
+            );
+          }).then(() => {
+            safeCall(callback, 'ok');
+          }).catch(onError('subscription-control', callback));
     });
 
     socket.on('soac', function(SOAC, callback) {
-      if(!that.inRoom){
+      if (!that.inRoom) {
         return safeCall(callback, 'error', 'Illegal request');
       }
 
       return adapter.translateReq(ReqType.SOAC, SOAC)
-        .then((soac) => {
-          return portal.onSessionSignaling(clientId, soac.id, soac.signaling);
-        }).then((result) => {
-          safeCall(callback, 'ok');
-        }).catch(onError('soac', callback));
+          .then((soac) => {
+            return portal.onSessionSignaling(clientId, soac.id, soac.signaling);
+          }).then(() => {
+            safeCall(callback, 'ok');
+          }).catch(onError('soac', callback));
     });
   };
 
@@ -211,17 +219,17 @@ var Client = function(clientId, sigConnection, portal, version) {
 
   that.join = (token) => {
     return portal.join(clientId, token)
-      .then(function(result){
-        that.inRoom = result.data.room.id;
-        that.tokenCode = result.tokenCode;
-        result.data.id = that.id;
-        const data = adapter.translateResp(ReqType.Join, result.data);
-        return data;
-      })
+        .then(function(result) {
+          that.inRoom = result.data.room.id;
+          that.tokenCode = result.tokenCode;
+          result.data.id = that.id;
+          const data = adapter.translateResp(ReqType.Join, result.data);
+          return data;
+        });
   };
 
   that.leave = () => {
-    if(that.inRoom) {
+    if (that.inRoom) {
       return portal.leave(that.id).catch(() => {
         that.inRoom = undefined;
         that.tokenCode = undefined;

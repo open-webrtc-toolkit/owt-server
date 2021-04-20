@@ -9,7 +9,7 @@ const fs = require('fs');
 const cipher = require('./cipher');
 const authStore = path.resolve(__dirname, cipher.astore);
 const authBase = path.basename(path.dirname(authStore));
-const { Writable } = require('stream');
+const {Writable} = require('stream');
 
 const mutableStdout = new Writable({
   write(chunk, encoding, callback) {
@@ -61,65 +61,65 @@ const saveAuth = (obj, filename) => new Promise((resolve, reject) => {
 
 const updateRabbit = () => new Promise((resolve, reject) => {
   question('Update RabbitMQ account?[yes/no]')
-    .then((answer) => {
-      answer = answer.toLowerCase();
-      if (answer !== 'y' && answer !== 'yes') {
-        resolve();
-        return;
-      }
-      question(`(${authBase}) Enter username of rabbitmq: `)
-        .then((username) => {
-          question(`(${authBase}) Enter password of rabbitmq: `)
-            .then((password) => {
-              mutableStdout.muted = false;
-              saveAuth({ rabbit: { username, password } }, authStore)
-                .then(resolve)
-                .catch(reject);
+      .then((answer) => {
+        answer = answer.toLowerCase();
+        if (answer !== 'y' && answer !== 'yes') {
+          resolve();
+          return;
+        }
+        question(`(${authBase}) Enter username of rabbitmq: `)
+            .then((username) => {
+              question(`(${authBase}) Enter password of rabbitmq: `)
+                  .then((password) => {
+                    mutableStdout.muted = false;
+                    saveAuth({rabbit: {username, password}}, authStore)
+                        .then(resolve)
+                        .catch(reject);
+                  });
+              mutableStdout.muted = true;
             });
-          mutableStdout.muted = true;
-        });
-    });
+      });
 });
 
 const updateMongo = () => new Promise((resolve, reject) => {
   question('Update MongoDB account?[yes/no]')
-    .then((answer) => {
-      answer = answer.toLowerCase();
-      if (answer !== 'y' && answer !== 'yes') {
-        resolve();
-        return;
-      }
-      question(`(${authBase}) Enter username of mongodb: `)
-        .then((username) => {
-          question(`(${authBase}) Enter password of mongodb: `)
-            .then((password) => {
-              mutableStdout.muted = false;
-              saveAuth({ mongo: { username, password } }, authStore)
-                .then(resolve)
-                .catch(reject);
+      .then((answer) => {
+        answer = answer.toLowerCase();
+        if (answer !== 'y' && answer !== 'yes') {
+          resolve();
+          return;
+        }
+        question(`(${authBase}) Enter username of mongodb: `)
+            .then((username) => {
+              question(`(${authBase}) Enter password of mongodb: `)
+                  .then((password) => {
+                    mutableStdout.muted = false;
+                    saveAuth({mongo: {username, password}}, authStore)
+                        .then(resolve)
+                        .catch(reject);
+                  });
+              mutableStdout.muted = true;
             });
-          mutableStdout.muted = true;
-        });
-    });
+      });
 });
 
 const updateInternal = () => new Promise((resolve, reject) => {
   question('Update internal passphrase?[yes/no]')
-    .then((answer) => {
-      answer = answer.toLowerCase();
-      if (answer !== 'y' && answer !== 'yes') {
-        resolve();
-        return;
-      }
-      question(`(${authBase}) Enter internal passphrase: `)
-        .then((passphrase) => {
-          mutableStdout.muted = false;
-          saveAuth({ internalPass: passphrase }, authStore)
-            .then(resolve)
-            .catch(reject);
-        });
-      mutableStdout.muted = true;
-    });
+      .then((answer) => {
+        answer = answer.toLowerCase();
+        if (answer !== 'y' && answer !== 'yes') {
+          resolve();
+          return;
+        }
+        question(`(${authBase}) Enter internal passphrase: `)
+            .then((passphrase) => {
+              mutableStdout.muted = false;
+              saveAuth({internalPass: passphrase}, authStore)
+                  .then(resolve)
+                  .catch(reject);
+            });
+        mutableStdout.muted = true;
+      });
 });
 
 const options = {};
@@ -138,22 +138,22 @@ const parseArgs = () => {
     options.mongo = true;
   }
   return Promise.resolve();
-}
+};
 
 parseArgs()
-  .then(() => {
-    if (options.rabbit) {
-      return updateRabbit();
-    }
-  })
-  .then(() => {
-    if (options.mongo) {
-      return updateMongo();
-    }
-  })
-  .then(() => {
-    if (options.internal) {
-      return updateInternal();
-    }
-  })
-  .finally(() => readline.close());
+    .then(() => {
+      if (options.rabbit) {
+        return updateRabbit();
+      }
+    })
+    .then(() => {
+      if (options.mongo) {
+        return updateMongo();
+      }
+    })
+    .then(() => {
+      if (options.internal) {
+        return updateInternal();
+      }
+    })
+    .finally(() => readline.close());

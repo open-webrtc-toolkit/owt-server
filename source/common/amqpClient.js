@@ -3,13 +3,12 @@
 // SPDX-License-Identifier: Apache-2.0
 
 'use strict';
-var fs = require('fs');
-var amqp = require('amqplib');
-var log = require('./logger')
-  .logger.getLogger('AmqpClient');
-var cipher = require('./cipher');
-var TIMEOUT = 2000;
-var REMOVAL_TIMEOUT = 7 * 24 * 3600 * 1000;
+const fs = require('fs');
+const amqp = require('amqplib');
+const log = require('./logger')
+    .logger.getLogger('AmqpClient');
+const cipher = require('./cipher');
+const TIMEOUT = 2000;
 
 const RPC_EXC = {
   name: 'owtRpc',
@@ -88,7 +87,7 @@ class RpcClient {
       const corrID = this.corrID++;
       this.callMap[corrID] = {};
       this.callMap[corrID].fn = callbacks || {
-        callback: function () {}
+        callback: function() {},
       };
       this.callMap[corrID].timer = setTimeout(() => {
         if (this.callMap[corrID]) {
@@ -194,7 +193,7 @@ class RpcServer {
             });
           }
           if (typeof this.methods[msg.method] === 'function') {
-            this.methods[msg.method].apply(this.methods, msg.args);
+            this.methods[msg.method](...msg.args);
           } else {
             log.warn('RPC server does not support this method:', msg.method);
             if (msg.replyTo && msg.corrID !== undefined) {
@@ -252,7 +251,7 @@ class TopicParticipant {
       this.queue = result.queue;
       this.ready = true;
       this.consumers.clear();
-      this.subscriptions.forEach((sub, tag) => {
+      this.subscriptions.forEach((sub) => {
         this.subscribe(sub.patterns, sub.cb, () => {});
       });
     });
@@ -264,8 +263,8 @@ class TopicParticipant {
     if (this.queue && channel) {
       patterns.map((pattern) => {
         channel.bindQueue(this.queue, this.name, pattern)
-          .then(() => log.debug('Follow topic [' + pattern + '] ok.'))
-          .catch((err) => log.error('Failed to bind queue on topic'));
+            .then(() => log.debug('Follow topic [' + pattern + '] ok.'))
+            .catch(() => log.error('Failed to bind queue on topic'));
       });
       channel.consume(this.queue, (rawMessage) => {
         try {
@@ -275,7 +274,8 @@ class TopicParticipant {
             onMessage(msg);
           }
         } catch (error) {
-          log.error('Error processing topic message:', rawMessage, 'and error:', error);
+          log.error('Error processing topic message:', rawMessage,
+              'and error:', error);
         }
       }, {noAck: true}).then((ok) => {
         this.consumers.set(patterns.toString(), ok.consumerTag);
@@ -293,7 +293,7 @@ class TopicParticipant {
     if (this.queue && channel) {
       patterns.map((pattern) => {
         channel.unbindQueue(this.queue, this.name, pattern)
-          .catch((err) => log.error('Failed to unbind queue on topic'));
+            .catch(() => log.error('Failed to unbind queue on topic'));
         log.debug('Ignore topic [' + pattern + ']');
       });
       const consumerTag = this.consumers.get(patterns.toString());
@@ -301,7 +301,7 @@ class TopicParticipant {
         this.consumers.delete(patterns.toString());
         this.subscriptions.delete(consumerTag);
         channel.cancel(consumerTag)
-          .catch((err) => log.error('Failed to cancel:', consumerTag));
+            .catch(() => log.error('Failed to cancel:', consumerTag));
       }
     } else {
       this.ready = false;
@@ -359,7 +359,8 @@ class Monitor {
           log.debug('Received monitoring message:', msg);
           this.onMessage && this.onMessage(msg);
         } catch (error) {
-          log.error('Error processing monitored message:', msg, 'and error:', error);
+          log.error('Error processing monitored message:', rawMessage,
+              'and error:', error);
         }
       }, {noAck: true});
     }).then((ok) => {
@@ -388,9 +389,9 @@ class MonitoringTarget {
   setup() {
     return this.bus.channel.assertExchange(
         MONITOR_EXC.name, MONITOR_EXC.type, MONITOR_EXC.options)
-      .then(() => {
-        this.ready = true;
-      });
+        .then(() => {
+          this.ready = true;
+        });
   }
 
   notify(reason, message) {
@@ -465,36 +466,36 @@ class AmqpCli {
       this.connection = conn;
       return conn.createChannel();
     })
-    .then((ch) => {
-      this.channel = ch;
-      this.channel.on('error', (e) => {
-        log.warn('Channel closed:', e);
-        this.channel = null;
-      });
-      if (!this.connected) {
-        this.connected = true;
-        this.successCb();
-      } else {
-        Promise.resolve().then(() => {
-          return (this.rpcServer && this.rpcServer.setup());
-        }).then(() => {
-          return (this.rpcClient && this.rpcClient.setup());
-        }).then(() => {
-          return (this.monitor && this.monitor.setup());
-        }).then(() => {
-          return (this.monitoringTarget && this.monitoringTarget.setup());
-        }).then(() => {
-          const setups = [];
-          this.topicParticipants.forEach((tp) => {
-            setups.push(tp.setup());
+        .then((ch) => {
+          this.channel = ch;
+          this.channel.on('error', (e) => {
+            log.warn('Channel closed:', e);
+            this.channel = null;
           });
-          return Promise.all(setups);
-        }).catch((e) => {
-          log.warn('Error after reconnect:', e);
+          if (!this.connected) {
+            this.connected = true;
+            this.successCb();
+          } else {
+            Promise.resolve().then(() => {
+              return (this.rpcServer && this.rpcServer.setup());
+            }).then(() => {
+              return (this.rpcClient && this.rpcClient.setup());
+            }).then(() => {
+              return (this.monitor && this.monitor.setup());
+            }).then(() => {
+              return (this.monitoringTarget && this.monitoringTarget.setup());
+            }).then(() => {
+              const setups = [];
+              this.topicParticipants.forEach((tp) => {
+                setups.push(tp.setup());
+              });
+              return Promise.all(setups);
+            }).catch((e) => {
+              log.warn('Error after reconnect:', e);
+            });
+          }
         })
-      }
-    })
-    .catch(this._errorHandler);
+        .catch(this._errorHandler);
   }
 
   _errorHandler(err) {
@@ -516,8 +517,8 @@ class AmqpCli {
     if (!this.rpcClient) {
       this.rpcClient = new RpcClient(this);
       this.rpcClient.setup()
-        .then(() => onOk(this.rpcClient))
-        .catch(onFailure);
+          .then(() => onOk(this.rpcClient))
+          .catch(onFailure);
     } else {
       log.warn('RpcClient already setup');
       onOk(this.rpcServer);
@@ -528,8 +529,8 @@ class AmqpCli {
     if (!this.rpcServer) {
       this.rpcServer = new RpcServer(this, id, methods);
       this.rpcServer.setup()
-        .then(() => onOk(this.rpcServer))
-        .catch(onFailure);
+          .then(() => onOk(this.rpcServer))
+          .catch(onFailure);
     } else {
       log.warn('RpcServer already setup');
       onOk(this.rpcServer);
@@ -540,8 +541,8 @@ class AmqpCli {
     if (!this.monitor) {
       this.monitor = new Monitor(this, messageReceiver);
       this.monitor.setup()
-        .then(() => onOk(this.monitor))
-        .catch(onFailure);
+          .then(() => onOk(this.monitor))
+          .catch(onFailure);
     } else {
       log.warn('Monitor already setup');
       onOk(this.rpcServer);
@@ -553,8 +554,8 @@ class AmqpCli {
       this.monitoringTarget =
         new MonitoringTarget(this);
       this.monitoringTarget.setup()
-        .then(() => onOk(this.monitoringTarget))
-        .catch(onFailure);
+          .then(() => onOk(this.monitoringTarget))
+          .catch(onFailure);
     } else {
       log.warn('MonitoringTarget already setup');
       onOk(this.rpcServer);
@@ -566,13 +567,12 @@ class AmqpCli {
       const topicParticipant =
         new TopicParticipant(this, group);
       topicParticipant.setup()
-        .then(() => {
-          this.topicParticipants.set(group, topicParticipant);
-          onOk(topicParticipant);
-        })
-        .catch(onFailure);
-    }
-     else {
+          .then(() => {
+            this.topicParticipants.set(group, topicParticipant);
+            onOk(topicParticipant);
+          })
+          .catch(onFailure);
+    } else {
       log.warn('TopicParticipant already setup for:', group);
       onOk(this.topicParticipants.get(group));
     }
@@ -613,7 +613,7 @@ class AmqpCli {
   }
 }
 
-module.exports = function () {
+module.exports = function() {
   const amqpCli = new AmqpCli();
   return amqpCli;
 };
