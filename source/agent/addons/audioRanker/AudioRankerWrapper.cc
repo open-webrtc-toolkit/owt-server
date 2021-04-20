@@ -72,7 +72,7 @@ NAN_METHOD(AudioRanker::addOutput) {
   AudioRanker* obj = Nan::ObjectWrap::Unwrap<AudioRanker>(info.Holder());
   owt_base::AudioRanker* me = obj->me;
 
-  FrameDestination* param = node::ObjectWrap::Unwrap<FrameDestination>(info[0]->ToObject());
+  FrameDestination* param = node::ObjectWrap::Unwrap<FrameDestination>(info[0]->ToObject(Nan::GetCurrentContext()).ToLocalChecked());
   owt_base::FrameDestination* dest = param->dest;
 
   me->addOutput(dest);
@@ -82,7 +82,7 @@ NAN_METHOD(AudioRanker::addInput) {
   AudioRanker* obj = Nan::ObjectWrap::Unwrap<AudioRanker>(info.Holder());
   owt_base::AudioRanker* me = obj->me;
 
-  FrameSource* param = node::ObjectWrap::Unwrap<FrameSource>(info[0]->ToObject());
+  FrameSource* param = node::ObjectWrap::Unwrap<FrameSource>(info[0]->ToObject(Nan::GetCurrentContext()).ToLocalChecked());
   owt_base::FrameSource* src = param->src;
 
   Nan::Utf8String streamIdPara(Nan::To<v8::String>(info[1]).ToLocalChecked());

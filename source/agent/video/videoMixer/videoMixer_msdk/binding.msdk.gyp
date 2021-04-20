@@ -34,7 +34,8 @@
     'cflags_cc!': [
         '-fno-exceptions',
     ],
-    'include_dirs': [ '../../src',
+    'include_dirs': [ "<!(node -e \"require('nan')\")",
+                      '../../src',
                       '$(CORE_HOME)/common',
                       '$(CORE_HOME)/owt_base',
                       '/opt/intel/mediasdk/include',

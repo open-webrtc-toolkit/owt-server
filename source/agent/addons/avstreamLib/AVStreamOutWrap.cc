@@ -63,17 +63,17 @@ void AVStreamOutWrap::New(const v8::FunctionCallbackInfo<v8::Value>& args)
     //     url: (required, string),
     //     interval: (required, only for 'file')
     // }
-    Local<Object> options = args[0]->ToObject();
-    bool requireAudio = (*options->Get(String::NewFromUtf8(isolate, "require_audio"))->ToBoolean())->BooleanValue();
-    bool requireVideo = (*options->Get(String::NewFromUtf8(isolate, "require_video"))->ToBoolean())->BooleanValue();
+    Local<Object> options = args[0]->ToObject(Nan::GetCurrentContext()).ToLocalChecked();
+    bool requireAudio = (*options->Get(String::NewFromUtf8(isolate, "require_audio"))->ToBoolean(Nan::GetCurrentContext()).ToLocalChecked())->BooleanValue();
+    bool requireVideo = (*options->Get(String::NewFromUtf8(isolate, "require_video"))->ToBoolean(Nan::GetCurrentContext()).ToLocalChecked())->BooleanValue();
     AVStreamOutWrap* obj = new AVStreamOutWrap();
-    std::string type = std::string(*String::Utf8Value(options->Get(String::NewFromUtf8(isolate, "type"))->ToString()));
-    std::string url = std::string(*String::Utf8Value(options->Get(String::NewFromUtf8(isolate, "url"))->ToString()));
-    int initializeTimeout = options->Get(String::NewFromUtf8(isolate, "initializeTimeout"))->Int32Value();
+    std::string type = std::string(*String::Utf8Value(isolate, options->Get(String::NewFromUtf8(isolate, "type"))->ToString()));
+    std::string url = std::string(*String::Utf8Value(isolate, options->Get(String::NewFromUtf8(isolate, "url"))->ToString()));
+    int initializeTimeout = options->Get(String::NewFromUtf8(isolate, "initializeTimeout"))->Int32Value(Nan::GetCurrentContext()).ToChecked();
     if (type.compare("streaming") == 0) {
-        Local<Object> connection = options->Get(String::NewFromUtf8(isolate, "connection"))->ToObject();
-        std::string protocol = std::string(*String::Utf8Value(connection->Get(String::NewFromUtf8(isolate, "protocol"))->ToString()));
-        std::string url = std::string(*String::Utf8Value(connection->Get(String::NewFromUtf8(isolate, "url"))->ToString()));
+        Local<Object> connection = options->Get(String::NewFromUtf8(isolate, "connection"))->ToObject(Nan::GetCurrentContext()).ToLocalChecked();
+        std::string protocol = std::string(*String::Utf8Value(isolate, connection->Get(String::NewFromUtf8(isolate, "protocol"))->ToString()));
+        std::string url = std::string(*String::Utf8Value(isolate, connection->Get(String::NewFromUtf8(isolate, "url"))->ToString()));
 
         owt_base::LiveStreamOut::StreamingFormat format;
         if (protocol.compare("rtsp") == 0) {
@@ -93,19 +93,19 @@ void AVStreamOutWrap::New(const v8::FunctionCallbackInfo<v8::Value>& args)
 
         opts.format = format;
         if (protocol.compare("hls") == 0) {
-            Local<Object> parameters = connection->Get(String::NewFromUtf8(isolate, "parameters"))->ToObject();
-            opts.hls_time = parameters->Get(String::NewFromUtf8(isolate, "hlsTime"))->Int32Value();
-            opts.hls_list_size = parameters->Get(String::NewFromUtf8(isolate, "hlsListSize"))->Int32Value();
+            Local<Object> parameters = connection->Get(String::NewFromUtf8(isolate, "parameters"))->ToObject(Nan::GetCurrentContext()).ToLocalChecked();
+            opts.hls_time = parameters->Get(String::NewFromUtf8(isolate, "hlsTime"))->Int32Value(Nan::GetCurrentContext()).ToChecked();
+            opts.hls_list_size = parameters->Get(String::NewFromUtf8(isolate, "hlsListSize"))->Int32Value(Nan::GetCurrentContext()).ToChecked();
 
-            strncpy(opts.hls_method, std::string(*String::Utf8Value(parameters->Get(String::NewFromUtf8(isolate, "method"))->ToString())).c_str(), sizeof(opts.hls_method) - 1);
+            strncpy(opts.hls_method, std::string(*String::Utf8Value(isolate, parameters->Get(String::NewFromUtf8(isolate, "method"))->ToString())).c_str(), sizeof(opts.hls_method) - 1);
             opts.hls_method[sizeof(opts.hls_method) - 1] = '\0';
 
         } else if (protocol.compare("dash") == 0) {
-            Local<Object> parameters = connection->Get(String::NewFromUtf8(isolate, "parameters"))->ToObject();
-            opts.dash_seg_duration = parameters->Get(String::NewFromUtf8(isolate, "dashSegDuration"))->Int32Value();
-            opts.dash_window_size = parameters->Get(String::NewFromUtf8(isolate, "dashWindowSize"))->Int32Value();
+            Local<Object> parameters = connection->Get(String::NewFromUtf8(isolate, "parameters"))->ToObject(Nan::GetCurrentContext()).ToLocalChecked();
+            opts.dash_seg_duration = parameters->Get(String::NewFromUtf8(isolate, "dashSegDuration"))->Int32Value(Nan::GetCurrentContext()).ToChecked();
+            opts.dash_window_size = parameters->Get(String::NewFromUtf8(isolate, "dashWindowSize"))->Int32Value(Nan::GetCurrentContext()).ToChecked();
 
-            strncpy(opts.dash_method, std::string(*String::Utf8Value(parameters->Get(String::NewFromUtf8(isolate, "method"))->ToString())).c_str(), sizeof(opts.dash_method) - 1);
+            strncpy(opts.dash_method, std::string(*String::Utf8Value(isolate, parameters->Get(String::NewFromUtf8(isolate, "method"))->ToString())).c_str(), sizeof(opts.dash_method) - 1);
             opts.dash_method[sizeof(opts.dash_method) - 1] = '\0';
         }
 

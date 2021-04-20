@@ -29,7 +29,8 @@
     'cflags_cc!': [
         '-fno-exceptions',
     ],
-    'include_dirs': [ '..',
+    'include_dirs': [ "<!(node -e \"require('nan')\")",
+                      '..',
                       '$(CORE_HOME)/common',
                       '$(CORE_HOME)/owt_base',
                       '$(CORE_HOME)/../../third_party/webrtc/src',
