@@ -38,17 +38,17 @@ void VideoFramePacketizer::New(const FunctionCallbackInfo<Value>& args) {
   Isolate* isolate = Isolate::GetCurrent();
   HandleScope scope(isolate);
 
-  bool supportRED = (args[0]->ToBoolean())->BooleanValue();
-  bool supportULPFEC = (args[1]->ToBoolean())->BooleanValue();
-  int transportccExt = (args.Length() == 3) ? args[2]->IntegerValue() : -1;
+  bool supportRED = (args[0]->ToBoolean(Nan::GetCurrentContext()).ToLocalChecked())->BooleanValue();
+  bool supportULPFEC = (args[1]->ToBoolean(Nan::GetCurrentContext()).ToLocalChecked())->BooleanValue();
+  int transportccExt = (args.Length() == 3) ? args[2]->IntegerValue(Nan::GetCurrentContext()).ToChecked() : -1;
   std::string mid;
   int midExtId = -1;
   if (args.Length() >= 5) {
-    v8::String::Utf8Value param4(Nan::To<v8::String>(args[3]).ToLocalChecked());
+    v8::String::Utf8Value param4(isolate, Nan::To<v8::String>(args[3]).ToLocalChecked());
     mid = std::string(*param4);
-    midExtId = args[4]->IntegerValue();
+    midExtId = args[4]->IntegerValue(Nan::GetCurrentContext()).ToChecked();
   }
-  bool selfRequestKeyframe = (args.Length() == 6) ? (args[5]->ToBoolean())->BooleanValue() : false;
+  bool selfRequestKeyframe = (args.Length() == 6) ? (args[5]->ToBoolean(Nan::GetCurrentContext()).ToLocalChecked())->BooleanValue() : false;
 
   VideoFramePacketizer* obj = new VideoFramePacketizer();
   owt_base::VideoFramePacketizer::Config config;
@@ -114,7 +114,7 @@ void VideoFramePacketizer::enable(const v8::FunctionCallbackInfo<v8::Value>& arg
   VideoFramePacketizer* obj = ObjectWrap::Unwrap<VideoFramePacketizer>(args.Holder());
   owt_base::VideoFramePacketizer* me = obj->me;
 
-  bool b = (args[0]->ToBoolean())->BooleanValue();
+  bool b = (args[0]->ToBoolean(Nan::GetCurrentContext()).ToLocalChecked())->BooleanValue();
   me->enable(b);
 }
 

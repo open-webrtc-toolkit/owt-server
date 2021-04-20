@@ -8,6 +8,7 @@
 #include "../../addons/common/MediaFramePipelineWrapper.h"
 #include "../../addons/common/NodeEventRegistry.h"
 #include <AVStreamOut.h>
+#include <nan.h>
 
 /*
  * Wrapper class of owt_base::AVStreamOut

@@ -26,6 +26,7 @@ class VideoFrameConstructor : public MediaSink, public owt_base::VideoInfoListen
  private:
   Nan::Callback *Callback_;
   uv_async_t async_;
+  Nan::AsyncResource *asyncResource_;
 
   VideoFrameConstructor();
   ~VideoFrameConstructor();
