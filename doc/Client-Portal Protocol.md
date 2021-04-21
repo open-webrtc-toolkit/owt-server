@@ -99,6 +99,7 @@ This a format for client reconnects.
 
 **RequestData**: The LoginInfo object with following definition:
 
+```
   object(LoginInfo)::
     {
      token: string(Base64EncodedToken),
@@ -115,14 +116,6 @@ This a format for client reconnects.
        sdk: {
          type: string(SDKName),
          version: string(SDKVersion)
-        },
-       runtime: {
-         name: string(RuntimeName),
-         version: string(RuntimeVersion)
-        },
-       os: {
-         name: string(OSName),
-         version: string(OSVersion)
         }
       }
 
@@ -130,8 +123,11 @@ This a format for client reconnects.
       {
        keepTime: number(Seconds)/*-1: Use server side configured 'reconnection_timeout' value; Others: specified keepTime in seconds*/
       }
+```
+
 **ResponseData**: The LoginResult object with following definition if **ResponseStatus** is "ok":
 
+```
     object(LoginResult)::
       {
        id: string(ParticipantId),
@@ -311,6 +307,8 @@ This a format for client reconnects.
          notAfter: number(ValidTimeEnd),
          signature: string(Signature)
         }
+```
+
 ### 3.3.2 Participant Leaves a Room
 **RequestName**: “logout”<br>
 
