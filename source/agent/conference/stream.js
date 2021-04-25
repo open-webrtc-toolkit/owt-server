@@ -84,6 +84,32 @@ class Stream {
     this.data = data;
   }
 
+  getStreamInfo() {
+    var stream = {
+      id: this.id,
+      type: this.type,
+      info: this.info,
+      media: this.media,
+      data: this.data
+    }
+
+    if (this.locality) {
+      stream.locality = this.locality;
+    }
+    return stream;
+  }
+
+  updateStream(streamInfo) {
+    this.id = streamInfo.id;
+    this.type = streamInfo.type;
+    this.info = streamInfo.info;
+    this.media = streamInfo.media;
+    this.data = streamInfo.data;
+    if (streamInfo.locality) {
+      this.locality = streamInfo.locality;
+    }
+  }
+
   _upgradeMediaIfNeeded(media) {
     if (!media.tracks) {
       /*

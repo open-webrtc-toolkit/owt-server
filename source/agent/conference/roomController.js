@@ -44,6 +44,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
         room_id = spec.room,
         origin = spec.origin,
         selfRpcId = spec.selfRpcId,
+        redisClient = spec.redisClient,
         enable_audio_transcoding = config.transcoding && !!config.transcoding.audio,
         enable_video_transcoding = config.transcoding && !!config.transcoding.video,
         internal_conn_protocol = config.internalConnProtocol;
@@ -122,6 +123,52 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
     };
 
     var mediaPreference = getMediaPreference();
+
+    var loadFromRedis = function(moduleName, id) {
+        if (moduleName === "all") {
+            var terminalKey = room_id + "terminals";
+            redisClient.subscribeChannel(terminalKey);
+             return redisClient.getItems(terminalKey)
+              .then(function(streamList){
+                if (Object.keys(streamList).length > 0) {
+                    terminals = streamList;
+                }
+                return Promise.resolve('ok');
+              })
+              .then(function() {
+                var roomstreamsKey = room_id + "roomstreams";
+                redisClient.subscribeChannel(roomstreamsKey);
+                return redisClient.getItems(roomstreamsKey)
+                  .then(function(streamList){
+                    if (Object.keys(streamList).length > 0) {
+                        streams = streamList;
+                    }
+                    return Promise.resolve('ok');
+                  });
+              })
+              .then(function() {
+                var mixviewsKey = room_id + "mixviews";
+                redisClient.subscribeChannel(mixviewsKey);
+                return redisClient.getItems(mixviewsKey)
+                  .then(function(streamList){
+                    if (Object.keys(streamList).length > 0) {
+                        mix_views = streamList;
+                    }
+                    return Promise.resolve('ok');
+                  });
+              }).catch(function(err) {
+                log.error('Load data from redis failed, reason:', err);
+                return Promise.resolve(err);
+            });          
+
+        } else if (id !== undefined) {
+          var key = room_id + moduleName;
+          return redisClient.getItem(key, id);
+        } else {
+          var key = room_id + moduleName;
+          return redisClient.getItems(key);
+        }
+    };
 
     // Length 20 number ID generator
     var randomId = function() {
@@ -246,6 +293,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                                 mixer: video_mixer,
                                 supported_formats: supportedVideo.codecs
                             };
+                            redisClient.updateToRedis("add", "roomcontroller", "mixviews", view, mix_views[view]);
 
                             // Enable AV coordination if specified
                             enableAVCoordination(view);
@@ -261,6 +309,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                     mix_views[view].video = { mixer: null, supported_formats: { encode: [], decode: [] } };
                     onInitOk();
                 }
+                redisClient.updateToRedis("add", "roomcontroller", "mixviews", view, mix_views[view]);
             },
             function onAudioFail(reason) {
                 onInitError(reason);
@@ -285,6 +334,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
             function onTerminalReady() {
                 log.debug('new terminal ok. terminal_id', selectorId);
                 terminals[selectorId].published = activeAudio.streams;
+                redisClient.updateToRedis("add", "roomcontroller", "terminals", selectorId, terminals[selectorId]);
                 initMediaProcessor(selectorId,
                     ['selecting', selectConfig, room_id, selfRpcId, 'placehodler'])
                 .then(function(initMediaResult) {
@@ -299,6 +349,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                             video: undefined,
                             spread: []
                         };
+                        redisClient.updateToRedis("add", "roomcontroller", "roomstreams", streamId, streams[streamId]);
                     });
                     onOk(initMediaResult);
                 }).catch(function(reason) {
@@ -316,55 +367,61 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
 
     var initialize = function (on_ok, on_error) {
         log.debug('initialize room', room_id);
+        return loadFromRedis("all")
+            .then(() => {
+                // Mix stream ID is room ID followed by view index
+                if (config.views.length > 0) {
+                        // Mutiple views configuration
+                    if (!Object.keys(mix_views).length > 0) {
+                        var viewProcessed = [];
+                        var errorReason;
 
-        // Mix stream ID is room ID followed by view index
-        if (config.views.length > 0) {
-                // Mutiple views configuration
-                var viewProcessed = [];
-                var errorReason;
+                        config.views.forEach(function(viewSettings) {
+                            var viewLabel = viewSettings.label;
+                            // Initialize mixer engine for each view
+                            mix_views[viewLabel] = {};
+                            // Save view init promises
+                            viewProcessed.push(new Promise(function(resolve, reject) {
+                                initView(viewLabel, viewSettings,
+                                    function onOk() {
+                                        log.debug('init ok for view:', viewLabel);
+                                        resolve(viewLabel);
+                                    },
+                                    function onError(reason) {
+                                        log.error('init fail. view:', viewLabel, 'reason:', reason);
+                                        errorReason = reason;
+                                        delete mix_views[viewLabel];
+                                        redisClient.updateToRedis("delete", "roomcontroller", "mixviews", viewLabel);
+                                        resolve(null);
+                                    });
+                            }));
+                        });
 
-                config.views.forEach(function(viewSettings) {
-                    var viewLabel = viewSettings.label;
-                    // Initialize mixer engine for each view
-                    mix_views[viewLabel] = {};
-
-                    // Save view init promises
-                    viewProcessed.push(new Promise(function(resolve, reject) {
-                        initView(viewLabel, viewSettings,
-                            function onOk() {
-                                log.debug('init ok for view:', viewLabel);
-                                resolve(viewLabel);
-                            },
-                            function onError(reason) {
-                                log.error('init fail. view:', viewLabel, 'reason:', reason);
-                                errorReason = reason;
-                                delete mix_views[viewLabel];
-                                resolve(null);
-                            });
-                    }));
-                });
-
-                Promise.all(viewProcessed).then(function(results) {
-                    // Result for callback
-                    var viewCount = results.filter(function(re) { return re !== null; }).length;
-                    if (viewCount < results.length) {
-                        log.debug("Views incomplete initialization", viewCount);
-                        on_error(errorReason);
-                    } else if (config.selectActiveAudio) {
-                        initSelector(function onOk() {
-                            on_ok(that);
-                        }, on_error);
+                        Promise.all(viewProcessed).then(function(results) {
+                            // Result for callback
+                            var viewCount = results.filter(function(re) { return re !== null; }).length;
+                            if (viewCount < results.length) {
+                                log.debug("Views incomplete initialization", viewCount);
+                                on_error(errorReason);
+                            } else if (config.selectActiveAudio) {
+                                initSelector(function onOk() {
+                                    on_ok(that);
+                                }, on_error);
+                            } else {
+                                on_ok(that);
+                            }
+                        }).catch(function(reason) {
+                            log.error("Error initialize views:", reason);
+                            on_error(reason);
+                        });
                     } else {
                         on_ok(that);
                     }
-                }).catch(function(reason) {
-                    log.error("Error initialize views:", reason);
-                    on_error(reason);
-                });
-        } else {
-            log.debug('Room disable mixing init ok');
-            on_ok(that);
-        }
+                } else {
+                    log.debug('Room disable mixing init ok');
+                    on_ok(that);
+                }
+            });
     };
 
     var deinitialize = function () {
@@ -411,13 +468,17 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
 
             return nodeLocality
                 .then(function(locality) {
-                    terminals[terminal_id] = {
+                    var terminalInfo = {
                         owner: owner,
                         origin: origin,
                         type: terminal_type,
                         locality: locality,
                         published: [],
-                        subscribed: {}};
+                        subscribed: {}
+                    };
+
+                    terminals[terminal_id] = terminalInfo;
+                    redisClient.updateToRedis("add", "roomcontroller", "terminals", terminal_id, terminalInfo);
                     on_ok();
                 }, function(err) {
                     on_error(err.message? err.message : err);
@@ -443,6 +504,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                 });
             }
             delete terminals[terminal_id];
+            redisClient.updateToRedis("delete", "roomcontroller", "terminals", terminal_id);
         }
     };
 
@@ -497,6 +559,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
             }
         }
         streams[stream_id].spread.push({target: target_node, status: 'connecting', waiting: []});
+        redisClient.updateToRedis("add", "roomcontroller", "roomstreams", stream_id, streams[stream_id]);
 
         var on_spread_failed = function(reason, cancel_sub, cancel_pub, cancel_out, cancel_in) {
             log.error('spreadStream failed, stream_id:', stream_id, 'reason:', reason);
@@ -506,6 +569,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                   e.onError(reason);
                 });
                 streams[stream_id].spread.splice(i, 1);
+                redisClient.updateToRedis("add", "roomcontroller", "roomstreams", stream_id, streams[stream_id]);
             }
             if (cancel_sub) {
                 makeRPC(rpcClient, original_node, 'unsubscribe', [spread_id]);
@@ -614,6 +678,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                     });
                     streams[stream_id].spread[i].waiting = [];
                   });
+                  redisClient.updateToRedis("add", "roomcontroller", "roomstreams", stream_id, streams[stream_id]);
                   on_ok();
                   return Promise.resolve('ok');
                 } else {
@@ -639,6 +704,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                 var i = streams[stream_id].spread.findIndex((s) => {return s.target === target_node;});
                 if (i !== -1) {
                     streams[stream_id].spread.splice(i, 1);
+                    redisClient.updateToRedis("add", "roomcontroller", "roomstreams", stream_id, streams[stream_id]);
                 }
 
                 makeRPC(
@@ -685,7 +751,11 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
             spreadStream(stream_id, target_node, 'amixer', function() {
                 if (terminals[audio_mixer] && streams[stream_id]) {
                     terminals[audio_mixer].subscribed[spread_id] = {audio: stream_id};
-                    (streams[stream_id].audio.subscribers.indexOf(audio_mixer) < 0) && streams[stream_id].audio.subscribers.push(audio_mixer);
+                    if (streams[stream_id].audio.subscribers.indexOf(audio_mixer) < 0) {
+                        streams[stream_id].audio.subscribers.push(audio_mixer);
+                        redisClient.updateToRedis("add", "roomcontroller", "roomstreams", stream_id, streams[stream_id]);
+                    }
+                    redisClient.updateToRedis("add", "roomcontroller", "terminals", audio_mixer, terminals[audio_mixer]);
                     on_ok();
                     if (streams[stream_id].audio.status === 'inactive') {
                         makeRPC(
@@ -713,8 +783,10 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                 spread_id = stream_id + '@' + target_node,
                 i = streams[stream_id].audio.subscribers.indexOf(audio_mixer);
             delete terminals[audio_mixer].subscribed[spread_id];
+            redisClient.updateToRedis("add", "roomcontroller", "terminals", audio_mixer, terminals[audio_mixer]);
             if (i > -1) {
                 streams[stream_id].audio.subscribers.splice(i, 1);
+                redisClient.updateToRedis("add", "roomcontroller", "roomstreams", stream_id, streams[stream_id]);
                 shrinkStream(stream_id, target_node);
             }
         }
@@ -729,7 +801,12 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
             spreadStream(stream_id, target_node, 'vmixer', function() {
                 if (terminals[video_mixer] && streams[stream_id]) {
                     terminals[video_mixer].subscribed[spread_id] = {video: stream_id};
-                    (streams[stream_id].video.subscribers.indexOf(video_mixer) < 0) && streams[stream_id].video.subscribers.push(video_mixer);
+                    redisClient.updateToRedis("add", "roomcontroller", "terminals", video_mixer, terminals[video_mixer]);
+                    if (streams[stream_id].video.subscribers.indexOf(video_mixer) < 0) {
+                        streams[stream_id].video.subscribers.push(video_mixer);
+                        redisClient.updateToRedis("add", "roomcontroller", "roomstreams", stream_id, streams[stream_id]);
+                    }
+
                     on_ok();
                     if (streams[stream_id].video.status === 'inactive') {
                         makeRPC(
@@ -757,8 +834,10 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                 spread_id = stream_id + '@' + target_node,
                 i = streams[stream_id].video.subscribers.indexOf(video_mixer);
             delete terminals[video_mixer].subscribed[spread_id];
+            redisClient.updateToRedis("add", "roomcontroller", "terminals", video_mixer, terminals[video_mixer]);
             if (i > -1) {
                 streams[stream_id].video.subscribers.splice(i, 1);
+                redisClient.updateToRedis("add", "roomcontroller", "roomstreams", stream_id, streams[stream_id]);
                 shrinkStream(stream_id, target_node);
             }
         }
@@ -818,6 +897,8 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                                 video: undefined,
                                 spread: []};
                             terminals[audio_mixer].published.push(stream_id);
+                            redisClient.updateToRedis("add", "roomcontroller", "roomstreams", stream_id, streams[stream_id]);
+                            redisClient.updateToRedis("add", "roomcontroller", "terminals", audio_mixer, terminals[audio_mixer]);
                         }
                         on_ok(stream_id);
                     } else {
@@ -855,6 +936,8 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                                     subscribers: []},
                                 spread: []};
                             terminals[video_mixer].published.push(stream.id);
+                            redisClient.updateToRedis("add", "roomcontroller", "roomstreams", stream.id, streams[stream.id]);
+                            redisClient.updateToRedis("add", "roomcontroller", "terminals", video_mixer, terminals[video_mixer]);
                         }
                         on_ok(stream.id);
                     } else {
@@ -924,6 +1007,8 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                             spread: []
                         };
                         terminals[axcoder].published.push(stream_id);
+                        redisClient.updateToRedis("add", "roomcontroller", "roomstreams", stream_id, streams[stream_id]);
+                        redisClient.updateToRedis("add", "roomcontroller", "terminals", axcoder, terminals[axcoder]);
                     }
                     on_ok(stream_id);
                 } else {
@@ -986,6 +1071,8 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                             if (terminals[axcoder]) {
                                 terminals[axcoder].subscribed[spread_id] = {audio: stream_id};
                                 streams[stream_id].audio.subscribers.push(axcoder);
+                                redisClient.updateToRedis("add", "roomcontroller", "roomstreams", stream_id, streams[stream_id]);
+                                redisClient.updateToRedis("add", "roomcontroller", "terminals", axcoder, terminals[axcoder]);
                                 on_ok(axcoder);
                             } else {
                                 shrinkStream(stream_id, target_node);
@@ -1032,6 +1119,8 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                             spread: []
                         };
                         terminals[vxcoder].published.push(stream.id);
+                        redisClient.updateToRedis("add", "roomcontroller", "roomstreams", stream.id, streams[stream.id]);
+                        redisClient.updateToRedis("add", "roomcontroller", "terminals", vxcoder, terminals[vxcoder]);
                     }
                     on_ok(stream.id);
                 } else {
@@ -1100,6 +1189,8 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                             if (terminals[vxcoder]) {
                                 terminals[vxcoder].subscribed[spread_id] = {video: stream_id};
                                 streams[stream_id].video.subscribers.push(vxcoder);
+                                redisClient.updateToRedis("add", "roomcontroller", "roomstreams", stream_id, streams[stream_id]);
+                                redisClient.updateToRedis("add", "roomcontroller", "terminals", vxcoder, terminals[vxcoder]);
                                 on_ok(vxcoder);
                             } else {
                                 shrinkStream(stream_id, target_node);
@@ -1129,9 +1220,13 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
             'degenerate',
             [stream_id]);
         delete streams[stream_id];
+        redisClient.updateToRedis("delete", "roomcontroller", "roomstreams", stream_id, streams[stream_id]);
 
-        var i = terminals[owner].published.indexOf(stream_id);
-        i > -1 && terminals[owner].published.splice(i ,1);
+	var i = terminals[owner].published.indexOf(stream_id);
+        if (i > -1) {
+            terminals[owner].published.splice(i ,1);
+            redisClient.updateToRedis("add", "roomcontroller", "terminals", owner, terminals[owner]);
+        }
 
         if (terminals[owner].published.length === 0 && (terminals[owner].type === 'axcoder' || terminals[owner].type === 'vxcoder')) {
             for (var subscription_id in terminals[owner].subscribed) {
@@ -1336,9 +1431,11 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                 }
                 removeSubscriptions(stream_id);
                 terminals[terminal_id] && terminals[terminal_id].published.splice(i, 1);
+                redisClient.updateToRedis("add", "roomcontroller", "terminals", terminal_id, terminals[terminal_id]);
             }
             stream.close && stream.close();
             delete streams[stream_id];
+            redisClient.updateToRedis("delete", "roomcontroller", "roomstreams", stream_id, streams[stream_id]);
         } else {
             log.info('try to unpublish an unexisting stream:', stream_id);
         }
@@ -1379,6 +1476,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
             }
 
             delete terminals[subscriber].subscribed[subscription_id];
+            redisClient.updateToRedis("add", "roomcontroller", "terminals", subscriber, terminals[subscriber]);
         } else {
             log.info('try to unsubscribe to an unexisting terminal:', subscriber);
         }
@@ -1429,6 +1527,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                 });
                 streams[stream_id] && (streams[stream_id].video.subscribers = []);
             }
+            redisClient.updateToRedis("add", "roomcontroller", "roomstreams", stream_id, streams[stream_id]);
         }
     };
 
@@ -1445,6 +1544,8 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
         terminals[old_st.owner].subscribers = {};
         streams[streamId].spread = [];
         streams[streamId].video.subscribers = [];
+        redisClient.updateToRedis("add", "roomcontroller", "roomstreams", streamId, streams[streamId]);
+        redisClient.updateToRedis("add", "roomcontroller", "terminals", old_st.owner, terminals[old_st.owner]);
 
         return Promise.all(old_st.spread.map(function(target_node) {
             return new Promise(function (res, rej) {
@@ -1479,6 +1580,9 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                                 });
                         }
                     }
+
+                    redisClient.updateToRedis("add", "roomcontroller", "roomstreams", streamId, streams[streamId]);
+                    redisClient.updateToRedis("add", "roomcontroller", "terminals", t_id, terminals[t_id]);
                 }
             });
         })
@@ -1490,6 +1594,42 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
             log.info('Rebuild stream and or its subscriptions failed. err:', err);
             on_error(err);
         });
+    };
+
+    that.updateFromRedis = function(channel, msg) {
+        var name = channel.substring(room_id.length);
+        switch (name) {
+          case 'terminals':
+            if (msg.type === 'add') {
+                terminals[msg.id] = msg.data;
+            } else {
+              if (terminals[msg.id]) {
+                delete terminals[msg.id];
+              }
+            }
+            break;
+          case 'roomstreams':
+            if (msg.type === 'add') {
+                streams[msg.id] = msg.data;
+            } else {
+              if (streams[msg.id]) {
+                delete streams[msg.id];
+              }
+            }
+            break;
+          case 'mixviews':
+            if (msg.type === 'add') {
+                mix_views[msg.id] = msg.data;
+            } else {
+              if (mix_views[msg.id]) {
+                delete mix_views[msg.id];
+              }
+            }
+            break;
+          default:
+            log.info('Invalid roomControl update items');
+        }
+
     };
 
     that.publish = function (participantId, streamId, accessNode, streamInfo, streamType, on_ok, on_error) {
@@ -1511,6 +1651,8 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                                      spread: []
                                      };
                 terminals[terminal_id].published.push(streamId);
+                redisClient.updateToRedis("add", "roomcontroller", "roomstreams", streamId, streams[streamId]);
+                redisClient.updateToRedis("add", "roomcontroller", "terminals", terminal_id, terminals[terminal_id]);
                 on_ok();
             }, function (error_reason) {
                 on_error(error_reason);
@@ -1626,8 +1768,10 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                                 streams[streamId][kind].subscriber = streams[streamId][kind].subscribers || [];
                                 streams[streamId][kind].subscribers.push(terminal_id);
                                 terminals[terminal_id].subscribed[subscriptionId][kind] = streamId;
+                                redisClient.updateToRedis("add", "roomcontroller", "roomstreams", streamId, streams[streamId]);
                             }
                         }
+                        redisClient.updateToRedis("add", "roomcontroller", "terminals", terminal_id, terminals[terminal_id]);
                         on_ok('ok');
 
                         //FIXME: It is better to notify subscription connection to request key-frame.
@@ -1799,6 +1943,8 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
         if ((config.views.length > 0) && (status === 'active' || status === 'inactive')) {
             if ((track === 'video' || track === 'av') && streams[stream_id] && streams[stream_id].video) {
                 streams[stream_id].video.status = status;
+                redisClient.updateToRedis("add", "roomcontroller", "roomstreams", stream_id, streams[stream_id]);
+
                 for (var view in mix_views) {
                     var video_mixer = mix_views[view].video.mixer;
                     if (video_mixer && terminals[video_mixer] && (streams[stream_id].video.subscribers.indexOf(video_mixer) >= 0)) {
@@ -1813,6 +1959,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                 }
             } else if ((track === 'audio' || track === 'av') && streams[stream_id] && streams[stream_id].audio) {
                 streams[stream_id].audio.status = status;
+                redisClient.updateToRedis("add", "roomcontroller", "roomstreams", stream_id, streams[stream_id]);
                 for (var view in mix_views) {
                     var audio_mixer = mix_views[view].audio.mixer;
                     if (audio_mixer && terminals[audio_mixer] && (streams[stream_id].audio.subscribers.indexOf(audio_mixer) >= 0)) {
@@ -1959,8 +2106,11 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
             spreadStream(stream_id, target_node, 'axcoder', function() {
                 if (terminals[audio_selector] && streams[stream_id]) {
                     terminals[audio_selector].subscribed[spread_id] = {audio: stream_id};
-                    (streams[stream_id].audio.subscribers.indexOf(audio_selector) < 0) &&
+                    redisClient.updateToRedis("add", "roomcontroller", "terminals", audio_selector, terminals[audio_selector]);
+                    if (streams[stream_id].audio.subscribers.indexOf(audio_selector) < 0) {
                         streams[stream_id].audio.subscribers.push(audio_selector);
+                        redisClient.updateToRedis("add", "roomcontroller", "roomstreams", stream_id, streams[stream_id]);
+                    }
                     on_ok();
                 } else {
                     shrinkStream(stream_id, target_node);
@@ -2007,6 +2157,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                         mixer: vmixerId,
                         supported_formats: supportedVideo.codecs
                     };
+                    redisClient.updateToRedis("add", "roomcontroller", "mixviews", view, mix_views[view]);
                 }
 
                 // Enable AV coordination if specified
@@ -2066,6 +2217,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                     terminals[t_id] && shrinkStream(st_id, terminals[t_id].locality.node);
                 });
                 delete streams[st_id];
+                redisClient.updateToRedis("delete", "roomcontroller", "roomstreams", st_id, streams[st_id]);
             }
         });
         terminals[vmixerId].published = [];
@@ -2114,6 +2266,8 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                                                         streams[stream_id].video.subscribers = streams[stream_id].video.subscribers || [];
                                                         streams[stream_id].video.subscribers.push(t_id);
                                                         terminals[t_id].subscribed[sub_id].video = stream_id;
+                                                        redisClient.updateToRedis("add", "roomcontroller", "roomstreams", stream_id, streams[stream_id]);
+                                                        redisClient.updateToRedis("add", "roomcontroller", "terminals", t_id, terminals[t_id]);
                                                     }, function (reason) {
                                                         log.warn('Failed in resuming video subscription. reason:', reason);
                                                     });
@@ -2168,6 +2322,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                     terminals[t_id] && shrinkStream(st_id, terminals[t_id].locality.node);
                 });
                 delete streams[st_id];
+                redisClient.updateToRedis("delete", "roomcontroller", "roomstreams", st_id, streams[st_id]);
             }
         });
         terminals[vxcoderId].published = [];
@@ -2203,6 +2358,8 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                                                         streams[stream_id].video.subscribers = streams[stream_id].video.subscribers || [];
                                                         streams[stream_id].video.subscribers.push(t_id);
                                                         terminals[t_id].subscribed[sub_id].video = stream_id;
+                                                        redisClient.updateToRedis("add", "roomcontroller", "roomstreams", stream_id, streams[stream_id]);
+                                                        redisClient.updateToRedis("add", "roomcontroller", "terminals", t_id, terminals[t_id]);
                                                     }, function (reason) {
                                                         log.warn('Failed in resuming video subscription. reason:', reason);
                                                     });
@@ -2241,6 +2398,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                         mixer: amixerId,
                         supported_formats: supportedAudio.codecs
                     };
+                    redisClient.updateToRedis("add", "roomcontroller", "mixviews", view, mix_views[view]);
                 }
 
                 // Enable AV coordination if specified
@@ -2285,6 +2443,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                 });
                 outputs.push(backup);
                 delete streams[st_id];
+                redisClient.updateToRedis("delete", "roomcontroller", "roomstreams", st_id, streams[st_id]);
             }
         });
         terminals[amixerId].published = [];
@@ -2334,6 +2493,8 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                                                             streams[stream_id].audio.subscribers = streams[stream_id].audio.subscribers || [];
                                                             streams[stream_id].audio.subscribers.push(t_id);
                                                             terminals[t_id].subscribed[sub_id].audio = stream_id;
+                                                            redisClient.updateToRedis("add", "roomcontroller", "roomstreams", stream_id, streams[stream_id]);
+                                                            redisClient.updateToRedis("add", "roomcontroller", "terminals", t_id, terminals[t_id]);
                                                         }, function (reason) {
                                                             log.warn('Failed in resuming video subscription. reason:', reason);
                                                         });
@@ -2386,6 +2547,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                     terminals[t_id] && shrinkStream(st_id, terminals[t_id].locality.node);
                 });
                 delete streams[st_id];
+                redisClient.updateToRedis("delete", "roomcontroller", "roomstreams", st_id, streams[st_id]);
             }
         });
         terminals[axcoderId].published = [];
@@ -2421,6 +2583,8 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                                                         streams[stream_id].audio.subscribers = streams[stream_id].audio.subscribers || [];
                                                         streams[stream_id].audio.subscribers.push(t_id);
                                                         terminals[t_id].subscribed[sub_id].audio = stream_id;
+                                                        redisClient.updateToRedis("add", "roomcontroller", "roomstreams", stream_id, streams[stream_id]);
+                                                        redisClient.updateToRedis("add", "roomcontroller", "terminals", t_id, terminals[t_id]);
                                                     }, function (reason) {
                                                         log.warn('Failed in resuming audio subscription. reason:', reason);
                                                     });
@@ -2529,12 +2693,14 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                         for (const rid in streams[streamId].video.simulcast) {
                             const simInfo = streams[streamId].video.simulcast[rid];
                             delete streams[simInfo.id];
+                            redisClient.updateToRedis("delete", "roomcontroller", "roomstreams", simInfo.id, streams[simInfo.id]);
                         }
                     };
                 }
             } else if (update.firstrid && streams[streamId].video) {
                 streams[streamId].video.rid = update.firstrid;
             }
+            redisClient.updateToRedis("add", "roomcontroller", "roomstreams", streamId, streams[streamId]);
             log.debug('updated stream info', JSON.stringify(streams[streamId]));
         }
     };

@@ -202,7 +202,7 @@ var Portal = function(spec, rpcReq) {
   };
 
   that.unsubscribe = function(participantId, subscriptionId) {
-    log.debug('unsubscribe, participantId:', participantId, 'subscriptionId:', subscriptionId);
+    log.debug('unsubscribe, participantId:', participantId, 'subscriptionId:', subscriptionId, " controller:", participants[participantId].controller);
     if (participants[participantId] === undefined) {
       return Promise.reject('Participant has NOT joined');
     }
@@ -252,6 +252,18 @@ var Portal = function(spec, rpcReq) {
     }
     return Promise.resolve(result);
   };
+
+  that.updateRoomcontroller = function (message) {
+    for (var participant_id in participants) {
+      log.info("participant:", participant_id, "message:", message);
+       if ((message.type === 'node' && message.id === participants[participant_id].controller) || (message.type === 'worker' && participants[participant_id].controller.startsWith(message.id))) {
+        var newcontroller = message.tasks[Math.floor(Math.random() * message.tasks.length)];
+        log.info("Replace with newcontroller:, ", newcontroller);
+        participants[participant_id].controller = newcontroller;
+      }
+    }
+    return Promise.resolve('ok');
+  }
 
   return that;
 };

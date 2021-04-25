@@ -440,9 +440,13 @@ function VMixer(rpcClient, clusterIP) {
         if (message.purpose === 'conference' && controller) {
             if ((message.type === 'node' && message.id === controller) ||
                 (message.type === 'worker' && controller.startsWith(message.id))) {
-                log.error('Conference controller (type:', message.type, 'id:', message.id, ') fault is detected, exit.');
-                that.deinit();
-                process.exit();
+                if (message.tasks && message.tasks.length > 0) {
+                    controller = message.tasks[Math.floor(Math.random() * message.tasks.length)];
+                } else {
+                    log.error('Conference controller (type:', message.type, 'id:', message.id, ') fault is detected, exit.');
+                    that.deinit();
+                    process.exit();
+                }
             }
         }
     };
@@ -909,9 +913,13 @@ function VTranscoder(rpcClient, clusterIP) {
         if (message.purpose === 'conference' && controller) {
             if ((message.type === 'node' && message.id === controller) ||
                 (message.type === 'worker' && controller.startsWith(message.id))) {
-                log.error('Conference controller (type:', message.type, 'id:', message.id, ') fault is detected, exit.');
-                that.deinit();
-                process.exit();
+                if (message.tasks && message.tasks.length > 0) {
+                    controller = message.tasks[Math.floor(Math.random() * message.tasks.length)];
+                } else {
+                    log.error('Conference controller (type:', message.type, 'id:', message.id, ') fault is detected, exit.');
+                    that.deinit();
+                    process.exit();
+                }
             }
         }
     };

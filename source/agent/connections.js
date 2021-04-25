@@ -158,8 +158,12 @@ module.exports = function Connections () {
         if (message.purpose === 'conference') {
             for (var conn_id in connections) {
                 if ((message.type === 'node' && message.id === connections[conn_id].controller) || (message.type === 'worker' && connections[conn_id].controller.startsWith(message.id))) {
-                    log.error('Fault detected on controller (type:', message.type, 'id:', message.id, ') of connection:', conn_id , 'and remove it');
-                    that.removeConnection(conn_id);
+                    if (message.tasks && message.tasks.length > 0) {
+                        connections[conn_id].controller = message.tasks[Math.floor(Math.random() * message.tasks.length)];
+                    } else {
+                        log.error('Fault detected on controller (type:', message.type, 'id:', message.id, ') of connection:', conn_id , 'and remove it');
+                        that.removeConnection(conn_id);
+                    }
                 }
             }
         }

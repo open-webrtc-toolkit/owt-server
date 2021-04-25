@@ -77,12 +77,23 @@ module.exports = function (spec, spawnOptions, onNodeAbnormallyQuit, onTaskAdded
       child.on('close', function (code, signal) {
           log.debug('Node', id, 'exited with code:', code, 'signal:', signal);
           if (code !== 0) {
-              log.info('Node', id, 'is closed on unexpected code:', code);
+              log.info('Node', id, 'is closed on unexpected code:', code, ", signal:", signal);
           }
   
           if (processes[id]) {
+            if (spec.redis) {
+              var roomid = Object.keys(tasks[id])[0];
+              spec.redis.deleteList(roomid, id);
+              spec.redis.getList(roomid)
+                .then(function(data) {
+                  log.info("Get room list", data);
+                  onNodeAbnormallyQuit && onNodeAbnormallyQuit(id, data);
+                  cleanupNode(id);
+                });
+            } else {
               onNodeAbnormallyQuit && onNodeAbnormallyQuit(id, tasksOnNode(id));
               cleanupNode(id);
+            }
           }
   
           try {
@@ -117,9 +128,19 @@ module.exports = function (spec, spawnOptions, onNodeAbnormallyQuit, onTaskAdded
               child.alive_count = 0;
               child.check_alive_interval = setInterval(function() {
                 if (child.READY && (child.alive_count === 0)) {
-                    log.info('Node(', id, ') is no longer responsive!');
+                  log.info('Node(', id, ') is no longer responsive!, report tasks keys:', tasks);
+                  if (spec.redis) {
+                    var roomid = Object.keys(tasks[id])[0];
+                    spec.redis.deleteList(roomid, id);
+                    spec.redis.getList(roomid)
+                      .then(function(data) {
+                        onNodeAbnormallyQuit && onNodeAbnormallyQuit(id, data);
+                        cleanupNode(id);
+                      });
+                  } else {
                     onNodeAbnormallyQuit && onNodeAbnormallyQuit(id, tasksOnNode(id));
-                    dropNode(id);
+                    cleanupNode(id);
+                  }
                 }
                 child.alive_count = 0;
               }, 3000);
@@ -314,10 +335,29 @@ module.exports = function (spec, spawnOptions, onNodeAbnormallyQuit, onTaskAdded
   
   that.dropAllNodes = function(quietly) {
       spawn_failed = true;
-      Object.keys(processes).map(function (k) {
-          !quietly && onNodeAbnormallyQuit && onNodeAbnormallyQuit(k, tasksOnNode(k));
+      var count = 0;
+      var length = Object.keys(processes).length;
+      return Promise.all(
+        Object.keys(processes).map(async (k) => {
+          if(Object.keys(tasks[k]).length > 0) {
+            if (spec.redis) {
+              var roomid = Object.keys(tasks[k])[0];
+              log.info("Get room id:", roomid);
+              spec.redis.deleteList(roomid, k);
+              const data = await spec.redis.getList(roomid);
+              log.info("Get room list", data);
+              onNodeAbnormallyQuit && onNodeAbnormallyQuit(k, data);
+              if (data.length == 0) {
+                //Clean redis data for room since there is no connected conference node
+                spec.redis.cleanRoomdata(roomid);
+              }
+            } else {
+              !quietly && onNodeAbnormallyQuit && onNodeAbnormallyQuit(k, tasksOnNode(k));
+            }
+          }
           dropNode(k);
-      });
+        })
+      )
   };
   
   fillNodes();

@@ -33,43 +33,58 @@ exports.Scheduler = function(spec) {
         schedule_reserve_time = spec.scheduleReserveTime;
 
     var reserveWorkerForTask = function (task, worker, time) {
+        log.info("reserveWorkerForTask task is:", task, " worker is:", worker);
         if (tasks[task]) {
-            tasks[task].reserve_timer && clearTimeout(tasks[task].reserve_timer);
+            if(tasks[task][worker]) {
+                tasks[task][worker].reserve_timer && clearTimeout(tasks[task][worker].reserve_timer);
+            }
+        } else {
+            tasks[task] = {};
         }
 
-        tasks[task] = {worker: worker,
-                       reserve_time: time,
-                       reserve_timer: setTimeout(function () {repealTask(task);}, time)};
+        tasks[task][worker] = {
+                        id: worker,
+                        reserve_time: time,
+                        reserve_timer: setTimeout(function () {repealTask(task, worker);}, time)};
+        log.info("reserveWorkerForTask tasks is:", tasks);
     };
 
-    var repealTask = function (task) {
-        if (tasks[task]) {
-            tasks[task].reserve_timer && clearTimeout(tasks[task].reserve_timer);
-            delete tasks[task];
+    var repealTask = function (task, worker) {
+        if (tasks[task] && tasks[task][worker]) {
+	    log.info("repeal task:", task, " worker:", worker, " tasks:", tasks, " tasks[task][worker]:", tasks[task][worker]);
+            tasks[task][worker].reserve_timer && clearTimeout(tasks[task][worker].reserve_timer);
+	    delete tasks[task][worker];
         }
     };
 
     var executeTask = function (worker, task) {
+        log.info("executeTask task is:", task, " worker is:", worker);
+        log.info("executeTask before tasks is:", tasks);
         if (workers[worker]) {
             if (workers[worker].tasks.indexOf(task) === -1) {
                 workers[worker].tasks.push(task);
             }
 
             if (tasks[task]) {
-                tasks[task].reserve_timer && clearTimeout(tasks[task].reserve_timer);
-
-                if (tasks[task].worker !== worker) {
-                    log.warn('Worker conflicts for task:', task, 'and update to worker:', worker);
-                    tasks[task].worker = worker;
+                if(tasks[task][worker]) {
+                    tasks[task][worker].reserve_timer && clearTimeout(tasks[task][worker].reserve_timer);
+                } else{
+                    tasks[task][worker] = {
+                        id: worker, 
+                        reserve_time: schedule_reserve_time};
                 }
             } else {
-               tasks[task] = {reserve_time: schedule_reserve_time,
-                              worker: worker};
+                tasks[task] = {};
+                tasks[task][worker] = {
+                    id: worker,
+                    reserve_time: schedule_reserve_time};
             }
+
+            log.info("executeTask after tasks is:", tasks);
         }
     };
 
-    var cancelExecution = function (worker, task) {
+    var cancelExecution = function (worker, task, time) {
         var needToReserve = false;
 
         if (workers[worker]) {
@@ -81,16 +96,21 @@ exports.Scheduler = function(spec) {
         }
 
         if (tasks[task]) {
+	    if (!time) {
+	       repealTask(task, worker);
+	    } else {
             if (needToReserve) {
+		log.info("cancel execution worker:", worker, " task:", task);
                 reserveWorkerForTask(task, worker, tasks[task].reserve_time);
             } else {
-                repealTask(task);
+                repealTask(task, worker);
             }
+	    }
         }
     };
 
     var isTaskInExecution = function (task, worker) {
-        return tasks[task] && workers[worker] && worker === tasks[task].worker && workers[worker].tasks.indexOf(task) !== -1;
+        return tasks[task] && workers[worker] && tasks[task][worker] && workers[worker].tasks.indexOf(task) !== -1;
     };
 
     that.add = function (worker, info) {
@@ -109,8 +129,8 @@ exports.Scheduler = function(spec) {
 
         if (workers[worker]) {
             workers[worker].tasks.map(function (task) {
-                if (tasks[task] && tasks[task].worker === worker) {
-                    repealTask(task);
+                if (tasks[task] && tasks[task][worker]) {
+                    delete tasks[task][worker];
                 }
             });
             delete workers[worker];
@@ -131,26 +151,30 @@ exports.Scheduler = function(spec) {
         }
     };
 
-    that.layDownTask = function (worker, task) {
+    that.layDownTask = function (worker, task, time) {
+	log.info("lay down task:", worker, " task:", task, " time:", time);
         if (workers[worker]) {
-            cancelExecution(worker, task);
+            cancelExecution(worker, task, time);
+
         }
     };
 
-    that.schedule = function (task, preference, reserveTime, on_ok, on_error) {
-        if (tasks[task]) {
-            var newReserveTime = reserveTime && tasks[task].reserve_time < reserveTime ? reserveTime : tasks[task].reserve_time,
-                worker = tasks[task].worker;
+    that.schedule = function (purpose, task, preference, reserveTime, on_ok, on_error) {
+        if(purpose !== 'conference') {
+            if (tasks[task]) {
+                var newReserveTime = reserveTime && tasks[task].reserve_time < reserveTime ? reserveTime : tasks[task].reserve_time,
+                    worker = Object.keys(tasks[task])[0];
 
-            if (workers[worker]) {
-                if (isTaskInExecution(task, worker)) {
-                    tasks[task].reserve_time = newReserveTime;
+                if (workers[worker]) {
+                    if (isTaskInExecution(task, worker)) {
+                        tasks[task][worker].reserve_time = newReserveTime;
+                    } else {
+                        reserveWorkerForTask(task, worker, newReserveTime);
+                    }
+                    return on_ok(worker, workers[worker].info);
                 } else {
-                    reserveWorkerForTask(task, worker, newReserveTime);
+                    repealTask(task, worker);
                 }
-                return on_ok(worker, workers[worker].info);
-            } else {
-                repealTask(task);
             }
         }
 
@@ -171,15 +195,17 @@ exports.Scheduler = function(spec) {
             return on_error('No worker matches the preference.');
         } else {
             strategy.allocate(workers, candidates, function (worker) {
-                reserveWorkerForTask(task, worker, (reserveTime && reserveTime > 0 ? reserveTime : schedule_reserve_time));
+                if (!isTaskInExecution(task, worker)) {
+                    reserveWorkerForTask(task, worker, (reserveTime && reserveTime > 0 ? reserveTime : schedule_reserve_time));
+                }
                 on_ok(worker, workers[worker].info);
             }, on_error);
         }
     };
 
     that.unschedule = function (worker, task) {
-        if (tasks[task] && tasks[task].worker === worker) {
-            repealTask(task);
+        if (tasks[task] && tasks[task][worker]) {
+            repealTask(task, worker);
         }
     };
 
@@ -187,20 +213,40 @@ exports.Scheduler = function(spec) {
         return workers[worker];
     };
 
+    that.getScheduledWorkers = function (task, on_ok) {
+        var worker = [];
+        if(tasks[task]) {
+            worker = Object.keys(tasks[task]);
+        }
+        log.info("get scheduled workers:", worker, " for task:", task);
+        on_ok(worker);
+    };
+
     that.getScheduled = function (task, on_ok, on_error) {
-        tasks[task] ? on_ok(tasks[task].worker) : on_error('No such a task');
+        if(tasks[task]) {
+            var worker = Object.keys(tasks[task]);
+            if(worker.length >1) {
+                var index = Math.floor(Math.random() * worker.length);
+                on_ok(tasks[task][worker[index]].id);
+            } else {
+                var key = worker[0];
+		log.info("getScheduled tasks:", tasks, " key:", key);
+                key && on_ok(tasks[task][key].id);
+            }
+
+        } else {
+            on_error('No such a task');
+        }
     };
 
     that.setScheduled = function (task, worker, reserveTime) {
-        tasks[task] = {worker: worker,
-                       reserve_time: reserveTime};
+        tasks[task][worker] = {reserve_time: reserveTime};
     };
 
     that.getData = function () {
         var data = {workers: workers, tasks: {}};
         for (var task in tasks) {
-            data.tasks[task] = {reserve_time: tasks[task].reserve_time,
-                                worker: tasks[task].worker};
+            data.tasks[task] = tasks[task];
         }
         return data;
     };
@@ -216,7 +262,8 @@ exports.Scheduler = function(spec) {
         for (var task in tasks) {
             var worker = tasks[task].worker;
             if (workers[worker] && (workers[worker].tasks.indexOf(task) === -1)) {
-                reserveWorkerForTask(task, worker, tasks[task].reserve_time);
+		log.info("serve worker:", worker, " task:", task);
+                reserveWorkerForTask(task, worker, tasks[task][worker].reserve_time);
             }
         }
     };
