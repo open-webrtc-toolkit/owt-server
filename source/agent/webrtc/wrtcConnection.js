@@ -488,7 +488,6 @@ module.exports = function (spec, on_status, on_track) {
       const bundles = remoteSdp.bundleMids();
       if (!bundles) {
         // No bundle
-        wrtc.wrtc.setUnbundleMediaPort(config)
         if (bundles) {
           if (bundles.length > 2) {
             log.warn('More than 2 media sections in no-bundle SDP');
