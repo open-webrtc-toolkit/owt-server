@@ -61,9 +61,9 @@ if (options.help || Object.keys(options).length === 0) {
 
 if (options.lint) {
   // Check lint deps
-  const lintDeps = ['eslint'];
+  const lintDeps = ['eslint', 'eslint-config-google'];
   console.log('Checking lint dependencies...');
-  const npmRoot = execSync(`npm root -g`).toString().trim();
+  const npmRoot = execSync(`npm root`).toString().trim();
   const missingLintDeps = lintDeps.filter((dep) => {
     return !fs.existsSync(path.join(npmRoot, dep));
   });
@@ -72,8 +72,8 @@ if (options.lint) {
     console.log('Lint dependencies OK.');
   } else {
     for (const dep of missingLintDeps) {
-      console.log('Installing eslint');
-      execSync(`npm install eslint --global --save-dev`);
+      console.log('Installing missing eslint deps');
+      execSync(`npm install --save-dev ${dep}`);
     }
   }
 }
@@ -263,7 +263,7 @@ function packCommon(target) {
       const extname = path.extname(filePath);
       if (options.lint && extname === '.js') {
         try {
-          execSync(`eslint -c ${rootDir}/source/.eslintrc.json ${filePath}`);
+          execSync(`${rootDir}/node_modules/.bin/eslint -c ${rootDir}/source/.eslintrc.json ${filePath}`);
         } catch(error) {
           console.error(error.stdout.toString());
         }
