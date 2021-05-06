@@ -33,7 +33,8 @@
                 "profileFilter.js",
                 "sdpInfo.js",
                 "../connections.js",
-                "../InternalConnectionFactory.js"
+                "../InternalConnectionFactory.js",
+                "../internalConnectionRouter.js"
             ],
             "cert": [
                 "../../../cert/.owt.keystore"

@@ -9,6 +9,7 @@ var WrtcConnection = require('./wrtcConnection');
 var Connections = require('./connections');
 var InternalConnectionFactory = require('./InternalConnectionFactory');
 var logger = require('../logger').logger;
+var {InternalConnectionRouter} = require('./internalConnectionRouter');
 
 // Logger
 var log = logger.getLogger('WebrtcNode');
@@ -29,6 +30,8 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
     };
     var connections = new Connections;
     var internalConnFactory = new InternalConnectionFactory;
+
+    var router = new InternalConnectionRouter(global.config.internal);
 
     // Map { transportId => WrtcConnection }
     var peerConnections = new Map();
@@ -68,8 +71,14 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
             }
             mediaTracks.set(publicTrackId, track);
             mappingPublicId.get(transportId).set(track.id, publicTrackId);
-            connections.addConnection(publicTrackId, 'webrtc', controller, track, track.direction)
-            .catch(e => log.warn('Unexpected error during track add:', e));
+            if (track.direction === 'in') {
+                const trackSource = (track.sender('audio') || track.sender('video'));
+                router.addLocalSource(publicTrackId, 'webrtc', trackSource)
+                .catch(e => log.warn('Unexpected error during track add:', e));
+            } else {
+                router.addLocalDestination(publicTrackId, 'webrtc', track)
+                .catch(e => log.warn('Unexpected error during track add:', e));
+            }
 
             // Bind media-update handler
             track.on('media-update', (jsonUpdate) => {
@@ -97,7 +106,8 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
                 log.error('Non-exist public track id:', publicTrackId, transportId, trackInfo.trackId);
                 return;
             }
-            connections.removeConnection(publicTrackId)
+            log.debug('track removed:', publicTrackId);
+            router.removeConnection(publicTrackId)
             .then(ok => {
                 mediaTracks.get(publicTrackId).close();
                 mediaTracks.delete(publicTrackId);
@@ -180,7 +190,7 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
             return;
         }
         mappingPublicId.get(transportId).forEach((publicTrackId, trackId) => {
-            connections.removeConnection(publicTrackId)
+            router.removeConnection(publicTrackId)
             .catch(e => log.warn('Unexpected error during track destroy:', e));
             mediaTracks.get(publicTrackId).close();
             mediaTracks.delete(publicTrackId);
@@ -198,16 +208,11 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
         callback('callback', 'ok');
     };
 
-    that.createInternalConnection = function (connectionId, direction, internalOpt, callback) {
-        internalOpt.minport = global.config.internal.minport;
-        internalOpt.maxport = global.config.internal.maxport;
-        var portInfo = internalConnFactory.create(connectionId, direction, internalOpt);
-        callback('callback', {ip: global.config.internal.ip_address, port: portInfo});
-    };
-
-    that.destroyInternalConnection = function (connectionId, direction, callback) {
-        internalConnFactory.destroy(connectionId, direction);
-        callback('callback', 'ok');
+    that.getInternalAddress = function(callback) {
+        log.debug('Internal PORT for webrtc:', router.internalPort);
+        const ip = global.config.internal.ip_address;
+        const port = router.internalPort;
+        callback('callback', {ip, port});
     };
 
     /*
@@ -218,19 +223,12 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
     // options = { transportId, tracks = [{mid, type, formatPreference}], controller, owner}
     that.publish = function (operationId, connectionType, options, callback) {
         log.debug('publish, operationId:', operationId, 'connectionType:', connectionType, 'options:', options);
-        if (connections.getConnection(operationId)) {
+        if (mappingTransports.has(operationId)) {
             return callback('callback', {type: 'failed', reason: 'Connection already exists:'+operationId});
         }
 
         var conn = null;
-        if (connectionType === 'internal') {
-            conn = internalConnFactory.fetch(operationId, 'in');
-            if (conn) {
-                conn.connect(options);
-                connections.addConnection(operationId, connectionType, options.controller, conn, 'in')
-                .then(onSuccess(callback), onError(callback));
-            }
-        } else if (connectionType === 'webrtc') {
+        if (connectionType === 'webrtc') {
             if (!options.transportId) {
                 // Generate a transportId
 
@@ -258,32 +256,17 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
             // For 'webrtc'
             conn.removeTrackOperation(operationId);
             callback('callback', 'ok');
-        } else {
-            conn = connections.getConnection(operationId);
-            connections.removeConnection(operationId).then(function(ok) {
-                if (conn && conn.type === 'internal') {
-                    internalConnFactory.destroy(operationId, 'in');
-                }
-                callback('callback', 'ok');
-            }, onError(callback));
         }
     };
 
     that.subscribe = function (operationId, connectionType, options, callback) {
         log.debug('subscribe, operationId:', operationId, 'connectionType:', connectionType, 'options:', options);
-        if (connections.getConnection(operationId)) {
+        if (mappingTransports.has(operationId)) {
             return callback('callback', {type: 'failed', reason: 'Connection already exists:'+operationId});
         }
 
         var conn = null;
-        if (connectionType === 'internal') {
-            conn = internalConnFactory.fetch(operationId, 'out');
-            if (conn) {
-                conn.connect(options);
-                connections.addConnection(operationId, connectionType, options.controller, conn, 'out')
-                .then(onSuccess(callback), onError(callback));
-            }
-        } else if (connectionType === 'webrtc') {
+        if (connectionType === 'webrtc') {
             if (!options.transportId) {
                 // Generate a transportId
 
@@ -311,25 +294,19 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
             // For 'webrtc'
             conn.removeTrackOperation(operationId);
             callback('callback', 'ok');
-        } else {
-            conn = connections.getConnection(operationId);
-            connections.removeConnection(operationId).then(function(ok) {
-                if (conn && conn.type === 'internal') {
-                    internalConnFactory.destroy(operationId, 'out');
-                }
-                callback('callback', 'ok');
-            }, onError(callback));
         }
     };
 
-    that.linkup = function (connectionId, audioFrom, videoFrom, dataFrom, callback) {
-        log.debug('linkup, connectionId:', connectionId, 'audioFrom:', audioFrom, 'videoFrom:', videoFrom, 'dataFrom:', dataFrom);
-        connections.linkupConnection(connectionId, audioFrom, videoFrom).then(onSuccess(callback), onError(callback));
+    // streamInfo = {id: 'string', ip: 'string', port: 'number'}
+    // from = {audio: streamInfo, video: streamInfo, data: streamInfo}
+    that.linkup = function (connectionId, from, callback) {
+        log.debug('linkup, connectionId:', connectionId, 'from:', from);
+        router.linkup(connectionId, from).then(onSuccess(callback), onError(callback));
     };
 
     that.cutoff = function (connectionId, callback) {
         log.debug('cutoff, connectionId:', connectionId);
-        connections.cutoffConnection(connectionId).then(onSuccess(callback), onError(callback));
+        router.cutoff(connectionId).then(onSuccess(callback), onError(callback));
     };
 
     that.onTransportSignaling = function (connectionId, msg, callback) {
@@ -369,36 +346,12 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
     };
 
     that.setVideoBitrate = function (connectionId, bitrate, callback) {
-        log.debug('setVideoBitrate, connection id:', connectionId, 'bitrate:', bitrate);
-        var conn = connections.getConnection(connectionId);
-        if (conn && conn.direction === 'in') {
-            if (conn.type === 'webrtc') {//NOTE: Only webrtc connection supports setting video bitrate.
-                conn.connection.setVideoBitrate(bitrate, function () {
-                  callback('callback', 'ok');
-                }, function (err_reason) {
-                    log.info('set video bitrate failed:', err_reason);
-                    callback('callback', 'error', err_reason);
-                });
-            } else {
-                callback('callback', 'error', 'setVideoBitrate on non-webrtc connection');
-            }
-        } else {
-          callback('callback', 'error', 'Connection does NOT exist:' + connectionId);
-        }
+        log.debug('setVideoBitrate no longer supported');
     };
 
     that.close = function() {
         log.debug('close called');
-        var connIds = connections.getIds();
-        for (let connectionId of connIds) {
-            var conn = connections.getConnection(connectionId);
-            connections.removeConnection(connectionId);
-            if (conn && conn.type === 'internal') {
-                internalConnFactory.destroy(connectionId, conn.direction);
-            } else if (conn) {
-                conn.connection.close();
-            }
-        }
+        router.clear();
         peerConnections.forEach(pc => {
             pc.close();
         });

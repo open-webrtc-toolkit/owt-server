@@ -30,9 +30,12 @@ NAN_MODULE_INIT(VideoFrameConstructor::Init) {
   Nan::SetPrototypeMethod(tpl, "removeDestination", removeDestination);
   Nan::SetPrototypeMethod(tpl, "setBitrate", setBitrate);
   Nan::SetPrototypeMethod(tpl, "requestKeyFrame", requestKeyFrame);
+  Nan::SetPrototypeMethod(tpl, "source", source);
 
   constructor.Reset(tpl->GetFunction());
   Nan::Set(target, Nan::New("VideoFrameConstructor").ToLocalChecked(), Nan::GetFunction(tpl).ToLocalChecked());
+
+  VideoFrameSource::Init(target);
 }
 
 NAN_METHOD(VideoFrameConstructor::New) {
@@ -157,3 +160,30 @@ NAUV_WORK_CB(VideoFrameConstructor::Callback) {
   }
 }
 
+NAN_METHOD(VideoFrameConstructor::source) {
+  const int argc = 1;
+  v8::Local<v8::Value> argv[argc] = {info.Holder()};
+  v8::Local<v8::Function> cons = Nan::New(VideoFrameSource::constructor);
+  info.GetReturnValue().Set(Nan::NewInstance(cons, 1, argv).ToLocalChecked());
+}
+
+// Source object for VideoFrameConstructor
+Nan::Persistent<Function> VideoFrameSource::constructor;
+
+NAN_MODULE_INIT(VideoFrameSource::Init) {
+  Local<FunctionTemplate> tpl = Nan::New<FunctionTemplate>(New);
+  tpl->SetClassName(Nan::New("VideoFrameSource").ToLocalChecked());
+  tpl->InstanceTemplate()->SetInternalFieldCount(1);
+  constructor.Reset(tpl->GetFunction());
+}
+
+NAN_METHOD(VideoFrameSource::New) {
+  if (info.Length() == 1) {
+    VideoFrameConstructor* parent = Nan::ObjectWrap::Unwrap<VideoFrameConstructor>(info[0]->ToObject());
+    VideoFrameSource* obj = new VideoFrameSource();
+    obj->me = parent->me;
+    obj->src = obj->me;
+    obj->Wrap(info.This());
+    info.GetReturnValue().Set(info.This());
+  }
+}

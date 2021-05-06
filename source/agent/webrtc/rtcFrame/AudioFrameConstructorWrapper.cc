@@ -29,9 +29,12 @@ NAN_MODULE_INIT(AudioFrameConstructor::Init) {
   Nan::SetPrototypeMethod(tpl, "enable", enable);
   Nan::SetPrototypeMethod(tpl, "addDestination", addDestination);
   Nan::SetPrototypeMethod(tpl, "removeDestination", removeDestination);
+  Nan::SetPrototypeMethod(tpl, "source", source);
 
   constructor.Reset(tpl->GetFunction());
   Nan::Set(target, Nan::New("AudioFrameConstructor").ToLocalChecked(), Nan::GetFunction(tpl).ToLocalChecked());
+
+  AudioFrameSource::Init(target);
 }
 
 NAN_METHOD(AudioFrameConstructor::New) {
@@ -102,3 +105,30 @@ NAN_METHOD(AudioFrameConstructor::enable) {
   me->enable(b);
 }
 
+NAN_METHOD(AudioFrameConstructor::source) {
+  const int argc = 1;
+  v8::Local<v8::Value> argv[argc] = {info.Holder()};
+  v8::Local<v8::Function> cons = Nan::New(AudioFrameSource::constructor);
+  info.GetReturnValue().Set(Nan::NewInstance(cons, 1, argv).ToLocalChecked());
+}
+
+// Source object for AudioFrameConstructor
+Nan::Persistent<Function> AudioFrameSource::constructor;
+
+NAN_MODULE_INIT(AudioFrameSource::Init) {
+  Local<FunctionTemplate> tpl = Nan::New<FunctionTemplate>(New);
+  tpl->SetClassName(Nan::New("AudioFrameSource").ToLocalChecked());
+  tpl->InstanceTemplate()->SetInternalFieldCount(1);
+  constructor.Reset(tpl->GetFunction());
+}
+
+NAN_METHOD(AudioFrameSource::New) {
+  if (info.Length() == 1) {
+    AudioFrameConstructor* parent = Nan::ObjectWrap::Unwrap<AudioFrameConstructor>(info[0]->ToObject());
+    AudioFrameSource* obj = new AudioFrameSource();
+    obj->me = parent->me;
+    obj->src = obj->me;
+    obj->Wrap(info.This());
+    info.GetReturnValue().Set(info.This());
+  }
+}

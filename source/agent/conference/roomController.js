@@ -73,7 +73,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
     Since there is no definition for `terminal`. (https://github.com/open-webrtc-toolkit/owt-server/issues/469) I guess a terminal is a node that connects an input with one or many outputs.
     terminals = {terminalID: {owner: ParticipantID | Room's mix stream Id(for amixer and vmixer),
                   type: 'webrtc' | 'streaming' | 'recording' | 'sip' | 'amixer' | 'axcoder' | 'vmixer' | 'vxcoder',
-                  locality: {agent: AgentRpcID, node: NodeRpcID},
+                  locality: {agent: AgentRpcID, node: NodeRpcID, ip: agentIP, port: internalPort},
                   published: [StreamID],
                   subscribed: {SubscriptionID: {audio: StreamID, video: StreamID}}
                  }
@@ -94,7 +94,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                         subscribers: [terminalID],
                         status: 'active' | 'inactive' | undefined} | undefined,
                         simulcast: [{id: simId, resolution: res, ...}],
-                spread: [NodeRpcID]
+                spread: [{target:NodeRpcID, status:'connecting|connected'}]
                }
      }
     */
@@ -418,7 +418,21 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                         locality: locality,
                         published: [],
                         subscribed: {}};
-                    on_ok();
+                    // Get internal address for new node
+                    if (!locality.ip || !locality.port) {
+                        makeRPC(rpcClient, locality.node, 'getInternalAddress', [],
+                            function okCb(addr) {
+                                log.warn('Get internal addr:', locality.node ,addr);
+                                terminals[terminal_id].locality.ip = addr.ip;
+                                terminals[terminal_id].locality.port = addr.port;
+                                on_ok();
+                            },
+                            function errCb(reason) {
+                                on_ok();
+                            });
+                    } else {
+                        on_ok();
+                    }
                 }, function(err) {
                     on_error(err.message? err.message : err);
                 });
@@ -460,17 +474,17 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
     };
 
     var spreadStream = function (stream_id, target_node, target_node_type, on_ok, on_error) {
-        log.debug('spreadStream, stream_id:', stream_id, 'target_node:', target_node, 'target_node_type:', target_node_type);
-
+        log.debug('spreadStream, stream_id:', stream_id,
+            'target_node:', target_node, 'target_node_type:', target_node_type);
         if (!streams[stream_id] || !terminals[streams[stream_id].owner]) {
             return on_error('Cannot spread a non-existing stream');
         }
 
-        var stream_owner = streams[stream_id].owner,
-            original_node = terminals[stream_owner].locality.node,
-            audio = ((streams[stream_id].audio && target_node_type !== 'vmixer' && target_node_type !== 'vxcoder') ? true : false),
-            video = ((streams[stream_id].video && target_node_type !== 'amixer' && target_node_type !== 'axcoder') ? true : false),
-            spread_id = stream_id + '@' + target_node;
+        const stream_owner = streams[stream_id].owner;
+        const original_node = terminals[stream_owner].locality.node;
+        const audio = ((streams[stream_id].audio && target_node_type !== 'vmixer' && target_node_type !== 'vxcoder') ? true : false);
+        const video = ((streams[stream_id].video && target_node_type !== 'amixer' && target_node_type !== 'axcoder') ? true : false);
+        const spread_id = stream_id + '@' + target_node;
         const data = !!streams[stream_id].data;
 
         if (!audio && !video && !data) {
@@ -480,77 +494,68 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
         if (original_node === target_node) {
             log.debug('no need to spread');
             return on_ok();
-        } else {
-            var i = streams[stream_id].spread.findIndex((s) => {return s.target === target_node;});
+        }
+
+        const on_spread_start = function () {
+            log.debug('spread start:', spread_id);
+            const i = streams[stream_id].spread.findIndex((s) => (s.target === target_node));
             if (i >= 0) {
               if (streams[stream_id].spread[i].status === 'connected') {
                 log.debug('spread already exists:', spread_id);
-                return on_ok();
+                on_ok();
               } else if (streams[stream_id].spread[i].status === 'connecting') {
                 log.debug('spread is connecting:', spread_id);
                 streams[stream_id].spread[i].waiting.push({onOK: on_ok, onError: on_error});
-                return;
+                return true;
               } else {
                 log.error('spread status is ambiguous:', spread_id);
                 on_error('spread status is ambiguous');
               }
+              return false;
             }
-        }
-        streams[stream_id].spread.push({target: target_node, status: 'connecting', waiting: []});
+            streams[stream_id].spread.push({target: target_node, status: 'connecting', waiting: []});
+            return true;
+        };
 
-        var on_spread_failed = function(reason, cancel_sub, cancel_pub, cancel_out, cancel_in) {
+        const on_spread_failed = function(reason) {
             log.error('spreadStream failed, stream_id:', stream_id, 'reason:', reason);
-            var i = (streams[stream_id] ? streams[stream_id].spread.findIndex((s) => {return s.target === target_node;}) : -1);
+            const i = (streams[stream_id] ? streams[stream_id].spread.findIndex((s) => {return s.target === target_node;}) : -1);
             if (i > -1) {
                 streams[stream_id].spread[i].waiting.forEach((e) => {
                   e.onError(reason);
                 });
                 streams[stream_id].spread.splice(i, 1);
             }
-            if (cancel_sub) {
-                makeRPC(rpcClient, original_node, 'unsubscribe', [spread_id]);
-            }
-
-            if (cancel_pub) {
-                makeRPC(rpcClient, target_node, 'unpublish', [stream_id]);
-            }
-
-            if (cancel_out) {
-                makeRPC(rpcClient, original_node, 'destroyInternalConnection', [spread_id, 'out']);
-            }
-
-            if (cancel_in) {
-                makeRPC(rpcClient, target_node, 'destroyInternalConnection', [stream_id, 'in']);
-            }
-
             on_error(reason);
         };
 
-        // Transport protocol for creating internal connection
-        var internalOpt = {
-            protocol: internal_conn_protocol,
-            ticket: internalTicket,
-        };
-        var from, to, has_published, has_subscribed;
+        const on_spread_ok = function () {
+            log.debug('spread ok:', spread_id);
+            const i = streams[stream_id].spread.findIndex((s) => {return s.target === target_node;});
+            if (i >= 0) {
+              streams[stream_id].spread[i].status = 'connected';
+              process.nextTick(() => {
+                streams[stream_id].spread[i].waiting.forEach((e) => {
+                  e.onOK();
+                });
+                streams[stream_id].spread[i].waiting = [];
+              });
+              on_ok();
+            } else {
+              on_error('spread record missing');
+            }
+        }
 
-        new Promise(function (resolve, reject) {
-            makeRPC(rpcClient, target_node, 'createInternalConnection', [stream_id, 'in', internalOpt], resolve, reject);
-        }).then(function(to_addr) {
-            to = to_addr;
-            return new Promise(function(resolve, reject) {
-                makeRPC(rpcClient, original_node, 'createInternalConnection', [spread_id, 'out', internalOpt], resolve, reject);
-            });
-        }).then(function(from_addr) {
-            from = from_addr;
-            log.debug('spreadStream:', stream_id, 'from:', from, 'to:', to);
+        if (!on_spread_start()) {
+            return;
+        }
 
-            // Publish/Subscribe internal connections
-            return new Promise(function(resolve, reject) {
-                if (!terminals[stream_owner]) {
-                    reject('Terminal:', stream_owner, 'not exist');
-                    return;
-                }
-                var publisher = (terminals[stream_owner] ? terminals[stream_owner].owner : 'common');
+        if (['vmixer', 'amixer', 'vxcoder', 'axcoder', 'aselect'].includes(target_node_type)) {
+            const locality = terminals[stream_owner].locality;
+            if (!locality.ip || !locality.port) {
+                log.error('No internal address for locality:', locality);
+                on_spread_failed('No internal address for locality');
+            } else {
                 makeRPC(
                     rpcClient,
                     target_node,
@@ -560,72 +565,21 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                         'internal',
                         {
                             controller: selfRpcId,
-                            publisher: publisher,
+                            publisher: (terminals[stream_owner].owner || 'common'),
                             audio: (audio ? {codec: streams[stream_id].audio.format} : false),
                             video: (video ? {codec: streams[stream_id].video.format} : false),
                             data: data,
-                            ip: from.ip,
-                            port: from.port,
+                            ip: locality.ip,
+                            port: locality.port,
                         }
                     ],
-                    resolve,
-                    reject
+                    function pubOk() { on_spread_ok(); },
+                    function pubError(e) { on_spread_failed(e); }
                 );
-            });
-        }).then(function () {
-            has_published = true;
-            return new Promise(function(resolve, reject) {
-                makeRPC(
-                    rpcClient,
-                    original_node,
-                    'subscribe',
-                    [
-                        spread_id,
-                        'internal',
-                        {controller: selfRpcId, ip: to.ip, port: to.port}
-                    ],
-                    resolve,
-                    reject
-                );
-            });
-        }).then(function () {
-            has_subscribed = true;
-            log.debug('internally publish/subscribe ok');
-
-            // Linkup after publish/subscribe ready
-            return new Promise(function(resolve, reject) {
-                makeRPC(
-                    rpcClient,
-                    original_node,
-                    'linkup',
-                    [ spread_id, audio ? stream_id : undefined, video ? stream_id : undefined, data ? stream_id : undefined ],
-                    resolve,
-                    reject);
-            });
-        }).then(function () {
-            if (streams[stream_id]) {
-                log.debug('internally linkup ok');
-                var i = streams[stream_id].spread.findIndex((s) => {return s.target === target_node;});
-                if (i >= 0) {
-                  streams[stream_id].spread[i].status = 'connected';
-                  process.nextTick(() => {
-                    streams[stream_id].spread[i].waiting.forEach((e) => {
-                      e.onOK();
-                    });
-                    streams[stream_id].spread[i].waiting = [];
-                  });
-                  on_ok();
-                  return Promise.resolve('ok');
-                } else {
-                  return Promise.reject('spread record missing');
-                }
-            } else {
-                log.error('Stream early released');
-                return Promise.reject('Stream early released');
             }
-        }).catch(function(err) {
-            on_spread_failed(err.message ? err.message : err, has_subscribed, has_published, !!from, !!to);
-        });
+        } else {
+            on_spread_ok();
+        }
     };
 
     var shrinkStream = function (stream_id, target_node) {
@@ -640,7 +594,6 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                 if (i !== -1) {
                     streams[stream_id].spread.splice(i, 1);
                 }
-
                 makeRPC(
                     rpcClient,
                     original_node,
@@ -1464,11 +1417,12 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                 if (terminals[t_id]) {
                     for (var sub_id in terminals[t_id].subscribed) {
                         if (terminals[t_id].subscribed[sub_id].video === streamId) {
+                            const fromInfo = {video: getStreamLinkInfo(stream_id)};
                             makeRPC(
                                 rpcClient,
                                 terminals[t_id].locality.node,
                                 'linkup',
-                                [sub_id, undefined, streamId, undefined],
+                                [sub_id, fromInfo],
                                 function () {
                                     log.debug('resumed sub_id:', sub_id, 'for streamId:', streamId);
                                     streams[streamId].video.subscribers = streams[streamId].video.subscribers || [];
@@ -1538,6 +1492,21 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
         }
 
         deleteTerminal(terminal_id);
+    };
+
+    // Get audio|video|data stream info for linkup call
+    const getStreamLinkInfo = function (streamId) {
+        if (streams[streamId]) {
+            const terminal = terminals[streams[streamId].owner];
+            if (terminal && terminal.locality) {
+                return {
+                    id: streamId,
+                    ip: terminals[streams[streamId].owner].locality.ip,
+                    port: terminals[streams[streamId].owner].locality.port,
+                };
+            }
+        }
+        return null;
     };
 
     that.subscribe = function(participantId, subscriptionId, accessNode, subInfo, subType, isAudioPubPermitted, on_ok, on_error) {
@@ -1644,12 +1613,29 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
 
             var linkup = function (audioStream, videoStream, dataStream) {
                 log.debug('linkup, subscriber:', terminal_id, 'audioStream:', audioStream, 'videoStream:', videoStream, ', dataStream: ', dataStream);
+                var fromInfo = {};
+                var createStreamInfo = function (streamId) {
+                    return {
+                        id: streamId,
+                        ip: terminals[streams[streamId].owner].locality.ip,
+                        port: terminals[streams[streamId].owner].locality.port,
+                    };
+                };
                 if (terminals[terminal_id] && (!audioStream || streams[audioStream]) && (!videoStream || streams[videoStream]) && (!dataStream||streams[dataStream])) {
+                    if (audioStream) {
+                        fromInfo.audio = getStreamLinkInfo(audioStream);
+                    }
+                    if (videoStream) {
+                        fromInfo.video = getStreamLinkInfo(videoStream);
+                    }
+                    if (dataStream) {
+                        fromInfo.data = getStreamLinkInfo(dataStream);
+                    }
                     makeRPC(
                         rpcClient,
                         terminals[terminal_id].locality.node,
                         'linkup',
-                        [subscriptionId, audioStream, videoStream, dataStream],
+                        [subscriptionId, fromInfo],
                         finally_ok(audioStream, videoStream, dataStream),
                         function (reason) {
                             audioStream && recycleTemporaryAudio(audioStream);
@@ -1660,59 +1646,6 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                     audioStream && recycleTemporaryAudio(audioStream);
                     videoStream && recycleTemporaryVideo(videoStream);
                     finaly_error('participant or streams early left');
-                }
-            };
-
-            var spread2LocalNode = function (audioStream, videoStream, dataStream, on_spread_ok, on_spread_error) {
-                log.debug('spread2LocalNode, subscriber:', terminal_id, 'audioStream:', audioStream, 'videoStream:', videoStream, ', dataStream: ', dataStream);
-                if (terminals[terminal_id] && dataStream) {
-                    const target_node = terminals[terminal_id].locality.node;
-                    const target_node_type = terminals[terminal_id].type;
-                    spreadStream(dataStream, target_node, target_node_type, () => {
-                        if (streams[dataStream] && terminals[terminal_id]) {
-                            on_spread_ok();
-                        } else {
-                            shrinkStream(dataStream, target_node);
-                            on_spread_error('Terminal or stream early left.');
-                        }
-                    }, on_error);
-                } else if (terminals[terminal_id] && (audioStream !== undefined || videoStream !== undefined)) {
-                    var target_node = terminals[terminal_id].locality.node,
-                        target_node_type = terminals[terminal_id].type;
-
-                    if (audioStream === videoStream || audioStream === undefined || videoStream === undefined) {
-                        var stream_id = (audioStream || videoStream);
-                        spreadStream(stream_id, target_node, target_node_type, function () {
-                            if (streams[stream_id] && terminals[terminal_id]) {
-                                on_spread_ok();
-                            } else {
-                                shrinkStream(stream_id, target_node);
-                                on_spread_error('terminal or stream early left.');
-                            }
-                        }, on_error);
-                    } else {
-                        log.debug('spread audio and video stream independently.');
-                        spreadStream(audioStream, target_node, target_node_type, function () {
-                            if (streams[audioStream] && streams[videoStream] && terminals[terminal_id]) {
-                                log.debug('spread audioStream:', audioStream, ' ok.');
-                                spreadStream(videoStream, target_node, target_node_type, function () {
-                                    if (streams[audioStream] && streams[videoStream] && terminals[terminal_id]) {
-                                        log.debug('spread videoStream:', videoStream, ' ok.');
-                                        on_spread_ok();
-                                    } else {
-                                        streams[videoStream] && shrinkStream(videoStream, target_node);
-                                        streams[audioStream] && shrinkStream(audioStream, target_node);
-                                        on_spread_error('Uncomplished subscription.');
-                                    }
-                                }, on_spread_error);
-                            } else {
-                                streams[audioStream] && shrinkStream(audioStream, target_node);
-                                on_spread_error('Uncomplished subscription.');
-                            }
-                        }, on_spread_error);
-                    }
-                } else {
-                    on_spread_error('terminal or stream does not exist.');
                 }
             };
 
@@ -1728,46 +1661,25 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                             getVideoStream(mediaInfo.video.from, video_format, resolution, framerate, bitrate, keyFrameInterval, mediaInfo.video.simulcastRid, function (streamID) {
                                 video_stream = streamID;
                                 log.debug('Got video stream:', video_stream);
-                                spread2LocalNode(audio_stream, video_stream, undefined, function () {
-                                    linkup(audio_stream, video_stream);
-                                }, function (error_reason) {
-                                    recycleTemporaryVideo(video_stream);
-                                    recycleTemporaryAudio(audio_stream);
-                                    finaly_error(error_reason);
-                                });
+                                linkup(audio_stream, video_stream);
                             }, function (error_reason) {
                                 recycleTemporaryAudio(audio_stream);
                                 finaly_error(error_reason);
                             });
                         } else {
-                            spread2LocalNode(audio_stream, undefined, undefined, function () {
-                                linkup(audio_stream, undefined);
-                            }, function (error_reason) {
-                                recycleTemporaryAudio(audio_stream);
-                                finaly_error(error_reason);
-                            });
+                            linkup(audio_stream, undefined);
                         }
                     }, finaly_error);
                 } else if (mediaInfo.video) {
                     log.debug('require video track of stream:', mediaInfo.video.from);
                     getVideoStream(mediaInfo.video.from, video_format, resolution, framerate, bitrate, keyFrameInterval, mediaInfo.video.simulcastRid, function (streamID) {
                         video_stream = streamID;
-                        spread2LocalNode(undefined, video_stream, undefined, function () {
-                            linkup(undefined, video_stream);
-                        }, function (error_reason) {
-                            recycleTemporaryVideo(video_stream);
-                            finaly_error(error_reason);
-                        });
+                        linkup(undefined, video_stream);
                     }, finaly_error);
                 } else if (subInfo.data) {
                     const dataStreamId=subInfo.data.from;
                     log.debug('Require data track of stream: ', dataStreamId);
-                    spread2LocalNode(undefined, undefined, dataStreamId, ()=>{
-                        linkup(undefined, undefined, dataStreamId)
-                    }, (error_reason)=>{
-                        log.error('Spread to local node for data failed: '+error_reason)
-                        finaly_error(error_reason);
-                    });
+                    linkup(undefined, undefined, dataStreamId)
                 } else {
                     log.debug('No audio or video is required.');
                     finaly_error('No audio or video is required.');
@@ -2105,11 +2017,12 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                                     if (terminals[t_id]) {
                                         for (var sub_id in terminals[t_id].subscribed) {
                                             if (terminals[t_id].subscribed[sub_id].video === old_st.old_stream_id) {
+                                                const fromInfo = {video: getStreamLinkInfo(stream_id)};
                                                 makeRPC(
                                                     rpcClient,
                                                     terminals[t_id].locality.node,
                                                     'linkup',
-                                                    [sub_id, undefined, stream_id, undefined],
+                                                    [sub_id, fromInfo],
                                                     function () {
                                                         streams[stream_id].video.subscribers = streams[stream_id].video.subscribers || [];
                                                         streams[stream_id].video.subscribers.push(t_id);
@@ -2194,11 +2107,12 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                                     if (terminals[t_id]) {
                                         for (var sub_id in terminals[t_id].subscribed) {
                                             if (terminals[t_id].subscribed[sub_id].video === old_st.old_stream_id) {
+                                                const fromInfo = {video: getStreamLinkInfo(stream_id)};
                                                 makeRPC(
                                                     rpcClient,
                                                     terminals[t_id].locality.node,
                                                     'linkup',
-                                                    [sub_id, undefined, stream_id, undefined],
+                                                    [sub_id, fromInfo],
                                                     function () {
                                                         streams[stream_id].video.subscribers = streams[stream_id].video.subscribers || [];
                                                         streams[stream_id].video.subscribers.push(t_id);
@@ -2325,11 +2239,12 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                                         if (terminals[t_id]) {
                                             for (var sub_id in terminals[t_id].subscribed) {
                                                 if (terminals[t_id].subscribed[sub_id].audio === old_st.old_stream_id) {
+                                                    const fromInfo = {audio: getStreamLinkInfo(stream_id)};
                                                     makeRPC(
                                                         rpcClient,
                                                         terminals[t_id].locality.node,
                                                         'linkup',
-                                                        [sub_id, stream_id, undefined, undefined],
+                                                        [sub_id, fromInfo],
                                                         function () {
                                                             streams[stream_id].audio.subscribers = streams[stream_id].audio.subscribers || [];
                                                             streams[stream_id].audio.subscribers.push(t_id);
@@ -2412,11 +2327,12 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                                     if (terminals[t_id]) {
                                         for (var sub_id in terminals[t_id].subscribed) {
                                             if (terminals[t_id].subscribed[sub_id].audio === old_st.old_stream_id) {
+                                                const fromInfo = {audio: getStreamLinkInfo(stream_id)};
                                                 makeRPC(
                                                     rpcClient,
                                                     terminals[t_id].locality.node,
                                                     'linkup',
-                                                    [sub_id, stream_id, undefined, undefined],
+                                                    [sub_id, fromInfo],
                                                     function () {
                                                         streams[stream_id].audio.subscribers = streams[stream_id].audio.subscribers || [];
                                                         streams[stream_id].audio.subscribers.push(t_id);
