@@ -38,12 +38,18 @@ installYumDeps(){
   ${SUDO} yum install glib2-devel boost-devel gstreamer1-plugins-base-devel -y
   ${SUDO} yum install centos-release-scl -y
   ${SUDO} yum install devtoolset-7-gcc* -y
+  ${SUDO} yum install docbook2X -y
 }
 
 installRepo(){
   wget -c http://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
   wget -c http://rpms.famillecollet.com/enterprise/remi-release-7.rpm
-  ${SUDO} rpm -Uvh remi-release-7*.rpm epel-release-latest-7*.rpm
+  if ${SUDO} rpm -Uvh remi-release-7*.rpm epel-release-latest-7*.rpm
+  then
+    echo "Successfully installed remi and epel"
+  else
+    echo "No need to upgrade or installation went wrong"
+  fi
   ${SUDO} sed -i 's/https/http/g' /etc/yum.repos.d/epel.repo
   rm *.rpm
 }
