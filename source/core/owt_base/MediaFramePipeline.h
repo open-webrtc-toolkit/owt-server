@@ -221,6 +221,7 @@ enum FeedbackCmd {
     REQUEST_KEY_FRAME,
     SET_BITRATE,
     REQUEST_OWNER_ID,
+    INIT_STREAM_ID,
     RTCP_PACKET  // FIXME: Temporarily use FeedbackMsg to carry audio rtcp-packets due to the premature AudioFrameConstructor implementation.
 };
 
@@ -234,6 +235,10 @@ struct FeedbackMsg {
             char     buf[128];
         } rtcp;
     } data;
+    struct MsgBuffer{
+        uint32_t len;
+        char     data[128];
+    } buffer;
     FeedbackMsg(FeedbackType t, FeedbackCmd c) : type{t}, cmd{c} {}
 };
 
