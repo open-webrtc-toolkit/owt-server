@@ -17,6 +17,8 @@ var logger = require('../logger').logger;
 // Logger
 var log = logger.getLogger('AudioNode');
 var InternalConnectionFactory = require('./InternalConnectionFactory');
+var {InternalConnectionRouter} = require('./internalConnectionRouter');
+
 
 module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
     var that = {
@@ -49,17 +51,18 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
          */
         connections = {},
 
+        router = new InternalConnectionRouter(global.config.internal),
+
         // For internal SCTP connection creation
         internalConnFactory = new InternalConnectionFactory;
 
     var addInput = function (stream_id, owner, codec, options, on_ok, on_error) {
         if (engine) {
-            var conn = internalConnFactory.fetch(stream_id, 'in');
-            if (!conn) {
-                on_error('Create internal connection failed.');
-                return;
-            }
-            conn.connect(options);
+            const conn = router.getOrCreateRemoteSource({
+                id: stream_id,
+                ip: options.ip,
+                port: options.port
+            });
 
             if (engine.addInput(owner, stream_id, codec, conn)) {
                 inputs[stream_id] = {owner: owner,
@@ -77,7 +80,7 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
     var removeInput = function (stream_id) {
         if (inputs[stream_id]) {
             engine.removeInput(inputs[stream_id].owner, stream_id);
-            internalConnFactory.destroy(stream_id, 'in');
+            router.destroyRemoteSource(stream_id);
             delete inputs[stream_id];
         }
     };
@@ -87,6 +90,7 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
         if (engine) {
             var dispatcher = new MediaFrameMulticaster();
             if (engine.addOutput(for_whom, stream_id, codec, dispatcher)) {
+                router.addLocalSource(stream_id, 'audio', dispatcher.source());
                 outputs[stream_id] = {for_whom: for_whom,
                                       codec: codec,
                                       dispatcher: dispatcher,
@@ -109,6 +113,7 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
                  delete output.connections[connectionId];
             }
             engine.removeOutput(output.for_whom, stream_id);
+            router.removeLocalSource(stream_id);
             output.dispatcher.close();
             delete outputs[stream_id];
         }
@@ -147,10 +152,14 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
         });
         engine = selector;
         for (let i = 0; i < activeStreamIds.length; i++) {
-            outputs[activeStreamIds[i]] = {
+            const streamId = activeStreamIds[i];
+            outputs[streamId] = {
                 dispatcher: selector.getOutputs()[i],
                 connections: {}
             };
+            log.debug('Add select streamId:', streamId);
+            router.addLocalSource(
+                streamId, 'audio', selector.getOutputs()[i].source());
         }
         callback('callback', {selectingNum: selector.getOutputs().length});
     }
@@ -173,7 +182,7 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
     that.generate = function (for_whom, codec, callback) {
         codec = codec.toLowerCase();
         log.debug('generate, for_whom:', for_whom, 'codec:', codec);
-        for (var stream_id in outputs) {
+        for (const stream_id in outputs) {
             if (outputs[stream_id].for_whom === for_whom && outputs[stream_id].codec === codec) {
                 log.debug('generate, got stream:', stream_id);
                 callback('callback', stream_id);
@@ -192,6 +201,12 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
 
     that.degenerate = function (stream_id) {
         removeOutput(stream_id);
+    };
+
+    that.getInternalAddress = function(callback) {
+        const ip = global.config.internal.ip_address;
+        const port = router.internalPort;
+        callback('callback', {ip, port});
     };
 
     that.createInternalConnection = function (connectionId, direction, internalOpt, callback) {
@@ -245,51 +260,16 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
 
     that.subscribe = function (connectionId, connectionType, options, callback) {
         log.debug('subscribe, connectionId:', connectionId, 'connectionType:', connectionType, 'options:', options);
-        if (connectionType !== 'internal') {
-            return callback('callback', 'error', 'can not subscribe a stream from audio engine through a non-internal connection');
-        }
-
-        var conn = internalConnFactory.fetch(connectionId, 'out');
-        if (!conn) {
-            callback('callback', 'error', 'Create internal connection failed.');
-            return;
-        }
-        conn.connect(options);
-
-
-        if (connections[connectionId] === undefined) {
-            connections[connectionId] = {audioFrom: undefined,
-                                         connection: conn
-                                        };
-        }
         callback('callback', 'ok');
     };
 
     that.unsubscribe = function (connectionId) {
         log.debug('unsubscribe, connectionId:', connectionId);
-        if (connections[connectionId] && connections[connectionId].audioFrom) {
-            if (outputs[connections[connectionId].audioFrom]) {
-                outputs[connections[connectionId].audioFrom].dispatcher.removeDestination('audio', connections[connectionId].connection.receiver());
-            }
-            internalConnFactory.destroy(connectionId, 'out');
-            delete connections[connectionId];
-        }
     };
 
-    that.linkup = function (connectionId, audio_stream_id, video_stream_id, data_stream_id, callback) {
+    that.linkup = function (connectionId, audio_stream_id, callback) {
         log.debug('linkup, connectionId:', connectionId, 'audio_stream_id:', audio_stream_id);
-        if (connections[connectionId] === undefined) {
-            return callback('callback', 'error', 'connection does not exist');
-        }
-
-        if (outputs[audio_stream_id]) {
-            outputs[audio_stream_id].dispatcher.addDestination('audio', connections[connectionId].connection.receiver());
-            connections[connectionId].audioFrom = audio_stream_id;
-            callback('callback', 'ok');
-        } else {
-            log.error('Stream does not exist!', audio_stream_id);
-            callback('callback', 'error', 'Stream does not exist!');
-        }
+        callback('callback', 'ok');
     };
 
     that.cutoff = function (connectionId) {
