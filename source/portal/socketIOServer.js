@@ -48,7 +48,7 @@ var Connection = function(spec, socket, reconnectionKey, portal, dock) {
   };
 
   const validateUserAgent = function(ua){
-    if(!ua||!ua.sdk||!ua.sdk.version||!ua.sdk.type||!ua.runtime||!ua.runtime.version||!ua.runtime.name||!ua.os||!ua.os.version||!ua.os.name){
+    if(!ua||!ua.sdk||!ua.sdk.version||!ua.sdk.type) {
       return Promise.reject('User agent info is incorrect');
     }
     return Promise.resolve(ua.sdk.type === 'Objective-C' || ua.sdk.type === 'C++' || ua.sdk.type === 'Android' || ua.sdk.type == 'JavaScript')
