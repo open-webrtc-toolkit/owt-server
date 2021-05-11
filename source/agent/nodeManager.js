@@ -240,6 +240,7 @@ module.exports = function (spec, spawnOptions, onNodeAbnormallyQuit, onTaskAdded
       if (idle_nodes.length < 1) {
         log.error('getNode error:', 'No available node');
         reject('No available node');
+        return;
       }
   
       let node_id = idle_nodes.shift();
