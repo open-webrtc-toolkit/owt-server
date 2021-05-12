@@ -153,7 +153,11 @@ module.exports = function (spec, spawnOptions, onNodeAbnormallyQuit, onTaskAdded
   };
   
   var fillNodes = function() {
-      for (var i = idle_nodes.length; i < spec.prerunNodeNum; i++) {
+      var runningNodes = nodes.length + idle_nodes.length;
+      var spaceInIdle = spec.prerunNodeNum - idle_nodes.length;
+      var nodesToStart = spec.maxNodeNum < 0 ? spaceInIdle : Math.min(spaceInIdle, spec.maxNodeNum - runningNodes);
+
+      for (var i = 0; i < nodesToStart; i++) {
           launchNode();
       }
   };
@@ -240,6 +244,7 @@ module.exports = function (spec, spawnOptions, onNodeAbnormallyQuit, onTaskAdded
       if (idle_nodes.length < 1) {
         log.error('getNode error:', 'No available node');
         reject('No available node');
+        return;
       }
   
       let node_id = idle_nodes.shift();
