@@ -1,0 +1,25 @@
+
+# See https://help.github.com/articles/about-code-owners/ for CODEOWNERS syntax.
+
+* @starwarfan @daijh @jianjunz @taste1981 @qwu16
+scripts/ @starwarfan
+docker/ @qwu16
+source/agent/addons @starwarfan
+source/agent/analytics @qwu16
+source/agent/audio @daijh @starwarfan
+source/agent/conference @starwarfan @qwu16
+source/agent/plugins @qwu16
+source/agent/quic @jianjunz
+source/agent/recording @daijh
+source/agent/sip @starwarfan
+source/agent/streaming @daijh
+source/agent/video @daijh
+source/agent/webrtc @starwarfan
+source/cluster_manager @starwarfan @qwu16
+source/common @starwarfan
+source/core @starwarfan @taste1981
+source/data_access @starwarfan
+source/management_api @starwarfan
+source/management_console @starwarfan
+source/portal @starwarfan
+source/test @starwarfan @qwu16
