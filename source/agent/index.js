@@ -79,6 +79,7 @@ var joinCluster = function (on_ok) {
 
     var recovery = function () {
         log.info(myPurpose, 'agent recovered.');
+        manager && manager.recover();
     };
 
     var overload = function () {
