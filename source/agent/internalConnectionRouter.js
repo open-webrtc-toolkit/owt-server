@@ -244,7 +244,7 @@ class InternalConnectionRouter {
         });
         if (!this.remoteStreams.has(stream.id)) {
           log.warn('Remote stream never added:', stream.id);
-          return Promise.reject('No such from:' + type + ', ' + stream.id);
+          return Promise.reject('Invalid remote from:' + type + ', ' + stream.id);
         }
         // Save destination mapping for remote stream
         // TODO: destroy remote streams when needed

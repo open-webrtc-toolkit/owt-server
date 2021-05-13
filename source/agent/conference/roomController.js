@@ -418,20 +418,18 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                         locality: locality,
                         published: [],
                         subscribed: {}};
+                    on_ok();
                     // Get internal address for new node
                     if (!locality.ip || !locality.port) {
                         makeRPC(rpcClient, locality.node, 'getInternalAddress', [],
                             function okCb(addr) {
-                                log.warn('Get internal addr:', locality.node ,addr);
+                                log.debug('Get internal addr:', locality.node ,addr);
                                 terminals[terminal_id].locality.ip = addr.ip;
                                 terminals[terminal_id].locality.port = addr.port;
-                                on_ok();
                             },
                             function errCb(reason) {
-                                on_ok();
+                                log.warn('Failed to get internal addr:', locality.node);
                             });
-                    } else {
-                        on_ok();
                     }
                 }, function(err) {
                     on_error(err.message? err.message : err);
