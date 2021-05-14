@@ -27,6 +27,7 @@
                 "index.js",
                 "sipCallConnection.js",
                 "../connections.js",
+                "../internalConnectionRouter.js",
                 "../InternalConnectionFactory.js"
             ]
         }
@@ -49,6 +50,10 @@
             {
                 "folder": "../addons/logger",
                 "name": "logger"
+            },
+            {
+                "folder": "../addons/mediaFrameMulticaster",
+                "name": "mediaFrameMulticaster"
             },
             {
                 "folder": "../addons/quicIO",
