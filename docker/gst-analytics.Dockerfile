@@ -543,7 +543,7 @@ LABEL Vendor="Intel Corporation"
 WORKDIR /root
 
 # Prerequisites
-RUN apt-get update && apt-get install -y -q --no-install-recommends git make gcc g++ libglib2.0-dev pkg-config libboost-regex-dev libboost-thread-dev libboost-system-dev liblog4cxx-dev rabbitmq-server mongodb openjdk-8-jre curl libboost-test-dev nasm yasm gyp libx11-dev libkrb5-dev intel-gpu-tools m4 autoconf libtool automake cmake libfreetype6-dev sudo wget
+RUN apt-get update && apt-get install -y -q --no-install-recommends git make gcc g++ libglib2.0-dev pkg-config libboost-regex-dev libboost-thread-dev libboost-system-dev liblog4cxx-dev rabbitmq-server mongodb openjdk-8-jre curl libboost-test-dev nasm yasm gyp libx11-dev libkrb5-dev intel-gpu-tools m4 autoconf libtool automake cmake libfreetype6-dev sudo wget lsb-release
 
 
 # Install
@@ -555,6 +555,7 @@ ARG OWTSERVER_REPO=https://github.com/open-webrtc-toolkit/owt-server.git
 ARG SERVER_PATH=/home/owt-server
 ARG OWT_SDK_REPO=https://github.com/open-webrtc-toolkit/owt-client-javascript.git
 ARG OWT_BRANCH="master"
+ARG OWT_TAG="v5.0"
 ENV LD_LIBRARY_PATH=/opt/intel/dldt/inference-engine/external/tbb/lib:/opt/intel/dldt/inference-engine/lib/intel64/
 
 # Build OWT specific modules
@@ -565,11 +566,11 @@ ENV LD_LIBRARY_PATH=/opt/intel/dldt/inference-engine/external/tbb/lib:/opt/intel
 RUN git config --global user.email "you@example.com" && \
     git config --global user.name "Your Name" && \
     git clone -b ${OWT_BRANCH} ${OWTSERVER_REPO} && \
-    cd /home/owt-server && ./scripts/installDepsUnattended.sh --disable-nonfree 
+    cd /home/owt-server && git reset --hard ${OWT_TAG} && ./scripts/installDepsUnattended.sh --disable-nonfree
 
     # Get js client sdk for owt
-RUN cd /home && git clone ${OWT_SDK_REPO} && \
-    cd owt-client-javascript/scripts && npm install -g grunt-cli node-gyp@6.1.0 && npm install && grunt
+RUN cd /home && git clone -b ${OWT_BRANCH} ${OWT_SDK_REPO} && \
+    cd owt-client-javascript/scripts && git reset --hard ${OWT_TAG} && npm install -g grunt-cli node-gyp@6.1.0 && npm install && grunt
  
     #Build and pack owt
 RUN cd ${SERVER_PATH} && ./scripts/build.js -t mcu -r -c && \
@@ -674,9 +675,14 @@ RUN wget ${DLSTREAM_SOURCE_REPO} && tar zxf v${DLSTREAMER_VERSION}.tar.gz &&  mv
 RUN cp /home/analyticspage/index.js /home/owt/apps/current_app/public/scripts/ \
     && cp /home/analyticspage/rest-sample.js /home/owt/apps/current_app/public/scripts/ \
     && cp /home/analyticspage/index.html /home/owt/apps/current_app/public/ \
-    && cp /home/analyticspage/samplertcservice.js /home/owt/apps/current_app/
+    && cp /home/analyticspage/samplertcservice.js /home/owt/apps/current_app \
+    && cp -r /home/gst-video-analytics/build/intel64/Release/lib/* /usr/lib/gstreamer-1.0/
 
 USER owt
 
-ENV GST_PLUGIN_PATH=/home/gst-video-analytics/
+ARG CUSTOM_IE_DIR=/opt/intel/dldt/inference-engine
+ARG CUSTOM_IE_LIBDIR=${CUSTOM_IE_DIR}/lib/intel64
+ENV LD_LIBRARY_PATH=/usr/lib/gstreamer-1.0/:/opt/intel/dldt/inference-engine/lib/intel64/:/opt/intel/dldt/inference-engine/external/tbb/lib/:/opt/intel/dldt/inference-engine/external/opencv/lib/:/opt/intel/dldt/inference-engine/external/ngraph/lib/:${LD_LIBRARY_PATH}
+
+ENV GST_PLUGIN_PATH=/usr/lib/gstreamer-1.0/:${GST_PLUGIN_PATH}
 ENV PYTHONPATH=/home/gst-video-analytics/python:$PYTHONPATH
