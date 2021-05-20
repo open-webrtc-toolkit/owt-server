@@ -316,6 +316,11 @@ module.exports = function (spec, spawnOptions, onNodeAbnormallyQuit, onTaskAdded
       reject('No such a task');
     });
   };
+
+  that.recover = function() {
+    spawn_failed = false;
+    fillNodes();
+  };
   
   that.dropAllNodes = function(quietly) {
       spawn_failed = true;
