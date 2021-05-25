@@ -4,6 +4,14 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+/*
+ * A plugin instance (PluginInterface) is created when the QUIC agent is
+ * started. A data processor (ProcessorInterface) is created when a new pipeline
+ * (publication - subscription pair) is created.
+ *
+ * See doc/servermd/QuicAgentPluginGuide.md for detailed information.
+ */
+
 #ifndef QUIC_QUICAGENTPLUGININTERFACE_H_
 #define QUIC_QUICAGENTPLUGININTERFACE_H_
 
