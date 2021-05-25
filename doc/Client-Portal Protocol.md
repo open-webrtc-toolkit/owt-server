@@ -395,7 +395,7 @@ A publication can send either media or data, but a QUIC *transport* channel can 
   object(PublicationResult)::
     {
       transportId: string(transportId),  // Can be reused in the following publication or subscription.
-     publicationId: string(SessionId) //will be used as the stream id when it gets ready.
+     id: string(SessionId) //will be used as the stream id when it gets ready.
     }
 ### 3.3.8 Participant Stops Publishing a Stream to Room
 **RequestName**: “unpublish”<br>
@@ -480,7 +480,7 @@ A publication can send either media or data, but a QUIC *transport* channel can 
   object(SubscriptionResult)::
     {
       transportId: string(transportId),  // Can be reused in the following publication or subscription.
-     subscriptionId: string(SubscriptionId)
+     id: string(SubscriptionId)
     }
 ### 3.3.12 Participant Stops a Self-Initiated Subscription
 **RequestName**: “unsubscribe”<br>
