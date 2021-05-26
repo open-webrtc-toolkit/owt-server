@@ -28,6 +28,9 @@ InternalClient::InternalClient(
     Listener* listener)
     : InternalClient(streamId, protocol, listener)
 {
+    if (!TransportSecret::getPassphrase().empty()) {
+        m_client->enableSecure();
+    }
     m_client->createConnection(ip, port);
 }
 

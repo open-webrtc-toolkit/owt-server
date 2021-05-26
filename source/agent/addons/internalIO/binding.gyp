@@ -5,6 +5,7 @@
       'addon.cc',
       'InternalServerWrapper.cc',
       'InternalClientWrapper.cc',
+      'InternalConfig.cc',
       '../../../core/owt_base/MediaFramePipeline.cpp',
       '../../../core/owt_base/internal/TransportServer.cpp',
       '../../../core/owt_base/internal/TransportClient.cpp',

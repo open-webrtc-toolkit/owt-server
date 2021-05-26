@@ -4,6 +4,7 @@
 
 #include "InternalServerWrapper.h"
 #include "InternalClientWrapper.h"
+#include "InternalConfig.h"
 
 #include <node.h>
 
@@ -12,6 +13,7 @@ using namespace v8;
 void InitAll(Handle<Object> exports) {
   InternalServer::Init(exports);
   InternalClient::Init(exports);
+  InitInternalConfig(exports);
 }
 
 NODE_MODULE(addon, InitAll)

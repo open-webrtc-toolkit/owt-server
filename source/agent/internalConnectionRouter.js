@@ -9,13 +9,30 @@ const InternalConnectionFactory = require('./InternalConnectionFactory');
 
 const config = global.config;
 
-var internalIO = require('../internalIO/build/Release/internalIO');
-// const internalIO = require('../internalIO/build/Release/internalIO');
+const internalIO = require('../internalIO/build/Release/internalIO');
 
-// const {InternalServer, InternalClient} = internalIO;
+const {InternalServer, InternalClient} = internalIO;
 
-var InternalServer = internalIO.InternalServer;
-var InternalClient = internalIO.InternalClient;
+const setSecurePromise = new Promise(function (resolve) {
+  try {
+    const cipher = require('../cipher');
+    cipher.unlock(cipher.k, cipher.astore, function cb (err, authConfig) {
+      if (!err) {
+        if (authConfig.internalPass) {
+          log.debug('Secure enabled for internal IO');
+          internalIO.setPassphrase(authConfig.internalPass);
+        }
+      } else {
+        log.debug('Unlock error:', err);
+      }
+      resolve();
+    });
+  } catch (e) {
+    log.debug('No secure for internal IO');
+    resolve();
+  }
+});
+
 
 /*
  * Wrapper class for addon FrameDestination object
@@ -126,12 +143,19 @@ class InternalConnectionRouter {
   constructor({protocol, minport, maxport}) {
     this.protocol = protocol;
     this.connections = Connections();
-    this.internalServer = new InternalServer(
-      protocol, minport, maxport, (a, b) => {
-        log.info('server stat:', a, b);
-    });
-    this.internalPort = this.internalServer.getListeningPort();
 
+    this.internalServer = {
+      addSource: () => log.warn('Server is not initialized'),
+      removeSource: () => log.warn('Server is not initialized'),
+      internalPort: 0,
+    };
+    setSecurePromise.then(() => {
+      this.internalServer = new InternalServer(
+        protocol, minport, maxport, (a, b) => {
+          log.info('server stat:', a, b);
+      });
+      this.internalPort = this.internalServer.getListeningPort();
+    });
     this.remoteStreams = new Map(); // id => Set {string}
   }
 

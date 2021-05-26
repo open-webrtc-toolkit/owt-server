@@ -57,10 +57,11 @@ uint32_t TransportMessage::missingBytes() const
 
 uint32_t TransportMessage::fillData(const char* data, uint32_t length)
 {
-    int toFill= missingBytes();
+    uint32_t toFill= missingBytes();
     if (toFill == 0) {
         return 0;
     }
+    length = std::min(length, toFill);
     if (m_receivedBytes + toFill > m_bufferSize) {
         // Increasing the buffer size: %zu
         boost::shared_array<char> oldBuffer = m_buffer;
@@ -68,15 +69,14 @@ uint32_t TransportMessage::fillData(const char* data, uint32_t length)
         m_bufferSize = (newLength * kExpansionMultiplier + kBufferAlignment - 1) /
             kBufferAlignment * kBufferAlignment;
         m_bufferSize = std::max(m_bufferSize, m_receivedBytes + toFill);
-
         m_buffer.reset(new char[m_bufferSize]);
         memcpy(m_buffer.get(), oldBuffer.get(), m_receivedBytes);
     }
     if (data) {
-        memcpy(m_buffer.get() + m_receivedBytes, data, toFill);
+        memcpy(m_buffer.get() + m_receivedBytes, data, length);
     }
-    m_receivedBytes += toFill;
-    return toFill;
+    m_receivedBytes += length;
+    return length;
 }
 
 void TransportMessage::clear()
@@ -123,9 +123,28 @@ TransportSession::TransportSession(
     receiveData();
 }
 
+TransportSession::TransportSession(
+    uint32_t id,
+    std::shared_ptr<IOService> service,
+    std::shared_ptr<SSLSocket> sslSocket,
+    TransportSession::Listener* listener)
+    : m_id(id)
+    , m_service(service)
+    , m_socket(m_service->service())
+    , m_sslSocket(sslSocket)
+    , m_receivedBuffer(new char[kInitalBufferSize])
+    , m_receivedBufferSize(kInitalBufferSize)
+    , m_isClosed(false)
+    , m_listener(listener)
+{
+    receiveData();
+}
+
 TransportSession::~TransportSession()
 {
+    ELOG_DEBUG("Destructor begin");
     close();
+    ELOG_DEBUG("Destructor end");
 }
 
 void TransportSession::sendData(TransportData data)
@@ -139,18 +158,34 @@ void TransportSession::sendData(TransportData data)
 
 void TransportSession::sendHandler(TransportData data)
 {
-    if (!m_socket.is_open()) {
+    if (m_isClosed) {
         return;
     }
+    if (!m_sslSocket && !m_socket.is_open()) {
+        ELOG_WARN("sendHandler: socket is not open");
+        return;
+    }
+
     TransportMessage toSend(data.buffer.get(), data.length);
     TransportData wrappedData{toSend.messageData(),
                               toSend.messageLength()};
-    boost::asio::async_write(
-        m_socket,
-        boost::asio::buffer(wrappedData.buffer.get(), wrappedData.length),
-        boost::bind(&TransportSession::writeHandler, this,
-            boost::asio::placeholders::error,
-            boost::asio::placeholders::bytes_transferred));
+
+    ELOG_DEBUG("SendHandler- %p %zu", this, wrappedData.length);
+    if (m_sslSocket) {
+        boost::asio::async_write(
+            *m_sslSocket,
+            boost::asio::buffer(wrappedData.buffer.get(), wrappedData.length),
+            boost::bind(&TransportSession::writeHandler, this,
+                boost::asio::placeholders::error,
+                boost::asio::placeholders::bytes_transferred));
+    } else {
+        boost::asio::async_write(
+            m_socket,
+            boost::asio::buffer(wrappedData.buffer.get(), wrappedData.length),
+            boost::bind(&TransportSession::writeHandler, this,
+                boost::asio::placeholders::error,
+                boost::asio::placeholders::bytes_transferred));
+    }
 }
 
 void TransportSession::writeHandler(
@@ -159,7 +194,8 @@ void TransportSession::writeHandler(
 {
     if (ec) {
         ELOG_DEBUG("Error writing data: %s", ec.message().c_str());
-        if (!m_isClosed.exchange(true)) {
+        if (!m_isClosed) {
+            m_isClosed = true;
             // Notify the listener about the socket error if the listener is not closing me.
             m_listener->onClose(m_id);
         }
@@ -168,16 +204,28 @@ void TransportSession::writeHandler(
 
 void TransportSession::close()
 {
-    ELOG_DEBUG("Closing...");
-    if (!m_isClosed.exchange(true)) {
-        if (m_socket.is_open()) {
-            boost::system::error_code ec;
-            m_socket.cancel();
-            m_socket.shutdown(boost::asio::ip::tcp::socket::shutdown_both, ec);
-            m_socket.close();
+    ELOG_DEBUG("Closing... %p", this);
+    m_isClosed = true;
+    if (m_sslSocket) {
+        auto sock = m_sslSocket;
+        sock->async_shutdown([sock](const boost::system::error_code& ec)
+        {
+            boost::system::error_code e;
+            sock->lowest_layer().shutdown(
+                boost::asio::ip::tcp::socket::shutdown_both, e);
+            sock->lowest_layer().close();
+        });
+    }
+    if (m_socket.is_open()) {
+        boost::system::error_code ec;
+        m_socket.cancel();
+        m_socket.shutdown(boost::asio::ip::tcp::socket::shutdown_both, ec);
+        m_socket.close();
+        if (ec) {
+            ELOG_DEBUG("Shutdown socket error: %s", ec.message().c_str());
         }
     }
-    ELOG_DEBUG("Closed");
+    ELOG_DEBUG("Closed %p", this);
 }
 
 void TransportSession::receiveData()
@@ -186,7 +234,7 @@ void TransportSession::receiveData()
         ELOG_DEBUG("receiveData: already closed");
         return;
     }
-    if (!m_socket.is_open()) {
+    if (!m_sslSocket && !m_socket.is_open()) {
         ELOG_WARN("receiveData: socket is not open");
         return;
     }
@@ -207,16 +255,27 @@ void TransportSession::receiveData()
         ELOG_DEBUG("Increasing the buffer size: %u", m_receivedBufferSize);
     }
 
-    ELOG_DEBUG("Try to read %u", bytesToRead);
-    m_socket.async_read_some(boost::asio::buffer(m_receivedBuffer.get(), bytesToRead),
-        boost::bind(&TransportSession::readHandler, this,
-            boost::asio::placeholders::error,
-            boost::asio::placeholders::bytes_transferred));
+    if (m_sslSocket) {
+        m_sslSocket->async_read_some(boost::asio::buffer(m_receivedBuffer.get(), bytesToRead),
+            boost::bind(&TransportSession::readHandler, this,
+                boost::asio::placeholders::error,
+                boost::asio::placeholders::bytes_transferred));
+    } else {
+        m_socket.async_read_some(boost::asio::buffer(m_receivedBuffer.get(), bytesToRead),
+            boost::bind(&TransportSession::readHandler, this,
+                boost::asio::placeholders::error,
+                boost::asio::placeholders::bytes_transferred));
+    }
 }
 
 void TransportSession::readHandler(
     const boost::system::error_code& ec, std::size_t bytes)
 {
+    if (m_isClosed) {
+        ELOG_DEBUG("readHandler: already closed");
+        return;
+    }
+    ELOG_DEBUG("ReadHandler : %p %zu", this, bytes);
     if (!ec || ec.value() == boost::asio::error::message_size) {
         uint32_t bytesToRead = m_receivedMessage.missingBytes();
         assert(bytesToRead >= bytes);
@@ -228,11 +287,26 @@ void TransportSession::readHandler(
         } else {
             ELOG_DEBUG("Error receiving data: %s", ec.message().c_str());
         }
-        if (!m_isClosed.exchange(true)) {
+        if (!m_isClosed) {
+            m_isClosed = true;
             // Notify the listener about the socket error if the listener is not closing me.
             m_listener->onClose(m_id);
         }
     }
+}
+
+// TransportSecret
+static std::string gSecretPass = "";
+
+void TransportSecret::setPassphrase(std::string p)
+{
+    std::fill(gSecretPass.begin(), gSecretPass.end(), 0);
+    gSecretPass = p;
+}
+
+std::string TransportSecret::getPassphrase()
+{
+    return gSecretPass;
 }
 
 }

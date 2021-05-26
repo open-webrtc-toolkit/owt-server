@@ -43,6 +43,8 @@ public:
     TransportServer(Listener* listener);
     ~TransportServer();
 
+    bool enableSecure();
+
     // Implements RawTransportInterface
     void createConnection(const std::string& ip, uint32_t port) {}
     void listenTo(uint32_t port);
@@ -62,14 +64,23 @@ public:
     void closeSession(int id);
 
 private:
+    typedef boost::asio::ssl::stream<boost::asio::ip::tcp::socket> SSLSocket;
+
     void doAccept();
     void acceptHandler(const boost::system::error_code&);
+    void handshakeHandler(std::shared_ptr<SSLSocket> sock,
+                          const boost::system::error_code& ec);
     void onSessionRemoved(int id);
 
     int m_nextSessionId;
     std::unordered_map<int, std::shared_ptr<TransportSession>> m_sessions;
 
     std::shared_ptr<IOService> m_service;
+
+    bool m_isSecure;
+    std::string m_pass;
+    std::unique_ptr<boost::asio::ssl::context> m_sslContext;
+    std::shared_ptr<SSLSocket> m_sslSocket;
 
     boost::asio::ip::tcp::socket m_socket;
     boost::asio::ip::tcp::acceptor m_acceptor;

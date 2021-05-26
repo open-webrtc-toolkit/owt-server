@@ -39,6 +39,8 @@ public:
     TransportClient(Listener* listener);
     ~TransportClient();
 
+    bool enableSecure();
+
     void createConnection(const std::string& ip, uint32_t port);
     void listenTo(uint32_t port) {}
     void listenTo(uint32_t minPort, uint32_t maxPort) {}
@@ -55,10 +57,17 @@ public:
 
 private:
     void connectHandler(const boost::system::error_code&);
+    void handshakeHandler(const boost::system::error_code& ec);
+
+    typedef boost::asio::ssl::stream<boost::asio::ip::tcp::socket> SSLSocket;
 
     std::shared_ptr<IOService> m_service;
     boost::asio::ip::tcp::socket m_socket;
     std::shared_ptr<TransportSession> m_session;
+
+    bool m_isSecure;
+    std::shared_ptr<boost::asio::ssl::context> m_sslContext;
+    std::shared_ptr<SSLSocket> m_sslSocket;
 
     Listener* m_listener;
 };

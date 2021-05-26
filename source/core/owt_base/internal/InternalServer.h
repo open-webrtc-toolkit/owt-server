@@ -60,6 +60,7 @@ private:
     };
 
     boost::shared_ptr<TransportServer> m_server;
+    boost::mutex m_sessionMutex;
     std::unordered_map<std::string, FrameSource*> m_sourceMap;
     std::unordered_map<std::string, std::set<int>> m_sessionIdMap;
     std::unordered_map<int, boost::shared_ptr<InternalSession>> m_sessions;

@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 #include "TransportClient.h"
-
+#include <fstream>
 
 namespace owt_base {
 
@@ -11,15 +11,48 @@ using boost::asio::ip::tcp;
 
 DEFINE_LOGGER(TransportClient, "owt.TransportClient");
 
+static constexpr const char kServerCrt[] = "cert/server.crt";
+static constexpr const char kServerKey[] = "cert/server.key";
+
 TransportClient::TransportClient(Listener* listener)
     : m_service(getIOService())
     , m_socket(m_service->service())
+    , m_isSecure(false)
     , m_listener(listener)
 {}
 
 TransportClient::~TransportClient()
 {
     close();
+}
+
+bool TransportClient::enableSecure()
+{
+    if (m_isSecure) {
+        return true;
+    }
+    if (m_session) {
+        ELOG_WARN("Failed to enable secure, client already start");
+        return false;
+    }
+    if (!std::fstream{kServerCrt} ||
+        !std::fstream{kServerKey}) {
+        ELOG_WARN("Failed to enable secure, missing cert files");
+        return false;
+    }
+
+    ELOG_DEBUG("Client enable secure");
+    m_isSecure = true;
+
+    m_sslContext.reset(new boost::asio::ssl::context(
+                    m_service->service(), boost::asio::ssl::context::sslv23));
+    m_sslContext->set_verify_mode(boost::asio::ssl::context::verify_peer);
+    m_sslContext->use_certificate_file(kServerCrt, boost::asio::ssl::context::pem);
+    m_sslContext->set_password_callback(boost::bind(&TransportSecret::getPassphrase));
+    m_sslContext->use_private_key_file(kServerKey, boost::asio::ssl::context::pem);
+    m_sslContext->load_verify_file(kServerCrt);
+
+    return true;
 }
 
 void TransportClient::onData(uint32_t id, TransportData data)
@@ -38,32 +71,63 @@ void TransportClient::onClose(uint32_t id)
 
 void TransportClient::createConnection(const std::string& ip, uint32_t port)
 {
-    if (m_session) {
+    if (m_session || m_sslSocket) {
         return;
     }
     tcp::resolver resolver(m_service->service());
     tcp::resolver::query query(ip.c_str(), boost::to_string(port).c_str());
     tcp::resolver::iterator iterator = resolver.resolve(query);
-    // TODO: Accept IPv6.
-    m_socket.open(tcp::v4());
-    m_socket.async_connect(*iterator,
-        boost::bind(&TransportClient::connectHandler, this,
-            boost::asio::placeholders::error));
+    if (m_isSecure) {
+        m_sslSocket.reset(new SSLSocket(m_service->service(), *m_sslContext));
+        m_sslSocket->lowest_layer().open(tcp::v4());
+        m_sslSocket->lowest_layer().async_connect(*iterator,
+            boost::bind(&TransportClient::connectHandler, this,
+                boost::asio::placeholders::error));
+    } else {
+        // TODO: Accept IPv6.
+        m_socket.open(tcp::v4());
+        m_socket.async_connect(*iterator,
+            boost::bind(&TransportClient::connectHandler, this,
+                boost::asio::placeholders::error));
+    }
 }
 
 void TransportClient::connectHandler(const boost::system::error_code& ec)
 {
     if (!ec) {
+        if (m_isSecure) {
+            ELOG_DEBUG("Client start handshake");
+            // Perform handkshake for secured session
+            m_sslSocket->lowest_layer().set_option(tcp::no_delay(true));
+            m_sslSocket->async_handshake(
+                boost::asio::ssl::stream_base::client,
+                boost::bind(&TransportClient::handshakeHandler, this,
+                    boost::asio::placeholders::error));
+        } else {
+            m_socket.set_option(tcp::no_delay(true));
+            m_session = std::make_shared<TransportSession>(
+                0, m_service, std::move(m_socket), this);
+            if (m_listener) {
+                m_listener->onConnected();
+            }
+        }
+    } else {
+        ELOG_WARN("Connect error: %s", ec.message().c_str());
+    }
+}
+
+void TransportClient::handshakeHandler(const boost::system::error_code& ec)
+{
+    if (!ec) {
+        ELOG_DEBUG("Handshake completed");
         m_session = std::make_shared<TransportSession>(
-            0,
-            m_service,
-            std::move(m_socket),
-            this);
+            0, m_service, m_sslSocket, this);
+        m_sslSocket.reset();
         if (m_listener) {
             m_listener->onConnected();
         }
     } else {
-        ELOG_WARN("Connect error: %s", ec.message().c_str());
+        ELOG_WARN("Error during handshake: %s", ec.message().c_str());
     }
 }
 

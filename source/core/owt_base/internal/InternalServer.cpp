@@ -17,6 +17,9 @@ InternalServer::InternalServer(
     : m_server(new TransportServer(this))
     , m_listener(listener)
 {
+    if (!TransportSecret::getPassphrase().empty()) {
+        m_server->enableSecure();
+    }
     m_server->listenTo(minPort, maxPort);
 }
 
@@ -42,10 +45,12 @@ bool InternalServer::removeSource(const std::string& streamId)
         ELOG_WARN("Invalid source for stream:%s to remove", streamId.c_str());
         return false;
     }
+    ELOG_DEBUG("removeSource %s", streamId.c_str());
     FrameSource* src = m_sourceMap[streamId];
     m_sourceMap.erase(streamId);
     assert(src);
 
+    boost::mutex::scoped_lock lock(m_sessionMutex);
     for (int sId : m_sessionIdMap[streamId]) {
         if (m_sessions.count(sId)) {
             // Unlink source & destination
@@ -68,6 +73,7 @@ unsigned int InternalServer::getListeningPort()
 void InternalServer::onSessionAdded(int id)
 {
     ELOG_DEBUG("onSessionAdded %d", id);
+    boost::mutex::scoped_lock lock(m_sessionMutex);
     if (m_sessions.count(id)) {
         ELOG_WARN("Duplicate session added:%d", id);
     } else {
@@ -85,19 +91,19 @@ void InternalServer::onSessionData(int id, char* data, int len)
         return;
     }
     if (data[0] == TDT_FEEDBACK_MSG) {
-        if (m_sessions[id]) {
+        auto session = m_sessions[id];
+        if (session) {
             FeedbackMsg fbMsg = *(reinterpret_cast<FeedbackMsg*>(data + 1));
             if (fbMsg.cmd == INIT_STREAM_ID) {
                 // Init stream ID
                 std::string streamId(fbMsg.buffer.data, fbMsg.buffer.len);
-                if (!m_sessions[id]->streamId().empty()) {
+                if (!session->streamId().empty()) {
                     ELOG_WARN("Multiple init stream fb, ignored");
-                    streamId = m_sessions[id]->streamId();
+                    streamId = session->streamId();
                 } else if (m_sourceMap.count(streamId)) {
                     ELOG_WARN("Mapped StreamID :%s %p", streamId.c_str(), m_sourceMap[streamId]);
 
                     FrameSource* src = m_sourceMap[streamId];
-                    auto session = m_sessions[id];
                     if (src) {
                         // Unlink source & destination
                         src->addAudioDestination(session.get());
@@ -113,7 +119,7 @@ void InternalServer::onSessionData(int id, char* data, int len)
                     ELOG_WARN("Unknown streamId:%s", streamId.c_str());
                 }
             } else {
-                std::string streamId = m_sessions[id]->streamId();
+                std::string streamId = session->streamId();
                 if (m_sourceMap.count(streamId)) {
                     FrameSource* src = m_sourceMap[streamId];
                     if (src) {
@@ -129,16 +135,18 @@ void InternalServer::onSessionData(int id, char* data, int len)
 
 void InternalServer::onSessionRemoved(int id)
 {
+    boost::mutex::scoped_lock lock(m_sessionMutex);
     if (!m_sessions.count(id)) {
         ELOG_WARN("Non-exist session remove:%d", id);
     } else {
-        std::string streamId = m_sessions[id]->streamId();
+        auto session = m_sessions[id];
+        std::string streamId = session->streamId();
         FrameSource* src = m_sourceMap[streamId];
         if (src) {
             // Unlink source & destination
-            src->removeAudioDestination(m_sessions[id].get());
-            src->removeVideoDestination(m_sessions[id].get());
-            src->removeDataDestination(m_sessions[id].get());
+            src->removeAudioDestination(session.get());
+            src->removeVideoDestination(session.get());
+            src->removeDataDestination(session.get());
         }
         m_sessions.erase(id);
         m_sessionIdMap[streamId].erase(id);

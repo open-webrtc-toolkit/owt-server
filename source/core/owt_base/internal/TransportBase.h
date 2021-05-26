@@ -6,6 +6,7 @@
 #define TransportBase_h
 
 #include <boost/asio.hpp>
+#include <boost/asio/ssl.hpp>
 #include <boost/scoped_ptr.hpp>
 #include <boost/shared_array.hpp>
 #include <boost/thread.hpp>
@@ -19,8 +20,6 @@ namespace owt_base {
 
 // const char TDT_FEEDBACK_MSG = 0x5A;
 // const char TDT_MEDIA_FRAME = 0x8F;
-
-
 
 using boost::asio::ip::tcp;
 
@@ -82,11 +81,18 @@ public:
         virtual void onData(uint32_t id, TransportData data) = 0;
         virtual void onClose(uint32_t id) = 0;
     };
+    typedef boost::asio::ssl::stream<boost::asio::ip::tcp::socket> SSLSocket;
 
     TransportSession(uint32_t id,
                      std::shared_ptr<IOService> service,
                      boost::asio::ip::tcp::socket socket,
                      Listener* listener);
+    // Constructor for secured session
+    TransportSession(uint32_t id,
+                     std::shared_ptr<IOService> service,
+                     std::shared_ptr<SSLSocket> sslSocket,
+                     Listener* listener);
+
     virtual ~TransportSession();
 
     void sendData(TransportData data);
@@ -98,14 +104,25 @@ private:
     void writeHandler(const boost::system::error_code&, std::size_t);
     void readHandler(const boost::system::error_code&, std::size_t);
 
+
     uint32_t m_id;
     std::shared_ptr<IOService> m_service;
     boost::asio::ip::tcp::socket m_socket;
+    std::shared_ptr<SSLSocket> m_sslSocket;
     TransportMessage m_receivedMessage;
     boost::shared_array<char> m_receivedBuffer;
     uint32_t m_receivedBufferSize;
-    std::atomic<bool> m_isClosed;
+    bool m_isClosed;
     Listener* m_listener;
+};
+
+/*
+ * Secret for transport
+ */
+class TransportSecret {
+public:
+    static void setPassphrase(std::string p);
+    static std::string getPassphrase();
 };
 
 } /* namespace owt_base */
