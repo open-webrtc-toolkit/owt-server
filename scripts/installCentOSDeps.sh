@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -e
 
 install_glib2(){
   if [ -d $LIB_DIR ]; then
@@ -31,21 +31,6 @@ install_glib2(){
   fi
 }
 
-install_boost(){
-  if [ -d $LIB_DIR ]; then
-    cd $LIB_DIR
-    wget -c http://iweb.dl.sourceforge.net/project/boost/boost/1.65.0/boost_1_65_0.tar.bz2
-    tar xvf boost_1_65_0.tar.bz2
-    cd boost_1_65_0
-    chmod +x bootstrap.sh
-    ./bootstrap.sh
-    ./b2 && ./b2 install --prefix=$PREFIX_DIR
-  else
-    mkdir -p $LIB_DIR
-    install_boost
-  fi
-}
-
 installYumDeps(){
   ${SUDO} yum groupinstall " Development Tools" "Development Libraries " -y
   ${SUDO} yum install zlib-devel pkgconfig git libcurl-devel.x86_64 curl log4cxx-devel gcc gcc-c++ bzip2 bzip2-devel bzip2-libs python-devel nasm libXext-devel libXfixes-devel libpciaccess-devel libX11-devel yasm cmake -y
@@ -53,12 +38,18 @@ installYumDeps(){
   ${SUDO} yum install glib2-devel boost-devel gstreamer1-plugins-base-devel -y
   ${SUDO} yum install centos-release-scl -y
   ${SUDO} yum install devtoolset-7-gcc* -y
+  ${SUDO} yum install docbook2X -y
 }
 
 installRepo(){
   wget -c http://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
   wget -c http://rpms.famillecollet.com/enterprise/remi-release-7.rpm
-  ${SUDO} rpm -Uvh remi-release-7*.rpm epel-release-latest-7*.rpm
+  if ${SUDO} rpm -Uvh remi-release-7*.rpm epel-release-latest-7*.rpm
+  then
+    echo "Successfully installed remi and epel"
+  else
+    echo "No need to upgrade or installation went wrong"
+  fi
   ${SUDO} sed -i 's/https/http/g' /etc/yum.repos.d/epel.repo
   rm *.rpm
 }
@@ -77,7 +68,7 @@ install_glibc(){
   wget -c http://gnu.mirrors.pair.com/gnu/libc/glibc-2.14.tar.xz
   tar xvf glibc-2.14.tar.xz
   cd glibc-2.14
-  mkdir build && cd build/
+  mkdir -p build && cd build/
   ../configure --prefix=$PREFIX_DIR
   make -j4 -s && make install
 }

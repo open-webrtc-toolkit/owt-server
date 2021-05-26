@@ -28,88 +28,36 @@
 
 'use strict';
 var fs = require('fs');
-var amqp = require('amqp');
+var amqper = require('./../amqpClient')();
 var log = require('./../logger').logger.getLogger('RPC');
 var cipher = require('../cipher');
 var TIMEOUT = 3000;
-var corrID = 0;
-var map = {};   //{corrID: {fn: callback, to: timeout}}
-var clientQueue;
-var connection;
-var exc;
+var rpcClient;
 
 exports.connect = function (options) {
-    var setupConnection = function(options) {
-        connection = amqp.createConnection(options);
-        connection.on('ready', function () {
-            log.info('Connected to rabbitMQ server');
-
-            //Create a direct exchange
-            exc = connection.exchange('owtRpc', {type: 'direct'}, function (exchange) {
-                log.info('Exchange ' + exchange.name + ' is open');
-
-                //Create the queue for send messages
-                clientQueue = connection.queue('', function (q) {
-                    log.info('ClientQueue ' + q.name + ' is open');
-                    clientQueue.bind('owtRpc', clientQueue.name);
-                    clientQueue.subscribe(function (message) {
-                        if (map[message.corrID] !== undefined) {
-                            map[message.corrID].fn[message.type](message.data, message.err);
-                            clearTimeout(map[message.corrID].to);
-                            delete map[message.corrID];
-                        }
-                    });
-                });
-            });
-        });
-    };
-
-    if (fs.existsSync(cipher.astore)) {
-        cipher.unlock(cipher.k, cipher.astore, function cb (err, authConfig) {
-            if (!err) {
-                if (authConfig.rabbit) {
-                    options.login = authConfig.rabbit.username;
-                    options.password = authConfig.rabbit.password;
-                }
-                setupConnection(options);
-            } else {
-                log.error('Failed to get rabbitmq auth:', err);
-                setupConnection(options);
-            }
-        });
-    } else {
-        setupConnection(options);
-    }
+    amqper.connect(options, function () {
+        amqper.asRpcClient(function(rpcCli) {
+            rpcClient = rpcCli;
+        }, function(reason) {
+            log.error('Initializing as rpc client failed, reason:', reason);
+            stopServers();
+            process.exit();
+      });
+    }, function(reason) {
+        log.error('Connect to rabbitMQ server failed, reason:', reason);
+        process.exit();
+    });
 };
 
 exports.disconnect = function() {
-    if (connection) {
-        connection.disconnect();
-        connection = undefined;
-    }
-};
-
-var callbackError = function (corrID) {
-    for (var i in map[corrID].fn) {
-        map[corrID].fn[i]('timeout');
-    }
-    delete map[corrID];
+    amqper.disconnect();
 };
 
 /*
  * Calls remotely the 'method' function defined in rpcPublic of 'to'.
  */
 exports.callRpc = function (to, method, args, callbacks, timeout) {
-    if (!clientQueue) {
-        for (var i in callbacks) {
-            callbacks[i]('rpc client not ready');
-        }
-        return;
+    if (rpcClient) {
+        rpcClient.remoteCall(to, method, args, callbacks, timeout);
     }
-    corrID += 1;
-    map[corrID] = {};
-    map[corrID].fn = callbacks;
-    map[corrID].to = setTimeout(callbackError, ((typeof timeout === 'number' && timeout) ? timeout : TIMEOUT), corrID);
-    var send = {method: method, args: args, corrID: corrID, replyTo: clientQueue.name};
-    exc.publish(to, send);
 };

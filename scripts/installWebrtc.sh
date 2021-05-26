@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -e
 
 SSL_GNI=$(cat <<-END
 declare_args() {

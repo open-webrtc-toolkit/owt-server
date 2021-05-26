@@ -25,5 +25,3 @@ cp node_modules/react-dom/umd/react-dom.production.min.js public/vendor/js/
 # react-table
 cp node_modules/react-table/react-table.css public/vendor/css/
 cp node_modules/react-table/react-table.min.js public/vendor/js/
-# crypto-js
-cp node_modules/crypto-js/crypto-js.js public/vendor/js/

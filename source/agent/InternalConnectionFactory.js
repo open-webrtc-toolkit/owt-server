@@ -39,7 +39,7 @@ try {
 }
 
 // Wrapper object for sctp-connection and tcp/udp-connection
-function InConnection(prot, minport, maxport) {
+function InConnection(prot, minport, maxport, ticket) {
     var conn = null;
     var protocol = "quic";
 
@@ -47,7 +47,7 @@ function InConnection(prot, minport, maxport) {
         case 'tcp':
         case 'udp':
             protocol = prot;
-            conn = new InternalIn(prot, minport, maxport);
+            conn = new InternalIn(prot, minport, maxport, ticket);
             break;
         case 'quic':
             conn = new quicIO.in(cf, kf);
@@ -78,7 +78,7 @@ function InConnection(prot, minport, maxport) {
 }
 
 // Wrapper object for sctp-connection and tcp/udp-connection
-function OutConnection(prot, minport, maxport) {
+function OutConnection(prot, minport, maxport, ticket) {
     var that = {};
     var conn = null;
     var protocol = "quic";
@@ -111,7 +111,7 @@ function OutConnection(prot, minport, maxport) {
         } else if (protocol === 'quic') {
             conn = new quicIO.out(connectOpt.ip, connectOpt.port);
         } else {
-            conn = new InternalOut(protocol, connectOpt.ip, connectOpt.port);
+            conn = new InternalOut(protocol, connectOpt.ip, connectOpt.port, ticket);
         }
     };
 
@@ -139,6 +139,7 @@ module.exports = function() {
         var prot = internalOpt.protocol;
         var minport = internalOpt.minport || 0;
         var maxport = internalOpt.maxport || 0;
+        var ticket = internalOpt.ticket;
 
         if (preparedSet[connId]) {
             log.warn('Internal Connection already prepared:', connId);
@@ -147,7 +148,9 @@ module.exports = function() {
             // right call sequence in upper layer.
             return preparedSet[connId].connection.getListeningPort();
         }
-        var conn = (direction === 'in')? InConnection(prot, minport, maxport) : OutConnection(prot, minport, maxport);
+        var conn = (direction === 'in')
+            ? InConnection(prot, minport, maxport, ticket)
+            : OutConnection(prot, minport, maxport, ticket);
 
         preparedSet[connId] = {connection: conn, direction: direction};
         return conn.getListeningPort();

@@ -28,6 +28,7 @@ optParser.addOption('b', 'binary', 'boolean', 'Pack binary');
 optParser.addOption('np', 'no-pseudo', 'boolean', 'Whether use pseudo library');
 optParser.addOption('wf', 'with-ffmpeg', 'boolean', 'Whether pack ffmpeg library');
 optParser.addOption('h', 'help', 'boolean', 'Show help');
+optParser.addOption('li', 'lint', 'boolean', 'Whether lint code with eslint');
 
 const options = optParser.parseArgs(process.argv);
 
@@ -56,6 +57,25 @@ if (options.full) {
 if (options.help || Object.keys(options).length === 0) {
   optParser.printHelp();
   process.exit(0);
+}
+
+if (options.lint) {
+  // Check lint deps
+  const lintDeps = ['eslint'];
+  console.log('Checking lint dependencies...');
+  const npmRoot = execSync(`npm root -g`).toString().trim();
+  const missingLintDeps = lintDeps.filter((dep) => {
+    return !fs.existsSync(path.join(npmRoot, dep));
+  });
+
+  if (missingLintDeps.length === 0) {
+    console.log('Lint dependencies OK.');
+  } else {
+    for (const dep of missingLintDeps) {
+      console.log('Installing eslint');
+      execSync(`npm install eslint --global --save-dev`);
+    }
+  }
 }
 
 var npmInstallOption = '';
@@ -240,6 +260,14 @@ function packCommon(target) {
     // Copy common files
     for (const file of common.files) {
       const filePath = path.join(packSrc, file);
+      const extname = path.extname(filePath);
+      if (options.lint && extname === '.js') {
+        try {
+          execSync(`eslint -c ${rootDir}/source/.eslintrc.json ${filePath}`);
+        } catch(error) {
+          console.error(error.stdout.toString());
+        }
+      }
       execSync(`cp -a ${filePath} ${packDist}`);
     }
   }
@@ -428,7 +456,7 @@ function isLibAllowed(libSrc) {
   const whiteList = [
     'rtcadapter',
     'libssl.so.1.1',
-    'libcrypto',
+    'libcrypto.so.1.1',
     'libnice',
     'libSvtHevcEnc',
     'libusrsctp',
@@ -440,7 +468,7 @@ function isLibAllowed(libSrc) {
   if (!options['archive'] || options['with-ffmpeg']) {
     whiteList.push('libav');
     whiteList.push('libsw');
-    if (osType.includes('centos')) {
+    if (osType.includes('centos') || (osType.includes('ubuntu') && osType.includes('20.04'))) {
       whiteList.push('libboost');
     }
   }

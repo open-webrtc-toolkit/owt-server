@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -e
 
 pause() {
   read -p "$*"
@@ -317,8 +317,7 @@ install_quic(){
   fi
   mkdir ${QUIC_TRANSPORT_PATH}
   pushd ${QUIC_TRANSPORT_PATH}
-  wget ${QUIC_TRANSPORT_PACKAGE_URL_PREFIX}/linux/${QUIC_SDK_VERSION}.zip
-  if [ $? -eq 0 ]; then
+  if wget ${QUIC_TRANSPORT_PACKAGE_URL_PREFIX}/linux/${QUIC_SDK_VERSION}.zip; then
     unzip ${QUIC_SDK_VERSION}.zip
     rm ${QUIC_SDK_VERSION}.zip
     cp bin/release/libowt_quic_transport.so ${ROOT}/build/libdeps/build/lib
@@ -509,7 +508,7 @@ install_svt_hevc(){
     pushd SVT-HEVC >/dev/null
     git checkout v1.3.0
 
-    mkdir build
+    mkdir -p build
     pushd build >/dev/null
     cmake -DCMAKE_C_FLAGS="-std=gnu99" -DCMAKE_INSTALL_PREFIX=${PREFIX_DIR} ..
     make && make install
@@ -535,5 +534,20 @@ cleanup_common(){
     rm -f gcc*
     rm -f libva-utils*
     cd $CURRENT_DIR
+  fi
+}
+
+install_boost(){
+  if [ -d $LIB_DIR ]; then
+    cd $LIB_DIR
+    wget -c http://iweb.dl.sourceforge.net/project/boost/boost/1.65.0/boost_1_65_0.tar.bz2
+    tar xvf boost_1_65_0.tar.bz2
+    cd boost_1_65_0
+    chmod +x bootstrap.sh
+    ./bootstrap.sh
+    ./b2 && ./b2 install --prefix=$PREFIX_DIR
+  else
+    mkdir -p $LIB_DIR
+    install_boost
   fi
 }

@@ -20,6 +20,8 @@ optParser.addOption('v', 'verbose', 'boolean', 'Whether use verbose level in bui
 optParser.addOption('r', 'rebuild', 'boolean', 'Whether clean before build');
 optParser.addOption('c', 'check', 'boolean', 'Whether check after build');
 optParser.addOption('j', 'jobs', 'string', 'Number of concurrent build jobs');
+optParser.addOption('ip', 'incpath', 'string', 'Customized include path');
+optParser.addOption('lp', 'libpath', 'string', 'Customized library path');
 
 const options = optParser.parseArgs(process.argv);
 
@@ -82,6 +84,18 @@ function constructBuildEnv() {
   if (fs.existsSync(usergcc) && fs.existsSync(usergxx)) {
     env['CC'] = usergcc;
     env['CXX'] = usergxx;
+  }
+
+  env['DEFAULT_DEPENDENCY_PATH'] = depsDir;
+  if (options.incpath) {
+    env['CUSTOM_INCLUDE_PATH'] = options.incpath;
+  } else {
+    env['CUSTOM_INCLUDE_PATH'] = './';
+  }
+  if (options.libpath) {
+    env['CUSTOM_LIBRARY_PATH'] = options.libpath;
+  } else {
+    env['CUSTOM_LIBRARY_PATH'] = './';
   }
 
   if (options.debug) {

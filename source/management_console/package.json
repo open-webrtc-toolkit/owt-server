@@ -1,21 +1,22 @@
 {
   "name": "OWT-MCU-Manage-Console",
-  "version":"5.0.0",
+  "version": "5.0.0",
   "dependencies": {
+    "bootstrap": "^3.3.1",
     "express": "4.16.4",
+    "express-session": "^1.17.1",
     "http-proxy": "1.18.1",
     "jquery": "^3.0.0",
-    "bootstrap": "^3.3.1",
-    "crypto-js": "^3.1.2",
     "lodash": "^4.17.11",
     "pnotify": "3.0.0",
     "react": "^16.8.4",
     "react-dom": "^16.8.4",
     "react-table": "6.9.0",
-    "toml": "3.0.0"
+    "toml": "3.0.0",
+    "uuid": "^8.3.2"
   },
   "scripts": {
-    "postinstall" : "bash postinstall.sh"
+    "postinstall": "bash postinstall.sh"
   },
   "engine": {
     "node": "10.21.0"

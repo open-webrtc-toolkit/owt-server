@@ -41,26 +41,26 @@ void VideoMixer::New(const v8::FunctionCallbackInfo<v8::Value>& args) {
   Isolate* isolate = Isolate::GetCurrent();
   HandleScope scope(isolate);
 
-  Local<Object> options = args[0]->ToObject();
+  Local<Object> options = args[0]->ToObject(Nan::GetCurrentContext()).ToLocalChecked();
   mcu::VideoMixerConfig config;
 
-  config.maxInput = options->Get(String::NewFromUtf8(isolate, "maxinput"))->Int32Value();
-  config.crop = options->Get(String::NewFromUtf8(isolate, "crop"))->ToBoolean()->BooleanValue();
+  config.maxInput = options->Get(String::NewFromUtf8(isolate, "maxinput"))->Int32Value(Nan::GetCurrentContext()).ToChecked();
+  config.crop = options->Get(String::NewFromUtf8(isolate, "crop"))->ToBoolean(Nan::GetCurrentContext()).ToLocalChecked()->BooleanValue();
 
   Local<Value> resolution = options->Get(String::NewFromUtf8(isolate, "resolution"));
   if (resolution->IsString()) {
-    config.resolution = std::string(*String::Utf8Value(resolution->ToString()));
+    config.resolution = std::string(*String::Utf8Value(isolate, resolution->ToString()));
   }
 
   Local<Value> background = options->Get(String::NewFromUtf8(isolate, "backgroundcolor"));
   if (background->IsObject()) {
-    Local<Object> colorObj = background->ToObject();
-    config.bgColor.r = colorObj->Get(String::NewFromUtf8(isolate, "r"))->Int32Value();
-    config.bgColor.g = colorObj->Get(String::NewFromUtf8(isolate, "g"))->Int32Value();
-    config.bgColor.b = colorObj->Get(String::NewFromUtf8(isolate, "b"))->Int32Value();
+    Local<Object> colorObj = background->ToObject(Nan::GetCurrentContext()).ToLocalChecked();
+    config.bgColor.r = colorObj->Get(String::NewFromUtf8(isolate, "r"))->Int32Value(Nan::GetCurrentContext()).ToChecked();
+    config.bgColor.g = colorObj->Get(String::NewFromUtf8(isolate, "g"))->Int32Value(Nan::GetCurrentContext()).ToChecked();
+    config.bgColor.b = colorObj->Get(String::NewFromUtf8(isolate, "b"))->Int32Value(Nan::GetCurrentContext()).ToChecked();
   }
-  config.useGacc = options->Get(String::NewFromUtf8(isolate, "gaccplugin"))->ToBoolean()->BooleanValue();
-  config.MFE_timeout = options->Get(String::NewFromUtf8(isolate, "MFE_timeout"))->Int32Value();
+  config.useGacc = options->Get(String::NewFromUtf8(isolate, "gaccplugin"))->ToBoolean(Nan::GetCurrentContext()).ToLocalChecked()->BooleanValue();
+  config.MFE_timeout = options->Get(String::NewFromUtf8(isolate, "MFE_timeout"))->Int32Value(Nan::GetCurrentContext()).ToChecked();
 
   VideoMixer* obj = new VideoMixer();
   obj->me = new mcu::VideoMixer(config);
@@ -87,14 +87,14 @@ void VideoMixer::addInput(const v8::FunctionCallbackInfo<v8::Value>& args) {
   VideoMixer* obj = ObjectWrap::Unwrap<VideoMixer>(args.Holder());
   mcu::VideoMixer* me = obj->me;
 
-  int inputIndex = args[0]->Int32Value();
-  String::Utf8Value param1(args[1]->ToString());
+  int inputIndex = args[0]->Int32Value(Nan::GetCurrentContext()).ToChecked();
+  String::Utf8Value param1(isolate, args[1]->ToString());
   std::string codec = std::string(*param1);
-  FrameSource* param2 = ObjectWrap::Unwrap<FrameSource>(args[2]->ToObject());
+  FrameSource* param2 = ObjectWrap::Unwrap<FrameSource>(args[2]->ToObject(Nan::GetCurrentContext()).ToLocalChecked());
   owt_base::FrameSource* src = param2->src;
 
   // Set avatar data
-  String::Utf8Value param3(args[3]->ToString());
+  String::Utf8Value param3(isolate, args[3]->ToString());
   std::string avatarData = std::string(*param3);
 
   int r = me->addInput(inputIndex, codec, src, avatarData);
@@ -109,7 +109,7 @@ void VideoMixer::removeInput(const v8::FunctionCallbackInfo<v8::Value>& args) {
   VideoMixer* obj = ObjectWrap::Unwrap<VideoMixer>(args.Holder());
   mcu::VideoMixer* me = obj->me;
 
-  int inputIndex = args[0]->Int32Value();
+  int inputIndex = args[0]->Int32Value(Nan::GetCurrentContext()).ToChecked();
   me->removeInput(inputIndex);
 }
 
@@ -120,8 +120,8 @@ void VideoMixer::setInputActive(const v8::FunctionCallbackInfo<v8::Value>& args)
   VideoMixer* obj = ObjectWrap::Unwrap<VideoMixer>(args.Holder());
   mcu::VideoMixer* me = obj->me;
 
-  int inputIndex = args[0]->Int32Value();
-  bool active = args[1]->ToBoolean()->Value();
+  int inputIndex = args[0]->Int32Value(Nan::GetCurrentContext()).ToChecked();
+  bool active = args[1]->ToBoolean(Nan::GetCurrentContext()).ToLocalChecked()->Value();
 
   me->setInputActive(inputIndex, active);
 }
@@ -133,16 +133,16 @@ void VideoMixer::addOutput(const v8::FunctionCallbackInfo<v8::Value>& args) {
   VideoMixer* obj = ObjectWrap::Unwrap<VideoMixer>(args.Holder());
   mcu::VideoMixer* me = obj->me;
 
-  String::Utf8Value param0(args[0]->ToString());
+  String::Utf8Value param0(isolate, args[0]->ToString());
   std::string outStreamID = std::string(*param0);
-  String::Utf8Value param1(args[1]->ToString());
+  String::Utf8Value param1(isolate, args[1]->ToString());
   std::string codec = std::string(*param1);
-  String::Utf8Value param2(args[2]->ToString());
+  String::Utf8Value param2(isolate, args[2]->ToString());
   std::string resolution = std::string(*param2);
-  unsigned int framerateFPS = args[3]->Uint32Value();
-  unsigned int bitrateKbps = args[4]->Uint32Value();
-  unsigned int keyFrameIntervalSeconds = args[5]->Uint32Value();
-  FrameDestination* param6 = ObjectWrap::Unwrap<FrameDestination>(args[6]->ToObject());
+  unsigned int framerateFPS = args[3]->Uint32Value(Nan::GetCurrentContext()).ToChecked();
+  unsigned int bitrateKbps = args[4]->Uint32Value(Nan::GetCurrentContext()).ToChecked();
+  unsigned int keyFrameIntervalSeconds = args[5]->Uint32Value(Nan::GetCurrentContext()).ToChecked();
+  FrameDestination* param6 = ObjectWrap::Unwrap<FrameDestination>(args[6]->ToObject(Nan::GetCurrentContext()).ToLocalChecked());
   owt_base::FrameDestination* dest = param6->dest;
 
   owt_base::VideoCodecProfile profile = owt_base::PROFILE_UNKNOWN;
@@ -172,7 +172,7 @@ void VideoMixer::removeOutput(const v8::FunctionCallbackInfo<v8::Value>& args) {
   VideoMixer* obj = ObjectWrap::Unwrap<VideoMixer>(args.Holder());
   mcu::VideoMixer* me = obj->me;
 
-  String::Utf8Value param0(args[0]->ToString());
+  String::Utf8Value param0(isolate, args[0]->ToString());
   std::string outStreamID = std::string(*param0);
 
   me->removeOutput(outStreamID);
@@ -181,9 +181,9 @@ void VideoMixer::removeOutput(const v8::FunctionCallbackInfo<v8::Value>& args) {
 mcu::Rational parseRational(Isolate* isolate, Local<Value> rational) {
   mcu::Rational ret = { 0, 1 };
   if (rational->IsObject()) {
-    Local<Object> obj = rational->ToObject();
-    ret.numerator = obj->Get(String::NewFromUtf8(isolate, "numerator"))->Int32Value();
-    ret.denominator = obj->Get(String::NewFromUtf8(isolate, "denominator"))->Int32Value();
+    Local<Object> obj = rational->ToObject(Nan::GetCurrentContext()).ToLocalChecked();
+    ret.numerator = obj->Get(String::NewFromUtf8(isolate, "numerator"))->Int32Value(Nan::GetCurrentContext()).ToChecked();
+    ret.denominator = obj->Get(String::NewFromUtf8(isolate, "denominator"))->Int32Value(Nan::GetCurrentContext()).ToChecked();
   }
   return ret;
 }
@@ -199,24 +199,24 @@ void VideoMixer::updateLayoutSolution(const v8::FunctionCallbackInfo<v8::Value>&
     return;
   }
 
-  Local<Object> jsSolution = args[0]->ToObject();
+  Local<Object> jsSolution = args[0]->ToObject(Nan::GetCurrentContext()).ToLocalChecked();
   if (jsSolution->IsArray()) {
     mcu::LayoutSolution solution;
-    int length = jsSolution->Get(String::NewFromUtf8(isolate, "length"))->ToObject()->Uint32Value();
+    int length = jsSolution->Get(String::NewFromUtf8(isolate, "length"))->ToObject(Nan::GetCurrentContext()).ToLocalChecked()->Uint32Value(Nan::GetCurrentContext()).ToChecked();
     for (int i = 0; i < length; i++) {
       if (!jsSolution->Get(i)->IsObject())
         continue;
-      Local<Object> jsInputRegion = jsSolution->Get(i)->ToObject();
-      int input = jsInputRegion->Get(String::NewFromUtf8(isolate, "input"))->NumberValue();
-      Local<Object> regObj = jsInputRegion->Get(String::NewFromUtf8(isolate, "region"))->ToObject();
+      Local<Object> jsInputRegion = jsSolution->Get(i)->ToObject(Nan::GetCurrentContext()).ToLocalChecked();
+      int input = jsInputRegion->Get(String::NewFromUtf8(isolate, "input"))->NumberValue(Nan::GetCurrentContext()).ToChecked();
+      Local<Object> regObj = jsInputRegion->Get(String::NewFromUtf8(isolate, "region"))->ToObject(Nan::GetCurrentContext()).ToLocalChecked();
 
       mcu::Region region;
-      region.id = *String::Utf8Value(regObj->Get(String::NewFromUtf8(isolate, "id")));
+      region.id = *String::Utf8Value(isolate, regObj->Get(String::NewFromUtf8(isolate, "id")));
 
       Local<Value> area = regObj->Get(String::NewFromUtf8(isolate, "area"));
       if (area->IsObject()) {
-        Local<Object> areaObj = area->ToObject();
-        region.shape = *String::Utf8Value(regObj->Get(String::NewFromUtf8(isolate, "shape")));
+        Local<Object> areaObj = area->ToObject(Nan::GetCurrentContext()).ToLocalChecked();
+        region.shape = *String::Utf8Value(isolate, regObj->Get(String::NewFromUtf8(isolate, "shape")));
         if (region.shape == "rectangle") {
           region.area.rect.left = parseRational(isolate, areaObj->Get(String::NewFromUtf8(isolate, "left")));
           region.area.rect.top = parseRational(isolate, areaObj->Get(String::NewFromUtf8(isolate, "top")));
@@ -246,7 +246,7 @@ void VideoMixer::forceKeyFrame(const v8::FunctionCallbackInfo<v8::Value>& args) 
   VideoMixer* obj = ObjectWrap::Unwrap<VideoMixer>(args.Holder());
   mcu::VideoMixer* me = obj->me;
 
-  String::Utf8Value param0(args[0]->ToString());
+  String::Utf8Value param0(isolate, args[0]->ToString());
   std::string outStreamID = std::string(*param0);
 
   me->forceKeyFrame(outStreamID);
@@ -259,7 +259,7 @@ void VideoMixer::drawText(const v8::FunctionCallbackInfo<v8::Value>& args) {
   VideoMixer* obj = ObjectWrap::Unwrap<VideoMixer>(args.Holder());
   mcu::VideoMixer* me = obj->me;
 
-  String::Utf8Value param0(args[0]->ToString());
+  String::Utf8Value param0(isolate, args[0]->ToString());
   std::string textSpec = std::string(*param0);
 
   me->drawText(textSpec);

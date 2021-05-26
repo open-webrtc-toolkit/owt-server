@@ -69,7 +69,7 @@ void StatCallWorker::HandleOKCallback() {
   Local<Value> argv[] = {
     Nan::New<v8::String>(stat_).ToLocalChecked()
   };
-  callback->Call(1, argv);
+  callback->Call(1, argv, async_resource);
 }
 
 void destroyAsyncHandle(uv_handle_t *handle) {
@@ -169,10 +169,10 @@ NAN_METHOD(MediaStream::New) {
 
     std::shared_ptr<erizo::WebRtcConnection> wrtc = connection->me;
 
-    v8::String::Utf8Value paramId(Nan::To<v8::String>(info[2]).ToLocalChecked());
+    v8::String::Utf8Value paramId(v8::Isolate::GetCurrent(), Nan::To<v8::String>(info[2]).ToLocalChecked());
     std::string wrtc_id = std::string(*paramId);
 
-    v8::String::Utf8Value paramLabel(Nan::To<v8::String>(info[3]).ToLocalChecked());
+    v8::String::Utf8Value paramLabel(v8::Isolate::GetCurrent(), Nan::To<v8::String>(info[3]).ToLocalChecked());
     std::string stream_label = std::string(*paramLabel);
 
     bool is_publisher = info[5]->BooleanValue();
@@ -188,6 +188,7 @@ NAN_METHOD(MediaStream::New) {
     ELOG_DEBUG("%s, message: Created", obj->toLog());
     obj->Wrap(info.This());
     info.GetReturnValue().Set(info.This());
+    obj->asyncResource_ = new Nan::AsyncResource("MediaStreamCallback");
   } else {
     // TODO(pedro) Check what happens here
   }
@@ -196,6 +197,7 @@ NAN_METHOD(MediaStream::New) {
 NAN_METHOD(MediaStream::close) {
   MediaStream* obj = Nan::ObjectWrap::Unwrap<MediaStream>(info.Holder());
   if (obj) {
+    delete obj->asyncResource_;
     obj->close();
   }
 }
@@ -242,7 +244,7 @@ NAN_METHOD(MediaStream::setMaxVideoBW) {
     return;
   }
 
-  int max_video_bw = info[0]->IntegerValue();
+  int max_video_bw = info[0]->IntegerValue(Nan::GetCurrentContext()).ToChecked();
   me->setMaxVideoBW(max_video_bw);
 }
 
@@ -252,9 +254,9 @@ NAN_METHOD(MediaStream::setVideoConstraints) {
   if (!me) {
     return;
   }
-  int max_video_width = info[0]->IntegerValue();
-  int max_video_height = info[1]->IntegerValue();
-  int max_video_frame_rate = info[2]->IntegerValue();
+  int max_video_width = info[0]->IntegerValue(Nan::GetCurrentContext()).ToChecked();
+  int max_video_height = info[1]->IntegerValue(Nan::GetCurrentContext()).ToChecked();
+  int max_video_frame_rate = info[2]->IntegerValue(Nan::GetCurrentContext()).ToChecked();
   me->setVideoConstraints(max_video_width, max_video_height, max_video_frame_rate);
 }
 
@@ -265,7 +267,7 @@ NAN_METHOD(MediaStream::setMetadata) {
     return;
   }
 
-  v8::String::Utf8Value json_param(Nan::To<v8::String>(info[0]).ToLocalChecked());
+  v8::String::Utf8Value json_param(v8::Isolate::GetCurrent(), Nan::To<v8::String>(info[0]).ToLocalChecked());
   std::string metadata_string = std::string(*json_param);
   json metadata_json = json::parse(metadata_string);
   std::map<std::string, std::string> metadata;
@@ -345,7 +347,7 @@ NAN_METHOD(MediaStream::enableHandler) {
     return;
   }
 
-  v8::String::Utf8Value param(Nan::To<v8::String>(info[0]).ToLocalChecked());
+  v8::String::Utf8Value param(v8::Isolate::GetCurrent(), Nan::To<v8::String>(info[0]).ToLocalChecked());
   std::string name = std::string(*param);
 
   me->enableHandler(name);
@@ -359,7 +361,7 @@ NAN_METHOD(MediaStream::disableHandler) {
     return;
   }
 
-  v8::String::Utf8Value param(Nan::To<v8::String>(info[0]).ToLocalChecked());
+  v8::String::Utf8Value param(v8::Isolate::GetCurrent(), Nan::To<v8::String>(info[0]).ToLocalChecked());
   std::string name = std::string(*param);
 
   me->disableHandler(name);
@@ -372,8 +374,8 @@ NAN_METHOD(MediaStream::setQualityLayer) {
     return;
   }
 
-  int spatial_layer = info[0]->IntegerValue();
-  int temporal_layer = info[1]->IntegerValue();
+  int spatial_layer = info[0]->IntegerValue(Nan::GetCurrentContext()).ToChecked();
+  int temporal_layer = info[1]->IntegerValue(Nan::GetCurrentContext()).ToChecked();
 
   me->setQualityLayer(spatial_layer, temporal_layer);
 }
@@ -386,7 +388,7 @@ NAN_METHOD(MediaStream::enableSlideShowBelowSpatialLayer) {
   }
 
   bool enabled = info[0]->BooleanValue();
-  int spatial_layer = info[1]->IntegerValue();
+  int spatial_layer = info[1]->IntegerValue(Nan::GetCurrentContext()).ToChecked();
   me->enableSlideShowBelowSpatialLayer(enabled, spatial_layer);
 }
 
@@ -417,7 +419,7 @@ NAN_METHOD(MediaStream::setFeedbackReports) {
   }
 
   bool v = info[0]->BooleanValue();
-  int fbreps = info[1]->IntegerValue();  // From bps to Kbps
+  int fbreps = info[1]->IntegerValue(Nan::GetCurrentContext()).ToChecked();  // From bps to Kbps
   me->setFeedbackReports(v, fbreps);
 }
 
@@ -468,7 +470,7 @@ NAUV_WORK_CB(MediaStream::statsCallback) {
   if (obj->has_stats_callback_) {
     while (!obj->stats_messages.empty()) {
       Local<Value> args[] = {Nan::New(obj->stats_messages.front().c_str()).ToLocalChecked()};
-      Nan::MakeCallback(Nan::GetCurrentContext()->Global(), obj->stats_callback_->GetFunction(), 1, args);
+      obj->asyncResource_->runInAsyncScope(Nan::GetCurrentContext()->Global(), obj->stats_callback_->GetFunction(), 1, args);
       obj->stats_messages.pop();
     }
   }
@@ -486,7 +488,7 @@ NAUV_WORK_CB(MediaStream::eventCallback) {
       while (!obj->event_messages.empty()) {
           Local<Value> args[] = {Nan::New(obj->event_messages.front().first.c_str()).ToLocalChecked(),
               Nan::New(obj->event_messages.front().second.c_str()).ToLocalChecked()};
-          Nan::MakeCallback(Nan::GetCurrentContext()->Global(), obj->event_callback_->GetFunction(), 2, args);
+          obj->asyncResource_->runInAsyncScope(Nan::GetCurrentContext()->Global(), obj->event_callback_->GetFunction(), 2, args);
           obj->event_messages.pop();
       }
   }

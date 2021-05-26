@@ -126,11 +126,12 @@ Please follow [Conference Server build instructions](https://github.com/open-web
 Steps to run Conference Server with pre-built binary:
 
 1. Go to the untarred conference server dir, and run `./bin/init-all.sh --deps`; this would try to install mongodb and rabbitmq-server. Don't set any password for rabbitmq or mongodb.
-2. Still in the same dir, run `bin/init-all.sh`.
-3. Update quic_agent/agent.toml, set `hostname` to the hostname quic agent is running on.
-4. run `bin/start-all.sh`.
-5. Open [https://localhost:3004/quic.html](https://localhost:3004/quic.html) on the same host with Chrome browser to visit the web sample page. Due to the test certificate, you may need confirm this unsafe access.
-6. Press 'Start Sending' button to start transferring data to conference server. Press 'Stop Sending' button on the web page to stop sending.. If there's no error in the console, that implies server is correctly setup.
+1. Still in the same dir, run `bin/init-all.sh`.
+1. Update quic_agent/agent.toml, set `hostname` to the hostname quic agent is running on.
+1. Update management_api/management_api.toml, set `enableWebTransport` to `true`.
+1. run `bin/start-all.sh`.
+1. Open [https://localhost:3004/quic.html](https://localhost:3004/quic.html) on the same host with Chrome browser to visit the web sample page. Due to the test certificate, you may need confirm this unsafe access.
+1. Press 'Start Sending' button to start transferring data to conference server. Press 'Stop Sending' button on the web page to stop sending.. If there's no error in the console, that implies server is correctly setup.
 
 # OWT QUIC Windows Sample
 
@@ -152,7 +153,7 @@ OWT Conference Server is using a self-signed certificate during development phas
 - Make sure generate-certs.sh is exectuable. If not, run `chmod +x generate-certs.sh`;
 - Remove the `out` dir in case it exists.
 - Under the downloaded tool dir, run `./generate-certs.sh`. It is expected to generate a series of files under out dir.
-- Under the downloaded tool dir, run `openssl pkcs12 -inkey out/leaf_certs.key -in out/leaf_cert.pem -export -out out/certificate.pfx`. This will prompt for password for the pfx. Make sure you always use `abc123` as the password.
+- Under the downloaded tool dir, run `openssl pkcs12 -inkey out/leaf_cert.key -in out/leaf_cert.pem -export -out out/certificate.pfx`. This will prompt for password for the pfx. Make sure you always use `abc123` as the password.
 - Under the downloaded tool dir, run `openssl x509 -noout -fingerprint -sha256 -inform pem -in out/leaf_cert.pem`. You will get the fingerprint string in the form of "XX:XX:XX....XX:XX".
 
 ## Use the Certificate

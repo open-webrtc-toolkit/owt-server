@@ -10,6 +10,7 @@
 #include <node.h>
 #include <node_object_wrap.h>
 #include <uv.h>
+#include <nan.h>
 
 /*
  * Wrapper class of mcu::VideoTranscoder

@@ -13,7 +13,7 @@
           "../workingNode.js",
           "../InternalConnectionFactory.js",
           "log4cxx.properties",
-          "../../common/amqp_client.js",
+          "../../common/amqpClient.js",
           "../../common/cipher.js",
           "../../common/clusterWorker.js",
           "../../common/loadCollector.js",

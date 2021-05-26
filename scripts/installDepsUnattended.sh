@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -e
 SCRIPT=`pwd`/$0
 FILENAME=`basename $SCRIPT`
 PATHNAME=`dirname $SCRIPT`
@@ -45,6 +45,7 @@ parse_arguments(){
 parse_arguments $*
 
 OS=`$PATHNAME/detectOS.sh | awk '{print tolower($0)}'`
+OS_VERSION=`$PATHNAME/detectOS.sh | awk '{print tolower($2)}'`
 echo $OS
 
 cd $PATHNAME
@@ -65,6 +66,10 @@ then
   . installUbuntuDeps.sh
   if [ "$NIGHTLY" != "true" ]; then
     install_apt_deps
+    if [[ "$OS_VERSION" =~ 20.04.* ]]
+    then
+      install_boost
+    fi
   fi
 fi
 
