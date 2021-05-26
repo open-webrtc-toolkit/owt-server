@@ -40,25 +40,33 @@ namespace quic_agent_plugin {
 
     // A frame received of sent by QUIC agent. It's not a QUIC stream frame defined in QUIC spec.
     struct Frame {
+        // Create a frame.
+        static Frame* Create();
+        // Delete the frame.
+        void Dispose();
         // Payload of the frame.
         uint8_t* payload;
         // Payload's length.
         uint32_t length;
+
+    private:
+        Frame();
+        virtual ~Frame();
     };
 
     // Interface for data processors.
     class ProcessorInterface {
     public:
         virtual ~ProcessorInterface() = default;
-        // Invoked when a new frame is available. `frame` will not be sent back to the pipeline. If you need the frame to be delivered to the next node, please call `FrameSink`'s `deliverFrame` method explicitly.
-        virtual void OnFrame(const Frame& frame);
+        // Invoked when a new frame is available. Ownership of `frame` is moved to processor. `frame` will not be sent back to the pipeline. If you need the frame to be delivered to the next node, please call `FrameSink`'s `deliverFrame` method explicitly.
+        virtual void OnFrame(Frame* frame);
     };
 
     class FrameSink {
     public:
         virtual ~FrameSink() = default;
-        // Call this function when a new frame is ready to be delivered to the next node.
-        virtual void DeliverFrame(const Frame& frame);
+        // Call this function when a new frame is ready to be delivered to the next node. Ownership of `frame` is moved to the next node.
+        virtual void DeliverFrame(Frame* frame);
     };
 
     // The interface for QUIC agent plugins. It allows developers to process data received or sent by QUIC agent.
