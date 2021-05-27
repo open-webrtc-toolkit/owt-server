@@ -127,13 +127,10 @@ NAN_METHOD(InternalClient::removeDestination) {
 
 NAUV_WORK_CB(InternalClient::statsCallback) {
   Nan::HandleScope scope;
-  ELOG_WARN("0 statsCallback!!!");
-
   InternalClient* obj = reinterpret_cast<InternalClient*>(async->data);
   if (!obj || !obj->me || !obj->stats_callback_) {
     return;
   }
-  ELOG_WARN("1 statsCallback!!!");
 
   boost::mutex::scoped_lock lock(obj->mutex);
   while (!obj->stats_messages.empty()) {
@@ -149,13 +146,10 @@ NAUV_WORK_CB(InternalClient::statsCallback) {
 }
 
 void InternalClient::onConnected() {
-  ELOG_WARN("0  on connected!!!");
-
   boost::mutex::scoped_lock lock(mutex);
   if (!async_stats_ || !stats_callback_) {
     return;
   }
-  ELOG_WARN("on connected!!!");
   stats_messages.push("connected");
   async_stats_->data = this;
   uv_async_send(async_stats_);

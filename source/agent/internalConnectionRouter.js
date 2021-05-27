@@ -152,7 +152,7 @@ class InternalConnectionRouter {
     setSecurePromise.then(() => {
       this.internalServer = new InternalServer(
         protocol, minport, maxport, (a, b) => {
-          log.info('server stat:', a, b);
+          log.debug('server stat:', a, b);
       });
       this.internalPort = this.internalServer.getListeningPort();
     });
