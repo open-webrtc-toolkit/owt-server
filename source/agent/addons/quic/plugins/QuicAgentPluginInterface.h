@@ -31,11 +31,10 @@ namespace quic_agent_plugin {
 
     // This struct represents a data flow's information.
     // See https://github.com/open-webrtc-toolkit/owt-server/blob/master/doc/Client-Portal%20Protocol.md for definitions of publication and subscription.
-    struct PipelineInfo {
-        const ConnectionType publicationType;
-        const char* publicationId;
-        const ConnectionType subscriptionType;
-        const char* subscriptionId;
+    struct ConnectionInfo {
+        const ConnectionType type;
+        // Publication ID or subscription ID.
+        const char* id;
     };
 
     // A frame received of sent by QUIC agent. It's not a QUIC stream frame defined in QUIC spec.
@@ -58,8 +57,21 @@ namespace quic_agent_plugin {
     class ProcessorInterface {
     public:
         virtual ~ProcessorInterface() = default;
+        // Invoked when a new subscription is requested for the publication associated with this processor.
+        virtual void AddSink(const FrameSink& sink);
         // Invoked when a new frame is available. Ownership of `frame` is moved to processor. `frame` will not be sent back to the pipeline. If you need the frame to be delivered to the next node, please call `FrameSink`'s `deliverFrame` method explicitly.
         virtual void OnFrame(Frame* frame);
+        // Invoked when a new feedback is available. Ownership of `feedback` is moved to processor. `feedback` will not be sent back to the pipeline. If you need the frame to be delivered to the next node, please call `FrameSource`'s `deliverFeedback` method explicitly.
+        virtual void OnFeedback(Frame* feedback);
+    };
+
+    class FrameSource {
+    public:
+        virtual ~FrameSource() = default;
+        // Call this function when a new feedback is ready to be delivered to the next node. Ownership of `feedback` is moved to the next node.
+        virtual void DeliverFeedback(Frame* feedback);
+        // Get publication infomation.
+        virtual const ConnectionInfo& ConnectionInfo() const;
     };
 
     class FrameSink {
@@ -67,14 +79,17 @@ namespace quic_agent_plugin {
         virtual ~FrameSink() = default;
         // Call this function when a new frame is ready to be delivered to the next node. Ownership of `frame` is moved to the next node.
         virtual void DeliverFrame(Frame* frame);
+        // Get subscription infomation.
+        virtual const ConnectionInfo& ConnectionInfo() const;
     };
 
     // The interface for QUIC agent plugins. It allows developers to process data received or sent by QUIC agent.
     class PluginInterface {
     public:
         virtual ~PluginInterface() = default;
-        // Create a data processor for a newly created pipeline. This method will be invoked when a new pipeline is created in QUIC agent. Returns nullptr if you don't need a processor for this pipeline. Since you have a reference to `frameSink`, you can push data to the next node whenever you want.
-        virtual ProcessorInterface* CreateDataProcessor(const PipelineInfo& info, const FrameSink& frameSink);
+        // Create a data processor for a newly created data source. This method will be invoked when a new data source is created in QUIC agent. Returns nullptr if you don't need a processor for this source.
+        virtual ProcessorInterface* CreateDataProcessor(const FrameSource& source);
+        // Other methods for loading a shared library.
     };
 }
 }
