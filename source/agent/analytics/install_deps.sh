@@ -35,11 +35,25 @@ do_update() {
   fi
 }
 
+install_boost() {
+  echo -e "\x1b[32mInstalling boost...\x1b[0m"
+  pushd ${this} >/dev/null
+  wget -c http://iweb.dl.sourceforge.net/project/boost/boost/1.65.0/boost_1_65_0.tar.bz2
+  tar xvf boost_1_65_0.tar.bz2
+  pushd boost_1_65_0 >/dev/null
+  ./bootstrap.sh
+  ./b2 --with-thread --with-system
+  cp stage/lib/libboost_*.so* ${this}/lib
+  popd
+  popd
+}
+
 install_deps() {
   if [[ "$OS" =~ .*centos.* ]]
   then
     echo -e "\x1b[32mInstalling deps via yum install...\x1b[0m"
-    ${SUDO} yum install boost-system boost-thread log4cxx wget bzip2 x264 gstreamer1-plugins-ugly -y
+    ${SUDO} yum install log4cxx wget bzip2 x264 gstreamer1-plugins-ugly -y
+    install_boost
   elif [[ "$OS" =~ .*ubuntu.* ]]
   then
     echo -e "\x1b[32mInstalling deps via apt-get install...\x1b[0m"

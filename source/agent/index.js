@@ -52,7 +52,7 @@ for (var prop in opt.options) {
 
 var clusterWorker = require('./clusterWorker');
 var nodeManager = require('./nodeManager');
-var amqper = require('./amqp_client')();
+var amqper = require('./amqpClient')();
 var rpcClient;
 var monitoringTarget;
 
@@ -79,6 +79,7 @@ var joinCluster = function (on_ok) {
 
     var recovery = function () {
         log.info(myPurpose, 'agent recovered.');
+        manager && manager.recover();
     };
 
     var overload = function () {
@@ -221,16 +222,21 @@ amqper.connect(config.rabbit, function () {
 });
 
 ['SIGINT', 'SIGTERM'].map(function (sig) {
-    process.on(sig, function () {
+    process.on(sig, async function () {
         log.warn('Exiting on', sig);
+        manager && manager.dropAllNodes(true);
+        worker && worker.quit();
+        try {
+            await amqper.disconnect();
+        } catch(e) {
+            log.warn('Exiting e:', e);
+        }
         process.exit();
     });
 });
 
 process.on('exit', function () {
-    manager && manager.dropAllNodes(true);
-    worker && worker.quit();
-    amqper.disconnect();
+    log.info('Process exit');
 });
 
 process.on('unhandledRejection', (reason) => {

@@ -38,7 +38,7 @@ NAN_MODULE_INIT(VideoFrameConstructor::Init) {
 NAN_METHOD(VideoFrameConstructor::New) {
   if (info.IsConstructCall()) {
     VideoFrameConstructor* obj = new VideoFrameConstructor();
-    int transportccExt = (info.Length() >= 2) ? info[1]->IntegerValue() : -1;
+    int transportccExt = (info.Length() >= 2) ? info[1]->IntegerValue(Nan::GetCurrentContext()).ToChecked() : -1;
     VideoFrameConstructor* base_wrapper = (info.Length() == 3)
       ? Nan::ObjectWrap::Unwrap<VideoFrameConstructor>(Nan::To<v8::Object>(info[2]).ToLocalChecked())
       : nullptr;
@@ -53,6 +53,7 @@ NAN_METHOD(VideoFrameConstructor::New) {
     obj->msink = obj->me;
 
     obj->Callback_ = new Nan::Callback(info[0].As<Function>());
+    obj->asyncResource_ = new Nan::AsyncResource("VideoFrameCallback");
     uv_async_init(uv_default_loop(), &obj->async_, &VideoFrameConstructor::Callback);
     obj->Wrap(info.This());
     info.GetReturnValue().Set(info.This());
@@ -71,7 +72,7 @@ NAN_METHOD(VideoFrameConstructor::close) {
   if (!uv_is_closing(reinterpret_cast<uv_handle_t*>(&obj->async_))) {
     uv_close(reinterpret_cast<uv_handle_t*>(&obj->async_), NULL);
   }
-
+  delete obj->asyncResource_;
   delete me;
 }
 
@@ -96,7 +97,7 @@ NAN_METHOD(VideoFrameConstructor::addDestination) {
   VideoFrameConstructor* obj = Nan::ObjectWrap::Unwrap<VideoFrameConstructor>(info.Holder());
   owt_base::VideoFrameConstructor* me = obj->me;
 
-  FrameDestination* param = node::ObjectWrap::Unwrap<FrameDestination>(info[0]->ToObject());
+  FrameDestination* param = node::ObjectWrap::Unwrap<FrameDestination>(info[0]->ToObject(Nan::GetCurrentContext()).ToLocalChecked());
   owt_base::FrameDestination* dest = param->dest;
 
   me->addVideoDestination(dest);
@@ -106,7 +107,7 @@ NAN_METHOD(VideoFrameConstructor::removeDestination) {
   VideoFrameConstructor* obj = Nan::ObjectWrap::Unwrap<VideoFrameConstructor>(info.Holder());
   owt_base::VideoFrameConstructor* me = obj->me;
 
-  FrameDestination* param = node::ObjectWrap::Unwrap<FrameDestination>(info[0]->ToObject());
+  FrameDestination* param = node::ObjectWrap::Unwrap<FrameDestination>(info[0]->ToObject(Nan::GetCurrentContext()).ToLocalChecked());
   owt_base::FrameDestination* dest = param->dest;
 
   me->removeVideoDestination(dest);
@@ -116,7 +117,7 @@ NAN_METHOD(VideoFrameConstructor::setBitrate) {
   VideoFrameConstructor* obj = Nan::ObjectWrap::Unwrap<VideoFrameConstructor>(info.Holder());
   owt_base::VideoFrameConstructor* me = obj->me;
 
-  int bitrate = info[0]->IntegerValue();
+  int bitrate = info[0]->IntegerValue(Nan::GetCurrentContext()).ToChecked();
 
   me->setBitrate(bitrate);
 }
@@ -132,7 +133,7 @@ NAN_METHOD(VideoFrameConstructor::enable) {
   VideoFrameConstructor* obj = Nan::ObjectWrap::Unwrap<VideoFrameConstructor>(info.Holder());
   owt_base::VideoFrameConstructor* me = obj->me;
 
-  bool b = (info[0]->ToBoolean())->BooleanValue();
+  bool b = (info[0]->ToBoolean(Nan::GetCurrentContext()).ToLocalChecked())->BooleanValue();
   me->enable(b);
 }
 
@@ -151,7 +152,7 @@ NAUV_WORK_CB(VideoFrameConstructor::Callback) {
   boost::mutex::scoped_lock lock(obj->mutex);
   while (!obj->videoInfoMsgs.empty()) {
     Local<Value> args[] = {Nan::New(obj->videoInfoMsgs.front().c_str()).ToLocalChecked()};
-    Nan::MakeCallback(Nan::GetCurrentContext()->Global(), obj->Callback_->GetFunction(), 1, args);
+    obj->asyncResource_->runInAsyncScope(Nan::GetCurrentContext()->Global(), obj->Callback_->GetFunction(), 1, args);
     obj->videoInfoMsgs.pop();
   }
 }

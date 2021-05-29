@@ -37,14 +37,23 @@ void InternalIn::New(const FunctionCallbackInfo<Value>& args) {
   String::Utf8Value param0(args[0]->ToString());
   std::string protocol = std::string(*param0);
   unsigned int minPort = 0, maxPort = 0;
+  std::string ticket;
 
   if (args.Length() >= 3) {
     minPort = args[1]->Uint32Value();
     maxPort = args[2]->Uint32Value();
   }
+  if (args.Length() > 3) {
+    String::Utf8Value param3(args[3]->ToString());
+    ticket = std::string(*param3);
+  }
 
   InternalIn* obj = new InternalIn();
-  obj->me = new owt_base::InternalIn(protocol, minPort, maxPort);
+  if (ticket.empty()) {
+    obj->me = new owt_base::InternalIn(protocol, minPort, maxPort);
+  } else {
+    obj->me = new owt_base::InternalIn(protocol, ticket, minPort, maxPort);
+  }
   obj->src = obj->me;
 
   obj->Wrap(args.This());

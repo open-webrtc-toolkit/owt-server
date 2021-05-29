@@ -61,6 +61,7 @@ class WebRtcConnection : public Nan::ObjectWrap, public erizo::WebRtcConnectionE
     ~WebRtcConnection();
 
     Nan::Callback *eventCallback_;
+    Nan::AsyncResource *asyncResource_;
 
     uv_async_t async_;
     uv_async_t asyncStats_;

@@ -45,10 +45,12 @@ exports.SipCallConnection = function (spec, onMediaUpdate) {
         });
         videoFrameConstructor.bindTransport(sip_callConnection);
 
-        const transportExt = 0;
+        const transportExt = -1;
+        const mid = '';
+        const midExt = -1;
         const selfRequestKeyFrame = true;
         videoFramePacketizer = new VideoFramePacketizer(
-            support_red, support_ulpfec, transportExt, selfRequestKeyFrame);
+            support_red, support_ulpfec, transportExt, mid, midExt, selfRequestKeyFrame);
         videoFramePacketizer.bindTransport(sip_callConnection);
     }
 

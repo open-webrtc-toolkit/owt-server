@@ -413,7 +413,7 @@ var Conference = function (rpcClient, selfRpcId) {
                       locality: transport.locality,
                       media: media,
                       data: rtcInfo.data,
-                      info: { type: 'webrtc', owner: transport.owner }
+                      info: { type: 'webrtc', owner: transport.owner, attributes: rtcInfo.attributes }
                     };
                     sendMsgTo(transport.owner, 'progress', {id: transport.id, sessionId, status: 'ready'});
                     onSessionEstablished(transport.owner, sessionId, direction, sessionInfo);
@@ -509,7 +509,7 @@ var Conference = function (rpcClient, selfRpcId) {
     return Promise.all(pl)
       .then(() => {
         doClean();
-        process.exit();
+        process.kill(process.pid, 'SIGINT');
       });
   };
 
@@ -1001,6 +1001,7 @@ var Conference = function (rpcClient, selfRpcId) {
       transportId: pubInfo.transport.id,
       tracks: pubInfo.media.tracks,
       legacy: pubInfo.legacy,
+      attributes: pubInfo.attributes,
       data: pubInfo.data
     };
     return rtcPubInfo;

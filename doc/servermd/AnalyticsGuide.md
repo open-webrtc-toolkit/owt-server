@@ -52,7 +52,6 @@ cd owt-server/docker
 Then owt:openvino image will be created with all the video analytics needed software installed. Then you can launch the container and copy OWT package into the container:
 ````
 docker run -itd --net=host --name=gst-analytics owt:openvino bash
-docker cp Release-vxxx.tgz gst-analytics:/home/
 docker exec -it gst-analytics bash
 ````
 
@@ -91,8 +90,7 @@ Follow  Model Downloader guide (open_model_zoo-2020.4/tools/downloader/README.md
 
 After all the dependencies are installed, you can follow commands below to build sample video analytics plugins in docker container or host machine:
 ````
-tar zxf Release-vxxx.tgz
-cd Release-vxxx/analytics_agent/plugins/samples
+cd /home/owt/analytics_agent/plugins/samples
 ./build_samples.sh
 cp build/intel64/Release/lib/lib* ../../lib/
 ````
@@ -118,7 +116,7 @@ apiversion = 400
 name = 'libCPUPipeline.so'
 libpath = 'pluginlibs/'
 configpath = 'pluginlibs/'
-modelpath = '/mnt/models/face-detection-retail-0004.xml'    # inference model path
+modelpath = '/mnt/models/FP16/face-detection-retail-0004.xml'    # inference model path
 inferencewidth = 672    # inference input width.
 inferenceheight = 384   # inference input height.
 inferenceframerate = 5  # inference input framerate
@@ -134,8 +132,8 @@ Make sure you copy pipeline binaries to ````dist/analytics_agent/lib/````directo
 Start up MCU in Docker container:
 
 ````
-cd Release-vxxx
-./bin/init-all.sh --deps ##default password for user owt is owt
+cd /home/owt
+./bin/init-all.sh ##default password for user owt is owt
 ./bin/start-all.sh
 ````
 
@@ -153,6 +151,37 @@ cp ${OWT_SOURCE_CODE}/docker/analyticspage/samplertcservice.js apps/current_app/
 ./bin/init-all.sh --deps
 ./bin/start-all.sh
 ````
+
+OWT sample web page will download jquery-3.2.1.min.js and socket.io.js files from internet, for network that cannot successfully download these 2 files following errors will print on Chrome console:
+```
+index.js:52 Uncaught (in promise) ReferenceError: $ is not defined
+    at createResolutionButtons (index.js:52)
+    at subscribeAndRenderVideo (index.js:100)
+    at index.js:194
+createResolutionButtons @ index.js:52
+subscribeAndRenderVideo @ index.js:100
+(anonymous) @ index.js:194
+Promise.then (async)
+(anonymous) @ index.js:143
+req.onreadystatechange @ rest-sample.js:12
+XMLHttpRequest.send (async)
+send @ rest-sample.js:19
+createToken @ rest-sample.js:79
+window.onload @ index.js:141
+load (async)
+runSocketIOSample @ index.js:134
+(anonymous) @ (index):53
+index.js:176 Uncaught (in promise) ReferenceError: $ is not defined
+    at index.js:176
+```
+ If this error happens, please manually download js files and replace them in docker image as:
+ ```
+wget https://raw.githubusercontent.com/qwu16/jsfiles/master/jquery-3.2.1.min.js
+wget https://raw.githubusercontent.com/qwu16/jsfiles/master/socket.io.js
+docker cp socket.io.js owt:/home/owt/apps/current_app/public/scripts/
+docker cp jquery-3.2.1.min.js owt:/home/owt/apps/current_app/public/scripts/
+vim /home/owt/apps/current_app/public/index.html ### Modify file path of socket.io.js and jquery-3.2.1.min.js in index.html
+ ```
 
 ### 3.3 Test Media Analytics Pipelines<a name="test3"></a>
 

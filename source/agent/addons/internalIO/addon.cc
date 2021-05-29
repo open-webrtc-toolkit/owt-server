@@ -5,6 +5,7 @@
 #include "InternalInWrapper.h"
 #include "InternalOutWrapper.h"
 #include "InternalIOWrapper.h"
+#include "InternalConfig.h"
 
 #include <node.h>
 
@@ -15,6 +16,7 @@ void InitAll(Handle<Object> exports) {
   InternalOut::Init(exports);
   SctpIn::Init(exports);
   SctpOut::Init(exports);
+  InitInternalConfig(exports);
 }
 
 NODE_MODULE(addon, InitAll)

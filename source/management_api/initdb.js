@@ -15,6 +15,11 @@ var currentVersion = '1.0';
 var fs = require('fs');
 var path = require('path');
 
+var MongoClient = require('mongodb').MongoClient;
+var connectOption = {
+  useUnifiedTopology: true,
+};
+var client;
 var db;
 var cipher = require('./cipher');
 
@@ -29,31 +34,48 @@ var sampleEntryName = (require(samplePackageJson).main || DEFAULT_SAMPLE_ENTRY);
 var sampleServiceFile = path.resolve(dirName, SAMPLE_RELATED_PATH, sampleEntryName);
 
 function prepareDB(next) {
+  if (dbURL.indexOf('mongodb://') !== 0) {
+    dbURL = 'mongodb://' + dbURL;
+  }
   if (fs.existsSync(cipher.astore)) {
     cipher.unlock(cipher.k, cipher.astore, function cb (err, authConfig) {
       if (!err) {
         if (authConfig.mongo && !dbURL.includes('@')) {
-          dbURL = authConfig.mongo.username
+          dbURL = "mongodb://" + authConfig.mongo.username
             + ':' + authConfig.mongo.password
-            + '@' + dbURL;
+            + '@' + dbURL.replace("mongodb://", "");
         }
       } else {
-        log.error('Failed to get mongodb auth:', err);
+        console.error('Failed to get mongodb auth:', err);
       }
-      db = require('mongojs')(dbURL, ['services', 'infos', 'rooms']);
-      next();
+      MongoClient.connect(dbURL, connectOption, function(err, cli) {
+        if (!err) {
+          client = cli;
+          db = client.db();
+          next();
+        } else {
+          console.error('Failed to connect mongodb:', err);
+        }
+      });
     });
   } else {
-    db = require('mongojs')(dbURL, ['services', 'infos', 'rooms']);
-    next();
+    MongoClient.connect(dbURL, connectOption, function(err, cli) {
+      if (!err) {
+        client = cli;
+        db = client.db();
+        next();
+      } else {
+        console.error('Failed to connect mongodb:', err);
+      }
+    });
   }
 }
 
 function upgradeH264(next) {
-  db.rooms.find({}).toArray(function (err, rooms) {
+  db.collection('rooms').find({}).toArray(function (err, rooms) {
     if (err) {
       console.log('Error in getting rooms:', err.message);
-      db.close();
+      client.close();
       return;
     }
     if (!rooms || rooms.length === 0) {
@@ -89,7 +111,7 @@ function upgradeH264(next) {
         }
       });
 
-      db.rooms.save(room, function (e, saved) {
+      db.collection('rooms').updateOne({_id: room._id}, room, function (e, saved) {
         if (e) {
           console.log('Error in upgrading room:', room._id, e.message);
         }
@@ -103,17 +125,17 @@ function upgradeH264(next) {
 }
 
 function checkVersion (next) {
-  db.infos.findOne({_id: 1}, function cb (err, info) {
+  db.collection('infos').findOne({_id: 1}, function cb (err, info) {
     if (err) {
       console.log('mongodb: error in query info');
-      return db.close();
+      return client.close();
     }
     if (info) {
       if (info.version === '1.0') {
         next();
       }
     } else {
-      db.services.findOne({}, function cb (err, service) {
+      db.collection('services').findOne({}, function cb (err, service) {
         if (err) {
           console.log('mongodb: error in query service');
           return db.close();
@@ -121,10 +143,10 @@ function checkVersion (next) {
         var upgradeNext = function(next) {
           upgradeH264(function() {
             info = {_id: 1, version: currentVersion};
-            db.infos.save(info, function cb (e, s) {
+            db.collection('infos').insertOne(info, function cb (e, s) {
               if (e) {
                 console.log('mongodb: error in updating version');
-                return db.close();
+                return client.close();
               }
               next();
             });
@@ -162,18 +184,18 @@ function checkVersion (next) {
 }
 
 function prepareService (serviceName, next) {
-  db.services.findOne({name: serviceName}, function cb (err, service) {
+  db.collection('services').findOne({name: serviceName}, function cb (err, service) {
     if (err || !service) {
       var crypto = require('crypto');
       var key = crypto.pbkdf2Sync(crypto.randomBytes(64).toString('hex'), crypto.randomBytes(32).toString('hex'), 4000, 128, 'sha256').toString('base64');
       service = {name: serviceName, key: cipher.encrypt(cipher.k, key), encrypted: true, rooms: [], __v: 0};
-      db.services.save(service, function cb (err, saved) {
+      db.collection('services').insertOne(service, function cb (err, result) {
         if (err) {
           console.log('mongodb: error in adding', serviceName);
-          return db.close();
+          return client.close();
         }
-        saved.key = key;
-        next(saved);
+        result.ops[0].key = key;
+        next(result.ops[0]);
       });
     } else {
       if (service.encrypted === true) {
@@ -228,7 +250,7 @@ prepareDB(function() {
         var sampleServiceKey = service.key;
         console.log('sampleServiceId:', sampleServiceId);
         console.log('sampleServiceKey:', sampleServiceKey);
-        db.close();
+        client.close();
 
         writeSampleFile(sampleServiceId, sampleServiceKey);
       });

@@ -6,6 +6,7 @@
 #define RawTransport_h
 
 #include <boost/asio.hpp>
+#include <boost/asio/ssl.hpp>
 #include <boost/scoped_ptr.hpp>
 #include <boost/shared_array.hpp>
 #include <boost/thread.hpp>
@@ -42,6 +43,7 @@ public:
     virtual void sendData(const char*, int len) = 0;
     virtual void sendData(const char* header, int headerLength, const char* payload, int payloadLength) = 0;
     virtual void close() = 0;
+    virtual bool initTicket(const std::string& ticket) = 0;
 
     virtual unsigned short getListeningPort() = 0;
 };
@@ -59,8 +61,12 @@ public:
     void sendData(const char*, int len);
     void sendData(const char* header, int headerLength, const char* payload, int payloadLength);
     void close();
+    bool initTicket(const std::string& ticket);
+
 
     unsigned short getListeningPort();
+
+    static void setPassphrase(std::string p);
 
 private:
     typedef struct {
@@ -75,7 +81,10 @@ private:
     void writeHandler(const boost::system::error_code&, std::size_t);
     void connectHandler(const boost::system::error_code&);
     void acceptHandler(const boost::system::error_code&);
+    void handshakeHandler(const boost::system::error_code&);
     void dumpTcpSSLv3Header(const char*, int len);
+    void sendTicket();
+    void receiveTicket(char*, int len);
 
     bool m_isClosing;
     bool m_tag;
@@ -96,6 +105,8 @@ private:
     // Alternatively, we may make the io_service object reference counted but it
     // introduces unnecessary complexity.
     std::shared_ptr<IOService> m_service;
+
+    typedef boost::asio::ssl::stream<boost::asio::ip::tcp::socket> ssl_socket;
     struct Socket {
         Socket() { }
         ~Socket() { }
@@ -115,10 +126,22 @@ private:
             boost::scoped_ptr<boost::asio::ip::tcp::socket> socket;
             boost::scoped_ptr<boost::asio::ip::tcp::acceptor> acceptor;
         } tcp;
+        struct SSLSocket {
+            SSLSocket() { }
+            ~SSLSocket() { }
+
+            boost::scoped_ptr<boost::asio::ssl::context> context;
+            boost::scoped_ptr<ssl_socket> socket;
+            boost::scoped_ptr<boost::asio::ip::tcp::acceptor> acceptor;
+        } ssl;
     } m_socket;
 
     RawTransportListener* m_listener;
     uint32_t m_receivedBytes;
+    bool m_ssl;
+    bool m_isListener;
+    bool m_verified;
+    std::string m_connectTicket;
 };
 
 } /* namespace owt_base */

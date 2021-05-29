@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -e
 
 pause() {
   read -p "$*"
@@ -151,7 +151,7 @@ install_openssl(){
 
   if [ -d $LIB_DIR ]; then
     local SSL_BASE_VERSION="1.1.1"
-    local SSL_VERSION="1.1.1h"
+    local SSL_VERSION="1.1.1j"
     cd $LIB_DIR
     rm -f ./build/lib/libssl.*
     rm -f ./build/lib/libcrypto.*
@@ -160,7 +160,7 @@ install_openssl(){
     wget -c https://www.openssl.org/source/openssl-${SSL_VERSION}.tar.gz
     tar xf openssl-${SSL_VERSION}.tar.gz
     cd openssl-${SSL_VERSION}
-    ./config no-ssl3 --prefix=$PREFIX_DIR -fPIC
+    ./config no-ssl3 --prefix=$PREFIX_DIR -fPIC --libdir=lib
     make depend
     make -s V=0
     make install
@@ -299,12 +299,35 @@ install_licode(){
 }
 
 install_quic(){
+  # QUIC IO
   rm $ROOT/third_party/quic-lib -rf
   mkdir $ROOT/third_party/quic-lib
 
   pushd ${ROOT}/third_party/quic-lib
   wget https://github.com/open-webrtc-toolkit/owt-deps-quic/releases/download/v0.1/dist.tgz
   tar xzf dist.tgz
+  popd
+
+  # QUIC transport
+  local QUIC_SDK_VERSION=`cat ${ROOT}/source/agent/addons/quic/quic_sdk_version`
+  local QUIC_TRANSPORT_PATH=${ROOT}/third_party/quic-transport
+  local QUIC_HEADERS_DIR=${ROOT}/build/libdeps/build/include/owt
+  if [ -d ${QUIC_TRANSPORT_PATH} ]; then
+    rm -r ${QUIC_TRANSPORT_PATH}
+  fi
+  mkdir ${QUIC_TRANSPORT_PATH}
+  pushd ${QUIC_TRANSPORT_PATH}
+  if wget ${QUIC_TRANSPORT_PACKAGE_URL_PREFIX}/linux/${QUIC_SDK_VERSION}.zip; then
+    unzip ${QUIC_SDK_VERSION}.zip
+    rm ${QUIC_SDK_VERSION}.zip
+    cp bin/release/libowt_quic_transport.so ${ROOT}/build/libdeps/build/lib
+    if [ -d ${QUIC_HEADERS_DIR} ]; then
+      rm -r ${QUIC_HEADERS_DIR}
+    fi
+    cp -r include/owt ${QUIC_HEADERS_DIR}
+  else
+    read -p "Failed to download prebuild QUIC SDK. Please download and compile QUIC SDK version ${QUIC_SDK_VERSION} from https://github.com/open-webrtc-toolkit/owt-deps-quic."
+  fi
   popd
 }
 
@@ -485,7 +508,7 @@ install_svt_hevc(){
     pushd SVT-HEVC >/dev/null
     git checkout v1.3.0
 
-    mkdir build
+    mkdir -p build
     pushd build >/dev/null
     cmake -DCMAKE_C_FLAGS="-std=gnu99" -DCMAKE_INSTALL_PREFIX=${PREFIX_DIR} ..
     make && make install
@@ -511,5 +534,20 @@ cleanup_common(){
     rm -f gcc*
     rm -f libva-utils*
     cd $CURRENT_DIR
+  fi
+}
+
+install_boost(){
+  if [ -d $LIB_DIR ]; then
+    cd $LIB_DIR
+    wget -c http://iweb.dl.sourceforge.net/project/boost/boost/1.65.0/boost_1_65_0.tar.bz2
+    tar xvf boost_1_65_0.tar.bz2
+    cd boost_1_65_0
+    chmod +x bootstrap.sh
+    ./bootstrap.sh
+    ./b2 && ./b2 install --prefix=$PREFIX_DIR
+  else
+    mkdir -p $LIB_DIR
+    install_boost
   fi
 }

@@ -65,20 +65,20 @@ void AVStreamInWrap::New(const FunctionCallbackInfo<Value>& args)
     Local<String> keyAudio = String::NewFromUtf8(isolate, "has_audio");
     Local<String> keyVideo = String::NewFromUtf8(isolate, "has_video");
     owt_base::LiveStreamIn::Options param{};
-    Local<Object> options = args[0]->ToObject();
+    Local<Object> options = args[0]->ToObject(Nan::GetCurrentContext()).ToLocalChecked();
     if (options->Has(keyUrl))
-        param.url = std::string(*String::Utf8Value(options->Get(keyUrl)->ToString()));
+        param.url = std::string(*String::Utf8Value(isolate, options->Get(keyUrl)->ToString()));
     if (options->Has(keyTransport))
-        param.transport = std::string(*String::Utf8Value(options->Get(keyTransport)->ToString()));
+        param.transport = std::string(*String::Utf8Value(isolate, options->Get(keyTransport)->ToString()));
     if (options->Has(keyBufferSize))
-        param.bufferSize = options->Get(keyBufferSize)->Uint32Value();
+        param.bufferSize = options->Get(keyBufferSize)->Uint32Value(Nan::GetCurrentContext()).ToChecked();
     if (options->Has(keyAudio))
-        param.enableAudio = std::string(*String::Utf8Value(options->Get(keyAudio)->ToString()));
+        param.enableAudio = std::string(*String::Utf8Value(isolate, options->Get(keyAudio)->ToString()));
     if (options->Has(keyVideo))
-        param.enableVideo = std::string(*String::Utf8Value(options->Get(keyVideo)->ToString()));
+        param.enableVideo = std::string(*String::Utf8Value(isolate, options->Get(keyVideo)->ToString()));
 
     AVStreamInWrap* obj = new AVStreamInWrap();
-    std::string type = std::string(*String::Utf8Value(options->Get(String::NewFromUtf8(isolate, "type"))->ToString()));
+    std::string type = std::string(*String::Utf8Value(isolate, options->Get(String::NewFromUtf8(isolate, "type"))->ToString()));
     if (type.compare("streaming") == 0)
         obj->me = new owt_base::LiveStreamIn(param, obj);
     else if (type.compare("file") == 0)
@@ -115,8 +115,8 @@ void AVStreamInWrap::addDestination(const FunctionCallbackInfo<Value>& args)
     AVStreamInWrap* obj = ObjectWrap::Unwrap<AVStreamInWrap>(args.Holder());
     if (!obj->me)
         return;
-    std::string track = std::string(*String::Utf8Value(args[0]->ToString()));
-    FrameDestination* param = ObjectWrap::Unwrap<FrameDestination>(args[1]->ToObject());
+    std::string track = std::string(*String::Utf8Value(isolate, args[0]->ToString()));
+    FrameDestination* param = ObjectWrap::Unwrap<FrameDestination>(args[1]->ToObject(Nan::GetCurrentContext()).ToLocalChecked());
     owt_base::FrameDestination* dest = param->dest;
 
     if (track == "audio")
@@ -133,8 +133,8 @@ void AVStreamInWrap::removeDestination(const FunctionCallbackInfo<Value>& args)
     AVStreamInWrap* obj = ObjectWrap::Unwrap<AVStreamInWrap>(args.Holder());
     if (!obj->me)
         return;
-    std::string track = std::string(*String::Utf8Value(args[0]->ToString()));
-    FrameDestination* param = ObjectWrap::Unwrap<FrameDestination>(args[1]->ToObject());
+    std::string track = std::string(*String::Utf8Value(isolate, args[0]->ToString()));
+    FrameDestination* param = ObjectWrap::Unwrap<FrameDestination>(args[1]->ToObject(Nan::GetCurrentContext()).ToLocalChecked());
     owt_base::FrameDestination* dest = param->dest;
 
     if (track == "audio")

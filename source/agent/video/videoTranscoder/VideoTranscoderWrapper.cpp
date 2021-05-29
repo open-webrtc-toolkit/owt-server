@@ -40,10 +40,10 @@ void VideoTranscoder::New(const v8::FunctionCallbackInfo<v8::Value>& args) {
   Isolate* isolate = Isolate::GetCurrent();
   HandleScope scope(isolate);
 
-  Local<Object> options = args[0]->ToObject();
+  Local<Object> options = args[0]->ToObject(Nan::GetCurrentContext()).ToLocalChecked();
   mcu::VideoTranscoderConfig config;
-  config.useGacc = options->Get(String::NewFromUtf8(isolate, "gaccplugin"))->ToBoolean()->BooleanValue();
-  config.MFE_timeout = options->Get(String::NewFromUtf8(isolate, "MFE_timeout"))->Int32Value();
+  config.useGacc = options->Get(String::NewFromUtf8(isolate, "gaccplugin"))->ToBoolean(Nan::GetCurrentContext()).ToLocalChecked()->BooleanValue();
+  config.MFE_timeout = options->Get(String::NewFromUtf8(isolate, "MFE_timeout"))->Int32Value(Nan::GetCurrentContext()).ToChecked();
 
   VideoTranscoder* obj = new VideoTranscoder();
   obj->me = new mcu::VideoTranscoder(config);
@@ -70,11 +70,11 @@ void VideoTranscoder::setInput(const v8::FunctionCallbackInfo<v8::Value>& args) 
   VideoTranscoder* obj = ObjectWrap::Unwrap<VideoTranscoder>(args.Holder());
   mcu::VideoTranscoder* me = obj->me;
 
-  String::Utf8Value param0(args[0]->ToString());
+  String::Utf8Value param0(isolate, args[0]->ToString());
   std::string inStreamID = std::string(*param0);
-  String::Utf8Value param1(args[1]->ToString());
+  String::Utf8Value param1(isolate, args[1]->ToString());
   std::string codec = std::string(*param1);
-  FrameSource* param2 = ObjectWrap::Unwrap<FrameSource>(args[2]->ToObject());
+  FrameSource* param2 = ObjectWrap::Unwrap<FrameSource>(args[2]->ToObject(Nan::GetCurrentContext()).ToLocalChecked());
   owt_base::FrameSource* src = param2->src;
 
   bool r = me->setInput(inStreamID, codec, src);
@@ -89,7 +89,7 @@ void VideoTranscoder::unsetInput(const v8::FunctionCallbackInfo<v8::Value>& args
   VideoTranscoder* obj = ObjectWrap::Unwrap<VideoTranscoder>(args.Holder());
   mcu::VideoTranscoder* me = obj->me;
 
-  String::Utf8Value param0(args[0]->ToString());
+  String::Utf8Value param0(isolate, args[0]->ToString());
   std::string inStreamID = std::string(*param0);
 
   me->unsetInput(inStreamID);
@@ -102,26 +102,26 @@ void VideoTranscoder::addOutput(const v8::FunctionCallbackInfo<v8::Value>& args)
   VideoTranscoder* obj = ObjectWrap::Unwrap<VideoTranscoder>(args.Holder());
   mcu::VideoTranscoder* me = obj->me;
 
-  String::Utf8Value param0(args[0]->ToString());
+  String::Utf8Value param0(isolate, args[0]->ToString());
   std::string outStreamID = std::string(*param0);
-  String::Utf8Value param1(args[1]->ToString());
+  String::Utf8Value param1(isolate, args[1]->ToString());
   std::string codec = std::string(*param1);
-  String::Utf8Value param2(args[2]->ToString());
+  String::Utf8Value param2(isolate, args[2]->ToString());
   std::string resolution = std::string(*param2);
-  unsigned int framerateFPS = args[3]->Uint32Value();
-  unsigned int bitrateKbps = args[4]->Uint32Value();
-  unsigned int keyFrameIntervalSeconds = args[5]->Uint32Value();
+  unsigned int framerateFPS = args[3]->Uint32Value(Nan::GetCurrentContext()).ToChecked();
+  unsigned int bitrateKbps = args[4]->Uint32Value(Nan::GetCurrentContext()).ToChecked();
+  unsigned int keyFrameIntervalSeconds = args[5]->Uint32Value(Nan::GetCurrentContext()).ToChecked();
 #ifdef BUILD_FOR_ANALYTICS
-  String::Utf8Value param6(args[6]->ToString());
+  String::Utf8Value param6(isolate, args[6]->ToString());
   std::string algorithm = std::string(*param6);
 
-  String::Utf8Value param7(args[7]->ToString());
+  String::Utf8Value param7(isolate, args[7]->ToString());
   std::string pluginName = std::string(*param7);
 
-  FrameDestination* param8 = ObjectWrap::Unwrap<FrameDestination>(args[8]->ToObject());
+  FrameDestination* param8 = ObjectWrap::Unwrap<FrameDestination>(args[8]->ToObject(Nan::GetCurrentContext()).ToLocalChecked());
   owt_base::FrameDestination* dest = param8->dest;
 #else
-  FrameDestination* param6 = ObjectWrap::Unwrap<FrameDestination>(args[6]->ToObject());
+  FrameDestination* param6 = ObjectWrap::Unwrap<FrameDestination>(args[6]->ToObject(Nan::GetCurrentContext()).ToLocalChecked());
   owt_base::FrameDestination* dest = param6->dest;
 #endif
 
@@ -157,7 +157,7 @@ void VideoTranscoder::removeOutput(const v8::FunctionCallbackInfo<v8::Value>& ar
   VideoTranscoder* obj = ObjectWrap::Unwrap<VideoTranscoder>(args.Holder());
   mcu::VideoTranscoder* me = obj->me;
 
-  String::Utf8Value param0(args[0]->ToString());
+  String::Utf8Value param0(isolate, args[0]->ToString());
   std::string outStreamID = std::string(*param0);
 
   me->removeOutput(outStreamID);
@@ -170,7 +170,7 @@ void VideoTranscoder::forceKeyFrame(const v8::FunctionCallbackInfo<v8::Value>& a
   VideoTranscoder* obj = ObjectWrap::Unwrap<VideoTranscoder>(args.Holder());
   mcu::VideoTranscoder* me = obj->me;
 
-  String::Utf8Value param0(args[0]->ToString());
+  String::Utf8Value param0(isolate, args[0]->ToString());
   std::string outStreamID = std::string(*param0);
 
   me->forceKeyFrame(outStreamID);
@@ -184,7 +184,7 @@ void VideoTranscoder::drawText(const v8::FunctionCallbackInfo<v8::Value>& args) 
   VideoTranscoder* obj = ObjectWrap::Unwrap<VideoTranscoder>(args.Holder());
   mcu::VideoTranscoder* me = obj->me;
 
-  String::Utf8Value param0(args[0]->ToString());
+  String::Utf8Value param0(isolate, args[0]->ToString());
   std::string textSpec = std::string(*param0);
 
   me->drawText(textSpec);

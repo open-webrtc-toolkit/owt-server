@@ -16,7 +16,7 @@
 class GstInternalIn : public owt_base::RawTransportListener{
     DECLARE_LOGGER();
 public:
-    GstInternalIn(GstAppSrc *data, unsigned int minPort = 0, unsigned int maxPort = 0);
+    GstInternalIn(GstAppSrc *data, unsigned int minPort = 0, unsigned int maxPort = 0, std::string ticket = NULL);
     virtual ~GstInternalIn();
 
     unsigned int getListeningPort();
@@ -33,6 +33,7 @@ public:
 private:
     bool m_start;
     bool m_needKeyFrame;
+    bool m_dumpIn;
     GstAppSrc *appsrc;
     boost::shared_ptr<owt_base::RawTransportInterface> m_transport;
 };

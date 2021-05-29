@@ -98,7 +98,9 @@ module.exports = function (spec) {
                         log.error('Join cluster', cluster_name, 'failed. reason:', error_reason);
                         on_join_failed(error_reason);
                     } else {
-                        tryJoin(countDown - 1);
+                        setTimeout(function () {
+                            tryJoin(countDown - 1);
+                        }, keep_alive_period);
                     }
                 }
             });
@@ -127,10 +129,12 @@ module.exports = function (spec) {
                     }
                     on_success();
                 }, function (reason) {
-                    if (state === 'recovering') {
-                        log.debug('Rejoin cluster', cluster_name, 'failed. reason:', reason);
-                        tryJoining();
-                    }
+                    setTimeout(function() {
+                        if (state === 'recovering') {
+                            log.debug('Rejoin cluster', cluster_name, 'failed. reason:', reason);
+                            tryJoining();
+                        }
+                    }, keep_alive_period);
                 });
             };
 

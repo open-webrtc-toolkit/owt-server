@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -e
 SCRIPT=`pwd`/$0
 FILENAME=`basename $SCRIPT`
 PATHNAME=`dirname $SCRIPT`
@@ -44,6 +44,7 @@ parse_arguments(){
 }
 
 OS=`$PATHNAME/detectOS.sh | awk '{print tolower($0)}'`
+OS_VERSION=`$PATHNAME/detectOS.sh | awk '{print tolower($2)}'`
 echo $OS
 
 cd $PATHNAME
@@ -67,11 +68,22 @@ then
     [Yy]* ) installYumDeps;;
     * ) installYumDeps;;
   esac
+
+  read -p "Installing boost [Yes/no]" yn
+  case $yn in
+    [Nn]* ) ;;
+    [Yy]* ) install_boost;;
+    * ) install_boost;;
+  esac
 elif [[ "$OS" =~ .*ubuntu.* ]]
 then
   . installUbuntuDeps.sh
   pause "Installing deps via apt-get... [press Enter]"
   install_apt_deps
+  if [[ "$OS_VERSION" =~ 20.04.* ]]
+  then
+    install_boost
+  fi
 fi
 
 parse_arguments $*

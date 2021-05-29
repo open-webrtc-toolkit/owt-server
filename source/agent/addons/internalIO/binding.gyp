@@ -6,6 +6,7 @@
       'InternalInWrapper.cc',
       'InternalOutWrapper.cc',
       'InternalIOWrapper.cc',
+      'InternalConfig.cc',
       '../../../core/owt_base/InternalIn.cpp',
       '../../../core/owt_base/InternalOut.cpp',
       '../../../core/owt_base/InternalSctp.cpp',
@@ -17,13 +18,14 @@
     'include_dirs': [
       '$(CORE_HOME)/common',
       '$(CORE_HOME)/owt_base',
-      '$(CORE_HOME)/../../build/libdeps/build/include'
+      '$(DEFAULT_DEPENDENCY_PATH)/include',
+      '$(CUSTOM_INCLUDE_PATH)'
     ],
     'libraries': [
       '-lboost_system',
       '-lboost_thread',
       '-llog4cxx',
-      '-L$(CORE_HOME)/../../build/libdeps/build/lib',
+      '-L$(DEFAULT_DEPENDENCY_PATH)/lib',
       '-lusrsctp'
     ],
     # 'INET', 'INET6' flags must be added for usrsctp lib, otherwise the arguments of receive callback would shift

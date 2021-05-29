@@ -2,7 +2,7 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-#include "VideoGstAnalyzerWrapper.h"
+#include "VideoGstAnalyzerWrap.h"
 
 #include <node.h>
 
@@ -12,4 +12,4 @@ using namespace v8;
 //   PipelineWrapper::Init(exports);
 // }
 
-NODE_MODULE(addon, VideoGstAnalyzer::Init)
+NODE_MODULE(addon, VideoGstAnalyzerWrap::Init)

@@ -129,8 +129,12 @@ module.exports = function (spec, spawnOptions, onNodeAbnormallyQuit, onTaskAdded
           } else {
               child.READY = false;
               child.kill();
-              fs.closeSync(child.out_log_fd);
-              fs.closeSync(child.err_log_fd);
+              try {
+                  fs.closeSync(child.out_log_fd);
+                  fs.closeSync(child.err_log_fd);
+              } catch (e) {
+                  log.warn('Close fd failed');
+              }
               cleanupNode(id);
           }
       });
@@ -149,7 +153,11 @@ module.exports = function (spec, spawnOptions, onNodeAbnormallyQuit, onTaskAdded
   };
   
   var fillNodes = function() {
-      for (var i = idle_nodes.length; i < spec.prerunNodeNum; i++) {
+      var runningNodes = nodes.length + idle_nodes.length;
+      var spaceInIdle = spec.prerunNodeNum - idle_nodes.length;
+      var nodesToStart = spec.maxNodeNum < 0 ? spaceInIdle : Math.min(spaceInIdle, spec.maxNodeNum - runningNodes);
+
+      for (var i = 0; i < nodesToStart; i++) {
           launchNode();
       }
   };
@@ -236,6 +244,7 @@ module.exports = function (spec, spawnOptions, onNodeAbnormallyQuit, onTaskAdded
       if (idle_nodes.length < 1) {
         log.error('getNode error:', 'No available node');
         reject('No available node');
+        return;
       }
   
       let node_id = idle_nodes.shift();
@@ -307,8 +316,14 @@ module.exports = function (spec, spawnOptions, onNodeAbnormallyQuit, onTaskAdded
       reject('No such a task');
     });
   };
+
+  that.recover = function() {
+    spawn_failed = false;
+    fillNodes();
+  };
   
   that.dropAllNodes = function(quietly) {
+      spawn_failed = true;
       Object.keys(processes).map(function (k) {
           !quietly && onNodeAbnormallyQuit && onNodeAbnormallyQuit(k, tasksOnNode(k));
           dropNode(k);

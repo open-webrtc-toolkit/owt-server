@@ -36,6 +36,12 @@ rvaStatus MyPipeline::PipelineConfig(std::unordered_map<std::string, std::string
     else
         inputframerate = std::atoi(framerate->second.c_str());
 
+    std::unordered_map<std::string,std::string>::const_iterator codec = params.find ("inputcodec");
+    if ( codec == params.end() )
+        std::cout << "inputcodec is not found" << std::endl;
+    else
+        inputcodec = codec->second;
+
     std::unordered_map<std::string,std::string>::const_iterator name = params.find ("pipelinename");
     if ( name == params.end() )
         std::cout << "pipeline name is not found" << std::endl;
@@ -121,13 +127,12 @@ rvaStatus MyPipeline::LinkElements() {
     
     g_object_set(G_OBJECT(source),"is-live", true, NULL);
 
-    g_object_set(G_OBJECT(encoder),"pass", 5,
-		    "quantizer", 25,
+    g_object_set(G_OBJECT(encoder),
 		    "speed-preset", 6,
 		    "bitrate", 812,
 		    "aud", false,
 		    "tune", 0x00000004,
-		    "key-int-max", 30, NULL);
+		    "key-int-max", 100, NULL);
     
     g_object_set(G_OBJECT(outsink), "max-buffers", 1,
 		    "sync", false,

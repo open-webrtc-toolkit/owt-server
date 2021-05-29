@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -e
 # get origin source code
 # wget -c https://raw.github.com/creationix/nvm/master/install.sh
 
@@ -13,7 +13,7 @@ if [ -z "$NVM_DIR" ]; then
 fi
 
 nvm_latest_version() {
-  echo "v0.27.1"
+  echo "v0.37.2"
 }
 
 #

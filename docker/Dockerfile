@@ -14,7 +14,7 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update && apt-get install -y -q --no-
 # Build libnice
 ARG NICE_VER="0.1.4"
 ARG NICE_REPO=http://nice.freedesktop.org/releases/libnice-${NICE_VER}.tar.gz
-ARG LIBNICE_PATCH_VER="4.3"
+ARG LIBNICE_PATCH_VER="5.0"
 ARG LIBNICE_PATCH_REPO=https://github.com/open-webrtc-toolkit/owt-server/archive/v${LIBNICE_PATCH_VER}.tar.gz
 
 RUN apt-get update && apt-get install -y -q --no-install-recommends libglib2.0-dev
@@ -27,14 +27,14 @@ RUN wget -O - ${NICE_REPO} | tar xz && \
     patch -p1 < owt-server-${LIBNICE_PATCH_VER}/scripts/patches/libnice014-removecandidate.patch && \
     patch -p1 < owt-server-${LIBNICE_PATCH_VER}/scripts/patches/libnice014-keepalive.patch && \
     patch -p1 < owt-server-${LIBNICE_PATCH_VER}/scripts/patches/libnice014-startcheck.patch && \
+    patch -p1 < owt-server-${LIBNICE_PATCH_VER}/scripts/patches/libnice014-closelock.patch && \
     ./configure --prefix="/usr/local" --libdir=/usr/local/lib/x86_64-linux-gnu && \
     make -s V=0 && \
     make install
 
 
 # Build open ssl
-ARG OPENSSL_BASE="1.1.1"
-ARG OPENSSL_VER="1.1.1h"
+ARG OPENSSL_VER="1.1.1j"
 ARG OPENSSL_REPO=https://www.openssl.org/source/openssl-${OPENSSL_VER}.tar.gz
 
 RUN wget -O - ${OPENSSL_REPO} | tar xz && \
@@ -92,7 +92,6 @@ ARG FFMPEG_VER="4.1.3"
 ARG FFMPEG_DIR="ffmpeg-${FFMPEG_VER}"
 ARG FFMPEG_SRC="${FFMPEG_DIR}.tar.bz2"
 ARG FFMPEG_SRC_URL="http://ffmpeg.org/releases/${FFMPEG_SRC}"
-ARG FFMPEG_SRC_MD5SUM="9985185a8de3678e5b55b1c63276f8b5"
 
 RUN wget ${FFMPEG_SRC_URL} && tar xf ${FFMPEG_SRC} && mv ${FFMPEG_DIR} FFmpeg && \
     cd FFmpeg  ;
@@ -154,7 +153,7 @@ ARG OWT_BRANCH=master
 ARG IMG_APP_PATH=/app_data/
 ENV APP_PATH=${IMG_APP_PATH}
 
-RUN apt-get update && apt-get install -y -q --no-install-recommends python libglib2.0-dev rabbitmq-server mongodb libboost-thread-dev libboost-system-dev liblog4cxx-dev
+RUN apt-get update && apt-get install -y -q --no-install-recommends python libglib2.0-dev rabbitmq-server mongodb libboost-thread-dev libboost-system-dev liblog4cxx-dev libgstreamer-plugins-base1.0-dev
 
 # 1. Clone OWT server source code 
 # 2. Clone licode source code and patch
@@ -204,9 +203,7 @@ RUN cd /home && git clone --depth=1 -b ${OWT_BRANCH} ${OWT_SDK_REPO} && cd owt-c
     export LD_LIBRARY_PATH=/usr/local/lib/x86_64-linux-gnu && \
     cd ${SERVER_PATH}/third_party/quic-lib && wget https://github.com/open-webrtc-toolkit/owt-deps-quic/releases/download/v0.1/dist.tgz && tar xzf dist.tgz && \
     #Build and pack owt
-    sed -i "/lssl/i\'\-L\/usr\/local\/ssl\/lib\'," /home/owt-server/source/agent/webrtc/rtcConn/binding.gyp && \
-    sed -i "/lssl/i\'\-L\/usr\/local\/ssl\/lib\'," /home/owt-server/source/agent/webrtc/rtcFrame/binding.gyp && \
-    cd ${SERVER_PATH} && export PKG_CONFIG_PATH=/usr/local/lib/x86_64-linux-gnu/pkgconfig && ./scripts/build.js -t mcu-all -r -c && \
+    cd ${SERVER_PATH} && export PKG_CONFIG_PATH=/usr/local/lib/x86_64-linux-gnu/pkgconfig && ./scripts/build.js -t mcu-all -lp /usr/local/ssl/lib -ip /usr/local/ssl/include -r -c && \
     ./scripts/pack.js -t all --install-module --no-pseudo --app-path /home/owt-client-javascript/dist/samples/conference
 
 

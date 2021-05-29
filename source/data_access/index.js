@@ -25,7 +25,10 @@ mongoose.plugin(schema => { schema.options.usePushEach = true });
 mongoose.Promise = Promise;
 
 var setupConnection = function () {
-  mongoose.connect('mongodb://' + databaseUrl, connectOption)
+  if (databaseUrl.indexOf('mongodb://') !== 0) {
+    databaseUrl = 'mongodb://' + databaseUrl;
+  }
+  mongoose.connect(databaseUrl, connectOption)
     .catch(function (err) {
       console.log(err.message);
     });
@@ -43,7 +46,7 @@ if (fs.existsSync(cipher.astore)) {
       }
       setupConnection();
     } else {
-      log.error('Failed to get mongodb auth:', err);
+      console.error('Failed to get mongodb auth:', err);
       setupConnection();
     }
   });

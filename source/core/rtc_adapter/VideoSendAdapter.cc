@@ -21,15 +21,16 @@ namespace rtc_adapter {
 // To make it consistent with the webrtc library, we allow packets to be transmitted
 // in up to 2 times max video bitrate if the bandwidth estimate allows it.
 static const int TRANSMISSION_MAXBITRATE_MULTIPLIER = 2;
+static const int kMaxRtpPacketSize = 1200;
 
-static int getNextNaluPosition(uint8_t* buffer, int buffer_size, bool& is_aud_or_sei)
+static int getNextNaluPosition(uint8_t* buffer, int buffer_size, bool& is_aud_or_sei, int& sc_len)
 {
-    if (buffer_size < 4) {
+    if (buffer_size < 3) {
         return -1;
     }
     is_aud_or_sei = false;
     uint8_t* head = buffer;
-    uint8_t* end = buffer + buffer_size - 4;
+    uint8_t* end = buffer + buffer_size - 3;
     while (head < end) {
         if (head[0]) {
             head++;
@@ -40,6 +41,13 @@ static int getNextNaluPosition(uint8_t* buffer, int buffer_size, bool& is_aud_or
             continue;
         }
         if (head[2]) {
+            if (head[2] == 0x01) {
+                if (((head[3] & 0x1F) == 9) || ((head[3] & 0x1F) == 6)) {
+                    is_aud_or_sei = true;
+                }
+                sc_len = 3;
+                return static_cast<int>(head - buffer);
+            }
             head += 3;
             continue;
         }
@@ -47,10 +55,13 @@ static int getNextNaluPosition(uint8_t* buffer, int buffer_size, bool& is_aud_or
             head++;
             continue;
         }
+        if (head + 1 == end) {
+            break;
+        }
         if (((head[4] & 0x1F) == 9) || ((head[4] & 0x1F) == 6)) {
             is_aud_or_sei = true;
         }
-
+        sc_len = 4;
         return static_cast<int>(head - buffer);
     }
     return -1;
@@ -70,15 +81,16 @@ static int dropAUDandSEI(uint8_t* framePayload, int frameLength)
 
     int sc_positions_length = 0;
     int sc_position = 0;
+    int sc_len = 4;
     while (sc_positions_length < MAX_NALS_PER_FRAME) {
         int nalu_position = getNextNaluPosition(origin_pkt_data + sc_position,
-            origin_pkt_length - sc_position, is_aud_or_sei);
+            origin_pkt_length - sc_position, is_aud_or_sei, sc_len);
         if (nalu_position < 0) {
             break;
         }
         sc_position += nalu_position;
         nal_offset.push_back(sc_position); //include start code.
-        sc_position += 4;
+        sc_position += sc_len;
         sc_positions_length++;
         if (is_aud_or_sei) {
             has_aud_or_sei = true;
@@ -186,6 +198,8 @@ bool VideoSendAdapterImpl::init()
             webrtc::RtpExtension::kMidUri, m_config.mid_ext);
         m_rtpRtcp->SetMid(mid);
     }
+
+    m_rtpRtcp->SetMaxRtpPacketSize(kMaxRtpPacketSize);
 
     webrtc::RTPSenderVideo::Config video_config;
     m_playoutDelayOracle = std::make_unique<webrtc::PlayoutDelayOracle>();
