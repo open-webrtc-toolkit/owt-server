@@ -16,7 +16,6 @@ var logger = require('../logger').logger;
 
 // Logger
 var log = logger.getLogger('AudioNode');
-var InternalConnectionFactory = require('./InternalConnectionFactory');
 var {InternalConnectionRouter} = require('./internalConnectionRouter');
 
 
@@ -51,10 +50,7 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
          */
         connections = {},
 
-        router = new InternalConnectionRouter(global.config.internal),
-
-        // For internal SCTP connection creation
-        internalConnFactory = new InternalConnectionFactory;
+        router = new InternalConnectionRouter(global.config.internal);
 
     var addInput = function (stream_id, owner, codec, options, on_ok, on_error) {
         if (engine) {

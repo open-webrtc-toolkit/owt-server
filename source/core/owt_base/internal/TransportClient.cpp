@@ -1,4 +1,4 @@
-// Copyright (C) <2019> Intel Corporation
+// Copyright (C) <2021> Intel Corporation
 //
 // SPDX-License-Identifier: Apache-2.0
 
@@ -107,6 +107,7 @@ void TransportClient::connectHandler(const boost::system::error_code& ec)
             m_socket.set_option(tcp::no_delay(true));
             m_session = std::make_shared<TransportSession>(
                 0, m_service, std::move(m_socket), this);
+            m_session->start();
             if (m_listener) {
                 m_listener->onConnected();
             }
@@ -122,6 +123,7 @@ void TransportClient::handshakeHandler(const boost::system::error_code& ec)
         ELOG_DEBUG("Handshake completed");
         m_session = std::make_shared<TransportSession>(
             0, m_service, m_sslSocket, this);
+        m_session->start();
         m_sslSocket.reset();
         if (m_listener) {
             m_listener->onConnected();
@@ -131,16 +133,17 @@ void TransportClient::handshakeHandler(const boost::system::error_code& ec)
     }
 }
 
-void TransportClient::sendData(const char* data, int len)
+void TransportClient::sendData(const uint8_t* data, uint32_t len)
 {
     TransportData tData{data, (uint32_t)len};
     m_session->sendData(tData);
 }
 
-void TransportClient::sendData(const char* header, int headerLength, const char* payload, int payloadLength)
+void TransportClient::sendData(const uint8_t* header, uint32_t headerLength,
+                               const uint8_t* payload, uint32_t payloadLength)
 {
     TransportData data;
-    data.buffer.reset(new char[headerLength + payloadLength]);
+    data.buffer.reset(new uint8_t[headerLength + payloadLength]);
     memcpy(data.buffer.get(), header, headerLength);
     memcpy(data.buffer.get() + headerLength, payload, payloadLength);
     data.length = headerLength + payloadLength;

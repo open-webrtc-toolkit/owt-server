@@ -18,7 +18,6 @@ var Connections = require('./connections');
 // Logger
 var log = logger.getLogger('RecordingNode');
 
-var InternalConnectionFactory = require('./InternalConnectionFactory');
 var {InternalConnectionRouter} = require('./internalConnectionRouter');
 
 
@@ -28,7 +27,6 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
       clusterIP: clusterWorkerIP
     };
     var connections = new Connections;
-    var internalConnFactory = new InternalConnectionFactory;
     var router = new InternalConnectionRouter(global.config.internal);
 
     var notifyStatus = (controller, sessionId, direction, status) => {

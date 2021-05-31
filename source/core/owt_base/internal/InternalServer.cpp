@@ -1,4 +1,4 @@
-// Copyright (C) <2019> Intel Corporation
+// Copyright (C) <2021> Intel Corporation
 //
 // SPDX-License-Identifier: Apache-2.0
 
@@ -81,7 +81,7 @@ void InternalServer::onSessionAdded(int id)
     }
 }
 
-void InternalServer::onSessionData(int id, char* data, int len)
+void InternalServer::onSessionData(int id, uint8_t* data, uint32_t len)
 {
     if (!m_sessions.count(id)) {
         ELOG_WARN("Unknown ID:%d for onSessionData", id);
@@ -158,10 +158,10 @@ void InternalServer::onSessionRemoved(int id)
 
 void InternalServer::InternalSession::onFrame(const Frame& frame)
 {
-    char sendBuffer[1 + sizeof(Frame) + frame.length];
+    uint8_t sendBuffer[1 + sizeof(Frame) + frame.length];
     sendBuffer[0] = TDT_MEDIA_FRAME;
     memcpy(&sendBuffer[1],
-           reinterpret_cast<char*>(const_cast<Frame*>(&frame)),
+           reinterpret_cast<uint8_t*>(const_cast<Frame*>(&frame)),
            sizeof(Frame));
     memcpy(&sendBuffer[1 + sizeof(Frame)], frame.payload, frame.length);
 
@@ -170,10 +170,10 @@ void InternalServer::InternalSession::onFrame(const Frame& frame)
 
 void InternalServer::InternalSession::onMetaData(const MetaData& metadata)
 {
-    char sendBuffer[1 + sizeof(MetaData) + metadata.length];
+    uint8_t sendBuffer[1 + sizeof(MetaData) + metadata.length];
     sendBuffer[0] = TDT_MEDIA_METADATA;
     memcpy(&sendBuffer[1],
-           reinterpret_cast<char*>(const_cast<MetaData*>(&metadata)),
+           reinterpret_cast<uint8_t*>(const_cast<MetaData*>(&metadata)),
            sizeof(MetaData));
     memcpy(&sendBuffer[1 + sizeof(MetaData)], metadata.payload, metadata.length);
 

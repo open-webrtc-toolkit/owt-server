@@ -27,8 +27,7 @@
                 "index.js",
                 "sipCallConnection.js",
                 "../connections.js",
-                "../internalConnectionRouter.js",
-                "../InternalConnectionFactory.js"
+                "../internalConnectionRouter.js"
             ]
         }
     },

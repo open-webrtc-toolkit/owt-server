@@ -1,4 +1,4 @@
-// Copyright (C) <2019> Intel Corporation
+// Copyright (C) <2021> Intel Corporation
 //
 // SPDX-License-Identifier: Apache-2.0
 
@@ -52,12 +52,12 @@ void InternalClient::onFeedback(const FeedbackMsg& msg)
     }
     ELOG_DEBUG("onFeedback ");
 
-    char sendBuffer[512];
+    uint8_t sendBuffer[512];
     sendBuffer[0] = TDT_FEEDBACK_MSG;
     memcpy(&sendBuffer[1],
-           reinterpret_cast<char*>(const_cast<FeedbackMsg*>(&msg)),
+           reinterpret_cast<uint8_t*>(const_cast<FeedbackMsg*>(&msg)),
            sizeof(FeedbackMsg));
-    m_client->sendData((char*)sendBuffer, sizeof(FeedbackMsg) + 1);
+    m_client->sendData((uint8_t*)sendBuffer, sizeof(FeedbackMsg) + 1);
 }
 
 void InternalClient::onConnected()
@@ -80,11 +80,15 @@ void InternalClient::onConnected()
     m_ready = true;
 }
 
-void InternalClient::onData(char* buf, int len)
+void InternalClient::onData(uint8_t* buf, uint32_t len)
 {
     Frame* frame = nullptr;
     MetaData* metadata = nullptr;
-    switch (buf[0]) {
+    if (len <= 1) {
+        ELOG_DEBUG("Skip onData len: %u", (unsigned int)len);
+        return;
+    }
+    switch ((char) buf[0]) {
         case TDT_MEDIA_FRAME:
             frame = reinterpret_cast<Frame*>(buf + 1);
             frame->payload = reinterpret_cast<uint8_t*>(buf + 1 + sizeof(Frame));

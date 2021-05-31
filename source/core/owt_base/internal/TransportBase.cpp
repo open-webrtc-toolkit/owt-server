@@ -1,4 +1,4 @@
-// Copyright (C) <2019> Intel Corporation
+// Copyright (C) <2021> Intel Corporation
 //
 // SPDX-License-Identifier: Apache-2.0
 
@@ -18,14 +18,14 @@ static const int kBufferAlignment = 16;
 static const double kExpansionMultiplier = 1.3;
 
 TransportMessage::TransportMessage()
-    : m_buffer(new char[kInitalBufferSize])
+    : m_buffer(new uint8_t[kInitalBufferSize])
     , m_bufferSize(kInitalBufferSize)
     , m_receivedBytes(0)
 {
 }
 
-TransportMessage::TransportMessage(const char* data, uint32_t length)
-    : m_buffer(new char[kHeaderSize + length])
+TransportMessage::TransportMessage(const uint8_t* data, uint32_t length)
+    : m_buffer(new uint8_t[kHeaderSize + length])
     , m_bufferSize(kHeaderSize + length)
     , m_receivedBytes(m_bufferSize)
 {
@@ -55,7 +55,7 @@ uint32_t TransportMessage::missingBytes() const
     }
 }
 
-uint32_t TransportMessage::fillData(const char* data, uint32_t length)
+uint32_t TransportMessage::fillData(const uint8_t* data, uint32_t length)
 {
     uint32_t toFill= missingBytes();
     if (toFill == 0) {
@@ -64,12 +64,12 @@ uint32_t TransportMessage::fillData(const char* data, uint32_t length)
     length = std::min(length, toFill);
     if (m_receivedBytes + toFill > m_bufferSize) {
         // Increasing the buffer size: %zu
-        boost::shared_array<char> oldBuffer = m_buffer;
+        boost::shared_array<uint8_t> oldBuffer = m_buffer;
         uint32_t newLength = m_receivedBytes + toFill;
         m_bufferSize = (newLength * kExpansionMultiplier + kBufferAlignment - 1) /
             kBufferAlignment * kBufferAlignment;
         m_bufferSize = std::max(m_bufferSize, m_receivedBytes + toFill);
-        m_buffer.reset(new char[m_bufferSize]);
+        m_buffer.reset(new uint8_t[m_bufferSize]);
         memcpy(m_buffer.get(), oldBuffer.get(), m_receivedBytes);
     }
     if (data) {
@@ -84,7 +84,7 @@ void TransportMessage::clear()
     m_receivedBytes = 0;
 }
 
-char* TransportMessage::payloadData() const
+uint8_t* TransportMessage::payloadData() const
 {
     return isComplete() ? m_buffer.get() + kHeaderSize : nullptr;
 }
@@ -97,7 +97,7 @@ uint32_t TransportMessage::payloadLength() const
     return 0;
 }
 
-char* TransportMessage::messageData() const
+uint8_t* TransportMessage::messageData() const
 {
     return isComplete() ? m_buffer.get() : nullptr;
 }
@@ -115,12 +115,11 @@ TransportSession::TransportSession(
     : m_id(id)
     , m_service(service)
     , m_socket(std::move(socket))
-    , m_receivedBuffer(new char[kInitalBufferSize])
+    , m_receivedBuffer(new uint8_t[kInitalBufferSize])
     , m_receivedBufferSize(kInitalBufferSize)
     , m_isClosed(false)
     , m_listener(listener)
 {
-    receiveData();
 }
 
 TransportSession::TransportSession(
@@ -132,12 +131,11 @@ TransportSession::TransportSession(
     , m_service(service)
     , m_socket(m_service->service())
     , m_sslSocket(sslSocket)
-    , m_receivedBuffer(new char[kInitalBufferSize])
+    , m_receivedBuffer(new uint8_t[kInitalBufferSize])
     , m_receivedBufferSize(kInitalBufferSize)
     , m_isClosed(false)
     , m_listener(listener)
 {
-    receiveData();
 }
 
 TransportSession::~TransportSession()
@@ -147,13 +145,19 @@ TransportSession::~TransportSession()
     ELOG_DEBUG("Destructor end");
 }
 
+void TransportSession::start()
+{
+    receiveData();
+}
+
 void TransportSession::sendData(TransportData data)
 {
     if (m_isClosed) {
         ELOG_DEBUG("sendData: already closed");
         return;
     }
-    m_service->post(boost::bind(&TransportSession::sendHandler, this, data));
+    auto self(shared_from_this());
+    m_service->post(boost::bind(&TransportSession::sendHandler, self, data));
 }
 
 void TransportSession::sendHandler(TransportData data)
@@ -170,19 +174,20 @@ void TransportSession::sendHandler(TransportData data)
     TransportData wrappedData{toSend.messageData(),
                               toSend.messageLength()};
 
-    ELOG_DEBUG("SendHandler- %p %zu", this, wrappedData.length);
+    ELOG_DEBUG("SendHandler- %p %zu", this, (size_t)wrappedData.length);
+    auto self(shared_from_this());
     if (m_sslSocket) {
         boost::asio::async_write(
             *m_sslSocket,
             boost::asio::buffer(wrappedData.buffer.get(), wrappedData.length),
-            boost::bind(&TransportSession::writeHandler, this,
+            boost::bind(&TransportSession::writeHandler, self,
                 boost::asio::placeholders::error,
                 boost::asio::placeholders::bytes_transferred));
     } else {
         boost::asio::async_write(
             m_socket,
             boost::asio::buffer(wrappedData.buffer.get(), wrappedData.length),
-            boost::bind(&TransportSession::writeHandler, this,
+            boost::bind(&TransportSession::writeHandler, self,
                 boost::asio::placeholders::error,
                 boost::asio::placeholders::bytes_transferred));
     }
@@ -208,6 +213,7 @@ void TransportSession::close()
     m_isClosed = true;
     if (m_sslSocket) {
         auto sock = m_sslSocket;
+        sock->lowest_layer().cancel();
         sock->async_shutdown([sock](const boost::system::error_code& ec)
         {
             boost::system::error_code e;
@@ -251,18 +257,19 @@ void TransportSession::receiveData()
     if (bytesToRead > m_receivedBufferSize) {
         // Double the received buffer size
         m_receivedBufferSize = std::max(m_receivedBufferSize * 2, bytesToRead);
-        m_receivedBuffer.reset(new char[m_receivedBufferSize]);
+        m_receivedBuffer.reset(new uint8_t[m_receivedBufferSize]);
         ELOG_DEBUG("Increasing the buffer size: %u", m_receivedBufferSize);
     }
 
+    auto self(shared_from_this());
     if (m_sslSocket) {
         m_sslSocket->async_read_some(boost::asio::buffer(m_receivedBuffer.get(), bytesToRead),
-            boost::bind(&TransportSession::readHandler, this,
+            boost::bind(&TransportSession::readHandler, self,
                 boost::asio::placeholders::error,
                 boost::asio::placeholders::bytes_transferred));
     } else {
         m_socket.async_read_some(boost::asio::buffer(m_receivedBuffer.get(), bytesToRead),
-            boost::bind(&TransportSession::readHandler, this,
+            boost::bind(&TransportSession::readHandler, self,
                 boost::asio::placeholders::error,
                 boost::asio::placeholders::bytes_transferred));
     }
@@ -282,7 +289,8 @@ void TransportSession::readHandler(
         m_receivedMessage.fillData(m_receivedBuffer.get(), bytes);
         receiveData();
     } else {
-        if (ec.value() != boost::system::errc::operation_canceled) {
+        if (ec.value() != boost::system::errc::operation_canceled &&
+            ec != boost::asio::error::eof) {
             ELOG_WARN("Error receiving data: %s", ec.message().c_str());
         } else {
             ELOG_DEBUG("Error receiving data: %s", ec.message().c_str());

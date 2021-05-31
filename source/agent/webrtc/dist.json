@@ -33,7 +33,6 @@
                 "profileFilter.js",
                 "sdpInfo.js",
                 "../connections.js",
-                "../InternalConnectionFactory.js",
                 "../internalConnectionRouter.js"
             ],
             "cert": [

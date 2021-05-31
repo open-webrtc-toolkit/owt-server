@@ -35,7 +35,7 @@ public:
 
     // Implements TransportServer::Listener
     void onSessionAdded(int id) override;
-    void onSessionData(int id, char* data, int len) override;
+    void onSessionData(int id, uint8_t* data, uint32_t len) override;
     void onSessionRemoved(int id) override;
 
 private:

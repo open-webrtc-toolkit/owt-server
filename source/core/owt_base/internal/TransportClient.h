@@ -1,4 +1,4 @@
-// Copyright (C) <2019> Intel Corporation
+// Copyright (C) <2021> Intel Corporation
 //
 // SPDX-License-Identifier: Apache-2.0
 
@@ -18,22 +18,18 @@
 
 namespace owt_base {
 
-// const char TDT_FEEDBACK_MSG = 0x5A;
-// const char TDT_MEDIA_FRAME = 0x8F;
-
 using boost::asio::ip::tcp;
 
 /*
  * TransportClient
  */
-class TransportClient : public RawTransportInterface,
-                        public TransportSession::Listener {
+class TransportClient : public TransportSession::Listener {
     DECLARE_LOGGER();
 public:
     class Listener {
     public:
         virtual void onConnected() = 0;
-        virtual void onData(char* data, int len) = 0;
+        virtual void onData(uint8_t* data, uint32_t len) = 0;
         virtual void onDisconnected() = 0;
     };
     TransportClient(Listener* listener);
@@ -42,10 +38,9 @@ public:
     bool enableSecure();
 
     void createConnection(const std::string& ip, uint32_t port);
-    void listenTo(uint32_t port) {}
-    void listenTo(uint32_t minPort, uint32_t maxPort) {}
-    void sendData(const char*, int len);
-    void sendData(const char* header, int headerLength, const char* payload, int payloadLength);
+    void sendData(const uint8_t*, uint32_t len);
+    void sendData(const uint8_t* header, uint32_t headerLength,
+                  const uint8_t* payload, uint32_t payloadLength);
     void close();
     bool initTicket(const std::string& ticket) { return true; }
 

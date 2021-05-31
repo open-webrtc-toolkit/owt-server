@@ -17,7 +17,6 @@ var cluster_name = ((global.config || {}).cluster || {}).name || 'owt-cluster';
 
 // Logger
 var log = logger.getLogger('SipNode');
-var InternalConnectionFactory = require('./InternalConnectionFactory');
 var {InternalConnectionRouter} = require('./internalConnectionRouter');
 
 // resolution map
@@ -235,8 +234,7 @@ module.exports = function (rpcC, selfRpcId, parentRpcId, clusterWorkerIP) {
         streams = {},
         calls = {},
         subscriptions = {},
-        recycling_mode = false,
-        internalConnFactory = new InternalConnectionFactory;
+        recycling_mode = false;
 
     var router = new InternalConnectionRouter(global.config.internal);
 
@@ -677,21 +675,6 @@ module.exports = function (rpcC, selfRpcId, parentRpcId, clusterWorkerIP) {
         gateway.close();
         gateway = undefined;
         recycling_mode = false;
-    };
-
-    that.createInternalConnection = function (connectionId, direction, internalOpt, callback) {
-        // internalOpt.minport = global.config.internal.minport;
-        // internalOpt.maxport = global.config.internal.maxport;
-        var portInfo = router.internalPort;
-        // if (direction === 'in') {
-        //     internalConnFactory.create(connectionId, direction, internalOpt);
-        // }
-        callback('callback', {ip: global.config.internal.ip_address, port: portInfo});
-    };
-
-    that.destroyInternalConnection = function (connectionId, direction, callback) {
-        // internalConnFactory.destroy(connectionId, direction);
-        callback('callback', 'ok');
     };
 
     that.getInternalAddress = function(callback) {

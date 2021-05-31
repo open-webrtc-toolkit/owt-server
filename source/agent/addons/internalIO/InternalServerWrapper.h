@@ -10,6 +10,9 @@
 #include <logger.h>
 #include <nan.h>
 
+#include <queue>
+#include <string>
+
 /*
  * Wrapper class of owt_base::InternalServer
  */
@@ -20,7 +23,7 @@ public:
     static NAN_MODULE_INIT(Init);
 
     owt_base::InternalServer* me;
-    boost::mutex mutex;
+    boost::mutex stats_lock;
     std::queue<std::pair<std::string, std::string>> stats_messages;
 
     // Implements owt_base::InternalServer::Listener

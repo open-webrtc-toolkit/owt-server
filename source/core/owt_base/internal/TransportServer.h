@@ -1,4 +1,4 @@
-// Copyright (C) <2019> Intel Corporation
+// Copyright (C) <2021> Intel Corporation
 //
 // SPDX-License-Identifier: Apache-2.0
 
@@ -30,14 +30,13 @@ using boost::asio::ip::tcp;
 /*
  * TransportServer
  */
-class TransportServer : public RawTransportInterface,
-                        public TransportSession::Listener {
+class TransportServer : public TransportSession::Listener {
     DECLARE_LOGGER();
 public:
     class Listener {
     public:
         virtual void onSessionAdded(int id) = 0;
-        virtual void onSessionData(int id, char* data, int len) = 0;
+        virtual void onSessionData(int id, uint8_t* data, uint32_t len) = 0;
         virtual void onSessionRemoved(int id) = 0;
     };
     TransportServer(Listener* listener);
@@ -45,12 +44,12 @@ public:
 
     bool enableSecure();
 
-    // Implements RawTransportInterface
-    void createConnection(const std::string& ip, uint32_t port) {}
+    // Follow RawTransportInterface
     void listenTo(uint32_t port);
     void listenTo(uint32_t minPort, uint32_t maxPort);
-    void sendData(const char*, int len);
-    void sendData(const char* header, int headerLength, const char* payload, int payloadLength);
+    void sendData(const uint8_t* data, uint32_t len);
+    void sendData(const uint8_t* header, uint32_t headerLength,
+                  const uint8_t* payload, uint32_t payloadLength);
     void close();
     bool initTicket(const std::string& ticket) { return true; }
 
@@ -60,7 +59,7 @@ public:
     void onData(uint32_t id, TransportData data) override;
     void onClose(uint32_t id) override;
 
-    void sendSessionData(int id, const char* data, int len);
+    void sendSessionData(int id, const uint8_t* data, uint32_t len);
     void closeSession(int id);
 
 private:

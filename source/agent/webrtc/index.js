@@ -7,7 +7,6 @@ var path = require('path');
 
 var WrtcConnection = require('./wrtcConnection');
 var Connections = require('./connections');
-var InternalConnectionFactory = require('./InternalConnectionFactory');
 var logger = require('../logger').logger;
 var {InternalConnectionRouter} = require('./internalConnectionRouter');
 
@@ -29,7 +28,6 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
       clusterIP: clusterWorkerIP
     };
     var connections = new Connections;
-    var internalConnFactory = new InternalConnectionFactory;
 
     var router = new InternalConnectionRouter(global.config.internal);
 

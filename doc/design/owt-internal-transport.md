@@ -2,7 +2,7 @@ Internal Transport
 
 # 1 Overview
 
-Internal transport use client-server model.
+Internal transport uses client-server model.
 
 An internal server for each process and one server can host multiple streams.
 

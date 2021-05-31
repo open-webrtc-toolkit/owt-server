@@ -1,4 +1,4 @@
-// Copyright (C) <2019> Intel Corporation
+// Copyright (C) <2021> Intel Corporation
 //
 // SPDX-License-Identifier: Apache-2.0
 
@@ -111,7 +111,7 @@ void TransportServer::acceptHandler(const boost::system::error_code& ec)
     }
     if (!ec) {
         if (m_isSecure) {
-            ELOG_DEBUG("Start handshake %d");
+            ELOG_DEBUG("Start handshake");
             m_sslSocket->lowest_layer().set_option(tcp::no_delay(true));
             m_sslSocket->async_handshake(
                 boost::asio::ssl::stream_base::server,
@@ -124,6 +124,7 @@ void TransportServer::acceptHandler(const boost::system::error_code& ec)
             m_sessions[sessionId] =
                 std::make_shared<TransportSession>(
                     sessionId, m_service, std::move(m_socket), this);
+            m_sessions[sessionId]->start();
             ELOG_DEBUG("Accept session %d", sessionId);
             if (m_listener) {
                 m_listener->onSessionAdded(sessionId);
@@ -144,6 +145,7 @@ void TransportServer::handshakeHandler(std::shared_ptr<SSLSocket> sock,
         m_sessions[sessionId] =
             std::make_shared<TransportSession>(
                 sessionId, m_service, sock, this);
+        m_sessions[sessionId]->start();
         ELOG_DEBUG("accept secure session %d", sessionId);
         if (m_listener) {
             m_listener->onSessionAdded(sessionId);
@@ -237,7 +239,7 @@ void TransportServer::onSessionRemoved(int id)
     }
 }
 
-void TransportServer::sendData(const char* data, int len)
+void TransportServer::sendData(const uint8_t* data, uint32_t len)
 {
     TransportData tData{data, len};
     for (auto it = m_sessions.begin(); it != m_sessions.end(); it++) {
@@ -245,10 +247,11 @@ void TransportServer::sendData(const char* data, int len)
     }
 }
 
-void TransportServer::sendData(const char* header, int headerLength, const char* payload, int payloadLength)
+void TransportServer::sendData(const uint8_t* header, uint32_t headerLength,
+                               const uint8_t* payload, uint32_t payloadLength)
 {
     TransportData data;
-    data.buffer.reset(new char[headerLength + payloadLength]);
+    data.buffer.reset(new uint8_t[headerLength + payloadLength]);
     memcpy(data.buffer.get(), header, headerLength);
     memcpy(data.buffer.get() + headerLength, payload, payloadLength);
     data.length = headerLength + payloadLength;
@@ -258,7 +261,7 @@ void TransportServer::sendData(const char* header, int headerLength, const char*
     }
 }
 
-void TransportServer::sendSessionData(int id, const char* data, int len)
+void TransportServer::sendSessionData(int id, const uint8_t* data, uint32_t len)
 {
     TransportData tData{data, len};
     if (m_sessions.count(id)) {

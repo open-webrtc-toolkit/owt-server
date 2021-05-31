@@ -20,7 +20,7 @@ public:
     static NAN_MODULE_INIT(Init);
 
     owt_base::InternalClient* me;
-    boost::mutex mutex;
+    boost::mutex stats_lock;
     std::queue<std::string> stats_messages;
 
     // Implements owt_base::InternalClient::Listener

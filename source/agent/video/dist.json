@@ -37,7 +37,6 @@
                 "vmixer.js",
                 "vtranscoder.js",
                 "../connections.js",
-                "../InternalConnectionFactory.js",
                 "../internalConnectionRouter.js"
             ],
             "avatars": [

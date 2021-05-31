@@ -22,10 +22,11 @@ InternalClient::InternalClient() {
 
 static void destroyAsyncHandle(uv_handle_t *handle) {
   delete handle;
+  handle = nullptr;
 }
 
 InternalClient::~InternalClient() {
-  boost::mutex::scoped_lock lock(mutex);
+  boost::mutex::scoped_lock lock(stats_lock);
   if (!uv_is_closing(reinterpret_cast<uv_handle_t*>(async_stats_))) {
     ELOG_DEBUG("Closing Stats handle");
     uv_close(reinterpret_cast<uv_handle_t*>(async_stats_), destroyAsyncHandle);
@@ -132,7 +133,7 @@ NAUV_WORK_CB(InternalClient::statsCallback) {
     return;
   }
 
-  boost::mutex::scoped_lock lock(obj->mutex);
+  boost::mutex::scoped_lock lock(obj->stats_lock);
   while (!obj->stats_messages.empty()) {
     Local<Value> args[] = {
       Nan::New(obj->stats_messages.front().c_str()).ToLocalChecked()
@@ -146,7 +147,7 @@ NAUV_WORK_CB(InternalClient::statsCallback) {
 }
 
 void InternalClient::onConnected() {
-  boost::mutex::scoped_lock lock(mutex);
+  boost::mutex::scoped_lock lock(stats_lock);
   if (!async_stats_ || !stats_callback_) {
     return;
   }
@@ -156,7 +157,7 @@ void InternalClient::onConnected() {
 }
 
 void InternalClient::onDisconnected() {
-  boost::mutex::scoped_lock lock(mutex);
+  boost::mutex::scoped_lock lock(stats_lock);
   if (!async_stats_ || !stats_callback_) {
     return;
   }

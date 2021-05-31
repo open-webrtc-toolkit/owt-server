@@ -1,4 +1,4 @@
-// Copyright (C) <2019> Intel Corporation
+// Copyright (C) <2021> Intel Corporation
 //
 // SPDX-License-Identifier: Apache-2.0
 
@@ -32,26 +32,26 @@ public:
     // Construct an incomplete empty message
     TransportMessage();
     // Construct a complete message with data and length
-    TransportMessage(const char* data, uint32_t length);
+    TransportMessage(const uint8_t* data, uint32_t length);
 
     // If the message format is complete (4 bytes header + payload)
     bool isComplete() const;
     // How many bytes missing according to the current buffer
     uint32_t missingBytes() const;
     // Fill data at the end of current buffer
-    uint32_t fillData(const char* data, uint32_t length);
+    uint32_t fillData(const uint8_t* data, uint32_t length);
     // Clear the buffer and mark as incomplete
     void clear();
 
     // Return the payload data if it's complete
-    char* payloadData() const;
+    uint8_t* payloadData() const;
     uint32_t payloadLength() const;
     // Return the buffer data
-    char* messageData() const;
+    uint8_t* messageData() const;
     uint32_t messageLength() const;
 
 private:
-    boost::shared_array<char> m_buffer;
+    boost::shared_array<uint8_t> m_buffer;
     uint32_t m_bufferSize;
     uint32_t m_receivedBytes;
 };
@@ -61,19 +61,20 @@ private:
  */
 struct TransportData{
     TransportData() {}
-    TransportData(const char* data, uint32_t len)
-        : buffer(new char[len]), length(len)
+    TransportData(const uint8_t* data, uint32_t len)
+        : buffer(new uint8_t[len]), length(len)
     {
         memcpy(buffer.get(), data, len);
     }
-    boost::shared_array<char> buffer;
+    boost::shared_array<uint8_t> buffer;
     uint32_t length;
 } ;
 
 /*
  * BaseSession for RawTransport
  */
-class TransportSession {
+class TransportSession
+    : public std::enable_shared_from_this<TransportSession> {
     DECLARE_LOGGER();
 public:
     class Listener {
@@ -96,6 +97,7 @@ public:
     virtual ~TransportSession();
 
     void sendData(TransportData data);
+    void start();
     void close();
 
 private:
@@ -110,7 +112,7 @@ private:
     boost::asio::ip::tcp::socket m_socket;
     std::shared_ptr<SSLSocket> m_sslSocket;
     TransportMessage m_receivedMessage;
-    boost::shared_array<char> m_receivedBuffer;
+    boost::shared_array<uint8_t> m_receivedBuffer;
     uint32_t m_receivedBufferSize;
     bool m_isClosed;
     Listener* m_listener;

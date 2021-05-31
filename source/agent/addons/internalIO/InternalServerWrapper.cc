@@ -22,10 +22,11 @@ InternalServer::InternalServer() {
 
 static void destroyAsyncHandle(uv_handle_t *handle) {
   delete handle;
+  handle = nullptr;
 }
 
 InternalServer::~InternalServer() {
-  boost::mutex::scoped_lock lock(mutex);
+  boost::mutex::scoped_lock lock(stats_lock);
   if (!uv_is_closing(reinterpret_cast<uv_handle_t*>(async_stats_))) {
     ELOG_DEBUG("Closing Stats handle");
     uv_close(reinterpret_cast<uv_handle_t*>(async_stats_), destroyAsyncHandle);
@@ -65,7 +66,7 @@ NAN_METHOD(InternalServer::New) {
     InternalServer* obj = new InternalServer();
     obj->me = new owt_base::InternalServer(
         protocol, minPort, maxPort, obj);
-    if (info.Length() > 3) {
+    if (info.Length() > 3 && info[3]->IsFunction()) {
       obj->stats_callback_ = new Nan::Callback(info[3].As<Function>());
     }
     obj->Wrap(info.This());
@@ -122,7 +123,7 @@ NAUV_WORK_CB(InternalServer::statsCallback) {
   if (!obj || !obj->me || !obj->stats_callback_) {
     return;
   }
-  boost::mutex::scoped_lock lock(obj->mutex);
+  boost::mutex::scoped_lock lock(obj->stats_lock);
   while (!obj->stats_messages.empty()) {
     Local<Value> args[] = {
       Nan::New(obj->stats_messages.front().first.c_str()).ToLocalChecked(),
@@ -137,7 +138,7 @@ NAUV_WORK_CB(InternalServer::statsCallback) {
 }
 
 void InternalServer::onConnected(const std::string& id) {
-  boost::mutex::scoped_lock lock(mutex);
+  boost::mutex::scoped_lock lock(stats_lock);
   if (!async_stats_ || !stats_callback_) {
     return;
   }
@@ -147,7 +148,7 @@ void InternalServer::onConnected(const std::string& id) {
 }
 
 void InternalServer::onDisconnected(const std::string& id) {
-  boost::mutex::scoped_lock lock(mutex);
+  boost::mutex::scoped_lock lock(stats_lock);
   if (!async_stats_ || !stats_callback_) {
     return;
   }

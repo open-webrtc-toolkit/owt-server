@@ -40,7 +40,7 @@ public:
 
     // Implements TransportClient::Listener
     void onConnected() override;
-    void onData(char* data, int len) override;
+    void onData(uint8_t* data, uint32_t len) override;
     void onDisconnected() override;
 
 private:
