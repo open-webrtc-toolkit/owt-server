@@ -3,12 +3,10 @@
  */
 'use strict';
 
-const log = require('../logger').logger.getLogger('InternalConnectionRouter');
-const Connections = require('./connections');
-const InternalConnectionFactory = require('./InternalConnectionFactory');
-
 const config = global.config;
 
+const log = require('../logger').logger.getLogger('InternalConnectionRouter');
+const Connections = require('./connections');
 const internalIO = require('../internalIO/build/Release/internalIO');
 
 const {InternalServer, InternalClient} = internalIO;
