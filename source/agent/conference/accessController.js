@@ -12,6 +12,7 @@ module.exports.create = function(spec, rpcReq, on_session_established, on_sessio
   var that = {},
     cluster_name = spec.clusterName,
     self_rpc_id = spec.selfRpcId,
+    redisClient = spec.redisClient,
     in_room = spec.inRoom;
 
   /*
@@ -27,6 +28,34 @@ module.exports.create = function(spec, rpcReq, on_session_established, on_sessio
    */
   var sessions = {};
 
+  var updateFromRedis = (channel, msg) => {
+        var name = channel.substring(in_room.length);
+        if (name === "sessions") {
+          if (msg.type === 'add') {
+                terminals[msg.id] = msg.data;
+          } else {
+            if (terminals[msg.id]) {
+              delete terminals[msg.id];
+            }
+          }
+        }
+    }
+
+    var loadFromRedis = (moduleName, id) => {
+      var sessionKey = in_room + "sessions";
+      redisClient.subscribeChannel(sessionKey);
+      return redisClient.getItems(sessionKey)
+          .then(function(streamList){
+            if (Object.keys(streamList).length > 0) {
+              sessions = streamList;
+            }
+            return Promise.resolve('ok');
+          }).catch(function(err) {
+                log.error('Load data from redis failed, reason:', err);
+                return Promise.reject(err);
+            });  
+    }
+
 
   //Should terminateSession always succeed?
   const terminateSession = (sessionId) => {
@@ -38,12 +67,14 @@ module.exports.create = function(spec, rpcReq, on_session_established, on_sessio
           return rpcReq.recycleWorkerNode(session.locality.agent, session.locality.node, {room: in_room, task: sessionId})
         }).then(function() {
           delete sessions[sessionId];
+          redisClient.updateToRedis("delete", "accesscontroller", "sessions", sessionId, sessions[sessionId]);
         })
         .catch(function(reason) {
           log.debug('AccessNode not recycled', session.locality);
         });
     } else {
       delete sessions[sessionId];
+      redisClient.updateToRedis("delete", "accesscontroller", "sessions", sessionId, sessions[sessionId]);
       return Promise.resolve('ok');
     }
   };
@@ -249,9 +280,11 @@ module.exports.create = function(spec, rpcReq, on_session_established, on_sessio
           return Promise.reject('Session has been aborted');
         }
         sessions[sessionId].state = 'connecting';
+        redisClient.updateToRedis("add", "accesscontroller", "sessions", sessionId, sessions[sessionId]);
         return 'ok';
       }, (e) => {
         delete sessions[sessionId];
+        redisClient.updateToRedis("delete", "accesscontroller", "sessions", sessionId, sessions[sessionId]);
         return Promise.reject(e.message ? e.message : e);
       });
   };
@@ -339,9 +372,11 @@ module.exports.create = function(spec, rpcReq, on_session_established, on_sessio
           return Promise.reject('Session has been aborted');
         }
         sessions[sessionId].state = 'connecting';
+        redisClient.updateToRedis("add", "accesscontroller", "sessions", sessionId, sessions[sessionId]);
         return 'ok';
       }, (e) => {
         delete sessions[sessionId];
+        redisClient.updateToRedis("delete", "accesscontroller", "sessions", sessionId, sessions[sessionId]);
         return Promise.reject(e.message ? e.message : e);
       });
   };
@@ -375,6 +410,10 @@ module.exports.create = function(spec, rpcReq, on_session_established, on_sessio
     }
   };
 
+  loadFromRedis("all")
+    .then(function() {
+      log.info("Load items from redis");
+    });
   return that;
 };
 

@@ -39,6 +39,28 @@ class Subscription {
     this.origin = null;
   }
 
+  getSubscriptionInfo() {
+    var subscription = {
+      id: this.id,
+      info: this.info,
+      locality: this.locality,
+      media: this.media,
+      data: this.data,
+      origin: this.origin
+    }
+
+    return subscription;
+  }
+
+  updateSubscription(spec) {
+    this.id = spec.id;
+    this.info = spec.info;
+    this.locality = spec.locality;
+    this.media = spec.media;
+    this.data = spec.data;
+    this.origin = spec.data;
+  }
+
   _upgradeMediaIfNeeded(media) {
     if (!media) {
       return media;

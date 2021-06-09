@@ -13,6 +13,27 @@ var Participant = function(spec, rpcReq) {
     origin = spec.origin,
     permission = spec.permission;
 
+  that.updateSpec = (spec) => {
+    id = spec.id;
+    role = spec.role;
+    user = spec.user;
+    portal = spec.portal;
+    origin = spec.origin;
+    permission = spec.permission;
+
+  }
+
+  that.getPartcipant = () => {
+    var participant = {
+      id: id,
+      role: role,
+      user: user,
+      portal: portal,
+      origin: origin,
+      permission: permission
+    }
+  }
+
   that.update = (op, path, value) => {
     switch (path) {
       case '/permission/subscribe':

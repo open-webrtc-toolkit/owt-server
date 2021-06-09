@@ -24,6 +24,7 @@
     "Subscription": "INFO",
     "WorkingAgent": "INFO",
     "Connections": "INFO",
+    "Redis": "INFO",
     "InternalConnectionFactory": "INFO"
   }
 }

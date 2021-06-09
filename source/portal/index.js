@@ -260,13 +260,17 @@ amqper.connect(config.rabbit, function () {
               if (data.reason === 'abnormal' || data.reason === 'error' || data.reason === 'quit') {
                 if (portal !== undefined) {
                   if (data.message.purpose === 'conference') {
-                    return portal.getParticipantsByController(data.message.type, data.message.id)
-                      .then(function (impactedParticipants) {
-                        impactedParticipants.forEach(function(participantId) {
-                          log.error('Fault on conference controller(type:', data.message.type, 'id:', data.message.id, ') of participant', participantId, 'was detected, drop it.');
-                          socketio_server && socketio_server.drop(participantId);
+                    if(data.message.tasks.length > 0) {
+                      return portal.updateRoomcontroller(data.message);
+                    } else {
+                      return portal.getParticipantsByController(data.message.type, data.message.id)
+                        .then(function (impactedParticipants) {
+                          impactedParticipants.forEach(function(participantId) {
+                            log.error('Fault on conference controller(type:', data.message.type, 'id:', data.message.id, ') of participant', participantId, 'was detected, drop it.');
+                            socketio_server && socketio_server.drop(participantId);
+                          });
                         });
-                      });
+                    }
                   }
                 }
               }

@@ -8,6 +8,7 @@
     "toml": "*",
     "mongoose": "^5.9.6",
     "uuid": "^8.0.0",
+    "redis": "3.0.2",
     "fraction.js": "^4.0.12"
   },
   "devDependencies": {

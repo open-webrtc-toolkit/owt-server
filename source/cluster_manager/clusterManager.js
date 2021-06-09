@@ -58,8 +58,11 @@ var ClusterManager = function (clusterName, selfId, spec) {
     var workerQuit = function (worker) {
         log.debug('workerQuit, worker:', worker);
         if (workers[worker] && schedulers[workers[worker].purpose]) {
+            var task = schedulers[workers[worker].purpose].getInfo(worker).tasks;
+	    //var task = Object.keys(tasks);
+	    log.info("WorkerQuit, worker:", worker, " task:",task);
             schedulers[workers[worker].purpose].remove(worker);
-            monitoringTarget && monitoringTarget.notify('quit', {purpose: workers[worker].purpose, id: worker, type: 'worker'});
+            //monitoringTarget && monitoringTarget.notify('quit', {purpose: workers[worker].purpose, task: task, id: worker, type: 'worker'});
             delete workers[worker];
             data_synchronizer && data_synchronizer({type: 'worker_quit', payload: {worker: worker}});
         }
@@ -90,16 +93,16 @@ var ClusterManager = function (clusterName, selfId, spec) {
         data_synchronizer && data_synchronizer({type: 'worker_pickup', payload: {worker: worker, tasks: tasks}});
     };
 
-    var layDownTask = function (worker, task) {
-        workers[worker] && schedulers[workers[worker].purpose] && schedulers[workers[worker].purpose].layDownTask(worker, task);
-        data_synchronizer && data_synchronizer({type: 'worker_laydown', payload: {worker: worker, task: task}});
+    var layDownTask = function (worker, task, time) {
+        workers[worker] && schedulers[workers[worker].purpose] && schedulers[workers[worker].purpose].layDownTask(worker, task, time);
+        data_synchronizer && data_synchronizer({type: 'worker_laydown', payload: {worker: worker, task: task, time: time}});
     };
 
     var schedule = function (purpose, task, preference, reserveTime, on_ok, on_error) {
         log.debug('schedule, purpose:', purpose, 'task:', task, ', preference:', preference, 'reserveTime:', reserveTime, 'while state:', state);
         if (state === 'in-service') {
             if (schedulers[purpose]) {
-                schedulers[purpose].schedule(task, preference, reserveTime, function(worker, info) {
+                schedulers[purpose].schedule(purpose, task, preference, reserveTime, function(worker, info) {
                     log.debug('schedule OK, got  worker', worker);
                     on_ok(worker, info);
                     data_synchronizer && data_synchronizer({type: 'scheduled', payload: {purpose: purpose, task: task, worker: worker, reserve_time: reserveTime}});
@@ -158,6 +161,14 @@ var ClusterManager = function (clusterName, selfId, spec) {
             on_ok(result);
         }
     };
+
+    var getScheduledWorkers = function (purpose, task, on_ok) {
+        if (schedulers[purpose]) {
+            schedulers[purpose].getScheduledWorkers(task, on_ok);
+        } else {
+            on_ok([]);
+        }
+    }
 
     var getTasks = function (worker, on_ok) {
         return workers[worker] && schedulers[workers[worker].purpose] ? schedulers[workers[worker].purpose].getTasks(worker) : [];
@@ -303,6 +314,11 @@ var ClusterManager = function (clusterName, selfId, spec) {
                 callback('callback', worker);
             }, function (error_reason) {
                 callback('callback', 'error', error_reason);
+            });
+        },
+        getScheduledWorkers: function (purpose, task, callback) {
+            getScheduledWorkers(purpose, task, function (workerList) {
+                callback('callback', workerList);
             });
         }
     };

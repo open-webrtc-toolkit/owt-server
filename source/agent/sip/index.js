@@ -976,11 +976,15 @@ module.exports = function (rpcC, selfRpcId, parentRpcId, clusterWorkerIP) {
             for (var client_id in calls) {
                 if (calls[client_id].conference_controller &&
                     ((message.type === 'node' && message.id === calls[client_id].conference_controller) || (message.type === 'worker' && calls[client_id].conference_controller.startsWith(message.id)))){
-                    log.error('Fault detected on conference_controller:', message.id, 'of call:', client_id , ', terminate it');
-                    gateway.hangup(calls[client_id].peerURI);
-                    teardownCall(client_id);
-                    calls[client_id].conn && calls[client_id].conn.close();
-                    delete calls[client_id];
+                    if (message.tasks && message.tasks.length > 0) {
+                        calls[client_id].conference_controller = message.tasks[Math.floor(Math.random() * message.tasks.length)];
+                    } else {
+                        log.error('Fault detected on conference_controller:', message.id, 'of call:', client_id , ', terminate it');
+                        gateway.hangup(calls[client_id].peerURI);
+                        teardownCall(client_id);
+                        calls[client_id].conn && calls[client_id].conn.close();
+                        delete calls[client_id];
+                    }
                 }
             }
         }

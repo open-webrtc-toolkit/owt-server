@@ -359,7 +359,7 @@ class Monitor {
           log.debug('Received monitoring message:', msg);
           this.onMessage && this.onMessage(msg);
         } catch (error) {
-          log.error('Error processing monitored message:', msg, 'and error:', error);
+          log.error('Error processing monitored message:', rawMessage, 'and error:', error);
         }
       }, {noAck: true});
     }).then((ok) => {

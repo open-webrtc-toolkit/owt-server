@@ -11,6 +11,7 @@ var AccessController = require('./accessController');
 var RoomController = require('./roomController');
 var dataAccess = require('./data_access');
 var Participant = require('./participant');
+var Redis = require('./redisUtil');
 const { QuicController } = require('./quicController');
 
 // Logger
@@ -99,6 +100,7 @@ var Conference = function (rpcClient, selfRpcId) {
   var that = {},
       is_initializing = false,
       room_id,
+      redis,
       roomController,
       accessController;
 
@@ -237,6 +239,198 @@ var Conference = function (rpcClient, selfRpcId) {
   var rpcChannel = require('./rpcChannel')(rpcClient),
       rpcReq = require('./rpcRequest')(rpcChannel);
 
+  var updateFromRedis = (channel, msg) => {
+    var name = channel.substring(room_id.length);
+    switch (name) {
+      case 'participants':
+        if (participants[msg.id]) {
+          if (msg.type === "add") {
+            participants[msg.id].updateSpec(msg.data);
+          } else {
+            delete participants[msg.id];
+          }
+        } else {
+          if (msg.type === "add") {
+            participants[msg.id] = Participant(msg.data, rpcReq);
+          }
+        }
+        break;
+      case 'streams':
+        if (streams[msg.id]) {
+          if (msg.type === "add") {
+            if (msg.type === "forward") {
+              streams[msg.id].update(msg.data);
+            }
+          } else {
+            delete streams[msg.id];
+          }
+        } else {
+          if (msg.type === "add") {
+            var streamInfo;
+            if (msg.data.type === "mixed") {
+              streamInfo = new MixedStream(msg.id, msg.data.info.label);
+            } else {
+              if (msg.data.info.type === "selecting") {
+                streamInfo = new SelectedStream(msg.id);
+              } else {
+                streamInfo = new ForwardStream(msg.id, msg.data.media, msg.data.data, msg.data.info, msg.data.locality);
+              }
+            }
+            streams[msg.id] = streamInfo;
+          }
+        }
+        break;
+      case 'subscriptions':
+        if (subscriptions[msg.id]) {
+          if (msg.type === "add") {
+            subscriptions[msg.id].updateSubscription(msg.data);
+          } else {
+            delete subscriptions[msg.id];
+          }
+        } else {
+          if (msg.type === "add") {
+            subscriptions[msg.id] = new Subscription(msg.data.id, msg.data.media, msg.data.data, msg.data.locality, msg.data.info);
+          }
+        }
+        break;
+      case 'trackowners':
+        if (msg.type === 'add') {
+            trackOwners[msg.id] = msg.data;
+        } else {
+          if (trackOwners[msg.id]) {
+            delete trackOwners[msg.id];
+          }
+        }
+        break;
+      default:
+        log.info('Invalid conference update items');
+    }
+
+  }
+
+  var onSubMessage = (channel, message) => {
+    var msg = JSON.parse(message);
+    if (msg.self === selfRpcId) {
+      log.debug("Get own message and ignore:", message);
+
+    } else {
+      if (msg.type === "leave") {
+
+      } else {
+        switch (msg.module) {
+          case 'conference':
+            updateFromRedis(channel, msg);
+            break;
+          case 'roomcontroller':
+            if (roomController) {
+              roomController.updateFromRedis(channel, msg);
+            }
+            break;
+          case 'accesscontroller':
+            if (accessController) {
+              accessController.updateFromRedis(channel, msg);
+            }
+            break;
+          case 'rtccontroller':
+            if (rtcController) {
+              rtcController.updateFromRedis(channel, msg);
+            }
+            break;
+          case 'quiccontroller':
+            if (quicController) {
+              quicController.updateFromRedis(channel, msg);
+            }
+            break;
+          default:
+            log.info('Invalid conference module');
+        }
+      }
+    }
+
+  }
+
+  var loadFromRedis = (room, moduleName, id) => {
+    if (moduleName === "all") {
+      var participantKey = room + "participants";
+      redis.subscribeChannel(participantKey);
+      redis.getItems(participantKey)
+          .then(function(streamList){
+            if (Object.keys(streamList).length > 0) {
+              for (let item in streamList) {
+                if (!Object.keys(participants).includes(item)) {
+                  var participantInfo = Participant(streamList[item], rpcReq);
+                  participants[item] = participantInfo;
+                }
+              }
+            }
+            return Promise.resolve('ok');
+          })
+          .then(function() {
+            var streamsKey = room + "streams";
+            redis.subscribeChannel(streamsKey);
+            return redis.getItems(streamsKey)
+            .then(function(streamList){
+              if (Object.keys(streamList).length > 0) {
+                for (let item in streamList) {
+                  if (!Object.keys(streams).includes(item)) {
+                    var streamInfo;
+                    if (streamList[item].type === "mixed") {
+                      streamInfo = new MixedStream(item, streamList[item].view);
+                    } else {
+                      if (streamList[item].info.type === "selecting") {
+                        streamInfo = new SelectedStream(item);
+                      } else {
+                        streamInfo = new ForwardStream(item, streamList[item].media, streamList[item].data, streamList[item].info, streamList[item].locality);
+                      }
+                    }
+                    streams[item] = streamInfo;
+                  }
+                }
+              }
+              return Promise.resolve('ok');
+            });
+          })
+          .then(function() {
+            var subscriptionKey = room + "subscriptions";
+            redis.subscribeChannel(subscriptionKey);
+            return redis.getItems(subscriptionKey)
+                .then(function(streamList){
+                  if (Object.keys(streamList).length > 0) {
+                    for (let item in streamList) {
+                      if (!Object.keys(subscriptions).includes(item)) {
+                        var subscriptionInfo = new Subscription(streamList[item].id, streamList[item].media, streamList[item].data, streamList[item].locality, streamList[item].info);
+                        subscriptions[item] = subscriptionInfo;
+                      }
+                    }
+                  }
+                  return Promise.resolve('ok');
+                });
+          })
+          .then(function() {
+            var trackOwnersKey = room + "trackowners";
+            redis.subscribeChannel(trackOwnersKey);
+            return redis.getItems(trackOwnersKey)
+              .then(function(streamList){
+                if (Object.keys(streamList).length > 0) {
+                  trackOwners = streamList
+                }
+                return Promise.resolve('ok');;
+            });
+          }).catch(function(err) {
+            log.error('Load data from redis failed, reason:', err);
+            return Promise.reject(err);
+        });
+    } else if (id !== undefined) {
+      var key = room + moduleName;
+      return redis.getItem(key, id);
+    } else {
+      var key = room + moduleName;
+      return redis.getItems(key);
+    }
+
+  }
+
+
   var onSessionEstablished = (participantId, sessionId, direction, sessionInfo) => {
     log.debug('onSessionEstablished, participantId:', participantId, 'sessionId:', sessionId, 'direction:', direction, 'sessionInfo:', JSON.stringify(sessionInfo));
     if (direction === 'in') {
@@ -315,6 +509,8 @@ var Conference = function (rpcClient, selfRpcId) {
     if (origin === undefined) {
         origin = {isp:"isp", region:"region"};
     }
+
+    var storeConfig = false;
     if (is_initializing) {
       return new Promise(function(resolve, reject) {
         var interval = setInterval(function() {
@@ -336,13 +532,42 @@ var Conference = function (rpcClient, selfRpcId) {
       }
     } else {
       is_initializing = true;
-      return dataAccess.room.config(roomId)
+      room_id = roomId;
+      redis = Redis.create(true, roomId, selfRpcId,onSubMessage);
+      var cluster_name = global.config.cluster.name || 'owt-cluster';
+      return new Promise(function(resolve, reject) {
+        rpcClient.remoteCall(cluster_name, 'getScheduledWorkers', ['conference', roomId], {callback: (agentList) => {
+        log.info("Get agent list:", agentList, " self:", selfRpcId);
+        if (agentList.length === 0 || (agentList.length === 1 && selfRpcId.startsWith(agentList[0]))) {
+          log.info("Clean room data for room:", roomId, " agentList:", agentList);
+          redis.cleanRoomdata(roomId);
+        }
+        resolve('ok');
+      }});
+      })
+        .then(function() {
+          return loadFromRedis(roomId, "config", roomId);
+        })
         .then(function(config) {
-            //log.debug('initializing room:', roomId, 'got config:', JSON.stringify(config));
+          if (config === null) {
+            storeConfig = true;
+            return dataAccess.room.config(roomId)
+          } else {
+            return Promise.resolve(config);
+          }
+        })
+        .then(function(config) {
+            log.info('initializing room:', roomId, 'got config:', JSON.stringify(config));
             room_config = config;
+            if (storeConfig) {
+              redis.updateToRedis("add", "conference", "config", roomId, room_config); 
+            }
+            
             room_config.internalConnProtocol = global.config.internal.protocol;
             StreamConfigure(room_config);
-
+            return loadFromRedis(roomId, "all");
+        })
+        .then(function() {
             return new Promise(function(resolve, reject) {
               RoomController.create(
                 {
@@ -352,47 +577,60 @@ var Conference = function (rpcClient, selfRpcId) {
                   room: roomId,
                   config: room_config,
                   origin: origin,
-                  selfRpcId: selfRpcId
+                  selfRpcId: selfRpcId,
+                  redisClient: redis
                 },
                 function onOk(rmController) {
                   log.debug('room controller init ok');
-                  roomController = rmController;
-                  room_id = roomId;
+                 roomController = rmController;
                   is_initializing = false;
 
                   roomController.getMixedStreams().forEach(({streamId, view}) => {
-                    const mixedStreamInfo = new MixedStream(streamId, view);
-                    streams[streamId] = mixedStreamInfo;
-                    streams[streamId].info.origin = origin;
-                    log.debug('Mixed stream info:', mixedStreamInfo);
-                    room_config.notifying.streamChange &&
-                        sendMsg('room', 'all', 'stream',
-                            {id: streamId, status: 'add', data: mixedStreamInfo.toPortalFormat()});
+                    if(!streams[streamId]) {
+                      const mixedStreamInfo = new MixedStream(streamId, view);
+                      streams[streamId] = mixedStreamInfo;
+                      streams[streamId].info.origin = origin;
+                      log.debug('Mixed stream info:', mixedStreamInfo);
+                      var streamInfo = streams[streamId].getStreamInfo();
+                      streamInfo.view = view;
+                      redis.updateToRedis("add", "conference", "streams", streamId, streamInfo);
+                      room_config.notifying.streamChange &&
+                          sendMsg('room', 'all', 'stream',
+                              {id: streamId, status: 'add', data: mixedStreamInfo.toPortalFormat()});
+                    }
                   });
 
                   roomController.getActiveAudioStreams().forEach((streamId) => {
-                    const selectedStreamInfo = new SelectedStream(streamId);
-                    streams[streamId] = selectedStreamInfo;
-                    streams[streamId].info.origin = origin;
-                    log.debug('Selected stream info:', selectedStreamInfo);
-                    room_config.notifying.streamChange &&
-                        sendMsg('room', 'all', 'stream',
-                            {id: streamId, status: 'add', data: selectedStreamInfo.toPortalFormat()});
+                    if(!streams[streamId]) {
+                      const selectedStreamInfo = new SelectedStream(streamId);
+                      streams[streamId] = selectedStreamInfo;
+                      streams[streamId].info.origin = origin;
+                      log.debug('Selected stream info:', selectedStreamInfo);
+                      var streamInfo = streams[streamId].getStreamInfo();
+                      streamInfo.view = view;
+                      redis.updateToRedis("add", "conference", "streams", streamId, streamInfo);
+                      room_config.notifying.streamChange &&
+                          sendMsg('room', 'all', 'stream',
+                              {id: streamId, status: 'add', data: selectedStreamInfo.toPortalFormat()});
+                    }
                   });
 
-                  participants['admin'] = Participant({
-                                                       id: 'admin',
-                                                       user: 'admin',
-                                                       role: 'admin',
-                                                       portal: undefined,
-                                                       origin: origin,
-                                                       permission: {
-                                                        subscribe: {audio: true, video: true},
-                                                        publish: {audio: true, video: true}
-                                                       }
-                                                      }, rpcReq);
+                  if(!participants['admin']) {
+                    participants['admin'] = Participant({
+                                                         id: 'admin',
+                                                         user: 'admin',
+                                                         role: 'admin',
+                                                         portal: undefined,
+                                                         origin: origin,
+                                                         permission: {
+                                                          subscribe: {audio: true, video: true},
+                                                          publish: {audio: true, video: true}
+                                                         }
+                                                        }, rpcReq);
+                  }
 
-                  rtcController = new RtcController(room_id, rpcReq, selfRpcId, global.config.cluster.name || 'owt-cluster');
+                  rtcController = new RtcController(room_id, rpcReq, selfRpcId, global.config.cluster.name || 'owt-cluster', redis);
+                  rtcController.loadData();
                   // Events
                   rtcController.on('transport-established', transportId => {
                     const transport = rtcController.getTransport(transportId);
@@ -427,7 +665,7 @@ var Conference = function (rpcClient, selfRpcId) {
                     onSessionAborted(data.owner, sessionId, data.direction, data.reason);
                   });
 
-                  quicController = new QuicController(room_id, rpcReq, selfRpcId, global.config.clusterName || 'owt-cluster');
+                  quicController = new QuicController(room_id, rpcReq, selfRpcId, global.config.clusterName || 'owt-cluster', redis);
                   quicController.on('session-established', (sessionInfo) => {
                     const sessionId = sessionInfo.id;
                     const media = { tracks: sessionInfo.tracks };
@@ -449,6 +687,7 @@ var Conference = function (rpcClient, selfRpcId) {
                   accessController = AccessController.create({clusterName: global.config.cluster.name || 'owt-cluster',
                                                               selfRpcId: selfRpcId,
                                                               inRoom: room_id,
+                                                              redisClient: redis,
                                                               mediaIn: room_config.mediaIn,
                                                               mediaOut: room_config.mediaOut},
                                                               rpcReq,
@@ -457,6 +696,7 @@ var Conference = function (rpcClient, selfRpcId) {
                                                               onLocalSessionSignaling,
                                                               rtcController,
                                                               quicController);
+		              redis.saveList(roomId,selfRpcId);
                   resolve('ok');
                 },
                 function onError(reason) {
@@ -464,6 +704,7 @@ var Conference = function (rpcClient, selfRpcId) {
                   is_initializing = false;
                   reject('roomController init failed. reason: ' + reason);
                 });
+              
             });
         }).catch(function(err) {
           log.error('Init room failed, reason:', err);
@@ -476,6 +717,14 @@ var Conference = function (rpcClient, selfRpcId) {
     }
   };
 
+  var cleanRedis = function() {
+    var items = ["streams", "rtcoperations", "rtctracks", "trackowners", "rtctransports", "rtctracks", "subscriptions", "mixviews", "terminals", "config", "roomstreams"];
+    for (var i in items) {
+	var key = room_id + items[i];
+	redis.delByKey(key);
+    }
+  }
+
   var destroyRoom = function() {
     const doClean = () => {
       accessController && accessController.destroy();
@@ -483,8 +732,17 @@ var Conference = function (rpcClient, selfRpcId) {
       roomController && roomController.destroy();
       roomController = undefined;
       subscriptions = {};
+/*
+      for (var stream_id in streams) {
+        redis.updateToRedis("delete", "conference", "streams", stream_id);
+      }
+*/
+      cleanRedis();
       streams = {};
       participants = {};
+      //redis.updateToRedis("delete", "conference", "config", room_id);
+      
+      redis.deleteList(room_id, selfRpcId);
       selfCleanTimer && clearTimeout(selfCleanTimer);
       selfCleanTimer = null;
       room_id = undefined;
@@ -546,14 +804,18 @@ var Conference = function (rpcClient, selfRpcId) {
   };
 
   const addParticipant = function(participantInfo, permission) {
-    participants[participantInfo.id] = Participant({
-                                                    id: participantInfo.id,
-                                                    user: participantInfo.user,
-                                                    role: participantInfo.role,
-                                                    portal: participantInfo.portal,
-                                                    origin: participantInfo.origin,
-                                                    permission: permission
-                                                   }, rpcReq);
+    var participant = {
+      id: participantInfo.id,
+      user: participantInfo.user,
+      role: participantInfo.role,
+      portal: participantInfo.portal,
+      origin: participantInfo.origin,
+      permission: permission
+    };
+
+    participants[participantInfo.id] = Participant(participant, rpcReq);
+
+    redis.updateToRedis("add", "conference", "participants", participantInfo.id, participant);
     room_config.notifying.participantActivities && sendMsg(participantInfo.id, 'others', 'participant', {action: 'join', data: {id: participantInfo.id, user: participantInfo.user, role: participantInfo.role}});
     return Promise.resolve('ok');
   };
@@ -575,6 +837,8 @@ var Conference = function (rpcClient, selfRpcId) {
       var participant = participants[participantId];
       var left_user = participant.getInfo();
       delete participants[participantId];
+
+      redis.updateToRedis("delete", "conference", "participants", participantId);
       room_config.notifying.participantActivities && sendMsg('room', 'all', 'participant', {action: 'leave', data: left_user.id});
     }
   };
@@ -607,12 +871,13 @@ var Conference = function (rpcClient, selfRpcId) {
       return Promise.reject('Stream already exists');
     }
 
-    streams[id] = {
+    var streamInfo = {
       id: id,
       type: 'forward',
       info: info,
       isInConnecting: true
-    };
+    }
+    streams[id] = streamInfo;
 
     return Promise.resolve('ok');
   };
@@ -652,8 +917,12 @@ var Conference = function (rpcClient, selfRpcId) {
       return Promise.all(pubs).then(() => {
         if (participants[info.owner]) {
           streams[id] = fwdStream;
+          var streamInfo = streams[id].getStreamInfo();
+          redis.updateToRedis("add", "conference", "streams", id, streamInfo);
+
           pubArgs.forEach(pubArg => {
             trackOwners[pubArg.id] = id;
+            redis.updateToRedis("add", "conference", "trackowners", pubArg.id, id);
             if (room_config.selectActiveAudio) {
               if (pubArg.media.audio) {
                 roomController.selectAudio(pubArg.id, () => {
@@ -687,6 +956,8 @@ var Conference = function (rpcClient, selfRpcId) {
         function() {
           if (participants[info.owner]) {
             streams[id] = fwdStream;
+            var streamInfo = streams[id].getStreamInfo();
+            redis.updateToRedis("add", "conference", "streams", id, streamInfo);
             if (!isReadded) {
               setTimeout(() => {
                 room_config.notifying.streamChange &&
@@ -706,6 +977,8 @@ var Conference = function (rpcClient, selfRpcId) {
 
   const updateStreamInfo = (streamId, info) => {
     if (!streams[streamId].isInConnecting && streams[streamId].update(info)) {
+      var streamInfo = streams[streamId].getStreamInfo();
+      redis.updateToRedis("add", "conference", "streams", streamId, streamInfo);
       room_config.notifying.streamChange &&
       sendMsg('room', 'all', 'stream', {
         id: streamId,
@@ -734,6 +1007,8 @@ var Conference = function (rpcClient, selfRpcId) {
           });
         }
         delete streams[streamId];
+        redis.updateToRedis("delete", "conference", "streams", streamId);
+
         setTimeout(() => {
           room_config.notifying.streamChange && sendMsg('room', 'all', 'stream', {id: streamId, status: 'remove'});
         }, 10);
@@ -755,6 +1030,7 @@ var Conference = function (rpcClient, selfRpcId) {
       info: info,
       isInConnecting: true
     };
+    redis.updateToRedis("add", "conference", "subscriptions", id, subscriptions[id]);
 
     return Promise.resolve('ok');
   };
@@ -802,6 +1078,8 @@ var Conference = function (rpcClient, selfRpcId) {
     return Promise.all(subs).then(() => {
       if (participants[info.owner]) {
         subscriptions[id] = subscription;
+        var subscriptionInfo = subscriptions[id].getSubscriptionInfo();
+        redis.updateToRedis("add", "conference", "subscriptions", id, subscriptionInfo);
         return Promise.resolve('ok');
       } else {
         subArgs.forEach(subArg => {
@@ -823,6 +1101,7 @@ var Conference = function (rpcClient, selfRpcId) {
           });
         }
         delete subscriptions[subscriptionId];
+        redis.updateToRedis("delete", "conference", "subscriptions", subscriptionId);
       }
       resolve('ok');
     });
@@ -833,6 +1112,12 @@ var Conference = function (rpcClient, selfRpcId) {
       if (streams[streamId].info.type === 'sip' || streams[streamId].info.type === 'analytics') {
         return removeStream(streamId);
       } else {
+        for (var key in trackOwners) {
+          if (trackOwners[key] === streamId) {
+            delete trackOwners[key];
+            redis.updateToRedis("delete", "conference", "trackowners", key);
+          }
+        }
         return accessController.terminate(streamId, 'in', 'Participant terminate');
       }
     } else {
@@ -1489,6 +1774,8 @@ var Conference = function (rpcClient, selfRpcId) {
     return Promise.all(mixOps).then(() => {
       if (streams[streamId].info.inViews.indexOf(toView) === -1) {
         streams[streamId].info.inViews.push(toView);
+        var streamInfo = streams[streamId].getStreamInfo();
+        redis.updateToRedis("add", "conference", "streams", streamId, streamInfo);
       }
       return Promise.resolve('ok');
     }).catch(reason => {
@@ -1514,6 +1801,8 @@ var Conference = function (rpcClient, selfRpcId) {
     }));
     return Promise.all(unmixOps).then(() => {
       streams[streamId].info.inViews.splice(streams[streamId].info.inViews.indexOf(fromView), 1);
+      var streamInfo = streams[streamId].getStreamInfo();
+      redis.updateToRedis("add", "conference", "streams", streamId, streamInfo);
       return Promise.resolve('ok');
     }).catch(reason => {
       log.info('roomController.unmix failed, reason:', reason);
@@ -1545,6 +1834,8 @@ var Conference = function (rpcClient, selfRpcId) {
           }
         });
         var updateFields = (track === 'av') ? ['audio.status', 'video.status'] : [track + '.status'];
+        var streamInfo = streams[streamId].getStreamInfo();
+        redis.updateToRedis("add", "conference", "streams", streamId, streamInfo);
         room_config.notifying.streamChange && updateFields.forEach((fieldData) => {
           sendMsg('room', 'all', 'stream', {status: 'update', id: streamId, data: {field: fieldData, value: status}});
         });
@@ -1610,6 +1901,8 @@ var Conference = function (rpcClient, selfRpcId) {
       roomController.setLayout(streams[streamId].info.label, layout, function(updated) {
         if (streams[streamId]) {
           streams[streamId].info.layout = convertLayout(updated);
+          var streamInfo = streams[streamId].getStreamInfo();
+          redis.updateToRedis("add", "conference", "streams", streamId, streamInfo);
           resolve('ok');
         } else {
           reject('stream early terminated');
@@ -1780,6 +2073,9 @@ var Conference = function (rpcClient, selfRpcId) {
             t.status = status;
           }
         });
+
+        var subscriptionfo = subscriptions[subscriptionId].getSubscriptionInfo();
+        redis.updateToRedis("add", "conference", "subscriptions", subscriptionId, subscriptionfo);
         return 'ok';
       });
   };
@@ -1881,6 +2177,9 @@ var Conference = function (rpcClient, selfRpcId) {
       if (streams[streamId]) {
         layout = convertLayout(layout);
         streams[streamId].info.layout = layout;
+        var streamInfo = streams[streamId].getStreamInfo();
+        streamInfo.view = view;
+        redis.updateToRedis("add", "conference", "streams", streamId, streamInfo)
         room_config.notifying.streamChange && sendMsg('room', 'all', 'stream', {status: 'update', id: streamId, data: {field: 'video.layout', value: layout}});
         callback('callback', 'ok');
       } else {
@@ -1916,6 +2215,9 @@ var Conference = function (rpcClient, selfRpcId) {
         if (streams[mixedId] instanceof MixedStream) {
           if (streams[mixedId].info.activeInput !== input) {
             streams[mixedId].info.activeInput = input;
+            var streamInfo = streams[mixedId].getStreamInfo();
+            streamInfo.view = view;
+            redis.updateToRedis("add", "conference", "streams", mixedId, streamInfo);
             room_config.notifying.streamChange &&
                 sendMsg('room', 'all', 'stream',
                     {id: mixedId, status: 'update', data: {field: 'activeInput', value: input}});
@@ -1930,6 +2232,9 @@ var Conference = function (rpcClient, selfRpcId) {
           if (streams[activeAudioId].info.activeInput !== input) {
             streams[activeAudioId].info.activeInput = input;
             streams[activeAudioId].info.activeOwner = target.owner;
+            var streamInfo = streams[activeAudioId].getStreamInfo();
+            streamInfo.view = view;
+            redis.updateToRedis("add", "conference", "streams", activeAudioId, streamInfo);
             room_config.notifying.streamChange &&
                 sendMsg('room', 'all', 'stream',
                     {id: activeAudioId, status: 'update', data: {field: 'activeInput', value: input}});
@@ -1978,6 +2283,8 @@ var Conference = function (rpcClient, selfRpcId) {
         }
       })
     ).then(() => {
+      var participantInfo = participants[participantId].getPartcipant();
+      redis.updateToRedis("add", "conference", "participants", participantId, participantInfo);
       callback('callback', participants[participantId].getDetail());
     }, (err) => {
       callback('callback', 'error', err.message ? err.message : err);
@@ -2721,6 +3028,10 @@ var Conference = function (rpcClient, selfRpcId) {
     callback('callback', 'Success');
   };
 
+  that.close = function() {
+
+  };
+
   //This interface is for fault tolerance.
   that.onFaultDetected = function (message) {
     if (message.purpose === 'portal' || message.purpose === 'sip') {
@@ -2736,6 +3047,11 @@ var Conference = function (rpcClient, selfRpcId) {
     } else if (message.purpose === 'audio' ||
                message.purpose === 'video') {
       roomController && roomController.onFaultDetected(message.purpose, message.type, message.id);
+    } else if (message.purpose === 'conference') {
+      //Reload redis data since one conference node or agent crashes
+      if (message.tasks && message.tasks.includes(room_id)) {
+        log.info("conference node serve for the same room exit:", message);
+      }
     }
   };
 

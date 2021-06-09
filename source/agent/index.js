@@ -55,6 +55,7 @@ var nodeManager = require('./nodeManager');
 var amqper = require('./amqpClient')();
 var rpcClient;
 var monitoringTarget;
+var redisClient;
 
 var worker;
 var manager;
@@ -88,6 +89,11 @@ var joinCluster = function (on_ok) {
             manager && manager.dropAllNodes(false);
         }
     };
+
+    if (myPurpose === 'conference') {
+        var redis = require('./redisUtil');
+        redisClient = redis.create(false);
+    }
 
     worker = clusterWorker({
         rpcClient: rpcClient,
@@ -134,14 +140,13 @@ var init_manager = () => {
       prerunNodeNum: config.agent.prerunProcesses,
       maxNodeNum: config.agent.maxProcesses,
       reuseNode: reuseNode,
+      redis: redisClient,
       consumeNodeByRoom: consumeNodeByRoom
     },
     spawnOptions,
     (nodeId, tasks) => {
-      monitoringTarget && monitoringTarget.notify('abnormal', {purpose: myPurpose, id: nodeId, type: 'node'});
-      tasks.forEach(() => {
-        worker && worker.removeTask(task);
-      });
+      log.info("monitor abnormal purpose:", myPurpose, " id:", nodeId, " updateId:", tasks, " parentId:", myId);
+      monitoringTarget && monitoringTarget.notify('abnormal', {purpose: myPurpose, id: nodeId, tasks: tasks, type: 'node'});
     },
     (task) => {
       worker && worker.addTask(task);
@@ -224,7 +229,9 @@ amqper.connect(config.rabbit, function () {
 ['SIGINT', 'SIGTERM'].map(function (sig) {
     process.on(sig, async function () {
         log.warn('Exiting on', sig);
-        manager && manager.dropAllNodes(true);
+        if (manager) {
+            await manager.dropAllNodes(true);
+        }
         worker && worker.quit();
         try {
             await amqper.disconnect();

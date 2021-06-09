@@ -18,6 +18,7 @@
             "quicController.js",
             "stream.js",
             "subscription.js",
+	    "redisUtil.js",
             "../index.js",
             "../networkHelper.js",
             "../../common/formatUtil.js",

@@ -27,6 +27,18 @@ class Transport {
     this.locality = locality;
     this.state = PENDING;
   }
+
+  getInfo() {
+    var info = {
+      id: this.id,
+      owner: this.owner,
+      origin: this.origin,
+      locality: this.locality,
+      state: this.state
+    }
+
+    return info;
+  }
 }
 
 class Track {
@@ -93,6 +105,20 @@ class Operation {
     }
     return opTrack;
   }
+
+  getInfo() {
+    var info = {
+      id: this.id,
+      transport: this.transport,
+      transportId: this.transportId,
+      direction: this.direction,
+      tracks: this.tracks,
+      legacy: this.legacy,
+      attributes: this.attributes
+    }
+
+    return info;
+  }
 }
 
 /* Events
@@ -111,7 +137,7 @@ class RtcController extends EventEmitter {
    *   onTransportSignaling, mediaOnOff, sendMsg
    * }
    */
-  constructor(roomId, rpcReq, roomRpcId, clusterRpcId) {
+  constructor(roomId, rpcReq, roomRpcId, clusterRpcId, redis) {
     log.debug(`constructor ${roomId}, ${roomRpcId}, ${clusterRpcId}`);
     super();
     this.roomId = roomId;
@@ -124,6 +150,91 @@ class RtcController extends EventEmitter {
     this.operations = new Map();
     // Map {publicTrackId => Track}
     this.tracks = new Map();
+
+    this.redis = redis; 
+  }
+
+  loadData() {
+    var operationKey = this.roomId + "rtcoperations";
+    this.redis.subscribeChannel(operationKey);
+    this.redis.getItems(operationKey)
+        .then((streamList) => {
+          if (Object.keys(streamList).length > 0) {
+            for (let item in streamList) {
+              const op = new Operation(streamList[item].id, streamList[item].transport, streamList[item].direction, streamList[item].tracks, streamList[item].legacy, streamList[item].attributes);
+              this.operations.set(streamList[item].id, op);
+            }
+          }
+          return Promise.resolve('ok');
+        })
+        .then(() => {
+          var transportKey = this.roomId + "rtctransports";
+          this.redis.subscribeChannel(transportKey);
+          return this.redis.getItems(transportKey)
+            .then((streamList) => {
+              if (Object.keys(streamList).length > 0) {
+                for (let item in streamList) {
+                  const op = new Transport(streamList[item].id, streamList[item].owner, streamList[item].origin);
+                  op.setup(streamList[item].locality);
+                  this.transports.set(streamList[item].id, op);
+                }
+              }
+              return Promise.resolve('ok');
+            })
+        })
+        .then(() => {
+          var trackKey = this.roomId + "rtctracks";
+          this.redis.subscribeChannel(trackKey);
+          return this.redis.getItems(trackKey)
+            .then((streamList) => {
+              if (Object.keys(streamList).length > 0) {
+                for (let item in streamList) {
+                  this.tracks.set(streamList[item].id, streamList[item]);
+                }
+              }
+            })
+        })
+        .catch(function(err) {
+              log.error('Load data from redis failed, reason:', err);
+          }); 
+  }
+
+  updateFromRedis(channel, msg) {
+    var name = channel.substring(this.roomId.length);
+    switch (name) {
+      case 'rtctransports':
+        if (msg.type === 'add') {
+              const op = new Transport(msg.data.id, msg.data.owner, msg.data.origin);
+              op.setup(msg.data.locality);
+              this.transports.set(msg.data.id, op);
+        } else {
+          if (this.transports.has(msg.id)) {
+            this.transports.delete(msg.id);
+          }
+        }
+        break
+      case 'rtcoperations':
+        if (msg.type === 'add') {
+            const op = new Operation(msg.data.id, msg.data.transport, msg.data.direction, msg.data.tracks, msg.data.legacy, msg.data.attributes);
+            this.operations.set(msg.data.id, op);
+        } else {
+          if (this.operations.has(msg.id)) {
+            this.operations.delete(msg.id);
+          }
+        }
+        break;
+      case 'rtctracks':
+        if (msg.type === 'add') {
+            this.tracks.set(msg.id, msg.data);
+        } else {
+          if (this.tracks.has(msg.id)) {
+            this.tracks.delete(msg.id);
+          }
+        }
+        break;
+      default:
+        log.info('Invalid roomControl update items');
+    }
   }
 
   // Return Transport
@@ -169,6 +280,8 @@ class RtcController extends EventEmitter {
           const locality = transport.locality;
           log.debug(`to recycleWorkerNode: ${locality} task:, ${transportId}`);
           const taskConfig = {room: this.roomId, task: transportId};
+          this.transports.delete(transportId);
+          this.redis.updateToRedis("delete", "rtccontroller", "rtctransports", transportId);
           return this.rpcReq.recycleWorkerNode(locality.agent, locality.node, taskConfig)
         }).catch((e) => log.debug(`Failed to recycleWorkerNode ${locality}`));
       } else {
@@ -216,6 +329,7 @@ class RtcController extends EventEmitter {
           const newTrack = operation.updateTrack(info);
           if (newTrack) {
             this.tracks.set(info.trackId, newTrack);
+            this.redis.updateToRedis("add", "rtccontroller", "rtctracks", info.trackId, newTrack);
           }
           if (operation.state === COMPLETED) {
             log.warn('Unexpected order for track-added event');
@@ -239,6 +353,7 @@ class RtcController extends EventEmitter {
         //   this.emit('session-aborted', operationId, abortData);
         // }
         this.tracks.delete(info.trackId);
+        this.redis.updateToRedis("delete", "rtccontroller", "rtctracks", info.trackId);
       }
     } else if (info.type === 'tracks-complete') {
       const operation = this.operations.get(info.operationId);
@@ -258,8 +373,10 @@ class RtcController extends EventEmitter {
       log.debug(`getWorkerNode ${this.clusterRpcId}, ${taskConfig}, ${origin}`);
       const locality = await this.rpcReq.getWorkerNode(
           this.clusterRpcId, 'webrtc', taskConfig, origin);
-      this.transports.set(tId, new Transport(tId, ownerId, origin));
+      var transport = new Transport(tId, ownerId, origin)
+      this.transports.set(tId, transport)
       this.transports.get(tId).setup(locality);
+      this.redis.updateToRedis("add", "rtccontroller", "rtctransports", tId, transport.getInfo());
     }
     return this.transports.get(tId);
   }
@@ -284,6 +401,7 @@ class RtcController extends EventEmitter {
       }
       const op = new Operation(sessionId, transport, direction, tracks, legacy, attributes);
       this.operations.set(sessionId, op);
+      this.redis.updateToRedis("add", "rtccontroller", "rtcoperations", sessionId, op.getInfo());
       // Return promise for this operation
       const options = {transportId, tracks, controller: this.roomRpcId, owner: ownerId};
       return this.rpcReq.initiate(locality.node, sessionId, 'webrtc', direction, options);
@@ -307,6 +425,7 @@ class RtcController extends EventEmitter {
         const abortData = { direction: operation.direction, owner, reason };
         this.emit('session-aborted', sessionId, abortData);
         this.operations.delete(sessionId);
+        this.redis.updateToRedis("delete", "rtccontroller", "rtcoperations", sessionId);
       }
     })
     .catch(reason => {

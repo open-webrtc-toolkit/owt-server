@@ -18,17 +18,30 @@ const PENDING = 'pending';
 
 class Transport {
 
-  constructor(id, owner, origin) {
+  constructor(id, owner, origin, redis) {
     this.id = id;
     this.owner = owner;
     this.origin = origin;
     this.locality = null;
+    this.redis = redis;
     this.state = INITIALIZING;
   }
 
   setup(locality) {
     this.locality = locality;
     this.state = PENDING;
+  }
+
+  getInfo() {
+    var info = {
+      id: this.id,
+      owner: this.owner,
+      origin: this.origin,
+      locality: this.locality,
+      state: this.state
+    }
+
+    return info;
   }
 }
 
@@ -43,6 +56,20 @@ class Operation {
     this.direction = direction;
     this.data = data;
     this.promise = Promise.resolve();
+  }
+
+  getInfo() {
+    var info = {
+      id: this.id,
+      transport: this.transport,
+      transportId: this.transportId,
+      direction: this.direction,
+      tracks: this.tracks,
+      legacy: this.legacy,
+      attributes: this.attributes
+    }
+
+    return info;
   }
 }
 
@@ -61,17 +88,47 @@ class QuicController extends EventEmitter {
    *   onTransportSignaling, mediaOnOff, sendMsg
    * }
    */
-  constructor(roomId, rpcReq, roomRpcId, clusterRpcId) {
+  constructor(roomId, rpcReq, roomRpcId, clusterRpcId, redis) {
     log.debug(`constructor ${roomId}, ${roomRpcId}, ${clusterRpcId}`);
     super();
     this.roomId = roomId;
     this.roomRpcId = roomRpcId;
     this.rpcReq = rpcReq;
     this.clusterRpcId = clusterRpcId;
+    this.redis = redis;
     // Map {transportId => Transport}
     this.transports = new Map();
     // Map {operationId => Operation}
     this.operations = new Map();
+  }
+
+  updateFromRedis(channel, msg) {
+    var name = channel.substring(room_id.length);
+    switch (name) {
+      case 'quictransports':
+        if (msg.type === 'add') {
+              const op = new Transport(msg.data.id, msg.data.owner, msg.data.origin);
+              op.setup(msg.data.locality);
+              this.transports.set(msg.data.id, op);
+        } else {
+          if (this.transports.has(msg.id)) {
+            this.transports.delete(msg.id);
+          }
+        }
+        break
+      case 'quicoperations':
+        if (msg.type === 'add') {
+            const op = new Operation(msg.data.sessionId, msg.data.transport, msg.data.direction, msg.data.tracks, msg.data.legacy, msg.data.attributes);
+            this.operations.set(msg.data.sessionId, op);
+        } else {
+          if (this.operations.has(msg.id)) {
+            this.operations.delete(msg.id);
+          }
+        }
+        break;
+      default:
+        log.info('Invalid roomControl update items');
+    }
   }
 
   // Return Transport
@@ -82,21 +139,6 @@ class QuicController extends EventEmitter {
   // Return Opreation
   getOperation(operationId) {
     return this.operations.get(operationId);
-  }
-
-  onSessionProgress(sessionId, status)
-  {
-      if (!status.data) {
-          log.error('onSessionProgress is called by QUIC connections.');
-          return;
-      }
-      if (status.type === 'ready') {
-          if (!this.operations.get(sessionId)) {
-              log.error('Invalid session ID.');
-              return;
-          }
-          this.emit('session-established', this.operations.get(sessionId));
-      }
   }
 
   onSessionProgress(sessionId, status)
@@ -116,7 +158,9 @@ class QuicController extends EventEmitter {
 
   _createTransportIfNeeded(ownerId, sessionId, origin, tId) {
     if (!this.transports.has(tId)) {
-      this.transports.set(tId, new Transport(tId, ownerId, origin));
+      var transport = new Transport(tId, ownerId, origin);
+      this.transports.set(tId, transport);
+      this.redis.updateToRedis("add", "quiccontroller", "quictransports", tId, transport.getInfo());
       const taskConfig = {room: this.roomId, task: sessionId};
       log.debug(`getWorkerNode ${this.clusterRpcId}, ${taskConfig}, ${origin}`);
       return this.rpcReq.getWorkerNode(this.clusterRpcId, 'quic', taskConfig, origin)
@@ -159,6 +203,7 @@ class QuicController extends EventEmitter {
       }
       const op = new Operation(sessionId, transport, direction, tracks, data);
       this.operations.set(sessionId, op);
+      this.redis.updateToRedis("add", "quiccontroller", "quicoperations", sessionId, op.getInfo());
       // Save promise for this operation
       const options = {transport:{id:transportId, type:'quic'}, tracks, controller: this.roomRpcId, data};
       op.promise = this.rpcReq.initiate(locality.node, sessionId, 'quic', direction, options);
@@ -189,6 +234,7 @@ class QuicController extends EventEmitter {
         const abortData = { direction: operation.direction, owner, reason };
         this.emit('session-aborted', sessionId, abortData);
         this.operations.delete(sessionId);
+        this.redis.updateToRedis("delete", "quiccontroller", "quicoperations", sessionId);
 
         let emptyTransport = true;
         for (const [id, op] of this.operations) {
@@ -206,6 +252,7 @@ class QuicController extends EventEmitter {
             })
             .then(() => {
               this.transports.delete(transport.id);
+              this.redis.updateToRedis("delete", "quiccontroller", "quictransports", transport.id);
             });
         }
       }
