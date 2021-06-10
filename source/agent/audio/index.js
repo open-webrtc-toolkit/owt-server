@@ -138,9 +138,9 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
             return;
         }
         const selector = new ActiveAudioSelector(activeStreamIds.length);
-        selector.on('source-change', (i, owner, streamId, codec) => {
+        selector.on('source-change', (i, owner, streamId, codec, volume) => {
             // Notify controller
-            const target = {id: activeStreamIds[i], owner, codec};
+            const target = {id: activeStreamIds[i], owner, codec, volume};
             ctrlr && rpcClient.remoteCall(ctrlr, 'onAudioActiveness',
                 [belongToRoom, streamId, target],
                 {callback: function(){}});

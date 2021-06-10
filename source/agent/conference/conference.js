@@ -1927,12 +1927,18 @@ var Conference = function (rpcClient, selfRpcId) {
             activeInputStream : trackOwners[activeInputStream];
         const activeAudioId = target.id;
         if (streams[activeAudioId] instanceof SelectedStream) {
-          if (streams[activeAudioId].info.activeInput !== input) {
+          if (streams[activeAudioId].info.activeInput !== input ||
+              streams[activeAudioId].info.volume !== target.volume) {
             streams[activeAudioId].info.activeInput = input;
             streams[activeAudioId].info.activeOwner = target.owner;
-            room_config.notifying.streamChange &&
-                sendMsg('room', 'all', 'stream',
-                    {id: activeAudioId, status: 'update', data: {field: 'activeInput', value: input}});
+            streams[activeAudioId].info.volume = target.volume;
+            //TODO: separate major and activeInput when notifying
+            room_config.notifying.streamChange && sendMsg('room', 'all', 'stream',
+              {
+                id: activeAudioId,
+                status: 'update',
+                data: {field: 'activeInput', value: {id: input, volume: target.volume}}
+              });
           }
         }
         callback('callback', 'ok');
