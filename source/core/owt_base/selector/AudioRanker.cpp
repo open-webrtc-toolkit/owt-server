@@ -160,7 +160,7 @@ void AudioRanker::updateInputInternal(std::string streamId, int level, bool trig
         }
 
         if (inTopK && level != audioProc->iter()->first) {
-            ELOG_TRACE("Top K internal change: %s %s",
+            ELOG_DEBUG("Top K internal change: %s %s",
                 audioProc->streamId().c_str(), audioProc->ownerId().c_str());
             auto oldUp = m_topK.upper_bound(audioProc->iter()->first);
             m_topK.erase(audioProc->iter());
