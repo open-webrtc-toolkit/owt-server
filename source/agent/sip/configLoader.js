@@ -44,6 +44,10 @@ module.exports.load = () => {
       config.internal.ip_address = addr.ip;
     }
 
+    config.sip = config.sip || {};
+    config.sip.retry_limit = config.sip.retry_limit || 0;
+    config.sip.retry_timeout = config.sip.retry_timeout || 6000;
+
     return config;
   } catch (e) {
     console.error('Parsing config error on line ' + e.line + ', column ' + e.column + ': ' + e.message);

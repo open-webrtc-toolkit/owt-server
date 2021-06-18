@@ -36,3 +36,6 @@ ip_address = "" #default: ""
 maxport = 0 #default: 0
 minport = 0 #default: 0
 
+[sip]
+retry_limit = 0
+retry_timeout = 6000 # ms
