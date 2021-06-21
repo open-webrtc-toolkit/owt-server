@@ -7,15 +7,14 @@
 #endif
 
 #include "InternalConfig.h"
-#include <TransportBase.h>
+#include <RawTransport.h>
 
 using namespace v8;
 
 void setPassphrase(const FunctionCallbackInfo<Value>& args) {
-  Isolate* isolate = Isolate::GetCurrent();
-  String::Utf8Value param0(isolate, args[0]->ToString());
+  String::Utf8Value param0(args[0]->ToString());
   std::string p = std::string(*param0);
-  owt_base::TransportSecret::setPassphrase(p);
+  owt_base::RawTransport<owt_base::Protocol::TCP>::setPassphrase(p);
 }
 
 void InitInternalConfig(v8::Local<v8::Object> exports) {

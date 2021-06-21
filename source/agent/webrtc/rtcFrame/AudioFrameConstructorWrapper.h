@@ -6,6 +6,7 @@
 #define AUDIOFRAMECONSTRUCTORWRAPPER_H
 
 #include "MediaWrapper.h"
+#include "../../addons/common/MediaFramePipelineWrapper.h"
 #include <AudioFrameConstructor.h>
 #include <node.h>
 #include <node_object_wrap.h>
@@ -36,7 +37,25 @@ class AudioFrameConstructor : public MediaSink {
   static NAN_METHOD(addDestination);
   static NAN_METHOD(removeDestination);
 
+  static NAN_METHOD(source);
+
   static Nan::Persistent<v8::Function> constructor;
+};
+
+class AudioFrameSource : public FrameSource {
+ public:
+  static NAN_MODULE_INIT(Init);
+  owt_base::AudioFrameConstructor* me;
+
+ private:
+  AudioFrameSource() {};
+  ~AudioFrameSource() {};
+
+  static NAN_METHOD(New);
+
+  static Nan::Persistent<v8::Function> constructor;
+
+  friend class AudioFrameConstructor;
 };
 
 #endif

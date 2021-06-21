@@ -154,8 +154,30 @@ class WrtcStream extends EventEmitter {
     }
   }
 
+  sender(track) {
+    let sender = null;
+    if (track === 'audio' && this.audioFrameConstructor) {
+      sender = this.audioFrameConstructor.source();
+      sender.parent = this.audioFrameConstructor;
+    } else if (track === 'video' && this.videoFrameConstructor) {
+      sender = this.videoFrameConstructor.source();
+      sender.parent = this.videoFrameConstructor;
+    } else {
+      log.error('sender error');
+    }
+    if (sender) {
+      sender.addDestination = (track, dest) => {
+        sender.parent.addDestination(dest);
+      };
+      sender.removeDestination = (track, dest) => {
+        sender.parent.removeDestination(dest);
+      };
+    }
+    return sender;
+  }
+
   receiver(track) {
-    var dest = null;
+    let dest = null;
     if (track === 'audio') {
       dest = this.audioFramePacketizer;
     } else if (track === 'video') {

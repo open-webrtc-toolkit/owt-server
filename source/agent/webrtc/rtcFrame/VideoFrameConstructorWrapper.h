@@ -46,10 +46,28 @@ class VideoFrameConstructor : public MediaSink, public owt_base::VideoInfoListen
 
   static NAN_METHOD(requestKeyFrame);
 
+  static NAN_METHOD(source);
+
   static Nan::Persistent<v8::Function> constructor;
 
   static NAUV_WORK_CB(Callback);
   virtual void onVideoInfo(const std::string& message);
+};
+
+class VideoFrameSource : public FrameSource {
+ public:
+  static NAN_MODULE_INIT(Init);
+  owt_base::VideoFrameConstructor* me;
+
+ private:
+  VideoFrameSource() {};
+  ~VideoFrameSource() {};
+
+  static NAN_METHOD(New);
+
+  static Nan::Persistent<v8::Function> constructor;
+
+  friend class VideoFrameConstructor;
 };
 
 #endif

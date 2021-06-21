@@ -17,7 +17,7 @@ var cluster_name = ((global.config || {}).cluster || {}).name || 'owt-cluster';
 
 // Logger
 var log = logger.getLogger('SipNode');
-var InternalConnectionFactory = require('./InternalConnectionFactory');
+var {InternalConnectionRouter} = require('./internalConnectionRouter');
 
 // resolution map
 var resolution_map = {
@@ -234,8 +234,9 @@ module.exports = function (rpcC, selfRpcId, parentRpcId, clusterWorkerIP) {
         streams = {},
         calls = {},
         subscriptions = {},
-        recycling_mode = false,
-        internalConnFactory = new InternalConnectionFactory;
+        recycling_mode = false;
+
+    var router = new InternalConnectionRouter(global.config.internal);
 
     var getClientId = function(peerURI) {
       for (var c_id in calls) {
@@ -315,6 +316,9 @@ module.exports = function (rpcC, selfRpcId, parentRpcId, clusterWorkerIP) {
             streams[stream_id] = {type: 'sip', connection: calls[client_id].conn};
             calls[client_id].stream_id = stream_id;
 
+            router.addLocalSource(stream_id, 'sip', calls[client_id].conn.source())
+            .catch(e => log.warn('Unexpected error during source add:', e));
+
             var pubInfo = {type: 'sip', media: {}, locality: {agent:that.agentID, node: erizo.id}};
             if (info.audio && info.audio_dir !== 'sendonly') {
                 pubInfo.media.audio = audio_info;
@@ -384,6 +388,9 @@ module.exports = function (rpcC, selfRpcId, parentRpcId, clusterWorkerIP) {
                                       client_id,
                                       subscription_id,
                                       subInfo);
+
+            router.addLocalDestination(subscription_id, 'sip', calls[client_id].conn)
+            .catch(e => log.warn('Unexpected error during destination add:', e));
         }
 
         return Promise.all([published, subscribed]).then(function(result) {
@@ -409,48 +416,18 @@ module.exports = function (rpcC, selfRpcId, parentRpcId, clusterWorkerIP) {
         log.debug("teardownCall, client_id: ", client_id);
         var subscription_id = calls[client_id].subscription_id;
         if (subscriptions[subscription_id]) {
-            var audio_from = subscriptions[subscription_id].audio,
-                video_from = subscriptions[subscription_id].video;
-
-            if (streams[audio_from]) {
-                var dest = subscriptions[subscription_id].connection.receiver('audio');
-                streams[audio_from].connection.removeDestination('audio', dest);
-                subscriptions[subscription_id].audio = undefined;
-            }
-
-            if (streams[video_from]) {
-                var dest = subscriptions[subscription_id].connection.receiver('video');
-                streams[video_from].connection.removeDestination('video', dest);
-                subscriptions[subscription_id].video = undefined;
-            }
+            router.removeConnection(subscription_id)
+            .catch(e => log.warn('Unexpected error during subscription remove:', e));
 
             delete subscriptions[subscription_id];
+            calls[client_id].subscription_id = undefined;
         }
 
         var stream_id = calls[client_id].stream_id;
         if (stream_id && streams[stream_id]) {
-            for (var subscription_id in subscriptions) {
-                if (subscriptions[subscription_id].audio === stream_id) {
-                    log.debug('remove audio:', subscriptions[subscription_id].audio);
-                    var dest = subscriptions[subscription_id].connection.receiver('audio');
-                    log.debug('remove audio removeDestination: ', streams[stream_id].connection, ' dest: ', dest);
-                    streams[stream_id].connection.removeDestination('audio', dest);
-                    subscriptions[subscription_id].audio = undefined;
-                }
+            router.removeConnection(stream_id)
+            .catch(e => log.warn('Unexpected error during stream remove:', e));
 
-                if (subscriptions[subscription_id].video === stream_id) {
-                    log.debug('remove video:', subscriptions[subscription_id].video);
-                    var dest = subscriptions[subscription_id].connection.receiver('video');
-                    log.debug('remove video removeDestination: ', streams[stream_id].connection, ' dest: ', dest);
-                    streams[stream_id].connection.removeDestination('video', dest);
-                    subscriptions[subscription_id].video = undefined;
-                }
-
-                if (subscriptions[subscription_id].audio === undefined && subscriptions[subscription_id].video === undefined) {
-                    subscriptions[subscription_id].type === 'internal' && internalConnFactory.destroy(subscription_id, 'out');
-                    delete subscriptions[subscription_id];
-                }
-            }
             delete streams[stream_id];
             calls[client_id].stream_id = undefined;
         }
@@ -700,187 +677,58 @@ module.exports = function (rpcC, selfRpcId, parentRpcId, clusterWorkerIP) {
         recycling_mode = false;
     };
 
-    that.createInternalConnection = function (connectionId, direction, internalOpt, callback) {
-        internalOpt.minport = global.config.internal.minport;
-        internalOpt.maxport = global.config.internal.maxport;
-        var portInfo = internalConnFactory.create(connectionId, direction, internalOpt);
-        callback('callback', {ip: global.config.internal.ip_address, port: portInfo});
-    };
-
-    that.destroyInternalConnection = function (connectionId, direction, callback) {
-        internalConnFactory.destroy(connectionId, direction);
-        callback('callback', 'ok');
+    that.getInternalAddress = function(callback) {
+        const ip = global.config.internal.ip_address;
+        const port = router.internalPort;
+        callback('callback', {ip, port});
     };
 
     that.publish = function (stream_id, stream_type, options, callback) {
         log.debug('publish stream_id:', stream_id, ', stream_type:', stream_type, ', audio:', options.audio, ', video:', options.video);
-        if (stream_type === 'internal') {
-            if (streams[stream_id] === undefined) {
-                var conn = internalConnFactory.fetch(stream_id, 'in');
-                if (!conn) {
-                    callback('callback', {type: 'failed', reason: 'Create internal connection failed.'});
-                    return;
-                }
-                conn.connect(options);
-
-                streams[stream_id] = {type: stream_type, connection: conn};
-                callback('callback', 'ok');
-            } else {
-                callback('callback', 'error', 'Connection Already exist.');
-            }
-        } else {
-            log.error('Stream type invalid:'+stream_type);
-            callback('callback', {type: 'failed', reason: 'Stream type invalid:'+stream_type});
-        }
+        callback('callback', 'ok');
     };
 
     that.unpublish = function (stream_id, callback) {
         log.debug('unpublish enter, stream_id:', stream_id);
-        if (streams[stream_id]) {
-            for (var subscription_id in subscriptions) {
-                if (subscriptions[subscription_id].audio === stream_id) {
-                    log.debug('remove audio:', subscriptions[subscription_id].audio);
-                    var dest = subscriptions[subscription_id].connection.receiver('audio');
-                    log.debug('remove audio removeDestination: ', streams[stream_id].connection, ' dest: ', dest);
-                    streams[stream_id].connection.removeDestination('audio', dest);
-                    subscriptions[subscription_id].audio = undefined;
-                }
-
-                if (subscriptions[subscription_id].video === stream_id) {
-                    log.debug('remove video:', subscriptions[subscription_id].video);
-                    var dest = subscriptions[subscription_id].connection.receiver('video');
-                    log.debug('remove video removeDestination: ', streams[stream_id].connection, ' dest: ', dest);
-                    streams[stream_id].connection.removeDestination('video', dest);
-                    subscriptions[subscription_id].video = undefined;
-                }
-            }
-
-            // All published connections are internal
-            internalConnFactory.destroy(stream_id, 'in');
-            delete streams[stream_id];
-            callback('callback', 'ok');
-        } else {
-            log.info('Connection does NOT exist:' + stream_id);
-            callback('callback', 'error', 'Connection does NOT exist:' + stream_id);
-        }
+        callback('callback', 'ok');
     };
 
     that.subscribe = function (subscription_id, subscription_type, options, callback) {
         log.debug('subscribe, subscription_id:', subscription_id, ', subscription_type:', subscription_type, ',options:', options);
-        if (subscription_type === 'internal') {
-            if (subscriptions[subscription_id] === undefined) {
-                var conn = internalConnFactory.fetch(subscription_id, 'out');
-                if (!conn) {
-                    callback('callback', {type: 'failed', reason: 'Create internal connection failed.'});
-                    return;
-                }
-                conn.connect(options);
-
-                subscriptions[subscription_id] = {type: subscription_type,
-                                                  audio: undefined,
-                                                  video: undefined,
-                                                  connection: conn};
-                callback('callback', 'ok');
-            } else {
-                callback('callback', 'error', 'Connection already exist.');
-            }
-        } else {
-            log.error('Stream type invalid:'+stream_type);
-            callback('callback', {type: 'failed', reason: 'Stream type invalid:'+stream_type});
-        }
+        callback('callback', 'ok');
     };
 
     that.unsubscribe = function (subscription_id, callback) {
         log.debug('unsubscribe, subscription_id:', subscription_id);
-
-        if (subscriptions[subscription_id] !== undefined) {
-            if (subscriptions[subscription_id].audio
-                && streams[subscriptions[subscription_id].audio]) {
-                var dest = subscriptions[subscription_id].connection.receiver('audio');
-                log.debug("connection: ", streams[subscriptions[subscription_id].audio].connection, ' remove Dest: ', dest);
-                streams[subscriptions[subscription_id].audio].connection.removeDestination('audio', dest);
-            }
-
-            if (subscriptions[subscription_id].video
-                && streams[subscriptions[subscription_id].video]) {
-                var dest = subscriptions[subscription_id].connection.receiver('video');
-                log.debug("connection: ", streams[subscriptions[subscription_id].video].connection, ' remove Dest: ', dest);
-                streams[subscriptions[subscription_id].video].connection.removeDestination('video', dest);
-            }
-
-            // All subscribed connections are internal
-            internalConnFactory.destroy(subscription_id, 'out');
-            delete subscriptions[subscription_id];
-            callback('callback', 'ok');
-        } else {
-            log.info('Connection does NOT exist:' + subscription_id);
-            callback('callback', 'error', 'Connection does NOT exist:' + subscription_id);
-        }
+        callback('callback', 'ok');
     };
 
-    that.linkup = function (connectionId, audioFrom, videoFrom, dataFrom, callback) {
-        log.debug('linkup, connectionId:', connectionId, ', audioFrom:', audioFrom, ', videoFrom:', videoFrom);
+    var onSuccess = function (callback) {
+        return function(result) {
+            callback('callback', result);
+        };
+    };
 
-        if (audioFrom && streams[audioFrom] === undefined) {
-            log.error('Audio stream does not exist:' + audioFrom);
-            return callback('callback', {type: 'failed', reason: 'Audio stream does not exist:' + audioFrom});
-        }
+    var onError = function (callback) {
+        return function(reason) {
+            if (typeof reason === 'string') {
+                callback('callback', 'error', reason);
+            } else {
+                callback('callback', reason);
+            }
+        };
+    };
 
-        if (videoFrom && streams[videoFrom] === undefined) {
-            log.error('Video stream does not exist:' + videoFrom);
-            return callback('callback', {type: 'failed', reason: 'Video stream does not exist:' + videoFrom});
-        }
-
-        var conn = subscriptions[connectionId] && subscriptions[connectionId].connection;
-
-        if (!conn) {
-            log.error('connectionId not valid:', connectionId);
-            return callback('callback', {type: 'failed', reason: 'connectionId not valid:' + connectionId});
-        }
-
-        var is_sip = (subscriptions[connectionId].type === 'sip');
-
-        if (audioFrom) {
-            var dest = conn.receiver('audio');
-            log.debug("subscribe addDestination: ", streams[audioFrom].connection, " dest: ", dest);
-            streams[audioFrom].connection.addDestination('audio', dest);
-            subscriptions[connectionId].audio = audioFrom;
-        }
-
-        if (videoFrom) {
-            var dest = conn.receiver('video');
-            streams[videoFrom].connection.addDestination('video', dest);
-            if (streams[videoFrom].type === 'sip') {streams[videoFrom].connection.requestKeyFrame();}//FIXME: Temporarily add this interface to workround the hardware mode's absence of feedback mechanism.
-            subscriptions[connectionId].video = videoFrom;
-        }
-
-        callback('callback', 'ok');
+    // streamInfo = {id: 'string', ip: 'string', port: 'number'}
+    // from = {audio: streamInfo, video: streamInfo, data: streamInfo}
+    that.linkup = function (connectionId, from, callback) {
+        log.debug('linkup, connectionId:', connectionId, 'from:', from);
+        router.linkup(connectionId, from).then(onSuccess(callback), onError(callback));
     };
 
     that.cutoff = function (connectionId, callback) {
         log.debug('cutoff, connectionId:', connectionId);
-        if (subscriptions[connectionId]) {
-            var is_sip = (subscriptions[connectionId].type === 'sip');
-            if (subscriptions[connectionId].audio
-                && streams[subscriptions[connectionId].audio]) {
-                var dest = subscriptions[connectionId].connection.receiver('audio');
-                log.debug("connection: ", streams[subscriptions[connectionId].audio].connection, ' remove audio Dest: ', dest);
-                streams[subscriptions[connectionId].audio].connection.removeDestination('audio', dest);
-                subscriptions[connectionId].audio = undefined;
-            }
-
-            if (subscriptions[connectionId].video
-                && streams[subscriptions[connectionId].video]) {
-                var dest = subscriptions[connectionId].connection.receiver('video');
-                log.debug("connection: ", streams[subscriptions[connectionId].video].connection, ' remove video Dest: ', dest);
-                streams[subscriptions[connectionId].video].connection.removeDestination('video', dest);
-                subscriptions[connectionId].video = undefined;
-            }
-            callback('callback', 'ok');
-        } else {
-            log.info('Connection does NOT exist:' + connectionId);
-            callback('callback', 'error', 'Connection does NOT exist:' + connectionId);
-        }
+        router.cutoff(connectionId).then(onSuccess(callback), onError(callback));
     };
 
     that.drop = function(clientId, fromRoom) {

@@ -5,6 +5,9 @@
 'use strict';
 var SipGateway = require('../sipIn/build/Release/sipIn');
 var frameAddon = require('../rtcFrame/build/Release/rtcFrame.node');
+var MediaFrameMulticaster = require(
+    '../mediaFrameMulticaster/build/Release/mediaFrameMulticaster');
+
 var AudioFrameConstructor = frameAddon.AudioFrameConstructor;
 var AudioFramePacketizer = frameAddon.AudioFramePacketizer;
 var VideoFrameConstructor = frameAddon.VideoFrameConstructor;
@@ -28,6 +31,8 @@ exports.SipCallConnection = function (spec, onMediaUpdate) {
         videoFrameConstructor,
         videoFramePacketizer,
         sip_callConnection;
+
+    var dispatcher;
 
     sip_callConnection = new SipGateway.SipCallConnection(gateway, peerURI);
     if (audio) {
@@ -80,6 +85,10 @@ exports.SipCallConnection = function (spec, onMediaUpdate) {
             videoFrameConstructor = undefined;
         }
 
+        if (dispatcher) {
+            dispatcher.close();
+        }
+
         sip_callConnection && sip_callConnection.close();
         sip_callConnection = undefined;
         log.debug('Completely close');
@@ -126,5 +135,19 @@ exports.SipCallConnection = function (spec, onMediaUpdate) {
         if (video && videoFrameConstructor)
             videoFrameConstructor.requestKeyFrame();
     };
+
+    that.source = function() {
+        if (!dispatcher) {
+            dispatcher = new MediaFrameMulticaster();
+            if (video && videoFrameConstructor) {
+                videoFrameConstructor.addDestination(dispatcher);
+            }
+            if (audio && audioFrameConstructor) {
+                audioFrameConstructor.addDestination(dispatcher);
+            }
+        }
+        return dispatcher.source();
+    }
+
     return that;
 };
