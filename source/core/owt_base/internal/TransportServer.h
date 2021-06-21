@@ -10,7 +10,6 @@
 #include "TransportBase.h"
 
 #include <boost/asio.hpp>
-#include <boost/scoped_ptr.hpp>
 #include <boost/shared_array.hpp>
 #include <boost/thread.hpp>
 #include <boost/thread/mutex.hpp>
