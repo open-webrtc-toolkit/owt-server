@@ -7,9 +7,9 @@
 
 #include <set>
 
-#include "rtc_base/critical_section.h"
+#include "rtc_base/synchronization/mutex.h"
+#include "rtc_base/thread_annotations.h"
 #include "rtc_base/random.h"
-#include "base/thread_annotations.h"
 
 namespace owt_base {
 
@@ -26,9 +26,9 @@ class SsrcGenerator {
   ~SsrcGenerator();
 
  private:
-  rtc::CriticalSection crit_;
-  webrtc::Random random_ GUARDED_BY(crit_);
-  std::set<uint32_t> ssrcs_ GUARDED_BY(crit_);
+  mutable webrtc::Mutex mutex_;
+  webrtc::Random random_ RTC_GUARDED_BY(mutex_);
+  std::set<uint32_t> ssrcs_ RTC_GUARDED_BY(mutex_);
 };
 }  // namespace owt_base
 

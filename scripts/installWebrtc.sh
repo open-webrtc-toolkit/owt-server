@@ -68,7 +68,7 @@ download_and_build(){
   if [ -d src ]; then
     echo "src already exists."
   else
-    git clone -b 79-sdk https://github.com/open-webrtc-toolkit/owt-deps-webrtc.git src
+    git clone -b 88-sdk https://github.com/open-webrtc-toolkit/owt-deps-webrtc.git src
     mkdir -p src/build_overrides/ssl
     echo $SSL_GNI > src/build_overrides/ssl/ssl.gni
     echo $GCLIENT_CONFIG > .gclient

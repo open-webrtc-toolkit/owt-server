@@ -27,6 +27,9 @@ public:
     // Stop() has no effect on proxy
     virtual void Stop() override {}
 
+    // Implements webrtc::TaskQueueBase
+    virtual void Delete() override {}
+
     // Implements ProcessThread
     // Call actual ProcessThread's WakeUp
     virtual void WakeUp(webrtc::Module* module) override
@@ -34,11 +37,19 @@ public:
         m_processThread->WakeUp(module);
     }
 
-    // Implements ProcessThread
+    // Implements webrtc::TaskQueueBase
     // Call actual ProcessThread's PostTask
     virtual void PostTask(std::unique_ptr<webrtc::QueuedTask> task) override
     {
         m_processThread->PostTask(std::move(task));
+    }
+
+    // Implements webrtc::TaskQueueBase
+    // Call actual ProcessThread's PostDelayedTask
+    virtual void PostDelayedTask(std::unique_ptr<webrtc::QueuedTask> task,
+                                 uint32_t milliseconds) override
+    {
+        m_processThread->PostDelayedTask(std::move(task), milliseconds);
     }
 
     // Implements ProcessThread

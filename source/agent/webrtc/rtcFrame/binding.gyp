@@ -63,7 +63,7 @@
     'variables': {
       'source_rel_dir': '../../..', # relative source dir path
       'source_abs_dir%': '<(module_root_dir)/../../..', # absolute source dir path
-      'webrtc_abs_dir%': '<(module_root_dir)/../../../../third_party/webrtc-m79' # absolute webrtc dir path
+      'webrtc_abs_dir%': '<(module_root_dir)/../../../../third_party/webrtc-m88' # absolute webrtc dir path
     },
     'sources': [
         '<(source_rel_dir)/core/rtc_adapter/RtcAdapter.cc',
