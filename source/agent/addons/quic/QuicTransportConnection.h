@@ -44,10 +44,10 @@ protected:
     // Overrides owt::quic::QuicTransportSessionInterface::Visitor.
     void OnIncomingStream(owt::quic::QuicTransportStreamInterface*) override;
     void OnCanCreateNewOutgoingStream(bool unidirectional) override { }
-
+    void OnConnectionClosed() override { }
+    
     // Overrides QuicTransportStream::Visitor.
     void onEnded() override;
-
 private:
     owt::quic::QuicTransportSessionInterface* m_session;
     Visitor* m_visitor;

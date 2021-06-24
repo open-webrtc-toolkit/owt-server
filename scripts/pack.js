@@ -463,7 +463,8 @@ function isLibAllowed(libSrc) {
     'libopenh264',
     'libre',
     'sipLib',
-    'librawquic'
+    'librawquic', 
+    'libowt_web_transport'
   ];
   if (!options['archive'] || options['with-ffmpeg']) {
     whiteList.push('libav');
