@@ -82,6 +82,12 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
     var terminals = {};
 
     /*
+    Save internal address for locality node to avoid duplicate `getInternalAddress` RPC.
+    internalAddresses = {nodeRpcID: {ip: agentIP, port: internalPort, readyCb: callback}}
+     */
+    var internalAddresses = {};
+
+    /*
     streams = {StreamID: {owner: terminalID,
                 audio: {format: 'pcmu' | 'pcma' | 'isac_16000' | 'isac_32000' | 'opus_48000_2' |...
                         subscribers: [terminalID],
@@ -419,17 +425,25 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                         published: [],
                         subscribed: {}};
                     on_ok();
-                    // Get internal address for new node
-                    if (!locality.ip || !locality.port) {
+                    //TODO: trigger terminal ok after getInternalAddress call.
+                    // The conference logic requires newTerminal finish fast.
+                    if (!internalAddresses[locality.node]) {
+                        // Get internal address for new node
                         makeRPC(rpcClient, locality.node, 'getInternalAddress', [],
                             function okCb(addr) {
                                 log.debug('Get internal addr:', locality.node ,addr);
-                                terminals[terminal_id].locality.ip = addr.ip;
-                                terminals[terminal_id].locality.port = addr.port;
+                                internalAddresses[locality.node] = {};
+                                internalAddresses[locality.node].ip = addr.ip;
+                                internalAddresses[locality.node].port = addr.port;
+                                locality.ip = addr.ip;
+                                locality.port = addr.port;
                             },
                             function errCb(reason) {
                                 log.warn('Failed to get internal addr:', locality.node);
                             });
+                    } else {
+                        locality.ip = internalAddresses[locality.node].ip;
+                        locality.port = internalAddresses[locality.node].port;
                     }
                 }, function(err) {
                     on_error(err.message? err.message : err);
