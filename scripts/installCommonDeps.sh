@@ -236,16 +236,18 @@ install_libexpat() {
   fi
 }
 
-install_webrtc79(){
-  $INCR_INSTALL &&  [[ -s $ROOT/third_party/webrtc-m79/libwebrtc.a ]] && \
+install_webrtc88(){
+  local OWT_WEBRTC_PATH="$ROOT/third_party/webrtc-m88"
+
+  $INCR_INSTALL &&  [[ -s $OWT_WEBRTC_PATH/libwebrtc.a ]] && \
   echo "libwebrtc already installed." && return 0
 
-  [[ ! -d $ROOT/third_party/webrtc-m79 ]] && \
-    mkdir $ROOT/third_party/webrtc-m79
+  [[ ! -d $OWT_WEBRTC_PATH ]] && \
+    mkdir $OWT_WEBRTC_PATH
 
-  pushd ${ROOT}/third_party/webrtc-m79 >/dev/null
-  . $PATHNAME/installWebrtc.sh
-  popd
+  pushd $OWT_WEBRTC_PATH >/dev/null
+   . $PATHNAME/installWebrtc.sh
+  popd >/dev/null
 }
 
 install_webrtc(){
@@ -272,7 +274,7 @@ install_webrtc(){
   ./src/tools-woogeen/build.sh
   popd
 
-  install_webrtc79
+  install_webrtc88
 }
 
 install_licode(){
