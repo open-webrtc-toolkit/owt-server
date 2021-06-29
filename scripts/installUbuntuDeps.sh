@@ -8,6 +8,14 @@ install_apt_deps(){
   ${SUDO} apt-get install m4 autoconf libtool automake cmake libfreetype6-dev libgstreamer-plugins-base1.0-dev -y
 }
 
+install_gcc_7(){
+  ${SUDO} apt-get install gcc-7 g++-7
+  ${SUDO} update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-7 100
+  ${SUDO} update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-7 100
+  ${SUDO} update-alternatives --set g++ /usr/bin/g++-7
+  ${SUDO} update-alternatives --set gcc /usr/bin/gcc-7
+}
+
 install_mediadeps_nonfree(){
   install_fdkaac
   install_ffmpeg
