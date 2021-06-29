@@ -1,6 +1,6 @@
 #!/bin/bash -e
 
-SSL_GNI=$(cat <<-END
+GNI_APPEND=$(cat <<-END
 declare_args() {
   build_with_owt = false
   owt_use_openssl = false
@@ -29,6 +29,7 @@ END
 # comment is_debug=false for debugging
 GN_ARGS=$(cat <<-END
 rtc_use_h264=true
+rtc_use_h265=true
 ffmpeg_branding="Chrome"
 is_component_build=false
 use_lld=false
@@ -42,6 +43,7 @@ treat_warnings_as_errors=false
 rtc_enable_libevent=false
 rtc_build_libevent=false
 is_debug=false
+
 
 END
 )
@@ -70,7 +72,8 @@ download_and_build(){
   else
     git clone -b 88-sdk https://github.com/open-webrtc-toolkit/owt-deps-webrtc.git src
     mkdir -p src/build_overrides/ssl
-    echo $SSL_GNI > src/build_overrides/ssl/ssl.gni
+    echo "" > src/build_overrides/ssl/ssl.gni
+    echo $GNI_APPEND >> src/build_overrides/build.gni
     echo $GCLIENT_CONFIG > .gclient
   fi
 
