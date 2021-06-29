@@ -162,12 +162,18 @@ void AudioRanker::updateInputInternal(std::string streamId, int level, bool trig
         if (inTopK && level != audioProc->iter()->first) {
             ELOG_DEBUG("Top K internal change: %s %s",
                 audioProc->streamId().c_str(), audioProc->ownerId().c_str());
+            int sameLevelNum = 0;
             auto oldUp = m_topK.upper_bound(audioProc->iter()->first);
+            auto oldLevel = audioProc->iter()->first;
+            if (oldUp == m_topK.end()) {
+                sameLevelNum = m_topK.count(oldLevel);
+            }
             m_topK.erase(audioProc->iter());
             auto newIt = m_topK.emplace(level, audioProc);
+            auto newLevel = level;
             audioProc->setIter(newIt);
             auto newUp = m_topK.upper_bound(level);
-            if (oldUp != newUp && triggerChange) {
+            if ((oldUp != newUp || (sameLevelNum > 1 && newLevel > oldLevel)) && triggerChange) {
                 ELOG_DEBUG("Top K internal trigger");
                 triggerRankChange();
             }
