@@ -30,7 +30,7 @@ public:
     virtual rvaStatus LinkElements();
 
 private:
-    GstElement *pipeline, *source, *receive,*detect,*decodebin,*postproc,*h264parse,*counter, *watermark, *converter, *encoder, *outsink;
+    GstElement *pipeline, *source, *parse, *detect, *decodebin,*postproc, *watermark, *converter, *encoder, *outsink;
     int inputwidth, inputheight, inputframerate;
     std::string inputcodec;
     std::string pipelinename;
