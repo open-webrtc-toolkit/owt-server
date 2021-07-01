@@ -5,7 +5,7 @@
  */
 
 #include "QuicFactory.h"
-#include "owt/quic/quic_transport_factory.h"
+#include "owt/quic/web_transport_factory.h"
 #include <mutex>
 
 DEFINE_LOGGER(QuicFactory, "QuicFactory");
@@ -15,11 +15,11 @@ std::once_flag getQuicFactoryOnce;
 std::shared_ptr<QuicFactory> QuicFactory::s_quicFactory = nullptr;
 
 QuicFactory::QuicFactory()
-    : m_quicTransportFactory(std::shared_ptr<owt::quic::QuicTransportFactory>(owt::quic::QuicTransportFactory::Create()))
+    : m_quicTransportFactory(std::shared_ptr<owt::quic::WebTransportFactory>(owt::quic::WebTransportFactory::Create()))
 {
 }
 
-std::shared_ptr<owt::quic::QuicTransportFactory> QuicFactory::getQuicTransportFactory()
+std::shared_ptr<owt::quic::WebTransportFactory> QuicFactory::getQuicTransportFactory()
 {
     std::call_once(getQuicFactoryOnce, []() {
         QuicFactory* factory = new QuicFactory();

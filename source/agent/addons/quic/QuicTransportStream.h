@@ -7,14 +7,14 @@
 #ifndef QUIC_QUICTRANSPORTSTREAM_H_
 #define QUIC_QUICTRANSPORTSTREAM_H_
 
-#include "owt/quic/quic_transport_stream_interface.h"
+#include "owt/quic/web_transport_stream_interface.h"
 #include "../../core/owt_base/MediaFramePipeline.h"
 #include <logger.h>
 #include <nan.h>
 #include <mutex>
 #include <string>
 
-class QuicTransportStream : public owt_base::FrameSource, public owt_base::FrameDestination, public Nan::ObjectWrap, public owt::quic::QuicTransportStreamInterface::Visitor {
+class QuicTransportStream : public owt_base::FrameSource, public owt_base::FrameDestination, public Nan::ObjectWrap, public owt::quic::WebTransportStreamInterface::Visitor {
     DECLARE_LOGGER();
 
 public:
@@ -24,10 +24,10 @@ public:
     };
     explicit QuicTransportStream();
     // `sessionId` is the ID of publication or subscription, NOT the ID of QUIC session.
-    explicit QuicTransportStream(owt::quic::QuicTransportStreamInterface* stream);
+    explicit QuicTransportStream(owt::quic::WebTransportStreamInterface* stream);
     virtual ~QuicTransportStream();
 
-    static v8::Local<v8::Object> newInstance(owt::quic::QuicTransportStreamInterface* stream);
+    static v8::Local<v8::Object> newInstance(owt::quic::WebTransportStreamInterface* stream);
 
     static NAN_MODULE_INIT(init);
     static NAN_METHOD(newInstance);
@@ -48,7 +48,7 @@ public:
     static Nan::Persistent<v8::Function> s_constructor;
 
 protected:
-    // Overrides owt::quic::QuicTransportStreamInterface::Visitor.
+    // Overrides owt::quic::WebTransportStreamInterface::Visitor.
     void OnCanRead() override;
     void OnCanWrite() override;
     void OnFinRead() override;
@@ -59,7 +59,7 @@ private:
     void SignalOnData();
     void ReallocateBuffer(size_t size);
 
-    owt::quic::QuicTransportStreamInterface* m_stream;
+    owt::quic::WebTransportStreamInterface* m_stream;
     std::vector<uint8_t> m_contentSessionId;
     bool m_receivedContentSessionId;
     // True if it's piped to a receiver in C++ layer. In this case, data will not be sent to JavaScript code.

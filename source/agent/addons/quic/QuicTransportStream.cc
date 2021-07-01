@@ -23,7 +23,7 @@ QuicTransportStream::QuicTransportStream()
     : QuicTransportStream(nullptr)
 {
 }
-QuicTransportStream::QuicTransportStream(owt::quic::QuicTransportStreamInterface* stream)
+QuicTransportStream::QuicTransportStream(owt::quic::WebTransportStreamInterface* stream)
     : m_stream(stream)
     , m_contentSessionId()
     , m_receivedContentSessionId(false)
@@ -129,7 +129,7 @@ NAN_METHOD(QuicTransportStream::removeDestination)
 {
 }
 
-v8::Local<v8::Object> QuicTransportStream::newInstance(owt::quic::QuicTransportStreamInterface* stream)
+v8::Local<v8::Object> QuicTransportStream::newInstance(owt::quic::WebTransportStreamInterface* stream)
 {
     Local<Object> streamObject = Nan::NewInstance(Nan::New(QuicTransportStream::s_constructor)).ToLocalChecked();
     QuicTransportStream* obj = Nan::ObjectWrap::Unwrap<QuicTransportStream>(streamObject);

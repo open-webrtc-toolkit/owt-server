@@ -50,7 +50,7 @@ void QuicTransportConnection::setVisitor(Visitor* visitor)
     m_visitor = visitor;
 }
 
-void QuicTransportConnection::OnIncomingStream(owt::quic::QuicTransportStreamInterface* stream)
+void QuicTransportConnection::OnIncomingStream(owt::quic::WebTransportStreamInterface* stream)
 {
     ELOG_DEBUG("OnIncomingStream.");
     {
@@ -77,7 +77,7 @@ NAN_METHOD(QuicTransportConnection::newInstance)
     info.GetReturnValue().Set(info.This());
 }
 
-v8::Local<v8::Object> QuicTransportConnection::newInstance(owt::quic::QuicTransportSessionInterface* session)
+v8::Local<v8::Object> QuicTransportConnection::newInstance(owt::quic::WebTransportSessionInterface* session)
 {
     Local<Object> connectionObject = Nan::NewInstance(Nan::New(QuicTransportConnection::s_constructor)).ToLocalChecked();
     QuicTransportConnection* obj = Nan::ObjectWrap::Unwrap<QuicTransportConnection>(connectionObject);
