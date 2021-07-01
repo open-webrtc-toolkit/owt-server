@@ -45,6 +45,7 @@ parse_arguments(){
 parse_arguments $*
 
 OS=`$PATHNAME/detectOS.sh | awk '{print tolower($0)}'`
+OS_VERSION=`$PATHNAME/detectOS.sh | awk '{print tolower($2)}'`
 echo $OS
 
 cd $PATHNAME
