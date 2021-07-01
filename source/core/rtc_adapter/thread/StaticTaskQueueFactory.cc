@@ -25,32 +25,40 @@ public:
                          uint32_t milliseconds) override {}
 };
 
-// QueuedTaskProxy only execute when the owner shared_ptr exists
-class QueuedTaskProxy : public webrtc::QueuedTask {
-public:
-    QueuedTaskProxy(std::unique_ptr<webrtc::QueuedTask> task, std::shared_ptr<int> owner)
-        : m_task(std::move(task)), m_owner(owner) {}
-
-    // Implements webrtc::QueuedTask
-    bool Run() override
-    {
-        if (auto owner = m_owner.lock()) {
-            // Only run when owner exists
-            QueuedTask* raw = m_task.release();
-            if (raw->Run()) {
-                delete raw;
-            }
-        }
-        return true;
-    }
-private:
-    std::unique_ptr<webrtc::QueuedTask> m_task;
-    std::weak_ptr<int> m_owner;
-};
-
 // TaskQueueProxy holds a TaskQueueBase* and proxy its method without Delete
 class TaskQueueProxy : public webrtc::TaskQueueBase {
 public:
+    // QueuedTaskProxy only execute when the owner shared_ptr exists
+    class QueuedTaskProxy : public webrtc::QueuedTask {
+    public:
+        QueuedTaskProxy(
+            std::unique_ptr<webrtc::QueuedTask> task,
+            std::shared_ptr<int> owner,
+            TaskQueueProxy* parent)
+            : m_task(std::move(task))
+            , m_owner(owner)
+            , m_parent(parent) {}
+
+        // Implements webrtc::QueuedTask
+        bool Run() override
+        {
+            if (auto owner = m_owner.lock()) {
+                // Set current to pass RTC_DCHECK
+                webrtc::TaskQueueBase::CurrentTaskQueueSetter setCurrent(m_parent);
+                // Only run when owner exists
+                QueuedTask* raw = m_task.release();
+                if (raw->Run()) {
+                    delete raw;
+                }
+            }
+            return true;
+        }
+    private:
+        std::unique_ptr<webrtc::QueuedTask> m_task;
+        std::weak_ptr<int> m_owner;
+        TaskQueueProxy* m_parent;
+    };
+
     TaskQueueProxy(webrtc::TaskQueueBase* taskQueue)
         : m_taskQueue(taskQueue), m_sp(std::make_shared<int>(1))
     {
@@ -73,14 +81,14 @@ public:
     void PostTask(std::unique_ptr<webrtc::QueuedTask> task) override
     {
         m_taskQueue->PostTask(
-            std::make_unique<QueuedTaskProxy>(std::move(task), m_sp));
+            std::make_unique<QueuedTaskProxy>(std::move(task), m_sp, this));
     }
     // Implements webrtc::TaskQueueBase
     void PostDelayedTask(std::unique_ptr<webrtc::QueuedTask> task,
                          uint32_t milliseconds) override
     {
         m_taskQueue->PostDelayedTask(
-            std::make_unique<QueuedTaskProxy>(std::move(task), m_sp), milliseconds);
+            std::make_unique<QueuedTaskProxy>(std::move(task), m_sp, this), milliseconds);
     }
 private:
     webrtc::TaskQueueBase* m_taskQueue;
