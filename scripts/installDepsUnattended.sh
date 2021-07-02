@@ -68,6 +68,7 @@ then
     install_apt_deps
     if [[ "$OS_VERSION" =~ 20.04.* ]]
     then
+      install_gcc_7
       install_boost
     fi
   fi
