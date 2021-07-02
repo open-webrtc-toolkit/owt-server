@@ -42,8 +42,8 @@ is_clang=false
 treat_warnings_as_errors=false
 rtc_enable_libevent=false
 rtc_build_libevent=false
+fatal_linker_warnings=false
 is_debug=false
-
 
 END
 )
