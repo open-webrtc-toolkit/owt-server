@@ -71,6 +71,9 @@ download_and_build(){
     echo "src already exists."
   else
     git clone -b 88-sdk https://github.com/open-webrtc-toolkit/owt-deps-webrtc.git src
+    pushd src >/dev/null
+    git reset --hard 0d230afe9c7a968c0f2d966ef9d4d396fee489bf
+    popd >/dev/null
     mkdir -p src/build_overrides/ssl
     echo "" > src/build_overrides/ssl/ssl.gni
     echo $GNI_APPEND >> src/build_overrides/build.gni
@@ -84,7 +87,7 @@ download_and_build(){
 
   export PATH="$PATH:$DEPOT_TOOLS"
   gclient sync  --no-history
-  pushd src >/dev/null  
+  pushd src >/dev/null
   gn gen out --args="$GN_ARGS"
   ninja -C out call default_task_queue_factory
   all=`find ./out/obj/ -name "*.o"`

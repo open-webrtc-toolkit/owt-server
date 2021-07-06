@@ -180,6 +180,10 @@ bool VideoSendAdapterImpl::init()
     configuration.retransmission_rate_limiter = m_retransmissionRateLimiter.get();
     configuration.local_media_ssrc = m_ssrc; //rtp_config.ssrcs[i];
     // TODO: enable UlpfecGenerator
+    // should follow similar logic as
+    // webrtc/call/rtp_video_sender.cc:MaybeCreateFecGenerator()
+    // for creating the fec genetator,
+    // instead of hardcoding it to ulpfec_generator.
     /*
     std::make_unique<UlpfecGenerator>(
         rtp.ulpfec.red_payload_type, rtp.ulpfec.ulpfec_payload_type, clock);
