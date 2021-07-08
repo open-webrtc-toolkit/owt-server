@@ -27,7 +27,7 @@ Below are the repo locations of current SDK and server implementations:
 
 The topology of components is shown in below diagram:
 
-![plot](./pics/quic_block_diagram.png)
+![plot](./pics/quic_block_diagram.svg)
 
 There are a few components involved and their relationships with streaming using WebTransport are described as below:
 
@@ -59,7 +59,7 @@ In this section we provide a detailed description of the APIs provided by OWT QU
 
 The server API calling flow is shown in below diagram and table.
 
-![plot](./pics/server_API.png)
+![plot](./pics/server_api.svg)
 
 | Step # | API calling flow |
 | --- | --- |
@@ -77,7 +77,7 @@ The server API calling flow is shown in below diagram and table.
 
 The client API calling flow is shown in below diagram and table. It's similar as the server side calling flow except the WebTransportFactory creates a WebTransportClientInterface, instead of a WebTransportServerInterface, and client needs to call Connect() instead of Start() to get a WebTransportSession.
 
-![plot](./pics/client_API.png)
+![plot](./pics/client_api.svg)
 
 | Step # | API calling flow |
 | --- | --- |
