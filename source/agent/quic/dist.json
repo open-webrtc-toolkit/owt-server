@@ -29,7 +29,8 @@
               "../connections.js",
               "../InternalConnectionFactory.js",
               "../../common/makeRPC.js",
-              "../../common/rpcChannel.js"
+              "../../common/rpcChannel.js",
+              "../internalConnectionRouter.js"
           ],
           "quic/webtransport": [
               "webtransport/quicTransportServer.js",

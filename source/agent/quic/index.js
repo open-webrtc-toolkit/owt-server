@@ -15,7 +15,6 @@
 // all agents. They are defined in base-agent.js.
 
 'use strict';
-const Connections = require('./connections');
 const InternalConnectionFactory = require('./InternalConnectionFactory');
 const logger = require('../logger').logger;
 const QuicTransportServer = require('./webtransport/quicTransportServer');
@@ -25,6 +24,7 @@ const log = logger.getLogger('QuicNode');
 const addon = require('./build/Release/quic');
 const cipher = require('../cipher');
 const path = require('path');
+const {InternalConnectionRouter} = require('./internalConnectionRouter');
 
 log.info('QUIC transport node.')
 
@@ -34,7 +34,7 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
       agentID: parentRpcId,
       clusterIP: clusterWorkerIP
     };
-    const connections = new Connections;
+    const router = new InternalConnectionRouter(global.config.internal);
     const internalConnFactory = new InternalConnectionFactory;
     const incomingStreamPipelines =
         new Map();  // Key is publication ID, value is stream pipeline.
@@ -100,18 +100,22 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
           password, validateToken);
       quicTransportServer.start();
       quicTransportServer.on('streamadded', (stream) => {
-        log.debug('A stream with session ID '+stream.contentSessionId+' is added.');
-        const conn = connections.getConnection(stream.contentSessionId);
-        if (conn) {
-          // TODO: verify transport ID.
-          conn.connection.quicStream(stream);
-          // TODO: Make RPC call to conference node for session-established.
+        log.debug(
+            'A stream with session ID ' + stream.contentSessionId +
+            ' is added.');
+        let pipeline = null;
+        if (outgoingStreamPipelines.has(stream.contentSessionId)) {
+          pipeline = outgoingStreamPipelines.get(stream.contentSessionId);
+        } else if (incomingStreamPipelines.has(stream.contentSessionId)) {
+          pipeline = incomingStreamPipelines.get(stream.contentSessionId);
         } else {
           log.warn(
               'Cannot find a pipeline for QUIC stream. Content session ID: ' +
               stream.contentSessionId);
           stream.close();
+          return;
         }
+        pipeline.quicStream(stream);
       });
       quicTransportServer.on('connectionadded', (connection) => {
         log.debug(
@@ -159,32 +163,21 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
         };
     };
 
-    that.createInternalConnection = function (connectionId, direction, internalOpt, callback) {
-        internalOpt.minport = global.config.internal.minport;
-        internalOpt.maxport = global.config.internal.maxport;
-        var portInfo = internalConnFactory.create(connectionId, direction, internalOpt);
-        callback('callback', {ip: that.clusterIP, port: portInfo});
-    };
-
-    that.destroyInternalConnection = function (connectionId, direction, callback) {
-        internalConnFactory.destroy(connectionId, direction);
-        callback('callback', 'ok');
+    that.getInternalAddress = function(callback) {
+        const ip = global.config.internal.ip_address;
+        const port = router.internalPort;
+        callback('callback', {ip, port});
     };
 
     // functions: publish, unpublish, subscribe, unsubscribe, linkup, cutoff
     that.publish = function(connectionId, connectionType, options, callback) {
         log.debug('publish, connectionId:', connectionId, 'connectionType:', connectionType, 'options:', options);
-        if (connections.getConnection(connectionId)) {
+        if (router.getConnection(connectionId)) {
             return callback('callback', {type: 'failed', reason: 'Connection already exists:'+connectionId});
         }
 
         var conn = null;
         switch (connectionType) {
-        case 'internal':
-            conn = internalConnFactory.fetch(connectionId, 'in');
-            if (conn)
-                conn.connect(options);
-            break;
         case 'quic':
             conn = createStreamPipeline(connectionId, 'in', options, callback);
             if (!conn) {
@@ -198,14 +191,16 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
             log.error('Create connection failed', connectionId, connectionType);
             return callback('callback', {type: 'failed', reason: 'Create Connection failed'});
         }
-        connections.addConnection(connectionId, connectionType, options.controller, conn, 'in')
-        .then(onSuccess(callback), onError(callback));
+        conn.bindRouterAsSourceCallback = function(stream) {
+          router.addLocalSource(connectionId, connectionType, stream);
+        }
+        onSuccess(callback)();
     };
 
     that.unpublish = function (connectionId, callback) {
         log.debug('unpublish, connectionId:', connectionId);
-        var conn = connections.getConnection(connectionId);
-        connections.removeConnection(connectionId).then(function(ok) {
+        var conn = router.getConnection(connectionId);
+        router.removeConnection(connectionId).then(function(ok) {
             if (conn && conn.type === 'internal') {
                 internalConnFactory.destroy(connectionId, 'in');
             } else if (conn) {
@@ -225,17 +220,12 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
         if(!options.data){
             log.error('Subscription request does not include data field.');
         }
-        if (connections.getConnection(connectionId)) {
+        if (router.getConnection(connectionId)) {
             return callback('callback', {type: 'failed', reason: 'Connection already exists:'+connectionId});
         }
 
         var conn = null;
         switch (connectionType) {
-            case 'internal':
-                conn = internalConnFactory.fetch(connectionId, 'out');
-                if (conn)
-                    conn.connect(options);//FIXME: May FAIL here!!!!!
-                break;
             case 'quic':
                 conn = createStreamPipeline(connectionId, 'out', options, callback);
                 const stream = quicTransportServer.createSendStream(options.transport.id, connectionId);
@@ -252,14 +242,14 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
             return callback('callback', {type: 'failed', reason: 'Create Connection failed'});
         }
 
-        connections.addConnection(connectionId, connectionType, options.controller, conn, 'out')
+        router.addLocalDestination(connectionId, connectionType, conn)
         .then(onSuccess(callback), onError(callback));
     };
 
     that.unsubscribe = function (connectionId, callback) {
         log.debug('unsubscribe, connectionId:', connectionId);
-        var conn = connections.getConnection(connectionId);
-        connections.removeConnection(connectionId).then(function(ok) {
+        var conn = router.getConnection(connectionId);
+        router.removeConnection(connectionId).then(function(ok) {
             if (conn && conn.type === 'internal') {
                 internalConnFactory.destroy(connectionId, 'out');
             } else if (conn) {
@@ -269,19 +259,19 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
         }, onError(callback));
     };
 
-    that.linkup = function (connectionId, audioFrom, videoFrom, dataFrom, callback) {
-        log.debug('linkup.');
-        connections.linkupConnection(connectionId, audioFrom, videoFrom, dataFrom).then(onSuccess(callback), onError(callback));
+    that.linkup = function (connectionId, from, callback) {
+        log.debug('linkup, connectionId:', connectionId, 'from:', from);
+        router.linkup(connectionId, from).then(onSuccess(callback), onError(callback));
     };
 
     that.cutoff = function (connectionId, callback) {
         log.debug('cutoff, connectionId:', connectionId);
-        connections.cutoffConnection(connectionId).then(onSuccess(callback), onError(callback));
+        router.cutoff(connectionId).then(onSuccess(callback), onError(callback));
     };
 
     that.mediaOnOff = function (connectionId, track, direction, action, callback) {
         log.debug('mediaOnOff, connection id:', connectionId, 'track:', track, 'direction:', direction, 'action:', action);
-        var conn = connections.getConnection(connectionId);
+        var conn = router.getConnection(connectionId);
         if (conn) {
             if (conn.type === 'quic') {//NOTE: Only webrtc connection supports media-on-off
                 conn.connection.onTrackControl(track,
@@ -304,21 +294,11 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
     };
 
     that.close = function() {
-        log.debug('close called');
-        var connIds = connections.getIds();
-        for (let connectionId of connIds) {
-            var conn = connections.getConnection(connectionId);
-            connections.removeConnection(connectionId);
-            if (conn && conn.type === 'internal') {
-                internalConnFactory.destroy(connectionId, conn.direction);
-            } else if (conn && conn.connection) {
-                conn.connection.close();
-            }
-        }
+        router.clear();
     };
 
     that.onFaultDetected = function (message) {
-        connections.onFaultDetected(message);
+        router.onFaultDetected(message);
     };
 
     return that;
