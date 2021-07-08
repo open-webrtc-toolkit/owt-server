@@ -15,7 +15,6 @@
 // all agents. They are defined in base-agent.js.
 
 'use strict';
-const InternalConnectionFactory = require('./InternalConnectionFactory');
 const logger = require('../logger').logger;
 const QuicTransportServer = require('./webtransport/quicTransportServer');
 const QuicTransportStreamPipeline =
@@ -35,7 +34,6 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
       clusterIP: clusterWorkerIP
     };
     const router = new InternalConnectionRouter(global.config.internal);
-    const internalConnFactory = new InternalConnectionFactory;
     const incomingStreamPipelines =
         new Map();  // Key is publication ID, value is stream pipeline.
     const outgoingStreamPipelines =
@@ -201,10 +199,8 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
         log.debug('unpublish, connectionId:', connectionId);
         var conn = router.getConnection(connectionId);
         router.removeConnection(connectionId).then(function(ok) {
-            if (conn && conn.type === 'internal') {
-                internalConnFactory.destroy(connectionId, 'in');
-            } else if (conn) {
-                conn.connection.close();
+            if (conn) {
+                conn.close();
             }
             callback('callback', 'ok');
         }, onError(callback));
@@ -250,10 +246,8 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
         log.debug('unsubscribe, connectionId:', connectionId);
         var conn = router.getConnection(connectionId);
         router.removeConnection(connectionId).then(function(ok) {
-            if (conn && conn.type === 'internal') {
-                internalConnFactory.destroy(connectionId, 'out');
-            } else if (conn) {
-                conn.connection.close();
+            if (conn) {
+                conn.close();
             }
             callback('callback', 'ok');
         }, onError(callback));
