@@ -189,20 +189,29 @@ This a format for client reconnects.
 
           object(MediaInfo)::
             {
-             audio: object(AudioInfo) | undefined,
-             video: object(VideoInfo) | undefined
+              tracks: [object(TrackInfo)]
             }
 
-            object(AudioInfo)::
+            object(TrackInfo)::
               {
-               status: "active" | "inactive" | undefined,
-               source: "mic" | "screen-cast" | "raw-file" | "encoded-file" | undefined,
-               format: object(AudioFormat),
-               optional:
+                id: string(TrackId),
+                type: "audio" | "video",
+                format: object(AudioFormat) | object(VideoFormat),
+                parameters: undefined | object(VideoParameters),
+                status: "active" | "inactive" | undefined,
+                source: "mic" | "camera" | "screen-cast" | "raw-file" | "encoded-file" | undefined,
+                mid: string(mid) | undefined,
+                rid: string(rid) | undefined,
+                optional:
                 {
-                 format: [object(AudioFormat)] | undefined
-                }
-                | undefined
+                 format: [object(AudioFormat)] | [object(VideoFormat)] | undefined,
+                 parameters: {
+                  resolution: [object(Resolution)] | undefined,
+                  framerate: [number(FramerateFPS)] | undefined,
+                  bitrate: [number(BitrateKbps)] | [string(BitrateMultiple)] | undefined,
+                  keyFrameInterval: [number(KeyFrameIntervalSecond)] | undefined
+                 } | undefined,
+                } | undefined,
               }
 
               object(AudioFormat)::
@@ -211,30 +220,6 @@ This a format for client reconnects.
                  sampleRate: number(SampleRate) | undefined,
                  channelNum: number(ChannelNumber) | undefined
                 }
-
-            object(VideoInfo)::
-              {
-               status: "active" | "inactive" | undefined,
-               source: "camera" | "screen-cast" | "raw-file" | "encoded-file" | undefined,
-               original: [{
-                 format: object(VideoFormat),
-                 parameters: object(VideoParameters) | undefined,
-                 simulcastRid: string(SimulcastRid) | undefined
-               }],
-               optional:
-                 {
-                  format: [object(VideoFormat)] | undefined,
-                  parameters:
-                    {
-                     resolution: [object(Resolution)] | undefined,
-                     framerate: [number(FramerateFPS)] | undefined,
-                     bitrate: [number(BitrateKbps)] | [string(BitrateMultiple)] | undefined,
-                     keyFrameInterval: [number(KeyFrameIntervalSecond)] | undefined
-                    }
-                    | undefined
-                 }
-                 | undefined
-              }
 
               object(VideoFormat)::
                 {
@@ -388,20 +373,15 @@ A publication can send either media or data, but a QUIC *transport* channel can 
 
 ```
   object(WebRTCMediaOptions)::
-    {
-      audio: {
-            source: "mic" | "screen-cast" | "raw-file" | "encoded-file"
-            }
-            | false,
-      video: {
-            source: "camera"| "screen-cast"  | "raw-file" | "encoded-file",
-            parameters:
-              {
-                resolution: object(Resolution),
-                framerate: number(FramerateFPS)
-              }
-            }
-            | false
+      {
+        tracks: [
+          {
+            type: "audio" | "video",
+            mid: string(MID),
+            source: "mic" | "screen-cast" | ... | "encoded-file",
+          }
+        ]
+      }
     }
 ```
 
@@ -466,30 +446,23 @@ A publication can send either media or data, but a QUIC *transport* channel can 
 
     object(MediaSubOptions)::
       {
-       audio: object(AudioSubOptions) | false,
-       video: object(VideoSubOptions) | false
+       tracks: [
+          {
+            type: "audio" | "video",
+            mid: string(MID),
+            from: string(TrackID) | string(StreamID),
+            parameters: object(VideoParametersSpecification) | undefined,
+          }
+        ]
       }
 
-      object(AudioSubOptions)::
-        {
-         from: string(StreamId)
-        }
-
-      object(VideoSubOptions)::
-        {
-         from: string(StreamId),
-         parameters: object(VideoParametersSpecification)/*If specific video parameters are wanted*/
-                     | undefined/*If default video parameters are wanted*/,
-         simulcastRid: string(rid) /* if simulcastRid is used, parameters will be ignored */
-        }
-
-        object(VideoParametersSpecification)::
-          {
-           resolution: object(Resolution) | undefined,
-           framerate: number(WantedFrameRateFPS) | undefined,
-           bitrate: number(WantedBitrateKbps) | string(WantedBitrateMultiple) | undefined,
-           keyFrameInterval: number(WantedKeyFrameIntervalSecond) | undefined
-          }
+    object(VideoParametersSpecification)::
+      {
+       resolution: object(Resolution) | undefined,
+       framerate: number(WantedFrameRateFPS) | undefined,
+       bitrate: number(WantedBitrateKbps) | string(WantedBitrateMultiple) | undefined,
+       keyFrameInterval: number(WantedKeyFrameIntervalSecond) | undefined
+      }
 **ResponseData**: The SubscriptionResult object with following definition if **ResponseStatus** is “ok”:
 
   object(SubscriptionResult)::
