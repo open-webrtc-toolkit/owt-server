@@ -202,6 +202,7 @@ This a format for client reconnects.
                 source: "mic" | "camera" | "screen-cast" | "raw-file" | "encoded-file" | undefined,
                 mid: string(mid) | undefined,
                 rid: string(rid) | undefined,
+                scalabilityMode: "L1T3" | ... | undefined,
                 optional:
                 {
                  format: [object(AudioFormat)] | [object(VideoFormat)] | undefined,
@@ -379,6 +380,7 @@ A publication can send either media or data, but a QUIC *transport* channel can 
             type: "audio" | "video",
             mid: string(MID),
             source: "mic" | "screen-cast" | ... | "encoded-file",
+            scalabilityMode: "L1T3" | ... | undefined,
           }
         ]
       }
@@ -452,6 +454,10 @@ A publication can send either media or data, but a QUIC *transport* channel can 
             mid: string(MID),
             from: string(TrackID) | string(StreamID),
             parameters: object(VideoParametersSpecification) | undefined,
+            preferredLayers: { // Used to force layers for SVC stream
+              spatialId: number(SpatialLayerId) | undefined,
+              temporalId: number(TemporalLayerId) | undefined,
+            } | undefined,
           }
         ]
       }
