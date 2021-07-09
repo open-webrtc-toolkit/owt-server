@@ -264,27 +264,7 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
     };
 
     that.mediaOnOff = function (connectionId, track, direction, action, callback) {
-        log.debug('mediaOnOff, connection id:', connectionId, 'track:', track, 'direction:', direction, 'action:', action);
-        var conn = router.getConnection(connectionId);
-        if (conn) {
-            if (conn.type === 'quic') {//NOTE: Only webrtc connection supports media-on-off
-                conn.connection.onTrackControl(track,
-                                                direction,
-                                                action,
-                                                function () {
-                                                    callback('callback', 'ok');
-                                                }, function (error_reason) {
-                                                    log.info('trac control failed:', error_reason);
-                                                    callback('callback', 'error', error_reason);
-                                                });
-            } else {
-                log.info('mediaOnOff on non-webrtc connection');
-                callback('callback', 'error', 'mediaOnOff on non-webrtc connection');
-            }
-        } else {
-          log.info('Connection does NOT exist:' + connectionId);
-          callback('callback', 'error', 'Connection does NOT exist:' + connectionId);
-        }
+        callback('callback', 'error', 'MediaOnOff is not supported by QUIC agent.');
     };
 
     that.close = function() {
