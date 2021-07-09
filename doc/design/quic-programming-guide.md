@@ -3,7 +3,7 @@
 
 # Overview
 
-OWT QUIC SDK and Client SDKs provides the APIs for enabling QUIC Transport for reliable data transmission over QUIC protocol with OWT Conference Server.
+OWT QUIC SDK and Client SDKs provides the APIs for enabling WebTransport for reliable data transmission over QUIC protocol with OWT Conference Server.
 
 # Scope
 
@@ -12,7 +12,7 @@ This document describes the programming models and API interfaces for following 
 - Deploying a QUIC conference server that is capable of forwarding data over QUIC channel.
 - Implementing client application that is capable of sending data to QUIC server or receiving data from it.
 
-Description of the details of QUIC transport is outside the scope of this document.
+Description of the details of WebTransport is outside the scope of this document.
 
 # Related Repos
 
@@ -27,21 +27,21 @@ Below are the repo locations of current SDK and server implementations:
 
 The topology of components is shown in below diagram:
 
-![plot](./pics/quic_block_diagram.png)
+![plot](./pics/quic_block_diagram.svg)
 
-There are a few components involved and their relationships with streaming using QuicTransport are described as below:
+There are a few components involved and their relationships with streaming using WebTransport are described as below:
 
 ## OWT QUIC C++ SDK
 
-This is the foundation of QUIC implementation in OWT. It provides the APIs to create QUIC transport clients and server forming a C/S architecture. Basically you can directly build your QUICTransport applications using the QUIC C++ SDK client API if you're not using the OWT native SDK.
+This is the foundation of WebTransport implementation in OWT. It provides the APIs to create WebTransport over HTTP/3 clients and server forming a C/S architecture. Basically you can directly build your WebTransport applications using the QUIC C++ SDK client API if you're not using the OWT native SDK.
 
 ## OWT Native SDK for Conference
 
-The OWT conference SDK built upon OWT QUIC C++ SDK client API. It is used in combination with OWT QUIC conference server when you rely on OWT signaling protocol for QUIC connection setup as well as stream forwarding.
+The OWT conference SDK built upon OWT QUIC C++ SDK client API. It is used in combination with OWT QUIC conference server when you rely on OWT signaling protocol for WebTransport connection setup as well as stream forwarding.
 
 ## OWT QUIC Conference Server
 
-The OWT QUIC conference server implements the signaling protocol for QUIC connection setup, as well as QUIC stream forwarding.
+The OWT QUIC conference server implements the signaling protocol for WebTransport connection setup, as well as QUIC stream forwarding.
 
 ## OWT QUIC JavaScript SDK
 
@@ -59,37 +59,37 @@ In this section we provide a detailed description of the APIs provided by OWT QU
 
 The server API calling flow is shown in below diagram and table.
 
-![plot](./pics/server_API.png)
+![plot](./pics/server_api.svg)
 
 | Step # | API calling flow |
 | --- | --- |
-| 1 | Application calls the factory method of QuicTransportFactory::Create() to get an instance of QuicTransportFactory |
-| 2 | Application calls QuicTransportFactory::CreateQuicTransportServer() on the QuicTransportFactory instance got in step #1, specifying the server port, certificate path either in the form of .pkcs12 or .pfx format. |
-| 3 | Application Creates the Visitor instance of QuicTransportServerInterface |
-| 4 | Application calls SetVisitor on the QuicTransportServerInterface instance got in step #2. |
-| 5 | Application calls Start() method on the QuicTransportServerInterface instance got in step #2 |
-| 6 | OnSession() callback will be invoked once the quictransportserver gets a connection request from client, and an QuicTransportSession instance is passed from the callback. |
-| 7 | Application calls CreateBidirectionalStream on the QuicTransportSession got in step 6 and get a QuicTransportStreamInterface instance. |
-| 8 | Application creates QuicTransportStream::Visitor instance and invokes QuicTransportStreamInterface::SetVisitor(). |
-| 9 | Application reads the QuicTransportStream when OnCanRead is invoked on the QuicTransportStream::Visitor; or write to the QuicTransportStream when OnCanWrite is invoked on the QuicTransportStreamVisitor; |
+| 1 | Application calls the factory method of WebTransportFactory::Create() to get an instance of WebTransportFactory |
+| 2 | Application calls WebTransportFactory::CreateWebTransportServer() on the WebTransportFactory instance got in step #1, specifying the server port, certificate path either in the form of .pkcs12 or .pfx format. |
+| 3 | Application Creates the Visitor instance of WebTransportServerInterface |
+| 4 | Application calls SetVisitor on the WebTransportServerInterface instance got in step #2. |
+| 5 | Application calls Start() method on the WebTransportServerInterface instance got in step #2 |
+| 6 | OnSession() callback will be invoked once the WebTransportserver gets a connection request from client, and an WebTransportSession instance is passed from the callback. |
+| 7 | Application calls CreateBidirectionalStream on the WebTransportSession got in step 6 and get a WebTransportStreamInterface instance. |
+| 8 | Application creates WebTransportStream::Visitor instance and invokes WebTransportStreamInterface::SetVisitor(). |
+| 9 | Application reads the WebTransportStream when OnCanRead is invoked on the WebTransportStream::Visitor; or write to the WebTransportStream when OnCanWrite is invoked on the WebTransportStreamVisitor; |
 
 ## OWT QUIC C++ SDK Client API Calling Flow
 
-The client API calling flow is shown in below diagram and table. It's similar as the server side calling flow except the QuicTransportFactory creates a QuicTransportClientInterface, instead of a QUICTransportServerInterface, and client needs to call Connect() instead of Start() to get a QuicTransportSession.
+The client API calling flow is shown in below diagram and table. It's similar as the server side calling flow except the WebTransportFactory creates a WebTransportClientInterface, instead of a WebTransportServerInterface, and client needs to call Connect() instead of Start() to get a WebTransportSession.
 
-![plot](./pics/client_API.png)
+![plot](./pics/client_api.svg)
 
 | Step # | API calling flow |
 | --- | --- |
-| 1 | Application calls the factory method of QuicTransportFactory::Create() to get an instance of QuicTransportFactory |
-| 2 | Application calls QuicTransportFactory::CreateQuicTransportClient() on the QuicTransportFactory instance got in step #1, specifying the server URL to connect to. |
-| 3 | Application Creates the Visitor instance of QuicTransportClientInterface |
-| 4 | Application calls SetVisitor on the QuicTransportClientInterface instance got in step #2. |
-| 5 | Application calls Connect() method on the QuicTransportClientInterface instance got in step #2, passing the URL of the server. |
-| 6 | OnSession() callback will be invoked once the quictransportclient successfully connects to server, and an QuicTransportSession instance is passed from the callback. |
-| 7 | Application calls CreateBidirectionalStream on the QuicTransportSession got in step 6 and get a QuicTransportStreamInterface instance. |
-| 8 | Application creates QuicTransportStream::Visitor instance and invokes QuicTransportStreamInterface::SetVisitor(). |
-| 9 | Application reads the QuicTransportStream when OnCanRead is invoked on the QuicTransportStream::Visitor; or write to the QuicTransportStream when OnCanWrite is invoked on the QuicTransportStreamVisitor; |
+| 1 | Application calls the factory method of WebTransportFactory::Create() to get an instance of WebTransportFactory |
+| 2 | Application calls WebTransportFactory::CreateWebTransportClient() on the WebTransportFactory instance got in step #1, specifying the server URL to connect to. |
+| 3 | Application Creates the Visitor instance of WebTransportClientInterface |
+| 4 | Application calls SetVisitor on the WebTransportClientInterface instance got in step #2. |
+| 5 | Application calls Connect() method on the WebTransportClientInterface instance got in step #2, passing the URL of the server. |
+| 6 | OnSession() callback will be invoked once the WebTransportclient successfully connects to server, and an WebTransportSession instance is passed from the callback. |
+| 7 | Application calls CreateBidirectionalStream on the WebTransportSession got in step 6 and get a WebTransportStreamInterface instance. |
+| 8 | Application creates WebTransportStream::Visitor instance and invokes WebTransportStreamInterface::SetVisitor(). |
+| 9 | Application reads the WebTransportStream when OnCanRead is invoked on the WebTransportStream::Visitor; or write to the WebTransportStream when OnCanWrite is invoked on the WebTransportStreamVisitor; |
 
 ## Details of Callbacks and Data Structures of QUIC C++ SDK
 
@@ -139,7 +139,7 @@ The Windows sample will be provided in OWT repo separately. More details will be
 
 # How to Replace the Certificate for QUIC
 
-OWT Conference Server is using a self-signed certificate during development phase, which would be only valid for 14 days. You can use a CA-signed certificate to avoid refreshing the certificate periodically. QUIC connection will fail if certificate is not valid or expires.
+OWT Conference Server is using a self-signed certificate during development phase, which would be only valid for 14 days. You can use a CA-signed certificate to avoid refreshing the certificate periodically. WebTransport connection will fail if certificate is not valid or expires.
 
 ## Precondition
 

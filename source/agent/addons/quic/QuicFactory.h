@@ -12,7 +12,7 @@
 
 namespace owt {
 namespace quic {
-    class QuicTransportFactory;
+    class WebTransportFactory;
 }
 }
 
@@ -20,13 +20,13 @@ class QuicFactory {
 public:
     DECLARE_LOGGER();
     virtual ~QuicFactory() = default;
-    static std::shared_ptr<owt::quic::QuicTransportFactory> getQuicTransportFactory();
+    static std::shared_ptr<owt::quic::WebTransportFactory> getQuicTransportFactory();
 
 private:
     explicit QuicFactory();
 
     static std::shared_ptr<QuicFactory> s_quicFactory;
-    std::shared_ptr<owt::quic::QuicTransportFactory> m_quicTransportFactory;
+    std::shared_ptr<owt::quic::WebTransportFactory> m_quicTransportFactory;
 };
 
 #endif

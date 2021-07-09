@@ -25,8 +25,11 @@ module.exports = class QuicTransportStreamPipeline {
     this._quicStream = null;
     this._notifiedReady = false;
 
-    this.quicStream = function (stream) {
+    this.quicStream = function(stream) {
       this._quicStream = stream;
+      if (this.bindRouterAsSourceCallback) {
+        this.bindRouterAsSourceCallback(stream);
+      }
       if (!this._notifiedReady) {
         updateStatus({
           type: 'ready',
@@ -39,7 +42,7 @@ module.exports = class QuicTransportStreamPipeline {
     };
 
     this.addDestination = function(name, dst) {
-      this._quicStream.addDestination(dst);
+      this._quicStream.addDestination(name, dst);
     };
 
     this.receiver = function(kind) {
@@ -50,8 +53,13 @@ module.exports = class QuicTransportStreamPipeline {
       return this._quicStream;
     };
 
-    this.close = function(){
+    this.close = function() {
       this._quicStream.close();
-    }
+    };
+
+    // https://github.com/open-webrtc-toolkit/owt-server/pull/988 changed the
+    // dataflow of frames. Since this object is not a native backed JavaScript
+    // object, router.addLocalSource should be called for this._quicStream.
+    this.bindRouterAsSourceCallback = null;
   }
 };

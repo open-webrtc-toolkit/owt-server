@@ -23,7 +23,7 @@ QuicTransportStream::QuicTransportStream()
     : QuicTransportStream(nullptr)
 {
 }
-QuicTransportStream::QuicTransportStream(owt::quic::QuicTransportStreamInterface* stream)
+QuicTransportStream::QuicTransportStream(owt::quic::WebTransportStreamInterface* stream)
     : m_stream(stream)
     , m_contentSessionId()
     , m_receivedContentSessionId(false)
@@ -113,12 +113,12 @@ NAN_METHOD(QuicTransportStream::close)
 NAN_METHOD(QuicTransportStream::addDestination)
 {
     QuicTransportStream* obj = Nan::ObjectWrap::Unwrap<QuicTransportStream>(info.Holder());
-    if (info.Length() != 1) {
+    if (info.Length() != 2) {
         Nan::ThrowTypeError("Invalid argument length for addDestination.");
         return;
     }
     // TODO: Check if info[0] is an Nan wrapped object.
-    auto framePtr = Nan::ObjectWrap::Unwrap<QuicTransportStream>(info[0]->ToObject());
+    auto framePtr = Nan::ObjectWrap::Unwrap<QuicTransportStream>(info[1]->ToObject());
     // void* ptr = info[0]->ToObject()->GetAlignedPointerFromInternalField(0);
     // auto framePtr=static_cast<owt_base::FrameDestination*>(ptr);
     obj->addDataDestination(framePtr);
@@ -129,7 +129,7 @@ NAN_METHOD(QuicTransportStream::removeDestination)
 {
 }
 
-v8::Local<v8::Object> QuicTransportStream::newInstance(owt::quic::QuicTransportStreamInterface* stream)
+v8::Local<v8::Object> QuicTransportStream::newInstance(owt::quic::WebTransportStreamInterface* stream)
 {
     Local<Object> streamObject = Nan::NewInstance(Nan::New(QuicTransportStream::s_constructor)).ToLocalChecked();
     QuicTransportStream* obj = Nan::ObjectWrap::Unwrap<QuicTransportStream>(streamObject);

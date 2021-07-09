@@ -56,7 +56,7 @@
     'libraries': [
       '-ldl',
       '-llog4cxx',
-      '-lowt_quic_transport',
+      '-lowt_web_transport',
       '-lboost_system',
       '-lboost_thread',
     ],
