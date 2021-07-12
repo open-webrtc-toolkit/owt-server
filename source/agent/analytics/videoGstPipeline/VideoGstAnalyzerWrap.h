@@ -29,7 +29,7 @@ class VideoGstAnalyzerWrap: public node::ObjectWrap, public NodeEventRegistry {
   static void clearPipeline(const v8::FunctionCallbackInfo<v8::Value>& args);
   static void emitListenTo(const v8::FunctionCallbackInfo<v8::Value>& args);
   static void setPlaying(const v8::FunctionCallbackInfo<v8::Value>& args);
-  static void setOutputParam(const v8::FunctionCallbackInfo<v8::Value>& args);
+  static void setInputParam(const v8::FunctionCallbackInfo<v8::Value>& args);
   static void addElementMany(const v8::FunctionCallbackInfo<v8::Value>& args);
   static void disconnect(const v8::FunctionCallbackInfo<v8::Value>& args);
   static void addOutput(const v8::FunctionCallbackInfo<v8::Value>& args);
