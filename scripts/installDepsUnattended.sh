@@ -13,7 +13,12 @@ CLEANUP=false
 NIGHTLY=false
 NO_INTERNAL=false
 INCR_INSTALL=false
+ENABLE_WEBTRANSPORT=false
 SUDO=""
+
+if [ "$GITHUB_ACTIONS" == "true" ]; then
+  ENABLE_WEBTRANSPORT=true
+fi
 
 if [[ $EUID -ne 0 ]]; then
   SUDO="sudo -E"
@@ -74,9 +79,11 @@ then
   fi
 fi
 
-install_node
+if [ "$GITHUB_ACTIONS" != "true" ]; then
+  install_node
+fi
 
-if [ "$NIGHTLY" != "true" ]; then
+if [ "$NIGHTLY" != "true" ] && [ "$GITHUB_ACTIONS" != "true" ]; then
 
   if [ "$DISABLE_NONFREE" = "true" ]; then
     install_mediadeps
@@ -112,7 +119,12 @@ if [ "$NIGHTLY" != "true" ]; then
 
 fi
 
-${NO_INTERNAL} || install_webrtc
+if [ "$GITHUB_ACTIONS" != "true" ]; then
+  ${NO_INTERNAL} || install_webrtc
+else
+  install_node_tools
+  install_quic
+fi
 
 if [ "$CLEANUP" = "true" ]; then
   echo "Cleaning up..."

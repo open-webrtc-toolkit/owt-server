@@ -1,0 +1,44 @@
+name: WebTransport E2E Test
+
+on: [push, pull_request]
+
+jobs:
+  ci:
+    runs-on: ubuntu-18.04
+    services:
+      rabbitmq:
+          image: rabbitmq:latest
+          ports:
+            - 5672:5672
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/checkout@v2
+        with:
+          repository: open-webrtc-toolkit/owt-client-javascript
+          path: third_party/owt-client-javascript/
+      - uses: actions/setup-node@v2
+        with:
+          node-version: "10"
+      - run: npm install
+        working-directory: third_party/owt-client-javascript/scripts
+      - run: mkdir -p third_party/quic-transport
+      - name: Download QUIC SDK
+        uses: dawidd6/action-download-artifact@v2
+        with:
+          github_token: ${{secrets.GITHUB_TOKEN}}
+          workflow: ci.yaml
+          branch: main
+          event: push
+          name: quic-sdk-ubuntu-x64-ci
+          path: third_party/quic-transport
+          repo: open-webrtc-toolkit/owt-sdk-quic
+      - name: Install dependencies
+        run: ./installDepsUnattended.sh
+        working-directory: ./scripts
+      - run: grunt
+        working-directory: third_party/owt-client-javascript/scripts
+      - run: ./scripts/build.js -t quic -c
+      - run: ./scripts/pack.js -t conference-agent -t quic-agent -t management-api -t cluster-manager -t portal -p third_party/owt-client-javascript/dist/samples/conference -i
+      - name: Start server
+        working-directory: dist/bin
+        run: ./init-webtransport.sh
