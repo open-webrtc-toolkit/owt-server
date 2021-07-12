@@ -453,11 +453,7 @@ A publication can send either media or data, but a QUIC *transport* channel can 
             type: "audio" | "video",
             mid: string(MID),
             from: string(TrackID) | string(StreamID),
-            parameters: object(VideoParametersSpecification) | undefined,
-            preferredLayers: { // Used to force layers for SVC stream
-              spatialId: number(SpatialLayerId) | undefined,
-              temporalId: number(TemporalLayerId) | undefined,
-            } | undefined,
+            parameters: object(VideoParametersSpecification) | object(LayerSpecification) | undefined,
           }
         ]
       }
@@ -468,6 +464,12 @@ A publication can send either media or data, but a QUIC *transport* channel can 
        framerate: number(WantedFrameRateFPS) | undefined,
        bitrate: number(WantedBitrateKbps) | string(WantedBitrateMultiple) | undefined,
        keyFrameInterval: number(WantedKeyFrameIntervalSecond) | undefined
+      }
+
+    object(LayerSpecification)::
+      { // Used to force layers for SVC stream
+        spatialLayer: number(SpatialLayerId) | undefined,
+        temporalLayer: number(TemporalLayerId) | undefined,
       }
 **ResponseData**: The SubscriptionResult object with following definition if **ResponseStatus** is “ok”:
 
