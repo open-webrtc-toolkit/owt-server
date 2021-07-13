@@ -73,7 +73,7 @@ if (options.lint) {
   } else {
     for (const dep of missingLintDeps) {
       console.log('Installing missing eslint deps');
-      execSync(`npm install --save-dev ${dep}`);
+      execSync(`cd ${rootDir} && npm install --save-dev ${dep}`);
     }
   }
 }
