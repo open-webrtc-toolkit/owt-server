@@ -39,26 +39,6 @@ init_software()
   fi
 }
 
-init_hardware()
-{
-  if ${INSTALL_DEPS}; then
-    echo "Installing dependency..."
-    ${ROOT}/bin/install_node.sh
-    ${ROOT}/bin/init-mongodb.sh --deps
-    ${ROOT}/bin/init-rabbitmq.sh --deps
-    OWT_UPDATE_DONE=true
-    ${ROOT}/management_api/init.sh
-    ${ROOT}/webrtc_agent/install_deps.sh
-    ${ROOT}/video_agent/install_deps.sh --hardware
-    ${ROOT}/video_agent/init.sh --hardware
-  else
-    OWT_UPDATE_DONE=true
-    ${ROOT}/management_api/init.sh
-  fi
-
-  ${SUDO} sh -c "echo 0 >> /proc/sys/kernel/perf_event_paranoid"
-}
-
 init_auth()
 {
   local AUTH_SCRIPT="${ROOT}/cluster_manager/initauth.js"
@@ -79,9 +59,6 @@ HARDWARE=false
 shopt -s extglob
 while [[ $# -gt 0 ]]; do
   case $1 in
-    *(-)hardware )
-      HARDWARE=true
-      ;;
     *(-)deps )
       INSTALL_DEPS=true
       ;;
@@ -93,12 +70,14 @@ while [[ $# -gt 0 ]]; do
   shift
 done
 
-if ${HARDWARE}; then
-  echo "Initializing with hardware msdk"
-  init_hardware
-  init_auth
-else
-  echo "Initializing..."
-  init_software
-  init_auth
-fi
+echo "Initializing..."
+init_software
+init_auth
+
+bin=`cd "$bin"; pwd`
+${bin}/daemon.sh start management-api
+${bin}/daemon.sh start cluster-manager
+${bin}/daemon.sh start conference-agent
+${bin}/daemon.sh start quic-agent
+${bin}/daemon.sh start portal
+${bin}/daemon.sh start app

@@ -45,6 +45,7 @@
     'ldflags': [
       '-Wl,--no-as-needed',
       '-L$(DEFAULT_DEPENDENCY_PATH)/lib',
+      '-Wl,-rpath,$(DEFAULT_DEPENDENCY_PATH)/lib',
       '-fPIC',
     ],
     'cflags_cc!': [
