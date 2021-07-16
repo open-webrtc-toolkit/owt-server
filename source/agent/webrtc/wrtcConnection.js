@@ -36,7 +36,7 @@ class WrtcStream extends EventEmitter {
 
   /*
    * audio: { format, ssrc, mid, midExtId }
-   * video: { format, ssrc, mid, midExtId, transportcc, red, ulpfec }
+   * video: { format, ssrcs, mid, midExtId, transportcc, red, ulpfec }
    */
   constructor(id, wrtc, direction, {audio, video, owner}) {
     super();
@@ -70,7 +70,7 @@ class WrtcStream extends EventEmitter {
             this._onMediaUpdate.bind(this), video.transportcc, wrtc.callBase);
         }
         this.videoFrameConstructor.bindTransport(wrtc.getMediaStream(id));
-        wrtc.setVideoSsrcList(id, [video.ssrc]);
+        wrtc.setVideoSsrcList(id, video.ssrcs);
       }
 
     } else {
@@ -378,7 +378,7 @@ module.exports = function (spec, on_status, on_track) {
         const trackId = composeId(mid, rid);        
         if (simSsrcs) {
           // Assign ssrcs for legacy simulcast
-          trackSettings[mediaType].ssrc = simSsrcs[index];
+          trackSettings[mediaType].ssrcs = [simSsrcs[index]];
         }
 
         if (!trackMap.has(trackId)) {
