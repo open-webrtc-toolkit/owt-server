@@ -15,7 +15,6 @@ install_apt_deps(){
       wget -P $LIB_DIR https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu1804-4.4.6.tgz
       tar -zxvf $LIB_DIR/mongodb-linux-x86_64-ubuntu1804-4.4.6.tgz -C $LIB_DIR
       ${SUDO} ln -s $LIB_DIR/mongodb-linux-x86_64-ubuntu1804-4.4.6/bin/* /usr/local/bin/
-      ${SUDO} systemctl start mongod
     else
       mkdir -p $LIB_DIR
       install_mongodb

@@ -82,7 +82,7 @@ var pageOption = { page: 1, per_page: 100 };
     var tryCreate = function(room, callback) {
       var options = {
         views: [],
-        transcoding: false
+        transcoding: {audio: false, video: false}
       };
       icsREST.API.createRoom(room.name, options, function(roomId) {
         console.log('Created room:', roomId._id);

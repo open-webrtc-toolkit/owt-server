@@ -35,7 +35,6 @@
     ],
     'include_dirs': [
       "<!(node -e \"require('nan')\")",
-      'conn_handler',
       '../../../core/common',
       '../../../core/owt_base',
       '$(DEFAULT_DEPENDENCY_PATH)/include',
