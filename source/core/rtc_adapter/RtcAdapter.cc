@@ -13,39 +13,24 @@
 #include <memory>
 #include <mutex>
 
+#include <call/rtp_transport_controller_send.h>
 #include <system_wrappers/include/clock.h>
 #include <system_wrappers/include/field_trial.h>
 
 namespace rtc_adapter {
 
-class RTCProcessThread {
-public:
-    RTCProcessThread(const char* task_name)
-    : m_processThread(webrtc::ProcessThread::Create(task_name))
-    {
-        m_processThread->Start();
-    }
-    ~RTCProcessThread()
-    {
-        m_processThread->Stop();
-    }
-
-    webrtc::ProcessThread* unwrap()
-    {
-        return m_processThread.get();
-    }
-private:
-    std::unique_ptr<webrtc::ProcessThread> m_processThread;
-};
-
 static rtc::scoped_refptr<webrtc::SharedModuleThread> g_moduleThread;
-
-static std::unique_ptr<RTCProcessThread> g_pacerThread;
 
 static std::unique_ptr<webrtc::FieldTrialBasedConfig> g_fieldTrial= []()
 {
     auto config = std::make_unique<webrtc::FieldTrialBasedConfig>();
-    // webrtc::field_trial::InitFieldTrialsFromString("WebRTC-TaskQueuePacer/Enabled/");
+    /*
+    webrtc::field_trial::InitFieldTrialsFromString(
+        "WebRTC-KeyframeInterval/"
+        "max_wait_for_keyframe_ms:500,"
+        "max_wait_for_frame_ms:1500/"
+        "WebRTC-TaskQueuePacer/Enabled/");
+    */
     return config;
 }();
 
@@ -60,7 +45,8 @@ static std::shared_ptr<rtc::TaskQueue> g_taskQueue =
         webrtc::TaskQueueFactory::Priority::NORMAL));
 
 class RtcAdapterImpl : public RtcAdapter,
-                       public CallOwner {
+                       public CallOwner,
+                       public webrtc::TargetTransferRateObserver {
 public:
     RtcAdapterImpl();
     virtual ~RtcAdapterImpl();
@@ -77,6 +63,7 @@ public:
 
 
     typedef std::shared_ptr<webrtc::Call> CallPtr;
+    typedef std::shared_ptr<webrtc::RtpTransportControllerSendInterface> ControllerSendPtr;
 
     // Implement CallOwner
     std::shared_ptr<webrtc::Call> call() override
@@ -89,11 +76,25 @@ public:
     }
     std::shared_ptr<rtc::TaskQueue> taskQueue() override { return g_taskQueue; }
     std::shared_ptr<webrtc::RtcEventLog> eventLog() override { return g_eventLog; }
+    webrtc::WebRtcKeyValueConfig* trial() override { return g_fieldTrial.get(); }
+    ControllerSendPtr rtpTransportController() override
+    {
+        return m_transportControllerSend;
+    }
+    uint32_t estimatedBandwidth() override { return m_estimatedBandwidth; }
+
+    //Implements webrtc::TargetTransferRateObjserver
+    void OnTargetTransferRate(webrtc::TargetTransferRate) override;
 
 private:
     void initCall();
+    void initRtpTransportController();
 
     std::shared_ptr<CallPtr> m_callPtr;
+
+    // For sender
+    ControllerSendPtr m_transportControllerSend = nullptr;
+    uint32_t m_estimatedBandwidth = 0;
 };
 
 RtcAdapterImpl::RtcAdapterImpl()
@@ -144,6 +145,25 @@ void RtcAdapterImpl::initCall()
     });
 }
 
+void RtcAdapterImpl::initRtpTransportController()
+{
+    if (!m_transportControllerSend) {
+        RTC_LOG(LS_INFO) << "Init RtptransportcontrollerSend";
+        m_transportControllerSend = std::make_shared<webrtc::RtpTransportControllerSend>(
+            webrtc::Clock::GetRealTimeClock(), g_eventLog.get(),
+            nullptr/*network_state_predicator_factory*/,
+            nullptr/*network_controller_factory*/, webrtc::BitrateConstraints(),
+            nullptr/*pacer_thread*/, g_taskQueueFactory.get(), g_fieldTrial.get());
+        m_transportControllerSend->RegisterTargetTransferRateObserver(this);
+    }
+}
+
+void RtcAdapterImpl::OnTargetTransferRate(webrtc::TargetTransferRate msg) {
+  uint32_t target_bitrate_bps = msg.target_rate.bps();
+  RTC_LOG(LS_INFO) << "OnTargetTransferRate(bps): " << target_bitrate_bps;
+  m_estimatedBandwidth = target_bitrate_bps;
+}
+
 VideoReceiveAdapter* RtcAdapterImpl::createVideoReceiver(const Config& config)
 {
     initCall();
@@ -158,6 +178,7 @@ void RtcAdapterImpl::destoryVideoReceiver(VideoReceiveAdapter* video_recv_adapte
 
 VideoSendAdapter* RtcAdapterImpl::createVideoSender(const Config& config)
 {
+    initRtpTransportController();
     return new VideoSendAdapterImpl(this, config);
 }
 void RtcAdapterImpl::destoryVideoSender(VideoSendAdapter* video_send_adapter)

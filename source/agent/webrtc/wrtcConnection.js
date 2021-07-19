@@ -10,7 +10,8 @@ const {
   AudioFrameConstructor,
   AudioFramePacketizer,
   VideoFrameConstructor,
-  VideoFramePacketizer
+  VideoFramePacketizer,
+  CallBase,
 } = require('../rtcFrame/build/Release/rtcFrame.node');
 
 const logger = require('../logger').logger;
@@ -61,14 +62,8 @@ class WrtcStream extends EventEmitter {
         wrtc.setAudioSsrc(id, audio.ssrc);
       }
       if (video) {
-        if (!wrtc.callBase) {
-          this.videoFrameConstructor = new VideoFrameConstructor(
-            this._onMediaUpdate.bind(this), video.transportcc);
-          wrtc.callBase = this.videoFrameConstructor;
-        } else {
-          this.videoFrameConstructor = new VideoFrameConstructor(
-            this._onMediaUpdate.bind(this), video.transportcc, wrtc.callBase);
-        }
+        this.videoFrameConstructor = new VideoFrameConstructor(
+          this._onMediaUpdate.bind(this), video.transportcc, wrtc.callBase);
         this.videoFrameConstructor.bindTransport(wrtc.getMediaStream(id));
         wrtc.setVideoSsrcList(id, video.ssrcs);
       }
@@ -84,8 +79,10 @@ class WrtcStream extends EventEmitter {
         }
       }
       if (video) {
+        let enableBWE = false;
         this.videoFramePacketizer = new VideoFramePacketizer(
-          video.red, video.ulpfec, video.transportcc, video.mid, video.midExtId);
+          video.red, video.ulpfec, video.transportcc, video.mid,
+          video.midExtId, false, wrtc.callBase, enableBWE);
         this.videoFramePacketizer.bindTransport(wrtc.getMediaStream(id));
       }
     }
@@ -123,9 +120,6 @@ class WrtcStream extends EventEmitter {
     }
     if (this.videoFrameConstructor) {
       // TODO: seperate call and frame constructor in node wrapper
-      if (this.wrtc.callBase === this.videoFrameConstructor) {
-        this.wrtc.callBase = null;
-      }
       this.videoFrameConstructor.close();
     }
   }
@@ -604,6 +598,7 @@ module.exports = function (spec, on_status, on_track) {
           track.close();
         });
       }
+      wrtc.callBase.close();
       wrtc.wrtc.stop();
       wrtc.close();
       wrtc = undefined;
@@ -638,6 +633,7 @@ module.exports = function (spec, on_status, on_track) {
     }
   });
   wrtc = new Connection(wrtcId, threadPool, ioThreadPool, { ipAddresses });
+  wrtc.callBase = new CallBase();
   // wrtc.addMediaStream(wrtcId, {label: ''}, direction === 'in');
 
   initWebRtcConnection(wrtc);

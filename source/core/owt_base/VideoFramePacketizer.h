@@ -40,6 +40,8 @@ public:
         uint32_t transportccExt = 0;
         std::string mid = "";
         uint32_t midExtId = 0;
+        std::shared_ptr<rtc_adapter::RtcAdapter> rtcAdapter;
+        bool enableBandwidthEstimation = false;
     };
     VideoFramePacketizer(Config& config);
     ~VideoFramePacketizer();
@@ -48,7 +50,9 @@ public:
     void unbindTransport();
     void enable(bool enabled);
     uint32_t getSsrc() { return m_ssrc; }
-    uint32_t getEstimatedBitrate() { return m_estimatedBitrateBps; }
+    uint32_t getTotalBitrate();
+    uint32_t getRetransmitBitrate();
+    uint32_t getEstimatedBandwidth();
 
     // Implements FrameDestination.
     void onFrame(const Frame&);
@@ -86,8 +90,6 @@ private:
     uint16_t m_sendFrameCount;
     std::shared_ptr<rtc_adapter::RtcAdapter> m_rtcAdapter;
     rtc_adapter::VideoSendAdapter* m_videoSend;
-
-    uint32_t m_estimatedBitrateBps = 0;
 };
 }
 #endif /* EncodedVideoFrameSender_h */

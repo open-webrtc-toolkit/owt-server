@@ -10,9 +10,8 @@
 #include <api/video/video_codec_type.h>
 #include <api/video_codecs/video_codec.h>
 #include <api/task_queue/default_task_queue_factory.h>
-#include <call/rtp_transport_controller_send.h>
-#include <modules/rtp_rtcp/source/rtp_video_header.h>
 #include <modules/include/module_common_types.h>
+#include <modules/pacing/packet_router.h>
 #include <modules/rtp_rtcp/source/rtp_video_header.h>
 #include <rtc_base/logging.h>
 #include <rtputils.h>
@@ -135,6 +134,27 @@ static void dump(void* index, FrameFormat format, uint8_t* buf, int len)
     }
 }
 
+// PacedSender without pacing
+class NonPacedSender : public webrtc::RtpPacketSender {
+public:
+    NonPacedSender(webrtc::PacketRouter* sender)
+    : m_packetRouter(sender) {}
+    virtual ~NonPacedSender() {}
+
+    // Implements webrtc::RtpPacketSender
+    virtual void EnqueuePackets(
+        std::vector<std::unique_ptr<webrtc::RtpPacketToSend>> packets) override
+    {
+        webrtc::PacedPacketInfo pacing_info;
+        for (auto& packet : packets) {
+            m_packetRouter->SendPacket(std::move(packet), pacing_info);
+            EnqueuePackets(m_packetRouter->FetchFec());
+        }
+    }
+private:
+    webrtc::PacketRouter* m_packetRouter;
+};
+
 VideoSendAdapterImpl::VideoSendAdapterImpl(
     CallOwner* owner,
     const RtcAdapter::Config& config)
@@ -149,7 +169,7 @@ VideoSendAdapterImpl::VideoSendAdapterImpl(
     , m_ssrcGenerator(SsrcGenerator::GetSsrcGenerator())
     , m_clock(nullptr)
     , m_timeStampOffset(0)
-    , m_taskQueueFactory(webrtc::CreateDefaultTaskQueueFactory())
+    , m_owner(owner)
     , m_feedbackListener(config.feedback_listener)
     , m_rtpListener(config.rtp_listener)
     , m_statsListener(config.stats_listener)
@@ -157,11 +177,18 @@ VideoSendAdapterImpl::VideoSendAdapterImpl(
     m_ssrc = m_ssrcGenerator->CreateSsrc();
     m_ssrcGenerator->RegisterSsrc(m_ssrc);
     m_taskRunner = TaskRunnerPool::GetInstance().GetTaskRunner();
+    if (m_owner && m_config.bandwidth_estimation) {
+        m_transportControllerSend = m_owner->rtpTransportController();
+    }
     init();
 }
 
 VideoSendAdapterImpl::~VideoSendAdapterImpl()
 {
+    if (m_transportControllerSend) {
+        m_transportControllerSend->packet_router()
+            ->RemoveSendRtpModule(m_rtpRtcp.get());
+    }
     m_taskRunner->DeRegisterModule(m_rtpRtcp.get());
     m_ssrcGenerator->ReturnSsrc(m_ssrc);
     boost::unique_lock<boost::shared_mutex> lock(m_rtpRtcpMutex);
@@ -173,22 +200,13 @@ bool VideoSendAdapterImpl::init()
     m_retransmissionRateLimiter.reset(
         new webrtc::RateLimiter(webrtc::Clock::GetRealTimeClock(), 1000));
 
-    m_eventLog = std::make_unique<webrtc::RtcEventLogNull>();
-
-    m_transportControllerSend = std::make_unique<webrtc::RtpTransportControllerSend>(
-        m_clock, m_eventLog.get(), nullptr/*network_state_predicator_factory*/,
-        nullptr/*network_controller_factory*/, webrtc::BitrateConstraints(),
-        webrtc::ProcessThread::Create("PacerThread"), m_taskQueueFactory.get());
-    m_transportControllerSend->RegisterTargetTransferRateObserver(this);
-    m_transportControllerSend->OnNetworkAvailability(true);
-
     webrtc::RtpRtcp::Configuration configuration;
     configuration.clock = m_clock;
     configuration.audio = false;
     configuration.receiver_only = false;
     configuration.outgoing_transport = this;
     configuration.intra_frame_callback = this;
-    configuration.event_log = m_eventLog.get();
+    configuration.event_log = m_owner->eventLog().get();
     configuration.retransmission_rate_limiter = m_retransmissionRateLimiter.get();
     configuration.local_media_ssrc = m_ssrc; //rtp_config.ssrcs[i];
     // TODO: enable UlpfecGenerator
@@ -202,11 +220,19 @@ bool VideoSendAdapterImpl::init()
     configuration.fec_generator = fec_generator.get();
     */
 
-    configuration.network_state_estimate_observer =
-      m_transportControllerSend->network_state_estimate_observer();
-    configuration.transport_feedback_callback =
-      m_transportControllerSend->transport_feedback_observer();
-    //configuration.paced_sender = m_transportControllerSend->packet_sender();
+    if (m_transportControllerSend) {
+        RTC_LOG(LS_INFO) << "TransportControllerSend set";
+        m_transportControllerSend->OnNetworkAvailability(true);
+        configuration.network_state_estimate_observer =
+          m_transportControllerSend->network_state_estimate_observer();
+        configuration.transport_feedback_callback =
+          m_transportControllerSend->transport_feedback_observer();
+
+        m_pacedSender = std::make_shared<NonPacedSender>(
+            m_transportControllerSend->packet_router());
+        configuration.paced_sender = m_pacedSender.get();
+        configuration.send_bitrate_observer = this;
+    }
 
     m_rtpRtcp = webrtc::RtpRtcp::Create(configuration);
     m_rtpRtcp->SetSendingStatus(true);
@@ -229,11 +255,15 @@ bool VideoSendAdapterImpl::init()
 
     m_rtpRtcp->SetMaxRtpPacketSize(kMaxRtpPacketSize);
 
+    if (m_transportControllerSend) {
+        m_transportControllerSend->packet_router()
+            ->AddSendRtpModule(m_rtpRtcp.get(), false);
+    }
+
     webrtc::RTPSenderVideo::Config video_config;
-    m_fieldTrialConfig = std::make_unique<webrtc::FieldTrialBasedConfig>();
     video_config.clock = configuration.clock;
     video_config.rtp_sender = m_rtpRtcp->RtpSender();
-    video_config.field_trials = m_fieldTrialConfig.get();
+    video_config.field_trials = m_owner->trial();
     if (m_config.red_payload) {
         video_config.red_payload_type = m_config.red_payload;
     }
@@ -384,7 +414,7 @@ bool VideoSendAdapterImpl::SendRtp(const uint8_t* data,
     size_t length,
     const webrtc::PacketOptions& options)
 {
-    if (options.packet_id != -1) {
+    if (m_transportControllerSend && options.packet_id != -1) {
         rtc::SentPacket sent_packet;
         sent_packet.packet_id = options.packet_id;
         sent_packet.send_time_ms = m_clock->TimeInMilliseconds();
@@ -425,14 +455,19 @@ void VideoSendAdapterImpl::OnReceivedIntraFrameRequest(uint32_t ssrc)
     }
 }
 
-void VideoSendAdapterImpl::OnTargetTransferRate(webrtc::TargetTransferRate msg) {
-  uint32_t target_bitrate_bps = msg.target_rate.bps();
-  RTC_DLOG(LS_INFO) << "OnTargetTransferRate(bps): " << target_bitrate_bps;
+void VideoSendAdapterImpl::Notify(uint32_t total_bitrate_bps,
+                                  uint32_t retransmit_bitrate_bps,
+                                  uint32_t ssrc)
+{
 
-  if (m_statsListener) {
-    AdapterStats stats;
-    stats.estimatedBandwidth = target_bitrate_bps;
-    m_statsListener->onAdapterStats(stats);
+  if (m_ssrc == ssrc) {
+    RTC_LOG(LS_INFO) << "total_bitrate_bps:" << total_bitrate_bps
+                     << " retransmit_bitrate_bps:" << retransmit_bitrate_bps;
+    m_stats.total_bitrate_bps = total_bitrate_bps;
+    m_stats.retransmit_bitrate_bps = retransmit_bitrate_bps;
+    if (m_owner) {
+        m_stats.estimated_bandwidth = m_owner->estimatedBandwidth();
+    }
   }
 }
 

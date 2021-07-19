@@ -127,8 +127,7 @@ int32_t VideoReceiveAdapterImpl::AdapterDecoder::Decode(const webrtc::EncodedIma
                 AdapterStats stats = {
                     m_parent->m_width,
                     m_parent->m_height,
-                    m_parent->m_format,
-                    0
+                    m_parent->m_format
                 };
                 m_parent->m_statsListener->onAdapterStats(stats);
             }

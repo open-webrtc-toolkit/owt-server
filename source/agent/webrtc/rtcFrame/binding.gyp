@@ -16,6 +16,7 @@
       'AudioFramePacketizerWrapper.cc',
       'VideoFrameConstructorWrapper.cc',
       'VideoFramePacketizerWrapper.cc',
+      'CallBaseWrapper.cc',
       'addon.cc',
     ],
     'dependencies': ['librtcadapter'],
