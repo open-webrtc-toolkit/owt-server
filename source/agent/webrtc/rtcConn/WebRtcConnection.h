@@ -132,6 +132,10 @@ class WebRtcConnection : public Nan::ObjectWrap, public erizo::WebRtcConnectionE
      * Returns the state.
      */
     static NAN_METHOD(getCurrentState);
+    /*
+     * Set port range for unbundle audio/video
+     */
+    static NAN_METHOD(setUnbundleMediaPort);
 
     static Nan::Persistent<v8::Function> constructor;
 

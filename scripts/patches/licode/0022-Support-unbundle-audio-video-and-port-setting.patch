@@ -1,0 +1,99 @@
+From 86a18375674dd3255b4ed373e0f5a62884c08f7a Mon Sep 17 00:00:00 2001
+From: Chen Li1 <li1.chen@intel.com>
+Date: Wed, 14 Apr 2021 15:53:11 +0800
+Subject: [PATCH] Support unbundle audio/video and port setting
+
+---
+ erizo/src/erizo/WebRtcConnection.cpp | 31 +++++++++++++++++++++++++---
+ erizo/src/erizo/WebRtcConnection.h   |  6 ++++++
+ 2 files changed, 34 insertions(+), 3 deletions(-)
+
+diff --git a/erizo/src/erizo/WebRtcConnection.cpp b/erizo/src/erizo/WebRtcConnection.cpp
+index b1438118..1846f14e 100644
+--- a/erizo/src/erizo/WebRtcConnection.cpp
++++ b/erizo/src/erizo/WebRtcConnection.cpp
+@@ -339,6 +339,9 @@ bool WebRtcConnection::processRemoteSdp(std::string stream_id) {
+         if (video_transport_.get() == nullptr) {
+           ELOG_DEBUG("%s message: Creating videoTransport, ufrag: %s, pass: %s",
+                       toLog(), username.c_str(), password.c_str());
++          if (!bundle_ && video_ice_config_.media_type == VIDEO_TYPE) {
++            ice_config_ = video_ice_config_;
++          }
+           video_transport_.reset(new DtlsTransport(VIDEO_TYPE, "video", connection_id_, bundle_, remote_sdp_->isRtcpMux,
+                                                   listener, ice_config_ , username, password, false,
+                                                   worker_, io_worker_));
+@@ -356,6 +359,9 @@ bool WebRtcConnection::processRemoteSdp(std::string stream_id) {
+         if (audio_transport_.get() == nullptr) {
+           ELOG_DEBUG("%s message: Creating audioTransport, ufrag: %s, pass: %s",
+                       toLog(), username.c_str(), password.c_str());
++          if (audio_ice_config_.media_type == AUDIO_TYPE) {
++            ice_config_ = audio_ice_config_;
++          }
+           audio_transport_.reset(new DtlsTransport(AUDIO_TYPE, "audio", connection_id_, bundle_, remote_sdp_->isRtcpMux,
+                                                   listener, ice_config_, username, password, false,
+                                                   worker_, io_worker_));
+@@ -588,10 +594,13 @@ void WebRtcConnection::onTransportData(std::shared_ptr<DataPacket> packet, Trans
+ 
+       if (mapping_ssrcs_.count(streamId) == 0) {
+         // Set SSRC for mid/rsid
+-        forEachMediaStream([this, streamId, ssrc] (const std::shared_ptr<MediaStream> &media_stream) {
++        forEachMediaStream([this, streamId, ssrc, transport] (const std::shared_ptr<MediaStream> &media_stream) {
+           if (media_stream->getId() == streamId) {
+-            media_stream->setVideoSourceSSRC(ssrc);
+-            media_stream->setVideoSourceSSRC(ssrc);
++            if (transport->mediaType == AUDIO_TYPE) {
++              media_stream->setAudioSourceSSRC(ssrc);
++            } else if (transport->mediaType == VIDEO_TYPE) {
++              media_stream->setVideoSourceSSRC(ssrc);
++            }
+             mapping_ssrcs_[streamId] = ssrc;
+           }
+         });
+@@ -791,4 +800,20 @@ void WebRtcConnection::setTransport(std::shared_ptr<Transport> transport) {  //
+   bundle_ = true;
+ }
+ 
++void WebRtcConnection::setUnbundleAudioPort(int minport, int maxport) {
++  ELOG_DEBUG("Audio port range: %d, %d", minport, maxport);
++  audio_ice_config_ = ice_config_;
++  audio_ice_config_.media_type = AUDIO_TYPE;
++  audio_ice_config_.min_port = (uint16_t) minport;
++  audio_ice_config_.max_port = (uint16_t) maxport;
++}
++
++void WebRtcConnection::setUnbundleVideoPort(int minport, int maxport) {
++  ELOG_DEBUG("Video port range: %d, %d", minport, maxport);
++  video_ice_config_ = ice_config_;
++  video_ice_config_.media_type = VIDEO_TYPE;
++  video_ice_config_.min_port = (uint16_t) minport;
++  video_ice_config_.max_port = (uint16_t) maxport;
++}
++
+ }  // namespace erizo
+diff --git a/erizo/src/erizo/WebRtcConnection.h b/erizo/src/erizo/WebRtcConnection.h
+index 4a9fa449..9fbb1262 100644
+--- a/erizo/src/erizo/WebRtcConnection.h
++++ b/erizo/src/erizo/WebRtcConnection.h
+@@ -159,6 +159,9 @@ class WebRtcConnection: public TransportListener, public LogContext,
+     return "id: " + connection_id_ + ", " + printLogContext();
+   }
+ 
++  void setUnbundleAudioPort(int minport, int maxport);
++  void setUnbundleVideoPort(int minport, int maxport);
++
+  private:
+   bool processRemoteSdp(std::string stream_id);
+   void setRemoteSdpsToMediaStreams(std::string stream_id);
+@@ -180,6 +183,9 @@ class WebRtcConnection: public TransportListener, public LogContext,
+   int bundle_;
+   WebRtcConnectionEventListener* conn_event_listener_;
+   IceConfig ice_config_;
++  IceConfig audio_ice_config_;
++  IceConfig video_ice_config_ ;
++
+   std::vector<RtpMap> rtp_mappings_;
+   RtpExtensionProcessor extension_processor_;
+   boost::condition_variable cond_;
+-- 
+2.17.1
+

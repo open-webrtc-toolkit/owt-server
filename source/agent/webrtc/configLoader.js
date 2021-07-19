@@ -59,6 +59,13 @@ module.exports.load = () => {
     config.webrtc.io_workers = config.webrtc.io_workers || 8;
     config.webrtc.network_interfaces = config.webrtc.network_interfaces || [];
 
+    config.webrtc.audio_minport = config.webrtc.audio_minport || 0;
+    config.webrtc.audio_maxport = config.webrtc.audio_maxport || 0;
+    config.webrtc.video_minport = config.webrtc.video_minport || 0;
+    config.webrtc.video_maxport = config.webrtc.video_maxport || 0;
+    config.webrtc.screen_minport = config.webrtc.screen_minport || 0;
+    config.webrtc.screen_maxport = config.webrtc.screen_maxport || 0;
+
     config.webrtc.network_interfaces.forEach(item => {
       let addr = networkHelper.getAddress(item.name);
       if (!addr) {

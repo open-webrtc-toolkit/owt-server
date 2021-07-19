@@ -90,7 +90,9 @@ int32_t VCMFrameEncoder::generateStream(uint32_t width, uint32_t height, uint32_
     uint8_t simulcastId {0};
     int ret;
 
-    assert(frameRate != 0);
+    if (frameRate == 0) {
+        frameRate = 30;
+    }
     if (width == 0 || height == 0) {
         m_isAdaptiveMode = true;
         width = 3840;

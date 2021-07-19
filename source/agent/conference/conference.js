@@ -1355,6 +1355,8 @@ var Conference = function (rpcClient, selfRpcId) {
               source.optional && source.optional.format && (formatPreference.optional = formatPreference.optional.concat(source.optional.format));
             }
             track.formatPreference = formatPreference;
+            // Pass subscribe source type (screen-cast...) to rtc node
+            track.source = source.source;
           });
         }
 
