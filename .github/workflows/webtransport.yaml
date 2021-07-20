@@ -62,7 +62,7 @@ jobs:
           cp ./source/agent/quic/e2e-test/config/management_api.toml dist/management_api/management_api.toml
           cp ./source/agent/quic/e2e-test/config/quic_agent.toml dist/quic_agent/agent.toml
           cp ./source/agent/quic/e2e-test/config/portal.toml dist/portal/portal.toml
-          cp ./source/agent/quic/e2e-test/patches/samplertcservice.js dist/apps/current_app/samplertcservice.js
+          cp ./source/agent/quic/e2e-test/service/rest_service.js dist/apps/current_app/samplertcservice.js
           ./dist/bin/init-webtransport.sh
       - name: Prepare testing environment
         run: python3 prepare.py
@@ -74,9 +74,9 @@ jobs:
         working-directory: ./source/agent/quic
         name: Run E2E tests
       - uses: actions/upload-artifact@v2
-        name: Upload logs
+        name: Upload log
         with:
-          name: logs
+          name: log
           path: dist/logs
           retention-days: 1
         if: ${{ always() }}

@@ -25,7 +25,7 @@ def _copy_js_sdk_and_sample():
     for file_name in file_list:
         shutil.copy(JS_SAMPLE_PATH/'public' /
                     'scripts'/file_name, TEST_PATH/'js'/'deps')
-    
+
 
 def main(argv):
     _copy_js_sdk_and_sample()
