@@ -15,6 +15,8 @@ join_retry = 60 #default: 60
 #The interval of reporting the work load
 report_load_interval = 1000 #default: 1000, unit: millisecond
 
+#The load type, e.g. cpu, disk, network
+load_type = "cpu"
 #The max CPU/GPU load under which this worker can take new tasks.
 max_load = 0.85 #default: 0.85
 
