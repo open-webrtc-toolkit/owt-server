@@ -31,6 +31,8 @@ class VideoFramePacketizer : public FrameDestination {
 
   static void enable(const v8::FunctionCallbackInfo<v8::Value>& args);
   static void getSsrc(const v8::FunctionCallbackInfo<v8::Value>& args);
+
+  static void getEstimatedBitrate(const v8::FunctionCallbackInfo<v8::Value>& args);
 };
 
 #endif

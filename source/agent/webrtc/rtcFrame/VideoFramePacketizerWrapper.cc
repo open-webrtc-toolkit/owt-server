@@ -129,3 +129,14 @@ void VideoFramePacketizer::getSsrc(const v8::FunctionCallbackInfo<v8::Value>& ar
   args.GetReturnValue().Set(Number::New(isolate, ssrc));
 }
 
+void VideoFramePacketizer::getEstimatedBitrate(const v8::FunctionCallbackInfo<v8::Value>& args) {
+  Isolate* isolate = Isolate::GetCurrent();
+  HandleScope scope(isolate);
+
+  VideoFramePacketizer* obj = ObjectWrap::Unwrap<VideoFramePacketizer>(args.Holder());
+  owt_base::VideoFramePacketizer* me = obj->me;
+
+  uint32_t bitrate = me->getEstimatedBitrate();
+  args.GetReturnValue().Set(Number::New(isolate, bitrate));
+}
+
