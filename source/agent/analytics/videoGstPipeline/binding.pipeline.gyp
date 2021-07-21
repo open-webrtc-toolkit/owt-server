@@ -13,6 +13,7 @@
       './GstInternalIn.cpp',
     ],
     'include_dirs': [
+      "<!(node -e \"require('nan')\")",
       '/usr/include/gstreamer-1.0',
       '$(CORE_HOME)/common',
       '$(CORE_HOME)/owt_base',

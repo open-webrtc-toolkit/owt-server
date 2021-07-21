@@ -26,26 +26,12 @@ class VideoGstAnalyzer : public EventRegistry {
 public:
     VideoGstAnalyzer(EventRegistry* handle);
     ~VideoGstAnalyzer();
-    int createPipeline();
-    void clearPipeline();
-    void destroyPipeline();
-    int getListeningPort();
-    void emitListenTo(int minPort, int maxPort, std::string ticket);
-    int setPlaying();
-
-    int addElementMany();
-
-    void setInputParam(std::string codec, int width, int height,
+    bool createPipeline(std::string codec, int width, int height,
     int framerate, int bitrate, int kfi, std::string algo, std::string pluginName);
-
-    void stopLoop();
-
-    void disconnect(owt_base::FrameDestination* out);
-
-    void addOutput(int connectionID, owt_base::FrameDestination* out);
-
-    static void pad_added_handler(GstElement *src, GstPad *new_pad, GstElement *data);
-    static void on_pad_added (GstElement *element, GstPad *pad, gpointer data);
+    void clearPipeline();
+    void removeOutput(owt_base::FrameDestination* out);
+    bool addOutput(owt_base::FrameDestination* out);
+    bool linkInput(owt_base::FrameSource* videosource);
 
     static void start_feed (GstElement * source, guint size, gpointer data);
     static gboolean push_data (gpointer data);
@@ -57,13 +43,15 @@ protected:
     static GMainLoop *loop;
     static gboolean StreamEventCallBack(GstBus *bus, GstMessage *message, gpointer data);
     void setState(GstState newstate);
+    void setPlaying();
+    void stopLoop();
+    void destroyPipeline();
     // EventRegistry
     bool notifyAsyncEvent(const std::string& event, const std::string& data) override;
     bool notifyAsyncEventInEmergency(const std::string& event, const std::string& data) override;
 
     boost::scoped_ptr<GstInternalIn> m_internalin;
     boost::scoped_ptr<GstInternalOut> m_gstinternalout;
-    //std::list<owt_base::InternalOut*> m_internalout;
     guint sourceid;
 
 private:

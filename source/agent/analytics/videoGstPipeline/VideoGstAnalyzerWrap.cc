@@ -24,15 +24,11 @@ void VideoGstAnalyzerWrap::Init(Handle<Object> exports, Handle<Object> module) {
   tpl->InstanceTemplate()->SetInternalFieldCount(1);
   // Prototype
   NODE_SET_PROTOTYPE_METHOD(tpl, "close", close);
-  NODE_SET_PROTOTYPE_METHOD(tpl, "getListeningPort", getListeningPort);
   NODE_SET_PROTOTYPE_METHOD(tpl, "createPipeline", createPipeline);
   NODE_SET_PROTOTYPE_METHOD(tpl, "clearPipeline", clearPipeline);
-  NODE_SET_PROTOTYPE_METHOD(tpl, "emitListenTo", emitListenTo);
-  NODE_SET_PROTOTYPE_METHOD(tpl, "addElementMany", addElementMany);
-  NODE_SET_PROTOTYPE_METHOD(tpl, "setPlaying", setPlaying);
-  NODE_SET_PROTOTYPE_METHOD(tpl, "setInputParam", setInputParam);
-  NODE_SET_PROTOTYPE_METHOD(tpl, "disconnect", disconnect);
+  NODE_SET_PROTOTYPE_METHOD(tpl, "removeOutput", removeOutput);
   NODE_SET_PROTOTYPE_METHOD(tpl, "addOutput", addOutput);
+  NODE_SET_PROTOTYPE_METHOD(tpl, "linkInput", linkInput);
   NODE_SET_PROTOTYPE_METHOD(tpl, "addEventListener", addEventListener);
 
   constructor.Reset(isolate, tpl->GetFunction());
@@ -58,93 +54,7 @@ void VideoGstAnalyzerWrap::close(const FunctionCallbackInfo<Value>& args) {
   delete me;
 }
 
-void VideoGstAnalyzerWrap::getListeningPort(const FunctionCallbackInfo<Value>& args){
-  Isolate* isolate = Isolate::GetCurrent();
-  HandleScope scope(isolate);
-  VideoGstAnalyzerWrap* obj = ObjectWrap::Unwrap<VideoGstAnalyzerWrap>(args.Holder());
-  mcu::VideoGstAnalyzer* me = obj->me;
-
-  uint32_t port = me->getListeningPort();
-
-  args.GetReturnValue().Set(Number::New(isolate, port));
-}
-
-
 void VideoGstAnalyzerWrap::createPipeline(const FunctionCallbackInfo<Value>& args){
-  Isolate* isolate = Isolate::GetCurrent();
-  HandleScope scope(isolate);
-  VideoGstAnalyzerWrap* obj = ObjectWrap::Unwrap<VideoGstAnalyzerWrap>(args.Holder());
-  mcu::VideoGstAnalyzer* me = obj->me;
-
-  int result = me->createPipeline();
-
-  args.GetReturnValue().Set(Number::New(isolate, result));
-}
-
-void VideoGstAnalyzerWrap::clearPipeline(const FunctionCallbackInfo<Value>& args){
-  Isolate* isolate = Isolate::GetCurrent();
-  HandleScope scope(isolate);
-  VideoGstAnalyzerWrap* obj = ObjectWrap::Unwrap<VideoGstAnalyzerWrap>(args.Holder());
-  mcu::VideoGstAnalyzer* me = obj->me;
-
-  me->clearPipeline();
-}
-
-void VideoGstAnalyzerWrap::emitListenTo(const FunctionCallbackInfo<Value>& args){
-  Isolate* isolate = Isolate::GetCurrent();
-  HandleScope scope(isolate);
-  VideoGstAnalyzerWrap* obj = ObjectWrap::Unwrap<VideoGstAnalyzerWrap>(args.Holder());
-  mcu::VideoGstAnalyzer* me = obj->me;
-
-  unsigned int minPort = 0, maxPort = 0;
-  std::string ticket;
-
-  if (args.Length() >= 3) {
-    minPort = args[0]->Uint32Value();
-    maxPort = args[1]->Uint32Value();
-
-    String::Utf8Value param3(args[2]->ToString());
-    ticket = std::string(*param3);
-  }
-  me->emitListenTo(minPort, maxPort, ticket);
-
-}
-
-
-void VideoGstAnalyzerWrap::addElementMany(const FunctionCallbackInfo<Value>& args){
-  Isolate* isolate = Isolate::GetCurrent();
-  HandleScope scope(isolate);
-  VideoGstAnalyzerWrap* obj = ObjectWrap::Unwrap<VideoGstAnalyzerWrap>(args.Holder());
-  mcu::VideoGstAnalyzer* me = obj->me;
-
-
-  int result = me->addElementMany();
-
-  args.GetReturnValue().Set(Number::New(isolate, result));
-}
-
-void VideoGstAnalyzerWrap::setPlaying(const FunctionCallbackInfo<Value>& args){
-  Isolate* isolate = Isolate::GetCurrent();
-  HandleScope scope(isolate);
-  VideoGstAnalyzerWrap* obj = ObjectWrap::Unwrap<VideoGstAnalyzerWrap>(args.Holder());
-  mcu::VideoGstAnalyzer* me = obj->me;
-  
-  me->setPlaying();
-}
-
-void VideoGstAnalyzerWrap::disconnect(const FunctionCallbackInfo<Value>& args){
-  Isolate* isolate = Isolate::GetCurrent();
-  HandleScope scope(isolate);
-  VideoGstAnalyzerWrap* obj = ObjectWrap::Unwrap<VideoGstAnalyzerWrap>(args.Holder());
-  mcu::VideoGstAnalyzer* me = obj->me;
-
-  FrameDestination* param8 = ObjectWrap::Unwrap<FrameDestination>(args[0]->ToObject());
-  owt_base::FrameDestination* out = param8->dest;
-
-  me->disconnect(out);
-}
-
-void VideoGstAnalyzerWrap::setInputParam(const FunctionCallbackInfo<Value>& args){
   Isolate* isolate = Isolate::GetCurrent();
   HandleScope scope(isolate);
   VideoGstAnalyzerWrap* obj = ObjectWrap::Unwrap<VideoGstAnalyzerWrap>(args.Holder());
@@ -170,8 +80,47 @@ void VideoGstAnalyzerWrap::setInputParam(const FunctionCallbackInfo<Value>& args
   String::Utf8Value param7(args[6]->ToString());
   std::string pluginName = std::string(*param7);
 
-  me->setInputParam(codec,width,height,framerateFPS,bitrateKbps,
+  bool result = me->createPipeline(codec,width,height,framerateFPS,bitrateKbps,
                        keyFrameIntervalSeconds,algorithm,pluginName);
+
+  args.GetReturnValue().Set(Number::New(isolate, result));
+}
+
+void VideoGstAnalyzerWrap::clearPipeline(const FunctionCallbackInfo<Value>& args){
+  Isolate* isolate = Isolate::GetCurrent();
+  HandleScope scope(isolate);
+  VideoGstAnalyzerWrap* obj = ObjectWrap::Unwrap<VideoGstAnalyzerWrap>(args.Holder());
+  mcu::VideoGstAnalyzer* me = obj->me;
+
+  me->clearPipeline();
+}
+
+void VideoGstAnalyzerWrap::linkInput(const FunctionCallbackInfo<Value>& args){
+  Isolate* isolate = Isolate::GetCurrent();
+  HandleScope scope(isolate);
+
+  VideoGstAnalyzerWrap* obj = ObjectWrap::Unwrap<VideoGstAnalyzerWrap>(args.Holder());
+  mcu::VideoGstAnalyzer* me = obj->me;
+
+  unsigned int index = 0;
+
+  FrameSource* param8 = ObjectWrap::Unwrap<FrameSource>(args[0]->ToObject(Nan::GetCurrentContext()).ToLocalChecked());
+  owt_base::FrameSource* src = param8->src;
+
+  bool result = me->linkInput(src);
+  args.GetReturnValue().Set(Number::New(isolate, result));
+}
+
+void VideoGstAnalyzerWrap::removeOutput(const FunctionCallbackInfo<Value>& args){
+  Isolate* isolate = Isolate::GetCurrent();
+  HandleScope scope(isolate);
+  VideoGstAnalyzerWrap* obj = ObjectWrap::Unwrap<VideoGstAnalyzerWrap>(args.Holder());
+  mcu::VideoGstAnalyzer* me = obj->me;
+
+  FrameDestination* param8 = ObjectWrap::Unwrap<FrameDestination>(args[0]->ToObject());
+  owt_base::FrameDestination* out = param8->dest;
+
+  me->removeOutput(out);
 }
 
 void VideoGstAnalyzerWrap::addOutput(const FunctionCallbackInfo<Value>& args){
@@ -180,13 +129,11 @@ void VideoGstAnalyzerWrap::addOutput(const FunctionCallbackInfo<Value>& args){
   VideoGstAnalyzerWrap* obj = ObjectWrap::Unwrap<VideoGstAnalyzerWrap>(args.Holder());
   mcu::VideoGstAnalyzer* me = obj->me;
 
-  unsigned int index = 0;
-
-  index = args[0]->Uint32Value();
-  FrameDestination* param8 = ObjectWrap::Unwrap<FrameDestination>(args[1]->ToObject());
+  FrameDestination* param8 = ObjectWrap::Unwrap<FrameDestination>(args[0]->ToObject(Nan::GetCurrentContext()).ToLocalChecked());
   owt_base::FrameDestination* out = param8->dest;
 
-  me->addOutput(index, out);
+  bool result = me->addOutput(out);
+  args.GetReturnValue().Set(Number::New(isolate, result));
 }
 
 void VideoGstAnalyzerWrap::addEventListener(const FunctionCallbackInfo<Value>& args)
