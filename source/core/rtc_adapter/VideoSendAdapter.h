@@ -82,7 +82,6 @@ private:
 
     std::unique_ptr<webrtc::RtcEventLog> m_eventLog;
     std::unique_ptr<webrtc::RTPSenderVideo> m_senderVideo;
-    std::unique_ptr<webrtc::PlayoutDelayOracle> m_playoutDelayOracle;
     std::unique_ptr<webrtc::FieldTrialBasedConfig> m_fieldTrialConfig;
 
     // Listeners

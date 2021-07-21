@@ -179,6 +179,16 @@ bool VideoSendAdapterImpl::init()
     configuration.event_log = m_eventLog.get();
     configuration.retransmission_rate_limiter = m_retransmissionRateLimiter.get();
     configuration.local_media_ssrc = m_ssrc; //rtp_config.ssrcs[i];
+    // TODO: enable UlpfecGenerator
+    // should follow similar logic as
+    // webrtc/call/rtp_video_sender.cc:MaybeCreateFecGenerator()
+    // for creating the fec genetator,
+    // instead of hardcoding it to ulpfec_generator.
+    /*
+    std::make_unique<UlpfecGenerator>(
+        rtp.ulpfec.red_payload_type, rtp.ulpfec.ulpfec_payload_type, clock);
+    configuration.fec_generator = fec_generator.get();
+    */
 
     m_rtpRtcp = webrtc::RtpRtcp::Create(configuration);
     m_rtpRtcp->SetSendingStatus(true);
@@ -202,21 +212,15 @@ bool VideoSendAdapterImpl::init()
     m_rtpRtcp->SetMaxRtpPacketSize(kMaxRtpPacketSize);
 
     webrtc::RTPSenderVideo::Config video_config;
-    m_playoutDelayOracle = std::make_unique<webrtc::PlayoutDelayOracle>();
     m_fieldTrialConfig = std::make_unique<webrtc::FieldTrialBasedConfig>();
     video_config.clock = configuration.clock;
     video_config.rtp_sender = m_rtpRtcp->RtpSender();
     video_config.field_trials = m_fieldTrialConfig.get();
-    video_config.playout_delay_oracle = m_playoutDelayOracle.get();
     if (m_config.red_payload) {
         video_config.red_payload_type = m_config.red_payload;
     }
-    if (m_config.ulpfec_payload) {
-        video_config.ulpfec_payload_type = m_config.ulpfec_payload;
-    }
 
     m_senderVideo = std::make_unique<webrtc::RTPSenderVideo>(video_config);
-    // m_params = std::make_unique<RtpPayloadParams>(m_ssrc, nullptr);
     m_taskRunner->RegisterModule(m_rtpRtcp.get());
 
     return true;
@@ -279,9 +283,9 @@ void VideoSendAdapterImpl::onFrame(const Frame& frame)
             timeStamp,
             timeStamp,
             rtc::ArrayView<const uint8_t>(frame.payload, frame.length),
-            nullptr,
             h,
-            m_rtpRtcp->ExpectedRetransmissionTimeMs());
+            m_rtpRtcp->ExpectedRetransmissionTimeMs(),
+            0);
     } else if (frame.format == FRAME_FORMAT_VP9) {
         h.codec = webrtc::VideoCodecType::kVideoCodecVP9;
         auto& vp9_header = h.video_type_header.emplace<RTPVideoHeaderVP9>();
@@ -294,9 +298,10 @@ void VideoSendAdapterImpl::onFrame(const Frame& frame)
             timeStamp,
             timeStamp,
             rtc::ArrayView<const uint8_t>(frame.payload, frame.length),
-            nullptr,
             h,
-            m_rtpRtcp->ExpectedRetransmissionTimeMs());
+            m_rtpRtcp->ExpectedRetransmissionTimeMs(),
+            0);
+
     } else if (frame.format == FRAME_FORMAT_H264 || frame.format == FRAME_FORMAT_H265) {
         int frame_length = frame.length;
         if (m_enableDump) {
@@ -315,24 +320,10 @@ void VideoSendAdapterImpl::onFrame(const Frame& frame)
         int nalu_start_offset = 0;
         int nalu_end_offset = 0;
         int sc_len = 0;
-        RTPFragmentationHeader frag_info;
 
-        h.codec = (frame.format == FRAME_FORMAT_H264) ? webrtc::VideoCodecType::kVideoCodecH264 : webrtc::VideoCodecType::kVideoCodecH265;
-        while (buffer_length > 0) {
-            nalu_found_length = findNALU(buffer_start, buffer_length, &nalu_start_offset, &nalu_end_offset, &sc_len);
-            if (nalu_found_length < 0) {
-                /* Error, should never happen */
-                break;
-            } else {
-                /* SPS, PPS, I, P*/
-                uint16_t last = frag_info.fragmentationVectorSize;
-                frag_info.VerifyAndAllocateFragmentationHeader(last + 1);
-                frag_info.fragmentationOffset[last] = nalu_start_offset + (buffer_start - frame.payload);
-                frag_info.fragmentationLength[last] = nalu_found_length;
-                buffer_start += (nalu_start_offset + nalu_found_length);
-                buffer_length -= (nalu_start_offset + nalu_found_length);
-            }
-        }
+        h.codec = (frame.format == FRAME_FORMAT_H264) ?
+            webrtc::VideoCodecType::kVideoCodecH264 :
+            webrtc::VideoCodecType::kVideoCodecH265;
 
         boost::shared_lock<boost::shared_mutex> lock(m_rtpRtcpMutex);
         if (frame.format == FRAME_FORMAT_H264) {
@@ -343,9 +334,9 @@ void VideoSendAdapterImpl::onFrame(const Frame& frame)
                 timeStamp,
                 timeStamp,
                 rtc::ArrayView<const uint8_t>(frame.payload, frame.length),
-                &frag_info,
                 h,
-                m_rtpRtcp->ExpectedRetransmissionTimeMs());
+                m_rtpRtcp->ExpectedRetransmissionTimeMs(),
+                0);
         } else {
             h.video_type_header.emplace<RTPVideoHeaderH265>();
             m_senderVideo->SendVideo(
@@ -354,9 +345,9 @@ void VideoSendAdapterImpl::onFrame(const Frame& frame)
                 timeStamp,
                 timeStamp,
                 rtc::ArrayView<const uint8_t>(frame.payload, frame.length),
-                &frag_info,
                 h,
-                m_rtpRtcp->ExpectedRetransmissionTimeMs());
+                m_rtpRtcp->ExpectedRetransmissionTimeMs(),
+                0);
         }
     }
 }

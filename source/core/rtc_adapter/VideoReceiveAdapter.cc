@@ -4,7 +4,6 @@
 
 #include "VideoReceiveAdapter.h"
 
-#include <common_types.h>
 #include <future>
 #include <modules/video_coding/include/video_error_codes.h>
 #include <modules/video_coding/timing.h>
@@ -210,6 +209,7 @@ void VideoReceiveAdapterImpl::CreateReceiveVideo()
             default_config.renderer = this;
 
             webrtc::VideoReceiveStream::Config video_recv_config(default_config.Copy());
+            video_recv_config.decoder_factory = this;
             video_recv_config.decoders.clear();
             /*
             if (!video_send_config.rtp.rtx.ssrcs.empty()) {
@@ -219,7 +219,6 @@ void VideoReceiveAdapterImpl::CreateReceiveVideo()
             }
             */
             webrtc::VideoReceiveStream::Decoder decoder;
-            decoder.decoder_factory = this;
             // Add VP8 decoder
             decoder.payload_type = VP8_90000_PT;
             decoder.video_format = webrtc::SdpVideoFormat(

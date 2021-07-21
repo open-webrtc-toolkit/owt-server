@@ -14,24 +14,29 @@ SsrcGenerator* SsrcGenerator::GetSsrcGenerator() {
 }
 
 uint32_t SsrcGenerator::CreateSsrc() {
-  rtc::CritScope lock(&crit_);
+  mutex_.Lock();
 
   while (true) {  // Try until get a new ssrc.
     uint32_t ssrc = random_.Rand(1u, 0xfffffffe);
     if (ssrcs_.insert(ssrc).second) {
+      mutex_.Unlock();
       return ssrc;
     }
   }
+  mutex_.Unlock();
 }
 
 void SsrcGenerator::RegisterSsrc(uint32_t ssrc) {
-  rtc::CritScope lock(&crit_);
+  mutex_.Lock();
   ssrcs_.insert(ssrc);
+  mutex_.Unlock();
+
 }
 
 void SsrcGenerator::ReturnSsrc(uint32_t ssrc) {
-  rtc::CritScope lock(&crit_);
+  mutex_.Lock();
   ssrcs_.erase(ssrc);
+  mutex_.Unlock();
 }
 
 SsrcGenerator::SsrcGenerator() : random_(rtc::TimeMicros()) {}
