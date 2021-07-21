@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 #include "AcmmFrameMixer.h"
+#include "AudioUtilities.h"
 
 namespace mcu {
 
@@ -45,12 +46,14 @@ AcmmFrameMixer::AcmmFrameMixer()
     m_groupIds[0] = false;
     m_broadcastGroup.reset(new AcmmBroadcastGroup());
 
-    m_jobTimer.reset(new JobTimer(MIXER_FREQUENCY, this));
+    m_running = true;
+    m_thread = boost::thread(&AcmmFrameMixer::performMix, this);
 }
 
 AcmmFrameMixer::~AcmmFrameMixer()
 {
-    m_jobTimer->stop();
+    m_running = false;
+    m_thread.join();
 
     boost::unique_lock<boost::shared_mutex> lock(m_mutex);
 
@@ -484,15 +487,30 @@ void AcmmFrameMixer::updateFrequency()
     return;
 }
 
-void AcmmFrameMixer::onTimeout()
-{
-    performMix();
-}
-
 void AcmmFrameMixer::performMix()
 {
-    boost::upgrade_lock<boost::shared_mutex> lock(m_mutex);
-    m_mixerModule->Process();
+    int64_t currTime;
+    int64_t nextTime = currentTimeMs() + MIXER_INTERVAL_MS;
+    while(true) {
+        currTime = currentTimeMs();
+        if (nextTime > currTime) {
+            ELOG_TRACE("performMix, waiting for the next time %ld, sleep %ld ms", nextTime, nextTime-currTime);
+            usleep((nextTime - currTime) * 1000);
+        } else {
+            ELOG_WARN("performMix, processing too slow, current time %ld, next time %ld", currTime, nextTime);
+        }
+
+        {
+            boost::upgrade_lock<boost::shared_mutex> lock(m_mutex);
+            m_mixerModule->Process();
+        }
+        
+        if (!m_running) {
+            break;
+        }
+        
+        nextTime += MIXER_INTERVAL_MS;
+    }
 }
 
 void AcmmFrameMixer::NewMixedAudio(int32_t id,
