@@ -71,7 +71,7 @@ void QuicIn::onData(uint32_t session_id, uint32_t stream_id, char* buf, uint32_t
     if (m_receivedBytes + len >= m_bufferSize) {
         m_bufferSize += (m_receivedBytes + len);
         std::cout << "new_bufferSize: " << m_bufferSize << std::endl;
-        boost::shared_array<uint8_t> new_buffer;
+        boost::shared_array<char> new_buffer;
         new_buffer.reset(new char[m_bufferSize]);
         if (new_buffer.get()) {
             memcpy(new_buffer.get(), m_receiveData.buffer.get(), m_receivedBytes);
