@@ -302,6 +302,11 @@ class InternalConnectionRouter {
     }
   }
 
+  onFaultDetected(message)
+  {
+      log.error('Internal connection router detected error ' + JSON.stringify(message));
+  }
+
 }
 
 exports.InternalConnectionRouter = InternalConnectionRouter;

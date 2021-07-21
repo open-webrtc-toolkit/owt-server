@@ -13,6 +13,7 @@ CLEANUP=false
 NO_INTERNAL=false
 INCR_INSTALL=false
 ONLY_INSTALL=""
+ENABLE_WEBTRANSPORT=false
 SUDO=""
 
 if [[ $EUID -ne 0 ]]; then
@@ -33,6 +34,9 @@ parse_arguments(){
         ;;
       "--incremental")
         INCR_INSTALL=true
+        ;;
+      "--enable-webtransport")
+        ENABLE_WEBTRANSPORT=true
         ;;
       "--only")
         shift

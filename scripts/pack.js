@@ -606,6 +606,9 @@ function packScripts() {
   execSync(`cp -a ${rootDir}/scripts/release/package.mcu.json ${distDir}/package.json`);
   execSync(`cp -a ${rootDir}/third_party/NOTICE ${distDir}`);
   execSync(`cp -a ${rootDir}/third_party/ThirdpartyLicenses.txt ${distDir}`);
+  if (process.env.GITHUB_ACTION) {
+    execSync(`cp -a ${rootDir}/scripts/release/init-webtransport.sh ${binDir}`);
+  }
   if (options.binary) {
     execSync(`cp -a ${rootDir}/scripts/release/daemon-bin.sh ${binDir}/daemon.sh`);
   } else {

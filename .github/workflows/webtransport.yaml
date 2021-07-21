@@ -1,0 +1,82 @@
+name: WebTransport E2E Test
+
+on: [push, pull_request]
+
+jobs:
+  ci:
+    runs-on: ubuntu-18.04
+    services:
+      rabbitmq:
+          image: rabbitmq:latest
+          ports:
+            - 5672:5672
+    steps:
+      - uses: actions/checkout@v2
+        name: Checkout server code
+      - uses: actions/checkout@v2
+        name: Checkout JavaScript SDK and sample
+        with:
+          repository: open-webrtc-toolkit/owt-client-javascript
+          path: third_party/owt-client-javascript/
+      - uses: actions/setup-node@v2
+        with:
+          node-version: "10"
+      - uses: actions/setup-python@v2
+        with:
+          python-version: '3.x'
+      - run: npm install
+        name: Install dependencies for JavaScript SDK
+        working-directory: third_party/owt-client-javascript/scripts
+      - run: mkdir -p third_party/quic-transport
+        name: Create directory for QUIC SDK
+      - name: Download QUIC SDK
+        uses: dawidd6/action-download-artifact@v2
+        with:
+          github_token: ${{secrets.GITHUB_TOKEN}}
+          workflow: ci.yaml
+          branch: main
+          event: push
+          name: quic-sdk-ubuntu-x64-ci
+          path: third_party/quic-transport
+          repo: open-webrtc-toolkit/owt-sdk-quic
+      - name: Generate certificates
+        run: |
+          wget https://chromium.googlesource.com/chromium/src/+archive/refs/tags/93.0.4575.1/net/tools/quic/certs.tar.gz
+          tar xvzf certs.tar.gz
+          ./generate-certs.sh
+          openssl pkcs12 -inkey out/leaf_cert.key -in out/leaf_cert.pem -export -out out/leaf_cert.pfx -passout pass:abc123
+        working-directory: ./source/agent/quic/e2e-test/scripts
+      - name: Install dependencies
+        run: ./installDepsUnattended.sh
+        working-directory: ./scripts
+      - run: grunt
+        name: Build JavaScript SDK and sample release package
+        working-directory: third_party/owt-client-javascript/scripts
+      - name: Build and pack server
+        run: |
+         ./scripts/build.js -t quic -t internal-io -t logger -c
+         ./scripts/pack.js -t conference-agent -t quic-agent -t management-api -t cluster-manager -t portal -p third_party/owt-client-javascript/dist/samples/conference -i
+      - name: Start server
+        run: |
+          cp ./source/agent/quic/e2e-test/scripts/out/leaf_cert.pfx dist/quic_agent/cert/certificate.pfx
+          cp ./source/agent/quic/e2e-test/config/management_api.toml dist/management_api/management_api.toml
+          cp ./source/agent/quic/e2e-test/config/quic_agent.toml dist/quic_agent/agent.toml
+          cp ./source/agent/quic/e2e-test/config/portal.toml dist/portal/portal.toml
+          cp ./source/agent/quic/e2e-test/service/rest_service.js dist/apps/current_app/samplertcservice.js
+          ./dist/bin/init-webtransport.sh
+      - name: Prepare testing environment
+        run: python3 prepare.py
+        working-directory: ./source/agent/quic/e2e-test/scripts
+      - run: npm install
+        name: Install dependencies for E2E test
+        working-directory: ./source/agent/quic/e2e-test
+      - run: node_modules/karma/bin/karma start e2e-test/config/karma.config.js --cert_fingerprint="$(openssl x509 -noout -fingerprint -sha256 -inform pem -in e2e-test/scripts/out/leaf_cert.pem | cut -c20-124)"
+        working-directory: ./source/agent/quic
+        name: Run E2E tests
+      - uses: actions/upload-artifact@v2
+        name: Upload log
+        with:
+          name: log
+          path: dist/logs
+          retention-days: 1
+        if: ${{ always() }}

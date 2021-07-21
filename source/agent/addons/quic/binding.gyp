@@ -35,7 +35,6 @@
     ],
     'include_dirs': [
       "<!(node -e \"require('nan')\")",
-      'conn_handler',
       '../../../core/common',
       '../../../core/owt_base',
       '$(DEFAULT_DEPENDENCY_PATH)/include',
@@ -44,10 +43,9 @@
     ],
     'ldflags': [
       '-Wl,--no-as-needed',
-      '-Wl,-rpath,/home/jianjunz/code/quic/src/out/debug',
       '-L$(DEFAULT_DEPENDENCY_PATH)/lib',
+      '-Wl,-rpath,$(DEFAULT_DEPENDENCY_PATH)/lib',
       '-fPIC',
-      '-L/home/jianjunz/code/quic/src/out/debug',
     ],
     'cflags_cc!': [
       '-std=gnu++0x',
