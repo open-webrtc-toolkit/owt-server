@@ -235,12 +235,22 @@ void VideoGstAnalyzer::destroyPipeline()
     }
 }
 
-int VideoGstAnalyzer::createPipeline()
+bool VideoGstAnalyzer::createPipeline(std::string codec, int width, int height,
+    int framerate, int bitrate, int kfi, std::string algo, std::string pluginName)
 {
+    this->inputcodec = codec;
+    this->width = width;
+    this->height = height;
+    this->framerate = framerate;
+    this->bitrate = bitrate;
+    this->kfi = kfi;
+    this->algo = algo;
+    this->libraryName = pluginName;
+
     pipelineHandle = dlopen(libraryName.c_str(), RTLD_LAZY);
     if (pipelineHandle == nullptr) {
         ELOG_ERROR_T("Failed to open the plugin.(%s)", libraryName.c_str());
-        return -1;
+        return false;
     }
 
     createPlugin = (rva_create_t*)dlsym(pipelineHandle, "CreatePipeline");
@@ -249,14 +259,14 @@ int VideoGstAnalyzer::createPipeline()
     if (createPlugin == nullptr || destroyPlugin == nullptr) {
         ELOG_ERROR_T("Failed to get plugin interface.");
         dlclose(pipelineHandle);
-        return -1;
+        return false;
     }
 
     pipeline_ = createPlugin();
     if (pipeline_ == nullptr) {
         ELOG_ERROR_T("Failed to create the plugin.");
         dlclose(pipelineHandle);
-        return -1;
+        return false;
     }
 
     std::unordered_map<std::string, std::string> plugin_config_map = {
@@ -273,17 +283,24 @@ int VideoGstAnalyzer::createPipeline()
     if (!pipeline) {
         ELOG_ERROR("pipeline Initialization failed\n");
         dlclose(pipelineHandle);
-        return -1;
+        return false;
     }
 
     loop = g_main_loop_new(NULL, FALSE);
 
     m_bus = gst_pipeline_get_bus(GST_PIPELINE(pipeline));
     m_bus_watch_id = gst_bus_add_watch(m_bus, StreamEventCallBack, this);
+
+    rvaStatus status = pipeline_->LinkElements();
+    if(status != RVA_ERR_OK) {
+       ELOG_ERROR("Link element failed with rvastatus:%d\n",status);
+       dlclose(pipelineHandle);
+       return false; 
+    }
  
     gst_object_unref(m_bus);
 
-    return 0;
+    return true;
 };
 
 void VideoGstAnalyzer::start_feed (GstElement * source, guint size, gpointer data)
@@ -344,33 +361,6 @@ void VideoGstAnalyzer::new_sample_from_sink (GstElement * source, gpointer data)
     gst_sample_unref(sample);
 }
 
-int VideoGstAnalyzer::addElementMany()
-{
-    if(pipeline_){
-        rvaStatus status = pipeline_->LinkElements();
-        if(status != RVA_ERR_OK) {
-           ELOG_ERROR("Link element failed with rvastatus:%d\n",status);
-           return -1; 
-        }
-    }
-
-    source = gst_bin_get_by_name (GST_BIN (pipeline), "appsource");
-    if (!source) {
-        ELOG_ERROR("appsrc in pipeline does not be created\n");
-        return -1;
-    }
-
-    sink = gst_bin_get_by_name (GST_BIN (pipeline), "appsink");
-    if (!sink) {
-        ELOG_ERROR("There is no appsink in pipeline\n");
-    }
-
-    g_signal_connect (source, "need-data", G_CALLBACK (start_feed), this);
-    g_signal_connect (source, "enough-data", G_CALLBACK (stop_feed), this);
-
-    return 0;
-}
-
 
 void VideoGstAnalyzer::stopLoop()
 {
@@ -396,72 +386,70 @@ void VideoGstAnalyzer::setState(GstState newstate)
 } 
 
 
-int VideoGstAnalyzer::setPlaying()
+void VideoGstAnalyzer::setPlaying()
 {
 
     setState(GST_STATE_PLAYING);
-
     m_thread = g_thread_create((GThreadFunc)main_loop_thread,NULL,TRUE,NULL);
-
-    return 0;
 }
 
-void VideoGstAnalyzer::emitListenTo(int minPort, int maxPort, std::string ticket) {
-    m_internalin.reset(new GstInternalIn((GstAppSrc*)source, minPort, maxPort, ticket));
-    m_internalin->setFramerate(this->framerate);
-}
+bool VideoGstAnalyzer::linkInput(owt_base::FrameSource* videosource) {
+    assert(videosource);
 
-void VideoGstAnalyzer::addOutput(int connectionID, owt_base::FrameDestination* out)
-{
-    ELOG_DEBUG("Add analyzed stream back to OWT\n");
+    source = gst_bin_get_by_name (GST_BIN (pipeline), "appsource");
+    if (!source) {
+        ELOG_ERROR("appsrc in pipeline is not created\n");
+        return false;
+    }
+
+    m_internalin.reset(new GstInternalIn((GstAppSrc*)source, this->framerate));
+
+    sink = gst_bin_get_by_name (GST_BIN (pipeline), "appsink");
     if (sink != nullptr){
+        if(m_gstinternalout == nullptr) {
+            m_gstinternalout.reset(new GstInternalOut());
+        }
 
         if(encoder_pad == nullptr) {
             GstElement *encoder = gst_bin_get_by_name (GST_BIN (pipeline), "encoder");
             encoder_pad = gst_element_get_static_pad(encoder, "src");
-            if(m_gstinternalout == nullptr) {
-                m_gstinternalout.reset(new GstInternalOut());
-            }
             m_gstinternalout->setPad(encoder_pad);
         }
 
-        m_gstinternalout->addVideoDestination(out);
         if(!addlistener) {
             g_object_set (G_OBJECT (sink), "emit-signals", TRUE, "sync", FALSE, NULL);
             g_signal_connect (sink, "new-sample", G_CALLBACK (new_sample_from_sink), this);
             addlistener = true;
         }
     } else {
+        ELOG_ERROR("There is no appsink in pipeline\n");
+    }
+
+    g_signal_connect (source, "need-data", G_CALLBACK (start_feed), this);
+    g_signal_connect (source, "enough-data", G_CALLBACK (stop_feed), this);
+    videosource->addVideoDestination(m_internalin.get());
+
+    setPlaying();
+    return true;
+}
+
+bool VideoGstAnalyzer::addOutput(owt_base::FrameDestination* out)
+{
+    ELOG_DEBUG("Add analyzed stream back to OWT\n");
+    if (sink != nullptr){
+        m_gstinternalout->addVideoDestination(out);
+        return true;
+    } else {
         ELOG_ERROR("No appsink in pipeline\n");
+        return false;
     }
     
 }
 
-void VideoGstAnalyzer::disconnect(owt_base::FrameDestination* out)
+void VideoGstAnalyzer::removeOutput(owt_base::FrameDestination* out)
 {
     ELOG_DEBUG("Disconnect remote connection\n");
     m_gstinternalout->removeVideoDestination(out);
-}
-
-int VideoGstAnalyzer::getListeningPort()
-{
-    int listeningPort; 
-    listeningPort = m_internalin->getListeningPort();
-    ELOG_DEBUG(">>>>>Listen port is :%d\n", listeningPort);
-    return listeningPort; 
-}
-
-void VideoGstAnalyzer::setInputParam(std::string codec, int width, int height,
-    int framerate, int bitrate, int kfi, std::string algo, std::string libraryName)
-{
-    this->inputcodec = codec;
-    this->width = width;
-    this->height = height;
-    this->framerate = framerate;
-    this->bitrate = bitrate;
-    this->kfi = kfi;
-    this->algo = algo;
-    this->libraryName = libraryName;
 }
 
 }
