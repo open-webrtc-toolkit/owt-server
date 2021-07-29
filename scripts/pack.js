@@ -403,6 +403,7 @@ function getAddonLibs(addonPath) {
   env['LD_LIBRARY_PATH'] = path.join(depsDir, 'lib') +
     ':' + path.join(rootDir, 'third_party/openh264') +
     ':' + path.join(rootDir, 'third_party/quic-lib/dist/lib') +
+    ':' + '/opt/intel/mediasdk/lib64' + 
     ':' + env['LD_LIBRARY_PATH'];
 
   return exec(`ldd ${addonPath} | grep '=>' | awk '{print $3}' | sort | uniq | grep -v "^("`, { env })
