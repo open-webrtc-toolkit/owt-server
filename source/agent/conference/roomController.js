@@ -1473,7 +1473,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                                                                 framerate: streamInfo.media.video.framerate,
                                                                 subscribers: [],
                                                                 status: 'active'} : undefined,
-                                     data: streamInfo.data,
+                                     data: streamInfo.data?{subscribers:[], status:'active'}:undefined,
                                      spread: []
                                      };
                 terminals[terminal_id].published.push(streamId);
@@ -1604,7 +1604,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                         terminals[terminal_id].subscribed[subscriptionId] = {};
                         for (const [kind, streamId] of createMapForSources(audioStream, videoStream, dataStream)) {
                             if (streamId) {
-                                streams[streamId][kind].subscriber = streams[streamId][kind].subscribers || [];
+                                streams[streamId][kind].subscribers = streams[streamId][kind].subscribers || [];
                                 streams[streamId][kind].subscribers.push(terminal_id);
                                 terminals[terminal_id].subscribed[subscriptionId][kind] = streamId;
                             }
