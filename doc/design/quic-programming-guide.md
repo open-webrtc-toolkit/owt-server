@@ -3,22 +3,24 @@
 
 # Overview
 
-OWT QUIC SDK and Client SDKs provides the APIs for enabling WebTransport for reliable data transmission over QUIC protocol with OWT Conference Server.
+OWT QUIC SDK and Client SDKs provides the APIs for enabling WebTransport over HTTP/3 for reliable data transmission with OWT Conference Server.
+
+OWT conference server and C++ SDK only support WebTransport over HTTP/3. We don't have a plan to support WebTransport over other protocols.
 
 # Scope
 
 This document describes the programming models and API interfaces for following usage scenarios.
 
-- Deploying a QUIC conference server that is capable of forwarding data over QUIC channel.
+- Deploying a conference server that is capable of forwarding data over WebTransport.
 - Implementing client application that is capable of sending data to QUIC server or receiving data from it.
 
 Description of the details of WebTransport is outside the scope of this document.
 
-# Related Repos
+# Related Repositories
 
 Below are the repo locations of current SDK and server implementations:
 
-- OWT QUIC C++ SDK: [https://github.com/open-webrtc-toolkit/owt-deps-quic](https://github.com/open-webrtc-toolkit/owt-sdk-quic) This is the C++ implementation of Server-side and Client-side SDK, and is the base of enabling QUIC agent on server, and QUIC conference SDK on client.
+- OWT QUIC SDK: [https://github.com/open-webrtc-toolkit/owt-sdk-quic](https://github.com/open-webrtc-toolkit/owt-sdk-quic) This is the C++ implementation of Server-side and Client-side SDK, and is the base of enabling QUIC agent on server, and QUIC conference SDK on client.
 - OWT Conference server: [https://github.com/open-webrtc-toolkit/owt-server](https://github.com/open-webrtc-toolkit/owt-server/pull/113). This is the server repo that supports forwarding of QUIC streams.
 - OWT JavaScript SDK: [https://github.com/open-webrtc-toolkit/owt-client-javascript](https://github.com/open-webrtc-toolkit/owt-client-javascript) This is the repo for enabling QUIC client on browser.
 - OWT Native SDK: [https://github.com/open-webrtc-toolkit/owt-client-native](https://github.com/open-webrtc-toolkit/owt-client-native) This is the client SDK repo for enabling QUIC support using OWT conferencing API.
@@ -31,13 +33,13 @@ The topology of components is shown in below diagram:
 
 There are a few components involved and their relationships with streaming using WebTransport are described as below:
 
-## OWT QUIC C++ SDK
+## OWT QUIC SDK
 
-This is the foundation of WebTransport implementation in OWT. It provides the APIs to create WebTransport over HTTP/3 clients and server forming a C/S architecture. Basically you can directly build your WebTransport applications using the QUIC C++ SDK client API if you're not using the OWT native SDK.
+This is the foundation of WebTransport implementation in OWT. It provides the APIs to create WebTransport over HTTP/3 clients and server forming a C/S architecture. Basically you can directly build your WebTransport applications using the QUIC SDK client API if you're not using the OWT native SDK.
 
 ## OWT Native SDK for Conference
 
-The OWT conference SDK built upon OWT QUIC C++ SDK client API. It is used in combination with OWT QUIC conference server when you rely on OWT signaling protocol for WebTransport connection setup as well as stream forwarding.
+The OWT conference SDK built upon OWT QUIC SDK client API. It is used in combination with OWT QUIC conference server when you rely on OWT signaling protocol for WebTransport connection setup as well as stream forwarding.
 
 ## OWT QUIC Conference Server
 
@@ -47,11 +49,11 @@ The OWT QUIC conference server implements the signaling protocol for WebTranspor
 
 Used together with OWT QUIC conference server, to build Web-based QUIC applications. Useful when the QUIC streaming application is implemented using Web API.
 
-# How to build OWT QUIC C++ SDK
+# How to build OWT QUIC SDK
 
-Please follow [OWT QUIC C++ SDK build instruction](https://github.com/open-webrtc-toolkit/owt-deps-quic/blob/master/quic_transport/docs/build_instructions.md) to build the SDK.
+Please follow [OWT QUIC SDK build instruction](https://github.com/open-webrtc-toolkit/owt-sdk-quic/blob/master/quic_transport/docs/build_instructions.md) to build the SDK.
 
-# OWT QUIC C++ SDK API
+# OWT QUIC SDK API
 
 In this section we provide a detailed description of the APIs provided by OWT QUIC SDK.
 
@@ -73,7 +75,7 @@ The server API calling flow is shown in below diagram and table.
 | 8 | Application creates WebTransportStream::Visitor instance and invokes WebTransportStreamInterface::SetVisitor(). |
 | 9 | Application reads the WebTransportStream when OnCanRead is invoked on the WebTransportStream::Visitor; or write to the WebTransportStream when OnCanWrite is invoked on the WebTransportStreamVisitor; |
 
-## OWT QUIC C++ SDK Client API Calling Flow
+## OWT QUIC SDK Client API Calling Flow
 
 The client API calling flow is shown in below diagram and table. It's similar as the server side calling flow except the WebTransportFactory creates a WebTransportClientInterface, instead of a WebTransportServerInterface, and client needs to call Connect() instead of Start() to get a WebTransportSession.
 
@@ -91,13 +93,13 @@ The client API calling flow is shown in below diagram and table. It's similar as
 | 8 | Application creates WebTransportStream::Visitor instance and invokes WebTransportStreamInterface::SetVisitor(). |
 | 9 | Application reads the WebTransportStream when OnCanRead is invoked on the WebTransportStream::Visitor; or write to the WebTransportStream when OnCanWrite is invoked on the WebTransportStreamVisitor; |
 
-## Details of Callbacks and Data Structures of QUIC C++ SDK
+## Details of Callbacks and Data Structures of QUIC SDK
 
-Please refer to [QUIC C++ SDK APIs](https://github.com/open-webrtc-toolkit/owt-deps-quic/tree/master/quic_transport/api/owt/quic) for the detailed API list and document.
+Please refer to [QUIC SDK APIs](https://github.com/open-webrtc-toolkit/owt-sdk-quic/tree/main/web_transport/sdk/api/) for the detailed API list and document.
 
-## Samples of QUIC C++ SDK
+## Samples of QUIC SDK
 
-Please refer to [QUIC C++ SDK sample](https://github.com/open-webrtc-toolkit/owt-deps-quic/blob/master/quic_transport/impl/tests/quic_transport_owt_end_to_end_test.cc) on how to use the server and client APIs.
+Please refer to [QUIC SDK sample](https://github.com/open-webrtc-toolkit/owt-sdk-quic/blob/main/web_transport/sdk/impl/tests/web_transport_owt_end_to_end_test.cc) on how to use the server and client APIs.
 
 # OWT Native Conference SDK
 
@@ -120,6 +122,15 @@ Please see the conference sample application for more detailed usage.
 # OWT QUIC Conference Server
 
 Please follow [Conference Server build instructions](https://github.com/open-webrtc-toolkit/owt-server/blob/master/README.md) on how to build and deploy the conference server.
+
+## Build Conference Server with QUIC agent
+
+Because we don't have a good place to store pre-built QUIC SDK for public access, QUIC agent is not enabled by default. Additional flags are required to enable QUIC agent.
+
+1. Download QUIC SDK from the URL specified [here](https://github.com/open-webrtc-toolkit/owt-server/blob/master/source/agent/addons/quic/quic_sdk_url). QUIC SDK is hosted on GitHub as an artifact. You will need to follow [this description](https://docs.github.com/en/rest/reference/actions#download-an-artifact) to make a REST request to GitHub. Or you can download the latest QUIC SDK from [GitHub Actions](https://github.com/open-webrtc-toolkit/owt-sdk-quic/actions) tab. Commits pushed to main branch have artifact for downloading.
+1. After running `installDeps.sh`, put headers to build/libdeps/build/include, and put libraries(.so file) to build/libdeps/build/lib.
+1. Append `-t quic` to the arguments for build.js.
+1. Append `-t quic-agent` to the arguments for pack.js.
 
 ## How to use Pre-built Conference Server Binary
 
