@@ -115,6 +115,9 @@ RtcAdapterImpl::~RtcAdapterImpl()
 
 void RtcAdapterImpl::initCall()
 {
+    if (m_callPtr) {
+        return;
+    }
     m_callPtr.reset(new CallPtr());
     std::shared_ptr<CallPtr> pCallPtr = m_callPtr;
     g_taskQueue->PostTask([pCallPtr]() {
