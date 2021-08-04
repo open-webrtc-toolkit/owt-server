@@ -39,6 +39,7 @@ class VideoReceiveAdapter {
 public:
     virtual int onRtpData(char* data, int len) = 0;
     virtual void requestKeyFrame() = 0;
+    virtual void setPreferredLayers(int spatialId, int temporalId) = 0;
 };
 
 class VideoSendAdapter {

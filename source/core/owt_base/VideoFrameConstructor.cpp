@@ -118,6 +118,14 @@ bool VideoFrameConstructor::setBitrate(uint32_t kbps)
     return true;
 }
 
+void VideoFrameConstructor::setPreferredLayers(int spatialId, int temporalId)
+{
+    if (m_videoReceive) {
+        m_videoReceive->setPreferredLayers(spatialId, temporalId);
+    }
+}
+
+
 void VideoFrameConstructor::onAdapterFrame(const Frame& frame)
 {
     if (m_enabled) {

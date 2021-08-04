@@ -43,6 +43,7 @@ class VideoFrameConstructor : public MediaSink, public owt_base::VideoInfoListen
   static NAN_METHOD(removeDestination);
 
   static NAN_METHOD(setBitrate);
+  static NAN_METHOD(setPreferredLayers);
 
   static NAN_METHOD(requestKeyFrame);
 

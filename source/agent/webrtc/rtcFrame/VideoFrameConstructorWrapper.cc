@@ -30,6 +30,7 @@ NAN_MODULE_INIT(VideoFrameConstructor::Init) {
   Nan::SetPrototypeMethod(tpl, "addDestination", addDestination);
   Nan::SetPrototypeMethod(tpl, "removeDestination", removeDestination);
   Nan::SetPrototypeMethod(tpl, "setBitrate", setBitrate);
+  Nan::SetPrototypeMethod(tpl, "setPreferredLayers", setPreferredLayers);
   Nan::SetPrototypeMethod(tpl, "requestKeyFrame", requestKeyFrame);
   Nan::SetPrototypeMethod(tpl, "source", source);
 
@@ -124,6 +125,16 @@ NAN_METHOD(VideoFrameConstructor::setBitrate) {
   int bitrate = info[0]->IntegerValue(Nan::GetCurrentContext()).ToChecked();
 
   me->setBitrate(bitrate);
+}
+
+NAN_METHOD(VideoFrameConstructor::setPreferredLayers) {
+  VideoFrameConstructor* obj = Nan::ObjectWrap::Unwrap<VideoFrameConstructor>(info.Holder());
+  owt_base::VideoFrameConstructor* me = obj->me;
+
+  int spatialId = info[0]->IntegerValue(Nan::GetCurrentContext()).ToChecked();
+  int temporalId = info[1]->IntegerValue(Nan::GetCurrentContext()).ToChecked();
+
+  me->setPreferredLayers(spatialId, temporalId);
 }
 
 NAN_METHOD(VideoFrameConstructor::requestKeyFrame) {

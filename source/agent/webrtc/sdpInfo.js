@@ -250,8 +250,9 @@ class SdpInfo {
       // }
 
       // Remove ulpfec if h264/h265 is selected
+      // vp9 for svc
       const selectedCodec = codecMap.get(selectedPayload);
-      if (['h264', 'h265'].includes(selectedCodec)) {
+      if (['h264', 'h265', 'vp9'].includes(selectedCodec)) {
         codecMap.forEach((codec, pt) => {
           if (codec === 'ulpfec') {
             relatedPayloads.delete(pt);

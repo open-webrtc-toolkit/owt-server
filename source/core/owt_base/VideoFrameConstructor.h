@@ -69,6 +69,8 @@ public:
 
     bool setBitrate(uint32_t kbps);
 
+    void setPreferredLayers(int spatialId, int temporalId);
+
 private:
     Config m_config;
 
