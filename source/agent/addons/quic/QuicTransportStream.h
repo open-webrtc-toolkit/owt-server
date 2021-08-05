@@ -9,12 +9,13 @@
 
 #include "owt/quic/web_transport_stream_interface.h"
 #include "../../core/owt_base/MediaFramePipeline.h"
+#include "../common/MediaFramePipelineWrapper.h"
 #include <logger.h>
 #include <nan.h>
 #include <mutex>
 #include <string>
 
-class QuicTransportStream : public owt_base::FrameSource, public owt_base::FrameDestination, public Nan::ObjectWrap, public owt::quic::WebTransportStreamInterface::Visitor {
+class QuicTransportStream : public owt_base::FrameSource, public owt_base::FrameDestination, public NanFrameNode, public owt::quic::WebTransportStreamInterface::Visitor {
     DECLARE_LOGGER();
 
 public:
@@ -44,6 +45,10 @@ public:
     // Overrides owt_base::FrameDestination.
     void onFrame(const owt_base::Frame&) override;
     void onVideoSourceChanged() override;
+
+    // Overrides NanFrameNode.
+    owt_base::FrameSource* FrameSource() override { return this; }
+    owt_base::FrameDestination* FrameDestination() override { return this; }
 
     static Nan::Persistent<v8::Function> s_constructor;
 
