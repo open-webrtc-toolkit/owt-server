@@ -149,11 +149,15 @@ void RtcAdapterImpl::initRtpTransportController()
 {
     if (!m_transportControllerSend) {
         RTC_LOG(LS_INFO) << "Init RtptransportcontrollerSend";
+        // Empty thread for pacer
+        std::unique_ptr<webrtc::ProcessThread> pacerThreadProxy =
+            std::make_unique<ProcessThreadProxy>(nullptr);
+
         m_transportControllerSend = std::make_shared<webrtc::RtpTransportControllerSend>(
             webrtc::Clock::GetRealTimeClock(), g_eventLog.get(),
             nullptr/*network_state_predicator_factory*/,
             nullptr/*network_controller_factory*/, webrtc::BitrateConstraints(),
-            nullptr/*pacer_thread*/, g_taskQueueFactory.get(), g_fieldTrial.get());
+            std::move(pacerThreadProxy)/*pacer_thread*/, g_taskQueueFactory.get(), g_fieldTrial.get());
         m_transportControllerSend->RegisterTargetTransferRateObserver(this);
     }
 }
