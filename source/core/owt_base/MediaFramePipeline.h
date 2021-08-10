@@ -22,6 +22,7 @@ enum FrameFormat {
     FRAME_FORMAT_VP9,
     FRAME_FORMAT_H264,
     FRAME_FORMAT_H265,
+    FRAME_FORMAT_AV1,
 
     FRAME_FORMAT_MSDK       = 300,
 
@@ -104,6 +105,8 @@ inline FrameFormat getFormat(const std::string& codec) {
         return owt_base::FRAME_FORMAT_VP9;
     } else if (codec == "h265") {
         return owt_base::FRAME_FORMAT_H265;
+    } else if (codec == "av1x") {
+        return owt_base::FRAME_FORMAT_AV1;
     } else if (codec == "pcm_48000_2" || codec == "pcm_raw") {
         return owt_base::FRAME_FORMAT_PCM_48000_2;
     } else if (codec == "pcmu") {
@@ -152,6 +155,8 @@ inline const char *getFormatStr(const FrameFormat &format) {
             return "H264";
         case FRAME_FORMAT_H265:
             return "H265";
+        case FRAME_FORMAT_AV1:
+            return "AV1X";
         case FRAME_FORMAT_PCM_48000_2:
             return "PCM_48000_2";
         case FRAME_FORMAT_PCMU:
@@ -205,7 +210,8 @@ inline bool isVideoFrame(const Frame& frame) {
           || frame.format == FRAME_FORMAT_VP8
           || frame.format == FRAME_FORMAT_VP9
           || frame.format == FRAME_FORMAT_H264
-          || frame.format == FRAME_FORMAT_H265;
+          || frame.format == FRAME_FORMAT_H265
+          || frame.format == FRAME_FORMAT_AV1;
 }
 
 inline bool isDataFrame(const Frame& frame) {

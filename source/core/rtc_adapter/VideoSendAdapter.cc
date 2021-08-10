@@ -349,6 +349,18 @@ void VideoSendAdapterImpl::onFrame(const Frame& frame)
                 m_rtpRtcp->ExpectedRetransmissionTimeMs(),
                 0);
         }
+    } else if (frame.format == FRAME_FORMAT_AV1) {
+        h.codec = webrtc::VideoCodecType::kVideoCodecAV1;
+        boost::shared_lock<boost::shared_mutex> lock(m_rtpRtcpMutex);
+        m_senderVideo->SendVideo(
+            AV1_90000_PT,
+            webrtc::kVideoCodecAV1,
+            timeStamp,
+            timeStamp,
+            rtc::ArrayView<const uint8_t>(frame.payload, frame.length),
+            h,
+            m_rtpRtcp->ExpectedRetransmissionTimeMs(),
+            0);
     }
 }
 

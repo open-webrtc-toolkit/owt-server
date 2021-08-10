@@ -69,6 +69,7 @@ struct redheader {
 #define VP9_90000_PT        101 // VP9 Video Codec
 #define H264_90000_PT       127 // H264 Video Codec
 #define H265_90000_PT       121 // H265 Video Codec
+#define AV1_90000_PT        35  // AV1X Video Codec
 #define RED_90000_PT        116 // REDundancy (RFC 2198)
 #define ULP_90000_PT        117 // ULP/FEC
 #define ISAC_16000_PT       103 // ISAC Audio Codec
