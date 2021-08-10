@@ -202,6 +202,7 @@ This a format for client reconnects.
                 source: "mic" | "camera" | "screen-cast" | "raw-file" | "encoded-file" | undefined,
                 mid: string(mid) | undefined,
                 rid: string(rid) | undefined,
+                scalabilityMode: "L1T3" | ... | undefined,
                 optional:
                 {
                  format: [object(AudioFormat)] | [object(VideoFormat)] | undefined,
@@ -379,6 +380,7 @@ A publication can send either media or data, but a QUIC *transport* channel can 
             type: "audio" | "video",
             mid: string(MID),
             source: "mic" | "screen-cast" | ... | "encoded-file",
+            scalabilityMode: "L1T3" | ... | undefined,
           }
         ]
       }
@@ -451,7 +453,7 @@ A publication can send either media or data, but a QUIC *transport* channel can 
             type: "audio" | "video",
             mid: string(MID),
             from: string(TrackID) | string(StreamID),
-            parameters: object(VideoParametersSpecification) | undefined,
+            parameters: object(VideoParametersSpecification) | object(LayerSpecification) | undefined,
           }
         ]
       }
@@ -462,6 +464,12 @@ A publication can send either media or data, but a QUIC *transport* channel can 
        framerate: number(WantedFrameRateFPS) | undefined,
        bitrate: number(WantedBitrateKbps) | string(WantedBitrateMultiple) | undefined,
        keyFrameInterval: number(WantedKeyFrameIntervalSecond) | undefined
+      }
+
+    object(LayerSpecification)::
+      { // Used to force layers for SVC stream
+        spatialLayer: number(SpatialLayerId) | undefined,
+        temporalLayer: number(TemporalLayerId) | undefined,
       }
 **ResponseData**: The SubscriptionResult object with following definition if **ResponseStatus** is “ok”:
 

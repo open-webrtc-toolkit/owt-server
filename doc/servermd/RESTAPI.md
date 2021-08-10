@@ -131,6 +131,7 @@ Data Model:<br>
       transcoding: object(Transcoding),    // the transcoding control
       notifying: object(Notifying),        // notification control
       selectActiveAudio: boolean,          // select 3 most active audio streams for the room
+      rtcSenderBandwidthEstimation: boolean,  // enable send side bandwidth estimation for webrtc subscription
       sip: object(Sip)                     // SIP configuration
     }
 
