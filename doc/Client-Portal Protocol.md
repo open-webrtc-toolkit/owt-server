@@ -362,14 +362,14 @@ This a format for client reconnects.
 ```
   object(PublicationRequest)::
     {
-     media: object(WebRTCMediaOptions) | null,
+     media: object(WebRTCMediaOptions) | object(WebCodecsMediaOptions) | null,
      data: true | false,
      transport: object(TransportOptions),
      attributes: object(ClientDefinedAttributes) | null
     }
 ```
 
-A publication can send either media or data, but a QUIC *transport* channel can support multiple stream for both media and data. Setting `media:null` and `data:false` is meaningless, so it should be rejected by server. Protocol itself doesn't forbit to create WebRTC connection for data. However, SCTP data channel is not implemented at server side, so currently `data:true` is only support by QUIC transport channels. 
+A publication can send either media or data. Setting `media:null` and `data:false` is meaningless, so it should be rejected by server. Protocol itself doesn't forbit to create WebRTC connection for data. However, SCTP data channel is not implemented at server side, so currently `data:true` is only support by WebTransport channels. When transport's type is "webrtc", `media` should be an object of `WebRTCMediaOptions`. When transport's type is "quic", `media` should be an object of `WebCodecsMediaOptions` or `null`.
 
 ```
   object(WebRTCMediaOptions)::
@@ -379,6 +379,20 @@ A publication can send either media or data, but a QUIC *transport* channel can 
             type: "audio" | "video",
             mid: string(MID),
             source: "mic" | "screen-cast" | ... | "encoded-file",
+          }
+        ]
+      }
+    }
+```
+
+```
+  object(WebCodecsMediaOptions)::
+      {
+        tracks: [
+          {
+            type: "audio" | "video",
+            source: "mic" | "screen-cast" | ... | "encoded-file",
+            format: object(AudioFormat) | object(VideoFormat)
           }
         ]
       }

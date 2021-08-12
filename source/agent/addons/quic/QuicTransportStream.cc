@@ -5,6 +5,7 @@
  */
 
 #include "QuicTransportStream.h"
+#include "../common/MediaFramePipelineWrapper.h"
 
 using v8::Function;
 using v8::FunctionTemplate;
@@ -30,6 +31,9 @@ QuicTransportStream::QuicTransportStream(owt::quic::WebTransportStreamInterface*
     , m_isPiped(false)
     , m_buffer(nullptr)
     , m_bufferSize(0)
+    , m_isMedia(false)
+    , m_currentFrameSize(0)
+    , m_readFrameSize(0)
 {
 }
 
@@ -113,15 +117,32 @@ NAN_METHOD(QuicTransportStream::close)
 NAN_METHOD(QuicTransportStream::addDestination)
 {
     QuicTransportStream* obj = Nan::ObjectWrap::Unwrap<QuicTransportStream>(info.Holder());
-    if (info.Length() != 2) {
+    if (info.Length() > 3) {
         Nan::ThrowTypeError("Invalid argument length for addDestination.");
         return;
     }
-    // TODO: Check if info[0] is an Nan wrapped object.
-    auto framePtr = Nan::ObjectWrap::Unwrap<QuicTransportStream>(info[1]->ToObject());
-    // void* ptr = info[0]->ToObject()->GetAlignedPointerFromInternalField(0);
-    // auto framePtr=static_cast<owt_base::FrameDestination*>(ptr);
-    obj->addDataDestination(framePtr);
+    Nan::Utf8String param0(Nan::To<v8::String>(info[0]).ToLocalChecked());
+    std::string track = std::string(*param0);
+    bool isNanDestination(false);
+    if (info.Length() == 3) {
+        isNanDestination = info[2]->ToBoolean(Nan::GetCurrentContext()).ToLocalChecked()->Value();
+    }
+    owt_base::FrameDestination* dest(nullptr);
+    if (isNanDestination) {
+        NanFrameNode* param = Nan::ObjectWrap::Unwrap<NanFrameNode>(info[1]->ToObject());
+        dest = param->FrameDestination();
+    } else {
+        ::FrameDestination* param = node::ObjectWrap::Unwrap<::FrameDestination>(
+            info[1]->ToObject(Nan::GetCurrentContext()).ToLocalChecked());
+        dest = param->dest;
+    }
+    if (track == "audio") {
+        obj->addAudioDestination(dest);
+    } else if (track == "video") {
+        obj->addVideoDestination(dest);
+    } else if (track == "data") {
+        obj->addDataDestination(dest);
+    }
     obj->m_isPiped = true;
 }
 
@@ -153,6 +174,13 @@ void QuicTransportStream::MaybeReadContentSessionId()
         m_receivedContentSessionId = true;
         m_asyncOnContentSessionId.data = this;
         uv_async_send(&m_asyncOnContentSessionId);
+        for (uint8_t d : m_contentSessionId) {
+            if (d != 0) {
+                m_isPiped = true;
+                m_isMedia = true;
+                break;
+            }
+        }
         if (m_stream->ReadableBytes() > 0) {
             SignalOnData();
         }
@@ -173,7 +201,6 @@ NAUV_WORK_CB(QuicTransportStream::onData)
             v8::Local<v8::Function> eventCallback = onEventLocal.As<Function>();
             Nan::AsyncResource* resource = new Nan::AsyncResource(Nan::New<v8::String>("ondata").ToLocalChecked());
             auto readableBytes = obj->m_stream->ReadableBytes();
-            ELOG_DEBUG("Readable bytes: %d", readableBytes);
             uint8_t* buffer = new uint8_t[readableBytes]; // Use a shared buffer instead to reduce performance cost on new.
             obj->m_stream->Read(buffer, readableBytes);
             Local<Value> args[] = { Nan::NewBuffer((char*)buffer, readableBytes).ToLocalChecked() };
@@ -211,15 +238,55 @@ void QuicTransportStream::SignalOnData()
 
     while (m_stream->ReadableBytes() > 0) {
         auto readableBytes = m_stream->ReadableBytes();
-        if (readableBytes > m_bufferSize) {
-            ReallocateBuffer(readableBytes);
+        ELOG_DEBUG("Readable bytes: %d", readableBytes);
+        if (m_isMedia) {
+            // A new frame.
+            if (m_currentFrameSize == 0 && m_readFrameSize == 0) {
+                if (readableBytes >= 2) {
+                    const int headerSize = 4;  // In bytes.
+                    uint8_t* frameSizeArray = new uint8_t[headerSize];
+                    memset(frameSizeArray, 0, headerSize * sizeof(uint8_t));
+                    m_stream->Read((uint8_t*)frameSizeArray, headerSize);
+                    // Usually only the last 2 bytes are used. The first two bits could be used for indicating frame size.
+                    for (int i = 0; i < headerSize; i++) {
+                        m_currentFrameSize <<= 8;
+                        m_currentFrameSize += frameSizeArray[i];
+                    }
+                    if (m_currentFrameSize > m_bufferSize) {
+                        ReallocateBuffer(m_currentFrameSize);
+                    }
+                }
+                continue;
+            }
+            if (m_readFrameSize < m_currentFrameSize) {
+                // Append data to current frame.
+                size_t readBytes = std::min(readableBytes, m_currentFrameSize - m_readFrameSize);
+                m_stream->Read(m_buffer + m_readFrameSize, readBytes);
+                m_readFrameSize += readBytes;
+            }
+            // Complete frame.
+            if (m_readFrameSize == m_currentFrameSize) {
+                owt_base::Frame frame;
+                frame.format = owt_base::FRAME_FORMAT_I420;
+                frame.length = m_currentFrameSize;
+                frame.payload = m_buffer;
+                // Transport layer doesn't know a frame's type. Video agent is able to parse the type of a frame from bistream. However, video agent doesn't feed the frame to decoder when a key frame is requested.
+                frame.additionalInfo.video.isKeyFrame = "key";
+                deliverFrame(frame);
+                m_currentFrameSize = 0;
+                m_readFrameSize = 0;
+            }
+        } else {
+            if (readableBytes > m_bufferSize) {
+                ReallocateBuffer(readableBytes);
+            }
+            owt_base::Frame frame;
+            frame.format = owt_base::FRAME_FORMAT_DATA;
+            frame.length = readableBytes;
+            frame.payload = m_buffer;
+            m_stream->Read(frame.payload, readableBytes);
+            deliverFrame(frame);
         }
-        owt_base::Frame frame;
-        frame.format = owt_base::FRAME_FORMAT_DATA;
-        frame.length = readableBytes;
-        frame.payload = m_buffer;
-        m_stream->Read(frame.payload, readableBytes);
-        deliverFrame(frame);
     }
 }
 

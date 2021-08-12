@@ -107,7 +107,11 @@ class StreamSource {
   addDestination(track, sink) {
     if (!this.dests[track].has(sink.id)) {
       this.dests[track].set(sink.id, sink);
-      this.conn.addDestination(track, sink.conn);
+      let isNanObject = false;
+      if (sink instanceof QuicTransportStreamPipeline) {
+          isNanObject = true;
+      }
+      this.conn.addDestination(track, sink.conn, isNanObject);
       sink._addSource(track, this);
     }
   }

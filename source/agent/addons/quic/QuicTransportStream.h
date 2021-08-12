@@ -7,12 +7,12 @@
 #ifndef QUIC_QUICTRANSPORTSTREAM_H_
 #define QUIC_QUICTRANSPORTSTREAM_H_
 
-#include "owt/quic/web_transport_stream_interface.h"
 #include "../../core/owt_base/MediaFramePipeline.h"
 #include "../common/MediaFramePipelineWrapper.h"
+#include "owt/quic/web_transport_stream_interface.h"
 #include <logger.h>
-#include <nan.h>
 #include <mutex>
+#include <nan.h>
 #include <string>
 
 class QuicTransportStream : public owt_base::FrameSource, public owt_base::FrameDestination, public NanFrameNode, public owt::quic::WebTransportStreamInterface::Visitor {
@@ -37,7 +37,7 @@ public:
     static NAN_METHOD(addDestination);
     static NAN_METHOD(removeDestination);
     static NAUV_WORK_CB(onContentSessionId);
-    static NAUV_WORK_CB(onData);  // TODO: Move to pipe.
+    static NAUV_WORK_CB(onData); // TODO: Move to pipe.
 
     // Overrides owt_base::FrameSource.
     void onFeedback(const owt_base::FeedbackMsg&) override;
@@ -71,6 +71,11 @@ private:
     bool m_isPiped;
     uint8_t* m_buffer;
     size_t m_bufferSize;
+
+    // Indicates whether this is a media stream. If this is not a media stream, it can only be piped to another QUIC agent.
+    bool m_isMedia;
+    size_t m_currentFrameSize;
+    size_t m_readFrameSize;
 
     uv_async_t m_asyncOnContentSessionId;
     uv_async_t m_asyncOnData;

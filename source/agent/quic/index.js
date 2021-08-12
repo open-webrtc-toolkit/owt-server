@@ -213,9 +213,6 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
             }
         }
         log.debug('subscribe, connectionId:', connectionId, 'connectionType:', connectionType, 'options:', options);
-        if(!options.data){
-            log.error('Subscription request does not include data field.');
-        }
         if (router.getConnection(connectionId)) {
             return callback('callback', {type: 'failed', reason: 'Connection already exists:'+connectionId});
         }
