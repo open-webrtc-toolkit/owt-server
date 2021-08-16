@@ -110,8 +110,10 @@
     },
     "audio-ranker-test" : {
         "path" : "source/agent/addons/audioRanker/test"
-    }
-    ,
+    },
+    "video-switch" : {
+        "path" : "source/agent/addons/videoSwitch"
+    },
     "quicIO" : {
         "path" : "source/agent/addons/quicIO"
     },
