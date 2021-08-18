@@ -14,7 +14,7 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update && apt-get install -y -q --no-
 # Build libnice
 ARG NICE_VER="0.1.4"
 ARG NICE_REPO=http://nice.freedesktop.org/releases/libnice-${NICE_VER}.tar.gz
-ARG LIBNICE_PATCH_VER="4.3"
+ARG LIBNICE_PATCH_VER="4.3.1"
 ARG LIBNICE_PATCH_REPO=https://github.com/open-webrtc-toolkit/owt-server/archive/v${LIBNICE_PATCH_VER}.tar.gz
 
 RUN apt-get update && apt-get install -y -q --no-install-recommends libglib2.0-dev
@@ -149,7 +149,7 @@ ARG SVT_VER=v1.3.0
 ARG SVT_REPO=https://github.com/intel/SVT-HEVC.git
 ARG SERVER_PATH=/home/owt-server
 ARG OWT_SDK_REPO=https://github.com/open-webrtc-toolkit/owt-client-javascript.git
-ARG OWT_BRANCH=master
+ARG OWT_BRANCH=v5.0
 ARG IMG_APP_PATH=/app_data/
 ENV APP_PATH=${IMG_APP_PATH}
 
