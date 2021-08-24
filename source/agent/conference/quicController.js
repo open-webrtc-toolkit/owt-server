@@ -92,21 +92,6 @@ class QuicController extends EventEmitter {
   onSessionProgress(sessionId, status)
   {
       if (!status.data) {
-          log.error('onSessionProgress is called by QUIC connections.');
-          return;
-      }
-      if (status.type === 'ready') {
-          if (!this.operations.get(sessionId)) {
-              log.error('Invalid session ID.');
-              return;
-          }
-          this.emit('session-established', this.operations.get(sessionId));
-      }
-  }
-
-  onSessionProgress(sessionId, status)
-  {
-      if (!status.data) {
           log.error('QUIC agent only support data forwarding.');
           return;
       }
