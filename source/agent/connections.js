@@ -124,7 +124,11 @@ module.exports = function Connections () {
                 if (!dest) {
                     return Promise.reject({ type : 'failed', reason : 'Destination connection(' + name + ') is not ready' });
                 }
-                connections[from].connection.addDestination(name, dest);
+                let isNanObj=false;
+                if (dest.constructor.name === 'QuicTransportStream'){
+                    isNanObj=true;
+                }
+                connections[from].connection.addDestination(name, dest, isNanObj);
                 connections[connectionId][name + 'From'] = from;
             }
         }
