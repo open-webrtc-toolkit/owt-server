@@ -265,6 +265,10 @@ install_webrtc(){
 
   rm $ROOT/third_party/webrtc -rf
   mkdir $ROOT/third_party/webrtc
+  
+  if [[ "$OS" =~ .*ubuntu.* ]] && [[ "$OS_VERSION" =~ 20.04.* ]]; then
+    ${SUDO} update-alternatives --install /usr/bin/python python /usr/bin/python2 1
+  fi
 
   pushd ${ROOT}/third_party/webrtc
   git clone -b 59-server https://github.com/open-webrtc-toolkit/owt-deps-webrtc.git src
@@ -273,6 +277,10 @@ install_webrtc(){
   popd
 
   install_webrtc79
+
+  if [[ "$OS" =~ .*ubuntu.* ]] && [[ "$OS_VERSION" =~ 20.04.* ]]; then
+    ${SUDO} update-alternatives --remove python /usr/bin/python2
+  fi
 }
 
 install_licode(){
