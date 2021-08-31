@@ -79,6 +79,7 @@ static void dump(void* index, uint8_t* buf, int len)
     }
 }
 
+
 VideoGstAnalyzer::VideoGstAnalyzer(EventRegistry *handle) : m_asyncHandle(handle)
 {
     ELOG_INFO("Init");
@@ -142,7 +143,6 @@ gboolean VideoGstAnalyzer::StreamEventCallBack(GstBus *bus, GstMessage *message,
         g_main_loop_quit(pStreamObj->loop);
         break;
     case GST_MESSAGE_TAG:{
-        /* end-of-stream */
         GstTagList *tags = NULL;
         gst_message_parse_tag (message, &tags);
 
@@ -151,14 +151,58 @@ gboolean VideoGstAnalyzer::StreamEventCallBack(GstBus *bus, GstMessage *message,
         break;
     }
     case GST_MESSAGE_QOS:{
-        /* end-of-stream */
         ELOG_DEBUG("Got QOS message from %s \n",message->src->name);
         break;
     }
     case GST_MESSAGE_STATE_CHANGED:{
         GstState old_state, new_state, pending_state;
         gst_message_parse_state_changed(message, &old_state, &new_state, &pending_state);
-        ELOG_DEBUG("State change from %d to %d, play:%d \n",old_state, new_state, GST_STATE_PAUSED);
+        ELOG_DEBUG("State change from %d to %d, from:%d \n",old_state, new_state, message->src->name);
+        if (strcmp(message->src->name,"appsink") == 0 && new_state == GST_STATE_PLAYING) {
+            GstPad *pad = NULL;
+            GstCaps *caps = NULL;
+            pad = gst_element_get_static_pad (pStreamObj->sink, "sink");
+            if (!pad) {
+                ELOG_ERROR("Could not retrieve sink pad of sink element\n");
+            } else {
+                caps = gst_pad_get_current_caps (pad);
+                if (!caps)
+                caps = gst_pad_query_caps (pad, NULL);
+
+                /* Print and free */
+                const gchar *type;
+                int width, height;
+                std::string str;
+                GstStructure *structure;
+                structure = gst_caps_get_structure (caps, 0);
+                ELOG_DEBUG("Caps for the sink pad type is:%s %s\n",gst_structure_get_name(structure), gst_caps_to_string(caps));
+                type = gst_structure_get_name(structure);
+                if (strstr(type, "h264") != NULL) {
+                    str.append("{\"codec\":\"h264\",\"profile\":\"");
+                    str.append(gst_structure_get_string(structure, "profile"));
+                    str.append("\",");
+                    pStreamObj->outputcodec = "h264";
+                } else if (strstr(type, "vp8") != NULL) {
+                    str.append("{\"codec\":\"vp8\",");
+                    pStreamObj->outputcodec = "vp8";
+                }
+
+                gst_structure_get_int (structure, "width", &width);
+                gst_structure_get_int (structure, "height", &height);
+
+                str.append("\"width\":");
+                str.append(std::to_string(width));
+                str.append(",\"height\":");
+                str.append(std::to_string(height));
+                str.append("}");
+                pStreamObj->notifyAsyncEvent("streamadded", str.c_str());
+
+                gst_caps_unref (caps);
+                gst_object_unref (pad);
+            }
+
+        }
+
         break;
     }
     default:
@@ -219,7 +263,7 @@ int VideoGstAnalyzer::createPipeline()
         {"inputwidth", std::to_string(width)},
         {"inputheight", std::to_string(height)},
         {"inputframerate", std::to_string(framerate)},
-        {"inputcodec", codec},
+        {"inputcodec", inputcodec},
         {"pipelinename", algo} };
     pipeline_->PipelineConfig(plugin_config_map);
 
@@ -257,7 +301,6 @@ void VideoGstAnalyzer::stop_feed (GstElement * source, gpointer data)
 
 void VideoGstAnalyzer::new_sample_from_sink (GstElement * source, gpointer data)
 {
-    ELOG_DEBUG("Got new sample from sink\n");
     VideoGstAnalyzer* pStreamObj = static_cast<VideoGstAnalyzer*>(data);
     GstSample *sample;
     GstBuffer *buffer;
@@ -272,12 +315,23 @@ void VideoGstAnalyzer::new_sample_from_sink (GstElement * source, gpointer data)
     owt_base::Frame outFrame;
     memset(&outFrame, 0, sizeof(outFrame));
 
-    outFrame.format = owt_base::FRAME_FORMAT_H264;
+    if (pStreamObj->outputcodec.compare("vp8") == 0) {
+        outFrame.format = owt_base::FRAME_FORMAT_VP8;
+        outFrame.additionalInfo.video.isKeyFrame = isVp8KeyFrame(map.data, map.size);
+    } else if (pStreamObj->outputcodec.find("h264") != std::string::npos) {
+        outFrame.format = owt_base::FRAME_FORMAT_H264;
+        outFrame.additionalInfo.video.isKeyFrame = isH264KeyFrame(map.data, map.size);
+    } else {
+        printf("Not support codec:%s\n", pStreamObj->outputcodec.c_str());
+        gst_buffer_unmap(buffer, &map);
+        gst_sample_unref(sample);
+        return;
+    }
+
+    outFrame.timeStamp = (pStreamObj->m_frameCount++) * 1000 / pStreamObj->framerate * 90;
     outFrame.length = map.size;
     outFrame.additionalInfo.video.width = pStreamObj->width;
     outFrame.additionalInfo.video.height = pStreamObj->height;
-    outFrame.additionalInfo.video.isKeyFrame = isH264KeyFrame(map.data, map.size);
-    outFrame.timeStamp = (pStreamObj->m_frameCount++) * 1000 / 30 * 90;
 
     outFrame.payload = map.data;
 
@@ -353,8 +407,8 @@ int VideoGstAnalyzer::setPlaying()
 }
 
 void VideoGstAnalyzer::emitListenTo(int minPort, int maxPort, std::string ticket) {
-    ELOG_DEBUG("Listening\n");
     m_internalin.reset(new GstInternalIn((GstAppSrc*)source, minPort, maxPort, ticket));
+    m_internalin->setFramerate(this->framerate);
 }
 
 void VideoGstAnalyzer::addOutput(int connectionID, owt_base::FrameDestination* out)
@@ -397,10 +451,10 @@ int VideoGstAnalyzer::getListeningPort()
     return listeningPort; 
 }
 
-void VideoGstAnalyzer::setOutputParam(std::string codec, int width, int height, 
+void VideoGstAnalyzer::setInputParam(std::string codec, int width, int height,
     int framerate, int bitrate, int kfi, std::string algo, std::string libraryName)
 {
-    this->codec = codec;
+    this->inputcodec = codec;
     this->width = width;
     this->height = height;
     this->framerate = framerate;

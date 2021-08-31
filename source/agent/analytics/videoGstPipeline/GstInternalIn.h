@@ -29,11 +29,14 @@ public:
     void onTransportError() { }
     void onTransportConnected() { }
     void setPushData(bool status);
+    void setFramerate(int framerate);
 
 private:
     bool m_start;
     bool m_needKeyFrame;
     bool m_dumpIn;
+    size_t num_frames;
+    int m_framerate;
     GstAppSrc *appsrc;
     boost::shared_ptr<owt_base::RawTransportInterface> m_transport;
 };
