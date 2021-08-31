@@ -554,7 +554,7 @@ WORKDIR /home
 ARG OWTSERVER_REPO=https://github.com/open-webrtc-toolkit/owt-server.git
 ARG SERVER_PATH=/home/owt-server
 ARG OWT_SDK_REPO=https://github.com/open-webrtc-toolkit/owt-client-javascript.git
-ARG OWT_BRANCH="master"
+ARG OWT_BRANCH="5.0.x"
 ENV LD_LIBRARY_PATH=/opt/intel/dldt/inference-engine/external/tbb/lib:/opt/intel/dldt/inference-engine/lib/intel64/
 
 # Build OWT specific modules
@@ -568,7 +568,7 @@ RUN git config --global user.email "you@example.com" && \
     cd /home/owt-server && ./scripts/installDepsUnattended.sh --disable-nonfree 
 
     # Get js client sdk for owt
-RUN cd /home && git clone ${OWT_SDK_REPO} && \
+RUN cd /home && git clone -b ${OWT_BRANCH} ${OWT_SDK_REPO} && \
     cd owt-client-javascript/scripts && npm install -g grunt-cli node-gyp@6.1.0 && npm install && grunt
  
     #Build and pack owt

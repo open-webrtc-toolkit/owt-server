@@ -30,7 +30,7 @@ void VideoGstAnalyzerWrap::Init(Handle<Object> exports, Handle<Object> module) {
   NODE_SET_PROTOTYPE_METHOD(tpl, "emitListenTo", emitListenTo);
   NODE_SET_PROTOTYPE_METHOD(tpl, "addElementMany", addElementMany);
   NODE_SET_PROTOTYPE_METHOD(tpl, "setPlaying", setPlaying);
-  NODE_SET_PROTOTYPE_METHOD(tpl, "setOutputParam", setOutputParam);
+  NODE_SET_PROTOTYPE_METHOD(tpl, "setInputParam", setInputParam);
   NODE_SET_PROTOTYPE_METHOD(tpl, "disconnect", disconnect);
   NODE_SET_PROTOTYPE_METHOD(tpl, "addOutput", addOutput);
   NODE_SET_PROTOTYPE_METHOD(tpl, "addEventListener", addEventListener);
@@ -144,7 +144,7 @@ void VideoGstAnalyzerWrap::disconnect(const FunctionCallbackInfo<Value>& args){
   me->disconnect(out);
 }
 
-void VideoGstAnalyzerWrap::setOutputParam(const FunctionCallbackInfo<Value>& args){
+void VideoGstAnalyzerWrap::setInputParam(const FunctionCallbackInfo<Value>& args){
   Isolate* isolate = Isolate::GetCurrent();
   HandleScope scope(isolate);
   VideoGstAnalyzerWrap* obj = ObjectWrap::Unwrap<VideoGstAnalyzerWrap>(args.Holder());
@@ -170,7 +170,7 @@ void VideoGstAnalyzerWrap::setOutputParam(const FunctionCallbackInfo<Value>& arg
   String::Utf8Value param7(args[6]->ToString());
   std::string pluginName = std::string(*param7);
 
-  me->setOutputParam(codec,width,height,framerateFPS,bitrateKbps,
+  me->setInputParam(codec,width,height,framerateFPS,bitrateKbps,
                        keyFrameIntervalSeconds,algorithm,pluginName);
 }
 

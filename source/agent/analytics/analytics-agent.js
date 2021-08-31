@@ -83,12 +83,6 @@ createInternalConnection(connectionId, direction, internalOpt) {
       this.onStatus(options.controller, connectionId, 'out', status);
 
       const newStreamId = algo + options.media.video.from;
-      const streamInfo = {
-          type: 'analytics',
-          media: {video: Object.assign({}, videoFormat, videoParameters)},
-          analyticsId: connectionId,
-          locality: {agent:this.agentId, node:this.rpcId},
-        };
 
       const pluginName = this.algorithms[algo].name;
       let codec = videoFormat.codec;
@@ -102,13 +96,10 @@ createInternalConnection(connectionId, direction, internalOpt) {
       log.debug('resolution:',resolution,'framerate:',framerate,'keyFrameInterval:',
                keyFrameInterval, 'bitrate:',bitrate);
 
-      this.engine.setOutputParam(codec,resolution,framerate,bitrate,keyFrameInterval,algo,pluginName);
+      this.engine.setInputParam(codec,resolution,framerate,bitrate,keyFrameInterval,algo,pluginName);
       if (this.engine.createPipeline() < 0) {
         return Promise.reject('Create pipeline failed');
       }
-
-      streamInfo.media.video.bitrate = bitrate;
-      this.onStreamGenerated(options.controller, newStreamId, streamInfo);
 
       if (this.engine.addElementMany() < 0) {
         return Promise.reject('Link element failed');
@@ -123,6 +114,43 @@ createInternalConnection(connectionId, direction, internalOpt) {
       this.engine.addEventListener('fatal', function (error) {
           log.error('GStreamer pipeline error:', error);
           notifyStatus(options.controller, connectionId, 'out', {type: 'failed', reason: 'Analytics error: ' + error});
+      });
+
+      var generateStream = this.onStreamGenerated;
+      const streamInfo = {
+        type: 'analytics',
+        media: {video: Object.assign({}, videoFormat, videoParameters)},
+        analyticsId: connectionId,
+        locality: {agent:this.agentId, node:this.rpcId},
+      };
+      this.engine.addEventListener('streamadded', function (data) {
+          log.debug('GStreamer pipeline stream generated:', data);
+          var params;
+            try {
+            params = JSON.parse(data)
+            streamInfo.media.video.bitrate = bitrate;
+            if (params.codec) {
+              streamInfo.media.video.codec = params.codec;
+            }
+
+            if (params.profile) {
+              if (params.profile === "constrained-baseline") {
+                streamInfo.media.video.profile = 'CB';
+              } else if (params.profile === "baseline") {
+                streamInfo.media.video.profile = 'B';
+              } else if (params.profile === "main") {
+                streamInfo.media.video.profile = 'M';
+              } else if (params.profile === "high") {
+                streamInfo.media.video.profile = 'H';
+              } else {
+                log.error("Not supported profile:", params.profile);
+                return;
+              }
+            }
+            generateStream(options.controller, newStreamId, streamInfo);
+          } catch (e) {
+            log.error("Parse stream added data with error:", e);
+          }
       });
 
       return Promise.resolve();

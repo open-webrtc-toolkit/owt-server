@@ -35,7 +35,7 @@ public:
 
     int addElementMany();
 
-    void setOutputParam(std::string codec, int width, int height, 
+    void setInputParam(std::string codec, int width, int height,
     int framerate, int bitrate, int kfi, std::string algo, std::string pluginName);
 
     void stopLoop();
@@ -86,7 +86,8 @@ private:
     int m_frameCount;
 
     //param
-    std::string codec;
+    std::string inputcodec;
+    std::string outputcodec;
     std::string algo,libraryName;
     std::string resolution;
     int width,height;
