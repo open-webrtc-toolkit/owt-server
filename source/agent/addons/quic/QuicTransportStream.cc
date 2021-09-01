@@ -122,6 +122,7 @@ NAN_MODULE_INIT(QuicTransportStream::init)
     Nan::SetPrototypeMethod(tpl, "write", write);
     Nan::SetPrototypeMethod(tpl, "readTrackId", readTrackId);
     Nan::SetPrototypeMethod(tpl, "addDestination", addDestination);
+    Nan::SetPrototypeMethod(tpl, "checkReadableData", checkReadableData);
     Nan::SetAccessor(instanceTpl, Nan::New("isMedia").ToLocalChecked(), isMediaGetter, isMediaSetter);
 
     s_constructor.Reset(Nan::GetFunction(tpl).ToLocalChecked());
@@ -201,6 +202,14 @@ NAN_METHOD(QuicTransportStream::removeDestination)
 NAN_METHOD(QuicTransportStream::readTrackId){
     QuicTransportStream* obj = Nan::ObjectWrap::Unwrap<QuicTransportStream>(info.Holder());
     obj->ReadTrackId();
+}
+
+NAN_METHOD(QuicTransportStream::checkReadableData)
+{
+    QuicTransportStream* obj = Nan::ObjectWrap::Unwrap<QuicTransportStream>(info.Holder());
+    if (obj->m_stream->ReadableBytes() > 0) {
+        obj->SignalOnData();
+    }
 }
 
 NAN_GETTER(QuicTransportStream::isMediaGetter){

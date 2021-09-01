@@ -151,7 +151,9 @@ module.exports = class QuicTransportServer extends EventEmitter {
             }
             return;
           }
-        }
+        };
+        // In case data arrived before ondata handler is assigned.
+        stream.checkReadableData();
       }
     }
   }

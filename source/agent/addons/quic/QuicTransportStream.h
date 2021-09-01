@@ -39,6 +39,8 @@ public:
     // Read 128 bits after content session ID. Only media streams have track ID. Result will be returned by onData callback.
     // TODO: Make this as an async method when it's supported.
     static NAN_METHOD(readTrackId);
+    // Check whether there is readable data. If so, fire ondata event.
+    static NAN_METHOD(checkReadableData);
 
     static NAN_GETTER(isMediaGetter);
     static NAN_SETTER(isMediaSetter);
