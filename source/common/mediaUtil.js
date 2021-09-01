@@ -72,7 +72,8 @@ const resolution2String = (r) => {
 };
 
 const isResolutionEqual = (r1, r2) => {
-  return r1.width && r1.height && r2.width && r2.height
+  return (typeof r1.width === 'number')
+    && (typeof r1.height === 'number')
     && (r1.width === r2.width)
     && (r1.height === r2.height);
 };
