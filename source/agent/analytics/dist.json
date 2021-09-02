@@ -9,8 +9,7 @@
             "log4js_configuration.json",
             "log4cxx.properties",
             "configLoader.js",
-            "../video/install_deps.sh",
-            "../video/install_openh264.sh",
+            "install_deps.sh",
             "../index.js",
             "../networkHelper.js",
             "../nodeManager.js",
@@ -24,7 +23,6 @@
             "../../common/makeRPC.js",
             "../../common/rpcChannel.js",
             "../../common/mediaUtil.js",
-            "../../../scripts/release/install_ffmpeg.sh",
             "../../../scripts/release/initauth.js",
             "../../../scripts/release/initcert.js",
             "../../../scripts/detectOS.sh"
@@ -33,7 +31,6 @@
             "analytics": [
                 "analytics-agent.js",
                 "index.js",
-                "../base-agent.js",
                 "../connections.js",
                 "../InternalConnectionFactory.js"
             ],
