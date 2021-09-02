@@ -96,7 +96,7 @@ NAUV_WORK_CB(QuicTransportConnection::onStreamCallback)
     }
     while (!obj->m_streamsToBeNotified.empty()) {
         obj->m_streamQueueMutex.lock();
-        auto quicStream=obj->m_streamsToBeNotified.front();
+        auto quicStream = obj->m_streamsToBeNotified.front();
         obj->m_streamsToBeNotified.pop();
         obj->m_streamQueueMutex.unlock();
         v8::Local<v8::Object> streamObject = QuicTransportStream::newInstance(quicStream);
@@ -144,3 +144,17 @@ NAN_METHOD(QuicTransportConnection::close)
     }
     obj->m_session->Close(closeCode, reason.c_str());
 }
+
+void QuicTransportConnection::onFrame(const owt_base::Frame& frame)
+{
+    if (frame.format != owt_base::FRAME_FORMAT_RTP) {
+        ELOG_WARN("WebTransport datagram output only supports RTP packets. Received frame type %d. Discard this frame.", frame.format);
+        return;
+    }
+    if (!m_session) {
+        ELOG_WARN("WebTransport session is nullptr.");
+    }
+    m_session->SendOrQueueDatagram(frame.payload, frame.length);
+}
+
+void QuicTransportConnection::onVideoSourceChanged() { }

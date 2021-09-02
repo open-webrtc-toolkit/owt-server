@@ -9,6 +9,7 @@
       'QuicTransportStream.cc',
       'WebTransportFrameSource.cc',
       'WebTransportFrameDestination.cc',
+      'VideoRtpPacketizer.cc',
       '../../../core/owt_base/MediaFramePipeline.cpp',
       '../../../core/owt_base/MediaFrameMulticaster.cpp',
       '../../../core/owt_base/Utils.cc',
@@ -59,6 +60,8 @@
       '-lowt_web_transport',
       '-lboost_system',
       '-lboost_thread',
+      '-Wl,-rpath,<!(pwd)/build/$(BUILDTYPE)',
     ],
+    'dependencies': ['../../webrtc/rtcFrame/binding.gyp:librtcadapter'],
   }]
 }

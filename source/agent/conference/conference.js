@@ -1160,7 +1160,8 @@ var Conference = function (rpcClient, selfRpcId) {
     if (trackOwners[tsId]) {
       track = streams[trackOwners[tsId]].media.tracks
         .find(t => (t.id === tsId && t.type === type));
-    } else if (streams[tsId]) {
+    }
+    if (!track && streams[tsId]) {
       track = streams[tsId].media.tracks
         .find(t => t.type === type);
     }

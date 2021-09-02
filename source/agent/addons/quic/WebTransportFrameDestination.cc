@@ -18,6 +18,8 @@ DEFINE_LOGGER(WebTransportFrameDestination, "WebTransportFrameDestination");
 Nan::Persistent<v8::Function> WebTransportFrameDestination::s_constructor;
 
 WebTransportFrameDestination::WebTransportFrameDestination()
+    : m_datagramOutput(nullptr)
+    , m_videoRtpPacketizer(nullptr)
 {
 }
 
@@ -31,6 +33,9 @@ NAN_MODULE_INIT(WebTransportFrameDestination::init)
     tpl->SetClassName(Nan::New("WebTransportFrameDestination").ToLocalChecked());
     Local<ObjectTemplate> instanceTpl = tpl->InstanceTemplate();
     instanceTpl->SetInternalFieldCount(1);
+
+    Nan::SetPrototypeMethod(tpl, "addDatagramOutput", addDatagramOutput);
+    Nan::SetPrototypeMethod(tpl, "receiver", receiver);
 
     s_constructor.Reset(Nan::GetFunction(tpl).ToLocalChecked());
     Nan::Set(target, Nan::New("WebTransportFrameDestination").ToLocalChecked(), Nan::GetFunction(tpl).ToLocalChecked());
@@ -46,3 +51,38 @@ NAN_METHOD(WebTransportFrameDestination::newInstance)
     obj->Wrap(info.This());
     info.GetReturnValue().Set(info.This());
 }
+
+NAN_METHOD(WebTransportFrameDestination::addDatagramOutput)
+{
+    WebTransportFrameDestination* obj = Nan::ObjectWrap::Unwrap<WebTransportFrameDestination>(info.Holder());
+    if (obj->m_datagramOutput) {
+        ELOG_WARN("Datagram output exists, will be replaced by the new one.");
+    }
+    if (!obj->m_videoRtpPacketizer) {
+        obj->m_videoRtpPacketizer = std::make_unique<VideoRtpPacketizer>();
+        obj->m_videoRtpPacketizer->addDataDestination(obj);
+    }
+    NanFrameNode* output = Nan::ObjectWrap::Unwrap<NanFrameNode>(info[0]->ToObject());
+    obj->m_datagramOutput = output;
+}
+
+NAN_METHOD(WebTransportFrameDestination::receiver)
+{
+    info.GetReturnValue().Set(info.This());
+}
+
+void WebTransportFrameDestination::onFrame(const owt_base::Frame& frame)
+{
+    if (!m_datagramOutput) {
+        ELOG_WARN("Datagram output is not ready, dropping frame.");
+        return;
+    }
+    // Packetize video frames or send RTP packets.
+    if (frame.format != owt_base::FRAME_FORMAT_RTP) {
+        m_videoRtpPacketizer->onFrame(frame);
+    } else {
+        m_datagramOutput->FrameDestination()->onFrame(frame);
+    }
+}
+
+void WebTransportFrameDestination::onVideoSourceChanged() { }

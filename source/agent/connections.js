@@ -124,14 +124,16 @@ module.exports = function Connections () {
                 if (!dest) {
                     return Promise.reject({ type : 'failed', reason : 'Destination connection(' + name + ') is not ready' });
                 }
-                let isNanObj=false;
-                if (dest.constructor.name === 'QuicTransportStream'){
-                    isNanObj=true;
+                let isNanObj = false;
+                // TODO: Add a new method isNanAddon to NAN addon objects.
+                if ([ 'QuicTransportStream', 'WebTransportFrameSource', 'WebTransportFrameDestination' ].includes(dest.constructor.name)) {
+                    isNanObj = true;
                 }
                 connections[from].connection.addDestination(name, dest, isNanObj);
                 connections[connectionId][name + 'From'] = from;
             }
         }
+        log.debug('linkup complete.');
         return Promise.resolve('ok');
     };
 

@@ -44,6 +44,8 @@ enum FrameFormat {
     FRAME_FORMAT_NELLYMOSER,
 
     FRAME_FORMAT_DATA,  // Generic data frame. We don't know its detailed structure.
+
+    FRAME_FORMAT_RTP,  // RTP packet.
 };
 
 enum VideoCodecProfile {
@@ -215,7 +217,7 @@ inline bool isVideoFrame(const Frame& frame) {
 }
 
 inline bool isDataFrame(const Frame& frame) {
-    return frame.format == FRAME_FORMAT_DATA;
+    return frame.format == FRAME_FORMAT_DATA || frame.format == FRAME_FORMAT_RTP;
 }
 
 enum FeedbackType {
