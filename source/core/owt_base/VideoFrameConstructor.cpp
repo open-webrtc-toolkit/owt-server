@@ -45,6 +45,21 @@ VideoFrameConstructor::VideoFrameConstructor(
     m_rtcAdapter = rtcAdapter;
 }
 
+VideoFrameConstructor::VideoFrameConstructor(KeyFrameRequester* requester)
+    : m_enabled(true)
+    , m_ssrc(0)
+    , m_transport(nullptr)
+    , m_pendingKeyFrameRequests(0)
+    , m_videoInfoListener(nullptr)
+    , m_rtcAdapter(RtcAdapterFactory::CreateRtcAdapter())
+    , m_videoReceive(nullptr)
+    , m_requester(requester)
+{
+    m_config.transport_cc = -1;
+    m_feedbackTimer = SharedJobTimer::GetSharedFrequencyTimer(1);
+    m_feedbackTimer->addListener(this);
+}
+
 VideoFrameConstructor::~VideoFrameConstructor()
 {
     m_feedbackTimer->removeListener(this);
@@ -59,6 +74,7 @@ VideoFrameConstructor::~VideoFrameConstructor()
 void VideoFrameConstructor::maybeCreateReceiveVideo(uint32_t ssrc)
 {
     if (!m_videoReceive) {
+        ELOG_DEBUG("createVideoReceiver %p", this);
         // Create Receive Video Stream
         rtc_adapter::RtcAdapter::Config recvConfig;
         recvConfig.ssrc = ssrc;
@@ -68,6 +84,10 @@ void VideoFrameConstructor::maybeCreateReceiveVideo(uint32_t ssrc)
         recvConfig.frame_listener = this;
 
         m_videoReceive = m_rtcAdapter->createVideoReceiver(recvConfig);
+        if (m_currentSpatialLayer >= 0 || m_currentSpatialLayer >= 0) {
+            m_videoReceive->setPreferredLayers(
+                m_currentSpatialLayer, m_currentTemporalLayer);
+        }
     }
 }
 
@@ -107,6 +127,7 @@ int32_t VideoFrameConstructor::RequestKeyFrame()
         return 0;
     }
     if (m_videoReceive) {
+        ELOG_DEBUG("videoReceive requestKeyFrame")
         m_videoReceive->requestKeyFrame();
     }
     return 0;
@@ -120,11 +141,33 @@ bool VideoFrameConstructor::setBitrate(uint32_t kbps)
 
 void VideoFrameConstructor::setPreferredLayers(int spatialId, int temporalId)
 {
+    m_currentSpatialLayer = spatialId;
+    m_currentTemporalLayer = temporalId;
     if (m_videoReceive) {
-        m_videoReceive->setPreferredLayers(spatialId, temporalId);
+        m_videoReceive->setPreferredLayers(
+            m_currentSpatialLayer, m_currentTemporalLayer);
     }
 }
 
+bool VideoFrameConstructor::addChildProcessor(std::string id, erizo::MediaSink* sink)
+{
+    if (m_childProcessors.count(id) == 0 && sink) {
+        ELOG_DEBUG("Add child processor %s %p", id.c_str(), this);
+        m_childProcessors[id] = sink;
+        return true;
+    }
+    return false;
+}
+
+bool VideoFrameConstructor::removeChildProcessor(std::string id)
+{
+    if (m_childProcessors.count(id) > 0) {
+        ELOG_DEBUG("Remove child processor %s %p", id.c_str(), this);
+        m_childProcessors.erase(id);
+        return true;
+    }
+    return false;
+}
 
 void VideoFrameConstructor::onAdapterFrame(const Frame& frame)
 {
@@ -152,6 +195,16 @@ void VideoFrameConstructor::onAdapterData(char* data, int len)
     if (fb_sink_) {
         fb_sink_->deliverFeedback(
             std::make_shared<erizo::DataPacket>(0, data, len, erizo::VIDEO_PACKET));
+    } else if (m_requester && len > 0) {
+        // Check PLI/FIR
+        RTCPHeader* chead = reinterpret_cast<RTCPHeader*>(data);
+        uint8_t packetType = chead->getPacketType();
+        uint8_t rcOrFmt = chead->getRCOrFMT();
+        if (packetType == RTCP_PS_Feedback_PT &&
+            (rcOrFmt == RTCP_PLI_FMT || rcOrFmt == RTCP_FIR_FMT)) {
+            ELOG_DEBUG("External RequestKeyFrame");
+            m_requester->RequestKeyFrame();
+        }
     }
 }
 
@@ -159,6 +212,10 @@ int VideoFrameConstructor::deliverVideoData_(std::shared_ptr<erizo::DataPacket> 
 {
     if (!m_enabled) {
         return 0;
+    }
+    // Dispatch packets to child processors
+    for (auto it = m_childProcessors.begin(); it != m_childProcessors.end(); it++) {
+        it->second->deliverVideoData(video_packet);
     }
 
     RTCPHeader* chead = reinterpret_cast<RTCPHeader*>(video_packet->data);
