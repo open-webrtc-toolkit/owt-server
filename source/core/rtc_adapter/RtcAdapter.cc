@@ -81,7 +81,14 @@ public:
     {
         return m_transportControllerSend;
     }
-    uint32_t estimatedBandwidth() override { return m_estimatedBandwidth; }
+    uint32_t estimatedBandwidth() override
+    {
+        int count = m_videoSenderNumber;
+        count = count > 0 ? count : 1;
+        return m_estimatedBandwidth / count;
+    }
+    void registerVideoSender(uint32_t ssrc) override { m_videoSenderNumber++; }
+    void deregisterVideoSender(uint32_t ssrc) override { m_videoSenderNumber--; }
 
     //Implements webrtc::TargetTransferRateObjserver
     void OnTargetTransferRate(webrtc::TargetTransferRate) override;
@@ -95,6 +102,7 @@ private:
     // For sender
     ControllerSendPtr m_transportControllerSend = nullptr;
     uint32_t m_estimatedBandwidth = 0;
+    std::atomic<int> m_videoSenderNumber = {0};
 };
 
 RtcAdapterImpl::RtcAdapterImpl()

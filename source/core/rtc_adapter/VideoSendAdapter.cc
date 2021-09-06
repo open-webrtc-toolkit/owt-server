@@ -188,6 +188,7 @@ VideoSendAdapterImpl::~VideoSendAdapterImpl()
     if (m_transportControllerSend) {
         m_transportControllerSend->packet_router()
             ->RemoveSendRtpModule(m_rtpRtcp.get());
+        m_owner->deregisterVideoSender(m_ssrc);
     }
     m_taskRunner->DeRegisterModule(m_rtpRtcp.get());
     m_ssrcGenerator->ReturnSsrc(m_ssrc);
@@ -258,6 +259,7 @@ bool VideoSendAdapterImpl::init()
     if (m_transportControllerSend) {
         m_transportControllerSend->packet_router()
             ->AddSendRtpModule(m_rtpRtcp.get(), true);
+        m_owner->registerVideoSender(m_ssrc);
     }
 
     webrtc::RTPSenderVideo::Config video_config;
