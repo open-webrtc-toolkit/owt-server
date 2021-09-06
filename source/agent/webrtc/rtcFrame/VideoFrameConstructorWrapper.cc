@@ -13,8 +13,13 @@ using namespace v8;
 
 Nan::Persistent<Function> VideoFrameConstructor::constructor;
 
-VideoFrameConstructor::VideoFrameConstructor() {};
-VideoFrameConstructor::~VideoFrameConstructor() {};
+VideoFrameConstructor::VideoFrameConstructor()
+  : me(nullptr)
+  , src(nullptr)
+  , parent(nullptr)
+{}
+
+VideoFrameConstructor::~VideoFrameConstructor() {}
 
 NAN_MODULE_INIT(VideoFrameConstructor::Init) {
   // Prepare constructor template
@@ -43,17 +48,36 @@ NAN_MODULE_INIT(VideoFrameConstructor::Init) {
 NAN_METHOD(VideoFrameConstructor::New) {
   if (info.IsConstructCall()) {
     VideoFrameConstructor* obj = new VideoFrameConstructor();
-    int transportccExt = (info.Length() >= 2) ? info[1]->IntegerValue(Nan::GetCurrentContext()).ToChecked() : -1;
-    CallBase* baseWrapper = (info.Length() == 3)
-      ? Nan::ObjectWrap::Unwrap<CallBase>(Nan::To<v8::Object>(info[2]).ToLocalChecked())
-      : nullptr;
-    if (baseWrapper) {
-      obj->me = new owt_base::VideoFrameConstructor(baseWrapper->rtcAdapter, obj, transportccExt);
-    } else if (transportccExt > 0) {
-      obj->me = new owt_base::VideoFrameConstructor(obj, transportccExt);
+    if (info.Length() <= 3) {
+      int transportccExt = (info.Length() >= 2) ? info[1]->IntegerValue(Nan::GetCurrentContext()).ToChecked() : -1;
+      CallBase* baseWrapper = (info.Length() >= 3)
+        ? Nan::ObjectWrap::Unwrap<CallBase>(Nan::To<v8::Object>(info[2]).ToLocalChecked())
+        : nullptr;
+      if (baseWrapper) {
+        obj->me = new owt_base::VideoFrameConstructor(baseWrapper->rtcAdapter, obj, transportccExt);
+      } else if (transportccExt > 0) {
+        obj->me = new owt_base::VideoFrameConstructor(obj, transportccExt);
+      } else {
+        obj->me = new owt_base::VideoFrameConstructor(obj);
+      }
     } else {
-      obj->me = new owt_base::VideoFrameConstructor(obj);
+      // CallBase* baseWrapper = Nan::ObjectWrap::Unwrap<CallBase>(
+      //   Nan::To<v8::Object>(info[0]).ToLocalChecked());
+      VideoFrameConstructor* parent =
+        Nan::ObjectWrap::Unwrap<VideoFrameConstructor>(
+          Nan::To<v8::Object>(info[1]).ToLocalChecked());
+      Nan::Utf8String param2(Nan::To<v8::String>(info[2]).ToLocalChecked());
+      std::string layerId = std::string(*param2);
+      int spatialId = info[3]->IntegerValue(Nan::GetCurrentContext()).ToChecked();
+      int temporalId = info[4]->IntegerValue(Nan::GetCurrentContext()).ToChecked();
+
+      obj->me = new owt_base::VideoFrameConstructor(parent->me);
+      obj->me->setPreferredLayers(spatialId, temporalId);
+      obj->layerId = layerId;
+      obj->parent = parent->me;
+      obj->parent->addChildProcessor(layerId, obj->me);
     }
+
     obj->src = obj->me;
     obj->msink = obj->me;
 
@@ -74,6 +98,9 @@ NAN_METHOD(VideoFrameConstructor::close) {
   VideoFrameConstructor* obj = Nan::ObjectWrap::Unwrap<VideoFrameConstructor>(info.Holder());
   owt_base::VideoFrameConstructor* me = obj->me;
 
+  if (obj->parent) {
+    obj->parent->removeChildProcessor(obj->layerId);
+  }
   if (!uv_is_closing(reinterpret_cast<uv_handle_t*>(&obj->async_))) {
     uv_close(reinterpret_cast<uv_handle_t*>(&obj->async_), NULL);
   }

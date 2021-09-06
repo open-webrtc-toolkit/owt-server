@@ -23,6 +23,9 @@ class VideoFrameConstructor : public MediaSink, public owt_base::VideoInfoListen
 
   std::queue<std::string> videoInfoMsgs;
   boost::mutex mutex;
+
+  owt_base::VideoFrameConstructor* parent;
+  std::string layerId;
  private:
   Nan::Callback *Callback_;
   uv_async_t async_;
