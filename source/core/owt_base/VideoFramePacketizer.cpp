@@ -14,6 +14,9 @@ namespace owt_base {
 // in up to 2 times max video bitrate if the bandwidth estimate allows it.
 static const int TRANSMISSION_MAXBITRATE_MULTIPLIER = 2;
 
+// Interval for getting send-side estimated bandwidth
+static const int kBitrateEstimationInterval = 5;
+
 DEFINE_LOGGER(VideoFramePacketizer, "owt.VideoFramePacketizer");
 
 VideoFramePacketizer::VideoFramePacketizer(VideoFramePacketizer::Config& config)
@@ -31,11 +34,17 @@ VideoFramePacketizer::VideoFramePacketizer(VideoFramePacketizer::Config& config)
         ELOG_DEBUG("Create RtcAdapter");
         m_rtcAdapter.reset(RtcAdapterFactory::CreateRtcAdapter());
     }
+    if (config.enableBandwidthEstimation) {
+        m_feedbackTimer = SharedJobTimer::GetSharedFrequencyTimer(
+            kBitrateEstimationInterval);
+        m_feedbackTimer->addListener(this);
+    }
     init(config);
 }
 
 VideoFramePacketizer::~VideoFramePacketizer()
 {
+    m_feedbackTimer->removeListener(this);
     close();
     if (m_videoSend) {
         m_rtcAdapter->destoryVideoSender(m_videoSend);
@@ -130,6 +139,19 @@ uint32_t VideoFramePacketizer::getEstimatedBandwidth()
         estimatedBandwidth = m_videoSend->getStats().estimated_bandwidth;
     }
     return estimatedBandwidth;
+}
+
+void VideoFramePacketizer::onTimeout()
+{
+    if (m_videoSend) {
+        auto stats = m_videoSend->getStats();
+        uint32_t bandwidthBps = stats.estimated_bandwidth;
+        ELOG_DEBUG("Estimated bandwidth: %u", bandwidthBps);
+
+        FeedbackMsg msg(VIDEO_FEEDBACK, SET_BITRATE);
+        msg.data.kbps = bandwidthBps / 1000;
+        deliverFeedbackMsg(msg);
+    }
 }
 
 void VideoFramePacketizer::onFeedback(const FeedbackMsg& msg)
