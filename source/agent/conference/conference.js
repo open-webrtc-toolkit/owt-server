@@ -340,6 +340,7 @@ var Conference = function (rpcClient, selfRpcId) {
         .then(function(config) {
             //log.debug('initializing room:', roomId, 'got config:', JSON.stringify(config));
             room_config = config;
+            room_config.enableBandwidthAdaption = true;
             room_config.internalConnProtocol = global.config.internal.protocol;
             StreamConfigure(room_config);
 
@@ -654,6 +655,7 @@ var Conference = function (rpcClient, selfRpcId) {
           streams[id] = fwdStream;
           pubArgs.forEach(pubArg => {
             trackOwners[pubArg.id] = id;
+
             if (room_config.selectActiveAudio) {
               if (pubArg.media.audio) {
                 roomController.selectAudio(pubArg.id, () => {
@@ -778,9 +780,43 @@ var Conference = function (rpcClient, selfRpcId) {
         log.warn('Add duplicate subscription:', id);
       }
     }
+    const switchMap = new Map();
     for (const from of subscription.froms()) {
       const streamId = streams[from] ? from : trackOwners[from];
       if (streams[streamId]) {
+        if (streams[streamId].type === 'forward' && room_config.enableBandwidthAdaption) {
+          // Create layer stream or find simulcast tracks
+          const svcTrack = streams[streamId].media.tracks.find(t => t.scalabilityMode);
+          let createSwitch = null;
+          if (svcTrack) {
+            // Make RPC to create layer streams
+            const layerOption = svcTrack.source !== 'screen-cast' ?
+              {spatial: true, temporal: false} :
+              {spatial: false, temporal: true};
+            createSwitch = rtcController.createLayerStreams(svcTrack.id, layerOption)
+              .catch((e) => log.warn('fail layer :', e))
+              .then((result) => {
+                // Make RPC to create quality switch
+                log.debug('qualitySources:', JSON.stringify(result));
+                const streamAddr = roomController.getStreamAddress(svcTrack.id);
+                const qualitySources = result.map((id) => {
+                  return {id, ip: streamAddr.ip, port: streamAddr.port};
+                });
+                return rtcController.createQualitySwitch(locality, qualitySources);
+              });
+            switchMap.set(svcTrack.id, createSwitch);
+          }
+          let simTracks = streams[streamId].media.tracks.filter(t => t.rid);
+          if (simTracks.length > 0) {
+            // Make RPC to create quality switch
+            const qualitySources = simTracks.map((t) => {
+                return roomController.getStreamAddress(t.id);
+            });
+            createSwitch = rtcController.createQualitySwitch(locality, qualitySources);
+            const simSource = trackOwners[from] ? from : simTracks[0].id;
+            switchMap.set(simSource, createSwitch);
+          }
+        }
         subscription.setSource(from, streams[streamId]);
       } else {
         return Promise.reject('Subscription source not found: ' + from);
@@ -791,10 +827,40 @@ var Conference = function (rpcClient, selfRpcId) {
     const subArgs = subscription.toRoomCtrlSubArgs();
     const subs = subArgs.map(subArg => new Promise((resolve, reject) => {
         if (roomController) {
-            const subInfo = { transport : transport, media : subArg.media, data : subArg.data, origin: subArg.media.origin };
-            roomController.subscribe(
+            const subInfo = {
+              transport : transport,
+              media : subArg.media,
+              data : subArg.data,
+              origin: subArg.media.origin
+            };
+            if (subInfo.media.video && switchMap.has(subInfo.media.video.from)) {
+              const switchPromise = switchMap.get(subInfo.media.video.from);
+              switchPromise.then((result) => {
+                const switchId = result.id;
+                const originMedia = getStreamTrack(subInfo.media.video.from, 'video');
+                const pubMedia = {video: originMedia.format};
+                log.debug('Publish switch to room controller:', switchId, originMedia);
+                roomController.publish(
+                    subArg.owner,
+                    switchId,
+                    subArg.locality,
+                    {origin: subInfo.origin, media:pubMedia, data:subInfo.data},
+                    subInfo.type,
+                    function pubOk() {
+                      log.debug('Try subscribe switch');
+                      subInfo.media.video = {from: switchId};
+                      roomController.subscribe(
+                        subArg.owner, subArg.id, subArg.locality, subInfo, subArg.type,
+                        isAudioPubPermitted, resolve, reject);
+                    },
+                    reject
+                  );
+              });
+            } else {
+              roomController.subscribe(
                 subArg.owner, subArg.id, subArg.locality, subInfo, subArg.type,
                 isAudioPubPermitted, resolve, reject);
+            }
         } else {
             reject('RoomController is not ready');
         }
@@ -1106,7 +1172,7 @@ var Conference = function (rpcClient, selfRpcId) {
           if (rtcPubInfo.tracks) {
               // Set formatPreference
               rtcPubInfo.tracks.forEach(track => {
-                  track.formatPreference = { optional : room_config.mediaIn[track.type] };
+                  track.formatPreference = {optional : room_config.mediaIn[track.type]};
               });
           }
           initiateStream(streamId, { owner : participantId, type : pubInfo.type, origin });
@@ -1341,6 +1407,10 @@ var Conference = function (rpcClient, selfRpcId) {
       if (subDesc.type === 'webrtc' || subDesc.type === 'quic') {
         const controller = subDesc.type === 'webrtc' ? rtcController : quicController;
         const rtcSubInfo = translateRtcSubIfNeeded(subDesc);
+        // Check bandwidth estimation
+        if (room_config.enableBandwidthAdaption) {
+          rtcSubInfo.enableBWE = true;
+        }
         if (rtcSubInfo.tracks){
           // Set formatPreference
           rtcSubInfo.tracks.forEach(track => {

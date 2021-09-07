@@ -116,6 +116,10 @@ var RoomSchema = new Schema({
     type: Boolean,
     default: false
   },
+  enableBandwidthAdaption: {
+    type: Boolean,
+    default: false
+  },
   roles: [],
   views: [ViewSchema],
   mediaIn: {

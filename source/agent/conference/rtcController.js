@@ -31,12 +31,15 @@ class Transport {
 
 class Track {
 
-  constructor(operation, {type, source, mid, formatPreference, from}) {
+  constructor(
+    operation,
+    {type, source, mid, formatPreference, from, scalabilityMode}) {
     this.type = type;
     this.source = source;
     this.mid = mid;
     this.formatPreference = formatPreference;
     this.from = from;
+    this.scalabilityMode = scalabilityMode;
     this.operationId = operation.id;
     this.direction = operation.direction;
 
@@ -108,7 +111,7 @@ class RtcController extends EventEmitter {
 
   /* rpcReq {
    *   getWorkerNode, recycleWorkerNode, initiate, terminate,
-   *   onTransportSignaling, mediaOnOff, sendMsg
+   *   onTransportSignaling, mediaOnOff, sendMsg, createLayerStreams, createQualitySwitch
    * }
    */
   constructor(roomId, rpcReq, roomRpcId, clusterRpcId) {
@@ -266,7 +269,8 @@ class RtcController extends EventEmitter {
 
   // tracks = [ {mid, type, formatPreference, from} ]
   // Return Promise
-  initiate(ownerId, sessionId, direction, origin, {transportId, tracks, legacy, attributes}) {
+  initiate(ownerId, sessionId, direction, origin,
+      {transportId, tracks, legacy, attributes, enableBWE}) {
     log.debug(`initiate, ownerId:${ownerId}, sessionId:${sessionId}, origin:${origin}, ` +
       `transportId:${transportId}, tracks:${JSON.stringify(tracks)}, legacy:${legacy}, attributes:${attributes}`);
 
@@ -285,7 +289,7 @@ class RtcController extends EventEmitter {
       const op = new Operation(sessionId, transport, direction, tracks, legacy, attributes);
       this.operations.set(sessionId, op);
       // Return promise for this operation
-      const options = {transportId, tracks, controller: this.roomRpcId, owner: ownerId};
+      const options = {transportId, tracks, controller: this.roomRpcId, owner: ownerId, enableBWE};
       return this.rpcReq.initiate(locality.node, sessionId, 'webrtc', direction, options);
     });
   }
@@ -388,6 +392,31 @@ class RtcController extends EventEmitter {
         locality.node, sessionId, tracks, operation.direction, onOff)
             .catch(reason => log.debug(`setMute failed ${sessionId}`));;
   };
+
+
+  // preferredLayers = {spatial: number|boolean, temporal: number|boolean}
+  createLayerStreams(trackId, preferredLayers) {
+    log.debug(`createLayerStreams: ${trackId}, ${preferredLayers}`);
+    let locality = null;
+    if (this.tracks.has(trackId)) {
+      const opId = this.tracks.get(trackId).operationId;
+      const tpId = this.operations.has(opId) ?
+        this.operations.get(opId).transportId : null;
+      locality = this.transports.has(tpId) ?
+        this.transports.get(tpId).locality : null;
+    }
+    if (!locality || !locality.node) {
+      log.warn(`Could not find locality for track: ${trackId}`);
+      return Promise.reject(`Locality not found for ${trackId}`);
+    }
+    return this.rpcReq.createLayerStreams(locality.node, trackId, preferredLayers);
+  }
+
+  // froms = [{id, ip, port}]
+  createQualitySwitch(locality, froms) {
+    log.debug(`createQualitySwitch: ${froms}`);
+    return this.rpcReq.createQualitySwitch(locality.node, froms);
+  }
 
 }
 

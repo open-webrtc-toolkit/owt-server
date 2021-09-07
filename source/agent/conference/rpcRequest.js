@@ -86,6 +86,14 @@ var RpcRequest = function(rpcChannel) {
     return rpcChannel.makeRPC(sipNode, 'endCall', [sipCallId]);
   };
 
+  that.createLayerStreams = function(accessNode, trackId, preferredLayers) {
+    return rpcChannel.makeRPC(accessNode, 'createLayerStreams', [trackId, preferredLayers]);
+  };
+
+  that.createQualitySwitch = function(accessNode, froms) {
+    return rpcChannel.makeRPC(accessNode, 'createQualitySwitch', [froms]);
+  };
+
   return that;
 };
 

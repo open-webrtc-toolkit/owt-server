@@ -1897,6 +1897,10 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
         }
     };
 
+    that.getStreamAddress = function (streamId) {
+        return getStreamLinkInfo(streamId);
+    };
+
     var isImpacted = function (locality, type, id) {
         return (type === 'worker' && locality.agent === id) || (type === 'node' && locality.node === id);
     };
