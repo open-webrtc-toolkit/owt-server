@@ -14,7 +14,9 @@ namespace owt_base {
 static constexpr uint32_t kBitrateCountPeriod = 5000;
 static constexpr uint32_t kBucketNum = 50;
 // Minimal period for switching(ms)
-static constexpr uint64_t kMinimalUpdatePeriod = 3000;
+static constexpr uint64_t kMinimalUpdatePeriod = 5000;
+// Only change source when difference exceed threshold
+static constexpr double kBitrateChangeThreshold = 0.1;
 
 DEFINE_LOGGER(VideoQualitySwitch, "owt.VideoQualitySwitch");
 
@@ -91,6 +93,16 @@ void VideoQualitySwitch::setTargetBitrate(uint32_t targetBps)
         }
     }
     if (current != m_current) {
+        if (current >= 0 && m_current >= 0) {
+            int newBitrate = m_bitrateCounters[current]->bitrate();
+            int oldBitrate = m_bitrateCounters[m_current]->bitrate() + 1;
+            double diff = std::abs(newBitrate - oldBitrate);
+            diff = diff / oldBitrate;
+            if (diff < kBitrateChangeThreshold) {
+                ELOG_DEBUG("No change when less than threshold: %f", diff);
+                return;
+            }
+        }
         if (m_current >= 0 && m_sources[m_current]) {
             ELOG_DEBUG("Disable source index %u", m_current);
             m_sources[m_current]->removeVideoDestination(this);
