@@ -14,6 +14,7 @@ var {InternalConnectionRouter} = require('./internalConnectionRouter');
 var log = logger.getLogger('WebrtcNode');
 
 var addon = require('../rtcConn/build/Release/rtcConn.node');
+var videoSwitch = require('../videoSwitch/build/Release/videoSwitch.node').VideoSwitch;
 
 var threadPool = new addon.ThreadPool(global.config.webrtc.num_workers || 24);
 threadPool.start();
@@ -39,6 +40,8 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
     var mappingPublicId = new Map();
     // Map { operationId => transportId }
     var mappingTransports = new Map();
+    // Map { switchId => videoSwitch }
+    var switches = new Map();
     
     var notifyTransportStatus = function (controller, transportId, status) {
         rpcClient.remoteCast(controller, 'onTransportProgress', [transportId, status]);
@@ -70,7 +73,7 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
             mediaTracks.set(publicTrackId, track);
             mappingPublicId.get(transportId).set(track.id, publicTrackId);
             if (track.direction === 'in') {
-                const trackSource = (track.sender('audio') || track.sender('video'));
+                const trackSource = track.sender();
                 router.addLocalSource(publicTrackId, 'webrtc', trackSource)
                 .catch(e => log.warn('Unexpected error during track add:', e));
             } else {
@@ -218,7 +221,12 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
      * For operations on type internal, operationId is connectionId.
      */
     // functions: publish, unpublish, subscribe, unsubscribe, linkup, cutoff
-    // options = { transportId, tracks = [{mid, type, formatPreference}], controller, owner}
+    // options = {
+    //   transportId,
+    //   tracks = [{mid, type, formatPreference, scalabilityMode}],
+    //   controller, owner
+    // }
+    // formatPreference = {preferred: MediaFormat, optional: [MediaFormat]}
     that.publish = function (operationId, connectionType, options, callback) {
         log.debug('publish, operationId:', operationId, 'connectionType:', connectionType, 'options:', options);
         if (mappingTransports.has(operationId)) {
@@ -233,7 +241,7 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
             }
             conn = createWebRTCConnection(options.transportId, options.controller, options.owner);
             options.tracks.forEach(function trackOp(t) {
-                conn.addTrackOperation(operationId, t.mid, t.type, 'sendonly', t.formatPreference);
+                conn.addTrackOperation(operationId, 'sendonly', t);
             });
             mappingTransports.set(operationId, options.transportId);
             callback('callback', 'ok');
@@ -257,6 +265,17 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
         }
     };
 
+    /*
+     * For operations on type webrtc, publicTrackId is connectionId.
+     * For operations on type internal, operationId is connectionId.
+     */
+    // functions: publish, unpublish, subscribe, unsubscribe, linkup, cutoff
+    // options = {
+    //   transportId,
+    //   tracks = [{mid, type, formatPreference, scalabilityMode}],
+    //   controller, owner, enableBWE
+    // }
+    // formatPreference = {preferred: MediaFormat, optional: [MediaFormat]}
     that.subscribe = function (operationId, connectionType, options, callback) {
         log.debug('subscribe, operationId:', operationId, 'connectionType:', connectionType, 'options:', options);
         if (mappingTransports.has(operationId)) {
@@ -271,9 +290,12 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
             }
             conn = createWebRTCConnection(options.transportId, options.controller, options.owner);
             options.tracks.forEach(function trackOp(t) {
-                conn.addTrackOperation(operationId, t.mid, t.type, 'recvonly', t.formatPreference);
+                conn.addTrackOperation(operationId, 'recvonly', t);
             });
             mappingTransports.set(operationId, options.transportId);
+            if (options.enableBWE) {
+                conn.enableBWE = true;
+            }
             callback('callback', 'ok');
         } else {
             log.error('Connection type invalid:' + connectionType);
@@ -341,6 +363,86 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
           log.info('WebRTC Connection does NOT exist:' + connectionId);
           callback('callback', 'error', 'Connection does NOT exist:' + connectionId);
         }
+    };
+
+    // Create streams from SVC stream with layer settings
+    // layerInfo = {spatial: number|boolean, temporal: number|boolean}
+    // Return [id] of created layer streams.
+    that.createLayerStreams = function (streamId, layerInfo, callback) {
+        log.debug('createLayerStreams', streamId, layerInfo);
+        var retIds = [];
+        var layers = [];
+        var track = null;
+        var layerStream = null;
+        if (mediaTracks.has(streamId)) {
+            track = mediaTracks.get(streamId);
+            log.debug('scalabilityMode:', track.scalabilityMode);
+            if (layerInfo.spatial === true) {
+                for (let i = 0; i < parseInt(track.scalabilityMode[1]); i++) {
+                    layers.push({spatial: i, temporal: -1});
+                }
+            } else if (layerInfo.temporal === true) {
+                for (let i = 0; i < parseInt(track.scalabilityMode[3]); i++) {
+                    layers.push({spatial: -1, temporal: i});
+                }
+            } else {
+                layers.push(layerInfo);
+            }
+            for (let info of layers) {
+                layerStream = track.getOrCreateLayerStream(info, (stream) => {
+                    router.removeConnection(stream.id)
+                        .catch(e => log.warn('Layer stream destroy:', e));
+                });
+                if (layerStream) {
+                    retIds.push(layerStream.id);
+                    if (!router.hasConnection(layerStream.id)) {
+                        router.addLocalSource(
+                            layerStream.id, 'webrtc', layerStream.sender())
+                            .catch(e => log.warn('Add layer stream:', e));
+                    }
+                }
+            }
+            callback('callback', retIds);
+        } else {
+            callback('callback', 'error', 'Stream does NOT exist:', streamId);
+        }
+    };
+
+    // Create quality switch for given source streams,
+    // which can switch source based on bitrate setting.
+    // return created switch ID
+    that.createQualitySwitch = function (sourceStreams, callback) {
+        log.debug('createQualitySwitch', JSON.stringify(sourceStreams));
+        const switchId = Math.round(Math.random() * 1000000000000000000) + '';
+        const switchSources = [];
+        for (const source of sourceStreams) {
+            if (!router.hasConnection(source.id)) {
+                router.getOrCreateRemoteSource({
+                    id: source.id,
+                    ip: source.ip,
+                    port: source.port,
+                }, function onStats(stat) {
+                    if (stat === 'disconnected') {
+                        if (switches.get(switchId)) {
+                            log.debug('Quality switch source disconnect:', source.id);
+                            switches.get(switchId).close();
+                            switches.delete(switchId);
+                        }
+                        router.destroyRemoteSource(source.id);
+                    }
+                });
+            }
+            const conn = router.getConnection(source.id);
+            if (conn) {
+                log.debug('Added switch source:', source.id);
+                switchSources.push(conn.sender ? conn.sender() : conn);
+            }
+        }
+        const vswitch = new videoSwitch(...switchSources);
+        switches.set(switchId, vswitch);
+        router.addLocalSource(switchId, 'webrtc', vswitch)
+            .catch((e) => log.warn('Adding switch:', e));
+        callback('callback', {id: switchId});
     };
 
     that.setVideoBitrate = function (connectionId, bitrate, callback) {
