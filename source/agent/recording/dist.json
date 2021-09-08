@@ -48,6 +48,10 @@
                 "name": "logger"
             },
             {
+                "folder": "../addons/mediaFrameMulticaster",
+                "name": "mediaFrameMulticaster"
+            },
+            {
                 "folder": "../addons/quicIO",
                 "name": "quicIO"
             }
