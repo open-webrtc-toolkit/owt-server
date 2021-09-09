@@ -9,7 +9,7 @@
 #include <nan.h>
 
 /*
- * Wrapper class of owt_base::VideoFramePacketizer
+ * Wrapper class of RtcAdapter for call
  */
 class CallBase : public Nan::ObjectWrap {
  public:

@@ -6,9 +6,9 @@
 #define BUILDING_NODE_EXTENSION
 #endif
 
+#include "CallBaseWrapper.h"
 #include "MediaWrapper.h"
 #include "VideoFramePacketizerWrapper.h"
-#include "CallBaseWrapper.h"
 #include "WebRtcConnection.h"
 
 using namespace v8;
@@ -30,9 +30,9 @@ void VideoFramePacketizer::Init(v8::Local<v8::Object> exports) {
   NODE_SET_PROTOTYPE_METHOD(tpl, "unbindTransport", unbindTransport);
   NODE_SET_PROTOTYPE_METHOD(tpl, "enable", enable);
   NODE_SET_PROTOTYPE_METHOD(tpl, "ssrc", getSsrc);
-  NODE_SET_PROTOTYPE_METHOD(tpl, "getTotalBitrate", getTotalBitrate);
-  NODE_SET_PROTOTYPE_METHOD(tpl, "getRetransmitBitrate", getRetransmitBitrate);
-  NODE_SET_PROTOTYPE_METHOD(tpl, "getEstimatedBandwidth", getEstimatedBandwidth);
+  NODE_SET_PROTOTYPE_METHOD(tpl, "getTotalBitrateBps", getTotalBitrate);
+  NODE_SET_PROTOTYPE_METHOD(tpl, "getRetransmitBitrateBps", getRetransmitBitrate);
+  NODE_SET_PROTOTYPE_METHOD(tpl, "getEstimatedBandwidthBps", getEstimatedBandwidth);
 
   constructor.Reset(isolate, tpl->GetFunction());
   exports->Set(String::NewFromUtf8(isolate, "VideoFramePacketizer"), tpl->GetFunction());

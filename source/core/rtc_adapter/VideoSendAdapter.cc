@@ -257,7 +257,7 @@ bool VideoSendAdapterImpl::init()
 
     if (m_transportControllerSend) {
         m_transportControllerSend->packet_router()
-            ->AddSendRtpModule(m_rtpRtcp.get(), false);
+            ->AddSendRtpModule(m_rtpRtcp.get(), true);
     }
 
     webrtc::RTPSenderVideo::Config video_config;
