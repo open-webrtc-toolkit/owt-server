@@ -79,6 +79,13 @@ then
     [Yy]* ) install_boost;;
     * ) install_boost;;
   esac
+
+   read -p "Installing python3 [Yes/no]" yn
+  case $yn in
+    [Nn]* ) ;;
+    [Yy]* ) install_python3;;
+    * ) install_python3;;
+  esac
 elif [[ "$OS" =~ .*ubuntu.* ]]
 then
   . installUbuntuDeps.sh

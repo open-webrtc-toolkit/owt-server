@@ -65,6 +65,7 @@ then
     installRepo
     installYumDeps
     install_boost
+    install_python3
   fi
 elif [[ "$OS" =~ .*ubuntu.* ]]
 then
