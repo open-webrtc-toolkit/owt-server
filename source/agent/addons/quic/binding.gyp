@@ -4,9 +4,11 @@
     'sources':[
       'addon.cc',
       "QuicFactory.cc",
-      'QuicTransportStream.cc',
       'QuicTransportServer.cc',
       'QuicTransportConnection.cc',
+      'QuicTransportStream.cc',
+      'WebTransportFrameSource.cc',
+      'WebTransportFrameDestination.cc',
       '../../../core/owt_base/MediaFramePipeline.cpp',
       '../../../core/owt_base/MediaFrameMulticaster.cpp',
       '../../../core/owt_base/Utils.cc',

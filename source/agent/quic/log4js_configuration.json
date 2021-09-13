@@ -19,7 +19,7 @@
     "Connection": "WARN",
     "WorkingAgent": "WARN",
     "Connections": "WARN",
-    "InternalConnectionFactory": "WARN",
+    "InternalConnectionRouter": "WARN",
     "QuicConnection": "WARN",
     "QuicTransportServer": "WARN",
     "QuicTransportStreamPipeline": "WARN"

@@ -18,6 +18,6 @@
     "AnalyticsNode": "INFO",
     "AnalyticsAgent": "WARN",
     "Connections": "INFO",
-    "InternalConnectionFactory": "INFO"
+    "InternalConnectionRouter": "INFO"
   }
 }

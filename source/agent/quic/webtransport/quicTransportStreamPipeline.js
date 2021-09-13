@@ -46,10 +46,6 @@ module.exports = class QuicTransportStreamPipeline {
     };
 
     this.receiver = function(kind) {
-      if (kind !== 'data') {
-        log.error('Unsupported receiver.');
-        return null;
-      }
       return this._quicStream;
     };
 

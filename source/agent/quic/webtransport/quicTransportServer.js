@@ -67,6 +67,15 @@ module.exports = class QuicTransportServer extends EventEmitter {
             stream.write(uuidBytes, uuidBytes.length);
           }
         };
+        stream.ontrackid = (id) => {
+          if (stream.trackId) {
+            log.warn('Duplicate events for track ID.');
+            return;
+          }
+          const trackId = this._uuidBytesToString(new Uint8Array(id))
+          stream.trackId = trackId;
+          this.emit('trackid', stream);
+        };
         stream.ondata = (data) => {
           if (stream.contentSessionId === zeroUuid) {
             // Please refer

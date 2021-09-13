@@ -22,6 +22,6 @@
     "SdpInfo": "INFO",
     "WorkingAgent": "INFO",
     "Connections": "INFO",
-    "InternalConnectionFactory": "INFO"
+    "InternalConnectionRouter": "INFO"
   }
 }
