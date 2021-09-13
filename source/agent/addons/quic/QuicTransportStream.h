@@ -39,11 +39,11 @@ public:
     // Read 128 bits after content session ID. Only media streams have track ID. Result will be returned by onData callback.
     // TODO: Make this as an async method when it's supported.
     static NAN_METHOD(readTrackId);
-    // Check whether there is readable data. If so, fire ondata event.
-    static NAN_METHOD(checkReadableData);
 
     static NAN_GETTER(isMediaGetter);
     static NAN_SETTER(isMediaSetter);
+    static NAN_GETTER(onDataGetter);
+    static NAN_SETTER(onDataSetter);
 
     static NAUV_WORK_CB(onContentSessionId);
     static NAUV_WORK_CB(onTrackId);
@@ -80,6 +80,8 @@ private:
     void ReadTrackId();
     void SignalOnData();
     void ReallocateBuffer(size_t size);
+    // Check whether there is readable data. If so, fire ondata event.
+    void CheckReadableData();
     void AddedDestination();
     void RemovedDestination();
 
@@ -98,6 +100,7 @@ private:
 
     // Indicates whether this is a media stream. If this is not a media stream, it can only be piped to another QUIC agent.
     bool m_isMedia;
+    Nan::Persistent<v8::Value> m_onDataCallback;
 
     size_t m_readingFrameSize;
     size_t m_frameSizeOffset;
