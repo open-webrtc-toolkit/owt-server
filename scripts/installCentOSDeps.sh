@@ -66,12 +66,12 @@ install_mediadeps(){
 
 install_glibc(){
   cd $LIB_DIR
-  wget -c http://gnu.mirrors.pair.com/gnu/libc/glibc-2.14.tar.xz
-  tar xvf glibc-2.14.tar.xz
-  cd glibc-2.14
+  wget http://ftp.gnu.org/gnu/glibc/glibc-2.18.tar.gz 
+  tar zxf glibc-2.18.tar.gz
+  cd glibc-2.18
   mkdir -p build && cd build/
-  ../configure --prefix=$PREFIX_DIR
-  make -j4 -s && make install
+  ../configure --prefix=/usr
+  make -j4 && make install
 }
 
 install_python3(){

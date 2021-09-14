@@ -80,6 +80,13 @@ then
     * ) install_boost;;
   esac
 
+  read -p "Installing glibc-2.18 [Yes/no]" yn
+  case $yn in
+    [Nn]* ) ;;
+    [Yy]* ) install_glibc;;
+    * ) install_glibc;;
+  esac
+
    read -p "Installing python3 [Yes/no]" yn
   case $yn in
     [Nn]* ) ;;
