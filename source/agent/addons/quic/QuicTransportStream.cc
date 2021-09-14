@@ -58,6 +58,7 @@ QuicTransportStream::~QuicTransportStream()
     }
     m_stream->SetVisitor(nullptr);
     delete[] m_buffer;
+    m_onDataCallback.Reset();
 }
 
 void QuicTransportStream::OnCanRead()
@@ -123,6 +124,7 @@ NAN_MODULE_INIT(QuicTransportStream::init)
     Nan::SetPrototypeMethod(tpl, "readTrackId", readTrackId);
     Nan::SetPrototypeMethod(tpl, "addDestination", addDestination);
     Nan::SetAccessor(instanceTpl, Nan::New("isMedia").ToLocalChecked(), isMediaGetter, isMediaSetter);
+    Nan::SetAccessor(instanceTpl, Nan::New("ondata").ToLocalChecked(), onDataGetter, onDataSetter);
 
     s_constructor.Reset(Nan::GetFunction(tpl).ToLocalChecked());
     Nan::Set(target, Nan::New("QuicTransportStream").ToLocalChecked(), Nan::GetFunction(tpl).ToLocalChecked());
@@ -203,6 +205,13 @@ NAN_METHOD(QuicTransportStream::readTrackId){
     obj->ReadTrackId();
 }
 
+void QuicTransportStream::CheckReadableData()
+{
+    if (m_stream->ReadableBytes() > 0) {
+        SignalOnData();
+    }
+}
+
 NAN_GETTER(QuicTransportStream::isMediaGetter){
     QuicTransportStream* obj = Nan::ObjectWrap::Unwrap<QuicTransportStream>(info.Holder());
     info.GetReturnValue().Set(Nan::New(obj->m_isMedia));
@@ -212,6 +221,24 @@ NAN_SETTER(QuicTransportStream::isMediaSetter)
 {
     QuicTransportStream* obj = Nan::ObjectWrap::Unwrap<QuicTransportStream>(info.Holder());
     obj->m_isMedia = value->ToBoolean(Nan::GetCurrentContext()).ToLocalChecked()->Value();
+}
+
+NAN_GETTER(QuicTransportStream::onDataGetter)
+{
+    QuicTransportStream* obj = Nan::ObjectWrap::Unwrap<QuicTransportStream>(info.Holder());
+    info.GetReturnValue().Set(Nan::New(obj->m_onDataCallback));
+}
+
+NAN_SETTER(QuicTransportStream::onDataSetter)
+{
+    QuicTransportStream* obj = Nan::ObjectWrap::Unwrap<QuicTransportStream>(info.Holder());
+    if (value->IsFunction()) {
+        Nan::Persistent<v8::Value> persistentCallback(value);
+        obj->m_onDataCallback.Reset(persistentCallback);
+        obj->CheckReadableData();
+    } else {
+        obj->m_onDataCallback.Reset();
+    }
 }
 
 v8::Local<v8::Object> QuicTransportStream::newInstance(owt::quic::WebTransportStreamInterface* stream)
@@ -273,6 +300,7 @@ NAUV_WORK_CB(QuicTransportStream::onData)
     if (obj == nullptr) {
         return;
     }
+    // TODO: Check m_onDataCallback instead of reading ondata.
     Nan::MaybeLocal<v8::Value> onEvent = Nan::Get(obj->handle(), Nan::New<v8::String>("ondata").ToLocalChecked());
     if (!onEvent.IsEmpty()) {
         v8::Local<v8::Value> onEventLocal = onEvent.ToLocalChecked();

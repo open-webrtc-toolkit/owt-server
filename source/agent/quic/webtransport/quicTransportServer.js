@@ -151,7 +151,7 @@ module.exports = class QuicTransportServer extends EventEmitter {
             }
             return;
           }
-        }
+        };
       }
     }
   }
