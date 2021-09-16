@@ -38,6 +38,10 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
         new Map();  // Key is publication ID, value is stream pipeline.
     const outgoingStreamPipelines =
         new Map();  // Key is subscription ID, value is stream pipeline.
+    const frameSourceMap =
+        new Map();  // Key is publication ID, value is WebTransportFrameSource.
+    const publicationOptions = new Map();
+    const subscriptionOptions = new Map();
     let quicTransportServer;
     const clusterName = global && global.config && global.config.cluster ?
         global.config.cluster.name :
@@ -101,11 +105,25 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
         log.debug(
             'A stream with session ID ' + stream.contentSessionId +
             ' is added.');
-        let pipeline = null;
+        // Set isMedia=true if the session is for media.
         if (outgoingStreamPipelines.has(stream.contentSessionId)) {
-          pipeline = outgoingStreamPipelines.get(stream.contentSessionId);
-        } else if (incomingStreamPipelines.has(stream.contentSessionId)) {
-          pipeline = incomingStreamPipelines.get(stream.contentSessionId);
+          const pipeline = outgoingStreamPipelines.get(stream.contentSessionId);
+          pipeline.quicStream(stream);
+        } else if (frameSourceMap.has(stream.contentSessionId)) {
+          if (!publicationOptions.has(stream.contentSessionId)) {
+            log.warn(
+                'Cannot find publication options for session ' +
+                stream.contentSessionId);
+            stream.close();
+          }
+          const options = publicationOptions.get(stream.contentSessionId);
+          // Only publications for media have tracks.
+          if (options.tracks && options.tracks.length) {
+            stream.isMedia = true;
+            stream.readTrackId();
+          } else {
+            frameSourceMap.get(stream.contentSessionId).addInputStream(stream);
+          }
         } else {
           log.warn(
               'Cannot find a pipeline for QUIC stream. Content session ID: ' +
@@ -113,7 +131,11 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
           stream.close();
           return;
         }
-        pipeline.quicStream(stream);
+      });
+      quicTransportServer.on('trackid', (stream) => {
+        if (frameSourceMap.has(stream.contentSessionId)) {
+          frameSourceMap.get(stream.contentSessionId).addInputStream(stream);
+        }
       });
       quicTransportServer.on('connectionadded', (connection) => {
         log.debug(
@@ -121,6 +143,18 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
             ' is created.');
       });
     });
+
+    const createFrameSource = (streamId, options, callback) => {
+      if (frameSourceMap.has(streamId)) {
+        callback('callback', {
+          type: 'failed',
+          reason: 'Frame source for ' + streamId + ' exists.'
+        });
+      }
+      const frameSource = new addon.WebTransportFrameSource(streamId);
+      frameSourceMap.set(streamId, frameSource);
+      return frameSource;
+    };
 
     const createStreamPipeline =
         function(streamId, direction, options, callback) {
@@ -177,7 +211,8 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
         var conn = null;
         switch (connectionType) {
         case 'quic':
-            conn = createStreamPipeline(connectionId, 'in', options, callback);
+            publicationOptions.set(connectionId, options);
+            conn = createFrameSource(connectionId, 'in', options, callback);
             if (!conn) {
                 return;
             }
@@ -189,10 +224,15 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
             log.error('Create connection failed', connectionId, connectionType);
             return callback('callback', {type: 'failed', reason: 'Create Connection failed'});
         }
-        conn.bindRouterAsSourceCallback = function(stream) {
-          router.addLocalSource(connectionId, connectionType, stream);
-        }
+        router.addLocalSource(connectionId, connectionType, conn);
         onSuccess(callback)();
+        notifyStatus(options.controller, connectionId, 'in', {
+          type: 'ready',
+          audio: undefined,
+          video: undefined,
+          data: true,
+          simulcast: false
+        });
     };
 
     that.unpublish = function (connectionId, callback) {
@@ -204,6 +244,9 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
             }
             callback('callback', 'ok');
         }, onError(callback));
+        if (publicationOptions.has(connectionId)) {
+          publicationOptions.delete(connectionId);
+        }
     };
 
     that.subscribe = function (connectionId, connectionType, options, callback) {
@@ -213,9 +256,6 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
             }
         }
         log.debug('subscribe, connectionId:', connectionId, 'connectionType:', connectionType, 'options:', options);
-        if(!options.data){
-            log.error('Subscription request does not include data field.');
-        }
         if (router.getConnection(connectionId)) {
             return callback('callback', {type: 'failed', reason: 'Connection already exists:'+connectionId});
         }

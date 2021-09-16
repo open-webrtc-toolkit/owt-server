@@ -44,7 +44,10 @@ private:
     static NAN_METHOD(close);
 
     static NAN_METHOD(getListeningPort);
-
+    // Arguments:
+    // type: string, type of the source, "audio", "video" or "data".
+    // source: A node addon object or NAN object.
+    // isNanObject: indicates whether `source` is a NAN object.
     static NAN_METHOD(addSource);
 
     static NAN_METHOD(removeSource);

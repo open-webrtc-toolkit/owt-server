@@ -250,14 +250,14 @@ public:
 
     virtual void onFeedback(const FeedbackMsg&) { };
 
-    void addAudioDestination(FrameDestination*);
-    void removeAudioDestination(FrameDestination*);
+    virtual void addAudioDestination(FrameDestination*);
+    virtual void removeAudioDestination(FrameDestination*);
 
-    void addVideoDestination(FrameDestination*);
-    void removeVideoDestination(FrameDestination*);
+    virtual void addVideoDestination(FrameDestination*);
+    virtual void removeVideoDestination(FrameDestination*);
 
-    void addDataDestination(FrameDestination*);
-    void removeDataDestination(FrameDestination*);
+    virtual void addDataDestination(FrameDestination*);
+    virtual void removeDataDestination(FrameDestination*);
 
 protected:
     void deliverFrame(const Frame&);

@@ -123,15 +123,6 @@ Please see the conference sample application for more detailed usage.
 
 Please follow [Conference Server build instructions](https://github.com/open-webrtc-toolkit/owt-server/blob/master/README.md) on how to build and deploy the conference server.
 
-## Build Conference Server with QUIC agent
-
-Because we don't have a good place to store pre-built QUIC SDK for public access, QUIC agent is not enabled by default. Additional flags are required to enable QUIC agent.
-
-1. Download QUIC SDK from the URL specified [here](https://github.com/open-webrtc-toolkit/owt-server/blob/master/source/agent/addons/quic/quic_sdk_url). QUIC SDK is hosted on GitHub as an artifact. You will need to follow [this description](https://docs.github.com/en/rest/reference/actions#download-an-artifact) to make a REST request to GitHub. Or you can download the latest QUIC SDK from [GitHub Actions](https://github.com/open-webrtc-toolkit/owt-sdk-quic/actions) tab. Commits pushed to main branch have artifact for downloading.
-1. After running `installDeps.sh`, put headers to build/libdeps/build/include, and put libraries(.so file) to build/libdeps/build/lib.
-1. Append `-t quic` to the arguments for build.js.
-1. Append `-t quic-agent` to the arguments for pack.js.
-
 ## How to use Pre-built Conference Server Binary
 
 Steps to run Conference Server with pre-built binary:
@@ -147,29 +138,3 @@ Steps to run Conference Server with pre-built binary:
 # OWT QUIC Windows Sample
 
 The Windows sample will be provided in OWT repo separately. More details will be provided later.
-
-# How to Replace the Certificate for QUIC
-
-OWT Conference Server is using a self-signed certificate during development phase, which would be only valid for 14 days. You can use a CA-signed certificate to avoid refreshing the certificate periodically. WebTransport connection will fail if certificate is not valid or expires.
-
-## Precondition
-
-- Make sure you are running the tool under Linux and,
-- Openssl tool is correctly setup in your system.
-- Download the tool under chromium/src/net/tools/quic/certs/ from chromium project to local dir named `tool`. This contains three files: `ca.cnf`, `generate-certs.sh` and `leaf.cnf`.
-
-## Certificate Generation
-
-- Modify leaf.cnf, adding an entry into `other_hosts` section.
-- Make sure generate-certs.sh is exectuable. If not, run `chmod +x generate-certs.sh`;
-- Remove the `out` dir in case it exists.
-- Under the downloaded tool dir, run `./generate-certs.sh`. It is expected to generate a series of files under out dir.
-- Under the downloaded tool dir, run `openssl pkcs12 -inkey out/leaf_cert.key -in out/leaf_cert.pem -export -out out/certificate.pfx`. This will prompt for password for the pfx. Make sure you always use `abc123` as the password.
-- Under the downloaded tool dir, run `openssl x509 -noout -fingerprint -sha256 -inform pem -in out/leaf_cert.pem`. You will get the fingerprint string in the form of "XX:XX:XX....XX:XX".
-
-## Use the Certificate
-
-- Copy the generated certificate.pfx under `out` dir to `quic_agent/cert/` dir to replace the one there.
-- Restart Conference Server QUIC agent to apply the change. If you're using JS sample for QUIC, make sure you also update JS sample with the new fingerprint.
-- In your native client sample, make sure you include the fingerprint of new cert in the `ConferenceClientConfiguration.trusted_quic_certificate_fingerprints` you passed to `ConferenceClient` ctor. See more details in the conference sample.
-

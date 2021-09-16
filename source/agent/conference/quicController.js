@@ -34,15 +34,20 @@ class Transport {
 
 class Operation {
   constructor(id, transport, direction, tracks, data) {
-    if(tracks){
-      throw new Error('QUIC agent does not support media stream tracks so far.');
-    }
     this.id = id;
     this.transport = transport;
     this.transportId = transport.id;
     this.direction = direction;
+    this.tracks = tracks;
     this.data = data;
     this.promise = Promise.resolve();
+    this.tracks = this.tracks ? this.tracks.map(t => {
+        if (t.type === 'video') {
+            t.format = { codec : 'h264', profile : 'B' };
+        }
+        return t;
+    })
+                              : undefined;
   }
 }
 
@@ -82,21 +87,6 @@ class QuicController extends EventEmitter {
   // Return Opreation
   getOperation(operationId) {
     return this.operations.get(operationId);
-  }
-
-  onSessionProgress(sessionId, status)
-  {
-      if (!status.data) {
-          log.error('onSessionProgress is called by QUIC connections.');
-          return;
-      }
-      if (status.type === 'ready') {
-          if (!this.operations.get(sessionId)) {
-              log.error('Invalid session ID.');
-              return;
-          }
-          this.emit('session-established', this.operations.get(sessionId));
-      }
   }
 
   onSessionProgress(sessionId, status)
@@ -168,6 +158,7 @@ class QuicController extends EventEmitter {
 
   // Return Promise
   terminate(sessionId, direction, reason) {
+    console.trace();
     log.debug(`terminate, sessionId: ${sessionId} direction: ${direction}, ${reason}`);
 
     if (!this.operations.has(sessionId)) {
