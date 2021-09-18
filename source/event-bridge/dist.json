@@ -1,0 +1,44 @@
+{
+  "name": "event-bridge",
+  "dest": "eventbridge",
+  "common": {
+      "package": "package.json",
+      "files": [
+          "agent.toml",
+          "log4js_configuration.json",
+          "index.js",
+          "eventCascading.js",
+          "configLoader.js",
+          "log4cxx.properties",
+          "../common/amqpClient.js",
+          "../common/cipher.js",
+          "../common/clusterWorker.js",
+          "../common/loadCollector.js",
+          "../common/logger.js",
+          "../common/makeRPC.js",
+          "../../scripts/release/initcert.js",
+          "../../scripts/release/initauth.js",
+          "../../scripts/detectOS.sh"
+      ],
+      "folders": {
+          "cert": [
+              "../../cert/certificate.pfx",
+              "../../cert/.owt.keystore"
+          ]
+      }
+  },
+  "natives": {
+      "libdist": "lib",
+      "addons": [
+          {
+              "folder": "../agent/addons/quicCascading",
+              "name": "quicCascading"
+          },
+          {
+              "folder": "../addons/logger",
+              "name": "logger"
+          }
+      ]
+  },
+  "start": "node . -U eventbridge"
+}

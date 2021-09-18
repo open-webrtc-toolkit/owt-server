@@ -494,4 +494,23 @@ exports.notifySipPortal = function (changeType, room, callback) {
     }});
 };
 
+exports.startEventCascading = function (pubReq, callback) {
+  var roomId = pubReq.selfRoom;
+  var token = Math.floor(Math.random() * 100000000000) + '';
+  return validateId('Room ID', roomId)
+    .then((ok) => {
+      return validateReq('cascading-req', pubReq);
+    }).then((ok) => {
+      rpc.callRpc('eventbridge', 'startCascading', [pubReq], {callback: function (result) {
+        if (result === 'error' || result === 'timeout') {
+          callback('error');
+        } else {
+          callback(result);
+        }
+      }}, 90 * 1000);
+    }).catch((err) => {
+      callback('error');
+    });
+}
+
 

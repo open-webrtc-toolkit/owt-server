@@ -114,6 +114,12 @@ case $startStop in
           > "${stdout}" 2>&1 </dev/null &
         echo $! > ${pid}
         ;;
+      event-bridge )
+	cd ${OWT_HOME}/eventbridge
+        nohup nice -n ${OWT_NICENESS} \
+          > "${stdout}" 2>&1 </dev/null &
+        echo $! > ${pid}
+        ;;
       conference-agent )
         cd ${OWT_HOME}/conference_agent
         nohup nice -n ${OWT_NICENESS} ./OWT-MCU-Conference-Controller . -U conference\

@@ -40,10 +40,10 @@ private:
     } TransportData;
 
     std::shared_ptr<net::RQuicServerInterface> server_;
-    bool m_hasStream;
     size_t m_bufferSize;
     TransportData m_receiveData;
     uint32_t m_receivedBytes;
+    std::unordered_map<std::string, bool> hasStream_;
 };
 
 /*

@@ -12,6 +12,7 @@
             "webrtc",
             "avstream",
             "gst-pipeline",
+	    "quicCascading",
             "sip"
         ]
     },
@@ -114,6 +115,9 @@
     ,
     "quicIO" : {
         "path" : "source/agent/addons/quicIO"
+    },
+    "quicCascading" : {
+        "path" : "source/agent/addons/quicCascading"
     },
     "resource-util" : {
         "path" : "source/agent/addons/resourceUtil"

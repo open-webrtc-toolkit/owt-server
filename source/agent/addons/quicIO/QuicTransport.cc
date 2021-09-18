@@ -17,7 +17,6 @@ const size_t INIT_BUFF_SIZE = 80000;
 // QUIC Incomming
 QuicIn::QuicIn(const std::string& cert_file, const std::string& key_file)
         : server_(RQuicFactory::createQuicServer(cert_file.c_str(), key_file.c_str()))
-        , m_hasStream(false)
         , m_bufferSize(INIT_BUFF_SIZE)
         , m_receivedBytes(0) {
   m_receiveData.buffer.reset(new char[m_bufferSize]);
@@ -65,9 +64,10 @@ void QuicIn::dFrame(char* buf) {
 
 void QuicIn::onData(uint32_t session_id, uint32_t stream_id, char* buf, uint32_t len) {
     // std::cout << "onData len:" << len << std::endl;
-    if (!m_hasStream) {
-        m_hasStream = true;
-    }
+    std::string sessionId = std::to_string(session_id);
+    std::string streamId = std::to_string(stream_id);
+    std::string sId = sessionId + streamId;
+
     if (m_receivedBytes + len >= m_bufferSize) {
         m_bufferSize += (m_receivedBytes + len);
         std::cout << "new_bufferSize: " << m_bufferSize << std::endl;
@@ -94,6 +94,12 @@ void QuicIn::onData(uint32_t session_id, uint32_t stream_id, char* buf, uint32_t
             // std::cout << "receive: " << expectedLen << std::endl;
             m_receivedBytes -= expectedLen;
             char* dpos = m_receiveData.buffer.get() + 4;
+            if (hasStream_.count(sId) == 0) {
+                hasStream_[sId] = true;
+            } else {
+                
+            }
+
             dFrame(dpos);
             if (m_receivedBytes > 0) {
                 std::cout << "not zero m_receiveBytes" << std::endl;

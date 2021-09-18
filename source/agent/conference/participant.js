@@ -11,7 +11,8 @@ var Participant = function(spec, rpcReq) {
     user = spec.user,
     portal = spec.portal,
     origin = spec.origin,
-    permission = spec.permission;
+    permission = spec.permission,
+    cascading = spec.cascading;
 
   that.update = (op, path, value) => {
     switch (path) {
