@@ -74,6 +74,8 @@ uint32_t TransportMessage::fillData(const uint8_t* data, uint32_t length)
     }
     if (data) {
         memcpy(m_buffer.get() + m_receivedBytes, data, length);
+    } else {
+        length = 0;
     }
     m_receivedBytes += length;
     return length;
@@ -157,10 +159,19 @@ void TransportSession::sendData(TransportData data)
         return;
     }
     auto self(shared_from_this());
-    m_service->post(boost::bind(&TransportSession::sendHandler, self, data));
+    m_service->post(boost::bind(&TransportSession::prepareSend, self, data));
 }
 
-void TransportSession::sendHandler(TransportData data)
+void TransportSession::prepareSend(TransportData data)
+{
+    // Only access m_sendQueue in IO service thread.
+    m_sendQueue.push(data);
+    if (m_sendQueue.size() == 1) {
+        sendHandler();
+    }
+}
+
+void TransportSession::sendHandler()
 {
     if (m_isClosed) {
         return;
@@ -169,7 +180,11 @@ void TransportSession::sendHandler(TransportData data)
         ELOG_WARN("sendHandler: socket is not open");
         return;
     }
+    if (m_sendQueue.empty()) {
+        return;
+    }
 
+    TransportData data = m_sendQueue.front();
     TransportMessage toSend(data.buffer.get(), data.length);
     TransportData wrappedData{toSend.messageData(),
                               toSend.messageLength()};
@@ -197,6 +212,8 @@ void TransportSession::writeHandler(
     const boost::system::error_code& ec,
     std::size_t bytes)
 {
+    assert(m_sendQueue.size() > 0);
+    m_sendQueue.pop();
     if (ec) {
         ELOG_DEBUG("Error writing data: %s", ec.message().c_str());
         if (!m_isClosed) {
@@ -204,6 +221,9 @@ void TransportSession::writeHandler(
             // Notify the listener about the socket error if the listener is not closing me.
             m_listener->onClose(m_id);
         }
+    } else {
+        ELOG_DEBUG("Wrote data: %zu", bytes);
+        sendHandler();
     }
 }
 
@@ -254,6 +274,7 @@ void TransportSession::receiveData()
 
     uint32_t bytesToRead = m_receivedMessage.missingBytes();
     assert(bytesToRead > 0);
+
     if (bytesToRead > m_receivedBufferSize) {
         // Double the received buffer size
         m_receivedBufferSize = std::max(m_receivedBufferSize * 2, bytesToRead);
@@ -286,7 +307,10 @@ void TransportSession::readHandler(
     if (!ec || ec.value() == boost::asio::error::message_size) {
         uint32_t bytesToRead = m_receivedMessage.missingBytes();
         assert(bytesToRead >= bytes);
-        m_receivedMessage.fillData(m_receivedBuffer.get(), bytes);
+        uint32_t filled = m_receivedMessage.fillData(m_receivedBuffer.get(), bytes);
+        if (filled != bytes) {
+            ELOG_WARN("Message fill length %u, %zu\n", filled, bytes);
+        }
         receiveData();
     } else {
         if (ec.value() != boost::system::errc::operation_canceled &&

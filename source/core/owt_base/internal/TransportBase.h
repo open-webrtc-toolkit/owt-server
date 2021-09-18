@@ -15,6 +15,7 @@
 
 #include "IOService.h"
 #include <memory>
+#include <queue>
 
 namespace owt_base {
 
@@ -102,10 +103,10 @@ public:
 
 private:
     void receiveData();
-    void sendHandler(TransportData data);
-    void writeHandler(const boost::system::error_code&, std::size_t);
     void readHandler(const boost::system::error_code&, std::size_t);
-
+    void prepareSend(TransportData data);
+    void sendHandler();
+    void writeHandler(const boost::system::error_code&, std::size_t);
 
     uint32_t m_id;
     std::shared_ptr<IOService> m_service;
@@ -113,6 +114,7 @@ private:
     std::shared_ptr<SSLSocket> m_sslSocket;
     TransportMessage m_receivedMessage;
     boost::shared_array<uint8_t> m_receivedBuffer;
+    std::queue<TransportData> m_sendQueue;
     uint32_t m_receivedBufferSize;
     bool m_isClosed;
     Listener* m_listener;
