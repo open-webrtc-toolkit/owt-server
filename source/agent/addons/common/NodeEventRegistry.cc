@@ -4,6 +4,7 @@
 
 #include "NodeEventRegistry.h"
 #include <list>
+#include <nan.h>
 
 using namespace v8;
 
@@ -59,12 +60,14 @@ void NodeEventRegistry::process(const Data& data)
 
     const unsigned argc = 1;
     Local<Value> argv[argc] = {
-        String::NewFromUtf8(isolate, data.message.c_str())
+        Nan::New(data.message.c_str()).ToLocalChecked()
     };
     TryCatch try_catch(isolate);
 
     if (store->IsFunction()) {
-        Local<Function>::Cast(store)->Call(isolate->GetCurrentContext()->Global(), argc, argv);
+        Nan::Call(Local<Function>::Cast(store),
+                  isolate->GetCurrentContext()->Global(),
+                  argc, argv);
         if (try_catch.HasCaught()) {
             node::FatalException(isolate, try_catch);
         }
@@ -72,10 +75,13 @@ void NodeEventRegistry::process(const Data& data)
         return;
     }
 
-    auto val = store->Get(String::NewFromUtf8(isolate, data.event.c_str()));
+    Local<Value> val = Nan::Get(store, Nan::New(data.event.c_str()).ToLocalChecked())
+                       .ToLocalChecked();
     if (!val->IsFunction())
         return;
-    Local<Function>::Cast(val)->Call(isolate->GetCurrentContext()->Global(), argc, argv);
+    Nan::Call(Local<Function>::Cast(val),
+              isolate->GetCurrentContext()->Global(),
+              argc, argv);
     if (try_catch.HasCaught()) {
         node::FatalException(isolate, try_catch);
     }
@@ -161,9 +167,10 @@ void NodeEventedObjectWrap::addEventListener(const FunctionCallbackInfo<Value>& 
     Isolate* isolate = Isolate::GetCurrent();
     HandleScope scope(isolate);
     if (args.Length() < 2 || !args[0]->IsString() || !args[1]->IsFunction()) {
-        isolate->ThrowException(Exception::TypeError(String::NewFromUtf8(isolate, "Wrong arguments")));
+        isolate->ThrowException(Exception::TypeError(
+            Nan::New("Wrong arguments").ToLocalChecked()));
         return;
     }
     NodeEventedObjectWrap* n = ObjectWrap::Unwrap<NodeEventedObjectWrap>(args.Holder());
-    Local<Object>::New(isolate, n->m_store)->Set(args[0], args[1]);
+    Nan::Set(Local<Object>::New(isolate, n->m_store), args[0], args[1]);
 }
