@@ -741,7 +741,9 @@ bool LiveStreamIn::connect()
 
     m_AsyncEvent << "}";
 
-    av_read_play(m_context);
+    if (m_context->iformat->read_play == nullptr) {
+        av_read_play(m_context);
+    }
 
     if (m_videoJitterBuffer) {
         m_videoJitterBuffer->start();
@@ -851,7 +853,9 @@ bool LiveStreamIn::reconnect()
     if (m_isFileInput)
         m_timstampOffset = m_lastTimstamp + 1;
 
-    av_read_play(m_context);
+    if (m_context->iformat->read_play == nullptr) {
+        av_read_play(m_context);
+    }
 
     if (m_videoJitterBuffer)
         m_videoJitterBuffer->start();
