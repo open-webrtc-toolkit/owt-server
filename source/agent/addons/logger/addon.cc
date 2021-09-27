@@ -6,10 +6,6 @@
 // include log4cxx header files
 #include <log4cxx/propertyconfigurator.h>
 
-using v8::FunctionTemplate;
-using v8::Handle;
-using v8::Object;
-using v8::String;
 using Nan::GetFunction;
 using Nan::New;
 using Nan::Set;
@@ -23,8 +19,8 @@ NAN_METHOD(configure) {
 // Expose synchronous and asynchronous access to our
 // Estimate() function
 NAN_MODULE_INIT(InitAll) {
-  Set(target, New<String>("configure").ToLocalChecked(),
-    GetFunction(New<FunctionTemplate>(configure)).ToLocalChecked());
+  Set(target, New<v8::String>("configure").ToLocalChecked(),
+    GetFunction(New<v8::FunctionTemplate>(configure)).ToLocalChecked());
 }
 
 NODE_MODULE(addon, InitAll)
