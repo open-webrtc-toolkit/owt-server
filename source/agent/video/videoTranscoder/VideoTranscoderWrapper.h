@@ -17,7 +17,7 @@
  */
 class VideoTranscoder : public node::ObjectWrap {
  public:
-  static void Init(v8::Handle<v8::Object>, v8::Handle<v8::Object>);
+  static void Init(v8::Local<v8::Object>, v8::Local<v8::Object>);
   mcu::VideoTranscoder* me;
 
  private:
