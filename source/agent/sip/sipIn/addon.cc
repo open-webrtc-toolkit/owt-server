@@ -14,7 +14,7 @@ extern "C" int sipua_mod_init();
 
 using namespace v8;
 
-void InitAll(Handle<Object> exports) {
+void InitAll(Local<Object> exports) {
   SipGateway::Init(exports);
   SipCallConnection::Init(exports);
   sipua_mod_init();
