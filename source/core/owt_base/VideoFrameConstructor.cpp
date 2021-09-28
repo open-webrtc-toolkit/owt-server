@@ -29,7 +29,7 @@ VideoFrameConstructor::VideoFrameConstructor(VideoInfoListener* vil, uint32_t tr
 }
 
 VideoFrameConstructor::VideoFrameConstructor(
-    VideoFrameConstructor* base,
+    std::shared_ptr<rtc_adapter::RtcAdapter> rtcAdapter,
     VideoInfoListener* vil, uint32_t transportccExtId)
     : m_enabled(true)
     , m_ssrc(0)
@@ -39,10 +39,10 @@ VideoFrameConstructor::VideoFrameConstructor(
     , m_videoReceive(nullptr)
 {
     m_config.transport_cc = transportccExtId;
-    assert(base);
+    assert(rtcAdapter.get());
     m_feedbackTimer = SharedJobTimer::GetSharedFrequencyTimer(1);
     m_feedbackTimer->addListener(this);
-    m_rtcAdapter = base->m_rtcAdapter;
+    m_rtcAdapter = rtcAdapter;
 }
 
 VideoFrameConstructor::~VideoFrameConstructor()

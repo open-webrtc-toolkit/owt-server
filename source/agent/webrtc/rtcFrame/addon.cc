@@ -4,6 +4,7 @@
 
 #include "AudioFrameConstructorWrapper.h"
 #include "AudioFramePacketizerWrapper.h"
+#include "CallBaseWrapper.h"
 #include "VideoFrameConstructorWrapper.h"
 #include "VideoFramePacketizerWrapper.h"
 
@@ -16,6 +17,7 @@ void InitAll(Handle<Object> exports) {
   AudioFramePacketizer::Init(exports);
   VideoFrameConstructor::Init(exports);
   VideoFramePacketizer::Init(exports);
+  CallBase::Init(exports);
 }
 
 NODE_MODULE(addon, InitAll)

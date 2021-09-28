@@ -16,7 +16,7 @@
 #include "SsrcGenerator.h"
 #include "WebRTCTaskRunner.h"
 
-#include <api/transport/field_trial_based_config.h>
+#include <api/transport/network_control.h>
 #include <modules/rtp_rtcp/include/rtp_rtcp.h>
 #include <modules/rtp_rtcp/include/rtp_rtcp_defines.h>
 #include <modules/rtp_rtcp/source/rtp_sender_video.h>
@@ -29,7 +29,8 @@ namespace rtc_adapter {
 
 class VideoSendAdapterImpl : public VideoSendAdapter,
                              public webrtc::Transport,
-                             public webrtc::RtcpIntraFrameObserver {
+                             public webrtc::RtcpIntraFrameObserver,
+                             public webrtc::BitrateStatisticsObserver {
 public:
     VideoSendAdapterImpl(CallOwner* owner, const RtcAdapter::Config& config);
     ~VideoSendAdapterImpl();
@@ -38,8 +39,8 @@ public:
     void onFrame(const owt_base::Frame&) override;
     int onRtcpData(char* data, int len) override;
     void reset() override;
-
     uint32_t ssrc() { return m_ssrc; }
+    VideoSendAdapter::Stats getStats() override { return m_stats; }
 
     // Implement webrtc::Transport
     bool SendRtp(const uint8_t* packet,
@@ -48,10 +49,15 @@ public:
     bool SendRtcp(const uint8_t* packet, size_t length) override;
 
     // Implements webrtc::RtcpIntraFrameObserver.
-    void OnReceivedIntraFrameRequest(uint32_t ssrc);
+    void OnReceivedIntraFrameRequest(uint32_t ssrc) override;
     void OnReceivedSLI(uint32_t ssrc, uint8_t picture_id) {}
     void OnReceivedRPSI(uint32_t ssrc, uint64_t picture_id) {}
     void OnLocalSsrcChanged(uint32_t old_ssrc, uint32_t new_ssrc) {}
+
+    //Implements webrtc::BitrateStatisticsObserver
+    void Notify(uint32_t total_bitrate_bps,
+                uint32_t retransmit_bitrate_bps,
+                uint32_t ssrc) override;
 
 private:
     bool init();
@@ -63,7 +69,7 @@ private:
     std::unique_ptr<webrtc::RateLimiter> m_retransmissionRateLimiter;
     // boost::scoped_ptr<webrtc::BitrateController> m_bitrateController;
     boost::scoped_ptr<webrtc::RtcpBandwidthObserver> m_bandwidthObserver;
-    std::unique_ptr<webrtc::RtpRtcp> m_rtpRtcp;
+    std::shared_ptr<webrtc::RtpRtcp> m_rtpRtcp;
     boost::shared_mutex m_rtpRtcpMutex;
 
     boost::shared_ptr<webrtc::Transport> m_videoTransport;
@@ -80,9 +86,12 @@ private:
     webrtc::Clock* m_clock;
     int64_t m_timeStampOffset;
 
-    std::unique_ptr<webrtc::RtcEventLog> m_eventLog;
     std::unique_ptr<webrtc::RTPSenderVideo> m_senderVideo;
-    std::unique_ptr<webrtc::FieldTrialBasedConfig> m_fieldTrialConfig;
+    CallOwner* m_owner;
+    std::shared_ptr<webrtc::RtpTransportControllerSendInterface> m_transportControllerSend;
+    VideoSendAdapter::Stats m_stats;
+
+    std::shared_ptr<webrtc::RtpPacketSender> m_pacedSender;
 
     // Listeners
     AdapterFeedbackListener* m_feedbackListener;
