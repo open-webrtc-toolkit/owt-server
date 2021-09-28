@@ -103,7 +103,12 @@ void VideoFramePacketizer::onFeedback(const FeedbackMsg& msg)
     deliverFeedbackMsg(msg);
 }
 
-void VideoFramePacketizer::onAdapterStats(const AdapterStats& stats) {}
+void VideoFramePacketizer::onAdapterStats(const rtc_adapter::AdapterStats& stats) {
+    if (stats.estimatedBandwidth) {
+        ELOG_DEBUG("updated estimatedBandwidth %d", stats.estimatedBandwidth);
+        m_estimatedBitrateBps = stats.estimatedBandwidth;
+    }
+}
 
 void VideoFramePacketizer::onAdapterData(char* data, int len)
 {
