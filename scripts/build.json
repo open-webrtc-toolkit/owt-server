@@ -3,7 +3,6 @@
         "include" : [
             "video-mixer-sw",
             "video-transcoder-sw",
-            "video-analyzer-sw",
             "internal-io",
             "logger",
             "media-frame-multicaster",
@@ -11,7 +10,6 @@
             "audio-ranker",
             "webrtc",
             "avstream",
-            "gst-pipeline",
             "sip"
         ]
     },
