@@ -20,9 +20,10 @@ const isHWAccAppliable = () => {
 module.exports.detected = (requireHWAcc) => {
   /*FIXME: should be double checked whether hardware acceleration is actually running*/
   var useHW = false;
+  // TODO: support av1x.
   var codecs = {
-    decode: ['vp8', 'vp9', 'h264', 'h265'],
-    encode: ['vp8', 'vp9']
+    decode: ['vp8', 'vp9', 'h264', 'h265', 'av1x'],
+    encode: ['vp8', 'vp9', 'av1x']
   };
   
   if (requireHWAcc && isHWAccAppliable()) {
