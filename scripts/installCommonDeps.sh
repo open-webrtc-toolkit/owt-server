@@ -513,6 +513,11 @@ install_svt_hevc(){
     pushd SVT-HEVC >/dev/null
     git checkout v1.3.0
 
+    if [[ "$OS" =~ .*centos.* ]]
+    then
+      source scl_source enable devtoolset-7
+    fi
+
     mkdir -p build
     pushd build >/dev/null
     cmake -DCMAKE_C_FLAGS="-std=gnu99" -DCMAKE_INSTALL_PREFIX=${PREFIX_DIR} ..
