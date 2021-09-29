@@ -517,7 +517,7 @@ var Conference = function (rpcClient, selfRpcId) {
 
   const sendMsgTo = function(to, msg, data) {
     if (to !== 'admin') {
-      if (to !== 'cascading') {
+      if (to === 'cascading') {
         cascadingEventBridges.forEach((eventBridge) => {
           if (eventBridge) {
             rpcReq.broadcast(eventBridge, selfRpcId, excludes, msg, data);

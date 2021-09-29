@@ -565,10 +565,11 @@ const CascadingRequest = {
     'type': { 'const': 'cascading' },
     'evIP': { type: 'string' },
     'evPort': { type: 'string' },
-    'room': { type: 'string' }
+    'selfRoom': {type: 'string'},
+    'room': {type: 'string'}
   },
   additionalProperties: false,
-  required: ['type', 'evIP', 'evPort', 'room']
+  required: ['type', 'evIP', 'evPort', 'selfRoom', 'room']
 };
 
 var validators = {

@@ -10,7 +10,7 @@ var log = logger.getLogger('Main');
 
 var config;
 try {
-  config = toml.parse(fs.readFileSync('./eventbridge.toml'));
+  config = toml.parse(fs.readFileSync('./agent.toml'));
 } catch (e) {
   log.error('Parsing config error on line ' + e.line + ', column ' + e.column + ': ' + e.message);
   process.exit(1);
@@ -50,6 +50,7 @@ global.config = config;
 var amqper = require('./amqpClient')();
 var rpcClient;
 var bridge;
+var event_cascading;
 
 var ip_address;
 (function getPublicIP() {
@@ -95,14 +96,14 @@ var startServers = function(id) {
 var rpcChannel = require('./rpcChannel')(rpcClient);
 var rpcReq = require('./rpcRequest')(rpcChannel);
 
-var event_cascading = require('./eventCascading')({port: config.bridge.port,
+event_cascading = require('./eventCascading')({port: config.bridge.port,
                                                  ssl: config.bridge.ssl,
                                                  clusterName: config.cluster.name,
                                                  selfRpcId: id},
                                                  rpcReq);
   return event_cascading.start()
     .then(function() {
-      log.info('start socket.io server ok.');
+      log.info('start event bridge server ok.');
     })
     .catch(function(err) {
       log.error('Failed to start servers, reason:', err && err.message);
@@ -111,6 +112,7 @@ var event_cascading = require('./eventCascading')({port: config.bridge.port,
 };
 
 var stopServers = function() {
+  log.info('stop event bridge server ok.');
   event_cascading && event_cascading.stop();
   event_cascading = undefined;
 };
@@ -133,7 +135,7 @@ var rpcPublic = {
     callback('callback', 'ok');
   },
   startCascading: function(data, callback) {
-    event_cascading && event_cascading.startCascading(data);
+    event_cascading && event_cascading.startEventCascading(data);
     callback('callback', 'ok');
   }
 };

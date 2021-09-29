@@ -149,7 +149,22 @@ if (cluster.isMaster) {
 
 } else {
     // Worker Process
-    rpc.connect(global.config.rabbit);
+    rpc.connect(global.config.rabbit, function () {
+      amqper.asRpcClient(function(rpcClnt) {
+        rpcClient = rpcClnt;
+        log.info('bridge initializing as rpc client ok');
+          log.info('bridge join cluster ok, with rpcID eventbridge');
+            amqper.asRpcServer("eventbridge", rpcPublic, function(rpcSvr) {
+              log.info('management api initializing as rpc server ok');
+          }, function(reason) {
+            log.error('management api initializing as rpc server failed, reason:', reason);
+          });
+      }, function(reason) {
+        log.error('management api initializing as rpc client failed, reason:', reason);
+      });
+    }, function(reason) {
+        log.error('management api connect to rabbitMQ server failed, reason:', reason);
+    });;
 
     if (serverConfig.ssl === true) {
         var cipher = require('./cipher');

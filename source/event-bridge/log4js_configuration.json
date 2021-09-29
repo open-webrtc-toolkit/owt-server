@@ -22,6 +22,6 @@
     "InternalConnectionFactory": "WARN",
     "QuicConnection": "WARN",
     "QuicTransportServer": "WARN",
-    "QuicTransportStreamPipeline": "WARN"
+    "EventCascading": "DEBUG"
   }
 }

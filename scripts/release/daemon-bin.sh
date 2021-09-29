@@ -116,6 +116,7 @@ case $startStop in
         ;;
       event-bridge )
 	cd ${OWT_HOME}/eventbridge
+	export LD_LIBRARY_PATH=./lib:${LD_LIBRARY_PATH}
         nohup nice -n ${OWT_NICENESS} \
           > "${stdout}" 2>&1 </dev/null &
         echo $! > ${pid}

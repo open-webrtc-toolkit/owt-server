@@ -8,6 +8,7 @@ enableWebTransport = false #default: false.
 
 [cluster]
 name = "owt-cluster"
+region = "BJ"
 
 [rabbit]
 host = "localhost" #default: "localhost"

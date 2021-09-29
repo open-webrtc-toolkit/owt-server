@@ -8,6 +8,7 @@
           "log4js_configuration.json",
           "index.js",
           "eventCascading.js",
+          "rpcRequest.js",
           "configLoader.js",
           "log4cxx.properties",
           "../common/amqpClient.js",
@@ -16,6 +17,7 @@
           "../common/loadCollector.js",
           "../common/logger.js",
           "../common/makeRPC.js",
+          "../common/rpcChannel.js",
           "../../scripts/release/initcert.js",
           "../../scripts/release/initauth.js",
           "../../scripts/detectOS.sh"

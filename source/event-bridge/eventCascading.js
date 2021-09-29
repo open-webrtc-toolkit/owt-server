@@ -4,7 +4,8 @@
 
 'use strict';
 
-var log = require('./logger').logger.getLogger('EventCascading');
+var logger = require('./logger').logger;
+var log = logger.getLogger('EventCascading');
 var quicCas = require('./quicCascading/build/Release/quicCascading.node');
 var server, client, quicStreams, cascadedClusters;
 
@@ -48,8 +49,9 @@ var EventCascading = function(spec, rpcReq) {
   }
 
   that.startEventCascading = function (data) {
-    client = new quicIO.out(data.ip, data.port);
+    client = new quicCas.out(data.ip, data.port);
     client.addEventListener('newstream', function (info) {
+      log.info("Get new stream:", info);
       return rpcReq.getController(cluster_name, data.selfroom)
           .then(function(controller) {
             log.debug('got controller:', controller);
@@ -75,6 +77,7 @@ var EventCascading = function(spec, rpcReq) {
 
     server.addEventListener('newstream', function (msg) {
       var event = JSON.parse(msg);
+      log.info("Server get new stream:", info);
       return rpcReq.getController(cluster_name, event.room)
           .then(function(controller) {
             log.debug('got controller:', controller);
@@ -93,7 +96,7 @@ var EventCascading = function(spec, rpcReq) {
 
     });
 
-    return new Promise.resolve('ok');
+    return Promise.resolve('ok');
   }
 
   that.stop = function () {
