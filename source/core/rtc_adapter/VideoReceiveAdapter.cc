@@ -295,7 +295,8 @@ int VideoReceiveAdapterImpl::onRtpData(char* data, int len)
         webrtc::RtpPacket rtpPacket;
         webrtc::RTPVideoHeader video_header;
         if (rtpPacket.Parse((const uint8_t*) data, len)) {
-            if (webrtc::VideoRtpDepacketizerVp9::ParseRtpPayload(
+            if (rtpPacket.PayloadType() == VP9_90000_PT &&
+                webrtc::VideoRtpDepacketizerVp9::ParseRtpPayload(
                 rtpPacket.PayloadBuffer(), &video_header) > 0) {
                 webrtc::RTPVideoHeaderVP9* vp9_header =
                     absl::get_if<webrtc::RTPVideoHeaderVP9>(

@@ -250,11 +250,18 @@ class SdpInfo {
       // }
 
       // Remove ulpfec if h264/h265 is selected
-      // vp9 for svc
       const selectedCodec = codecMap.get(selectedPayload);
-      if (['h264', 'h265', 'vp9'].includes(selectedCodec)) {
+      if (['h264', 'h265'].includes(selectedCodec)) {
         codecMap.forEach((codec, pt) => {
           if (codec === 'ulpfec') {
+            relatedPayloads.delete(pt);
+          }
+        });
+      }
+      // Remove red if vp9 SVC
+      if (selectedCodec === 'vp9' && this.getLegacySimulcast(mid)) {
+        codecMap.forEach((codec, pt) => {
+          if (codec === 'red') {
             relatedPayloads.delete(pt);
           }
         });

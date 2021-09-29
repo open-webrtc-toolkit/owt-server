@@ -340,7 +340,6 @@ var Conference = function (rpcClient, selfRpcId) {
         .then(function(config) {
             //log.debug('initializing room:', roomId, 'got config:', JSON.stringify(config));
             room_config = config;
-            room_config.enableBandwidthAdaption = true;
             room_config.internalConnProtocol = global.config.internal.protocol;
             StreamConfigure(room_config);
 
