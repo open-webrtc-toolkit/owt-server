@@ -49,6 +49,11 @@ using json = nlohmann::json;
 
 DEFINE_LOGGER(MediaStream, "MediaStreamWrapper");
 
+static std::string getString(v8::Local<v8::Value> value) {
+  Nan::Utf8String value_str(Nan::To<v8::String>(value).ToLocalChecked());
+  return std::string(*value_str);
+}
+
 StatCallWorker::StatCallWorker(Nan::Callback *callback, std::weak_ptr<erizo::MediaStream> weak_stream)
     : Nan::AsyncWorker{callback}, weak_stream_{weak_stream}, stat_{""} {
 }
@@ -150,7 +155,7 @@ NAN_MODULE_INIT(MediaStream::Init) {
   Nan::SetPrototypeMethod(tpl, "enableHandler", enableHandler);
   Nan::SetPrototypeMethod(tpl, "disableHandler", disableHandler);
 
-  constructor.Reset(tpl->GetFunction());
+  constructor.Reset(Nan::GetFunction(tpl).ToLocalChecked());
   Nan::Set(target, Nan::New("MediaStream").ToLocalChecked(), Nan::GetFunction(tpl).ToLocalChecked());
 }
 
@@ -169,14 +174,10 @@ NAN_METHOD(MediaStream::New) {
 
     std::shared_ptr<erizo::WebRtcConnection> wrtc = connection->me;
 
-    v8::String::Utf8Value paramId(v8::Isolate::GetCurrent(), Nan::To<v8::String>(info[2]).ToLocalChecked());
-    std::string wrtc_id = std::string(*paramId);
+    std::string wrtc_id = getString(info[2]);
+    std::string stream_label = getString(info[3]);
 
-    v8::String::Utf8Value paramLabel(v8::Isolate::GetCurrent(), Nan::To<v8::String>(info[3]).ToLocalChecked());
-    std::string stream_label = std::string(*paramLabel);
-
-    bool is_publisher = info[5]->BooleanValue();
-
+    bool is_publisher = Nan::To<bool>(info[5]).FromJust();
 
     MediaStream* obj = new MediaStream();
     // Share same worker with connection
@@ -220,7 +221,7 @@ NAN_METHOD(MediaStream::setSlideShowMode) {
     return;
   }
 
-  bool v = info[0]->BooleanValue();
+  bool v = Nan::To<bool>(info[0]).FromJust();
   me->setSlideShowMode(v);
   info.GetReturnValue().Set(Nan::New(v));
 }
@@ -232,8 +233,8 @@ NAN_METHOD(MediaStream::muteStream) {
     return;
   }
 
-  bool mute_video = info[0]->BooleanValue();
-  bool mute_audio = info[1]->BooleanValue();
+  bool mute_video = Nan::To<bool>(info[0]).FromJust();
+  bool mute_audio = Nan::To<bool>(info[1]).FromJust();
   me->muteStream(mute_video, mute_audio);
 }
 
@@ -254,9 +255,9 @@ NAN_METHOD(MediaStream::setVideoConstraints) {
   if (!me) {
     return;
   }
-  int max_video_width = info[0]->IntegerValue(Nan::GetCurrentContext()).ToChecked();
-  int max_video_height = info[1]->IntegerValue(Nan::GetCurrentContext()).ToChecked();
-  int max_video_frame_rate = info[2]->IntegerValue(Nan::GetCurrentContext()).ToChecked();
+  int max_video_width = Nan::To<int32_t>(info[0]).FromJust();
+  int max_video_height = Nan::To<int32_t>(info[1]).FromJust();
+  int max_video_frame_rate = Nan::To<int32_t>(info[2]).FromJust();
   me->setVideoConstraints(max_video_width, max_video_height, max_video_frame_rate);
 }
 
@@ -267,8 +268,7 @@ NAN_METHOD(MediaStream::setMetadata) {
     return;
   }
 
-  v8::String::Utf8Value json_param(v8::Isolate::GetCurrent(), Nan::To<v8::String>(info[0]).ToLocalChecked());
-  std::string metadata_string = std::string(*json_param);
+  std::string metadata_string = getString(info[0]);
   json metadata_json = json::parse(metadata_string);
   std::map<std::string, std::string> metadata;
   for (json::iterator item = metadata_json.begin(); item != metadata_json.end(); ++item) {
@@ -347,8 +347,7 @@ NAN_METHOD(MediaStream::enableHandler) {
     return;
   }
 
-  v8::String::Utf8Value param(v8::Isolate::GetCurrent(), Nan::To<v8::String>(info[0]).ToLocalChecked());
-  std::string name = std::string(*param);
+  std::string name = getString(info[0]);
 
   me->enableHandler(name);
   return;
@@ -361,8 +360,7 @@ NAN_METHOD(MediaStream::disableHandler) {
     return;
   }
 
-  v8::String::Utf8Value param(v8::Isolate::GetCurrent(), Nan::To<v8::String>(info[0]).ToLocalChecked());
-  std::string name = std::string(*param);
+  std::string name = getString(info[0]);
 
   me->disableHandler(name);
 }
@@ -374,8 +372,8 @@ NAN_METHOD(MediaStream::setQualityLayer) {
     return;
   }
 
-  int spatial_layer = info[0]->IntegerValue(Nan::GetCurrentContext()).ToChecked();
-  int temporal_layer = info[1]->IntegerValue(Nan::GetCurrentContext()).ToChecked();
+  int spatial_layer = Nan::To<int32_t>(info[0]).FromJust();
+  int temporal_layer = Nan::To<int32_t>(info[1]).FromJust();
 
   me->setQualityLayer(spatial_layer, temporal_layer);
 }
@@ -387,8 +385,8 @@ NAN_METHOD(MediaStream::enableSlideShowBelowSpatialLayer) {
     return;
   }
 
-  bool enabled = info[0]->BooleanValue();
-  int spatial_layer = info[1]->IntegerValue(Nan::GetCurrentContext()).ToChecked();
+  bool enabled = Nan::To<bool>(info[0]).FromJust();
+  int spatial_layer = Nan::To<int32_t>(info[1]).FromJust();
   me->enableSlideShowBelowSpatialLayer(enabled, spatial_layer);
 }
 
@@ -418,8 +416,8 @@ NAN_METHOD(MediaStream::setFeedbackReports) {
     return;
   }
 
-  bool v = info[0]->BooleanValue();
-  int fbreps = info[1]->IntegerValue(Nan::GetCurrentContext()).ToChecked();  // From bps to Kbps
+  bool v = Nan::To<bool>(info[0]).FromJust();
+  int fbreps = Nan::To<int32_t>(info[1]).FromJust();  // From bps to Kbps
   me->setFeedbackReports(v, fbreps);
 }
 

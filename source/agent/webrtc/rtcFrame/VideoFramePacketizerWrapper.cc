@@ -21,7 +21,7 @@ void VideoFramePacketizer::Init(v8::Local<v8::Object> exports) {
   Isolate* isolate = Isolate::GetCurrent();
   // Prepare constructor template
   Local<FunctionTemplate> tpl = FunctionTemplate::New(isolate, New);
-  tpl->SetClassName(String::NewFromUtf8(isolate, "VideoFramePacketizer"));
+  tpl->SetClassName(Nan::New("VideoFramePacketizer").ToLocalChecked());
   tpl->InstanceTemplate()->SetInternalFieldCount(1);
   // Prototype
   NODE_SET_PROTOTYPE_METHOD(tpl, "close", close);
@@ -34,35 +34,32 @@ void VideoFramePacketizer::Init(v8::Local<v8::Object> exports) {
   NODE_SET_PROTOTYPE_METHOD(tpl, "getRetransmitBitrateBps", getRetransmitBitrate);
   NODE_SET_PROTOTYPE_METHOD(tpl, "getEstimatedBandwidthBps", getEstimatedBandwidth);
 
-  constructor.Reset(isolate, tpl->GetFunction());
-  exports->Set(String::NewFromUtf8(isolate, "VideoFramePacketizer"), tpl->GetFunction());
+  constructor.Reset(isolate, Nan::GetFunction(tpl).ToLocalChecked());
+  Nan::Set(exports, Nan::New("VideoFramePacketizer").ToLocalChecked(),
+           Nan::GetFunction(tpl).ToLocalChecked());
 }
 
 void VideoFramePacketizer::New(const FunctionCallbackInfo<Value>& args) {
   Isolate* isolate = Isolate::GetCurrent();
   HandleScope scope(isolate);
 
-  bool supportRED = (args[0]->ToBoolean(Nan::GetCurrentContext()).ToLocalChecked())->BooleanValue();
-  bool supportULPFEC = (args[1]->ToBoolean(Nan::GetCurrentContext()).ToLocalChecked())->BooleanValue();
-  int transportccExt = (args.Length() >= 3) ? args[2]->IntegerValue(Nan::GetCurrentContext()).ToChecked() : -1;
+  bool supportRED = args.Length() > 0 ? Nan::To<bool>(args[0]).FromJust() : false;
+  bool supportULPFEC = args.Length() > 1 ? Nan::To<bool>(args[1]).FromJust() : false;
+  int transportccExt = (args.Length() == 3) ? Nan::To<int32_t>(args[2]).FromJust() : -1;
   std::string mid;
   int midExtId = -1;
   if (args.Length() >= 5) {
-    v8::String::Utf8Value param4(isolate, Nan::To<v8::String>(args[3]).ToLocalChecked());
+    Nan::Utf8String param4(Nan::To<v8::String>(args[3]).ToLocalChecked());
     mid = std::string(*param4);
     midExtId = args[4]->IntegerValue(Nan::GetCurrentContext()).ToChecked();
   }
   bool selfRequestKeyframe = (args.Length() >= 6)
-      ? (args[5]->ToBoolean(Nan::GetCurrentContext()).ToLocalChecked())->BooleanValue()
-      : false;
-
+      ? Nan::To<bool>(args[5]).FromJust() : false;
   CallBase* baseWrapper = (args.Length() >= 7)
       ? Nan::ObjectWrap::Unwrap<CallBase>(Nan::To<v8::Object>(args[6]).ToLocalChecked())
       : nullptr;
-
   bool enableBandwidthEstimation = (args.Length() >= 8)
-      ? (args[7]->ToBoolean(Nan::GetCurrentContext()).ToLocalChecked())->BooleanValue()
-      : false;
+      ? Nan::To<bool>(args[7]).FromJust() : false;
 
   VideoFramePacketizer* obj = new VideoFramePacketizer();
   owt_base::VideoFramePacketizer::Config config;
@@ -132,7 +129,7 @@ void VideoFramePacketizer::enable(const v8::FunctionCallbackInfo<v8::Value>& arg
   VideoFramePacketizer* obj = ObjectWrap::Unwrap<VideoFramePacketizer>(args.Holder());
   owt_base::VideoFramePacketizer* me = obj->me;
 
-  bool b = (args[0]->ToBoolean(Nan::GetCurrentContext()).ToLocalChecked())->BooleanValue();
+  bool b = Nan::To<bool>(args[0]).FromMaybe(true);
   me->enable(b);
 }
 

@@ -48,8 +48,8 @@ using v8::Exception;
 using v8::Value;
 using json = nlohmann::json;
 
-std::string getString(v8::Local<v8::Value> value) {
-  v8::String::Utf8Value value_str(v8::Isolate::GetCurrent(), Nan::To<v8::String>(value).ToLocalChecked()); \
+static std::string getString(v8::Local<v8::Value> value) {
+  Nan::Utf8String value_str(Nan::To<v8::String>(value).ToLocalChecked());
   return std::string(*value_str);
 }
 
@@ -88,8 +88,9 @@ NAN_MODULE_INIT(WebRtcConnection::Init) {
   Nan::SetPrototypeMethod(tpl, "setVideoSsrcList", setVideoSsrcList);
   Nan::SetPrototypeMethod(tpl, "getVideoSsrcMap", getVideoSsrcMap);
 
-  constructor.Reset(tpl->GetFunction());
-  Nan::Set(target, Nan::New("WebRtcConnection").ToLocalChecked(), Nan::GetFunction(tpl).ToLocalChecked());
+  constructor.Reset(Nan::GetFunction(tpl).ToLocalChecked());
+  Nan::Set(target, Nan::New("WebRtcConnection").ToLocalChecked(),
+           Nan::GetFunction(tpl).ToLocalChecked());
 }
 
 
@@ -100,19 +101,19 @@ NAN_METHOD(WebRtcConnection::New) {
 
   if (info.IsConstructCall()) {
     // Invoked as a constructor with 'new WebRTC()'
-    ThreadPool* thread_pool = Nan::ObjectWrap::Unwrap<ThreadPool>(Nan::To<v8::Object>(info[0]).ToLocalChecked());
-    IOThreadPool* io_thread_pool = Nan::ObjectWrap::Unwrap<IOThreadPool>(Nan::To<v8::Object>(info[1]).ToLocalChecked());
-    v8::String::Utf8Value paramId(v8::Isolate::GetCurrent(), Nan::To<v8::String>(info[2]).ToLocalChecked());
-    std::string wrtcId = std::string(*paramId);
-    v8::String::Utf8Value param(v8::Isolate::GetCurrent(), Nan::To<v8::String>(info[3]).ToLocalChecked());
-    std::string stunServer = std::string(*param);
-    int stunPort = info[4]->IntegerValue(Nan::GetCurrentContext()).ToChecked();
-    int minPort = info[5]->IntegerValue(Nan::GetCurrentContext()).ToChecked();
-    int maxPort = info[6]->IntegerValue(Nan::GetCurrentContext()).ToChecked();
-    bool trickle = (info[7]->ToBoolean(Nan::GetCurrentContext()).ToLocalChecked())->BooleanValue();
-    v8::String::Utf8Value json_param(v8::Isolate::GetCurrent(), Nan::To<v8::String>(info[8]).ToLocalChecked());
-    bool use_nicer = (info[9]->ToBoolean(Nan::GetCurrentContext()).ToLocalChecked())->BooleanValue();
-    std::string media_config_string = std::string(*json_param);
+    ThreadPool* thread_pool = Nan::ObjectWrap::Unwrap<ThreadPool>(
+      Nan::To<v8::Object>(info[0]).ToLocalChecked());
+    IOThreadPool* io_thread_pool = Nan::ObjectWrap::Unwrap<IOThreadPool>(
+      Nan::To<v8::Object>(info[1]).ToLocalChecked());
+    std::string wrtcId = getString(info[2]);
+    std::string stunServer = getString(info[3]);
+    int stunPort = Nan::To<int32_t>(info[4]).FromJust();
+    int minPort = Nan::To<int32_t>(info[5]).FromJust();
+    int maxPort = Nan::To<int32_t>(info[6]).FromJust();
+    bool trickle = Nan::To<bool>(info[7]).FromJust();
+    std::string media_config_string = getString(info[8]);
+    bool use_nicer = false;
+
     json media_config = json::parse(media_config_string);
     std::vector<erizo::RtpMap> rtp_mappings;
 
@@ -287,9 +288,9 @@ NAN_METHOD(WebRtcConnection::createOffer) {
   if (info.Length() < 3) {
     Nan::ThrowError("Wrong number of arguments");
   }
-  bool video_enabled = info[0]->BooleanValue();
-  bool audio_enabled = info[1]->BooleanValue();
-  bool bundle = info[2]->BooleanValue();
+  bool video_enabled = Nan::To<bool>(info[0]).FromJust();
+  bool audio_enabled = Nan::To<bool>(info[1]).FromJust();
+  bool bundle = Nan::To<bool>(info[2]).FromJust();
 
   bool r = me->createOffer(video_enabled, audio_enabled, bundle);
   info.GetReturnValue().Set(Nan::New(r));
@@ -302,11 +303,8 @@ NAN_METHOD(WebRtcConnection::setRemoteSdp) {
     return;
   }
 
-  v8::String::Utf8Value param(v8::Isolate::GetCurrent(), Nan::To<v8::String>(info[0]).ToLocalChecked());
-  std::string sdp = std::string(*param);
-
-  v8::String::Utf8Value stream_id_param(v8::Isolate::GetCurrent(), Nan::To<v8::String>(info[1]).ToLocalChecked());
-  std::string stream_id = std::string(*stream_id_param);
+  std::string sdp = getString(info[0]);
+  std::string stream_id = getString(info[1]);
 
   bool r = me->setRemoteSdp(sdp, stream_id);
 
@@ -317,13 +315,9 @@ NAN_METHOD(WebRtcConnection::addRemoteCandidate) {
   WebRtcConnection* obj = Nan::ObjectWrap::Unwrap<WebRtcConnection>(info.Holder());
   std::shared_ptr<erizo::WebRtcConnection> me = obj->me;
 
-  v8::String::Utf8Value param(v8::Isolate::GetCurrent(), Nan::To<v8::String>(info[0]).ToLocalChecked());
-  std::string mid = std::string(*param);
-
-  int sdpMLine = info[1]->IntegerValue(Nan::GetCurrentContext()).ToChecked();
-
-  v8::String::Utf8Value param2(v8::Isolate::GetCurrent(), Nan::To<v8::String>(info[2]).ToLocalChecked());
-  std::string sdp = std::string(*param2);
+  std::string mid = getString(info[0]);
+  int sdpMLine = Nan::To<int32_t>(info[1]).FromJust();
+  std::string sdp = getString(info[2]);
 
   bool r = me->addRemoteCandidate(mid, sdpMLine, sdp);
 
@@ -334,13 +328,9 @@ NAN_METHOD(WebRtcConnection::removeRemoteCandidate) {
   WebRtcConnection* obj = Nan::ObjectWrap::Unwrap<WebRtcConnection>(info.Holder());
   std::shared_ptr<erizo::WebRtcConnection> me = obj->me;
 
-  v8::String::Utf8Value param(v8::Isolate::GetCurrent(), Nan::To<v8::String>(info[0]).ToLocalChecked());
-  std::string mid = std::string(*param);
-
-  int sdpMLine = info[1]->IntegerValue(Nan::GetCurrentContext()).ToChecked();
-
-  v8::String::Utf8Value param2(v8::Isolate::GetCurrent(), Nan::To<v8::String>(info[2]).ToLocalChecked());
-  std::string sdp = std::string(*param2);
+  std::string mid = getString(info[0]);
+  int sdpMLine = Nan::To<int32_t>(info[1]).FromJust();
+  std::string sdp = getString(info[2]);
 
   bool r = me->removeRemoteCandidate(mid, sdpMLine, sdp);
   info.GetReturnValue().Set(Nan::New(r));
@@ -353,7 +343,8 @@ NAN_METHOD(WebRtcConnection::addMediaStream) {
     return;
   }
 
-  MediaStream* param = Nan::ObjectWrap::Unwrap<MediaStream>(Nan::To<v8::Object>(info[0]).ToLocalChecked());
+  MediaStream* param = Nan::ObjectWrap::Unwrap<MediaStream>(
+    Nan::To<v8::Object>(info[0]).ToLocalChecked());
   auto wr = std::shared_ptr<erizo::MediaStream>(param->me);
 
   me->addMediaStream(wr);
@@ -366,8 +357,7 @@ NAN_METHOD(WebRtcConnection::removeMediaStream) {
     return;
   }
 
-  v8::String::Utf8Value param(v8::Isolate::GetCurrent(), Nan::To<v8::String>(info[0]).ToLocalChecked());
-  std::string streamId = std::string(*param);
+  std::string streamId = getString(info[0]);
 
   me->forEachMediaStream([streamId] (const std::shared_ptr<erizo::MediaStream> &media_stream) {
     if (media_stream->getId() == streamId) {
@@ -385,7 +375,7 @@ NAN_METHOD(WebRtcConnection::setAudioSsrc) {
   }
 
   std::string stream_id = getString(info[0]);
-  me->getLocalSdpInfo()->audio_ssrc_map[stream_id] = info[1]->IntegerValue(Nan::GetCurrentContext()).ToChecked();
+  me->getLocalSdpInfo()->audio_ssrc_map[stream_id] = Nan::To<int32_t>(info[1]).FromJust();
 }
 
 NAN_METHOD(WebRtcConnection::getAudioSsrcMap) {
@@ -397,8 +387,9 @@ NAN_METHOD(WebRtcConnection::getAudioSsrcMap) {
 
   Local<v8::Object> audio_ssrc_map = Nan::New<v8::Object>();
   for (auto const& audio_ssrcs : me->getLocalSdpInfo()->audio_ssrc_map) {
-    audio_ssrc_map->Set(Nan::New(audio_ssrcs.first.c_str()).ToLocalChecked(),
-                        Nan::New(audio_ssrcs.second));
+    Nan::Set(audio_ssrc_map,
+             Nan::New(audio_ssrcs.first.c_str()).ToLocalChecked(),
+             Nan::New(audio_ssrcs.second));
   }
   info.GetReturnValue().Set(audio_ssrc_map);
 }
@@ -415,8 +406,8 @@ NAN_METHOD(WebRtcConnection::setVideoSsrcList) {
   std::vector<uint32_t> video_ssrc_list;
 
   for (unsigned int i = 0; i < video_ssrc_array->Length(); i++) {
-    v8::Handle<v8::Value> val = video_ssrc_array->Get(i);
-    unsigned int numVal = val->IntegerValue(Nan::GetCurrentContext()).ToChecked();
+    v8::Local<v8::Value> val = Nan::Get(video_ssrc_array, i).ToLocalChecked();
+    unsigned int numVal = Nan::To<int32_t>(val).FromJust();
     video_ssrc_list.push_back(numVal);
   }
   me->getLocalSdpInfo()->video_ssrc_map[stream_id] = video_ssrc_list;
@@ -436,7 +427,8 @@ NAN_METHOD(WebRtcConnection::getVideoSsrcMap) {
     for (uint32_t ssrc : video_ssrcs.second) {
       Nan::Set(array, index++, Nan::New(ssrc));
     }
-    video_ssrc_map->Set(Nan::New(video_ssrcs.first.c_str()).ToLocalChecked(), array);
+    Nan::Set(video_ssrc_map,
+             Nan::New(video_ssrcs.first.c_str()).ToLocalChecked(), array);
   }
   info.GetReturnValue().Set(video_ssrc_map);
 }

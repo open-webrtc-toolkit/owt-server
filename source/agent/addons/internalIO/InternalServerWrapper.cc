@@ -101,16 +101,17 @@ NAN_METHOD(InternalServer::addSource) {
 
   bool isNanSource(false);
   if (info.Length() >= 3) {
-      isNanSource = info[2]->ToBoolean(Nan::GetCurrentContext()).ToLocalChecked()->Value();
+      isNanSource = Nan::To<bool>(info[2]).FromJust();
   }
 
   owt_base::FrameSource* src(nullptr);
   if (isNanSource) {
-      NanFrameNode* param = Nan::ObjectWrap::Unwrap<NanFrameNode>(info[1]->ToObject());
+      NanFrameNode* param = Nan::ObjectWrap::Unwrap<NanFrameNode>(
+          Nan::To<v8::Object>(info[1]).ToLocalChecked());
       src = param->FrameSource();
   } else {
       FrameSource* param = ObjectWrap::Unwrap<FrameSource>(
-          info[1]->ToObject(Nan::GetCurrentContext()).ToLocalChecked());
+          Nan::To<v8::Object>(info[1]).ToLocalChecked());
       src = param->src;
   }
 

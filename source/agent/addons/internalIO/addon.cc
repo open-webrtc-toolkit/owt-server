@@ -10,7 +10,7 @@
 
 using namespace v8;
 
-void InitAll(Handle<Object> exports) {
+void InitAll(Local<Object> exports) {
   InternalServer::Init(exports);
   InternalClient::Init(exports);
   InitInternalConfig(exports);
