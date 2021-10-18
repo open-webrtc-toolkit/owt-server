@@ -40,6 +40,7 @@ private:
     uint32_t m_seqNumber;
     bool m_valid;
     boost::shared_mutex m_mutex;
+    uint32_t m_timestamp;
 };
 
 } /* namespace mcu */

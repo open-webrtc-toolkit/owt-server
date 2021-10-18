@@ -119,7 +119,8 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
           const options = publicationOptions.get(stream.contentSessionId);
           // Only publications for media have tracks.
           if (options.tracks && options.tracks.length) {
-            stream.isMedia = true;
+            // TODO: Get track kind from track ID.
+            stream.trackKind = 'video';
             stream.readTrackId();
           } else {
             frameSourceMap.get(stream.contentSessionId).addInputStream(stream);
