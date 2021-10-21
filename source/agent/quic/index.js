@@ -24,6 +24,8 @@ const addon = require('./build/Release/quic');
 const cipher = require('../cipher');
 const path = require('path');
 const {InternalConnectionRouter} = require('./internalConnectionRouter');
+const audioTrackId = '00000000000000000000000000000001';
+const videoTrackId = '00000000000000000000000000000002';
 
 log.info('QUIC transport node.')
 
@@ -119,8 +121,6 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
           const options = publicationOptions.get(stream.contentSessionId);
           // Only publications for media have tracks.
           if (options.tracks && options.tracks.length) {
-            // TODO: Get track kind from track ID.
-            stream.trackKind = 'video';
             stream.readTrackId();
           } else {
             frameSourceMap.get(stream.contentSessionId).addInputStream(stream);
@@ -134,6 +134,16 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
         }
       });
       quicTransportServer.on('trackid', (stream) => {
+        // TODO: Defined track ID and get track kind based on ID. Currently it
+        // is hard coded.
+        if (stream.trackId === audioTrackId) {
+          stream.trackKind = 'audio';
+        } else if (stream.trackId === videoTrackId) {
+          stream.trackKind = 'video';
+        } else {
+          log.warn('Unexpected track ID: ' + stream.trackId);
+          return;
+        }
         if (frameSourceMap.has(stream.contentSessionId)) {
           frameSourceMap.get(stream.contentSessionId).addInputStream(stream);
         }

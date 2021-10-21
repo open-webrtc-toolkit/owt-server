@@ -367,6 +367,10 @@ void QuicTransportStream::SignalOnData()
         return;
     }
 
+    if (m_trackKind == "unknown") {
+        return;
+    }
+
     while (m_stream->ReadableBytes() > 0) {
         auto readableBytes = m_stream->ReadableBytes();
         // Future check if it's an audio stream or video stream. Audio is not supported at this time.
@@ -424,7 +428,7 @@ void QuicTransportStream::SignalOnData()
                 m_currentFrameSize = 0;
                 m_receivedFrameOffset = 0;
             }
-        } else {
+        } else if (m_trackKind == "data") {
             if (readableBytes > m_bufferSize) {
                 ReallocateBuffer(readableBytes);
             }
