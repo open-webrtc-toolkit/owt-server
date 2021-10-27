@@ -107,7 +107,6 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
         log.debug(
             'A stream with session ID ' + stream.contentSessionId +
             ' is added.');
-        // Set isMedia=true if the session is for media.
         if (outgoingStreamPipelines.has(stream.contentSessionId)) {
           const pipeline = outgoingStreamPipelines.get(stream.contentSessionId);
           pipeline.quicStream(stream);
@@ -123,6 +122,7 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
           if (options.tracks && options.tracks.length) {
             stream.readTrackId();
           } else {
+            stream.trackKind = 'data';
             frameSourceMap.get(stream.contentSessionId).addInputStream(stream);
           }
         } else {
