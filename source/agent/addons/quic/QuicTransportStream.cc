@@ -43,6 +43,7 @@ QuicTransportStream::QuicTransportStream(owt::quic::WebTransportStreamInterface*
     , m_frameSizeArray(new uint8_t[frameHeaderSize])
     , m_currentFrameSize(0)
     , m_receivedFrameOffset(0)
+    , m_audioTimeStamp(0)
 {
 }
 
@@ -411,6 +412,9 @@ void QuicTransportStream::SignalOnData()
                 owt_base::Frame frame;
                 if (m_trackKind == "audio") {
                     frame.format = owt_base::FRAME_FORMAT_OPUS;
+                    frame.timeStamp = m_audioTimeStamp;
+                    // TODO: Fill a correct timestamp and check overflow.
+                    m_audioTimeStamp += 10 * 1000;
                     // TODO: Get format from signaling message.
                     frame.additionalInfo.audio.isRtpPacket = false;
                     frame.additionalInfo.audio.sampleRate = 48000;

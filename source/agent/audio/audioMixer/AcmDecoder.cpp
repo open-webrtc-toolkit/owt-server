@@ -19,7 +19,6 @@ AcmDecoder::AcmDecoder(const FrameFormat format)
     , m_ssrc(0)
     , m_seqNumber(0)
     , m_valid(false)
-    , m_timestamp(0)
 {
     AudioCodingModule::Config config;
     m_audioCodingModule.reset(AudioCodingModule::Create(config));
@@ -139,12 +138,6 @@ void AcmDecoder::onFrame(const Frame& frame)
 
         payload = frame.payload;
         length = frame.length;
-    }
-
-    if (rtp_header.header.timestamp == 0) {
-        // TODO: Fill a correct timestamp and check overflow.
-        m_timestamp += 10*1000;
-        rtp_header.header.timestamp = m_timestamp;
     }
 
     ELOG_TRACE_T("onFrame(%s), sampleRate(%d), channels(%d), timeStamp(%d), length(%ld), seqNum(%d), %s",

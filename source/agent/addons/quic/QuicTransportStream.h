@@ -108,6 +108,8 @@ private:
     uint8_t* m_frameSizeArray;
     size_t m_currentFrameSize;
     size_t m_receivedFrameOffset;
+    // TODO: Using wall clock timestamps seems not working. Using an increasing sequence instead. Fix it later.
+    uint32_t m_audioTimeStamp;
 
     uv_async_t m_asyncOnContentSessionId;
     uv_async_t m_asyncOnTrackId;
