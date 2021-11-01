@@ -5,14 +5,5 @@
     "amqplib": "^0.7.0",
     "log4js": "^1.1.1",
     "toml": "*"
-  },
-  "bin": "index.js",
-  "pkg": {
-    "assets": [
-      "node_modules*"
-    ],
-    "targets": [
-      "node8"
-    ]
   }
 }

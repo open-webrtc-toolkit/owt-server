@@ -9,17 +9,5 @@
   },
   "devDependencies": {
     "node-gyp": "*"
-  },
-  "engine": {
-    "node": "8.15.0"
-  },
-  "bin": "index.js",
-  "pkg": {
-    "assets": [
-      "node_modules*"
-    ],
-    "targets": [
-      "node8"
-    ]
   }
 }

@@ -7,14 +7,5 @@
     "toml": "*",
     "mongoose": "^5.9.6",
     "fraction.js": "*"
-  },
-  "bin": "sip_portal.js",
-  "pkg": {
-    "assets": [
-      "node_modules*"
-    ],
-    "targets": [
-      "node8"
-    ]
   }
 }
