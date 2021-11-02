@@ -6,6 +6,7 @@
 
 #include "QuicFactory.h"
 #include "owt/quic/web_transport_factory.h"
+#include "owt/quic/logging.h"
 #include <mutex>
 
 DEFINE_LOGGER(QuicFactory, "QuicFactory");
