@@ -68,7 +68,7 @@ var Connection = function(spec, socket, reconnectionKey, portal, dock) {
     const signed = crypto.createHmac('sha256', reconnectionKey)
                      .update(to_sign)
                      .digest('hex');
-    return (new Buffer(signed)).toString('base64');
+    return (Buffer.from(signed)).toString('base64');
   };
 
   const generateReconnectionTicket = function() {
@@ -81,7 +81,7 @@ var Connection = function(spec, socket, reconnectionKey, portal, dock) {
       notAfter: now + spec.reconnectionTicketLifetime * 1000
     };
     reconnection.ticket.signature = calculateSignature(reconnection.ticket);
-    return (new Buffer(JSON.stringify(reconnection.ticket))).toString('base64');
+    return (Buffer.from(JSON.stringify(reconnection.ticket))).toString('base64');
   };
 
   const validateReconnectionTicket = function(ticket) {
@@ -167,7 +167,7 @@ var Connection = function(spec, socket, reconnectionKey, portal, dock) {
         .then((reconnEnabled) => {
           reconnection.enabled = reconnEnabled;
           return new Promise(function(resolve){
-            resolve(JSON.parse((new Buffer(login_info.token, 'base64')).toString()));
+            resolve(JSON.parse((Buffer.from(login_info.token, 'base64')).toString()));
           });
         }).then((token) => {
           return client.join(token);
@@ -204,7 +204,7 @@ var Connection = function(spec, socket, reconnectionKey, portal, dock) {
       var client;
       var reconnection_ticket;
       new Promise((resolve) => {
-        resolve(JSON.parse((new Buffer(reconnectionTicket, 'base64')).toString()));
+        resolve(JSON.parse((Buffer.from(reconnectionTicket, 'base64')).toString()));
       }).then((ticket) => {
         var now = Date.now();
         if (ticket.notBefore > now || ticket.notAfter < now) {

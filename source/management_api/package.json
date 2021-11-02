@@ -5,11 +5,11 @@
     "amqplib": "^0.7.0",
     "log4js": "^1.1.1",
     "express": "*",
-    "mongodb": "^3.6.4",
+    "mongodb": "^3.6.8",
     "toml": "*",
     "ajv": "^6.12.3",
     "body-parser": "*",
-    "mongoose": "^5.9.6",
+    "mongoose": "^5.13.12",
     "fraction.js": "^4.0.12"
   },
   "main": "api.js"

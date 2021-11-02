@@ -127,7 +127,7 @@ exports.authenticate = function (req, res, next) {
                 var authData = {};
 
                 if (params.username !== undefined && params.role !== undefined) {
-                    authData.user = (new Buffer(params.username, 'base64').toString('utf8'));
+                    authData.user = Buffer.from(params.username, 'base64').toString('utf8');
                     authData.role = params.role;
                 }
                 cache[serv._id+''] =  params;
