@@ -36,6 +36,8 @@ public:
     static NAN_MODULE_INIT(init);
     static NAN_METHOD(newInstance);
     static NAN_METHOD(createBidirectionalStream);
+    // Close a WebTransport session, take an optional argument of WebTransportCloseInfo defined in https://w3c.github.io/webtransport/#web-transport-close-info.
+    static NAN_METHOD(close);
     static NAUV_WORK_CB(onStreamCallback);
 
     static Nan::Persistent<v8::Function> s_constructor;

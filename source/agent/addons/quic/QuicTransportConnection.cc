@@ -40,6 +40,7 @@ NAN_MODULE_INIT(QuicTransportConnection::init)
     instanceTpl->SetInternalFieldCount(1);
 
     Nan::SetPrototypeMethod(tpl, "createBidirectionalStream", createBidirectionalStream);
+    Nan::SetPrototypeMethod(tpl, "close", close);
 
     s_constructor.Reset(Nan::GetFunction(tpl).ToLocalChecked());
     Nan::Set(target, Nan::New("QuicTransportConnection").ToLocalChecked(), Nan::GetFunction(tpl).ToLocalChecked());
@@ -116,9 +117,30 @@ NAUV_WORK_CB(QuicTransportConnection::onStreamCallback)
     }
 }
 
-NAN_METHOD(QuicTransportConnection::createBidirectionalStream){
+NAN_METHOD(QuicTransportConnection::createBidirectionalStream)
+{
     QuicTransportConnection* obj = Nan::ObjectWrap::Unwrap<QuicTransportConnection>(info.Holder());
-    auto stream=obj->m_session->CreateBidirectionalStream();
+    auto stream = obj->m_session->CreateBidirectionalStream();
     v8::Local<v8::Object> streamObject = QuicTransportStream::newInstance(stream);
     info.GetReturnValue().Set(streamObject);
+}
+
+NAN_METHOD(QuicTransportConnection::close)
+{
+    QuicTransportConnection* obj = Nan::ObjectWrap::Unwrap<QuicTransportConnection>(info.Holder());
+    uint32_t closeCode = 0;
+    std::string reason;
+    if (info.Length() != 0) {
+        auto maybeCloseCode = Nan::Get(Nan::To<v8::Object>(info[0]).ToLocalChecked(), Nan::New<v8::String>("closeCode").ToLocalChecked());
+        if (!maybeCloseCode.IsEmpty()) {
+            closeCode = Nan::To<uint32_t>(maybeCloseCode.ToLocalChecked()).ToChecked();
+        }
+        auto maybeReason = Nan::Get(Nan::To<v8::Object>(info[0]).ToLocalChecked(), Nan::New<v8::String>("reason").ToLocalChecked());
+        if (!maybeReason.IsEmpty()) {
+            auto reasonObj =maybeReason.ToLocalChecked();
+            Nan::Utf8String reasonStr(Nan::To<v8::String>(reasonObj).ToLocalChecked());
+            reason = std::string(*reasonStr);
+        }
+    }
+    obj->m_session->Close(closeCode, reason.c_str());
 }

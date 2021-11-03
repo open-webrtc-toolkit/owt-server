@@ -251,7 +251,9 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
         var conn = router.getConnection(connectionId);
         router.removeConnection(connectionId).then(function(ok) {
             if (conn) {
+              if (typeof conn.close === 'function') {
                 conn.close();
+              }
             }
             callback('callback', 'ok');
         }, onError(callback));
@@ -298,7 +300,9 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
         var conn = router.getConnection(connectionId);
         router.removeConnection(connectionId).then(function(ok) {
             if (conn) {
+              if (typeof conn.close === 'function') {
                 conn.close();
+              }
             }
             callback('callback', 'ok');
         }, onError(callback));
