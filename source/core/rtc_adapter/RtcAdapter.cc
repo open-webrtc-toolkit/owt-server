@@ -44,6 +44,8 @@ static std::shared_ptr<rtc::TaskQueue> g_taskQueue =
         "CallTaskQueue",
         webrtc::TaskQueueFactory::Priority::NORMAL));
 
+static constexpr int kStartBitrateBps = 800000;
+
 class RtcAdapterImpl : public RtcAdapter,
                        public CallOwner,
                        public webrtc::TargetTransferRateObserver {
@@ -161,10 +163,13 @@ void RtcAdapterImpl::initRtpTransportController()
         std::unique_ptr<webrtc::ProcessThread> pacerThreadProxy =
             std::make_unique<ProcessThreadProxy>(nullptr);
 
+        webrtc::BitrateConstraints bitrateConstraints;
+        bitrateConstraints.start_bitrate_bps = kStartBitrateBps;
+
         m_transportControllerSend = std::make_shared<webrtc::RtpTransportControllerSend>(
             webrtc::Clock::GetRealTimeClock(), g_eventLog.get(),
             nullptr/*network_state_predicator_factory*/,
-            nullptr/*network_controller_factory*/, webrtc::BitrateConstraints(),
+            nullptr/*network_controller_factory*/, bitrateConstraints,
             std::move(pacerThreadProxy)/*pacer_thread*/, g_taskQueueFactory.get(), g_fieldTrial.get());
         m_transportControllerSend->RegisterTargetTransferRateObserver(this);
     }
