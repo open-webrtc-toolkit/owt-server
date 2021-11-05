@@ -72,7 +72,7 @@ NAN_METHOD(WebTransportFrameSource::addDestination)
     std::string track = std::string(*param0);
     bool isNanDestination(false);
     if (info.Length() == 3) {
-        isNanDestination = Nan::To<bool>(info[2]).FromJust());
+        isNanDestination = Nan::To<bool>(info[2]).FromJust();
     }
     owt_base::FrameDestination* dest(nullptr);
     if (isNanDestination) {
