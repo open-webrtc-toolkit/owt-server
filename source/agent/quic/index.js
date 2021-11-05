@@ -24,6 +24,8 @@ const addon = require('./build/Release/quic');
 const cipher = require('../cipher');
 const path = require('path');
 const {InternalConnectionRouter} = require('./internalConnectionRouter');
+const audioTrackId = '00000000000000000000000000000001';
+const videoTrackId = '00000000000000000000000000000002';
 
 log.info('QUIC transport node.')
 
@@ -105,7 +107,6 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
         log.debug(
             'A stream with session ID ' + stream.contentSessionId +
             ' is added.');
-        // Set isMedia=true if the session is for media.
         if (outgoingStreamPipelines.has(stream.contentSessionId)) {
           const pipeline = outgoingStreamPipelines.get(stream.contentSessionId);
           pipeline.quicStream(stream);
@@ -119,9 +120,9 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
           const options = publicationOptions.get(stream.contentSessionId);
           // Only publications for media have tracks.
           if (options.tracks && options.tracks.length) {
-            stream.isMedia = true;
             stream.readTrackId();
           } else {
+            stream.trackKind = 'data';
             frameSourceMap.get(stream.contentSessionId).addInputStream(stream);
           }
         } else {
@@ -133,6 +134,16 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
         }
       });
       quicTransportServer.on('trackid', (stream) => {
+        // TODO: Defined track ID and get track kind based on ID. Currently it
+        // is hard coded.
+        if (stream.trackId === audioTrackId) {
+          stream.trackKind = 'audio';
+        } else if (stream.trackId === videoTrackId) {
+          stream.trackKind = 'video';
+        } else {
+          log.warn('Unexpected track ID: ' + stream.trackId);
+          return;
+        }
         if (frameSourceMap.has(stream.contentSessionId)) {
           frameSourceMap.get(stream.contentSessionId).addInputStream(stream);
         }
