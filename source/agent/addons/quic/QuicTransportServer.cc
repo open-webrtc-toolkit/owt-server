@@ -52,9 +52,9 @@ NAN_METHOD(QuicTransportServer::newInstance)
     if (info.Length() < 3) {
         return Nan::ThrowTypeError("No enough arguments are provided.");
     }
-    int port = info[0]->IntegerValue();
-    v8::String::Utf8Value pfxPath(Nan::To<v8::String>(info[1]).ToLocalChecked());
-    v8::String::Utf8Value password(Nan::To<v8::String>(info[2]).ToLocalChecked());
+    int port = Nan::To<int32_t>(info[0]).FromJust();
+    Nan::Utf8String pfxPath(Nan::To<v8::String>(info[1]).ToLocalChecked());
+    Nan::Utf8String password(Nan::To<v8::String>(info[2]).ToLocalChecked());
     QuicTransportServer* obj = new QuicTransportServer(port, *pfxPath, *password);
     owt_base::Utils::ZeroMemory(*password, password.length());
     obj->Wrap(info.This());

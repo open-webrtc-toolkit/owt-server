@@ -369,7 +369,7 @@ install_libsrtp2(){
 }
 
 install_node() {
-  local NODE_VERSION="v10.21.0"
+  local NODE_VERSION="v14"
   echo -e "\x1b[32mInstalling nvm...\x1b[0m"
   NVM_DIR="${HOME}/.nvm"
 
@@ -394,7 +394,7 @@ install_node_tools() {
   check_proxy
   npm install -g --loglevel error node-gyp@6.1.0 grunt-cli underscore jsdoc
   pushd ${ROOT} >/dev/null
-  npm install nan@2.11.1
+  npm install nan@2.15.0
   pushd ${ROOT}/node_modules/nan >/dev/null
   patch -p1 < $PATHNAME/patches/nan.patch
   popd >/dev/null

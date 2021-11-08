@@ -21,18 +21,6 @@
     "node-gyp": "*",
     "sinon": "^9.0.2"
   },
-  "engine": {
-    "node": "10.22.0"
-  },
-  "bin": "index.js",
-  "pkg": {
-    "assets": [
-      "node_modules*"
-    ],
-    "targets": [
-      "node8"
-    ]
-  },
   "scripts": {
     "test": "node_modules/mocha/bin/mocha quic/webtransport/test/quicTransportServerTest.js"
   }

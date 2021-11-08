@@ -24,7 +24,7 @@ NAN_MODULE_INIT(CallBase::Init) {
   // Prototype
   Nan::SetPrototypeMethod(tpl, "close", close);
 
-  constructor.Reset(tpl->GetFunction());
+  constructor.Reset(Nan::GetFunction(tpl).ToLocalChecked());
   Nan::Set(target, Nan::New("CallBase").ToLocalChecked(),
            Nan::GetFunction(tpl).ToLocalChecked());
 }
