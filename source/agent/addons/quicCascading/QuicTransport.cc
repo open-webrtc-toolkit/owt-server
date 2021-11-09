@@ -42,7 +42,19 @@ unsigned int QuicIn::getListeningPort() {
 
 
 void QuicIn::send(uint32_t session_id, uint32_t stream_id, const std::string& data) {
-    server_->send(session_id, stream_id, data);
+    TransportData sendData;
+    uint32_t payloadLength = data.length();
+    sendData.buffer.reset(new char[payloadLength + 4]);
+    *(reinterpret_cast<uint32_t*>(sendData.buffer.get())) = htonl(payloadLength);
+    memcpy(sendData.buffer.get() + 4, data.c_str(), payloadLength);
+    sendData.length = payloadLength + 4;
+
+    //std::string str(data.buffer.get(), data.length);
+    if (sendData.length > INIT_BUFF_SIZE + 4) {
+        std::cout << "sendFrame " << (sendData.length  - 4)<< std::endl;
+    }
+    printf("data address in addon is:%s\n", data.c_str());
+    server_->send(session_id, stream_id, sendData.buffer.get(), sendData.length);
 }
 
 /*void QuicIn::onFeedback(const FeedbackMsg& msg) {
@@ -71,10 +83,12 @@ bool QuicIn::notifyAsyncEventInEmergency(const std::string& event, const std::st
         }
 }
 
-void QuicIn::onReady(uint32_t session_id, uint32_t stream_id) {}
+void QuicIn::onReady(uint32_t session_id, uint32_t stream_id) {
+    std::cout << "server onReady session id:" << session_id << " stream id:" << stream_id << std::endl;
+}
 
 void QuicIn::onData(uint32_t session_id, uint32_t stream_id, char* buf, uint32_t len) {
-    // std::cout << "onData len:" << len << std::endl;
+    std::cout << "server onData: " << buf << " len:" << len << " m_bufferSize:" << m_bufferSize << " m_receivedBytes:" << m_receivedBytes << std::endl;
     std::string sessionId = std::to_string(session_id);
     std::string streamId = std::to_string(stream_id);
     std::string sId = sessionId + streamId;
@@ -96,22 +110,33 @@ void QuicIn::onData(uint32_t session_id, uint32_t stream_id, char* buf, uint32_t
     m_receivedBytes += len;
     while (m_receivedBytes >= 4) {
         uint32_t payloadlen = 0;
+
         payloadlen = ntohl(*(reinterpret_cast<uint32_t*>(m_receiveData.buffer.get())));
         uint32_t expectedLen = payloadlen + 4;
+	std::cout << "m_receivedBytes:" << m_receivedBytes << " payloadlen:" << payloadlen << " expectedLen:" << expectedLen << std::endl;
         if (expectedLen > m_receivedBytes) {
             // continue
             break;
         } else {
-            // std::cout << "receive: " << expectedLen << std::endl;
+            std::cout << "receive: " << expectedLen << std::endl;
             m_receivedBytes -= expectedLen;
             char* dpos = m_receiveData.buffer.get() + 4;
+            std::string s_data(dpos, payloadlen);
 
             if (hasStream_.count(sId) == 0) {
                 hasStream_[sId] = true;
-                std::string data("{\"sessionId\":sessionId, \"streamId\":streamId, \"room\":dpos}");
-                notifyAsyncEvent("newstream", data.c_str());
+                std::string str;
+                str.append("{\"sessionId\":\"");
+                str.append(sessionId);
+                str.append("\",\"streamId\":\"");
+                str.append(streamId);
+                str.append("\",\"room\":\"");
+                str.append(s_data);
+                str.append("\"}");
+
+                notifyAsyncEvent("newstream", str.c_str());
             } else {
-                notifyAsyncEvent("roomevents", dpos);
+                notifyAsyncEvent("roomevents", s_data);
             }
 
             if (m_receivedBytes > 0) {
@@ -128,6 +153,7 @@ QuicOut::QuicOut(const std::string& dest_ip, unsigned int dest_port, EventRegist
         , m_bufferSize(INIT_BUFF_SIZE)
         , m_receivedBytes(0)
         , m_asyncHandle(handle) {
+    printf("QuicOut:QiucOut\n");
     client_->setListener(this);
     client_->start(dest_ip.c_str(), dest_port);
 }
@@ -137,13 +163,26 @@ QuicOut::~QuicOut() {
     client_.reset();
 }
 
-void QuicOut::send(uint32_t session_id, uint32_t stream_id, const std::string& data) {
-    client_->send(session_id, stream_id, data);
+void QuicOut::send(uint32_t session_id, uint32_t stream_id, std::string data) {
+    std::cout << "client send data: " << data << "with size:" << data.length() << std::endl;
+    TransportData sendData;
+    uint32_t payloadLength = data.length();
+    sendData.buffer.reset(new char[payloadLength + 4]);
+    *(reinterpret_cast<uint32_t*>(sendData.buffer.get())) = htonl(payloadLength);
+    memcpy(sendData.buffer.get() + 4, data.c_str(), payloadLength);
+    sendData.length = payloadLength + 4;
+
+    //std::string str(data.buffer.get(), data.length);
+    if (sendData.length > INIT_BUFF_SIZE + 4) {
+        std::cout << "sendFrame " << (sendData.length  - 4)<< std::endl;
+    }
+    printf("data address in addon is:%s\n", data.c_str());
+    client_->send(session_id, stream_id, sendData.buffer.get(), sendData.length);
 }
 
 
 void QuicOut::onData(uint32_t session_id, uint32_t stream_id, char* buf, uint32_t len) {
-    // std::cout << "onData len:" << len << std::endl;
+    std::cout << "onData len:" << len << std::endl;
 
     if (m_receivedBytes + len >= m_bufferSize) {
         m_bufferSize += (m_receivedBytes + len);
@@ -158,19 +197,24 @@ void QuicOut::onData(uint32_t session_id, uint32_t stream_id, char* buf, uint32_
             return;
         }
     }
+
+    std::cout << "Copy data and m_receivedBytes:" << m_receivedBytes << std::endl;
     memcpy(m_receiveData.buffer.get() + m_receivedBytes, buf, len);
     m_receivedBytes += len;
     while (m_receivedBytes >= 4) {
+        std::cout << "m_receivedBytes >=4";
         uint32_t payloadlen = 0;
         payloadlen = ntohl(*(reinterpret_cast<uint32_t*>(m_receiveData.buffer.get())));
         uint32_t expectedLen = payloadlen + 4;
         if (expectedLen > m_receivedBytes) {
             // continue
+            std::cout << "expectedLen:" << expectedLen << " m_receivedBytes:" << m_receivedBytes << std::endl;
             break;
         } else {
             // std::cout << "receive: " << expectedLen << std::endl;
             m_receivedBytes -= expectedLen;
             char* dpos = m_receiveData.buffer.get() + 4;
+            std::cout << "notify roomevents:" << dpos << std::endl;
             notifyAsyncEvent("roomevents", dpos);
 
             if (m_receivedBytes > 0) {
@@ -182,7 +226,12 @@ void QuicOut::onData(uint32_t session_id, uint32_t stream_id, char* buf, uint32_
 }
 
 void QuicOut::onReady(uint32_t session_id, uint32_t stream_id) {
-    std::string data("{\"sessionId\":sessionId, \"streamId\":streamId}");
+    std::string data("{\"sessionId\":");
+    data.append(std::to_string(session_id));
+    data.append(", \"streamId\":");
+    data.append(std::to_string(stream_id));
+    data.append("}");
+    printf("Quic out ready with data:%s\n", data.c_str());
     notifyAsyncEvent("newstream", data.c_str());
 }
 

@@ -74,7 +74,7 @@ void QuicTransportIn::send(const FunctionCallbackInfo<Value>& args) {
 
   unsigned int session_id = args[0]->Uint32Value();
   unsigned int stream_id = args[1]->Uint32Value();
-  String::Utf8Value param1(args[3]->ToString());
+  String::Utf8Value param1(args[2]->ToString());
   std::string data = std::string(*param1);
 
   me->send(session_id, stream_id, data);
@@ -146,7 +146,7 @@ void QuicTransportOut::send(const FunctionCallbackInfo<Value>& args) {
 
   unsigned int session_id = args[0]->Uint32Value();
   unsigned int stream_id = args[1]->Uint32Value();
-  String::Utf8Value param1(args[3]->ToString());
+  String::Utf8Value param1(args[2]->ToString());
   std::string data = std::string(*param1);
 
   me->send(session_id, stream_id, data);

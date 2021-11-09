@@ -520,7 +520,7 @@ var Conference = function (rpcClient, selfRpcId) {
       if (to === 'cascading') {
         cascadingEventBridges.forEach((eventBridge) => {
           if (eventBridge) {
-            rpcReq.broadcast(eventBridge, selfRpcId, excludes, msg, data);
+            rpcReq.sendMsg(eventBridge, selfRpcId, msg, data);
           }
         });
       } else if (participants[to]) {
@@ -2880,6 +2880,18 @@ var Conference = function (rpcClient, selfRpcId) {
     }
       callback('callback', result);
   };
+
+  that.onCascadingConnected = function(bridgeId, callback) {
+      log.debug('event bridge connected ', bridgeId);
+      var result = 'ok';
+      var data = {};
+      data.streams = streams;
+      data.participants = participants;
+      sendMsgTo(bridgeId, 'initialize', {type: 'initialize', rpcId: selfRpcId, data: data});
+      cascadingEventBridges.add(bridgeId);
+      
+      callback('callback', result);
+  };
   return that;
 };
 
@@ -2944,7 +2956,8 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
     getPortal: conference.getPortal,
 
     //RPC for cluster cascading
-    handleCascadingEvents: conference.handleCascadingEvents
+    handleCascadingEvents: conference.handleCascadingEvents,
+    onCascadingConnected: conference.onCascadingConnected
   };
 
   that.onFaultDetected = conference.onFaultDetected;

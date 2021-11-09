@@ -62,7 +62,7 @@ public:
     QuicOut(const std::string& dest_ip, unsigned int dest_port, EventRegistry *handle);
     virtual ~QuicOut();
 
-    void send(uint32_t session_id, uint32_t stream_id, const std::string& data);
+    void send(uint32_t session_id, uint32_t stream_id, std::string data);
 
     // Implements RQuicListener.
     void onData(uint32_t session_id, uint32_t stream_id, char* data, uint32_t len) override;
