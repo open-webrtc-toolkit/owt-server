@@ -144,10 +144,10 @@ var Portal = function(spec, rpcReq) {
     log.debug('participant leave:', participantId);
     if (participants[participantId]) {
       rpcReq.leave(participants[participantId].controller, participantId)
+        .then(() => delete participants[participantId])
         .catch(function(reason) {
           log.info('Failed in leaving, ', reason.message ? reason.message : reason);
         });
-      delete participants[participantId];
       return Promise.resolve('ok');
     } else {
       return Promise.reject('Participant has NOT joined');
