@@ -190,6 +190,13 @@ var Conference = function (rpcClient, selfRpcId) {
   var participants = {};
 
   /*
+   * Cascaded participants
+   * {ParticipantId: object(Participant)
+   * }
+   */
+  var casParticipants = {};
+
+  /*
    * {StreamId: object(Stream)}
    */
   var streams = {};
@@ -516,10 +523,14 @@ var Conference = function (rpcClient, selfRpcId) {
   };
 
   const sendMsgTo = function(to, msg, data) {
+    log.info("send message to eventBridge to", to, " msg:", msg, " data:", data);
     if (to !== 'admin') {
       if (to === 'cascading') {
+         log.info("cascading bridges are:", cascadingEventBridges);
         cascadingEventBridges.forEach((eventBridge) => {
+          log.info("send message to eventBridge:", eventBridge);
           if (eventBridge) {
+            log.info("send message to eventBridge:", eventBridge);
             rpcReq.sendMsg(eventBridge, selfRpcId, msg, data);
           }
         });
@@ -565,7 +576,7 @@ var Conference = function (rpcClient, selfRpcId) {
                                                    }, rpcReq);
     if (room_config.notifying.participantActivities) {
       sendMsg(participantInfo.id, 'others', 'participant', {action: 'join', data: {id: participantInfo.id, user: participantInfo.user, role: participantInfo.role}});
-      !participantInfo.cascading && sendMsgTo('cascading', 'participant', {type: "addParticipant", rpcId: selfRpcId, data: participantInfo});
+      !participantInfo.cascading && sendMsgTo('cascading', {rpcId: selfRpcId}, {type: "addParticipant", data: participantInfo});
     }
     return Promise.resolve('ok');
   };
@@ -589,7 +600,7 @@ var Conference = function (rpcClient, selfRpcId) {
       delete participants[participantId];
       if (room_config.notifying.participantActivities) {
         sendMsg('room', 'all', 'participant', {action: 'leave', data: left_user.id});
-        !participants[participantId].cascading && sendMsgTo('cascading', 'participant', {type: "addParticipant", rpcId: selfRpcId, data: participantId});
+        !participants[participantId].cascading && sendMsgTo('cascading', {rpcId: selfRpcId}, {type: "addParticipant", data: participantId});
       }
     }
   };
@@ -683,7 +694,7 @@ var Conference = function (rpcClient, selfRpcId) {
             setTimeout(() => {
               if (room_config.notifying.streamChange) {
                 sendMsg('room', 'all', 'stream', {id: id, status: 'add', data: fwdStream.toPortalFormat()});
-                !streams[id].cascading && sendMsgTo('cascading', 'stream', {type: "addStream", rpcId: selfRpcId, data: { id: id, media: media, data: data, info: info}});
+                !streams[id].cascading && sendMsgTo('cascading', {rpcId: selfRpcId}, {type: "addStream", data: { id: id, media: media, data: data, info: info}});
               }
             }, 10);
           }
@@ -708,7 +719,7 @@ var Conference = function (rpcClient, selfRpcId) {
               setTimeout(() => {
                 if (room_config.notifying.streamChange) {
                   sendMsg('room', 'all', 'stream', {id: id, status: 'add', data: fwdStream.toPortalFormat()});
-                  !streams[id].cascading && sendMsgTo('cascading', 'stream', {type: "addStream", rpcId: selfRpcId, data: {id: id, media: media, data: data, info: info}});
+                  !streams[id].cascading && sendMsgTo('cascading', {rpcId: selfRpcId}, {type: "addStream", data: {id: id, media: media, data: data, info: info}});
                 }
               }, 10);
             }
@@ -732,9 +743,8 @@ var Conference = function (rpcClient, selfRpcId) {
           data: {field: '.', value: streams[streamId].toPortalFormat()}
         });
 
-        !streams[streamId].cascading && sendMsgTo('cascading', 'stream', {
+        !streams[streamId].cascading && sendMsgTo('cascading', {rpcId: selfRpcId}, {
           type: 'updateStreamInfo',
-          rpcId: selfRpcId,
           data: {
             id: streamId,
             info: info
@@ -768,7 +778,7 @@ var Conference = function (rpcClient, selfRpcId) {
         setTimeout(() => {
           if (room_config.notifying.streamChange) {
             sendMsg('room', 'all', 'stream', {id: streamId, status: 'remove'});
-            !cascading && sendMsgTo('cascading', 'stream', {type: 'removeStream', rpcId: selfRpcId, data: streamId});
+            !cascading && sendMsgTo('cascading', {rpcId: selfRpcId}, {type: 'removeStream', data: streamId});
           }
         }, 10);
       }
@@ -1583,7 +1593,7 @@ var Conference = function (rpcClient, selfRpcId) {
           updateFields.forEach((fieldData) => {
             sendMsg('room', 'all', 'stream', {status: 'update', id: streamId, data: {field: fieldData, value: status}});
           });
-          !streams[streamId].cascading && sendMsgTo('cascading', 'stream', {type: 'setStreamMute', rpcId: selfRpcId, data: {id: streamId, track: track, muted: muted}});
+          !streams[streamId].cascading && sendMsgTo('cascading', {rpcId: selfRpcId}, {type: 'setStreamMute', data: {id: streamId, track: track, muted: muted}});
         }
         return 'ok';
       }, function(reason) {
@@ -1975,10 +1985,9 @@ var Conference = function (rpcClient, selfRpcId) {
               data: {field: 'activeInput', value: {id: input, volume: target.volume}}
             });
 
-            !streams[activeAudioId].cascading && sendMsgTo('cascading', 'stream',
+            !streams[activeAudioId].cascading && sendMsgTo('cascading', {rpcId: selfRpcId},
               {
                 type: 'onAudioActiveness',
-                rpcId: selfRpcId,
                 data: {activeInputStream: activeInputStream, target: target}
               });
           }
@@ -2004,6 +2013,10 @@ var Conference = function (rpcClient, selfRpcId) {
     var result = [];
     for (var participant_id in participants) {
       (participant_id !== 'admin') && result.push(participants[participant_id].getDetail());
+    }
+
+    for (var participant_id in casParticipants) {
+      result.push(casParticipants[participant_id].getDetail());
     }
 
     callback('callback', result);
@@ -2043,9 +2056,6 @@ var Conference = function (rpcClient, selfRpcId) {
   const doDropParticipant = (participantId) => {
     log.debug('doDropParticipant', participantId);
     if (participants[participantId] && participantId !== 'admin') {
-      if (participants[participantId].cascading) {
-        return Promise.reject('Participant not in this cluster');
-      }
       var deleted = participants[participantId].getInfo();
       return participants[participantId].drop()
         .then(function(result) {
@@ -2800,28 +2810,23 @@ var Conference = function (rpcClient, selfRpcId) {
   };
 
   var addCascadingParticipants = function(participantInfo) {
-    var perimission;
-        var my_role_def = room_config.roles.filter((roleDef) => {return roleDef.role === events.data.role;});
-        if (my_role_def.length < 1) {
-          log.info('Invalid role');
-          return;
-        }
-
-        permission = {
-          publish: {
-            video: my_role_def[0].publish.video,
-            audio: my_role_def[0].publish.audio
-          },
-          subscribe: {
-            video: my_role_def[0].subscribe.video,
-            audio: my_role_def[0].subscribe.audio
-          }
-        };
-        events.data.cascading = true;
-        addParticipant(participantInfo, permission);
+    log.info("Add cascading participant:", participantInfo);
+    casParticipants[participantInfo.id] = Participant({
+                                                    id: participantInfo.id,
+                                                    user: participantInfo.user,
+                                                    role: participantInfo.role,
+                                                    portal: participantInfo.portal,
+                                                    origin: participantInfo.origin,
+                                                    cascading: participantInfo.cascading,
+                                                    permission: participantInfo.permission
+                                                   }, rpcReq);
+    if (room_config.notifying.participantActivities) {
+      sendMsg(participantInfo.id, 'all', 'participant', {action: 'join', data: {id: participantInfo.id, user: participantInfo.user, role: participantInfo.role}});
+    }
   }
 
   var addCascadingStreams = function(id, media, data, info) {
+    log.info("Add cascading stream id:", id, " data:", data, " info:", info, " media:", media);
     const fwdStream = new ForwardStream(id, media, data, info, null, 'eventcascading');
     const errMsg = fwdStream.checkMediaError();
     if (errMsg) {
@@ -2834,20 +2839,22 @@ var Conference = function (rpcClient, selfRpcId) {
 
   var initializeCascading = function(data) {
     if(data.participants) {
-      data.participants.foreach((participantInfo) => {
-        addCascadingParticipants(participantInfo);
-      });
+      for (var pid in data.participants) {
+        log.info("initialize participant:", data.participants[pid]);
+        addCascadingParticipants(data.participants[pid]);
+      }
     }
 
     if(data.streams) {
-      data.streams.foreach((streamInfo) => {
-        addCascadingStreams(streamInfo.id, streamInfo.media, streamInfo.data, streamInfo.info);
-      });
+      for (var sid in data.streams) {
+        log.info("initialize stream:", data.streams[sid]);
+        addCascadingStreams(data.streams[sid].id, data.streams[sid].media, data.streams[sid].data, data.streams[sid].info);
+      }
     }
   }
 
   that.handleCascadingEvents = function(events, callback) {
-      log.debug('Handle cascading event: ', events);
+      log.info('Handle cascading event: ', events);
       var result = 'ok';
       switch (events.type) {
       case 'addParticipant':
@@ -2881,14 +2888,36 @@ var Conference = function (rpcClient, selfRpcId) {
       callback('callback', result);
   };
 
-  that.onCascadingConnected = function(bridgeId, callback) {
-      log.debug('event bridge connected ', bridgeId);
+  that.onCascadingConnected = function(bridgeId, sessionID, streamID, clientID, callback) {
+      log.debug('event bridge connected ', bridgeId, " participants", participants, " streams",streams);
       var result = 'ok';
       var data = {};
-      data.streams = streams;
-      data.participants = participants;
-      sendMsgTo(bridgeId, 'initialize', {type: 'initialize', rpcId: selfRpcId, data: data});
+      var msg = {};
+      data.participants = {};
+      data.streams = {};
+      for (var pid in participants) {
+        if (pid !== 'admin') {
+          data.participants[pid] = participants[pid].getDetail();
+          data.participants[pid].origin = participants[pid].getOrigin();
+          data.participants[pid].portal = participants[pid].getPortal();
+          log.info("participant id:", pid, " info:", data.participants[pid]);
+        }
+      }
+
+      for (var sid in streams) {
+        if (streams[sid].type !== 'mixed') {
+          data.streams[sid] = streams[sid];
+        }
+      }
+
+      data.type = 'initialize';
+      msg.session = sessionID;
+      msg.stream = streamID;
+      msg.client = clientID;
+      msg.type = 'initialize';
+      msg.rpcId = selfRpcId;
       cascadingEventBridges.add(bridgeId);
+      sendMsgTo('cascading', msg, {type: 'initialize', data: data});
       
       callback('callback', result);
   };
