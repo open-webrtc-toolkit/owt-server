@@ -62,7 +62,7 @@ NAN_METHOD(WebTransportFrameDestination::addDatagramOutput)
         obj->m_videoRtpPacketizer = std::make_unique<VideoRtpPacketizer>();
         obj->m_videoRtpPacketizer->addDataDestination(obj);
     }
-    NanFrameNode* output = Nan::ObjectWrap::Unwrap<NanFrameNode>(info[0]->ToObject());
+    NanFrameNode* output = Nan::ObjectWrap::Unwrap<NanFrameNode>(Nan::To<v8::Object>(info[0]).ToLocalChecked());
     obj->m_datagramOutput = output;
 }
 
