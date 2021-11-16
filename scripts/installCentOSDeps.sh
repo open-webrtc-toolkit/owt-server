@@ -40,6 +40,7 @@ installYumDeps(){
   ${SUDO} yum install devtoolset-7-gcc* -y
   ${SUDO} yum install docbook2X -y
   ${SUDO} yum install libffi-devel -y
+  ${SUDO} yum install ca-certificates -y
 }
 
 installRepo(){
