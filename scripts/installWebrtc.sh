@@ -82,7 +82,7 @@ download_and_build(){
 
   if [[ "$OS" =~ .*centos.* ]]
   then
-    source scl_source enable devtoolset-7
+    source /opt/rh/devtoolset-7/enable
   fi
 
   export PATH="$PATH:$DEPOT_TOOLS"

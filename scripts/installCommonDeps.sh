@@ -515,7 +515,7 @@ install_svt_hevc(){
 
     if [[ "$OS" =~ .*centos.* ]]
     then
-      source scl_source enable devtoolset-7
+      source /opt/rh/devtoolset-7/enable
     fi
 
     mkdir -p build
