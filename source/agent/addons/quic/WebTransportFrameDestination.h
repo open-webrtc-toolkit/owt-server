@@ -36,6 +36,7 @@ private:
     static Nan::Persistent<v8::Function> s_constructor;
     static NAN_METHOD(newInstance);
     static NAN_METHOD(addDatagramOutput);
+    static NAN_METHOD(removeDatagramOutput);
     // receiver() is required by connection.js.
     static NAN_METHOD(receiver);
 

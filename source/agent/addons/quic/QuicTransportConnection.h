@@ -39,6 +39,7 @@ public:
     // Close a WebTransport session, take an optional argument of WebTransportCloseInfo defined in https://w3c.github.io/webtransport/#web-transport-close-info.
     static NAN_METHOD(close);
     static NAUV_WORK_CB(onStreamCallback);
+    static NAUV_WORK_CB(onCloseCallback);
 
     static Nan::Persistent<v8::Function> s_constructor;
 
@@ -54,8 +55,8 @@ protected:
     // Overrides owt::quic::WebTransportSessionInterface::Visitor.
     void OnIncomingStream(owt::quic::WebTransportStreamInterface*) override;
     void OnCanCreateNewOutgoingStream(bool unidirectional) override { }
-    void OnConnectionClosed() override { }
     void OnDatagramReceived(const uint8_t* data, size_t length) override { }
+    void OnConnectionClosed() override;
 
     // Overrides QuicTransportStream::Visitor.
     void onEnded() override;

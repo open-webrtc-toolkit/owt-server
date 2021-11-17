@@ -35,6 +35,7 @@ NAN_MODULE_INIT(WebTransportFrameDestination::init)
     instanceTpl->SetInternalFieldCount(1);
 
     Nan::SetPrototypeMethod(tpl, "addDatagramOutput", addDatagramOutput);
+    Nan::SetPrototypeMethod(tpl, "removeDatagramOutput", removeDatagramOutput);
     Nan::SetPrototypeMethod(tpl, "receiver", receiver);
 
     s_constructor.Reset(Nan::GetFunction(tpl).ToLocalChecked());
@@ -64,6 +65,21 @@ NAN_METHOD(WebTransportFrameDestination::addDatagramOutput)
     }
     NanFrameNode* output = Nan::ObjectWrap::Unwrap<NanFrameNode>(Nan::To<v8::Object>(info[0]).ToLocalChecked());
     obj->m_datagramOutput = output;
+}
+
+NAN_METHOD(WebTransportFrameDestination::removeDatagramOutput)
+{
+    WebTransportFrameDestination* obj = Nan::ObjectWrap::Unwrap<WebTransportFrameDestination>(info.Holder());
+    if (!obj->m_datagramOutput) {
+        ELOG_WARN("Datagram output does not exist.");
+        return;
+    }
+    if (!obj->m_videoRtpPacketizer) {
+        obj->m_videoRtpPacketizer = std::make_unique<VideoRtpPacketizer>();
+        obj->m_videoRtpPacketizer->addDataDestination(obj);
+    }
+    obj->m_videoRtpPacketizer.reset();
+    obj->m_datagramOutput = nullptr;
 }
 
 NAN_METHOD(WebTransportFrameDestination::receiver)

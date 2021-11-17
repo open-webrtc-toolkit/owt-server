@@ -83,6 +83,7 @@ v8::Local<v8::Object> QuicTransportConnection::newInstance(owt::quic::WebTranspo
     Local<Object> connectionObject = Nan::NewInstance(Nan::New(QuicTransportConnection::s_constructor)).ToLocalChecked();
     QuicTransportConnection* obj = Nan::ObjectWrap::Unwrap<QuicTransportConnection>(connectionObject);
     obj->m_session = session;
+    session->SetVisitor(obj);
     return connectionObject;
 }
 
@@ -158,3 +159,7 @@ void QuicTransportConnection::onFrame(const owt_base::Frame& frame)
 }
 
 void QuicTransportConnection::onVideoSourceChanged() { }
+
+void QuicTransportConnection::OnConnectionClosed()
+{
+}
