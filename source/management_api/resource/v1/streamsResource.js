@@ -32,7 +32,7 @@ exports.get = function (req, res, next) {
         for (var index in streams) {
             if (streams[index].id === stream) {
                 log.debug('Found stream', stream);
-                convertStream(stream[index]);
+                convertStream(streams[index]);
                 res.send(streams[index]);
                 return;
             }
