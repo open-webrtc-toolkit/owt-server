@@ -7,9 +7,7 @@
 #ifndef QUIC_ADDON_WEB_TRANSPORT_FRAME_DESTINATION_H_
 #define QUIC_ADDON_WEB_TRANSPORT_FRAME_DESTINATION_H_
 
-#include "../../core/owt_base/MediaFramePipeline.h"
-#include "../common/MediaFramePipelineWrapper.h"
-#include "VideoRtpPacketizer.h"
+#include "RtpFactory.h"
 #include "owt/quic/web_transport_stream_interface.h"
 #include <logger.h>
 #include <nan.h>
@@ -41,7 +39,8 @@ private:
     static NAN_METHOD(receiver);
 
     NanFrameNode* m_datagramOutput;
-    std::unique_ptr<VideoRtpPacketizer> m_videoRtpPacketizer;
+    std::unique_ptr<RtpFactoryBase> m_rtpFactory;
+    std::unique_ptr<VideoRtpPacketizerInterface> m_videoRtpPacketizer;
 };
 
 #endif

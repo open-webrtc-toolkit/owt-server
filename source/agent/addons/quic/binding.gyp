@@ -1,4 +1,7 @@
 {
+  'variables': {
+    'github_actions': '<!(echo $GITHUB_ACTIONS)',
+  },
   'targets': [{
     'target_name': 'quic',
     'sources':[
@@ -10,29 +13,40 @@
       'WebTransportFrameSource.cc',
       'WebTransportFrameDestination.cc',
       'VideoRtpPacketizer.cc',
+      'RtpFactory.cc',
       '../../../core/owt_base/MediaFramePipeline.cpp',
       '../../../core/owt_base/MediaFrameMulticaster.cpp',
       '../../../core/owt_base/Utils.cc',
     ],
     'defines':[
       'OWT_ENABLE_QUIC=1',
+      'WEBRTC_POSIX',
+      'WEBRTC_LINUX',
+      'LINUX',
+      'NOLINUXIF',
+      'NO_REG_RPC=1',
+      'HAVE_VFPRINTF=1',
+      'RETSIGTYPE=void',
+      'NEW_STDIO',
+      'HAVE_STRDUP=1',
+      'HAVE_STRLCPY=1',
+      'HAVE_LIBM=1',
+      'HAVE_SYS_TIME_H=1',
+      'TIME_WITH_SYS_TIME_H=1',
+    ],
+    'conditions':[
+      ['github_actions=="true"', {
+        'defines':[
+          'OWT_FAKE_RTP',
+        ]
+      }],
+      ['github_actions!="true"', {
+        'dependencies': ['../../webrtc/rtcFrame/binding.gyp:librtcadapter'],
+      }]
     ],
     'cflags_cc': [
       '-std=gnu++14',
       '-fno-exceptions',
-      '-DWEBRTC_POSIX',
-      '-DWEBRTC_LINUX',
-      '-DLINUX',
-      '-DNOLINUXIF',
-      '-DNO_REG_RPC=1',
-      '-DHAVE_VFPRINTF=1',
-      '-DRETSIGTYPE=void',
-      '-DNEW_STDIO',
-      '-DHAVE_STRDUP=1',
-      '-DHAVE_STRLCPY=1',
-      '-DHAVE_LIBM=1',
-      '-DHAVE_SYS_TIME_H=1',
-      '-DTIME_WITH_SYS_TIME_H=1',
       '-Wno-non-pod-varargs',
       '-fPIC',
     ],
@@ -62,6 +76,5 @@
       '-lboost_thread',
       '-Wl,-rpath,<!(pwd)/build/$(BUILDTYPE)',
     ],
-    'dependencies': ['../../webrtc/rtcFrame/binding.gyp:librtcadapter'],
   }]
 }

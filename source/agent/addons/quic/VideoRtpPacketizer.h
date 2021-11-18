@@ -7,11 +7,11 @@
 #ifndef QUIC_VIDEOPRTPACKETIZER_H_
 #define QUIC_VIDEOPRTPACKETIZER_H_
 
-#include "../../core/rtc_adapter/RtcAdapter.h"
+#include "RtpPacketizerInterface.h"
 #include <logger.h>
 
 // RTP packetizer for video.
-class VideoRtpPacketizer : public owt_base::FrameSource, public owt_base::FrameDestination, public rtc_adapter::AdapterFeedbackListener, public rtc_adapter::AdapterStatsListener, public rtc_adapter::AdapterDataListener {
+class VideoRtpPacketizer : public VideoRtpPacketizerInterface {
     DECLARE_LOGGER();
 
 public:

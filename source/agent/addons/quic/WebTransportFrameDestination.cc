@@ -19,8 +19,14 @@ Nan::Persistent<v8::Function> WebTransportFrameDestination::s_constructor;
 
 WebTransportFrameDestination::WebTransportFrameDestination()
     : m_datagramOutput(nullptr)
+    , m_rtpFactory(nullptr)
     , m_videoRtpPacketizer(nullptr)
 {
+#ifdef OWT_FAKE_RTP
+    m_rtpFactory = m_rtpFactory->createFakeFactory();
+#else
+    m_rtpFactory = m_rtpFactory->createDefaultFactory();
+#endif
 }
 
 WebTransportFrameDestination::~WebTransportFrameDestination()
@@ -60,7 +66,7 @@ NAN_METHOD(WebTransportFrameDestination::addDatagramOutput)
         ELOG_WARN("Datagram output exists, will be replaced by the new one.");
     }
     if (!obj->m_videoRtpPacketizer) {
-        obj->m_videoRtpPacketizer = std::make_unique<VideoRtpPacketizer>();
+        obj->m_videoRtpPacketizer = obj->m_rtpFactory->createVideoPacketizer();
         obj->m_videoRtpPacketizer->addDataDestination(obj);
     }
     NanFrameNode* output = Nan::ObjectWrap::Unwrap<NanFrameNode>(Nan::To<v8::Object>(info[0]).ToLocalChecked());
@@ -73,10 +79,6 @@ NAN_METHOD(WebTransportFrameDestination::removeDatagramOutput)
     if (!obj->m_datagramOutput) {
         ELOG_WARN("Datagram output does not exist.");
         return;
-    }
-    if (!obj->m_videoRtpPacketizer) {
-        obj->m_videoRtpPacketizer = std::make_unique<VideoRtpPacketizer>();
-        obj->m_videoRtpPacketizer->addDataDestination(obj);
     }
     obj->m_videoRtpPacketizer.reset();
     obj->m_datagramOutput = nullptr;
