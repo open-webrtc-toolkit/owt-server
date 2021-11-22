@@ -170,28 +170,22 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
       return frameSource;
     };
 
-    const createFrameDestination =
-        (subscriptionId, options, callback) => {
-          if (frameDestinationMap.has(subscriptionId)) {
-            callback('callback', {
-              type: 'failed',
-              reason: 'Frame destination for ' + subscriptionId + ' exists.'
-            });
-            return;
-          }
-          const frameDestination =
-              new addon.WebTransportFrameDestination(subscriptionId);
-          frameDestinationMap.set(subscriptionId, frameDestination);
-          return frameDestination;
-        }
+    const createFrameDestination = (subscriptionId) => {
+      if (frameDestinationMap.has(subscriptionId)) {
+        log.warn('Frame destination for ' + subscriptionId + ' exists.');
+        return;
+      }
+      const frameDestination =
+          new addon.WebTransportFrameDestination(subscriptionId);
+      frameDestinationMap.set(subscriptionId, frameDestination);
+      return frameDestination;
+    };
 
     const createStreamPipeline = function(
-        streamId, direction, options, callback) {
+        streamId, direction, options) {
       // Client is expected to create a QuicTransport before sending publish or
       // subscription requests.
-      const streamPipeline = new QuicTransportStreamPipeline(streamId, status=>{
-        notifyStatus(options.controller, streamId, direction, status)
-      });
+      const streamPipeline = new QuicTransportStreamPipeline(streamId);
       // If a stream pipeline already exists, just replace the old.
       let pipelineMap;
       if (direction === 'in') {
@@ -200,9 +194,8 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
         pipelineMap = outgoingStreamPipelines;
       }
       if (pipelineMap.has(streamId)) {
-        return callback(
-            'callback',
-            {type: 'failed', reason: 'Pipeline for ' + streamId + ' exists.'});
+        log.warn('Pipeline for ' + streamId + ' exists.');
+        return;
       }
       pipelineMap.set(streamId, streamPipeline);
       return streamPipeline;
@@ -334,7 +327,7 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
         onError(callback)();
       }
       onSuccess(callback)();
-      notifyStatus(options.controller, connectionId, 'in', {
+      notifyStatus(options.controller, connectionId, 'out', {
         type: 'ready',
         audio: undefined,
         video: undefined,

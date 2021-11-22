@@ -54,7 +54,8 @@ describe('WebTransport end to end tests.', function() {
         resolveSubscribed = resolve;
       });
       conference.addEventListener('streamadded', async (event) => {
-        const subscription = await conference.subscribe(event.stream);
+        const subscription = await conference.subscribe(
+            event.stream, {transport: {type: 'quic'}});
         const reader = subscription.stream.readable.getReader();
         resolveSubscribed();
         while (true) {
@@ -70,7 +71,8 @@ describe('WebTransport end to end tests.', function() {
       const localStream = new Owt.Base.LocalStream(
           sendStream,
           new Owt.Base.StreamSourceInfo(undefined, undefined, true));
-      const publication = await conference.publish(localStream);
+      const publication =
+          await conference.publish(localStream, {transport: {type: 'quic'}});
       const writer = sendStream.writable.getWriter();
       await writer.ready;
       await subscribed;
