@@ -154,7 +154,7 @@ if (cluster.isMaster) {
         rpcClient = rpcClnt;
         log.info('bridge initializing as rpc client ok');
           log.info('bridge join cluster ok, with rpcID eventbridge');
-            amqper.asRpcServer("eventbridge", rpcPublic, function(rpcSvr) {
+            amqper.asRpcServer("management", rpcPublic, function(rpcSvr) {
               log.info('management api initializing as rpc server ok');
           }, function(reason) {
             log.error('management api initializing as rpc server failed, reason:', reason);

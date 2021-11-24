@@ -238,11 +238,10 @@ class Stream {
 
 class ForwardStream extends Stream {
 
-  constructor(id, media, data, info, locality, cascading) {
+  constructor(id, media, data, info, locality) {
     info.inViews = [];
     super(id, 'forward', media, data, info);
     this.locality = locality;
-    this.cascading = cascading;
   }
 
   checkMediaError() {
@@ -353,6 +352,17 @@ class SelectedStream extends ForwardStream {
       type: 'selecting',
     };
     super(id, media, null, info, null);
+  }
+}
+
+class CascadedStream extends ForwardStream {
+
+  constructor(id, media, data, info, locality, quicclient, quicsession, quicstream, cascading) {
+    super(id, media, data, info, locality);
+    this.cascading = cascading;
+    this.quicclient = quicclient;
+    this.quicsession =  quicsession;
+    this.quicstream = quicstream;
   }
 }
 

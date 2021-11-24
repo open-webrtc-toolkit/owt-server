@@ -201,6 +201,11 @@ var Conference = function (rpcClient, selfRpcId) {
    */
   var streams = {};
 
+  /*
+   * {StreamId: object(Stream)}
+   */
+  var casStreams = {};
+
   var cascadingEventBridges = new Set();
 
   /*
@@ -661,7 +666,13 @@ var Conference = function (rpcClient, selfRpcId) {
       }
     }
 
-    const fwdStream = new ForwardStream(id, media, data, info, locality);
+    var fwdStream = null;
+    if (casStreams[id]) {
+      fwdStream = new CascadedStream(id, media, data, info, locality, casStreams[id].quicclient, casStreams[id].quicsession, casStreams[id].quicstream, true);
+    } else {
+      fwdStream = new ForwardStream(id, media, data, info, locality);
+    }
+
     const errMsg = fwdStream.checkMediaError();
     if (errMsg) {
       return Promise.reject(errMsg);
@@ -694,7 +705,11 @@ var Conference = function (rpcClient, selfRpcId) {
             setTimeout(() => {
               if (room_config.notifying.streamChange) {
                 sendMsg('room', 'all', 'stream', {id: id, status: 'add', data: fwdStream.toPortalFormat()});
-                !streams[id].cascading && sendMsgTo('cascading', {rpcId: selfRpcId}, {type: "addStream", data: { id: id, media: media, data: data, info: info}});
+                if (casStreams[id]) {
+                  delete casStreams[id];
+                } else {
+                  sendMsgTo('cascading', {rpcId: selfRpcId}, {type: "addStream", data: { id: id, media: media, data: data, info: info}});
+                }
               }
             }, 10);
           }
@@ -719,7 +734,11 @@ var Conference = function (rpcClient, selfRpcId) {
               setTimeout(() => {
                 if (room_config.notifying.streamChange) {
                   sendMsg('room', 'all', 'stream', {id: id, status: 'add', data: fwdStream.toPortalFormat()});
-                  !streams[id].cascading && sendMsgTo('cascading', {rpcId: selfRpcId}, {type: "addStream", data: {id: id, media: media, data: data, info: info}});
+                  if (casStreams[id]) {
+                    delete casStreams[id];
+                  } else {
+                    sendMsgTo('cascading', {rpcId: selfRpcId}, {type: "addStream", data: {id: id, media: media, data: data, info: info}});
+                  }
                 }
               }, 10);
             }
@@ -743,7 +762,8 @@ var Conference = function (rpcClient, selfRpcId) {
           data: {field: '.', value: streams[streamId].toPortalFormat()}
         });
 
-        !streams[streamId].cascading && sendMsgTo('cascading', {rpcId: selfRpcId}, {
+        var cascading = streams[streamId].cascading;
+        !cascading && sendMsgTo('cascading', {rpcId: selfRpcId}, {
           type: 'updateStreamInfo',
           data: {
             id: streamId,
@@ -781,6 +801,11 @@ var Conference = function (rpcClient, selfRpcId) {
             !cascading && sendMsgTo('cascading', {rpcId: selfRpcId}, {type: 'removeStream', data: streamId});
           }
         }, 10);
+      }
+
+      if (casStreams[streamId]) {
+        delete casStreams[streamId];
+        sendMsg('room', 'all', 'stream', {id: streamId, status: 'remove'});
       }
       resolve('ok');
     });
@@ -1346,6 +1371,7 @@ var Conference = function (rpcClient, selfRpcId) {
 
     let audioTrack = null;
     let videoTrack = null;
+    let streamId = null;
     if (subDesc.type === 'webrtc') {
       audioTrack = subDesc.media.tracks.find(t => t.type === 'audio');
       videoTrack = subDesc.media.tracks.find(t => t.type === 'video');
@@ -1370,6 +1396,34 @@ var Conference = function (rpcClient, selfRpcId) {
 
     if (videoTrack && !validateVideoRequest(subDesc.type, videoTrack, requestError)) {
       return callback('callback', 'error', 'Target video stream does NOT satisfy:' + requestError.message);
+    }
+
+    if (audioTrack) {
+      streamId = audioTrack.from;
+    } else {
+      streamId = videoTrack.from;
+    }
+
+    if (!streams[streamId] && casStreams[streamId]) {
+      log.info("Subscribe cascaded stream:", streamId);
+      subDesc.type = 'mediabridge';
+      subDesc.clientID = casStreams[streamId].quicclient;
+      subDesc.sessionID = casStreams[streamId].quicsession;
+      subDesc.streamID = casStreams[streamId].quicstream;
+      initiateSubscription(subscriptionId, subDesc, {owner: participantId, type: subDesc.type});
+      return accessController.initiate(participantId, subscriptionId, 'out', participants[participantId].getOrigin(), subDesc, format_preference)
+      .then((result) => {
+        if ((subDesc.media.audio && !streams[subDesc.media.audio.from])
+           ||(subDesc.media.video && !streams[subDesc.media.video.from])) {
+          accessController.terminate(participantId, subscriptionId, 'Participant terminate');
+          return Promise.reject('Target audio/video stream early released');
+        }
+        callback('callback', result);
+      })
+      .catch((e) => {
+        removeSubscription(subscriptionId);
+        callback('callback', 'error', e.message ? e.message : e);
+      });
     }
 
     if (subDesc.type === 'sip') {
@@ -1566,6 +1620,10 @@ var Conference = function (rpcClient, selfRpcId) {
   };
 
   const setStreamMute = function(streamId, track, muted) {
+    if (casStreams[streamId]) {
+      return Promise.reject('Cannot mute casccaded stream');
+    }
+
     if (streams[streamId].type === 'mixed') {
       return Promise.reject('Stream is Mixed');
     }
@@ -1593,6 +1651,7 @@ var Conference = function (rpcClient, selfRpcId) {
           updateFields.forEach((fieldData) => {
             sendMsg('room', 'all', 'stream', {status: 'update', id: streamId, data: {field: fieldData, value: status}});
           });
+
           !streams[streamId].cascading && sendMsgTo('cascading', {rpcId: selfRpcId}, {type: 'setStreamMute', data: {id: streamId, track: track, muted: muted}});
         }
         return 'ok';
@@ -1985,7 +2044,7 @@ var Conference = function (rpcClient, selfRpcId) {
               data: {field: 'activeInput', value: {id: input, volume: target.volume}}
             });
 
-            !streams[activeAudioId].cascading && sendMsgTo('cascading', {rpcId: selfRpcId},
+            !streams[streamId].cascading && sendMsgTo('cascading', {rpcId: selfRpcId},
               {
                 type: 'onAudioActiveness',
                 data: {activeInputStream: activeInputStream, target: target}
@@ -2825,15 +2884,15 @@ var Conference = function (rpcClient, selfRpcId) {
     }
   }
 
-  var addCascadingStreams = function(id, media, data, info) {
-    log.info("Add cascading stream id:", id, " data:", data, " info:", info, " media:", media);
-    const fwdStream = new ForwardStream(id, media, data, info, null, 'eventcascading');
+  var addCascadingStreams = function(msg) {
+    log.info("Add cascading stream id:", msg.id, " data:", msg.data, " info:", msg.info, " media:", msg.media);
+    const fwdStream = new CascadedStream(id, media, data, info, null, msg.clientID, msg.sessionID, msg.streamId, false);
     const errMsg = fwdStream.checkMediaError();
     if (errMsg) {
       log.error(errMsg);
       return;
     }
-    streams[id] = fwdStream;
+    casStreams[id] = fwdStream;
     room_config.notifying.participantActivities && sendMsg('room', 'all', 'stream', {id: id, status: 'add', data: fwdStream.toPortalFormat()});
   }
 
@@ -2848,7 +2907,7 @@ var Conference = function (rpcClient, selfRpcId) {
     if(data.streams) {
       for (var sid in data.streams) {
         log.info("initialize stream:", data.streams[sid]);
-        addCascadingStreams(data.streams[sid].id, data.streams[sid].media, data.streams[sid].data, data.streams[sid].info);
+        addCascadingStreams(data);
       }
     }
   }
@@ -2864,7 +2923,7 @@ var Conference = function (rpcClient, selfRpcId) {
         removeParticipant(events.data);
         break;
       case 'addStream':
-        addCascadingStreams(events.data.id, events.data.media, events.data.data, events.data.info);
+        addCascadingStreams(events.data);
         break;
       case 'updateStreamInfo':
         updateStreamInfo(events.data.id, events.data.data);
@@ -2906,7 +2965,9 @@ var Conference = function (rpcClient, selfRpcId) {
 
       for (var sid in streams) {
         if (streams[sid].type !== 'mixed') {
-          data.streams[sid] = streams[sid];
+          if (!streams[sid].isInConnecting) {
+            data.streams[sid] = streams[sid];
+          }
         }
       }
 

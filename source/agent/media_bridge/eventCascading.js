@@ -95,7 +95,7 @@ var EventCascading = function(spec, rpcReq) {
         client.addEventListener('roomevents', function (msg) {
           var event = JSON.parse(msg);
           log.debug('Get cascaded event:', event);
-          event.clientID = clientID;
+
           rpcReq.handleCascadingEvents(client.controller, event);
 
         });
@@ -106,14 +106,13 @@ var EventCascading = function(spec, rpcReq) {
     }
   }
 
-  that.start = function () {
+  /*that.start = function () {
     server = new quicCas.in(port, cf, kf);
 
     server.addEventListener('newstream', function (msg) {
       var event = JSON.parse(msg);
       log.info("Server get new stream:", event);
-      setTimeout(() => {
-	rpcReq.getController(cluster_name, event.room)
+      rpcReq.getController(cluster_name, event.room)
         .then(function(controller) {
           log.debug('got controller:', controller);
           if (!quicStreams[event.sessionId]) {
@@ -130,23 +129,9 @@ var EventCascading = function(spec, rpcReq) {
           }
           server_controllers[controller] = quicinfo;
           rpcReq.onCascadingConnected(controller,self_rpc_id, event.sessionId, event.streamId);
-        })}, 0);
-    });
+        })
+    });*/
 
-    server.addEventListener('roomevents', function (msg) {
-      var event = JSON.parse(msg);
-      log.info('Get cascaded event:', event);
-      log.info('quicStreams:', quicStreams);
-      event.data.sessionID = event.sessionId;
-      event.data.streamID = event.streamId;
-
-      setTimeout(() => {
-      rpcReq.handleCascadingEvents(quicStreams[event.sessionId][event.streamId].controller, event.data);
-      }, 0);
-    });
-
-  }
-/*
     that.start = function () {
       server = new QuicTransportServer(port, cf, kf);
       server.start();
@@ -187,7 +172,7 @@ var EventCascading = function(spec, rpcReq) {
       });
 
   }
-*/
+
   that.stop = function () {
     log.info("stop event bridge");
   }
