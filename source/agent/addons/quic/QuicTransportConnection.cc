@@ -29,6 +29,9 @@ QuicTransportConnection::~QuicTransportConnection()
     if (!uv_is_closing(reinterpret_cast<uv_handle_t*>(&m_asyncOnStream))) {
         uv_close(reinterpret_cast<uv_handle_t*>(&m_asyncOnStream), NULL);
     }
+    if (!uv_is_closing(reinterpret_cast<uv_handle_t*>(&m_asyncOnClose))) {
+        uv_close(reinterpret_cast<uv_handle_t*>(&m_asyncOnClose), NULL);
+    }
     m_session->SetVisitor(nullptr);
 }
 
@@ -75,6 +78,7 @@ NAN_METHOD(QuicTransportConnection::newInstance)
     QuicTransportConnection* obj = new QuicTransportConnection();
     obj->Wrap(info.This());
     uv_async_init(uv_default_loop(), &obj->m_asyncOnStream, &QuicTransportConnection::onStreamCallback);
+    uv_async_init(uv_default_loop(), &obj->m_asyncOnClose, &QuicTransportConnection::onCloseCallback);
     info.GetReturnValue().Set(info.This());
 }
 
@@ -115,6 +119,25 @@ NAUV_WORK_CB(QuicTransportConnection::onStreamCallback)
         } else {
             ELOG_DEBUG("onEvent is empty");
         }
+    }
+}
+
+NAUV_WORK_CB(QuicTransportConnection::onCloseCallback) {
+    ELOG_DEBUG("OnConnectionCloseCallback.");
+    Nan::HandleScope scope;
+    QuicTransportConnection* obj = reinterpret_cast<QuicTransportConnection*>(async->data);
+    if (obj == nullptr) {
+        return;
+    }
+    Nan::MaybeLocal<v8::Value> onEvent = Nan::Get(obj->handle(), Nan::New<v8::String>("onclose").ToLocalChecked());
+    if (onEvent.IsEmpty()) {
+        return;
+    }
+    v8::Local<v8::Value> onEventLocal = onEvent.ToLocalChecked();
+    if (onEventLocal->IsFunction()) {
+        v8::Local<v8::Function> eventCallback = onEventLocal.As<Function>();
+        Nan::AsyncResource* resource = new Nan::AsyncResource(Nan::New<v8::String>("onclose").ToLocalChecked());
+        resource->runInAsyncScope(Nan::GetCurrentContext()->Global(), eventCallback, 0, nullptr);
     }
 }
 
@@ -162,4 +185,6 @@ void QuicTransportConnection::onVideoSourceChanged() { }
 
 void QuicTransportConnection::OnConnectionClosed()
 {
+    m_asyncOnClose.data = this;
+    uv_async_send(&m_asyncOnClose);
 }

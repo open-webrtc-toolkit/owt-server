@@ -29,10 +29,6 @@ WebTransportFrameDestination::WebTransportFrameDestination()
 #endif
 }
 
-WebTransportFrameDestination::~WebTransportFrameDestination()
-{
-}
-
 NAN_MODULE_INIT(WebTransportFrameDestination::init)
 {
     Local<FunctionTemplate> tpl = Nan::New<FunctionTemplate>(newInstance);
@@ -76,6 +72,7 @@ NAN_METHOD(WebTransportFrameDestination::addDatagramOutput)
 NAN_METHOD(WebTransportFrameDestination::removeDatagramOutput)
 {
     WebTransportFrameDestination* obj = Nan::ObjectWrap::Unwrap<WebTransportFrameDestination>(info.Holder());
+    std::lock_guard<std::mutex> lock(obj->m_datagramOutputMutex);
     if (!obj->m_datagramOutput) {
         ELOG_WARN("Datagram output does not exist.");
         return;
@@ -91,14 +88,18 @@ NAN_METHOD(WebTransportFrameDestination::receiver)
 
 void WebTransportFrameDestination::onFrame(const owt_base::Frame& frame)
 {
-    if (!m_datagramOutput) {
-        ELOG_WARN("Datagram output is not ready, dropping frame.");
-        return;
-    }
     // Packetize video frames or send RTP packets.
     if (frame.format != owt_base::FRAME_FORMAT_RTP) {
+        if (!m_videoRtpPacketizer) {
+            return;
+        }
         m_videoRtpPacketizer->onFrame(frame);
     } else {
+        std::lock_guard<std::mutex> lock(m_datagramOutputMutex);
+        if (!m_datagramOutput) {
+            ELOG_DEBUG("Datagram output is not ready, dropping frame.");
+            return;
+        }
         m_datagramOutput->FrameDestination()->onFrame(frame);
     }
 }

@@ -72,6 +72,7 @@ private:
     uv_async_t m_asyncOnStream;
     std::mutex m_streamQueueMutex;
     std::queue<owt::quic::WebTransportStreamInterface*> m_streamsToBeNotified;
+    uv_async_t m_asyncOnClose;
 };
 
 #endif

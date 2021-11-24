@@ -299,8 +299,12 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
         case 'quic':
           if (options.tracks && options.tracks.length) {  // Media.
             conn = createFrameDestination(connectionId, options, callback);
-            conn.addDatagramOutput(
-                quicTransportServer.getConnection(options.transport.id));
+            const webTransportConnection =
+                quicTransportServer.getConnection(options.transport.id);
+            webTransportConnection.onclose = () => {
+              conn.removeDatagramOutput(webTransportConnection);
+            };
+            conn.addDatagramOutput(webTransportConnection);
           } else {
             // TODO: Remove StreamPipeline, move to WebTransportFrameDestination.
             conn = createStreamPipeline(connectionId, 'out', options, callback);

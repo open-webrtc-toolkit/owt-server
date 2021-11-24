@@ -9,6 +9,7 @@
 
 #include "RtpFactory.h"
 #include "owt/quic/web_transport_stream_interface.h"
+#include <mutex>
 #include <logger.h>
 #include <nan.h>
 
@@ -18,7 +19,7 @@ class WebTransportFrameDestination : public owt_base::FrameDestination, public N
 
 public:
     explicit WebTransportFrameDestination();
-    ~WebTransportFrameDestination();
+    ~WebTransportFrameDestination() override = default;
 
     static NAN_MODULE_INIT(init);
 
@@ -38,6 +39,7 @@ private:
     // receiver() is required by connection.js.
     static NAN_METHOD(receiver);
 
+    std::mutex m_datagramOutputMutex;
     NanFrameNode* m_datagramOutput;
     std::unique_ptr<RtpFactoryBase> m_rtpFactory;
     std::unique_ptr<VideoRtpPacketizerInterface> m_videoRtpPacketizer;
