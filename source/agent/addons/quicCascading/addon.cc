@@ -2,14 +2,16 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-#include "QuicTransportWrap.h"
+#include "QuicTransportServer.h"
+#include "QuicTransportClient.h"
 #include <node.h>
 
 using namespace v8;
 
-void InitAll(Handle<Object> exports) {
-  QuicTransportIn::Init(exports);
-  QuicTransportOut::Init(exports);
+NAN_MODULE_INIT(InitAll)
+{
+  QuicTransportServer::init(target);
+  QuicTransportClient::init(target);
 }
 
 NODE_MODULE(addon, InitAll)

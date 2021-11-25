@@ -7,7 +7,6 @@
 var logger = require('./logger').logger;
 var log = logger.getLogger('EventCascading');
 var quicCas = require('./quicCascading/build/Release/quicCascading.node');
-const QuicTransportServer = require('./quicTransportServer');
 const inspector = require('event-loop-inspector')();
 var quicStreams, cascadedClusters;
 
@@ -44,9 +43,10 @@ var EventCascading = function(spec, rpcReq) {
         log.info("Send initialize data to session:",msg.session, " stream:",msg.stream, " and data:", data);
         server.send(msg.session, msg.stream, JSON.stringify(data));
       } else {
-        for (var controller in server_controllers[msg.rpcId]) {
-          server.send(server_controllers[msg.rpcId].session, server_controllers[msg.rpcId].stream, JSON.stringify(data));
-        }
+        server_controllers[msg.rpcId].forEach(function(item) {
+          log.info("server send msg:", msg, " with data:", data, " from controller:", controller);
+          server.send(item.session, item.stream, JSON.stringify(data));
+        })
       }
       return Promise.resolve('ok');
     } else if(client_controllers[msg.rpcId]) {
@@ -57,6 +57,7 @@ var EventCascading = function(spec, rpcReq) {
         for (var client in client_controllers[msg.rpcId]) {
           var session = client_controllers[msg.rpcId][client].session;
           var stream = client_controllers[msg.rpcId][client].stream;
+          log.info("Client send notify msg:", msg, " with data:", data);
           client_controllers[msg.rpcId][client].client.send(session, stream, JSON.stringify(data));
         }
       }
@@ -73,12 +74,15 @@ var EventCascading = function(spec, rpcReq) {
     if(!clients[clientID]) {
       return rpcReq.getController(cluster_name, data.room)
                 .then(function(controller) {
-        var client = new quicCas.out(data.evIP, data.evPort);
+	      log.info("Client get controller:", controller);
+        var client = new quicCas.QuicTransportClient(data.evIP, data.evPort);
         clients[clientID] = true;
-        client.addEventListener('newstream', function (msg) {
+        client.id = clientID;
+        client.onNewStreamEvent((msg) => {
           var info = JSON.parse(msg);
           log.info("Get new stream:", info);
           client.controller = controller;
+          client.initialize = false;
           var quicinfo = {session: info.sessionId, stream: info.streamId, client: client};
           if (!client_controllers[controller]) {
             client_controllers[controller] = {};
@@ -89,17 +93,20 @@ var EventCascading = function(spec, rpcReq) {
           }
           client_controllers[controller][clientID] = quicinfo;
           client.send(info.sessionId, info.streamId, data.room);
-          rpcReq.onCascadingConnected(controller,self_rpc_id, info.sessionId, info.streamId, clientID);
         });
         
-        client.addEventListener('roomevents', function (msg) {
+        client.onRoomEvent((msg) => {
           var event = JSON.parse(msg);
-          log.debug('Get cascaded event:', event);
-          event.clientID = clientID;
+          log.debug('Get room cascaded event:', event);
+          if (!client.initialize) {
+            client.initialize = true;
+            rpcReq.onCascadingConnected(client.controller,self_rpc_id, client_controllers[client.controller][client.id].sessionId, client_controllers[client.controller][client.id].streamId, client.id);
+          }
+
           rpcReq.handleCascadingEvents(client.controller, event);
 
         });
-      })
+      });
     } else {
       log.debug('Cluster already cascaded');
       return Promise.resolve('ok');
@@ -107,13 +114,13 @@ var EventCascading = function(spec, rpcReq) {
   }
 
   that.start = function () {
-    server = new quicCas.in(port, cf, kf);
+    server = new quicCas.QuicTransportServer(port, cf, kf);
 
-    server.addEventListener('newstream', function (msg) {
+    server.onNewStreamEvent((msg) => {
       var event = JSON.parse(msg);
       log.info("Server get new stream:", event);
-      setTimeout(() => {
-	rpcReq.getController(cluster_name, event.room)
+      //setTimeout(() => {
+	    rpcReq.getController(cluster_name, event.room)
         .then(function(controller) {
           log.debug('got controller:', controller);
           if (!quicStreams[event.sessionId]) {
@@ -126,23 +133,22 @@ var EventCascading = function(spec, rpcReq) {
           quicStreams[event.sessionId][event.streamId].controller = controller;
           var quicinfo = {session: event.sessionId, stream: event.streamId};
           if (!server_controllers[controller]) {
-            server_controllers[controller] = {};
+            server_controllers[controller] = [];
           }
-          server_controllers[controller] = quicinfo;
+          server_controllers[controller].push(quicinfo);
           rpcReq.onCascadingConnected(controller,self_rpc_id, event.sessionId, event.streamId);
-        })}, 0);
+	});
+        //})}, 0);
     });
 
-    server.addEventListener('roomevents', function (msg) {
+    server.onRoomEvent((msg) => {
       var event = JSON.parse(msg);
-      log.info('Get cascaded event:', event);
+      log.info('Server get cascaded event:', event);
       log.info('quicStreams:', quicStreams);
-      event.data.sessionID = event.sessionId;
-      event.data.streamID = event.streamId;
 
-      setTimeout(() => {
+      //setTimeout(() => {
       rpcReq.handleCascadingEvents(quicStreams[event.sessionId][event.streamId].controller, event.data);
-      }, 0);
+      //}, 0);
     });
 
   }

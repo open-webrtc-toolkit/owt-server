@@ -3,9 +3,8 @@
     'target_name': 'quicCascading',
     'sources': [
       'addon.cc',
-      '../common/NodeEventRegistry.cc',
-      'QuicTransport.cc',
-      'QuicTransportWrap.cc'
+      'QuicTransportServer.cc',
+      'QuicTransportClient.cc'
     ],
     'include_dirs': [
       "<!(node -e \"require('nan')\")",
@@ -17,6 +16,8 @@
       '$(CUSTOM_INCLUDE_PATH)'
     ],
     'libraries': [
+      '-ldl',
+      '-llog4cxx',
       '-lboost_system',
       '-lboost_thread',
       '-L<(module_root_dir)/../../../../third_party/quic-lib/dist/lib',
