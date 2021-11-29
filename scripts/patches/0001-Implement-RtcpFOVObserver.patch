@@ -158,7 +158,7 @@ index 0000000..d8cca00
 +  size_t index_end = *index + BlockLength();
 +  CreateHeader(kFeedbackMessageType, kPacketType, HeaderLength(), packet,
 +               index);
-+  RTC_DCHECK_EQ(Psfb::media_ssrc(), 0);
++  RTC_DCHECK_NE(Psfb::media_ssrc(), 0);
 +  CreateCommonFeedback(packet + *index);
 +  *index += kCommonFeedbackLength;
 +
