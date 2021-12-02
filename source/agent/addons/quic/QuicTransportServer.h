@@ -8,14 +8,15 @@
 #define QUIC_QUICTRANSPORTSERVER_H_
 
 #include "QuicTransportConnection.h"
-#include "owt/quic/web_transport_server_interface.h"
+#include "owt/quic/quic_transport_server_interface.h"
+#include "owt/quic/quic_transport_session_interface.h"
 #include <logger.h>
 #include <mutex>
 #include <nan.h>
 #include <string>
 #include <unordered_map>
 
-class QuicTransportServer : public Nan::ObjectWrap, owt::quic::WebTransportServerInterface::Visitor, QuicTransportConnection::Visitor {
+class QuicTransportServer : public Nan::ObjectWrap, owt::quic::QuicTransportServerInterface::Visitor, QuicTransportSessionInterface::Visitor {
     DECLARE_LOGGER();
 
 public:
@@ -26,10 +27,7 @@ protected:
     void OnEnded() override;
     void OnSession(owt::quic::WebTransportSessionInterface*) override;
 
-    // Overrides QuicTransportConnection::Visitor.
-    void onAuthentication(const std::string& id) override;
-    // Connection is closed.
-    void onClose() override;
+    virtual void OnIncomingStream(QuicTransportSessionInterface*, QuicTransportStreamInterface*) override;
 
     QuicTransportServer() = delete;
     explicit QuicTransportServer(int port, const std::string& pfxPath, const std::string& password);

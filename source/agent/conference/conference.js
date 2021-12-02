@@ -668,7 +668,7 @@ var Conference = function (rpcClient, selfRpcId) {
 
     var fwdStream = null;
     if (casStreams[id]) {
-      fwdStream = new CascadedStream(id, media, data, info, locality, casStreams[id].quicclient, casStreams[id].quicsession, casStreams[id].quicstream, true);
+      fwdStream = new CascadedStream(id, media, data, info, locality, casStreams[id].quicsession, casStreams[id].quicstream, true);
     } else {
       fwdStream = new ForwardStream(id, media, data, info, locality);
     }
@@ -1407,7 +1407,6 @@ var Conference = function (rpcClient, selfRpcId) {
     if (!streams[streamId] && casStreams[streamId]) {
       log.info("Subscribe cascaded stream:", streamId);
       subDesc.type = 'mediabridge';
-      subDesc.clientID = casStreams[streamId].quicclient;
       subDesc.sessionID = casStreams[streamId].quicsession;
       subDesc.streamID = casStreams[streamId].quicstream;
       initiateSubscription(subscriptionId, subDesc, {owner: participantId, type: subDesc.type});
@@ -2886,7 +2885,7 @@ var Conference = function (rpcClient, selfRpcId) {
 
   var addCascadingStreams = function(msg) {
     log.info("Add cascading stream id:", msg.id, " data:", msg.data, " info:", msg.info, " media:", msg.media);
-    const fwdStream = new CascadedStream(id, media, data, info, null, msg.clientID, msg.sessionID, msg.streamId, false);
+    const fwdStream = new CascadedStream(id, media, data, info, null, msg.sessionID, msg.streamId, false);
     const errMsg = fwdStream.checkMediaError();
     if (errMsg) {
       log.error(errMsg);
@@ -2947,7 +2946,7 @@ var Conference = function (rpcClient, selfRpcId) {
       callback('callback', result);
   };
 
-  that.onCascadingConnected = function(bridgeId, sessionID, streamID, clientID, callback) {
+  that.onCascadingConnected = function(bridgeId, sessionID, streamID, callback) {
       log.debug('event bridge connected ', bridgeId, " participants", participants, " streams",streams);
       var result = 'ok';
       var data = {};
@@ -2974,7 +2973,6 @@ var Conference = function (rpcClient, selfRpcId) {
       data.type = 'initialize';
       msg.session = sessionID;
       msg.stream = streamID;
-      msg.client = clientID;
       msg.type = 'initialize';
       msg.rpcId = selfRpcId;
       cascadingEventBridges.add(bridgeId);

@@ -3,8 +3,13 @@
     'target_name': 'quicCascading',
     'sources': [
       'addon.cc',
+      'QuicTransportStream.cc',
+      'QuicTransportSession.cc',
       'QuicTransportServer.cc',
-      'QuicTransportClient.cc'
+      'QuicTransportClient.cc',
+      'QuicFactory.cc',
+      '../../../core/owt_base/MediaFramePipeline.cpp',
+      '../../../core/owt_base/MediaFrameMulticaster.cpp'
     ],
     'include_dirs': [
       "<!(node -e \"require('nan')\")",
