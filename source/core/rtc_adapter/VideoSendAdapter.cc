@@ -229,9 +229,10 @@ bool VideoSendAdapterImpl::init()
         configuration.transport_feedback_callback =
           m_transportControllerSend->transport_feedback_observer();
 
-        m_pacedSender = std::make_shared<NonPacedSender>(
-            m_transportControllerSend->packet_router());
-        configuration.paced_sender = m_pacedSender.get();
+        // m_pacedSender = std::make_shared<NonPacedSender>(
+        //     m_transportControllerSend->packet_router());
+        // configuration.paced_sender = m_pacedSender.get();
+        configuration.paced_sender = m_transportControllerSend->packet_sender();
         configuration.send_bitrate_observer = this;
     }
 

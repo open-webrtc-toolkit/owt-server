@@ -32,7 +32,10 @@ public:
 
     class BitrateCounter : public FrameDestination {
     public:
-        BitrateCounter() : m_totalBits  (0) {}
+        BitrateCounter(): m_totalBits  (0) {}
+        BitrateCounter(VideoQualitySwitch* parent)
+            : m_totalBits(0)
+            , m_parent(parent) {}
         ~BitrateCounter() = default;
 
         // Implements FrameDestination
@@ -47,12 +50,29 @@ public:
         };
         std::deque<Bucket> m_timeFrames;
         uint32_t m_totalBits;
+
+        VideoQualitySwitch* m_parent;
     };
+
+    // class KeyFrameDetector : public FrameDestination {
+    // public:
+    //     KeyFrameDetector(VideoQualitySwitch* parent)
+    //         : m_targetIdx(-1)
+    //         , m_parent(parent) {}
+    //     ~KeyFrameDetector() = default;
+
+    //     // Implements FrameDestination
+    //     void onFrame(const Frame&) override;
+    // private:
+    //     int m_targetIdx;
+    //     VideoQualitySwitch* m_parent;
+    // };
 
 private:
     std::vector<FrameSource*> m_sources;
     std::vector<std::shared_ptr<BitrateCounter>> m_bitrateCounters;
     int m_current;
+    bool m_keyFrameArrived;
     uint64_t m_lastUpdateTime;
 };
 

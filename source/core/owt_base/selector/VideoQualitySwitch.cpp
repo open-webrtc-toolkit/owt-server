@@ -15,6 +15,7 @@ static constexpr uint32_t kBitrateCountPeriod = 5000;
 static constexpr uint32_t kBucketNum = 50;
 // Minimal period for switching(ms)
 static constexpr uint64_t kMinimalUpdatePeriod = 5000;
+static constexpr uint64_t kActiveTimeout = 2000;
 // Only change source when difference exceed threshold
 static constexpr double kBitrateChangeThreshold = 0.1;
 
@@ -24,12 +25,13 @@ VideoQualitySwitch::VideoQualitySwitch(std::vector<FrameSource*> sources)
     : m_sources(sources)
     , m_bitrateCounters(m_sources.size())
     , m_current(-1)
+    , m_keyFrameArrived(false)
     , m_lastUpdateTime(0)
 {
     ELOG_DEBUG("Init with sources size: %zu", m_sources.size());
     for (size_t i = 0; i < m_sources.size(); i++) {
         if (m_sources[i]) {
-            m_bitrateCounters[i] = std::make_shared<BitrateCounter>();
+            m_bitrateCounters[i] = std::make_shared<BitrateCounter>(this);
             m_sources[i]->addVideoDestination(m_bitrateCounters[i].get());
         } else {
             ELOG_WARN("Empty source for quality switch %zu", i);
@@ -49,7 +51,12 @@ VideoQualitySwitch::~VideoQualitySwitch()
 
 void VideoQualitySwitch::onFrame(const Frame& frame)
 {
-    deliverFrame(frame);
+    if (frame.additionalInfo.video.isKeyFrame) {
+        m_keyFrameArrived = true;
+    }
+    if (m_keyFrameArrived) {
+        deliverFrame(frame);
+    }
 }
 
 void VideoQualitySwitch::onMetaData(const MetaData& metadata)
@@ -68,7 +75,7 @@ void VideoQualitySwitch::onFeedback(const owt_base::FeedbackMsg& msg)
 
 void VideoQualitySwitch::setTargetBitrate(uint32_t targetBps)
 {
-    ELOG_DEBUG("setTargetBitrate %u", targetBps);
+    ELOG_DEBUG("setTargetBitrate %u %p", targetBps, this);
     uint64_t tsNow = std::chrono::duration_cast<std::chrono::milliseconds>(
         std::chrono::steady_clock::now().time_since_epoch()).count();
     if (tsNow - m_lastUpdateTime < kMinimalUpdatePeriod) {
@@ -80,7 +87,7 @@ void VideoQualitySwitch::setTargetBitrate(uint32_t targetBps)
     int currentBitrate = 0;
     for (size_t i = 0; i < m_sources.size(); i++) {
         int bitrate = m_bitrateCounters[i]->bitrate();
-        ELOG_DEBUG("BitrateCounter bitrate %zu: %d ", i, bitrate);
+        ELOG_DEBUG("BitrateCounter bitrate %zu: %d %p", i, bitrate, this);
         if (current < 0) {
             current = i;
             currentBitrate = bitrate;
@@ -110,7 +117,12 @@ void VideoQualitySwitch::setTargetBitrate(uint32_t targetBps)
         m_current = current;
         if (m_current >= 0 && m_sources[m_current]) {
             ELOG_DEBUG("Enable source index %u", m_current);
+            m_keyFrameArrived = false;
             m_sources[m_current]->addVideoDestination(this);
+            ELOG_DEBUG("Request key frame ");
+            // Request key frame
+            FeedbackMsg feedback = {.type = VIDEO_FEEDBACK, .cmd = REQUEST_KEY_FRAME };
+            deliverFeedbackMsg(feedback);
         }
     }
 }
@@ -138,6 +150,13 @@ void VideoQualitySwitch::BitrateCounter::onFrame(const Frame& frame)
 uint32_t VideoQualitySwitch::BitrateCounter::bitrate()
 {
     if (m_timeFrames.size() == 0) {
+        return 0;
+    }
+    uint64_t tsNow = std::chrono::duration_cast<std::chrono::milliseconds>(
+       std::chrono::steady_clock::now().time_since_epoch()).count();
+    uint64_t tsLast = m_timeFrames.back().timeStamp;
+    if ((tsNow - tsLast) > kActiveTimeout) {
+        ELOG_DEBUG("Not active %p", this);
         return 0;
     }
     uint32_t countedMs = m_timeFrames.size() * (kBitrateCountPeriod / kBucketNum);

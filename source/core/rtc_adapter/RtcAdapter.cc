@@ -24,13 +24,12 @@ static rtc::scoped_refptr<webrtc::SharedModuleThread> g_moduleThread;
 static std::unique_ptr<webrtc::FieldTrialBasedConfig> g_fieldTrial= []()
 {
     auto config = std::make_unique<webrtc::FieldTrialBasedConfig>();
-    /*
+    /**/
     webrtc::field_trial::InitFieldTrialsFromString(
         "WebRTC-KeyframeInterval/"
         "max_wait_for_keyframe_ms:500,"
         "max_wait_for_frame_ms:1500/"
         "WebRTC-TaskQueuePacer/Enabled/");
-    */
     return config;
 }();
 

@@ -23,6 +23,9 @@ threadPool.start();
 var ioThreadPool = new addon.IOThreadPool(global.config.webrtc.io_workers || 8);
 ioThreadPool.start();
 
+const MediaFrameMulticaster = require(
+    '../mediaFrameMulticaster/build/Release/mediaFrameMulticaster');
+
 module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
     var that = {
       agentID: parentRpcId,
@@ -408,6 +411,8 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
         }
     };
 
+    const dispatchers = new Map();
+
     // Create quality switch for given source streams,
     // which can switch source based on bitrate setting.
     // return created switch ID
@@ -435,9 +440,19 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
             const conn = router.getConnection(source.id);
             if (conn) {
                 log.debug('Added switch source:', source.id);
-                switchSources.push(conn.sender ? conn.sender() : conn);
+                const dispatcher = new MediaFrameMulticaster();
+                const dispatcherId = switchId + switchSources.length;
+                dispatchers.set(dispatcherId, dispatcher);
+                router.addLocalDestination(
+                    dispatcherId, 'dispatcher', dispatcher);
+                router.linkup(dispatcherId, {video: {id: source.id}})
+                    .catch((e) => log.debug(e));
+                switchSources.push(dispatcher.source());
             }
         }
+        const dispatcher = new MediaFrameMulticaster();
+        dispatchers.set(switchId, dispatcher);
+        switchSources.push(dispatcher.source());
         const vswitch = new videoSwitch(...switchSources);
         switches.set(switchId, vswitch);
         router.addLocalSource(switchId, 'webrtc', vswitch)
