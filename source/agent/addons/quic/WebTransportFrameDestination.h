@@ -14,7 +14,7 @@
 #include <nan.h>
 
 // A WebTransportFrameDestination is a hub for a single InternalIO input to multiple WebTransport outputs.
-class WebTransportFrameDestination : public owt_base::FrameDestination, public NanFrameNode {
+class WebTransportFrameDestination : public owt_base::FrameSource, public owt_base::FrameDestination, public NanFrameNode {
     DECLARE_LOGGER();
 
 public:
@@ -22,6 +22,9 @@ public:
     ~WebTransportFrameDestination() override = default;
 
     static NAN_MODULE_INIT(init);
+
+    // Overrides owt_base::FrameSource.
+    void onFeedback(const owt_base::FeedbackMsg&) override;
 
     // Overrides owt_base::FrameDestination.
     void onFrame(const owt_base::Frame&) override;

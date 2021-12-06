@@ -222,7 +222,9 @@ inline bool isDataFrame(const Frame& frame) {
 
 enum FeedbackType {
     VIDEO_FEEDBACK,
-    AUDIO_FEEDBACK
+    AUDIO_FEEDBACK,
+    // When the feedback is a RTCP packet, it's track kind is not known before parsing. Thus we use DATA_FEEDBACK for RTCP packets.
+    DATA_FEEDBACK
 };
 
 enum FeedbackCmd {

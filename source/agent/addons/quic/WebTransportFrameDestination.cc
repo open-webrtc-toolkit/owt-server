@@ -67,6 +67,8 @@ NAN_METHOD(WebTransportFrameDestination::addDatagramOutput)
     }
     NanFrameNode* output = Nan::ObjectWrap::Unwrap<NanFrameNode>(Nan::To<v8::Object>(info[0]).ToLocalChecked());
     obj->m_datagramOutput = output;
+    // TODO: Use addDataDestination defined in MediaFramePipeline. We use m_datagramOutput here because the output could also be streams.
+    output->FrameDestination()->setDataSource(obj);
 }
 
 NAN_METHOD(WebTransportFrameDestination::removeDatagramOutput)
@@ -78,6 +80,7 @@ NAN_METHOD(WebTransportFrameDestination::removeDatagramOutput)
         return;
     }
     obj->m_videoRtpPacketizer.reset();
+    obj->m_datagramOutput->FrameDestination()->setDataSource(nullptr);
     obj->m_datagramOutput = nullptr;
 }
 
@@ -105,3 +108,13 @@ void WebTransportFrameDestination::onFrame(const owt_base::Frame& frame)
 }
 
 void WebTransportFrameDestination::onVideoSourceChanged() { }
+
+void WebTransportFrameDestination::onFeedback(const owt_base::FeedbackMsg& feedback)
+{
+    // TODO: RTCP packet could be for audio. Sending to audio packetizer when audio support is added.
+    if(!m_videoRtpPacketizer){
+        ELOG_WARN("RTP packetizer is not available.");
+        return;
+    }
+    m_videoRtpPacketizer->onFeedback(feedback);
+}
