@@ -38,8 +38,13 @@ void VideoRtpPacketizer::onVideoSourceChanged() { }
 
 void VideoRtpPacketizer::onFeedback(const owt_base::FeedbackMsg& msg)
 {
-    // TODO: Handle feedbacks.
-    ELOG_INFO("Received feedback.");
+    if (msg.cmd == owt_base::RTCP_PACKET) {
+        if (m_videoSend) {
+            m_videoSend->onRtcpData(msg.buffer.data, msg.buffer.len);
+        }
+    } else {
+        ELOG_WARN("Only RTCP feedbacks can be handled.")
+    }
 }
 
 void VideoRtpPacketizer::onAdapterStats(const rtc_adapter::AdapterStats& stats)

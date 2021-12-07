@@ -412,11 +412,11 @@ void VideoSendAdapterImpl::onFrame(const Frame& frame)
     }
 }
 
-int VideoSendAdapterImpl::onRtcpData(char* data, int len)
+int VideoSendAdapterImpl::onRtcpData(const char* data, int len)
 {
     boost::shared_lock<boost::shared_mutex> lock(m_rtpRtcpMutex);
     if (m_rtpRtcp) {
-        m_rtpRtcp->IncomingRtcpPacket(reinterpret_cast<uint8_t*>(data), len);
+        m_rtpRtcp->IncomingRtcpPacket(reinterpret_cast<const uint8_t*>(data), len);
         return len;
     }
     return 0;
