@@ -63,6 +63,7 @@ NAN_METHOD(QuicTransportSession::newInstance)
 
 v8::Local<v8::Object> QuicTransportSession::newInstance(owt::quic::QuicTransportSessionInterface* session)
 {
+    ELOG_DEBUG("QuicTransportSession::newInstance");
     Local<Object> connectionObject = Nan::NewInstance(Nan::New(QuicTransportSession::s_constructor)).ToLocalChecked();
     QuicTransportSession* obj = Nan::ObjectWrap::Unwrap<QuicTransportSession>(connectionObject);
     obj->m_session = session;
@@ -70,6 +71,7 @@ v8::Local<v8::Object> QuicTransportSession::newInstance(owt::quic::QuicTransport
 }
 
 NAN_METHOD(QuicTransportSession::createBidirectionalStream){
+    ELOG_DEBUG("QuicTransportSession::createBidirectionalStream");
     QuicTransportSession* obj = Nan::ObjectWrap::Unwrap<QuicTransportSession>(info.Holder());
     auto stream=obj->m_session->CreateBidirectionalStream();
     v8::Local<v8::Object> streamObject = QuicTransportStream::newInstance(stream);
@@ -77,6 +79,7 @@ NAN_METHOD(QuicTransportSession::createBidirectionalStream){
 }
 
 NAN_METHOD(QuicTransportSession::onNewStream) {
+    ELOG_DEBUG("QuicTransportSession::onNewStream");
   QuicTransportSession* obj = Nan::ObjectWrap::Unwrap<QuicTransportSession>(info.Holder());
 
   obj->has_stream_callback_ = true;
@@ -84,6 +87,7 @@ NAN_METHOD(QuicTransportSession::onNewStream) {
 }
 
 NAUV_WORK_CB(QuicTransportSession::onNewStreamCallback){
+    ELOG_DEBUG("QuicTransportSession::onNewStreamCallback");
     Nan::HandleScope scope;
     QuicTransportSession* obj = reinterpret_cast<QuicTransportSession*>(async->data);
     if (!obj) {
@@ -99,7 +103,7 @@ NAUV_WORK_CB(QuicTransportSession::onNewStreamCallback){
     if (obj->has_stream_callback_) {
       while (!obj->stream_messages.empty()) {
           Local<Value> args[] = { streamObject };
-          Nan::AsyncResource resource("sessionCallback");
+          Nan::AsyncResource resource("onNewStream");
           resource.runInAsyncScope(Nan::GetCurrentContext()->Global(), obj->stream_callback_->GetFunction(), 1, args);
           obj->stream_messages.pop();
       }
@@ -108,11 +112,14 @@ NAUV_WORK_CB(QuicTransportSession::onNewStreamCallback){
 
 NAN_METHOD(QuicTransportSession::getId) {
   QuicTransportSession* obj = Nan::ObjectWrap::Unwrap<QuicTransportSession>(info.Holder());
-
-  info.GetReturnValue().Set(Nan::New(obj->m_session->Id()).ToLocalChecked());
+  uint8_t length = obj->m_session->length();
+  std::string s_data(obj->m_session->Id(), length);
+  std::cout << "QuicTransportSession::getId:" << s_data;
+  info.GetReturnValue().Set(Nan::New(s_data).ToLocalChecked());
 }
 
 void QuicTransportSession::OnIncomingStream(owt::quic::QuicTransportStreamInterface* stream) {
+    std::cout << "QuicTransportSession::OnIncomingStream and id is:" << stream->Id();
     //streams_[stream->Id()] = stream;
     this->stream_messages.push(stream);
     m_asyncOnNewStream.data = this;

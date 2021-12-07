@@ -32,7 +32,7 @@ public:
     static NAN_METHOD(newInstance);
     static NAN_METHOD(connect);
     static NAN_METHOD(onNewStream);
-    static NAN_METHOD(onConnected);
+    static NAN_METHOD(onConnection);
     static NAN_METHOD(createBidirectionalStream);
 
     static Nan::Persistent<v8::Function> s_constructor;

@@ -21,9 +21,6 @@ using v8::Object;
 using v8::ObjectTemplate;
 using v8::Value;
 
-const char TDT_FEEDBACK_MSG = 0x5A;
-const char TDT_MEDIA_FRAME = 0x8F;
-const size_t INIT_BUFF_SIZE = 80000;
 
 DEFINE_LOGGER(QuicTransportServer, "QuicTransportServer");
 
@@ -33,6 +30,7 @@ Nan::Persistent<v8::Function> QuicTransportServer::s_constructor;
 QuicTransportServer::QuicTransportServer(unsigned int port, const std::string& cert_file, const std::string& key_file)
         : m_quicServer(QuicFactory::getQuicTransportFactory()->CreateQuicTransportServer(port, cert_file.c_str(), key_file.c_str())) {
   m_quicServer->SetVisitor(this);
+  printf("point address:%p\n", this);
 }
 
 QuicTransportServer::~QuicTransportServer() {
@@ -91,6 +89,7 @@ NAN_METHOD(QuicTransportServer::stop)
 }
 
 NAN_METHOD(QuicTransportServer::onNewSession) {
+  ELOG_DEBUG("QuicTransportServer::onNewSession");
   QuicTransportServer* obj = Nan::ObjectWrap::Unwrap<QuicTransportServer>(info.Holder());
 
   obj->has_session_callback_ = true;
@@ -98,6 +97,7 @@ NAN_METHOD(QuicTransportServer::onNewSession) {
 }
 
 NAUV_WORK_CB(QuicTransportServer::onNewSessionCallback){
+    ELOG_DEBUG("QuicTransportServer::onNewSessionCallback");
     Nan::HandleScope scope;
     QuicTransportServer* obj = reinterpret_cast<QuicTransportServer*>(async->data);
     if (!obj) {
@@ -113,7 +113,7 @@ NAUV_WORK_CB(QuicTransportServer::onNewSessionCallback){
     if (obj->has_session_callback_) {
       while (!obj->session_messages.empty()) {
           Local<Value> args[] = { connection };
-          Nan::AsyncResource resource("sessionCallback");
+          Nan::AsyncResource resource("onNewSession");
           resource.runInAsyncScope(Nan::GetCurrentContext()->Global(), obj->session_callback_->GetFunction(), 1, args);
           obj->session_messages.pop();
       }
@@ -122,7 +122,13 @@ NAUV_WORK_CB(QuicTransportServer::onNewSessionCallback){
 
 void QuicTransportServer::OnSession(owt::quic::QuicTransportSessionInterface* session) {
     //sessions_[session->Id()] = session;
+    ELOG_DEBUG("QuicTransportServer::OnSession");
+
     this->session_messages.push(session);
     m_asyncOnNewSession.data = this;
     uv_async_send(&m_asyncOnNewSession);
+}
+
+void QuicTransportServer::OnEnded() {
+    ELOG_DEBUG("QuicTransportServer::OnEnded");
 }

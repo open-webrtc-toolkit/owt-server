@@ -45,6 +45,7 @@ protected:
 
     // Implements QuicTransportClientInterface.
     void OnSession(owt::quic::QuicTransportSessionInterface*) override;
+    void OnEnded() override;
 private:
 
     unsigned int getServerPort();

@@ -27,7 +27,7 @@
       '-lboost_thread',
       '-L<(module_root_dir)/../../../../third_party/quic-lib/dist/lib',
       '-L$(DEFAULT_DEPENDENCY_PATH)/lib',
-      '-lrawquic'
+      '-lowt_quic_transport'
     ],
     'conditions': [
       [ 'OS=="mac"', {

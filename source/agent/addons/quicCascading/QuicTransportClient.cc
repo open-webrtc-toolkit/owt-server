@@ -44,6 +44,7 @@ NAN_MODULE_INIT(QuicTransportClient::init)
     instanceTpl->SetInternalFieldCount(1);
 
     Nan::SetPrototypeMethod(tpl, "connect", connect);
+    Nan::SetPrototypeMethod(tpl, "onConnection", onConnection);
     Nan::SetPrototypeMethod(tpl, "onNewStream", onNewStream);
     Nan::SetPrototypeMethod(tpl, "createBidirectionalStream", createBidirectionalStream);
 
@@ -72,10 +73,10 @@ NAN_METHOD(QuicTransportClient::newInstance)
 }
 
 NAN_METHOD(QuicTransportClient::connect) {
-  ELOG_DEBUG("QuicTransportServer::start");
+  ELOG_DEBUG("QuicTransportClient::connect");
   QuicTransportClient* obj = Nan::ObjectWrap::Unwrap<QuicTransportClient>(info.Holder());
   obj->m_quicClient->Start();
-  ELOG_DEBUG("End of QuicTransportServer::start");
+  ELOG_DEBUG("End of QuicTransportClient::connect");
 }
 
 NAN_METHOD(QuicTransportClient::onNewStream) {
@@ -85,7 +86,8 @@ NAN_METHOD(QuicTransportClient::onNewStream) {
   obj->stream_callback_ = new Nan::Callback(info[0].As<Function>());
 }
 
-NAN_METHOD(QuicTransportClient::onConnected) {
+NAN_METHOD(QuicTransportClient::onConnection) {
+  ELOG_DEBUG("QuicTransportClient::onConnection");
   QuicTransportClient* obj = Nan::ObjectWrap::Unwrap<QuicTransportClient>(info.Holder());
 
   obj->has_connected_callback_ = true;
@@ -93,13 +95,17 @@ NAN_METHOD(QuicTransportClient::onConnected) {
 }
 
 NAN_METHOD(QuicTransportClient::createBidirectionalStream) {
+  ELOG_DEBUG("QuicTransportClient::createBidirectionalStream");
   QuicTransportClient* obj = Nan::ObjectWrap::Unwrap<QuicTransportClient>(info.Holder());
   auto stream=obj->m_quicClient->CreateBidirectionalStream();
   v8::Local<v8::Object> streamObject = QuicTransportStream::newInstance(stream);
+  QuicTransportStream* clientStream = Nan::ObjectWrap::Unwrap<QuicTransportStream>(streamObject);
+  stream->SetVisitor(clientStream);
   info.GetReturnValue().Set(streamObject);
 }
 
 NAUV_WORK_CB(QuicTransportClient::onNewStreamCallback){
+    ELOG_DEBUG("QuicTransportClient::onNewStreamCallback");
     Nan::HandleScope scope;
     QuicTransportClient* obj = reinterpret_cast<QuicTransportClient*>(async->data);
     if (!obj) {
@@ -123,6 +129,7 @@ NAUV_WORK_CB(QuicTransportClient::onNewStreamCallback){
 }
 
 NAUV_WORK_CB(QuicTransportClient::onConnectedCallback){
+    ELOG_DEBUG("QuicTransportClient::onConnectedCallback");
     Nan::HandleScope scope;
     QuicTransportClient* obj = reinterpret_cast<QuicTransportClient*>(async->data);
     if (!obj) {
@@ -137,6 +144,7 @@ NAUV_WORK_CB(QuicTransportClient::onConnectedCallback){
 }
 
 void QuicTransportClient::OnIncomingStream(owt::quic::QuicTransportStreamInterface* stream) {
+    ELOG_DEBUG("QuicTransportClient::OnIncomingStream");
     //streams_[stream->Id()] = stream;
     this->stream_messages.push(stream);
     m_asyncOnNewStream.data = this;
@@ -144,6 +152,7 @@ void QuicTransportClient::OnIncomingStream(owt::quic::QuicTransportStreamInterfa
 }
 
 void QuicTransportClient::OnConnected() {
+    ELOG_DEBUG("QuicTransportClient::OnConnected");
     m_asyncOnConnected.data = this;
     uv_async_send(&m_asyncOnConnected);
 }

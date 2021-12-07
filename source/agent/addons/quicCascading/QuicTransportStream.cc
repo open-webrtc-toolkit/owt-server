@@ -58,6 +58,7 @@ NAN_MODULE_INIT(QuicTransportStream::init)
     Nan::SetPrototypeMethod(tpl, "addDestination", addDestination);
     Nan::SetPrototypeMethod(tpl, "removeDestination", removeDestination);
     Nan::SetPrototypeMethod(tpl, "send", send);
+    Nan::SetPrototypeMethod(tpl, "onStreamData", onStreamData);
     Nan::SetPrototypeMethod(tpl, "getId", getId);
 
     s_constructor.Reset(Nan::GetFunction(tpl).ToLocalChecked());
@@ -78,6 +79,7 @@ NAN_METHOD(QuicTransportStream::newInstance)
 
 v8::Local<v8::Object> QuicTransportStream::newInstance(owt::quic::QuicTransportStreamInterface* stream)
 {
+    ELOG_DEBUG("QuicTransportStream::newInstance");
     Local<Object> streamObject = Nan::NewInstance(Nan::New(QuicTransportStream::s_constructor)).ToLocalChecked();
     QuicTransportStream* obj = Nan::ObjectWrap::Unwrap<QuicTransportStream>(streamObject);
     obj->m_stream = stream;
@@ -85,6 +87,7 @@ v8::Local<v8::Object> QuicTransportStream::newInstance(owt::quic::QuicTransportS
 }
 
 NAN_METHOD(QuicTransportStream::send) {
+  ELOG_DEBUG("QuicTransportStream::send");
   QuicTransportStream* obj = Nan::ObjectWrap::Unwrap<QuicTransportStream>(info.Holder());
   
   Nan::Utf8String param1(Nan::To<v8::String>(info[0]).ToLocalChecked());
@@ -95,6 +98,7 @@ NAN_METHOD(QuicTransportStream::send) {
 
 NAN_METHOD(QuicTransportStream::addDestination)
 {
+    ELOG_DEBUG("QuicTransportStream::addDestination");
     QuicTransportStream* obj = Nan::ObjectWrap::Unwrap<QuicTransportStream>(info.Holder());
     if (info.Length() > 3) {
         Nan::ThrowTypeError("Invalid argument length for addDestination.");
@@ -127,10 +131,12 @@ NAN_METHOD(QuicTransportStream::addDestination)
 
 NAN_METHOD(QuicTransportStream::removeDestination)
 {
+    ELOG_DEBUG("QuicTransportStream::removeDestination");
     //QuicTransportStream* obj = Nan::ObjectWrap::Unwrap<QuicTransportStream>(info.Holder());
 }
 
 NAN_METHOD(QuicTransportStream::onStreamData) {
+  ELOG_DEBUG("QuicTransportStream::onStreamData");
   QuicTransportStream* obj = Nan::ObjectWrap::Unwrap<QuicTransportStream>(info.Holder());
 
   obj->has_data_callback_ = true;
@@ -138,6 +144,7 @@ NAN_METHOD(QuicTransportStream::onStreamData) {
 }
 
 NAUV_WORK_CB(QuicTransportStream::onStreamDataCallback){
+    ELOG_DEBUG("QuicTransportStream::onStreamDataCallback");
     Nan::HandleScope scope;
     QuicTransportStream* obj = reinterpret_cast<QuicTransportStream*>(async->data);
     if (!obj) {
@@ -157,12 +164,14 @@ NAUV_WORK_CB(QuicTransportStream::onStreamDataCallback){
 }
 
 NAN_METHOD(QuicTransportStream::getId) {
+  ELOG_DEBUG("QuicTransportStream::getId");
   QuicTransportStream* obj = Nan::ObjectWrap::Unwrap<QuicTransportStream>(info.Holder());
 
   info.GetReturnValue().Set(Nan::New(obj->m_stream->Id()));
 }
 
 void QuicTransportStream::onFeedback(const FeedbackMsg& msg) {
+    ELOG_DEBUG("QuicTransportStream::onFeedback");
     TransportData sendData;
     uint32_t payloadLength = sizeof(FeedbackMsg);
     sendData.buffer.reset(new char[payloadLength + 5]);
@@ -176,11 +185,13 @@ void QuicTransportStream::onFeedback(const FeedbackMsg& msg) {
 
 void QuicTransportStream::onVideoSourceChanged()
 {
+    ELOG_DEBUG("QuicTransportStream::onVideoSourceChanged");
     // Do nothing.
 }
 
 void QuicTransportStream::onFrame(const owt_base::Frame& frame)
 {
+    ELOG_DEBUG("QuicTransportStream::onFrame");
     TransportData sendData;
     sendData.buffer.reset(new char[sizeof(Frame) + frame.length + 5]);
     *(reinterpret_cast<uint32_t*>(sendData.buffer.get())) = htonl(sizeof(Frame) + frame.length + 1);
@@ -195,6 +206,7 @@ void QuicTransportStream::onFrame(const owt_base::Frame& frame)
 
 
 void QuicTransportStream::sendData(const std::string& data) {
+    ELOG_DEBUG("QuicTransportStream::sendData:%s\n", data.c_str());
     TransportData sendData;
     uint32_t payloadLength = data.length();
     sendData.buffer.reset(new char[payloadLength + 5]);
@@ -238,7 +250,8 @@ void QuicTransportStream::OnData(owt::quic::QuicTransportStreamInterface* stream
             m_receivedBytes -= expectedLen;
             char* dpos = m_receiveData.buffer.get() + 4;
             Frame* frame = nullptr;
-            std::string s_data(dpos, payloadlen);
+            std::string s_data(dpos + 1, payloadlen - 1);
+            std::cout << "receive: data" << s_data << std::endl;
 
             switch (dpos[0]) {
                 case TDT_MEDIA_FRAME:
