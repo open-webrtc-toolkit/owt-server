@@ -96,9 +96,10 @@ var EventCascading = function(spec, rpcReq) {
           room: data.room
         }
         quicStream.send(JSON.stringify(info));
-      } else if (event.type === 'initialize') {
-        rpcReq.onCascadingConnected(controller, self_rpc_id, clientID, streamID);
       } else {
+        if (event.type === 'initialize') {
+          rpcReq.onCascadingConnected(controller, self_rpc_id, clientID, streamID);
+        } 
         rpcReq.handleCascadingEvents(controller, event);
       }
     })
