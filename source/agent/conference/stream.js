@@ -375,4 +375,5 @@ module.exports = {
   MixedStream,
   SelectedStream,
   StreamConfigure,
+  CascadedStream,
 };

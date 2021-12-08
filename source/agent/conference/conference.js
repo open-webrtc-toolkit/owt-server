@@ -30,6 +30,7 @@ const {
   MixedStream,
   SelectedStream,
   StreamConfigure,
+  CascadedStream,
 } = require('./stream');
 
 const {
@@ -754,22 +755,39 @@ var Conference = function (rpcClient, selfRpcId) {
   };
 
   const updateStreamInfo = (streamId, info) => {
-    if (!streams[streamId].isInConnecting && streams[streamId].update(info)) {
-      if (room_config.notifying.streamChange) {
-        sendMsg('room', 'all', 'stream', {
-          id: streamId,
-          status: 'update',
-          data: {field: '.', value: streams[streamId].toPortalFormat()}
-        });
-
-        var cascading = streams[streamId].cascading;
-        !cascading && sendMsgTo('cascading', {rpcId: selfRpcId}, {
-          type: 'updateStreamInfo',
-          data: {
+    log.info("Update stream info id:", streamId, " with info:", info);
+    log.info("casStreams:",casStreams);
+    if (casStreams[streamId]) {
+      log.info("update casStreams info");
+      if (casStreams[streamId].update(info)) {
+        if (room_config.notifying.streamChange) {
+          log.info("Notify stream change to local participant");
+          sendMsg('room', 'all', 'stream', {
             id: streamId,
-            info: info
-          }
-        });
+            status: 'update',
+            data: {field: '.', value: casStreams[streamId].toPortalFormat()}
+          });
+        }
+      }
+    } else {
+      log.info("update local streams info");
+      if (!streams[streamId].isInConnecting && streams[streamId].update(info)) {
+        if (room_config.notifying.streamChange) {
+          sendMsg('room', 'all', 'stream', {
+            id: streamId,
+            status: 'update',
+            data: {field: '.', value: streams[streamId].toPortalFormat()}
+          });
+
+          var cascading = streams[streamId].cascading;
+          !cascading && sendMsgTo('cascading', {rpcId: selfRpcId}, {
+            type: 'updateStreamInfo',
+            data: {
+              id: streamId,
+              info: info
+            }
+          });
+        }
       }
     }
   };
@@ -2147,6 +2165,12 @@ var Conference = function (rpcClient, selfRpcId) {
       }
     }
 
+    for (var stream_id in casStreams) {
+      if (!casStreams[stream_id].isInConnecting) {
+        result.push(casStreams[stream_id].toPortalFormat());
+      }
+    }
+
     callback('callback', result);
   };
 
@@ -2154,6 +2178,8 @@ var Conference = function (rpcClient, selfRpcId) {
     log.debug('getStreamInfo, room_id:', room_id, 'streamId:', streamId);
     if (streams[streamId] && !streams[stream_id].isInConnecting) {
       callback('callback', streams[streamId]);
+    } else if (casStreams[streamId] && !casStreams[stream_id].isInConnecting) {
+      callback('callback', casStreams[streamId]);
     } else {
       callback('callback', 'error', 'Stream does NOT exist');
     }
@@ -2885,14 +2911,14 @@ var Conference = function (rpcClient, selfRpcId) {
 
   var addCascadingStreams = function(msg) {
     log.info("Add cascading stream id:", msg.id, " data:", msg.data, " info:", msg.info, " media:", msg.media);
-    const fwdStream = new CascadedStream(id, media, data, info, null, msg.sessionID, msg.streamId, false);
+    const fwdStream = new CascadedStream(msg.id, msg.media, msg.data, msg.info, null, msg.sessionID, msg.streamId, false);
     const errMsg = fwdStream.checkMediaError();
     if (errMsg) {
       log.error(errMsg);
       return;
     }
-    casStreams[id] = fwdStream;
-    room_config.notifying.participantActivities && sendMsg('room', 'all', 'stream', {id: id, status: 'add', data: fwdStream.toPortalFormat()});
+    casStreams[msg.id] = fwdStream;
+    room_config.notifying.participantActivities && sendMsg('room', 'all', 'stream', {id: msg.id, status: 'add', data: fwdStream.toPortalFormat()});
   }
 
   var initializeCascading = function(data) {
@@ -2925,7 +2951,7 @@ var Conference = function (rpcClient, selfRpcId) {
         addCascadingStreams(events.data);
         break;
       case 'updateStreamInfo':
-        updateStreamInfo(events.data.id, events.data.data);
+        updateStreamInfo(events.data.id, events.data.info);
         break;
       case 'removeStream':
         removeStream(events.data);

@@ -8,6 +8,8 @@
       'QuicTransportServer.cc',
       'QuicTransportClient.cc',
       'QuicFactory.cc',
+      'QuicTransportFrameDestination.cc',
+      'QuicTransportFrameSource.cc',
       '../../../core/owt_base/MediaFramePipeline.cpp',
       '../../../core/owt_base/MediaFrameMulticaster.cpp'
     ],
