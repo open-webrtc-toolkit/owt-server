@@ -2970,7 +2970,6 @@ var Conference = function (rpcClient, selfRpcId) {
         }
       }
 
-      data.type = 'initialize';
       msg.session = sessionID;
       msg.stream = streamID;
       msg.type = 'initialize';
