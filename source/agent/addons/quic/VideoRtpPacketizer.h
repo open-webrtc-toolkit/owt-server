@@ -29,6 +29,8 @@ public:
     // Overrides AdapterDataListener.
     void onAdapterData(char* data, int len) override;
 
+    RtpConfig getRtpConfig() override;
+
 private:
     uint32_t m_ssrc;
     std::unique_ptr<rtc_adapter::RtcAdapter> m_rtcAdapter;

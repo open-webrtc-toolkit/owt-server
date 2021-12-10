@@ -11,6 +11,7 @@
 // QuicStream associated with QuicStreamPipeline could be a QuicStream instance
 // or |undefined|, which means QuicStream is not ready at this moment. It also
 // allows updating its associated QuicStream to a new one.
+
 // publish, unpublish, subscribe, unsubscribe, linkup, cutoff are required by
 // all agents. They are defined in base-agent.js.
 
@@ -81,6 +82,14 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
     };
 
     const notifyStatus = (controller, sessionId, direction, status) => {
+      // Event name follows WebRTC agent.
+      // A new status "rtp" is added for RTP configuration. It would be good if
+      // this configuration is included in the response of a subscribe request.
+      // However, it may change a lot to achieve it, so we extend
+      // onSessionProgress for it. In the long term, WebTransport connections
+      // will have its own mechanism to accept publish or subscribe requests,
+      // possibly via REST, which doesn't depend on Socket.IO connection. At
+      // that time, RTP configuration can be included in response.
       rpcClient.remoteCast(
           controller, 'onSessionProgress', [sessionId, direction, status]);
     };
@@ -294,7 +303,7 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
         });
       }
 
-      var conn = null;
+      let conn = null;
       switch (connectionType) {
         case 'quic':
           if (options.tracks && options.tracks.length) {  // Media.
@@ -305,6 +314,9 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
               conn.removeDatagramOutput(webTransportConnection);
             };
             conn.addDatagramOutput(webTransportConnection);
+            notifyStatus(
+                options.controller, connectionId, 'out',
+                {type: 'rtp', rtp: conn.rtpConfig});
           } else {
             // TODO: Remove StreamPipeline, move to WebTransportFrameDestination.
             conn = createStreamPipeline(connectionId, 'out', options, callback);

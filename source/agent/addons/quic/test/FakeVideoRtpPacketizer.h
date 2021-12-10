@@ -26,6 +26,11 @@ public:
     void onAdapterStats(const rtc_adapter::AdapterStats& stats) override {};
     // Overrides AdapterDataListener.
     void onAdapterData(char* data, int len) override {};
+
+    RtpConfig getRtpConfig() override
+    {
+        return RtpConfig();
+    }
 };
 
 #endif

@@ -11,6 +11,14 @@
 #include "../../core/rtc_adapter/RtcAdapter.h"
 #include "../common/MediaFramePipelineWrapper.h"
 
+// Configuration for a RTP session.
+struct RtpConfig{
+    // Local SSRC.
+    uint32_t ssrc = 0;
+    // Payload type of media.
+    int payload_type = -1;
+};
+
 class VideoRtpPacketizerInterface : public owt_base::FrameSource, public owt_base::FrameDestination, public rtc_adapter::AdapterFeedbackListener, public rtc_adapter::AdapterStatsListener, public rtc_adapter::AdapterDataListener {
 
 public:
@@ -27,6 +35,9 @@ public:
     void onAdapterStats(const rtc_adapter::AdapterStats& stats) override = 0;
     // Overrides AdapterDataListener.
     void onAdapterData(char* data, int len) override = 0;
+
+    // Returns RTP configuration.
+    virtual RtpConfig getRtpConfig() = 0;
 };
 
 #endif

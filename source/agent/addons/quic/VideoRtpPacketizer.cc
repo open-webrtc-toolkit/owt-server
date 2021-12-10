@@ -9,8 +9,7 @@
 DEFINE_LOGGER(VideoRtpPacketizer, "VideoRtpPacketizer");
 
 VideoRtpPacketizer::VideoRtpPacketizer()
-    : m_ssrc(0)
-    , m_rtcAdapter(std::unique_ptr<rtc_adapter::RtcAdapter>(rtc_adapter::RtcAdapterFactory::CreateRtcAdapter()))
+    : m_rtcAdapter(std::unique_ptr<rtc_adapter::RtcAdapter>(rtc_adapter::RtcAdapterFactory::CreateRtcAdapter()))
     , m_videoSend(nullptr)
 {
     if (!m_videoSend) {
@@ -21,7 +20,6 @@ VideoRtpPacketizer::VideoRtpPacketizer()
         sendConfig.rtp_listener = this;
         sendConfig.stats_listener = this;
         m_videoSend = std::unique_ptr<rtc_adapter::VideoSendAdapter>(m_rtcAdapter->createVideoSender(sendConfig));
-        m_ssrc = m_videoSend->ssrc();
     }
 }
 
@@ -59,4 +57,13 @@ void VideoRtpPacketizer::onAdapterData(char* data, int len)
     frame.length = len;
     frame.payload = reinterpret_cast<uint8_t*>(data);
     deliverFrame(frame);
+}
+
+RtpConfig VideoRtpPacketizer::getRtpConfig()
+{
+    RtpConfig rtpConfig;
+    if (m_videoSend) {
+        rtpConfig.ssrc = m_videoSend->ssrc();
+    }
+    return rtpConfig;
 }

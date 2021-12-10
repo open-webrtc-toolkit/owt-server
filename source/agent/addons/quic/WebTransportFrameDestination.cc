@@ -39,6 +39,7 @@ NAN_MODULE_INIT(WebTransportFrameDestination::init)
     Nan::SetPrototypeMethod(tpl, "addDatagramOutput", addDatagramOutput);
     Nan::SetPrototypeMethod(tpl, "removeDatagramOutput", removeDatagramOutput);
     Nan::SetPrototypeMethod(tpl, "receiver", receiver);
+    Nan::SetAccessor(instanceTpl, Nan::New("rtpConfig").ToLocalChecked(), rtpConfigGetter);
 
     s_constructor.Reset(Nan::GetFunction(tpl).ToLocalChecked());
     Nan::Set(target, Nan::New("WebTransportFrameDestination").ToLocalChecked(), Nan::GetFunction(tpl).ToLocalChecked());
@@ -87,6 +88,21 @@ NAN_METHOD(WebTransportFrameDestination::removeDatagramOutput)
 NAN_METHOD(WebTransportFrameDestination::receiver)
 {
     info.GetReturnValue().Set(info.This());
+}
+
+NAN_GETTER(WebTransportFrameDestination::rtpConfigGetter)
+{
+    WebTransportFrameDestination* obj = Nan::ObjectWrap::Unwrap<WebTransportFrameDestination>(info.Holder());
+    if (!obj->m_videoRtpPacketizer) {
+        info.GetReturnValue().Set(Nan::Undefined());
+        return;
+    }
+    RtpConfig video = obj->m_videoRtpPacketizer->getRtpConfig();
+    v8::Local<v8::Object> rtpConfig = Nan::New<v8::Object>();
+    v8::Local<v8::Object> videoConfig = Nan::New<v8::Object>();
+    Nan::Set(videoConfig, Nan::New("ssrc").ToLocalChecked(), Nan::New<v8::Number>(video.ssrc));
+    Nan::Set(rtpConfig, Nan::New("video").ToLocalChecked(), videoConfig);
+    info.GetReturnValue().Set(rtpConfig);
 }
 
 void WebTransportFrameDestination::onFrame(const owt_base::Frame& frame)

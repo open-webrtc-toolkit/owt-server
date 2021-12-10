@@ -41,6 +41,8 @@ private:
     static NAN_METHOD(removeDatagramOutput);
     // receiver() is required by connection.js.
     static NAN_METHOD(receiver);
+    // Returns an object of RTP configuration. {audio:{ssrc}, video:{ssrc}}. Returns undefined if no RTP receiver is available.
+    static NAN_GETTER(rtpConfigGetter);
 
     std::mutex m_datagramOutputMutex;
     NanFrameNode* m_datagramOutput;

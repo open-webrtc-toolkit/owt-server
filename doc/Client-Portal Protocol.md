@@ -557,11 +557,17 @@ A publication can send either media or data. Setting `media:null` and `data:fals
        candidate: string(candidateSdp)
       }
 
-    // This object inherits from [RTCRtpSendParameters](https://www.w3.org/TR/webrtc/#rtcsendrtpparameters) defined in WebRTC 1.0.
     // Experimental feature, subject to change.
+    object(RtpConfig)::
+    {
+      ssrc:string,
+      sendParameters:object(RTCRtpSendParameters)  // [RTCRtpSendParameters](https://www.w3.org/TR/webrtc/#rtcsendrtpparameters) defined in WebRTC 1.0.
+    }
+
     object(RtpSendParameters):RTCRtpSendParameters::
       {
-       ssrc: string,                         // SSRC of a publication or subscription.
+        audio: object(RtpConfig) | null,
+        video: object(RtpConfig) | null,
       }
 
     object(TransportOptions)::
@@ -579,11 +585,11 @@ A publication can send either media or data. Setting `media:null` and `data:fals
   object(TransportProgress)::
     {
       id: string(transportId),
-      status: "soac" | "ready" | "error",
+      status: "soac" | "ready" | "error" | "rtp",
       data: object(OfferAnswer) | object(CandidateMessage)  /*If status equals “soac”*/
           | (undefined/*If status equals “ready” and session is NOT for recording*/
           | string(Reason)/*If status equals “error”*/
-          | object(RtpSendParameters)  /* if status is "soac" and transport type is "quic" */
+          | object(RtpConfig)  /* if status is "rtp" */
     }
 
   object(SessionProgress)::
