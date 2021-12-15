@@ -369,6 +369,8 @@ var SocketIOServer = function(spec, portal, observer) {
   var that = {};
   var io;
   var clients = {};
+  const { setupMaster, setupWorker } = require("@socket.io/sticky");
+  const { createAdapter, setupPrimary } = require("@socket.io/cluster-adapter");
   // A Socket.IO server has a unique reconnection key. Client cannot reconnect to another Socket.IO server in the cluster.
   var reconnection_key = require('crypto').randomBytes(64).toString('hex');
   var sioOptions = {};
@@ -391,7 +393,7 @@ var SocketIOServer = function(spec, portal, observer) {
   }
 
   var startInsecure = function(port) {
-    var server = require('http').createServer().listen(port);
+    var server = require('http').createServer();//.listen(port);
     io = require('socket.io')(server, sioOptions);
     run();
     return Promise.resolve('ok');
@@ -408,7 +410,7 @@ var SocketIOServer = function(spec, portal, observer) {
             var constants = require('constants');
             option.secureOptions = (constants.SSL_OP_NO_TLSv1 | constants.SSL_OP_NO_TLSv1_1);
           }
-          var server = require('https').createServer(option).listen(port);
+          var server = require('https').createServer(option);//.listen(port);
           io = require('socket.io')(server, sioOptions);
           run();
           resolve('ok');
@@ -468,6 +470,11 @@ var SocketIOServer = function(spec, portal, observer) {
     clients = {};
     io && io.close();
     io = undefined;
+  };
+
+  that.setupWorkerAdapter = function() {
+    io && io.adapter(createAdapter());
+    setupWorker(io);
   };
 
   that.notify = function(participantId, event, data) {
