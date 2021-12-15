@@ -27,7 +27,17 @@ install_fdkaac(){
   local SRC_MD5SUM="13c04c5f4f13f4c7414c95d7fcdea50f"
 
   local LIST_LIBS=`ls ${PREFIX_DIR}/lib/libfdk* 2>/dev/null`
-  $INCR_INSTALL && [[ ! -z $LIST_LIBS ]] && echo "fdkaac already installed." && return 0
+  [ "$INCR_INSTALL" = true ] && [[ ! -z $LIST_LIBS ]] && \
+    echo "fdkaac already installed." && return 0
+
+  if [ "$CHECK_INSTALL" = true ]; then
+    if [[ ! -z $LIST_LIBS ]]; then
+      echo "libfdkaac - Yes"
+    else
+      echo "libfdkaac - No"
+    fi
+    return 0
+  fi
 
   mkdir -p ${LIB_DIR}
   pushd ${LIB_DIR}
@@ -53,7 +63,17 @@ install_ffmpeg(){
   local SRC_MD5SUM="9985185a8de3678e5b55b1c63276f8b5"
 
   local LIST_LIBS=`ls ${PREFIX_DIR}/lib/libav* 2>/dev/null`
-  $INCR_INSTALL && [[ ! -z $LIST_LIBS ]] && echo "ffmpeg already installed." && return 0
+  [ "$INCR_INSTALL" = true ]  && [[ ! -z $LIST_LIBS ]] && \
+  echo "ffmpeg already installed." && return 0
+
+  if [ "$CHECK_INSTALL" = true ]; then
+    if [[ ! -z $LIST_LIBS ]]; then
+      echo "ffmpeg - Yes"
+    else
+      echo "ffmpeg - No"
+    fi
+    return 0
+  fi
 
   mkdir -p ${LIB_DIR}
   pushd ${LIB_DIR}
@@ -78,7 +98,17 @@ install_zlib() {
   local VERSION="1.2.11"
 
   local LIST_LIBS=`ls ${PREFIX_DIR}/lib/libz* 2>/dev/null`
-  $INCR_INSTALL && [[ ! -z $LIST_LIBS ]] && echo "zlib already installed." && return 0
+  [ "$INCR_INSTALL" = true ]  && [[ ! -z $LIST_LIBS ]] && \
+  echo "zlib already installed." && return 0
+
+  if [ "$CHECK_INSTALL" = true ]; then
+    if [[ ! -z $LIST_LIBS ]]; then
+      echo "zlib - Yes"
+    else
+      echo "zlib - No"
+    fi
+    return 0
+  fi
 
   if [ -d $LIB_DIR ]; then
     pushd $LIB_DIR >/dev/null
@@ -100,7 +130,17 @@ install_zlib() {
 #libnice depends on zlib
 install_libnice0114(){
   local LIST_LIBS=`ls ${PREFIX_DIR}/lib/libnice* 2>/dev/null`
-  $INCR_INSTALL && [[ ! -z $LIST_LIBS ]] && echo "libnice already installed." && return 0
+  [ "$INCR_INSTALL" = true ] && [[ ! -z $LIST_LIBS ]] && \
+  echo "libnice already installed." && return 0
+
+  if [ "$CHECK_INSTALL" = true ]; then
+    if [[ ! -z $LIST_LIBS ]]; then
+      echo "libnice - Yes"
+    else
+      echo "libnice - No"
+    fi
+    return 0
+  fi
 
   if [ -d $LIB_DIR ]; then
     cd $LIB_DIR
@@ -122,7 +162,17 @@ install_libnice0114(){
 #libnice depends on zlib
 install_libnice014(){
   local LIST_LIBS=`ls ${PREFIX_DIR}/lib/libnice* 2>/dev/null`
-  $INCR_INSTALL && [[ ! -z $LIST_LIBS ]] && echo "libnice already installed." && return 0
+  [ "$INCR_INSTALL" = true ] && [[ ! -z $LIST_LIBS ]] && \
+  echo "libnice already installed." && return 0
+
+  if [ "$CHECK_INSTALL" = true ]; then
+    if [[ ! -z $LIST_LIBS ]]; then
+      echo "libnice - Yes"
+    else
+      echo "libnice - No"
+    fi
+    return 0
+  fi
 
   if [ -d $LIB_DIR ]; then
     cd $LIB_DIR
@@ -147,7 +197,17 @@ install_libnice014(){
 
 install_openssl(){
   local LIST_LIBS=`ls ${PREFIX_DIR}/lib/libssl* 2>/dev/null`
-  $INCR_INSTALL && [[ ! -z $LIST_LIBS ]] && echo "openssl already installed." && return 0
+  [ "$INCR_INSTALL" = true ] && [[ ! -z $LIST_LIBS ]] && \
+  echo "openssl already installed." && return 0
+
+  if [ "$CHECK_INSTALL" = true ]; then
+    if [[ ! -z $LIST_LIBS ]]; then
+      echo "openssl - Yes"
+    else
+      echo "openssl - No"
+    fi
+    return 0
+  fi
 
   if [ -d $LIB_DIR ]; then
     local SSL_BASE_VERSION="1.1.1"
@@ -174,7 +234,17 @@ install_openssl(){
 
 install_openh264(){
   local LIST_LIBS=`ls ${ROOT}/third_party/openh264/libopenh264* 2>/dev/null`
-  $INCR_INSTALL && [[ ! -z $LIST_LIBS ]] && echo "openh264 already installed." && return 0
+  [ "$INCR_INSTALL" = true ] && [[ ! -z $LIST_LIBS ]] && \
+  echo "openh264 already installed." && return 0
+
+  if [ "$CHECK_INSTALL" = true ]; then
+    if [[ ! -z $LIST_LIBS ]]; then
+      echo "openh264 - Yes"
+    else
+      echo "openh264 - No"
+    fi
+    return 0
+  fi
 
   MAJOR=1
   MINOR=7
@@ -215,7 +285,16 @@ install_openh264(){
 
 install_libexpat() {
   local LIST_LIBS=`ls ${PREFIX_DIR}/lib/libexpat* 2>/dev/null`
-  $INCR_INSTALL && [[ ! -z $LIST_LIBS ]] && echo "libexpat already installed." && return 0
+  if [ "$CHECK_INSTALL" = true ]; then
+    if [[ ! -z $LIST_LIBS ]]; then
+      echo "libexpat - Yes"
+    else
+      echo "libexpat - No"
+    fi
+    return 0
+  fi
+  [ "$INCR_INSTALL" = true ] && [[ ! -z $LIST_LIBS ]] && \
+  echo "libexpat already installed." && return 0
 
   if [ -d $LIB_DIR ]; then
     local VERSION="2.2.6"
@@ -238,8 +317,16 @@ install_libexpat() {
 
 install_webrtc88(){
   local OWT_WEBRTC_PATH="$ROOT/third_party/webrtc-m88"
+  if [ "$CHECK_INSTALL" = true ]; then
+    if [[ -s $OWT_WEBRTC_PATH/libwebrtc.a ]]; then
+      echo "webrtc88 - Yes"
+    else
+      echo "webrtc88 - No"
+    fi
+    return 0
+  fi
 
-  $INCR_INSTALL &&  [[ -s $OWT_WEBRTC_PATH/libwebrtc.a ]] && \
+  [ "$INCR_INSTALL" = true ] &&  [[ -s $OWT_WEBRTC_PATH/libwebrtc.a ]] && \
   echo "libwebrtc already installed." && return 0
 
   [[ ! -d $OWT_WEBRTC_PATH ]] && \
@@ -251,7 +338,17 @@ install_webrtc88(){
 }
 
 install_webrtc(){
-  $INCR_INSTALL &&  [[ -s $ROOT/third_party/webrtc/libwebrtc.a ]] && \
+  install_webrtc88
+
+  if [ "$CHECK_INSTALL" = true ]; then
+    if [[ -s $ROOT/third_party/webrtc/libwebrtc.a ]]; then
+      echo "libwebrtc - Yes"
+    else
+      echo "libwebrtc - No"
+    fi
+    return 0
+  fi
+  [ "$INCR_INSTALL" = true ] &&  [[ -s $ROOT/third_party/webrtc/libwebrtc.a ]] && \
   echo "libwebrtc already installed." && return 0
 
   export GIT_SSL_NO_VERIFY=1
@@ -273,12 +370,19 @@ install_webrtc(){
   ./src/tools-woogeen/install.sh
   ./src/tools-woogeen/build.sh
   popd
-
-  install_webrtc88
 }
 
 install_licode(){
-  $INCR_INSTALL && [[ -d ${ROOT}/third_party/licode ]] && echo "licode already installed." && return 0
+  if [ "$CHECK_INSTALL" = true ]; then
+    if [[ -d ${ROOT}/third_party/licode ]]; then
+      echo "licode - Yes"
+    else
+      echo "licode - No"
+    fi
+    return 0
+  fi
+  [ "$INCR_INSTALL" = true ] && [[ -d ${ROOT}/third_party/licode ]] && \
+  echo "licode already installed." && return 0
 
   local COMMIT="8b4692c88f1fc24dedad66b4f40b1f3d804b50ca" #v6
   local LINK_PATH="$ROOT/source/agent/webrtc/webrtcLib"
@@ -301,6 +405,18 @@ install_licode(){
 }
 
 install_quic(){
+  local LIST_LIBS=`ls ${PREFIX_DIR}/lib/libowt_web_transport.so 2>/dev/null`
+  if [ "$CHECK_INSTALL" = true ]; then
+    if [[ ! -z $LIST_LIBS ]]; then
+      echo "quic - Yes"
+    else
+      echo "quic - No"
+    fi
+    return 0
+  fi
+  [ "$INCR_INSTALL" = true ] && [[ ! -z $LIST_LIBS ]] && \
+  echo "quic already installed." && return 0
+
   # QUIC IO
   rm $ROOT/third_party/quic-lib -rf
   mkdir $ROOT/third_party/quic-lib
@@ -351,7 +467,16 @@ install_nicer(){
 
 install_libsrtp2(){
   local LIST_LIBS=`ls ${PREFIX_DIR}/lib/libsrtp2* 2>/dev/null`
-  $INCR_INSTALL && [[ ! -z $LIST_LIBS ]] && echo "libsrtp2 already installed." && return 0
+  if [ "$CHECK_INSTALL" = true ]; then
+    if [[ ! -z $LIST_LIBS ]]; then
+      echo "libsrtp2 - Yes"
+    else
+      echo "libsrtp2 - No"
+    fi
+    return 0
+  fi
+  [ "$INCR_INSTALL" = true ] && [[ ! -z $LIST_LIBS ]] && \
+  echo "libsrtp2 already installed." && return 0
 
   if [ -d $LIB_DIR ]; then
     cd $LIB_DIR
@@ -370,13 +495,21 @@ install_libsrtp2(){
 
 install_node() {
   local NODE_VERSION="v14"
-  echo -e "\x1b[32mInstalling nvm...\x1b[0m"
   NVM_DIR="${HOME}/.nvm"
 
-  $INCR_INSTALL && [[ -s "${NVM_DIR}/nvm.sh" ]] && \
+  if [ "$CHECK_INSTALL" = true ]; then
+    if [[ -s "${NVM_DIR}/nvm.sh" ]]; then
+      echo "node - Yes"
+    else
+      echo "node - No"
+    fi
+    return 0
+  fi
+  [ "$INCR_INSTALL" = true ] && [[ -s "${NVM_DIR}/nvm.sh" ]] && \
   echo "node already installed." && return 0
 
-  #install nvm
+  echo -e "\x1b[32mInstalling nvm...\x1b[0m"
+  # install nvm
   bash "${PATHNAME}/install_nvm.sh"
   #install node
   [[ -s "${NVM_DIR}/nvm.sh" ]] && . "${NVM_DIR}/nvm.sh"
@@ -386,6 +519,15 @@ install_node() {
 }
 
 install_node_tools() {
+  if [ "$CHECK_INSTALL" = true ]; then
+    npm list -g node-gyp > /dev/null 2>&1
+    if [ $? -eq 0 ]; then
+      echo "node_tools - Yes"
+    else
+      echo "node_tools - No"
+    fi
+    return 0
+  fi
   if [ "${INCR_INSTALL}" == "true" ]; then
     npm list -g node-gyp > /dev/null 2>&1
     [ $? -eq 0 ] && echo "node tools already installed." && return 0
@@ -404,7 +546,16 @@ install_node_tools() {
 # libre depends on openssl
 install_libre() {
   local LIST_LIBS=`ls ${PREFIX_DIR}/lib/libre* 2>/dev/null`
-  $INCR_INSTALL && [[ ! -z $LIST_LIBS ]] && echo "libre already installed." && return 0
+  if [ "$CHECK_INSTALL" = true ]; then
+    if [[ ! -z $LIST_LIBS ]]; then
+      echo "libre - Yes"
+    else
+      echo "libre - No"
+    fi
+    return 0
+  fi
+  [ "$INCR_INSTALL" = true ] && [[ ! -z $LIST_LIBS ]] && \
+  echo "libre already installed." && return 0
 
   if [ -d $LIB_DIR ]; then
     pushd ${LIB_DIR} >/dev/null
@@ -424,7 +575,16 @@ install_libre() {
 
 install_usrsctp() {
   local LIST_LIBS=`ls ${PREFIX_DIR}/lib/libusrsctp* 2>/dev/null`
-  $INCR_INSTALL && [[ ! -z $LIST_LIBS ]] && echo "usrsctp already installed." && return 0
+  if [ "$CHECK_INSTALL" = true ]; then
+    if [[ ! -z $LIST_LIBS ]]; then
+      echo "usrsctp - Yes"
+    else
+      echo "usrsctp - No"
+    fi
+    return 0
+  fi
+  [ "$INCR_INSTALL" = true ] && [[ ! -z $LIST_LIBS ]] && \
+  echo "usrsctp already installed." && return 0
 
   if [ -d $LIB_DIR ]; then
     local USRSCTP_VERSION="30d7f1bd0b58499e1e1f2415e84d76d951665dc8"
@@ -492,6 +652,18 @@ install_gcc(){
 }
 
 install_json_hpp() {
+  local LIST_LIBS=`ls ${PREFIX_DIR}/include/json.hpp 2>/dev/null`
+  if [ "$CHECK_INSTALL" = true ]; then
+    if [[ ! -z $LIST_LIBS ]]; then
+      echo "json_hpp - Yes"
+    else
+      echo "json_hpp - No"
+    fi
+    return 0
+  fi
+  [ "$INCR_INSTALL" = true ] && [[ ! -z $LIST_LIBS ]] && \
+  echo "json_hpp already installed." && return 0
+
   if [ -d $LIB_DIR ]; then
     local DOWNLOAD_JSON_LINK="https://github.com/nlohmann/json/releases/download/v3.6.1/json.hpp"
     pushd $LIB_DIR >/dev/null
@@ -506,32 +678,44 @@ install_json_hpp() {
 }
 
 install_svt_hevc(){
-    pushd $ROOT/third_party >/dev/null
-    rm -rf SVT-HEVC
-    git clone https://github.com/intel/SVT-HEVC.git
-
-    pushd SVT-HEVC >/dev/null
-    git checkout v1.3.0
-
-    if [[ "$OS" =~ .*centos.* ]]
-    then
-      source /opt/rh/devtoolset-7/enable
+  local LIST_LIBS=`ls ${PREFIX_DIR}/lib/libSvtHevcEnc* 2>/dev/null`
+  if [ "$CHECK_INSTALL" = true ]; then
+    if [[ ! -z $LIST_LIBS ]]; then
+      echo "svt_hevc - Yes"
+    else
+      echo "svt_hevc - No"
     fi
+    return 0
+  fi
+  [ "$INCR_INSTALL" = true ] && [[ ! -z $LIST_LIBS ]] && \
+  echo "svt_hevc already installed." && return 0
 
-    mkdir -p build
-    pushd build >/dev/null
-    cmake -DCMAKE_C_FLAGS="-std=gnu99" -DCMAKE_INSTALL_PREFIX=${PREFIX_DIR} ..
-    make && make install
-    popd >/dev/null
+  pushd $ROOT/third_party >/dev/null
+  rm -rf SVT-HEVC
+  git clone https://github.com/intel/SVT-HEVC.git
 
-    # pseudo lib
-    echo \
-        'const char* stub() {return "this is a stub lib";}' \
-        > pseudo-svtHevcEnc.cpp
-    gcc pseudo-svtHevcEnc.cpp -fPIC -shared -o pseudo-svtHevcEnc.so
+  pushd SVT-HEVC >/dev/null
+  git checkout v1.3.0
 
-    popd >/dev/null
-    popd >/dev/null
+  if [[ "$OS" =~ .*centos.* ]]
+  then
+    source /opt/rh/devtoolset-7/enable
+  fi
+
+  mkdir -p build
+  pushd build >/dev/null
+  cmake -DCMAKE_C_FLAGS="-std=gnu99" -DCMAKE_INSTALL_PREFIX=${PREFIX_DIR} ..
+  make && make install
+  popd >/dev/null
+
+  # pseudo lib
+  echo \
+      'const char* stub() {return "this is a stub lib";}' \
+      > pseudo-svtHevcEnc.cpp
+  gcc pseudo-svtHevcEnc.cpp -fPIC -shared -o pseudo-svtHevcEnc.so
+
+  popd >/dev/null
+  popd >/dev/null
 }
 
 cleanup_common(){
@@ -548,6 +732,18 @@ cleanup_common(){
 }
 
 install_boost(){
+  local LIST_LIBS=`ls ${PREFIX_DIR}/lib/libboost* 2>/dev/null`
+  if [ "$CHECK_INSTALL" = true ]; then
+    if [[ ! -z $LIST_LIBS ]]; then
+      echo "boost - Yes"
+    else
+      echo "boost - No"
+    fi
+    return 0
+  fi
+  [ "$INCR_INSTALL" = true ] && [[ ! -z $LIST_LIBS ]] && \
+  echo "boost already installed." && return 0
+
   if [ -d $LIB_DIR ]; then
     cd $LIB_DIR
     wget -c http://iweb.dl.sourceforge.net/project/boost/boost/1.65.0/boost_1_65_0.tar.bz2
