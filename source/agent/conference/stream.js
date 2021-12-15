@@ -327,10 +327,13 @@ class MixedStream extends Stream {
   constructor(id, viewLabel) {
     const view = config.views.find(v => v.label === viewLabel);
     const info = {label: viewLabel, activeInput: 'unknown', layout: []};
-    const media = {
-      audio: Object.assign({}, view.audio.format),
-      video: Object.assign({}, view.video.format, view.video.parameters)
-    };
+    const media = {};
+    if (view.audio) {
+      media.audio = Object.assign({}, view.audio.format);
+    }
+    if (view.video) {
+      media.video = Object.assign({}, view.video.format, view.video.parameters);
+    }
     super(id, 'mixed', media, null, info);
   }
 }
