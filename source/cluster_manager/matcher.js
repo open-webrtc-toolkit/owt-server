@@ -173,6 +173,8 @@ exports.create = function (purpose) {
             return new analyticsMatcher();
         case 'quic':
             return new generalMatcher();
+        case 'mediabridge':
+            return new generalMatcher();
         default:
             log.warn('Invalid specified purpose:', purpose, ', apply general-matcher instead.');
             return new generalMatcher();

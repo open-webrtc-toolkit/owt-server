@@ -1,31 +1,42 @@
 {
-  "name": "event-bridge",
-  "dest": "eventbridge",
+  "name": "media-bridge",
+  "dest": "media_bridge",
   "common": {
       "package": "package.json",
       "files": [
           "agent.toml",
           "log4js_configuration.json",
           "index.js",
-          "eventCascading.js",
-          "rpcRequest.js",
           "configLoader.js",
+          "../index.js",
+          "../networkHelper.js",
+          "../nodeManager.js",
+          "../workingNode.js",
           "log4cxx.properties",
-          "../common/amqpClient.js",
-          "../common/cipher.js",
-          "../common/clusterWorker.js",
-          "../common/loadCollector.js",
-          "../common/logger.js",
-          "../common/makeRPC.js",
-          "../common/rpcChannel.js",
-          "../../scripts/release/initcert.js",
-          "../../scripts/release/initauth.js",
-          "../../scripts/detectOS.sh"
+          "../../common/amqpClient.js",
+          "../../common/cipher.js",
+          "../../common/clusterWorker.js",
+          "../../common/loadCollector.js",
+          "../../common/logger.js",
+          "../../common/makeRPC.js",
+          "../../common/rpcChannel.js",
+          "../../../scripts/release/initcert.js",
+          "../../../scripts/release/initauth.js",
+          "../../../scripts/detectOS.sh"
       ],
       "folders": {
+          "mediabridge": [
+              "index.js",
+              "rpcRequest.js",
+              "quicTransportStreamPipeline.js",
+              "../connections.js",
+              "../../common/makeRPC.js",
+              "../../common/rpcChannel.js",
+              "../internalConnectionRouter.js"
+          ],
           "cert": [
-              "../../cert/certificate.pfx",
-              "../../cert/.owt.keystore"
+              "../../../cert/certificate.pfx",
+              "../../../cert/.owt.keystore"
           ]
       }
   },
@@ -33,8 +44,12 @@
       "libdist": "lib",
       "addons": [
           {
-              "folder": "../agent/addons/quicCascading",
+              "folder": "../addons/quicCascading",
               "name": "quicCascading"
+          },
+          {
+              "folder": "../addons/internalIO",
+              "name": "internalIO"
           },
           {
               "folder": "../addons/logger",
@@ -42,5 +57,5 @@
           }
       ]
   },
-  "start": "node . -U eventbridge"
+  "start": "node . -U mediabridge"
 }

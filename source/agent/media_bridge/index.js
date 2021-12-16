@@ -15,13 +15,11 @@
 // all agents. They are defined in base-agent.js.
 
 'use strict';
-const logger = require('../logger').logger;
-const QuicTransportServer = require('./webtransport/quicTransportServer');
+var logger = require('../logger').logger;
+var log = logger.getLogger('MediaBridge');
+var addon = require('../quicCascading/build/Release/quicCascading.node');
 const QuicTransportStreamPipeline =
-    require('./webtransport/quicTransportStreamPipeline');
-const log = logger.getLogger('QuicNode');
-const addon = require('./build/Release/quic');
-const cipher = require('../cipher');
+    require('./quicTransportStreamPipeline');
 const path = require('path');
 const {InternalConnectionRouter} = require('./internalConnectionRouter');
 const audioTrackId = '00000000000000000000000000000001';
@@ -31,6 +29,7 @@ log.info('QUIC transport node.')
 
 module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
     const rpcChannel = require('./rpcChannel')(rpcClient);
+    const rpcReq = require('./rpcRequest')(rpcChannel);
     const that = {
       agentID: parentRpcId,
       clusterIP: clusterWorkerIP
@@ -45,9 +44,13 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
     const publicationOptions = new Map();
     const subscriptionOptions = new Map();
     let quicTransportServer;
+    let clusters = {};
+    var cf = 'leaf_cert.pem';
+    var kf = 'leaf_cert.pkcs8';
     const clusterName = global && global.config && global.config.cluster ?
         global.config.cluster.name :
         undefined;
+    var port = global && global.config && global.config.bridge ? global.config.bridge.port : 8700;
 
     const getConferenceController = async (roomId) => {
       return await rpcChannel.makeRPC(clusterName, 'schedule', [
@@ -73,54 +76,6 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
           controller, 'onSessionProgress', [sessionId, direction, status]);
     };
 
-    const keystore = path.resolve(path.dirname(global.config.quic.keystorePath), cipher.kstore);
-    cipher.unlock(cipher.k, keystore, (error, password) => {
-      if (error) {
-        log.error('Failed to read certificate and key.');
-        return;
-      }
-      log.info('path is '+path.resolve(global.config.quic.keystorePath));
-      quicTransportServer = new QuicTransportServer(
-          addon, global.config.quic.port, path.resolve(global.config.quic.keystorePath),
-          password, validateToken);
-      quicTransportServer.start();
-      quicTransportServer.on('streamadded', (stream) => {
-        log.debug(
-            'A stream with session ID ' + stream.contentSessionId +
-            ' is added.');
-        if (outgoingStreamPipelines.has(stream.contentSessionId)) {
-          const pipeline = outgoingStreamPipelines.get(stream.contentSessionId);
-          pipeline.quicStream(stream);
-        } else if (frameSourceMap.has(stream.contentSessionId)) {
-          if (!publicationOptions.has(stream.contentSessionId)) {
-            log.warn(
-                'Cannot find publication options for session ' +
-                stream.contentSessionId);
-            stream.close();
-          }
-          const options = publicationOptions.get(stream.contentSessionId);
-          // Only publications for media have tracks.
-          if (options.tracks && options.tracks.length) {
-            stream.readTrackId();
-          } else {
-            stream.trackKind = 'data';
-            frameSourceMap.get(stream.contentSessionId).addInputStream(stream);
-          }
-        } else {
-          log.warn(
-              'Cannot find a pipeline for QUIC stream. Content session ID: ' +
-              stream.contentSessionId);
-          stream.close();
-          return;
-        }
-      });
-      quicTransportServer.on('connectionadded', (connection) => {
-        log.debug(
-            'A connection for transport ID ' + connection.transportId +
-            ' is created.');
-      });
-    });
-
     const createFrameSource = (streamId, options, callback) => {
       if (frameSourceMap.has(streamId)) {
         callback('callback', {
@@ -134,12 +89,10 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
     };
 
     const createStreamPipeline =
-        function(streamId, direction, options, callback) {
+        function(streamId, direction, options) {
       // Client is expected to create a QuicTransport before sending publish or
       // subscription requests.
-      const streamPipeline = new QuicTransportStreamPipeline(streamId, status=>{
-        notifyStatus(options.controller, streamId, direction, status)
-      });
+      const streamPipeline = new QuicTransportStreamPipeline(streamId);
       // If a stream pipeline already exists, just replace the old.
       let pipelineMap;
       if (direction === 'in') {
@@ -223,11 +176,12 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
     that.getInternalAddress = function(callback) {
         const ip = global.config.internal.ip_address;
         const port = router.internalPort;
+        log.info("getInternalAddress ip:", ip, " port:", port);
         callback('callback', {ip, port});
     };
 
     // functions: publish, unpublish, subscribe, unsubscribe, linkup, cutoff
-    that.publish = function(connectionId, connectionType, options, callback) {
+    that.subscribe = function(connectionId, connectionType, options, callback) {
         log.debug('publish, connectionId:', connectionId, 'connectionType:', connectionType, 'options:', options);
         if (router.getConnection(connectionId)) {
             return callback('callback', {type: 'failed', reason: 'Connection already exists:'+connectionId});
@@ -235,12 +189,39 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
 
         var conn = null;
         switch (connectionType) {
-        case 'quic':
-            publicationOptions.set(connectionId, options);
+        case 'mediabridge':
+            subscriptionOptions.set(connectionId, options);
             conn = createFrameSource(connectionId, 'in', options, callback);
             if (!conn) {
                 return;
             }
+
+            options.connectionId = connectionId;
+            log.info("Create quic stream to receive subscribed stream from remote cluster, clusters:", clusters);
+            var quicStream = clusters[options.cluster].createBidirectionalStream();
+            var streamID = quicStream.getId();
+
+            var info = {
+              type: 'subscribe',
+              options: options
+            }
+
+            quicStream.send(JSON.stringify(info));
+            
+            quicStream.onStreamData((msg) => {
+              log.info("quic client stream get data:", msg);
+              var event = JSON.parse(msg);
+              if (event.type === 'ready') {
+                var info = {
+                  type: 'cluster',
+                  cluster: data.selfCluster
+                }
+                quicStream.send(JSON.stringify(info));
+              } else if (event.type === 'publish') {
+
+              }
+            })
+
             break;
         default:
             log.error('Connection type invalid:' + connectionType);
@@ -274,7 +255,7 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
         }
     };
 
-    that.subscribe = function (connectionId, connectionType, options, callback) {
+    that.publish = function (connectionId, connectionType, options, callback) {
         if (connectionType == 'mediabridge') {
             if (options.transport && options.transport.type) {
                 connectionType = options.transport.type;
@@ -285,18 +266,10 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
             return callback('callback', {type: 'failed', reason: 'Connection already exists:'+connectionId});
         }
 
-        if (server_controllers[options.controller]) {
-
-        } else if(client_controllers[options.controller]) {
-
-        } else {
-
-        }
-
         var conn = null;
         switch (connectionType) {
             case 'quic':
-                conn = createStreamPipeline(connectionId, 'out', options, callback);
+                conn = createStreamPipeline(connectionId, 'out', options);
                 const stream = quicTransportServer.createSendStream(options.transport.id, connectionId);
                 conn.quicStream(stream);
                 if (!conn) {
@@ -344,32 +317,161 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
         router.onFaultDetected(message);
     };
 
-    that.startEventCascading = function (data) {
-    var clientID = data.evIP.replace(/\./g, '-') + '-' + data.evPort;
-    log.info("startEventCascading with data:", data, " clientID:", clientID);
-    if(!clients[clientID]) {
-      const controller = await getConferenceController(data.room);
-      var client = new quicCas.out(data.evIP, data.evPort);
-      clients[clientID] = true;
-      client.addEventListener('newstream', function (msg) {
-        var info = JSON.parse(msg);
-        log.info("Get new stream:", info);
-        client.controller = controller;
-        var quicinfo = {session: info.sessionId, stream: info.streamId, client: client};
-        if (!client_controllers[controller]) {
-          client_controllers[controller] = {};
-        }
+    const createQuicStream = (controller, clusterID, initialized, data) => {
+      log.info("Create quic stream with controller:", controller, " clientID:", clientID, " and data:",data);
+      var quicStream = clusters[clusterID].createBidirectionalStream();
+      var streamID = quicStream.getId();
 
-        if (!client_controllers[controller][clientID]) {
-          client_controllers[controller][clientID] = {};
+      if (!initialized) {
+        //Client create initialized stream to exchange cluster info for this session
+        var info = {
+          type: 'ready'
         }
-        client_controllers[controller][clientID] = quicinfo;
-      });
-    } else {
-      log.debug('Cluster already cascaded');
-      return Promise.resolve('ok');
+        quicStream.send(JSON.stringify(info));
+        
+        quicStream.onStreamData((msg) => {
+          log.info("quic client stream get data:", msg);
+          var event = JSON.parse(msg);
+          if (event.type === 'ready') {
+            var info = {
+              type: 'cluster',
+              cluster: data.selfCluster
+            }
+            quicStream.send(JSON.stringify(info));
+          }
+        })
+      } else {
+        var info = {
+          type: 'subscribe',
+          options: data
+        }
+        quicStream.send(JSON.stringify(info));
+        
+        quicStream.onStreamData((msg) => {
+          log.info("quic client stream get data:", msg);
+          var event = JSON.parse(msg);
+          if (event.type === 'ready') {
+            var info = {
+              type: 'cluster',
+              cluster: data.selfCluster
+            }
+            quicStream.send(JSON.stringify(info));
+          } else if (event.type === 'publish') {
+
+          }
+        })
+      }      
     }
+
+    that.startCascading = function (data) {
+        log.info("startEventCascading with data:", data);
+
+        //A new conference request between uncascaded clusters
+        if(!clusters[data.targetCluster]) {
+          return rpcReq.getController(clusterName, data.room)
+            .then(function(controller) {
+              log.info("Client get controller:", controller);
+              var client = new addon.QuicTransportClient(data.mediaIP, data.mediaPort);
+              client.connected = false;
+              client.connect();
+              client.id = data.targetCluster;
+              clusters[data.targetCluster] = client
+              client.onConnection(() => {
+                log.info("Quic client connected");
+                client.connected = true;
+
+                log.info("Create quic stream with controller:", controller, " and data:",data);
+                var quicStream = clusters[data.targetCluster].createBidirectionalStream();
+                var streamID = quicStream.getId();
+
+                //Client create initialized stream to exchange cluster info for this session
+                var info = {
+                  type: 'ready'
+                }
+                quicStream.send(JSON.stringify(info));
+                
+                quicStream.onStreamData((msg) => {
+                  log.info("quic client stream get data:", msg);
+                  var event = JSON.parse(msg);
+                  if (event.type === 'ready') {
+                    var info = {
+                      type: 'cluster',
+                      cluster: data.selfCluster
+                    }
+                    quicStream.send(JSON.stringify(info));
+                  }
+                })       
+              });
+            });
+        } else {
+            log.debug('Cluster already cascaded');
+            return Promise.resolve('ok');
+        }
+    }
+
+    const subscribeFromLocal = (controller, info) => {
+        log.info("Subscribe to controller:", controller, " with info", info);
+        info.type = 'mediabridge';
+        info.locality = {agent: parentRpcId, node: selfRpcId};
+        var connectionId = info.connectionId;
+        rpcReq.getController(clusterName, info.room)
+            .then(function(controller) {
+            log.info("Subscribe connection id:", connectionId, " with info:", info.media.tracks);
+            rpcReq.subscribe(controller, 'admin', connectionId, info);
+        });
+    }
+
+    const start = function () {
+      var server = new addon.QuicTransportServer(port, cf, kf);
+
+      server.start();
+      server.onNewSession((session) => {
+      session.connected = true;
+
+      log.info("Server get new session:");
+      session.onNewStream((quicStream) => {
+      log.info("Server get new stream:", quicStream);
+        var streamId = quicStream.getId();
+        quicStream.onStreamData((msg) => {
+          var info = JSON.parse(msg);
+          log.info("Server get stream data:", info);
+          if (info.type === 'cluster') {
+            session.id = info.cluster;
+            clusters[info.cluster] = session;
+            rpcReq.getController(clusterName, info.room)
+            .then(function(controller) {
+               quicStream.controller = controller; 
+            });
+          } else if (info.type === 'ready') {
+            var data = {
+              type: 'ready'
+            }
+            quicStream.send(JSON.stringify(data));
+          } else if (info.type === 'subscribe') {
+            info.options.type = 'mediabridge';
+            info.options.locality = {agent: parentRpcId, node: selfRpcId};
+            var connectionId = info.options.connectionId;
+            rpcReq.getController(clusterName, info.options.room)
+                .then(function(controller) {
+                quicStream.controller = controller; 
+                log.info("Subscribe to controller:", controller, "connection id:", connectionId, " with info:", info.options.media.tracks);
+
+                var conn = createStreamPipeline(connectionId, 'out', info.options);
+                conn.quicStream(quicStream);
+                if (!conn) {
+                    return;
+                }
+
+                rpcReq.subscribe(controller, 'admin', connectionId, info.options);
+                router.addLocalDestination(connectionId, info.options.type, conn);
+            });
+          }
+        });
+      })
+    });
   }
+
+  start();
 
     return that;
 };

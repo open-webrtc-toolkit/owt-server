@@ -357,11 +357,10 @@ class SelectedStream extends ForwardStream {
 
 class CascadedStream extends ForwardStream {
 
-  constructor(id, media, data, info, locality, quicsession, quicstream, cascading) {
+  constructor(id, media, data, info, locality, cluster, cascading) {
     super(id, media, data, info, locality);
     this.cascading = cascading;
-    this.quicsession =  quicsession;
-    this.quicstream = quicstream;
+    this.cluster =  cluster;
   }
 }
 

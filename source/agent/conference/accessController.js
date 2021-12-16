@@ -223,6 +223,12 @@ module.exports.create = function(spec, rpcReq, on_session_established, on_sessio
         var options = {
           controller: self_rpc_id
         };
+
+        if (sessionOptions.type === 'mediabridge') {
+          options.originType = sessionOptions.originType;
+          options.cluster = sessionOptions.cluster;
+          options.room = sessionOptions.room;
+        }
         sessionOptions.connection && (options.connection = sessionOptions.connection);
         sessionOptions.transport && (options.transport = sessionOptions.transport);
         sessionOptions.media && (options.media = sessionOptions.media);

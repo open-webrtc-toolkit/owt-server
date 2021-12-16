@@ -494,21 +494,61 @@ exports.notifySipPortal = function (changeType, room, callback) {
     }});
 };
 
-exports.startEventCascading = function (pubReq, callback) {
+const getMediaBridge = (roomId, task) => {
+  return new Promise((resolve, reject) => {
+    rpc.callRpc(cluster_name, 'schedule', ['mediabridge', task, 'preference', 30 * 1000], {callback: function (result) {
+        if (result === 'timeout' || result === 'error') {
+            reject('Error in scheduling media bridge');
+        } else {
+            rpc.callRpc(result.id, 'getNode', [{room:roomId, task:task}], {callback: function (result) {
+                if (result === 'timeout' || result === 'error') {
+                    reject('Error in scheduling media bridge node');
+                } else {
+                    resolve(result);
+                }
+            }});
+        }
+    }});
+  });
+};
+
+const startEventCascading = (pubReq) => {
+
+}
+
+const startMediaCascading = (pubReq) => {
+  
+}
+
+
+exports.startCascading = function (pubReq, callback) {
   var roomId = pubReq.room;
   var token = Math.floor(Math.random() * 100000000000) + '';
   return validateId('Room ID', roomId)
     .then((ok) => {
       return validateReq('cascading-req', pubReq);
     }).then((ok) => {
-      rpc.callRpc('eventbridge', 'startCascading', [pubReq], {callback: function (result) {
+      return new Promise((resolve, reject) => {
+        rpc.callRpc('eventbridge', 'startCascading', [pubReq], {callback: function (result) {
+          if (result === 'error' || result === 'timeout') {
+            reject('error');
+          } else {
+            resolve(result);
+          }
+        }}, 90 * 1000);
+      });
+    }).then((ok) => {
+      return getMediaBridge(roomId, pubReq.targetCluster);
+    }).then((bridge) => {
+      rpc.callRpc(bridge, 'startCascading', [pubReq], {callback: function (result) {
         if (result === 'error' || result === 'timeout') {
           callback('error');
         } else {
           callback(result);
         }
       }}, 90 * 1000);
-    }).catch((err) => {
+    })
+    .catch((err) => {
       callback('error');
     });
 }

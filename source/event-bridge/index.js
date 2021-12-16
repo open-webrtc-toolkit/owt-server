@@ -101,14 +101,15 @@ event_cascading = require('./eventCascading')({port: config.bridge.port,
                                                  clusterName: config.cluster.name,
                                                  selfRpcId: id},
                                                  rpcReq);
-  return event_cascading.start()
+  event_cascading.start();
+  /*return event_cascading.start()
     .then(function() {
       log.info('start event bridge server ok.');
     })
     .catch(function(err) {
       log.error('Failed to start servers, reason:', err && err.message);
       throw err;
-    });
+    });*/
 };
 
 var stopServers = function() {
@@ -135,7 +136,7 @@ var rpcPublic = {
     callback('callback', 'ok');
   },
   startCascading: function(data, callback) {
-    event_cascading && event_cascading.startEventCascading(data);
+    event_cascading && event_cascading.startCascading(data);
     callback('callback', 'ok');
   }
 };
@@ -143,7 +144,7 @@ var rpcPublic = {
 amqper.connect(config.rabbit, function () {
   amqper.asRpcClient(function(rpcClnt) {
     rpcClient = rpcClnt;
-    log.info('bridge initializing as rpc client ok');
+    log.info('bridge initializing as rpc client ok and client is:', rpcClnt);
       log.info('bridge join cluster ok, with rpcID eventbridge');
         amqper.asRpcServer("eventbridge", rpcPublic, function(rpcSvr) {
           log.info('bridge initializing as rpc server ok');

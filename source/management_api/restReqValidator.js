@@ -565,6 +565,10 @@ const CascadingRequest = {
     'type': { 'const': 'cascading' },
     'evIP': { type: 'string' },
     'evPort': { type: 'string' },
+    'mediaIP': { type: 'string' },
+    'mediaPort': { type: 'string' },
+    'targetCluster': { type: 'string' },
+    'selfCluster': { type: 'string' },
     'room': {type: 'string'}
   },
   additionalProperties: false,

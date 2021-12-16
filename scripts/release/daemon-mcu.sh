@@ -183,6 +183,13 @@ case $startStop in
           > "${stdout}" 2>&1 </dev/null &
         echo $! > ${pid}
         ;;
+      media-bridge )
+        cd ${OWT_HOME}/media_bridge
+        export LD_LIBRARY_PATH=./lib:${LD_LIBRARY_PATH}
+        nohup nice -n ${OWT_NICENESS} node . -U mediabridge\
+          > "${stdout}" 2>&1 </dev/null &
+        echo $! > ${pid}
+        ;;
       analytics-agent )
         cd ${OWT_HOME}/analytics_agent
         export LD_LIBRARY_PATH=./lib:${LD_LIBRARY_PATH}

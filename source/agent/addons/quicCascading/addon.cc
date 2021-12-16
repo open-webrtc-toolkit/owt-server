@@ -6,6 +6,8 @@
 #include "QuicTransportSession.h"
 #include "QuicTransportServer.h"
 #include "QuicTransportClient.h"
+#include "QuicTransportFrameSource.h"
+#include "QuicTransportFrameDestination.h"
 #include <node.h>
 
 using namespace v8;
@@ -16,6 +18,8 @@ NAN_MODULE_INIT(InitAll)
   QuicTransportSession::init(target);
   QuicTransportServer::init(target);
   QuicTransportClient::init(target);
+  QuicTransportFrameSource::init(target);
+  QuicTransportFrameDestination::init(target);
 }
 
 NODE_MODULE(addon, InitAll)

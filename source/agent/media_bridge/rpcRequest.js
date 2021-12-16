@@ -8,11 +8,10 @@ var RpcRequest = function(rpcChannel) {
   var that = {};
 
   that.getController = function(clusterManager, roomId) {
-    return rpcChannel.makeRPC(clusterManager, 'schedule', ['conference', roomId, 'preference'/*TODO: specify preference*/, 30 * 1000]);
-    //return rpcChannel.makeRPC(clusterManager, 'schedule', ['conference', roomId, 'preference'/*TODO: specify preference*/, 30 * 1000])
-    //  .then(function(controllerAgent) {
-    //    return rpcChannel.makeRPC(controllerAgent.id, 'getNode', [{room: roomId, task: roomId}]);
-    //  });
+    return rpcChannel.makeRPC(clusterManager, 'schedule', ['conference', roomId, 'preference'/*TODO: specify preference*/, 30 * 1000])
+      .then(function(controllerAgent) {
+        return rpcChannel.makeRPC(controllerAgent.id, 'getNode', [{room: roomId, task: roomId}]);
+      });
   };
 
   that.join = function(controller, roomId, participant) {
@@ -48,7 +47,7 @@ var RpcRequest = function(rpcChannel) {
   };
 
   that.subscribe = function(controller, participantId, subscriptionId, Options) {
-    return rpcChannel.makeRPC(controller, 'subscribe', [participantId, subscriptionId, Options]);
+    return rpcChannel.makeRPC(controller, 'subscribe', [participantId, subscriptionId, Options], 4000);
   };
 
   that.unsubscribe = function(controller, participantId, subscriptionId) {

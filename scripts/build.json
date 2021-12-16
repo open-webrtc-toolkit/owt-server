@@ -119,6 +119,9 @@
     "quicCascading" : {
         "path" : "source/agent/addons/quicCascading"
     },
+    "mediaBridge" : {
+        "path" : "source/agent/addons/quicCascading"
+    },
     "resource-util" : {
         "path" : "source/agent/addons/resourceUtil"
     },

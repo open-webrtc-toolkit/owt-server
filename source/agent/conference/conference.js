@@ -669,7 +669,7 @@ var Conference = function (rpcClient, selfRpcId) {
 
     var fwdStream = null;
     if (casStreams[id]) {
-      fwdStream = new CascadedStream(id, media, data, info, locality, casStreams[id].quicsession, casStreams[id].quicstream, true);
+      fwdStream = new CascadedStream(id, media, data, info, locality, casStreams[id].cluster, true);
     } else {
       fwdStream = new ForwardStream(id, media, data, info, locality);
     }
@@ -709,7 +709,7 @@ var Conference = function (rpcClient, selfRpcId) {
                 if (casStreams[id]) {
                   delete casStreams[id];
                 } else {
-                  sendMsgTo('cascading', {rpcId: selfRpcId}, {type: "addStream", data: { id: id, media: media, data: data, info: info}});
+                  sendMsgTo('cascading', {rpcId: selfRpcId}, {type: "addStream", data: {cluster:global.config.cluster.id, id: id, media: media, data: data, info: info}});
                 }
               }
             }, 10);
@@ -738,7 +738,7 @@ var Conference = function (rpcClient, selfRpcId) {
                   if (casStreams[id]) {
                     delete casStreams[id];
                   } else {
-                    sendMsgTo('cascading', {rpcId: selfRpcId}, {type: "addStream", data: {id: id, media: media, data: data, info: info}});
+                    sendMsgTo('cascading', {rpcId: selfRpcId}, {type: "addStream", data: {cluster:global.config.cluster.id, id: id, media: media, data: data, info: info}});
                   }
                 }
               }, 10);
@@ -1250,6 +1250,9 @@ var Conference = function (rpcClient, selfRpcId) {
     } else if (streams[tsId]) {
       track = streams[tsId].media.tracks
         .find(t => t.type === type);
+    } else if (casStreams[tsId]) {
+      track = casStreams[tsId].media.tracks
+        .find(t => t.type === type);
     }
     return track;
   };
@@ -1422,11 +1425,13 @@ var Conference = function (rpcClient, selfRpcId) {
       streamId = videoTrack.from;
     }
 
+    log.info('subscribe, streamid is:', streamId, 'streams are:', streams, 'casStreams:', casStreams);
     if (!streams[streamId] && casStreams[streamId]) {
       log.info("Subscribe cascaded stream:", streamId);
+      subDesc.originType = subDesc.type;
       subDesc.type = 'mediabridge';
-      subDesc.sessionID = casStreams[streamId].quicsession;
-      subDesc.streamID = casStreams[streamId].quicstream;
+      subDesc.room = room_id;
+      subDesc.cluster = casStreams[streamId].cluster;
       initiateSubscription(subscriptionId, subDesc, {owner: participantId, type: subDesc.type});
       return accessController.initiate(participantId, subscriptionId, 'out', participants[participantId].getOrigin(), subDesc, format_preference)
       .then((result) => {
@@ -1445,6 +1450,14 @@ var Conference = function (rpcClient, selfRpcId) {
 
     if (subDesc.type === 'sip') {
       return addSubscription(subscriptionId, subDesc.locality, subDesc.media, subDesc.data, {owner: participantId, type: 'sip'}, subDesc.transport)
+      .then((result) => {
+        callback('callback', result);
+      })
+      .catch((e) => {
+        callback('callback', 'error', e.message ? e.message : e);
+      });
+    } else if (subDesc.type === 'mediabridge') {
+      return addSubscription(subscriptionId, subDesc.locality, subDesc.media, subDesc.data, {owner: participantId, type: 'mediabridge'}, subDesc.transport)
       .then((result) => {
         callback('callback', result);
       })
@@ -2911,7 +2924,7 @@ var Conference = function (rpcClient, selfRpcId) {
 
   var addCascadingStreams = function(msg) {
     log.info("Add cascading stream id:", msg.id, " data:", msg.data, " info:", msg.info, " media:", msg.media);
-    const fwdStream = new CascadedStream(msg.id, msg.media, msg.data, msg.info, null, msg.sessionID, msg.streamId, false);
+    const fwdStream = new CascadedStream(msg.id, msg.media, msg.data, msg.info, null, msg.cluster, false);
     const errMsg = fwdStream.checkMediaError();
     if (errMsg) {
       log.error(errMsg);
@@ -2932,7 +2945,7 @@ var Conference = function (rpcClient, selfRpcId) {
     if(data.streams) {
       for (var sid in data.streams) {
         log.info("initialize stream:", data.streams[sid]);
-        addCascadingStreams(data);
+        addCascadingStreams(data.streams[sid]);
       }
     }
   }
@@ -2992,6 +3005,7 @@ var Conference = function (rpcClient, selfRpcId) {
         if (streams[sid].type !== 'mixed') {
           if (!streams[sid].isInConnecting) {
             data.streams[sid] = streams[sid];
+            data.streams[sid].cluster = global.config.cluster.id;
           }
         }
       }

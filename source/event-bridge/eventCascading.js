@@ -105,7 +105,7 @@ var EventCascading = function(spec, rpcReq) {
     })
   }
 
-  that.startEventCascading = function (data) {
+  that.startCascading = function (data) {
     var clientID = data.evIP.replace(/\./g, '-') + '-' + data.evPort;
     log.info("startEventCascading with data:", data, " clientID:", clientID);
 
