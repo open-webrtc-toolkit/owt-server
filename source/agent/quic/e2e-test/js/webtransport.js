@@ -6,6 +6,14 @@
 
 const expect = chai.expect;
 
+// Convert certificate fingerprint string to WebTransport certificate hash.
+const convertFingerprintToHash = (fingerprint) => {
+  const values = fingerprint.split(':');
+  return Uint8Array.from(values, x => {
+    return parseInt(x, 16);
+  });
+};
+
 describe('WebTransport end to end tests.', function() {
   it('Write an array and check data received.', (done) => {
     // Prepare data.
@@ -32,8 +40,13 @@ describe('WebTransport end to end tests.', function() {
     createToken(undefined, 'user', 'presenter', async (token) => {
       const conference = new Owt.Conference.ConferenceClient({
         webTransportConfiguration: {
-          serverCertificateFingerprints:
-              [{value: __karma__.config.cert_fingerprint, algorithm: 'sha-256'}]
+          serverCertificateFingerprints: [
+            {value: __karma__.config.cert_fingerprint, algorithm: 'sha-256'}
+          ],
+          serverCertificateHashes: [{
+            value: convertFingerprintToHash(__karma__.config.cert_fingerprint),
+            algorithm: 'sha-256'
+          }],
         }
       });
       let resolveSubscribed;
