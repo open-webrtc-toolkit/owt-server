@@ -13,6 +13,7 @@ CLEANUP=false
 NIGHTLY=false
 NO_INTERNAL=false
 INCR_INSTALL=false
+CHECK_INSTALL=false
 ENABLE_WEBTRANSPORT=false
 SUDO=""
 
@@ -23,6 +24,20 @@ fi
 if [[ $EUID -ne 0 ]]; then
   SUDO="sudo -E"
 fi
+
+print_help(){
+  echo
+  echo "Install Dependency Script"
+  echo "Usage:"
+  echo "    (default)               install default dependencies"
+  echo "    --check                 check whether dependencies are installed"
+  echo "    --incremental           skip dependencies which are already installed"
+  echo "    --with-nonfree-libs     install nonfree dependencies"
+  echo "    --cleanup               remove intermediate files after installation"
+  echo "    --help                  print help of this script"
+  echo
+  exit 0
+}
 
 parse_arguments(){
   while [ "$1" != "" ]; do
@@ -41,6 +56,9 @@ parse_arguments(){
         ;;
       "--incremental")
         INCR_INSTALL=true
+        ;;
+      "--check")
+        CHECK_INSTALL=true
         ;;
     esac
     shift
@@ -62,8 +80,8 @@ if [[ "$OS" =~ .*centos.* ]]
 then
   . installCentOSDeps.sh
   if [ "$NIGHTLY" != "true" ]; then
-    installRepo
-    installYumDeps
+    [ "$CHECK_INSTALL" != true ] && installRepo
+    [ "$CHECK_INSTALL" != true ] && installYumDeps
     install_boost
     install_glibc
     install_python3
@@ -72,7 +90,7 @@ elif [[ "$OS" =~ .*ubuntu.* ]]
 then
   . installUbuntuDeps.sh
   if [ "$NIGHTLY" != "true" ]; then
-    install_apt_deps
+    [ "$CHECK_INSTALL" != true ] && install_apt_deps
     if [[ "$OS_VERSION" =~ 20.04.* ]]
     then
       install_gcc_7

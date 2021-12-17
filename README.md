@@ -17,6 +17,8 @@ In the repository root, use one of following commands to install the dependencie
 - Non-interactive mode: `scripts/installDepsUnattended.sh`
 In interactive mode, you need type "yes" to continue installation several times and in non-interactive, the installation continues automatically.
 
+Run above commands with `--help` option to see more usages.
+
 ## How to build release package
 
 ### Requirements
