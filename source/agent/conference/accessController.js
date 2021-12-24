@@ -57,7 +57,7 @@ module.exports.create = function(spec, rpcReq, on_session_established, on_sessio
     var simulcast = status.simulcast;
     var session = sessions[sessionId];
 
-    if (session.options.type === 'webrtc') {
+    if (session.options.type === 'webrtc' || session.options.originType === 'webrtc') {
       if (!!session.options.media.audio && !audio) {
         var owner = session.owner, direction = session.direction;
         terminateSession(sessionId).catch((whatever) => {});
@@ -103,15 +103,20 @@ module.exports.create = function(spec, rpcReq, on_session_established, on_sessio
         session.options.media.video.simulcastRid && (media.video.simulcastRid = session.options.media.video.simulcastRid);
       }
 
-      if (session.options.type === 'recording') {
+      if (session.options.originType === 'webrtc') {
+        media = {tracks: session.options.media.tracks};
+        info.type = 'webrtc';
+      }
+
+      if (session.options.type === 'recording' || session.options.originType === 'recording') {
         info.location = status.info;
       }
 
-      if (session.options.type === 'streaming') {
+      if (session.options.type === 'streaming' || session.options.originType === 'streaming') {
         info.url = status.info
       }
 
-      if (session.options.type === 'analytics') {
+      if (session.options.type === 'analytics' || session.options.originType === 'analytics') {
         info.analytics = status.info;
       }
     }
@@ -228,6 +233,8 @@ module.exports.create = function(spec, rpcReq, on_session_established, on_sessio
           options.originType = sessionOptions.originType;
           options.cluster = sessionOptions.cluster;
           options.room = sessionOptions.room;
+          options.pubArgs = sessionOptions.pubArgs;
+          options.type = 'mediabridge';
         }
         sessionOptions.connection && (options.connection = sessionOptions.connection);
         sessionOptions.transport && (options.transport = sessionOptions.transport);
@@ -255,7 +262,11 @@ module.exports.create = function(spec, rpcReq, on_session_established, on_sessio
           return Promise.reject('Session has been aborted');
         }
         sessions[sessionId].state = 'connecting';
-        return 'ok';
+        if (sessionOptions.type === 'mediabridge') {
+          return locality;
+        } else {
+          return 'ok';
+        }
       }, (e) => {
         delete sessions[sessionId];
         return Promise.reject(e.message ? e.message : e);

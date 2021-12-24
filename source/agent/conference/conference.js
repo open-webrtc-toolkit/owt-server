@@ -1379,6 +1379,179 @@ var Conference = function (rpcClient, selfRpcId) {
     return true;
   };
 
+  const initiateMediaCascading = (participantId, publicationId, pubDesc, streamId) => {
+    log.info("initiateMediaCascading participantId:", participantId, " publicationId", publicationId, " pubDesc", pubDesc, " streamId:", streamId);
+    var subDesc = pubDesc;
+    subDesc.originType = subDesc.type;
+    subDesc.type = 'mediabridge';
+    subDesc.room = room_id;
+    subDesc.pubArgs = casStreams[streamId].media.tracks
+    .map(t => t.id).filter(id => !!id);
+
+    log.info("tracks:", subDesc.pubArgs);
+    var format_preference;
+    subDesc.cluster = casStreams[streamId].cluster;
+    return accessController.initiate(participantId, publicationId, 'in', participants[participantId].getOrigin(), subDesc, format_preference)
+    .then((result) => {
+      if ((subDesc.media.audio && !streams[subDesc.media.audio.from])
+         ||(subDesc.media.video && !streams[subDesc.media.video.from])) {
+        accessController.terminate(participantId, publicationId, 'Participant terminate');
+        return Promise.reject('Target audio/video stream early released');
+      }
+      streams[streamId] = casStreams[streamId];
+      delete casStreams[streamId];
+      log.info("accessController initiate result is:", result);
+      streams[streamId].locality = result;
+
+      return Promise.resolve('ok');
+    })
+    .then(() => {
+      const pubArgs = streams[streamId].toRoomCtrlPubArgs();
+
+      if (subDesc.originType === 'webrtc' || subDesc.originType === 'quic') {
+        const pubs = pubArgs.map(pubArg => new Promise((resolve, reject) => {
+          roomController && roomController.publish(
+            pubArg.owner, pubArg.id, pubArg.locality, {origin: pubArg.media.origin, media:pubArg.media, data:pubArg.data}, pubArg.type, resolve, reject);
+        }));
+        return Promise.all(pubs).then(() => {
+          log.info('roomController publish media bridge webrtc stream succeed');
+        });
+      }
+
+      // For non-webrtc stream
+      const pubArg = pubArgs[0];
+      return roomController && roomController.publish(
+        pubArg.owner, pubArg.id, pubArg.locality, {origin: pubArg.media.origin, media:pubArg.media, data:pubArg.data}, pubArg.type,
+        function() {
+          log.info('roomController publish media bridge stream succeed');
+        }, function(reason) {
+          log.info('roomController.publish failed, reason: ', (reason.message ? reason.message : reason));
+        });
+    })
+  }
+
+  const startSubscribe = (participantId, subscriptionId, subDesc, streamId, callback) => {
+    log.info("startSubscribe with type:", subDesc.type)
+    if (subDesc.type === 'sip') {
+      return addSubscription(subscriptionId, subDesc.locality, subDesc.media, subDesc.data, {owner: participantId, type: 'sip'}, subDesc.transport)
+      .then((result) => {
+        callback('callback', result);
+      })
+      .catch((e) => {
+        callback('callback', 'error', e.message ? e.message : e);
+      });
+    } else {
+      var format_preference;
+      if (subDesc.type === 'webrtc' || subDesc.type === 'quic') {
+        const controller = subDesc.type === 'webrtc' ? rtcController : quicController;
+        const rtcSubInfo = translateRtcSubIfNeeded(subDesc);
+        if (rtcSubInfo.tracks){
+          // Set formatPreference
+          rtcSubInfo.tracks.forEach(track => {
+            const streamId = streams[track.from]? track.from : trackOwners[track.from];
+            const source = getStreamTrack(track.from, track.type);
+            const formatPreference = {};
+            if (streams[streamId].type === 'forward') {
+              formatPreference.preferred = source.format;
+              source.optional && source.optional.format && (formatPreference.optional = source.optional.format);
+            } else {
+              formatPreference.optional = [source.format];
+              source.optional && source.optional.format && (formatPreference.optional = formatPreference.optional.concat(source.optional.format));
+            }
+            track.formatPreference = formatPreference;
+            log.info("startSubscribe with formatPreference:",formatPreference)
+          });
+        }
+        
+        log.info("initiateSubscription");
+        initiateSubscription(subscriptionId, subDesc, {owner: participantId, type: subDesc.type});
+        log.info("controller.initiate");
+        return controller.initiate(participantId, subscriptionId, 'out', participants[participantId].getOrigin(), rtcSubInfo)
+        .then((result) => {
+          const releasedSource = rtcSubInfo.tracks ? rtcSubInfo.tracks.find(track => {
+              const sourceStreamId = trackOwners[track.from] || track.from;
+              return !streams[sourceStreamId];
+          }) : undefined;
+          if (releasedSource) {
+            controller.terminate(participantId, subscriptionId, 'Participant terminate');
+            return Promise.reject('Target audio/video stream early released');
+          }
+          callback('callback', result);
+        })
+        .catch((e) => {
+          removeSubscription(subscriptionId);
+          callback('callback', 'error', e.message ? e.message : e);
+        });
+      }
+
+      if (subDesc.type === 'recording') {
+        var audio_codec = 'none-aac', video_codec;
+        if (subDesc.media.audio) {
+          if (subDesc.media.audio.format) {
+            audio_codec = subDesc.media.audio.format.codec;
+          } else {
+            let track = getStreamTrack(subDesc.media.audio.from, 'audio');
+            audio_codec = track.format.codec;
+          }
+
+          //FIXME: To support codecs other than those in the following list.
+          if ((audio_codec !== 'pcmu') && (audio_codec !== 'pcma') && (audio_codec !== 'opus') && (audio_codec !== 'aac')) {
+            return Promise.reject('Audio codec invalid');
+          }
+        }
+
+        if (subDesc.media.video) {
+          let track = getStreamTrack(subDesc.media.video.from, 'video');
+          video_codec = ((subDesc.media.video.format && subDesc.media.video.format.codec) || track.format.codec);
+        }
+
+        if (!subDesc.connection.container || subDesc.connection.container === 'auto') {
+          subDesc.connection.container = ((audio_codec === 'aac' && (!video_codec || (video_codec === 'h264') || (video_codec === 'h265'))) ? 'mp4' : 'mkv');
+        }
+      }
+
+      if (subDesc.type === 'streaming') {
+        if (subDesc.media.audio && !subDesc.media.audio.format) {
+          var aacFmt = room_config.mediaOut.audio.find((a) => a.codec === 'aac');
+          if (!aacFmt) {
+            return Promise.reject('Audio codec aac not enabled');
+          }
+          subDesc.media.audio.format = aacFmt;
+        }
+
+        //FIXME: To support codecs other than those in the following list.
+        if (subDesc.media.audio && (subDesc.media.audio.format.codec !== 'aac')) {
+          return Promise.reject('Audio codec invalid');
+        }
+
+        if (subDesc.media.video && !subDesc.media.video.format) {
+          subDesc.media.video.format = {codec: 'h264'};
+        }
+
+        //FIXME: To support codecs other than those in the following list.
+        if (subDesc.media.video && (subDesc.media.video.format.codec !== 'h264')) {
+          return Promise.reject('Video codec invalid');
+        }
+      }
+
+      initiateSubscription(subscriptionId, subDesc, {owner: participantId, type: subDesc.type});
+      return accessController.initiate(participantId, subscriptionId, 'out', participants[participantId].getOrigin(), subDesc, format_preference)
+      .then((result) => {
+        if ((subDesc.media.audio && !streams[subDesc.media.audio.from])
+           ||(subDesc.media.video && !streams[subDesc.media.video.from])) {
+          accessController.terminate(participantId, subscriptionId, 'Participant terminate');
+          return Promise.reject('Target audio/video stream early released');
+        }
+        
+        return Promise.resolve(result);
+      })
+      .catch((e) => {
+        removeSubscription(subscriptionId);
+        callback('callback', 'error', e.message ? e.message : e);
+      });
+    }
+  }
+
   that.subscribe = function(participantId, subscriptionId, subDesc, callback) {
     log.debug('subscribe, participantId:', participantId, 'subscriptionId:', subscriptionId, 'subDesc:', JSON.stringify(subDesc));
     if (!accessController || !roomController) {
@@ -1393,7 +1566,7 @@ var Conference = function (rpcClient, selfRpcId) {
     let audioTrack = null;
     let videoTrack = null;
     let streamId = null;
-    if (subDesc.type === 'webrtc') {
+    if (subDesc.type === 'webrtc' || subDesc.type === 'mediabridge') {
       audioTrack = subDesc.media.tracks.find(t => t.type === 'audio');
       videoTrack = subDesc.media.tracks.find(t => t.type === 'video');
     } else if (subDesc.media) {
@@ -1427,25 +1600,20 @@ var Conference = function (rpcClient, selfRpcId) {
 
     log.info('subscribe, streamid is:', streamId, 'streams are:', streams, 'casStreams:', casStreams);
     if (!streams[streamId] && casStreams[streamId]) {
-      log.info("Subscribe cascaded stream:", streamId);
-      subDesc.originType = subDesc.type;
-      subDesc.type = 'mediabridge';
-      subDesc.room = room_id;
-      subDesc.cluster = casStreams[streamId].cluster;
-      initiateSubscription(subscriptionId, subDesc, {owner: participantId, type: subDesc.type});
-      return accessController.initiate(participantId, subscriptionId, 'out', participants[participantId].getOrigin(), subDesc, format_preference)
-      .then((result) => {
-        if ((subDesc.media.audio && !streams[subDesc.media.audio.from])
-           ||(subDesc.media.video && !streams[subDesc.media.video.from])) {
-          accessController.terminate(participantId, subscriptionId, 'Participant terminate');
-          return Promise.reject('Target audio/video stream early released');
-        }
-        callback('callback', result);
-      })
-      .catch((e) => {
-        removeSubscription(subscriptionId);
-        callback('callback', 'error', e.message ? e.message : e);
-      });
+      return initiateMediaCascading(participantId, streamId, subDesc, streamId, callback)
+        .then((result) => {
+          subDesc.type = subDesc.originType;
+          log.info("startSubscribe participantId:", participantId, " subscriptionId:", subscriptionId, " subDesc:", subDesc, " streamId:", streamId);
+          return startSubscribe(participantId, subscriptionId, subDesc, streamId, callback)
+            .then((result) => {
+              log.info("startSubscribe succeed with result:", result);
+              callback('callback', result);
+            })
+        })
+        .catch((e) => {
+          removeSubscription(subscriptionId);
+          callback('callback', 'error', e.message ? e.message : e);
+        });
     }
 
     if (subDesc.type === 'sip') {
@@ -1457,7 +1625,14 @@ var Conference = function (rpcClient, selfRpcId) {
         callback('callback', 'error', e.message ? e.message : e);
       });
     } else if (subDesc.type === 'mediabridge') {
-      return addSubscription(subscriptionId, subDesc.locality, subDesc.media, subDesc.data, {owner: participantId, type: 'mediabridge'}, subDesc.transport)
+      if (subDesc.originType) {
+        subDesc.media.tracks.forEach(track => { 
+          track.id = subscriptionId;
+        });
+      }
+
+      log.info("mediabridge addSubscription with media:", subDesc.media);
+      return addSubscription(subscriptionId, subDesc.locality, subDesc.media, subDesc.data, {owner: participantId, type: subDesc.originType}, subDesc.transport)
       .then((result) => {
         callback('callback', result);
       })

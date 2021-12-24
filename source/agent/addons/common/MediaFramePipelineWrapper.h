@@ -9,6 +9,7 @@
 #include <node.h>
 #include <node_object_wrap.h>
 #include <MediaFramePipeline.h>
+#include <nan.h>
 
 
 /*

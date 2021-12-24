@@ -71,6 +71,6 @@ router.delete('/rooms/:room/analytics/:id', analyticsResource.delete);
 router.post('/rooms/:room/tokens', tokensResource.create);
 
 //Cluster cascading management
-router.post('/rooms/:room/eventCascading', cascadingResource.startEventCascading);
+router.post('/rooms/:room/eventCascading', cascadingResource.startCascading);
 
 module.exports = router

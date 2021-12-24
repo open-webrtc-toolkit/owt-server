@@ -99,10 +99,21 @@ NAN_METHOD(InternalServer::addSource) {
   Nan::Utf8String param0(Nan::To<v8::String>(info[0]).ToLocalChecked());
   std::string streamId = std::string(*param0);
 
-  FrameSource* param =
-    ObjectWrap::Unwrap<FrameSource>(
-      info[1]->ToObject(Nan::GetCurrentContext()).ToLocalChecked());
-  owt_base::FrameSource* src = param->src;
+  bool isNanSource(false);
+  if (info.Length() >= 3) {
+      isNanSource = Nan::To<bool>(info[2]).FromJust();
+  }
+
+  owt_base::FrameSource* src(nullptr);
+  if (isNanSource) {
+      NanFrameNode* param = Nan::ObjectWrap::Unwrap<NanFrameNode>(
+          Nan::To<v8::Object>(info[1]).ToLocalChecked());
+      src = param->FrameSource();
+  } else {
+      FrameSource* param = ObjectWrap::Unwrap<FrameSource>(
+          Nan::To<v8::Object>(info[1]).ToLocalChecked());
+      src = param->src;
+  }
 
   me->addSource(streamId, src);
 }

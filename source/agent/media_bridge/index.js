@@ -44,6 +44,7 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
     const publicationOptions = new Map();
     const subscriptionOptions = new Map();
     let quicTransportServer;
+    let controllers = {};
     let clusters = {};
     var cf = 'leaf_cert.pem';
     var kf = 'leaf_cert.pkcs8';
@@ -181,7 +182,7 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
     };
 
     // functions: publish, unpublish, subscribe, unsubscribe, linkup, cutoff
-    that.subscribe = function(connectionId, connectionType, options, callback) {
+    that.publish = function(connectionId, connectionType, options, callback) {
         log.debug('publish, connectionId:', connectionId, 'connectionType:', connectionType, 'options:', options);
         if (router.getConnection(connectionId)) {
             return callback('callback', {type: 'failed', reason: 'Connection already exists:'+connectionId});
@@ -190,38 +191,71 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
         var conn = null;
         switch (connectionType) {
         case 'mediabridge':
-            subscriptionOptions.set(connectionId, options);
-            conn = createFrameSource(connectionId, 'in', options, callback);
-            if (!conn) {
-                return;
-            }
+            if (options.originType === 'webrtc') {
+                log.info("origin type is webrtc and pubArgs:", options.pubArgs);
+                const pubs = options.pubArgs.map(pubArg => new Promise((resolve, reject) => {
+                    
+                    var connId = 'quic-' + pubArg;
+                    log.info('connId is:', connId);
+                    conn = createFrameSource(connId, 'in', options, callback);
+                    if (!conn) {
+                        return;
+                    }
 
-            options.connectionId = connectionId;
-            log.info("Create quic stream to receive subscribed stream from remote cluster, clusters:", clusters);
-            var quicStream = clusters[options.cluster].createBidirectionalStream();
-            var streamID = quicStream.getId();
+                    var quicStream = clusters[options.cluster].session.createBidirectionalStream();
+                    var streamID = quicStream.getId();
 
-            var info = {
-              type: 'subscribe',
-              options: options
-            }
+                    conn.addInputStream(quicStream);
+                    var data = {
+                        type: 'track',
+                        id: connId
+                    }
+                    quicStream.send(JSON.stringify(data));
 
-            quicStream.send(JSON.stringify(info));
-            
-            quicStream.onStreamData((msg) => {
-              log.info("quic client stream get data:", msg);
-              var event = JSON.parse(msg);
-              if (event.type === 'ready') {
-                var info = {
-                  type: 'cluster',
-                  cluster: data.selfCluster
+                    router.addLocalSource(pubArg, connectionType, conn);
+
+                    options.connectionId = connId;
+                    log.info("Create quic stream to receive subscribed stream from remote cluster, clusters:", clusters);
+
+                    var info = {
+                      type: 'subscribe',
+                      options: options
+                    }
+
+                    clusters[options.cluster].signalStream.send(JSON.stringify(info));
+                }));
+            } else {
+                conn = createFrameSource(connectionId, 'in', options, callback);
+                if (!conn) {
+                    return;
                 }
-                quicStream.send(JSON.stringify(info));
-              } else if (event.type === 'publish') {
 
-              }
-            })
+                var quicStream = clusters[options.cluster].session.createBidirectionalStream();
+                var streamID = quicStream.getId();
 
+                conn.addInputStream(quicStream);
+                var data = {
+                    type: 'track',
+                    id: connectionId
+                }
+                quicStream.send(JSON.stringify(data));
+
+                router.addLocalSource(connectionId, connectionType, conn);
+
+                options.connectionId = connectionId;
+                log.info("Create quic stream to receive subscribed stream from remote cluster, clusters:", clusters);
+
+                var info = {
+                  type: 'subscribe',
+                  options: options
+                }
+
+                clusters[options.cluster].signalStream.send(JSON.stringify(info));
+
+            }
+            subscriptionOptions.set(connectionId, options);
+
+            
             break;
         default:
             log.error('Connection type invalid:' + connectionType);
@@ -230,15 +264,8 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
             log.error('Create connection failed', connectionId, connectionType);
             return callback('callback', {type: 'failed', reason: 'Create Connection failed'});
         }
-        router.addLocalSource(connectionId, connectionType, conn);
+        
         onSuccess(callback)();
-        notifyStatus(options.controller, connectionId, 'in', {
-          type: 'ready',
-          audio: undefined,
-          video: undefined,
-          data: true,
-          simulcast: false
-        });
     };
 
     that.unpublish = function (connectionId, callback) {
@@ -255,7 +282,7 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
         }
     };
 
-    that.publish = function (connectionId, connectionType, options, callback) {
+    that.subscribe = function (connectionId, connectionType, options, callback) {
         if (connectionType == 'mediabridge') {
             if (options.transport && options.transport.type) {
                 connectionType = options.transport.type;
@@ -300,8 +327,10 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
     };
 
     that.linkup = function (connectionId, from, callback) {
-        log.debug('linkup, connectionId:', connectionId, 'from:', from);
-        router.linkup(connectionId, from).then(onSuccess(callback), onError(callback));
+        var linkid = 'quic-' + connectionId;
+        log.debug('linkup, connectionId:', connectionId, 'from:', from, ' linkid:', linkid);
+
+        router.linkup(linkid, from).then(onSuccess(callback), onError(callback));
     };
 
     that.cutoff = function (connectionId, callback) {
@@ -319,7 +348,7 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
 
     const createQuicStream = (controller, clusterID, initialized, data) => {
       log.info("Create quic stream with controller:", controller, " clientID:", clientID, " and data:",data);
-      var quicStream = clusters[clusterID].createBidirectionalStream();
+      var quicStream = clusters[clusterID].session.createBidirectionalStream();
       var streamID = quicStream.getId();
 
       if (!initialized) {
@@ -375,14 +404,18 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
               client.connected = false;
               client.connect();
               client.id = data.targetCluster;
-              clusters[data.targetCluster] = client
+              if (!clusters[data.targetCluster]) {
+                clusters[data.targetCluster] = {};
+              }
+              clusters[data.targetCluster].session = client
               client.onConnection(() => {
                 log.info("Quic client connected");
                 client.connected = true;
 
                 log.info("Create quic stream with controller:", controller, " and data:",data);
-                var quicStream = clusters[data.targetCluster].createBidirectionalStream();
+                var quicStream = clusters[data.targetCluster].session.createBidirectionalStream();
                 var streamID = quicStream.getId();
+                clusters[data.targetCluster].signalStream = quicStream;
 
                 //Client create initialized stream to exchange cluster info for this session
                 var info = {
@@ -396,6 +429,7 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
                   if (event.type === 'ready') {
                     var info = {
                       type: 'cluster',
+                      room: data.room,
                       cluster: data.selfCluster
                     }
                     quicStream.send(JSON.stringify(info));
@@ -437,7 +471,11 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
           log.info("Server get stream data:", info);
           if (info.type === 'cluster') {
             session.id = info.cluster;
-            clusters[info.cluster] = session;
+            if (!clusters[info.cluster]) {
+                clusters[info.cluster] = {};
+            }
+            clusters[info.cluster].session = session;
+            clusters[info.cluster].signalStream = quicStream;
             rpcReq.getController(clusterName, info.room)
             .then(function(controller) {
                quicStream.controller = controller; 
@@ -447,24 +485,30 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
               type: 'ready'
             }
             quicStream.send(JSON.stringify(data));
+          } else if (info.type === 'track') {
+            var conn = createStreamPipeline(info.id, 'out', info.options);
+            conn.quicStream(quicStream);
+            if (!conn) {
+                return;
+            }
+            var connid = 'quic-' + info.id;
+            router.addLocalDestination(connid, 'mediabridge', conn);
+
           } else if (info.type === 'subscribe') {
-            info.options.type = 'mediabridge';
             info.options.locality = {agent: parentRpcId, node: selfRpcId};
             var connectionId = info.options.connectionId;
-            rpcReq.getController(clusterName, info.options.room)
+            if (controllers[info.options.room]) {
+                rpcReq.subscribe(controllers[info.options.room], 'admin', connectionId, info.options); 
+            } else {
+                rpcReq.getController(clusterName, info.options.room)
                 .then(function(controller) {
-                quicStream.controller = controller; 
+                controllers[info.options.room] = controller; 
                 log.info("Subscribe to controller:", controller, "connection id:", connectionId, " with info:", info.options.media.tracks);
 
-                var conn = createStreamPipeline(connectionId, 'out', info.options);
-                conn.quicStream(quicStream);
-                if (!conn) {
-                    return;
-                }
-
                 rpcReq.subscribe(controller, 'admin', connectionId, info.options);
-                router.addLocalDestination(connectionId, info.options.type, conn);
+                
             });
+            }
           }
         });
       })

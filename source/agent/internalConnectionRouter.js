@@ -107,7 +107,11 @@ class StreamSource {
   addDestination(track, sink) {
     if (!this.dests[track].has(sink.id)) {
       this.dests[track].set(sink.id, sink);
-      this.conn.addDestination(track, sink.conn);
+      let isNanObject = false;
+      if (sink instanceof QuicTransportStreamPipeline) {
+          isNanObject = true;
+      }
+      this.conn.addDestination(track, sink.conn, isNanObject);
       sink._addSource(track, this);
     }
   }
@@ -167,8 +171,8 @@ class InternalConnectionRouter {
    * @param {FrameSource} source Wrapper class for FrameSource
    */
   addLocalSource(id, type, source) {
-    log.debug('addLocalSource:', id, type);
-    this.internalServer.addSource(id, source);
+    const isNativeSource = (type === 'quic' ||| type === 'mediabridge');
+    this.internalServer.addSource(id, source, isNativeSource);
     return this.connections.addConnection(id, type, '', source, 'in');
   }
 
@@ -191,7 +195,11 @@ class InternalConnectionRouter {
         return this.removeLocalSource(id);
       } else if (conn.direction === 'out') {
         return this.removeLocalDestination(id);
+      } else {
+        return Promise.reject('Unexpected direction '+conn.direction);
       }
+    } else {
+      return Promise.reject('Cannot find connection.');
     }
   }
 

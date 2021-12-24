@@ -26,6 +26,18 @@ DEFINE_LOGGER(QuicTransportStream, "QuicTransportStream");
 
 Nan::Persistent<v8::Function> QuicTransportStream::s_constructor;
 
+static void dump(void* index, uint8_t* buf, int len)
+{
+    char dumpFileName[128];
+
+    snprintf(dumpFileName, 128, "/tmp/quicstream-%p", index);
+    FILE* bsDumpfp = fopen(dumpFileName, "ab");
+    if (bsDumpfp) {
+        fwrite(buf, 1, len, bsDumpfp);
+        fclose(bsDumpfp);
+    }
+}
+
 // QUIC Incomming
 QuicTransportStream::QuicTransportStream()
     : QuicTransportStream(nullptr)
@@ -108,18 +120,22 @@ NAN_METHOD(QuicTransportStream::addDestination)
     std::string track = std::string(*param0);
     bool isNanDestination(false);
     if (info.Length() == 3) {
+        ELOG_DEBUG("addDestination has 3 parameters");
         isNanDestination = Nan::To<bool>(info[2]).FromJust();
     }
     owt_base::FrameDestination* dest(nullptr);
     if (isNanDestination) {
+        ELOG_DEBUG("addDestination isNanDestination is true");
         NanFrameNode* param = Nan::ObjectWrap::Unwrap<NanFrameNode>(
             Nan::To<v8::Object>(info[1]).ToLocalChecked());
         dest = param->FrameDestination();
     } else {
+        ELOG_DEBUG("addDestination isNanDestination is false");
         ::FrameDestination* param = node::ObjectWrap::Unwrap<::FrameDestination>(
             Nan::To<v8::Object>(info[1]).ToLocalChecked());
         dest = param->dest;
     }
+
     if (track == "audio") {
         obj->addAudioDestination(dest);
     } else if (track == "video") {
@@ -192,6 +208,7 @@ void QuicTransportStream::onVideoSourceChanged()
 void QuicTransportStream::onFrame(const owt_base::Frame& frame)
 {
     ELOG_DEBUG("QuicTransportStream::onFrame");
+    dump(this, frame.payload, frame.length);
     TransportData sendData;
     sendData.buffer.reset(new char[sizeof(Frame) + frame.length + 5]);
     *(reinterpret_cast<uint32_t*>(sendData.buffer.get())) = htonl(sizeof(Frame) + frame.length + 1);
@@ -219,8 +236,6 @@ void QuicTransportStream::sendData(const std::string& data) {
 }
 
 void QuicTransportStream::OnData(owt::quic::QuicTransportStreamInterface* stream, char* buf, size_t len) {
-    std::cout << "server onData: " << buf << " len:" << len << " m_bufferSize:" << m_bufferSize << " m_receivedBytes:" << m_receivedBytes << std::endl;
-
     if (m_receivedBytes + len >= m_bufferSize) {
         m_bufferSize += (m_receivedBytes + len);
         std::cout << "new_bufferSize: " << m_bufferSize << std::endl;
@@ -241,22 +256,21 @@ void QuicTransportStream::OnData(owt::quic::QuicTransportStreamInterface* stream
 
         payloadlen = ntohl(*(reinterpret_cast<uint32_t*>(m_receiveData.buffer.get())));
         uint32_t expectedLen = payloadlen + 4;
-	std::cout << "m_receivedBytes:" << m_receivedBytes << " payloadlen:" << payloadlen << " expectedLen:" << expectedLen << std::endl;
         if (expectedLen > m_receivedBytes) {
             // continue
             break;
         } else {
-            std::cout << "receive: " << expectedLen << std::endl;
             m_receivedBytes -= expectedLen;
             char* dpos = m_receiveData.buffer.get() + 4;
             Frame* frame = nullptr;
             std::string s_data(dpos + 1, payloadlen - 1);
-            std::cout << "receive: data" << s_data << std::endl;
 
             switch (dpos[0]) {
                 case TDT_MEDIA_FRAME:
+                    ELOG_DEBUG("QuicTransportStream deliver frame");
                     frame = reinterpret_cast<Frame*>(dpos + 1);
                     frame->payload = reinterpret_cast<uint8_t*>(dpos + 1 + sizeof(Frame));
+                    dump(this, frame->payload, frame->length);
                     deliverFrame(*frame);
                     break;
                 case TDT_MEDIA_METADATA:
@@ -265,6 +279,7 @@ void QuicTransportStream::OnData(owt::quic::QuicTransportStreamInterface* stream
                     uv_async_send(&m_asyncOnData);
                     break;
                 case TDT_FEEDBACK_MSG:
+                    ELOG_DEBUG("QuicTransportStream deliver feedback msg");
                     deliverFeedbackMsg(*(reinterpret_cast<FeedbackMsg*>(dpos + 1)));
                     break;
                 default:
