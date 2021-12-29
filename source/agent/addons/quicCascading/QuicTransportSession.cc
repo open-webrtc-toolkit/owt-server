@@ -75,6 +75,8 @@ NAN_METHOD(QuicTransportSession::createBidirectionalStream){
     QuicTransportSession* obj = Nan::ObjectWrap::Unwrap<QuicTransportSession>(info.Holder());
     auto stream=obj->m_session->CreateBidirectionalStream();
     v8::Local<v8::Object> streamObject = QuicTransportStream::newInstance(stream);
+    QuicTransportStream* clientStream = Nan::ObjectWrap::Unwrap<QuicTransportStream>(streamObject);
+    stream->SetVisitor(clientStream);
     info.GetReturnValue().Set(streamObject);
 }
 

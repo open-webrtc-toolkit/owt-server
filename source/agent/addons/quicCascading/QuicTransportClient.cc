@@ -121,7 +121,7 @@ NAUV_WORK_CB(QuicTransportClient::onNewStreamCallback){
     if (obj->has_stream_callback_) {
       while (!obj->stream_messages.empty()) {
           Local<Value> args[] = { streamObject };
-          Nan::AsyncResource resource("sessionCallback");
+          Nan::AsyncResource resource("onNewStream");
           resource.runInAsyncScope(Nan::GetCurrentContext()->Global(), obj->stream_callback_->GetFunction(), 1, args);
           obj->stream_messages.pop();
       }

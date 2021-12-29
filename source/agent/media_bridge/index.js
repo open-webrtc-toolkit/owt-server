@@ -208,11 +208,6 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
                     var streamID = quicStream.getId();
                     quicStream.trackKind = pubArg.type;
 
-                    var readyinfo = {
-                      type: 'ready'
-                    }
-                    quicStream.send(JSON.stringify(readyinfo));
-
                     quicStream.onStreamData((msg) => {
                       log.info("quic client stream get data:", msg);
                       var event = JSON.parse(msg);
@@ -241,6 +236,11 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
                     conn.addInputStream(quicStream);
 
                     router.addLocalSource(pubId, connectionType, conn);
+
+                    var readyinfo = {
+                      type: 'ready'
+                    }
+                    quicStream.send(JSON.stringify(readyinfo));
                 }));
             } else {
                 conn = createFrameSource(connectionId, 'in', options, callback);
@@ -430,11 +430,11 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
                 log.info("Quic client connected");
                 client.connected = true;
 
-                log.info("Create quic stream with controller:", controller, " and data:",data);
                 var quicStream = clusters[data.targetCluster].session.createBidirectionalStream();
                 var streamID = quicStream.getId();
                 clusters[data.targetCluster].signalStream = quicStream;
 
+                log.info("Create quic stream with controller:", controller, " and data:",data, " streamID:", streamID);
                 //Client create initialized stream to exchange cluster info for this session
                 var info = {
                   type: 'ready'
@@ -454,6 +454,45 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
                   }
                 })       
               });
+
+              client.onNewStream((incomingStream) => {
+                var streamId = incomingStream.getId();
+                log.info("client get new stream id:", streamId);
+                incomingStream.onStreamData((msg) => {
+                  var info = JSON.parse(msg);
+                  log.info("client get stream data:", info);
+                  if (info.type === 'ready') {
+                    var data = {
+                      type: 'ready'
+                    }
+                    incomingStream.send(JSON.stringify(data));
+                  } else if (info.type === 'track') {
+                    var conn = createStreamPipeline(info.id, 'out', info.options);
+                    conn.quicStream(incomingStream);
+                    if (!conn) {
+                        return;
+                    }
+                    incomingStream.trackKind = info.kind;
+                    var connid = 'quic-' + info.id;
+                    router.addLocalDestination(info.id, 'mediabridge', conn);
+
+                  } else if (info.type === 'subscribe') {
+                    info.options.locality = {agent: parentRpcId, node: selfRpcId};
+                    var connectionId = info.options.connectionId;
+                    if (controllers[info.options.room]) {
+                        rpcReq.subscribe(controllers[info.options.room], 'admin', connectionId, info.options);
+                    } else {
+                        rpcReq.getController(clusterName, info.options.room)
+                        .then(function(controller) {
+                        controllers[info.options.room] = controller;
+                        log.info("client subscribe to controller:", controller, "connection id:", connectionId, " with info:", info.options.media.tracks);
+
+                        rpcReq.subscribe(controller, 'admin', connectionId, info.options);
+                    });
+                    }
+                  }
+                });
+              })
             });
         } else {
             log.debug('Cluster already cascaded');
