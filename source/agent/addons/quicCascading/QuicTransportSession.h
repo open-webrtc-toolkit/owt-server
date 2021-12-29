@@ -36,8 +36,6 @@ public:
     static NAN_METHOD(onNewStream);
     static NAN_METHOD(getId);
 
-    static Nan::Persistent<v8::Function> s_constructor;
-
     static NAUV_WORK_CB(onNewStreamCallback);
 
     // Implements QuicTransportSessionInterface.
@@ -52,6 +50,7 @@ private:
     Nan::Callback *stream_callback_;
     boost::mutex mutex;
     std::unordered_map<std::string, std::unique_ptr<owt::quic::QuicTransportStreamInterface>> streams_;
+    static Nan::Persistent<v8::Function> s_constructor;
 };
 
 #endif  // QUIC_TRANSPORT_SESSION_H_

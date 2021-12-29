@@ -47,7 +47,9 @@ QuicTransportStream::QuicTransportStream()
 QuicTransportStream::QuicTransportStream(owt::quic::QuicTransportStreamInterface* stream)
         : m_stream(stream)
         , m_bufferSize(INIT_BUFF_SIZE)
-        , m_receivedBytes(0) {
+        , m_receivedBytes(0)
+        , m_needKeyFrame(true)
+        , m_trackKind("unknown") {
     m_receiveData.buffer.reset(new char[m_bufferSize]);
 }
 
@@ -72,6 +74,7 @@ NAN_MODULE_INIT(QuicTransportStream::init)
     Nan::SetPrototypeMethod(tpl, "send", send);
     Nan::SetPrototypeMethod(tpl, "onStreamData", onStreamData);
     Nan::SetPrototypeMethod(tpl, "getId", getId);
+    Nan::SetAccessor(instanceTpl, Nan::New("trackKind").ToLocalChecked(), trackKindGetter, trackKindSetter);
 
     s_constructor.Reset(Nan::GetFunction(tpl).ToLocalChecked());
     Nan::Set(target, Nan::New("QuicTransportStream").ToLocalChecked(), Nan::GetFunction(tpl).ToLocalChecked());
@@ -186,6 +189,18 @@ NAN_METHOD(QuicTransportStream::getId) {
   info.GetReturnValue().Set(Nan::New(obj->m_stream->Id()));
 }
 
+NAN_GETTER(QuicTransportStream::trackKindGetter){
+    QuicTransportStream* obj = Nan::ObjectWrap::Unwrap<QuicTransportStream>(info.Holder());
+    info.GetReturnValue().Set(Nan::New(obj->m_trackKind).ToLocalChecked());
+}
+
+NAN_SETTER(QuicTransportStream::trackKindSetter) {
+  QuicTransportStream* obj = Nan::ObjectWrap::Unwrap<QuicTransportStream>(info.Holder());
+  Nan::Utf8String trackKind(Nan::To<v8::String>(value).ToLocalChecked());
+  obj->m_trackKind = std::string(*trackKind);
+  ELOG_DEBUG("QuicTransportStream::setTrackKind with value:%s", obj->m_trackKind.c_str());
+}
+
 void QuicTransportStream::onFeedback(const FeedbackMsg& msg) {
     ELOG_DEBUG("QuicTransportStream::onFeedback");
     TransportData sendData;
@@ -235,6 +250,20 @@ void QuicTransportStream::sendData(const std::string& data) {
     m_stream->SendData(sendData.buffer.get(), sendData.length);
 }
 
+void QuicTransportStream::sendFeedback(const FeedbackMsg& msg) {
+    TransportData sendData;
+    uint32_t payloadLength = sizeof(FeedbackMsg);
+    sendData.buffer.reset(new char[payloadLength + 5]);
+    *(reinterpret_cast<uint32_t*>(sendData.buffer.get())) = htonl(payloadLength + 1);
+    sendData.buffer[4] = TDT_FEEDBACK_MSG;
+    memcpy(sendData.buffer.get() + 5, reinterpret_cast<uint8_t*>(const_cast<FeedbackMsg*>(&msg)),
+           sizeof(FeedbackMsg));
+    sendData.length = payloadLength + 5;
+    ELOG_DEBUG("QuicTransportStream::sendFeedback:%s\n", sendData.buffer.get());
+
+    m_stream->SendData(sendData.buffer.get(), sendData.length);
+}
+
 void QuicTransportStream::OnData(owt::quic::QuicTransportStreamInterface* stream, char* buf, size_t len) {
     if (m_receivedBytes + len >= m_bufferSize) {
         m_bufferSize += (m_receivedBytes + len);
@@ -264,12 +293,24 @@ void QuicTransportStream::OnData(owt::quic::QuicTransportStreamInterface* stream
             char* dpos = m_receiveData.buffer.get() + 4;
             Frame* frame = nullptr;
             std::string s_data(dpos + 1, payloadlen - 1);
+            owt_base::FeedbackMsg msg {.type = owt_base::VIDEO_FEEDBACK, .cmd = owt_base::REQUEST_KEY_FRAME};
 
             switch (dpos[0]) {
                 case TDT_MEDIA_FRAME:
-                    ELOG_DEBUG("QuicTransportStream deliver frame");
+                    ELOG_DEBUG("QuicTransportStream deliver frame with trackKind: %s", m_trackKind.c_str());
                     frame = reinterpret_cast<Frame*>(dpos + 1);
                     frame->payload = reinterpret_cast<uint8_t*>(dpos + 1 + sizeof(Frame));
+                    if (m_trackKind == "video") {
+                      if (m_needKeyFrame) {
+                        if (frame->additionalInfo.video.isKeyFrame) {
+                            m_needKeyFrame = false;
+                        } else {
+                            ELOG_DEBUG("Request key frame\n");
+                            sendFeedback(msg);
+                            return;
+                        }
+                      }
+                    }
                     dump(this, frame->payload, frame->length);
                     deliverFrame(*frame);
                     break;
@@ -280,7 +321,7 @@ void QuicTransportStream::OnData(owt::quic::QuicTransportStreamInterface* stream
                     break;
                 case TDT_FEEDBACK_MSG:
                     ELOG_DEBUG("QuicTransportStream deliver feedback msg");
-                    deliverFeedbackMsg(*(reinterpret_cast<FeedbackMsg*>(dpos + 1)));
+                    deliverFeedbackMsg(msg);
                     break;
                 default:
                     break;

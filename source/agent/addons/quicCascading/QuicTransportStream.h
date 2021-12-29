@@ -45,8 +45,8 @@ public:
     static NAN_METHOD(send);
     static NAN_METHOD(onStreamData);
     static NAN_METHOD(getId);
-
-    static Nan::Persistent<v8::Function> s_constructor;
+    static NAN_GETTER(trackKindGetter);
+    static NAN_SETTER(trackKindSetter);
 
     static NAUV_WORK_CB(onStreamDataCallback);
 
@@ -66,7 +66,7 @@ public:
 
     void sendData(const std::string& data);
 private:
-
+    void sendFeedback(const owt_base::FeedbackMsg& msg);
     typedef struct {
         boost::shared_array<char> buffer;
         int length;
@@ -82,6 +82,9 @@ private:
     Nan::Callback *data_callback_;
     boost::mutex mutex;
     owt::quic::QuicTransportStreamInterface* m_stream;
+    static Nan::Persistent<v8::Function> s_constructor;
+    bool m_needKeyFrame;
+    std::string m_trackKind;
 };
 
 #endif  // QUIC_TRANSPORT_SERVER_H_

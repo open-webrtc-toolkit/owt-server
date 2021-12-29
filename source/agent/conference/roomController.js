@@ -1698,7 +1698,7 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                 }
             };
 
-            var terminal_owner = (((subType === 'webrtc' || subType === 'sip') && isAudioPubPermitted) ? participantId : room_id);
+            var terminal_owner = (((subType === 'webrtc' || subType === 'sip' || subType === 'mediabridge') && isAudioPubPermitted) ? participantId : room_id);
             newTerminal(terminal_id, subType, terminal_owner, accessNode, subInfo.origin, function () {
                 doSubscribe();
             }, on_error);

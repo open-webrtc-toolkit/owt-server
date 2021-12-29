@@ -35,8 +35,6 @@ public:
     static NAN_METHOD(onConnection);
     static NAN_METHOD(createBidirectionalStream);
 
-    static Nan::Persistent<v8::Function> s_constructor;
-
     static NAUV_WORK_CB(onNewStreamCallback);
     static NAUV_WORK_CB(onConnectedCallback);
 
@@ -62,6 +60,7 @@ private:
     Nan::Callback *stream_callback_;
     Nan::Callback *connected_callback_;
     boost::mutex mutex;
+    static Nan::Persistent<v8::Function> s_constructor;
 };
 
 #endif  // QUIC_TRANSPORT_CLIENT_H_

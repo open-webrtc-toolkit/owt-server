@@ -34,14 +34,12 @@ public:
     static NAN_METHOD(start);
     static NAN_METHOD(onNewSession);
 
-    static Nan::Persistent<v8::Function> s_constructor;
-
     static NAUV_WORK_CB(onNewSessionCallback);
 
 protected:
-    QuicTransportServer(unsigned int port, const std::string& cert_file, const std::string& key_file);
-    virtual ~QuicTransportServer();
     QuicTransportServer() = delete;
+    virtual ~QuicTransportServer();
+    explicit QuicTransportServer(unsigned int port, const std::string& cert_file, const std::string& key_file);
 
     // Implements QuicTransportClientInterface.
     void OnSession(owt::quic::QuicTransportSessionInterface*) override;
@@ -50,13 +48,14 @@ private:
 
     unsigned int getServerPort();
 
-    std::shared_ptr<owt::quic::QuicTransportServerInterface> m_quicServer;
+    std::unique_ptr<owt::quic::QuicTransportServerInterface> m_quicServer;
     uv_async_t m_asyncOnNewSession;
     bool has_session_callback_;
     std::queue<owt::quic::QuicTransportSessionInterface*> session_messages;
     Nan::Callback *session_callback_;
     boost::mutex mutex;
     std::unordered_map<std::string, std::unique_ptr<owt::quic::QuicTransportSessionInterface*>> sessions_;
+    static Nan::Persistent<v8::Function> s_constructor;
 };
 
 #endif  // QUIC_TRANSPORT_SERVER_H_

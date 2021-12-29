@@ -46,6 +46,7 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
     let quicTransportServer;
     let controllers = {};
     let clusters = {};
+    let server;
     var cf = 'leaf_cert.pem';
     var kf = 'leaf_cert.pkcs8';
     const clusterName = global && global.config && global.config.cluster ?
@@ -194,8 +195,9 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
             if (options.originType === 'webrtc') {
                 log.info("origin type is webrtc and pubArgs:", options.pubArgs);
                 const pubs = options.pubArgs.map(pubArg => new Promise((resolve, reject) => {
-                    
-                    var connId = 'quic-' + pubArg;
+                    var pubId = pubArg.id;
+                    var connId = 'quic-' + pubId;
+
                     log.info('connId is:', connId);
                     conn = createFrameSource(connId, 'in', options, callback);
                     if (!conn) {
@@ -204,25 +206,41 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
 
                     var quicStream = clusters[options.cluster].session.createBidirectionalStream();
                     var streamID = quicStream.getId();
+                    quicStream.trackKind = pubArg.type;
 
+                    var readyinfo = {
+                      type: 'ready'
+                    }
+                    quicStream.send(JSON.stringify(readyinfo));
+
+                    quicStream.onStreamData((msg) => {
+                      log.info("quic client stream get data:", msg);
+                      var event = JSON.parse(msg);
+                      if (event.type === 'ready') {
+                        var data = {
+                            type: 'track',
+                            id: connId,
+                            kind: pubArg.type
+                        }
+                        quicStream.send(JSON.stringify(data));
+
+                        options.connectionId = connId;
+                        delete pubArg.id;
+                        options.media.tracks = [];
+                        options.media.tracks.push(pubArg);
+                        log.info("quic stream send subscribe options:", options);
+
+                        var info = {
+                          type: 'subscribe',
+                          options: options
+                        }
+
+                        quicStream.send(JSON.stringify(info));
+                      }
+                    })
                     conn.addInputStream(quicStream);
-                    var data = {
-                        type: 'track',
-                        id: connId
-                    }
-                    quicStream.send(JSON.stringify(data));
 
-                    router.addLocalSource(pubArg, connectionType, conn);
-
-                    options.connectionId = connId;
-                    log.info("Create quic stream to receive subscribed stream from remote cluster, clusters:", clusters);
-
-                    var info = {
-                      type: 'subscribe',
-                      options: options
-                    }
-
-                    clusters[options.cluster].signalStream.send(JSON.stringify(info));
+                    router.addLocalSource(pubId, connectionType, conn);
                 }));
             } else {
                 conn = createFrameSource(connectionId, 'in', options, callback);
@@ -330,7 +348,7 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
         var linkid = 'quic-' + connectionId;
         log.debug('linkup, connectionId:', connectionId, 'from:', from, ' linkid:', linkid);
 
-        router.linkup(linkid, from).then(onSuccess(callback), onError(callback));
+        router.linkup(connectionId, from).then(onSuccess(callback), onError(callback));
     };
 
     that.cutoff = function (connectionId, callback) {
@@ -456,7 +474,7 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
     }
 
     const start = function () {
-      var server = new addon.QuicTransportServer(port, cf, kf);
+      server = new addon.QuicTransportServer(port, cf, kf);
 
       server.start();
       server.onNewSession((session) => {
@@ -464,8 +482,8 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
 
       log.info("Server get new session:");
       session.onNewStream((quicStream) => {
-      log.info("Server get new stream:", quicStream);
         var streamId = quicStream.getId();
+        log.info("Server get new stream id:", streamId);
         quicStream.onStreamData((msg) => {
           var info = JSON.parse(msg);
           log.info("Server get stream data:", info);
@@ -491,8 +509,9 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
             if (!conn) {
                 return;
             }
+            quicStream.trackKind = info.kind;
             var connid = 'quic-' + info.id;
-            router.addLocalDestination(connid, 'mediabridge', conn);
+            router.addLocalDestination(info.id, 'mediabridge', conn);
 
           } else if (info.type === 'subscribe') {
             info.options.locality = {agent: parentRpcId, node: selfRpcId};

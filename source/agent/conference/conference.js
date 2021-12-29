@@ -1385,8 +1385,16 @@ var Conference = function (rpcClient, selfRpcId) {
     subDesc.originType = subDesc.type;
     subDesc.type = 'mediabridge';
     subDesc.room = room_id;
-    subDesc.pubArgs = casStreams[streamId].media.tracks
-    .map(t => t.id).filter(id => !!id);
+    subDesc.pubArgs = [];
+    casStreams[streamId].media.tracks.forEach(track => {
+      log.info('casstream info:', track);
+      var pubArg = {
+        id: track.id,
+        type: track.type,
+        from: streamId
+      };
+      subDesc.pubArgs.push(pubArg);
+    });
 
     log.info("tracks:", subDesc.pubArgs);
     var format_preference;
