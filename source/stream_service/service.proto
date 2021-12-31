@@ -1,0 +1,84 @@
+
+syntax = "proto3";
+
+// Publish
+message StreamingConnection {
+  string url = 1;
+  optional string transportProtocol = 2;
+  optional int32 bufferSize = 3;
+}
+
+message MediaPubOption {
+  optional bool audio = 1;
+  optional bool video = 2;
+}
+
+message PublishRequest {
+  StreamingConnection connection = 1;
+  MediaPubOption media = 2;
+  optional string domain = 3;
+}
+
+// Subscribe
+message AudioFormat {
+  string codec = 1;
+  optional uint32 sampleRate = 2;
+  optional uint32 channelNum = 3;
+}
+
+message VideoFormat {
+  string codec = 1;
+  optional string profile = 2;
+}
+
+message VideoParameter {
+  message Resolution {
+    int32 width = 1;
+    int32 height = 2;
+  }
+  optional Resolution resolution = 1;
+  optional int32 framerate = 2;
+  optional string bitrate = 3;
+  optional int32 keyFrameInterval = 4;
+}
+
+message MediaSubOption {
+  message AudioSubOption {
+    string from = 1;
+    AudioFormat format = 2;
+  }
+  optional AudioSubOption audio = 1;
+  message VideoSubOption {
+    string from = 1;
+    VideoFormat format = 2;
+    VideoParameter parameters = 3;
+  }
+  optional VideoSubOption video = 2;
+}
+
+message SubscribeOption {
+  optional string protocol = 1;
+  optional string url = 2;
+  message StreamingParameter {
+    string method = 1;
+    optional int32 hlsTime = 2;
+    optional int32 hlsListSize = 3;
+    optional int32 dashSegDuration = 4;
+    optional int32 dashWindowSize = 5;
+  }
+  optional StreamingParameter parameters = 3;
+  optional string container = 4;
+}
+
+message SubscribeRequest {
+  string type = 1;
+  SubscribeOption connection = 2;
+  MediaSubOption media = 3;
+  optional string domain = 4;
+}
+
+// Query
+message QueryRequest {
+  optional string id = 1;
+  optional string type = 2;
+}

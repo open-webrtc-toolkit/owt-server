@@ -1,0 +1,25 @@
+{
+  "name": "OWT-Server-Stream-Service",
+  "version":"5.0.0",
+  "dependencies": {
+    "amqplib": "^0.7.0",
+    "log4js": "^1.1.1",
+    "node-getopt": "*",
+    "protobufjs": "^6.11.2",
+    "toml": "*"
+  },
+  "devDependencies": {
+    "mocha": "^6.0.2",
+    "chai": "^3.0.0",
+    "chai-as-promised": "^5.1.0",
+    "sinon": "^1.15.4",
+    "sinon-as-promised": "^4.0.0",
+    "istanbul": "*",
+    "mockery": "*"
+  },
+  "scripts": {
+    "start": "node streamService.js",
+    "test": "mocha ./test -R spec --timeout 5000",
+    "test:cover": "istanbul cover _mocha -- ./test -R spec --timeout 5000"
+  }
+}
