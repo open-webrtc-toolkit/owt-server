@@ -1,0 +1,23 @@
+{
+  "name": "OWT-Server-Sample-Agent",
+  "version":"5.0.0",
+  "dependencies": {
+    "amqplib": "^0.7.0",
+    "log4js": "^1.1.1",
+    "node-getopt": "*",
+    "toml": "*",
+    "uuid": "^8.0.0"
+  },
+  "devDependencies": {
+    "mocha": "^6.0.2",
+    "chai": "^3.0.0",
+    "chai-as-promised": "^5.1.0",
+    "sinon": "^1.15.4",
+    "sinon-as-promised": "^4.0.0",
+    "istanbul": "*",
+    "mockery": "*"
+  },
+  "scripts": {
+    "start": "node . -U sample"
+  }
+}
