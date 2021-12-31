@@ -21,6 +21,7 @@ cors = ["*"]
 
 # Setup as GRPC server
 #enable_grpc = true
+#customized_controller = "conference2"
 
 [cluster]
 name = "owt-cluster"

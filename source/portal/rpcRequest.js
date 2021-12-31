@@ -60,7 +60,7 @@ var RpcRequest = function(rpcChannel) {
     return grpcNode[node];
   };
 
-  that.getController = function(clusterManager, roomId) {
+  that.getController = function(clusterManager, roomId, customizedPurpose) {
     if (enableGrpc) {
       if (!clusterClient) {
         clusterClient = grpcTools.startClient(
@@ -70,8 +70,9 @@ var RpcRequest = function(rpcChannel) {
       }
       let agentAddress;
       return new Promise((resolve, reject) => {
+        const purpose = customizedPurpose ?? 'conference';
         const req = {
-          purpose: 'conference',
+          purpose,
           task: roomId,
           preference: {}, // Change data for some preference
           reserveTime: 30 * 1000
@@ -316,6 +317,14 @@ var RpcRequest = function(rpcChannel) {
     }
     return rpcChannel.makeRPC(controller, 'onSessionSignaling', [sessionId, signaling]);
   };
+
+  that.onRTCSignaling = function(controller, clientId, name, data) {
+    return rpcChannel.makeRPC(controller, 'onRTCSignaling', [clientId, name, data]);
+  };
+
+  that.addNotificationListener = function (controller, domain, selfId) {
+    return rpcChannel.makeRPC(controller, 'addNotificationListener', [domain, selfId]);
+  }
 
   return that;
 };
