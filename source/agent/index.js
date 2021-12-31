@@ -4,10 +4,15 @@
 
 'use strict';
 var Getopt = require('node-getopt');
-var config = require('./configLoader').load();
-
 var logger = require('./logger').logger;
 var log = logger.getLogger('WorkingAgent');
+
+var config;
+try {
+    config = require('./configLoader').load();
+} catch (e) {
+    config = require('./defaultConfigLoader').load();
+}
 
 // Parse command line arguments
 var getopt = new Getopt([
@@ -30,21 +35,7 @@ for (var prop in opt.options) {
                 process.exit(0);
                 break;
             case 'my-purpose':
-                if (value === 'conference' ||
-                    value === 'webrtc' ||
-                    value === 'sip' ||
-                    value === 'streaming' ||
-                    value === 'recording' ||
-                    value === 'analytics' ||
-                    value === 'audio' ||
-                    value === 'video' ||
-                    value === 'mediabridge' ||
-                    value === 'eventbridge' ||
-                    value === 'quic') {
-                    myPurpose = value;
-                } else {
-                    process.exit(0);
-                }
+                myPurpose = value;
                 break;
             default:
                 break;
