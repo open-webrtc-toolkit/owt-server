@@ -93,7 +93,7 @@ function RPCInterface(rpcClient, protoRoot) {
   const matchObject = function (subset, obj) {
     if (typeof subset !== 'object') {
       return true;
-    }  
+    }
     let match = true;
     for (const key in subset) {
       if (subset[key] !== obj[key]) {
@@ -155,13 +155,13 @@ function RPCInterface(rpcClient, protoRoot) {
   };
 
   const addPublication = function (publication) {
-    log.debug('addPublication:', publication.id);  
+    log.debug('addPublication:', publication.id);
     publications.set(publication.id, publication);
     const locality = publication.locality;
     const owner = publication.info.owner;
     const user = participants.get(owner);
     if (user) {
-      user.pubs.add(publication.id);  
+      user.pubs.add(publication.id);
     } else if (publication.type === 'webrtc') {
       log.debug('Owner not found for publication:', publication.id);
     }
@@ -202,7 +202,7 @@ function RPCInterface(rpcClient, protoRoot) {
   };
 
   const removePublication = function (id) {
-    log.debug('removePublication:', id);  
+    log.debug('removePublication:', id);
     const publication = publications.get(id);
     if (publication) {
       const owner = publication.info.owner;
@@ -219,7 +219,7 @@ function RPCInterface(rpcClient, protoRoot) {
         }
       }
       publications.delete(id);
-      sendNotification({domain}, 'stream', {id: id, status: 'remove'});  
+      sendNotification({domain}, 'stream', {id: id, status: 'remove'});
     }
   };
 
@@ -248,7 +248,7 @@ function RPCInterface(rpcClient, protoRoot) {
     const user = participants.get(owner);
     const locality = subscription.locality;
     if (user) {
-      user.subs.add(subscription.id);  
+      user.subs.add(subscription.id);
     } else if (subscription.type === 'webrtc') {
       log.warn('Owner not found for subscription:', subscription.id);
     }
