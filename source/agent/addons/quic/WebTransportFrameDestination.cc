@@ -75,7 +75,7 @@ NAN_METHOD(WebTransportFrameDestination::addDatagramOutput)
 NAN_METHOD(WebTransportFrameDestination::removeDatagramOutput)
 {
     WebTransportFrameDestination* obj = Nan::ObjectWrap::Unwrap<WebTransportFrameDestination>(info.Holder());
-    std::lock_guard<std::mutex> lock(obj->m_datagramOutputMutex);
+    std::unique_lock<std::shared_timed_mutex> lock(obj->m_datagramOutputMutex);
     if (!obj->m_datagramOutput) {
         ELOG_WARN("Datagram output does not exist.");
         return;
@@ -114,7 +114,7 @@ void WebTransportFrameDestination::onFrame(const owt_base::Frame& frame)
         }
         m_videoRtpPacketizer->onFrame(frame);
     } else {
-        std::lock_guard<std::mutex> lock(m_datagramOutputMutex);
+        std::shared_lock<std::shared_timed_mutex> lock(m_datagramOutputMutex, std::defer_lock);
         if (!m_datagramOutput) {
             ELOG_DEBUG("Datagram output is not ready, dropping frame.");
             return;
@@ -128,7 +128,7 @@ void WebTransportFrameDestination::onVideoSourceChanged() { }
 void WebTransportFrameDestination::onFeedback(const owt_base::FeedbackMsg& feedback)
 {
     // TODO: RTCP packet could be for audio. Sending to audio packetizer when audio support is added.
-    if(!m_videoRtpPacketizer){
+    if (!m_videoRtpPacketizer) {
         ELOG_WARN("RTP packetizer is not available.");
         return;
     }

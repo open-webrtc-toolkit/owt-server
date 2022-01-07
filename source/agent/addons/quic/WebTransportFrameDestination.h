@@ -9,7 +9,7 @@
 
 #include "RtpFactory.h"
 #include "owt/quic/web_transport_stream_interface.h"
-#include <mutex>
+#include <shared_mutex>
 #include <logger.h>
 #include <nan.h>
 
@@ -44,7 +44,7 @@ private:
     // Returns an object of RTP configuration. {audio:{ssrc}, video:{ssrc}}. Returns undefined if no RTP receiver is available.
     static NAN_GETTER(rtpConfigGetter);
 
-    std::mutex m_datagramOutputMutex;
+    std::shared_timed_mutex m_datagramOutputMutex;
     NanFrameNode* m_datagramOutput;
     std::unique_ptr<RtpFactoryBase> m_rtpFactory;
     std::unique_ptr<VideoRtpPacketizerInterface> m_videoRtpPacketizer;
