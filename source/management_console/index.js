@@ -40,7 +40,7 @@ app.use(session({
   saveUninitialized: true,
   cookie: {
     httpOnly: true,
-    secure: true,
+    secure: config.console.ssl,
     sameSite: true,
     maxAge: 600000
   }
