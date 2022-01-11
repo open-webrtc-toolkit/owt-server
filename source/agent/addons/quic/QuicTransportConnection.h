@@ -55,7 +55,6 @@ protected:
     // Overrides owt::quic::WebTransportSessionInterface::Visitor.
     void OnIncomingStream(owt::quic::WebTransportStreamInterface*) override;
     void OnCanCreateNewOutgoingStream(bool unidirectional) override { }
-    void OnDatagramReceived(const uint8_t* data, size_t length) override { }
     void OnConnectionClosed() override;
     void OnDatagramReceived(const uint8_t* data, size_t length) override;
 
