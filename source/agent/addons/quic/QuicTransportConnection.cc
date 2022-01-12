@@ -191,6 +191,10 @@ void QuicTransportConnection::OnConnectionClosed()
 
 void QuicTransportConnection::OnDatagramReceived(const uint8_t* data, size_t length)
 {
+    if (length > owt_base::FeedbackMsg::kMaxBufferByteLength) {
+        ELOG_WARN("The length of datagram received is larger than expected.");
+        return;
+    }
     owt_base::FeedbackMsg feedback = { .type = owt_base::DATA_FEEDBACK, .cmd = owt_base::RTCP_PACKET };
     feedback.buffer.len = length;
     memcpy(feedback.buffer.data, data, length);

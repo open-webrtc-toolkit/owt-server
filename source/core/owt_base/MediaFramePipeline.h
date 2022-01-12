@@ -236,18 +236,19 @@ enum FeedbackCmd {
 };
 
 struct FeedbackMsg {
+    static const int kMaxBufferByteLength = 128;
     FeedbackType type;
     FeedbackCmd  cmd;
     union {
         unsigned short kbps;
         struct RtcpPacket{// FIXME: Temporarily use FeedbackMsg to carry audio rtcp-packets due to the premature AudioFrameConstructor implementation.
             uint32_t len;
-            char     buf[128];
+            char     buf[kMaxBufferByteLength];
         } rtcp;
     } data;
     struct MsgBuffer{
         uint32_t len;
-        char     data[128];
+        char     data[kMaxBufferByteLength];
     } buffer;
     FeedbackMsg(FeedbackType t, FeedbackCmd c) : type{t}, cmd{c} {}
 };
