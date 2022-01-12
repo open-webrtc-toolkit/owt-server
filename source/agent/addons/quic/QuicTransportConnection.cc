@@ -177,6 +177,7 @@ void QuicTransportConnection::onFrame(const owt_base::Frame& frame)
     }
     if (!m_session) {
         ELOG_WARN("WebTransport session is nullptr.");
+        return;
     }
     m_session->SendOrQueueDatagram(frame.payload, frame.length);
 }

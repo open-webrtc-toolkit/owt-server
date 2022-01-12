@@ -59,8 +59,10 @@ NAN_METHOD(WebTransportFrameDestination::newInstance)
 NAN_METHOD(WebTransportFrameDestination::addDatagramOutput)
 {
     WebTransportFrameDestination* obj = Nan::ObjectWrap::Unwrap<WebTransportFrameDestination>(info.Holder());
+    std::unique_lock<std::shared_timed_mutex> lock(obj->m_datagramOutputMutex);
     if (obj->m_datagramOutput) {
         ELOG_WARN("Datagram output exists, will be replaced by the new one.");
+        obj->m_datagramOutput->FrameDestination()->setDataSource(nullptr);
     }
     if (!obj->m_videoRtpPacketizer) {
         obj->m_videoRtpPacketizer = obj->m_rtpFactory->createVideoPacketizer();
