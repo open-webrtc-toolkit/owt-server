@@ -190,6 +190,10 @@ module.exports = class QuicTransportServer extends EventEmitter {
     return stream;
   }
 
+  getConnection(connectionId) {
+    return this._connections.get(connectionId);
+  }
+
   _uuidBytesToString(uuidBytes) {
     if (uuidBytes.length != 16) {
       log.error('Invalid UUID.');

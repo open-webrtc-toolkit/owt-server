@@ -49,7 +49,7 @@ public:
         uint32_t estimated_bandwidth = 0;
     };
     virtual void onFrame(const owt_base::Frame&) = 0;
-    virtual int onRtcpData(char* data, int len) = 0;
+    virtual int onRtcpData(const char* data, int len) = 0;
     virtual uint32_t ssrc() = 0;
     virtual void reset() = 0;
     virtual Stats getStats() = 0;
@@ -63,7 +63,7 @@ public:
 class AudioSendAdapter {
 public:
     virtual void onFrame(const owt_base::Frame&) = 0;
-    virtual int onRtcpData(char* data, int len) = 0;
+    virtual int onRtcpData(const char* data, int len) = 0;
     virtual uint32_t ssrc() = 0;
 };
 

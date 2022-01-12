@@ -44,6 +44,8 @@ enum FrameFormat {
     FRAME_FORMAT_NELLYMOSER,
 
     FRAME_FORMAT_DATA,  // Generic data frame. We don't know its detailed structure.
+
+    FRAME_FORMAT_RTP,  // RTP packet.
 };
 
 enum VideoCodecProfile {
@@ -215,12 +217,14 @@ inline bool isVideoFrame(const Frame& frame) {
 }
 
 inline bool isDataFrame(const Frame& frame) {
-    return frame.format == FRAME_FORMAT_DATA;
+    return frame.format == FRAME_FORMAT_DATA || frame.format == FRAME_FORMAT_RTP;
 }
 
 enum FeedbackType {
     VIDEO_FEEDBACK,
-    AUDIO_FEEDBACK
+    AUDIO_FEEDBACK,
+    // When the feedback is a RTCP packet, it's track kind is not known before parsing. Thus we use DATA_FEEDBACK for RTCP packets.
+    DATA_FEEDBACK
 };
 
 enum FeedbackCmd {
@@ -232,18 +236,19 @@ enum FeedbackCmd {
 };
 
 struct FeedbackMsg {
+    static const int kMaxBufferByteLength = 128;
     FeedbackType type;
     FeedbackCmd  cmd;
     union {
         unsigned short kbps;
         struct RtcpPacket{// FIXME: Temporarily use FeedbackMsg to carry audio rtcp-packets due to the premature AudioFrameConstructor implementation.
             uint32_t len;
-            char     buf[128];
+            char     buf[kMaxBufferByteLength];
         } rtcp;
     } data;
     struct MsgBuffer{
         uint32_t len;
-        char     data[128];
+        char     data[kMaxBufferByteLength];
     } buffer;
     FeedbackMsg(FeedbackType t, FeedbackCmd c) : type{t}, cmd{c} {}
 };

@@ -166,6 +166,11 @@ void FrameDestination::deliverFeedbackMsg(const FeedbackMsg& msg) {
         if (m_video_src) {
             m_video_src->onFeedback(msg);
         }
+    } else if (msg.type == DATA_FEEDBACK) {
+        boost::shared_lock<boost::shared_mutex> lock(m_data_src_mutex);
+        if (m_data_src) {
+            m_data_src->onFeedback(msg);
+        }
     } else {
         //TODO: log error here.
     }

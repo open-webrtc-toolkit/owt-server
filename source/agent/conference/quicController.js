@@ -56,7 +56,7 @@ class Operation {
  * 'transport-aborted': (id, reason)
  * Events for conference.js
  * 'session-established': (id, Operation)
- * 'session-updated': (id, Operation)
+ * 'session-updated': (id, {type, owner, data})
  * 'session-aborted': (id, {owner, direction, reason})
  */
 class QuicController extends EventEmitter {
@@ -91,16 +91,15 @@ class QuicController extends EventEmitter {
 
   onSessionProgress(sessionId, status)
   {
-      if (!status.data) {
-          log.error('QUIC agent only support data forwarding.');
+      if (!this.operations.get(sessionId)) {
+          log.error('Invalid session ID.');
           return;
       }
+      const operation=this.operations.get(sessionId);
       if (status.type === 'ready') {
-          if (!this.operations.get(sessionId)) {
-              log.error('Invalid session ID.');
-              return;
-          }
-          this.emit('session-established', this.operations.get(sessionId));
+          this.emit('session-established', operation);
+      } else if (status.type === 'rtp') {
+          this.emit('session-updated', sessionId, { type : 'rtp', owner : operation.transport.owner, data : { rtp : status.rtp } });
       }
   }
 

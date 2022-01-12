@@ -426,7 +426,7 @@ void QuicTransportStream::SignalOnData()
                     // Transport layer doesn't know a frame's type. Video agent is able to parse the type of a frame from bistream. However, video agent doesn't feed the frame to decoder when a key frame is requested.
                     frame.additionalInfo.video.isKeyFrame = "key";
                 } else {
-                    ELOG_ERROR("Unexpected track kind: %s.", m_trackKind);
+                    ELOG_ERROR("Unexpected track kind: %s.", m_trackKind.c_str());
                 }
                 frame.length = m_currentFrameSize;
                 frame.payload = m_buffer;

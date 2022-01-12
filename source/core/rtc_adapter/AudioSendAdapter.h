@@ -32,7 +32,7 @@ public:
 
     // Implement AudioSendAdapter
     void onFrame(const owt_base::Frame&) override;
-    int onRtcpData(char* data, int len) override;
+    int onRtcpData(const char* data, int len) override;
     uint32_t ssrc() override { return m_ssrc; }
 
     // Implement webrtc::Transport

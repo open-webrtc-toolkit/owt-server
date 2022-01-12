@@ -34,7 +34,8 @@ NAN_MODULE_INIT(WebTransportFrameSource::init)
     instanceTpl->SetInternalFieldCount(1);
 
     Nan::SetPrototypeMethod(tpl, "addDestination", addDestination);
-    Nan::SetPrototypeMethod(tpl, "addInputStream", addInputStream);
+    Nan::SetPrototypeMethod(tpl, "addStreamInput", addStreamInput);
+    Nan::SetPrototypeMethod(tpl, "receiver", receiver);
 
     s_constructor.Reset(Nan::GetFunction(tpl).ToLocalChecked());
     Nan::Set(target, Nan::New("WebTransportFrameSource").ToLocalChecked(), Nan::GetFunction(tpl).ToLocalChecked());
@@ -51,14 +52,14 @@ NAN_METHOD(WebTransportFrameSource::newInstance)
     info.GetReturnValue().Set(info.This());
 }
 
-NAN_METHOD(WebTransportFrameSource::addInputStream)
+NAN_METHOD(WebTransportFrameSource::addStreamInput)
 {
     WebTransportFrameSource* obj = Nan::ObjectWrap::Unwrap<WebTransportFrameSource>(info.Holder());
     NanFrameNode* inputStream = Nan::ObjectWrap::Unwrap<NanFrameNode>(
         Nan::To<v8::Object>(info[0]).ToLocalChecked());
-    inputStream->FrameSource()->addDataDestination(obj);
     inputStream->FrameSource()->addAudioDestination(obj);
     inputStream->FrameSource()->addVideoDestination(obj);
+    inputStream->FrameSource()->addDataDestination(obj);
 }
 
 NAN_METHOD(WebTransportFrameSource::addDestination)
@@ -87,6 +88,11 @@ NAN_METHOD(WebTransportFrameSource::addDestination)
     obj->addAudioDestination(dest);
     obj->addVideoDestination(dest);
     obj->addDataDestination(dest);
+}
+
+NAN_METHOD(WebTransportFrameSource::receiver)
+{
+    info.GetReturnValue().Set(info.This());
 }
 
 void WebTransportFrameSource::onFeedback(const owt_base::FeedbackMsg&)
