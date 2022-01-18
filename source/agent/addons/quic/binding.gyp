@@ -58,17 +58,13 @@
       '$(CUSTOM_INCLUDE_PATH)',
       '<!@(pkg-config glib-2.0 --cflags-only-I | sed s/-I//g)',
     ],
-    'ldflags': [
-      '-Wl,--no-as-needed',
-      '-L$(DEFAULT_DEPENDENCY_PATH)/lib',
-      '-Wl,-rpath,$(DEFAULT_DEPENDENCY_PATH)/lib',
-      '-fPIC',
-    ],
     'cflags_cc!': [
       '-std=gnu++0x',
       '-fno-exceptions',
     ],
     'libraries': [
+      '-L$(DEFAULT_DEPENDENCY_PATH)/lib',
+      '-L$(CUSTOM_LIBRARY_PATH)',
       '-ldl',
       '-llog4cxx',
       '-lowt_web_transport',
