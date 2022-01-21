@@ -50,16 +50,17 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
         });
 
         var dispatcher = new MediaFrameMulticaster();
+        var source = dispatcher.source();
         connection.addDestination('audio', dispatcher);
         connection.addDestination('video', dispatcher);
-        connection.selfClose = connection.close;
-        connection.close = function () {
+        source.close = function () {
             connection.removeDestination('audio', dispatcher);
             connection.removeDestination('video', dispatcher);
-            connection.selfClose();
+            connection.close();
+            dispatcher.close();
         };
         connection.source = function () {
-            return dispatcher.source();
+            return source;
         };
 
         return connection;
