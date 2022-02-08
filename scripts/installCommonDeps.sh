@@ -297,8 +297,8 @@ install_libexpat() {
   echo "libexpat already installed." && return 0
 
   if [ -d $LIB_DIR ]; then
-    local VERSION="2.2.6"
-    local DURL="https://github.com/libexpat/libexpat/releases/download/R_2_2_6/expat-${VERSION}.tar.bz2"
+    local VERSION="2.4.4"
+    local DURL="https://github.com/libexpat/libexpat/releases/download/R_2_4_4/expat-${VERSION}.tar.bz2"
     pushd ${LIB_DIR} >/dev/null
     rm -rf expat-*
     rm -f ./build/lib/libexpat.*
