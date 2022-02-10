@@ -12,14 +12,18 @@ const { randomUUID } = require('crypto');
 
 const toml = require('toml');
 const protobuf = require('protobufjs');
-const {RtcController} = require('./rtcController');
-const {StreamingController} = require('./streamingController');
 const createChannel = require('./rpcChannel');
 const createRequest = require('./rpcRequest');
 const amqper = require('./amqpClient')();
 const starter = require('./rpcStarter');
 
-const {Publication, Subscription} = require('./session');
+const {RtcController} = require('./rtcController');
+const {StreamingController} = require('./streamingController');
+const {VideoController} = require('./videoController');
+const {AudioController} = require('./audioController');
+const {AnalyticsController} = require('./analyticsController');
+
+const {Publication, Subscription, Processor} = require('./session');
 
 const PROTO_FILE = "service.proto";
 
@@ -82,13 +86,18 @@ function RPCInterface(rpcClient, protoRoot) {
   const nodeAddress = new Map();
   // Addresses for track. id => {ip, port}
   const trackAddress = new Map();
+    // All subscribers to track. id => Set {SubscriptionId}
+  const trackSubscribers = new Map();
   // Listeners. domain => Set {listenerId}
   const listeners = new Map();
   // Locality node info. id => {agent, node, type, pubs, subs}
   const nodes = new Map();
+  // All processors
+  const processors = new Map();
   // Proto requests
-  const PublishRequest = protoRoot.lookupType("PublishRequest");
-  const SubscribeRequest = protoRoot.lookupType("SubscribeRequest");
+  const PublishRequest = protoRoot.lookupType('PublishRequest');
+  const SubscribeRequest = protoRoot.lookupType('SubscribeRequest');
+  const AddProcessorRequest = protoRoot.lookupType('AddProcessorRequest');
 
   const matchObject = function (subset, obj) {
     if (typeof subset !== 'object') {
@@ -140,6 +149,7 @@ function RPCInterface(rpcClient, protoRoot) {
           log.debug('Failed to get link address for:', track.from);
           return;
         }
+        trackSubscribers.get(track.from).add(subscription.id);
         // rpc linkup
         const subNode = subscription.locality.node;
         log.debug('linkup:', subNode, track.id, fromInfo);
@@ -154,9 +164,30 @@ function RPCInterface(rpcClient, protoRoot) {
     }
   };
 
+  const cutSubscription = function (subscription) {
+    // cutoff
+    log.debug('cutSubscription:', JSON.stringify(subscription));
+    const links = [];
+    for (const type in subscription.sink) {
+      subscription.sink[type].forEach((track) => {
+        // rpc cutoff
+        const subNode = subscription.locality.node;
+        log.debug('cutoff:', subNode, track.id, track.from);
+        rpcChannel.makeRPC(subNode, 'cutoff', [track.from])
+          .then((ok) => {
+            log.debug('cutoff ok');
+          })
+          .catch((reason) => {
+            log.warn('cutoff failed, reason:', reason);
+          });
+      });
+    }
+  };
+
   const addPublication = function (publication) {
     log.debug('addPublication:', publication.id);
     publications.set(publication.id, publication);
+
     const locality = publication.locality;
     const owner = publication.info.owner;
     const user = participants.get(owner);
@@ -186,6 +217,7 @@ function RPCInterface(rpcClient, protoRoot) {
           publication.source[type].forEach((track) => {
             trackAddress.set(track.id, Object.assign({id: track.id}, addr));
             log.debug('Track address:', track.id, trackAddress.get(track.id));
+            trackSubscribers.set(track.id, new Set());
           });
         }
       }).catch((e) => {
@@ -196,6 +228,7 @@ function RPCInterface(rpcClient, protoRoot) {
       for (const type in publication.source) {
         publication.source[type].forEach((track) => {
           trackAddress.set(track.id, Object.assign({id: track.id}, addr));
+          trackSubscribers.set(track.id, new Set());
         });
       }
     }
@@ -217,6 +250,21 @@ function RPCInterface(rpcClient, protoRoot) {
         if (node.isEmpty()) {
           nodes.delete(node.id);
         }
+      }
+      // clean source track data
+      for (const type in publication.source) {
+        publication.source[type].forEach((track) => {
+          const relatedSubs = trackSubscribers.get(track.id);
+          log.debug('Clean publication track:', track.id, relatedSubs);
+          trackSubscribers.delete(track.id);
+          // TODO: cut all source track in related subscriptions
+          for (const subId of relatedSubs) {
+            const sub = subscriptions.get(subId);
+            if (sub) {
+              sub.removeSource(track.type, track.id);
+            }
+          }
+        });
       }
       publications.delete(id);
       sendNotification({domain}, 'stream', {id: id, status: 'remove'});
@@ -243,6 +291,7 @@ function RPCInterface(rpcClient, protoRoot) {
   };
 
   const addSubscription = function (subscription) {
+    log.debug('addSubscription:', subscription.id);
     subscriptions.set(subscription.id, subscription);
     const owner = subscription.info.owner;
     const user = participants.get(owner);
@@ -270,6 +319,8 @@ function RPCInterface(rpcClient, protoRoot) {
       const owner = subscription.info.owner;
       const user = participants.get(owner);
       const node = nodes.get(subscription.locality.node);
+      // cut off
+      cutSubscription(subscription);
       if (user) {
         user.subs.delete(id);
       }
@@ -372,6 +423,12 @@ function RPCInterface(rpcClient, protoRoot) {
       new StreamingController(rpcReq, rpcID, config.cluster.name);
   controllers['recording'] =
       new StreamingController(rpcReq, rpcID, config.cluster.name);
+  controllers['video'] =
+      new VideoController(rpcChannel, rpcID, config.cluster.name);
+  controllers['audio'] =
+      new AudioController(rpcChannel, rpcID, config.cluster.name);
+  controllers['analytics'] =
+      new AnalyticsController(rpcChannel, rpcID, config.cluster.name);
 
   for (const type in controllers) {
     const ctrl = controllers[type];
@@ -390,10 +447,14 @@ function RPCInterface(rpcClient, protoRoot) {
       }
     });
     ctrl.on('session-aborted', async (id, reason) => {
-      if (publications.has(id)) {
-        removePublication(id);
-      } else if (subscriptions.has(id)) {
-        removeSubscription(id);
+      try {
+        if (publications.has(id)) {
+          removePublication(id);
+        } else if (subscriptions.has(id)) {
+          removeSubscription(id);
+        }
+      } catch (e) {
+        log.warn('Error during session-aborted:', e.stack || e);
       }
     });
   }
@@ -438,6 +499,8 @@ function RPCInterface(rpcClient, protoRoot) {
           log.warn('Failed to unpublish:', err, err.stack);
           callback('callback', 'error', err && err.message);
         });
+    } else {
+      callback('callback', 'error', 'Publication not found');
     }
   };
 
@@ -467,7 +530,7 @@ function RPCInterface(rpcClient, protoRoot) {
           callback('callback', 'error', err && err.message);
         });
     } else {
-      throw new Error('Invalid type:' + type);
+      callback('callback', 'error', 'Invalid type:' + type);
     }
   };
 
@@ -483,6 +546,8 @@ function RPCInterface(rpcClient, protoRoot) {
           log.warn('Failed to unsubscribe:', err, err.stack);
           callback('callback', 'error', err && err.message);
         });
+    } else {
+      callback('callback', 'error', 'Subscription not found');
     }
   };
 
@@ -528,9 +593,58 @@ function RPCInterface(rpcClient, protoRoot) {
         listeners.get(domain).delete(listenerId);
       }
       callback('callback', 'ok');
+    } else {
+      callback('callback', 'error', 'Invalid domain');
     }
-    callback('callback', 'error', 'Invalid domain');
   }
+
+  that.addProcessor = function (procConfig, callback) {
+    log.debug('addProcessor:', procConfig.type, procConfig);
+    const type = procConfig.type;
+    if (controllers[type] && controllers[type].addProcessor) {
+      procConfig.id = procConfig.id || randomUUID().replace(/-/g, '');
+      procConfig.info = {};
+      return controllers[type].addProcessor(procConfig)
+        .then((proc) => {
+          proc.controllerType = type;
+          processors.set(procConfig.id, proc);
+          callback('callback', proc);
+        }).catch((err) => {
+          log.warn('Failed to addProcessor:', err, err.stack, err.message);
+          callback('callback', 'error', err && err.message);
+        });
+    } else {
+      callback('callback', 'error', 'Invalid type:' + type);
+    }
+  };
+
+  that.removeProcessor = function (processorId, callback) {
+    log.debug('removeProcessor:', processorId);
+    if (processors.has(processorId)) {
+      const type = processors.get(processorId).controllerType;
+      return controllers[type].removeProcessor(processorId)
+        .then((ok) => {
+          processors.delete(processorId);
+          callback('callback', 'ok');
+        }).catch((err) => {
+          log.warn('Failed to removeProcessor:', err, err.stack, err.message);
+          callback('callback', 'error', err && err.message);
+        });
+    } else {
+      callback('callback', 'error', 'Processor not found');
+    }
+  };
+
+  that.getProcessors = function (filter, callback) {
+    log.debug('getProcessors:', filter);
+    const ret = [];
+    for (const [id, processor] of processors) {
+      if (matchObject(filter, processor)) {
+        ret.push(processor);
+      }
+    }
+    callback('callback', ret);
+  };
 
   that.close = function () {
     controller.destroy();
@@ -547,14 +661,15 @@ let serviceRPC = null;
 
 protobuf.load(PROTO_FILE, function(err, root) {
   if (err) {
-    log.warn('Failed to parse proto:', err);
+    log.warn('Failed to parse proto:', err.stack);
     return;
   }
 
   amqper.connect(config.rabbit, function connectOk() {
     starter.startClient(amqper)
       .then((rpcClient) => {
-        return starter.startServer(amqper, rpcID, RPCInterface(rpcClient, root));
+        serviceRPC = RPCInterface(rpcClient, root);
+        return starter.startServer(amqper, rpcID, serviceRPC);
       })
       .then((rpcServer) => {
         log.info(rpcID + ' as rpc server ready');
@@ -563,7 +678,7 @@ protobuf.load(PROTO_FILE, function(err, root) {
         });
       })
       .catch((err) => {
-        log.error('Failed to start RPC:', err);
+        log.error('Failed to start RPC:', err, err.stack);
         process.exit();
       });
   }, function connectError(reason) {

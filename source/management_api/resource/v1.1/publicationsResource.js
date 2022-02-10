@@ -11,7 +11,7 @@ const log = require('../../logger').logger.getLogger('PublicationsResource');
 
 const rpc = require('../../rpc/rpc');
 
-const STREAM_SERVICE_ID = 'stream-service';
+const STREAM_SERVICE_ID = global.config.cluster.streamService;
 
 function callStreamService(methodName, args, callback) {
   rpc.callRpc(STREAM_SERVICE_ID, methodName, args, {callback: function(ret) {

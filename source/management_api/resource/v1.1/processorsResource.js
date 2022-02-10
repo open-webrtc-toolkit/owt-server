@@ -1,4 +1,4 @@
-// Copyright (C) <2021> Intel Corporation
+// Copyright (C) <2022> Intel Corporation
 //
 // SPDX-License-Identifier: Apache-2.0
 
@@ -7,7 +7,7 @@ const requestHandler = require('../../requestHandler');
 const e = require('../../errors');
 
 // Logger
-const log = require('../../logger').logger.getLogger('SubscriptionsResource');
+const log = require('../../logger').logger.getLogger('ProcessorsResource');
 
 const rpc = require('../../rpc/rpc');
 
@@ -24,9 +24,9 @@ function callStreamService(methodName, args, callback) {
 }
 
 exports.getList = function (req, res, next) {
-  log.debug('Representing subscriptions for domain ', req.params.domain,
+  log.debug('Representing processors for domain ', req.params.domain,
             'and service', req.authData.service._id);
-  callStreamService('getSubscriptions', [{}], (err, pubs) => {
+  callStreamService('getProcessors', [{}], (err, pubs) => {
     if (err) {
       next(new e.CloudError('Failed to get subscriptions'));
     } else {
@@ -36,12 +36,12 @@ exports.getList = function (req, res, next) {
 };
 
 exports.get = function (req, res, next) {
-  log.debug('Representing subscription:', req.params.subscription,
+  log.debug('Representing processor:', req.params.processor,
             ' for domain ', req.params.domain);
-  const query = {id: req.params.subscription};
-  callStreamService('getSubscriptions', [query], (err, pubs) => {
+  const query = {id: req.params.processor};
+  callStreamService('getProcessors', [query], (err, pubs) => {
     if (err) {
-      next(new e.CloudError('Failed to get subscriptions'));
+      next(new e.CloudError('Failed to get processors'));
     } else {
       res.send(pubs[0]);
     }
@@ -49,31 +49,23 @@ exports.get = function (req, res, next) {
 };
 
 exports.add = function (req, res, next) {
-  log.debug('Add subscription for domain ', req.params.domain);
-  callStreamService('subscribe', [req.body], (err, ret) => {
+  log.debug('Add processor for domain ', req.params.domain);
+  callStreamService('addProcessor', [req.body], (err, ret) => {
     if (err) {
       log.debug('Add failure:', err, err.stack);
-      next(new e.CloudError('Failed to subscribe'));
+      next(new e.CloudError('Failed to add processor'));
     } else {
       res.send(ret);
     }
   });
 };
 
-exports.patch = function (req, res, next) {
-  log.debug('Update subscription:', req.params.subscription,
-            ' for domain ', req.params.domain);
-  const stream = req.params.stream;
-  const cmds = req.body;
-  next(new e.CloudError('No implementation'));
-};
-
 exports.delete = function (req, res, next) {
-  log.debug('Delete subscription:', req.params.subscription,
+  log.debug('Delete processor:', req.params.processor,
             ' for domain ', req.params.domain);
-  callStreamService('unsubscribe', [req.params.subscription], (err, ret) => {
+  callStreamService('removeProcessor', [req.params.processor], (err, ret) => {
     if (err) {
-      next(new e.CloudError('Failed to unsubscribe'));
+      next(new e.CloudError('Failed to remove processor'));
     } else {
       res.send(ret);
     }

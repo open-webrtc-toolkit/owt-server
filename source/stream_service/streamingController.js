@@ -55,9 +55,9 @@ class StreamingController extends EventEmitter {
       transportProtocol,
       bufferSize,
     },
+    domain: roomId,
     info: {
       owner: ownerId,
-      domain: roomId,
       origin: origin,
       attributes: attrObject,
     }
@@ -70,9 +70,9 @@ class StreamingController extends EventEmitter {
     url: string,
     media: {audio, video},
     parameters: {},
+    domain: roomId,
     info: {
       owner: ownerId,
-      domain: roomId,
       origin: origin,
       attributes: attrObject,
     }
@@ -102,6 +102,8 @@ class StreamingController extends EventEmitter {
       options.controller = this.selfRpcId;
       return this.rpcReq.initiate(locality.node, id, sessionConfig.type, direction, options)
         .then(() => id);
+    } else {
+      return Promise.reject(new Error('Session ID already exists'));
     }
   }
 

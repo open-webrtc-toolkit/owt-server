@@ -92,10 +92,42 @@ class Subscription {
     this.domain = '';
   }
 
+  removeSource(trackType, trackFrom) {
+    if (this.sink[trackType]) {
+      const len = this.sink[trackType].length;
+      this.sink[trackType] = this.sink[trackType].filter((track) => {
+        return (track.from !== trackFrom);
+      });
+      return (this.sink[trackType].length !== len);
+    }
+    return false;
+  };
+
   get status() {
     return this.locality ? 'completed' : 'initializing';
   }
 }
 
+class Processor {
+  constructor(id, type, info) {
+    this.id = id;
+    this.type = type;
+    this.info = info;
+    this.inputs = {
+      audio: [],
+      video: [],
+      data: [],
+    };
+    this.outputs = {
+      audio: [],
+      video: [],
+      data: [],
+    };
+    this.locality = null;
+    this.domain = '';
+  }
+}
+
 exports.Publication = Publication;
 exports.Subscription = Subscription;
+exports.Processor = Processor;

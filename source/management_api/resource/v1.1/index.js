@@ -11,6 +11,7 @@ const streamsResource = require('./streamsResource');
 const tokensResource = require('../v1/tokensResource');
 const publicationsResource = require('./publicationsResource');
 const subscriptionsResource = require('./subscriptionsResource');
+const processorsResource = require('./processorsResource');
 const routerV1 = require('../v1');
 
 // Stream(including external streaming-in) management
@@ -37,6 +38,11 @@ router.patch('/cluster/subscriptions/:subscription', subscriptionsResource.patch
 router.delete('/cluster/subscriptions/:subscription', subscriptionsResource.delete);
 
 router.get('/cluster/nodes', publicationsResource.getNodes);
+
+router.get('/cluster/processors', processorsResource.getList);
+router.get('/cluster/processors/:processors', processorsResource.get);
+router.post('/cluster/processors', processorsResource.add);
+router.delete('/cluster/processors/:processor', processorsResource.delete);
 
 // Same as previous version
 router.use(routerV1);

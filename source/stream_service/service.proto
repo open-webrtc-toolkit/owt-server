@@ -1,5 +1,8 @@
-
 syntax = "proto3";
+
+import "format.proto";
+
+package owt;
 
 // Publish
 message StreamingConnection {
@@ -9,39 +12,18 @@ message StreamingConnection {
 }
 
 message MediaPubOption {
-  optional bool audio = 1;
-  optional bool video = 2;
+  optional AudioFormat audio = 1;
+  optional VideoFormat video = 2;
 }
 
 message PublishRequest {
-  StreamingConnection connection = 1;
-  MediaPubOption media = 2;
-  optional string domain = 3;
+  MediaPubOption media = 1;
+  optional StreamingConnection connection = 2; // For streaming
+  optional string processor = 3; // For processor
+  optional string domain = 4;
 }
 
 // Subscribe
-message AudioFormat {
-  string codec = 1;
-  optional uint32 sampleRate = 2;
-  optional uint32 channelNum = 3;
-}
-
-message VideoFormat {
-  string codec = 1;
-  optional string profile = 2;
-}
-
-message VideoParameter {
-  message Resolution {
-    int32 width = 1;
-    int32 height = 2;
-  }
-  optional Resolution resolution = 1;
-  optional int32 framerate = 2;
-  optional string bitrate = 3;
-  optional int32 keyFrameInterval = 4;
-}
-
 message MediaSubOption {
   message AudioSubOption {
     string from = 1;
@@ -74,7 +56,71 @@ message SubscribeRequest {
   string type = 1;
   SubscribeOption connection = 2;
   MediaSubOption media = 3;
-  optional string domain = 4;
+  optional string processor = 4;
+  optional string domain = 5;
+}
+
+/*
+   * videoConfig = {
+   *   type: 'video',
+   *   id: 'processorId',
+   *   mixing: {id, view}, // See room view video config
+   *   transcoding: {id},
+   *   mediaPreference: {video: {encode:[], decode:[]}},
+   *   domain: 'string',
+   * }
+   */
+
+// Processor
+message Layout {
+  message Rational {
+    int32 numerator = 1;
+    int32 denominator = 2;
+  }
+  message Area {
+    Rational left = 1;
+    Rational top = 2;
+    Rational width = 3;
+    Rational height = 4;
+  }
+  message Region {
+    string id = 1;
+    string shape = 2;
+    Area area = 3;
+  }
+  message Template {
+    repeated Region region = 1;
+  }
+  string fitPolicy = 1;
+  repeated Template templates = 2;
+}
+
+message MixInfo {
+  string id = 1;
+  optional int32t maxInput = 2;
+  optional Layout layout = 3;
+  optional bool vad = 4;
+}
+
+message TranscodeInfo {
+  string id = 1;
+}
+
+message SelectInfo {
+  string id = 1;
+  repeated string activeStreamIds = 2 [packed = true];
+}
+
+message AddProcessorRequest {
+  string type = 1;
+  optional string id = 2;
+  oneof DetailType {
+    MixInfo mixing = 3;
+    TranscodeInfo transcoding = 4;
+    SelectInfo selecting = 5;
+  }
+  optional MediaPreference mediaPreference = 6;
+  optional string domain = 7;
 }
 
 // Query

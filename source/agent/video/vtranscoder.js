@@ -52,6 +52,10 @@ function VTranscoder(rpcClient, clusterIP, VideoTranscoder, router) {
          */
         connections = {};
 
+    // {codec, options, id}
+    let unlinkedInput = null;
+    let inputConnId = null;
+
     var setInput = function (stream_id, codec, options, on_ok, on_error) {
         // FIXME: filter profile setting for native layer
         codec = codec.indexOf('h264') > -1 ? 'h264' : codec;
@@ -61,6 +65,14 @@ function VTranscoder(rpcClient, clusterIP, VideoTranscoder, router) {
                 ip: options.ip,
                 port: options.port
             });
+
+            if (!conn) {
+                log.debug('setInput waiting to link up:', stream_id);
+                unlinkedInput = {id: stream_id, codec, options};
+                on_ok(stream_id);
+                return;
+            }
+
             if (engine.setInput(stream_id, codec, conn)) {
                 input_id = stream_id;
                 input_conn = conn;
@@ -171,7 +183,7 @@ function VTranscoder(rpcClient, clusterIP, VideoTranscoder, router) {
         for (var stream_id in outputs) {
             removeOutput(stream_id);
         }
-        input_id && unsetInput(input_id);
+        input_id && unsetInput();
 
         if (engine) {
             engine.close();
@@ -262,7 +274,10 @@ function VTranscoder(rpcClient, clusterIP, VideoTranscoder, router) {
 
     that.unpublish = function (stream_id) {
         log.debug('unpublish, stream_id:', stream_id);
-        unsetInput(stream_id);
+        if (stream_id === input_id || stream_id === inputConnId) {
+            unsetInput();
+            inputConnId = null;
+        }
     };
 
     that.subscribe = function (connectionId, connectionType, options, callback) {
@@ -274,12 +289,39 @@ function VTranscoder(rpcClient, clusterIP, VideoTranscoder, router) {
         log.debug('unsubscribe, connectionId:', connectionId);
     };
 
-    that.linkup = function (connectionId, audio_stream_id, callback) {
+    // streamInfo = {id: 'string', ip: 'string', port: 'number'}
+    // from = {audio: streamInfo, video: streamInfo, data: streamInfo}
+    that.linkup = function (connectionId, from, callback) {
+        if (unlinkedInput && unlinkedInput.id === connectionId) {
+            const {codec, options} = unlinkedInput;
+            unlinkedInput = null;
+            const fromId = from.video.id;
+            options.ip = from.video?.ip;
+            options.port = from.video?.port;
+            setInput(fromId, codec, options, function () {
+                if (unlinkedInput) {
+                    // Inputs link failed
+                    unlinkedInput = null;
+                    callback('callback', 'error', 'Invalid link address');
+                } else {
+                    inputConnId = connectionId;
+                    callback('callback', 'ok');
+                }
+            }, function (reason) {
+                log.error(reason);
+                callback('callback', 'error', reason);
+            });
+            return;
+        }
         callback('callback', 'ok');
     };
 
     that.cutoff = function (connectionId) {
         log.debug('cutoff, connectionId:', connectionId);
+        if (connectionId === input_id || connectionId === inputConnId) {
+            unsetInput();
+            inputConnId = null;
+        }
     };
 
     that.forceKeyFrame = function (stream_id) {

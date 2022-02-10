@@ -66,6 +66,7 @@ module.exports = function (rpcClient, rpcId, agentId, clusterIp) {
   }
 
   const notifyStatus = (controller, sessionId, direction, status) => {
+    log.warn('notifyStatus:', controller, sessionId, direction, status);
     rpcClient.remoteCast(controller, 'onSessionProgress', [sessionId, direction, status]);
     // Emit GRPC notifications
     const notification = {
@@ -257,7 +258,12 @@ module.exports = function (rpcClient, rpcId, agentId, clusterIp) {
               return;
             }
           }
-          generateStream(options.controller, newStreamId, streamInfo);
+
+          // For Stream Engine, onSessionProgress(id, name, data)
+          streamInfo.id = newStreamId;
+          notifyStatus(controller, connectionId, 'onNewStream', streamInfo);
+
+          // generateStream(options.controller, newStreamId, streamInfo);
         } catch (e) {
           log.error("Parse stream added data with error:", e);
         }
@@ -313,7 +319,9 @@ module.exports = function (rpcClient, rpcId, agentId, clusterIp) {
 
   that.cutoff = function (connectionId, callback) {
     log.debug('cutoff, connectionId:', connectionId);
-    router.cutoff(connectionId).then(onSuccess(callback), onError(callback));
+    router.cutoff(connectionId).then(
+      () => callback('callback', 'ok'),
+      () => callback('callback', 'error', 'Failed to cutoff'));
   };
 
   that.onFaultDetected = function (message) {
