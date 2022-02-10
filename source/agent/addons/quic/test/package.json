@@ -2,7 +2,7 @@
   "name": "OWT-Server-QUIC-test",
   "version": "4.3.0",
   "dependencies": {
-    "log4js": "^1.1.1",
+    "log4js": "^6.4.0",
     "node-getopt": "*"
   },
   "devDependencies": {
