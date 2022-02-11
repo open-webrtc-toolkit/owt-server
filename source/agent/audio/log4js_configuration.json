@@ -1,6 +1,6 @@
 {
-  "appenders": [
-    {
+  "appenders": {
+    "out": {
       "type": "console",
       "layout": {
         "type": "pattern",
@@ -8,17 +8,18 @@
         "replaceConsole": true
       }
     }
-  ],
-  "levels": {
-    "ClusterWorker": "INFO",
-    "LoadCollector": "INFO",
-    "AmqpClient": "INFO",
-    "WorkingNode": "INFO",
-    "NodeManager": "INFO",
-    "AudioNode": "INFO",
-    "SelectiveMixer": "INFO",
-    "WorkingAgent": "INFO",
-    "Connections": "INFO",
-    "InternalConnectionRouter": "INFO"
+  },
+  "categories": {
+    "default": { "appenders": [ "out" ], "level": "info" },
+    "ClusterWorker": { "appenders": [ "out" ], "level": "info" },
+    "LoadCollector": { "appenders": [ "out" ], "level": "info" },
+    "AmqpClient": { "appenders": [ "out" ], "level": "info" },
+    "WorkingNode": { "appenders": [ "out" ], "level": "info" },
+    "NodeManager": { "appenders": [ "out" ], "level": "info" },
+    "AudioNode": { "appenders": [ "out" ], "level": "info" },
+    "SelectiveMixer": { "appenders": [ "out" ], "level": "info" },
+    "WorkingAgent": { "appenders": [ "out" ], "level": "info" },
+    "Connections": { "appenders": [ "out" ], "level": "info" },
+    "InternalConnectionRouter": { "appenders": [ "out" ], "level": "info" }
   }
 }

@@ -1,6 +1,6 @@
 {
-  "appenders": [
-    {
+  "appenders": {
+    "out": {
       "type": "console",
       "layout": {
         "type": "pattern",
@@ -8,10 +8,11 @@
         "replaceConsole": true
       }
     }
-  ],
-  "levels": {
-    "AmqpClient": "INFO",
-    "SipPortal": "INFO",
-    "SipErizoHelper": "INFO"
+  },
+  "categories": {
+    "default": { "appenders": [ "out" ], "level": "info" },
+    "AmqpClient": { "appenders": [ "out" ], "level": "info" },
+    "SipPortal": { "appenders": [ "out" ], "level": "info" },
+    "SipErizoHelper": { "appenders": [ "out" ], "level": "info" }
   }
 }

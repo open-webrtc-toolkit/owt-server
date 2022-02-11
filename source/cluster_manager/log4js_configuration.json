@@ -1,6 +1,6 @@
 {
-  "appenders": [
-    {
+  "appenders": {
+    "out": {
       "type": "console",
       "layout": {
         "type": "pattern",
@@ -8,13 +8,14 @@
         "replaceConsole": true
       }
     }
-  ],
-  "levels": {
-    "AmqpClient": "INFO",
-    "Main": "INFO",
-    "ClusterManager": "INFO",
-    "Scheduler": "INFO",
-    "Matcher": "INFO",
-    "Strategy": "INFO"
+  },
+  "categories": {
+    "default": { "appenders": [ "out" ], "level": "info" },
+    "AmqpClient": { "appenders": [ "out" ], "level": "info" },
+    "Main": { "appenders": [ "out" ], "level": "info" },
+    "ClusterManager": { "appenders": [ "out" ], "level": "info" },
+    "Scheduler": { "appenders": [ "out" ], "level": "info" },
+    "Matcher": { "appenders": [ "out" ], "level": "info" },
+    "Strategy": { "appenders": [ "out" ], "level": "info" }
   }
 }
