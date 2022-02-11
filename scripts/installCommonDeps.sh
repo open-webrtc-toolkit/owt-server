@@ -56,11 +56,11 @@ install_fdkaac(){
 }
 
 install_ffmpeg(){
-  local VERSION="4.1.3"
+  local VERSION="4.4.1"
   local DIR="ffmpeg-${VERSION}"
   local SRC="${DIR}.tar.bz2"
   local SRC_URL="http://ffmpeg.org/releases/${SRC}"
-  local SRC_MD5SUM="9985185a8de3678e5b55b1c63276f8b5"
+  local SRC_MD5SUM="9c2ca54e7f353a861e57525ff6da335b"
 
   local LIST_LIBS=`ls ${PREFIX_DIR}/lib/libav* 2>/dev/null`
   [ "$INCR_INSTALL" = true ]  && [[ ! -z $LIST_LIBS ]] && \
