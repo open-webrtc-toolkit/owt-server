@@ -1,35 +1,16 @@
-#!/usr/bin/env bash
+##!/usr/bin/env bash
 # Copyright (C) <2019> Intel Corporation
 #
 # SPDX-License-Identifier: Apache-2.0
 
-this=`dirname "$0"`
-this=`cd "$this"; pwd`
+this=$(pwd)
+
+DOWNLOAD_DIR="${this}/ffmpeg_libsrt_src"
+TARGET_DIR="${this}/ffmpeg_libsrt_lib"
 SUDO=""
-ENABLE_SRT=false
 if [[ $EUID -ne 0 ]]; then
    SUDO="sudo -E"
 fi
-
-echo "Streaming agent install ffmpeg"
-echo $1
-
-parse_arguments(){
-  while [ "$1" != "" ]; do
-    case $1 in
-      "--enable-srt")
-	echo "Enable SRT"
-        ENABLE_SRT=true
-        ;;
-      "--cleanup")
-        CLEANUP=true
-        ;;
-    esac
-    shift
-  done
-}
-
-
 
 detect_OS() {
   lsb_release >/dev/null 2>/dev/null
@@ -78,17 +59,11 @@ install_build_deps() {
   then
     echo -e "\x1b[32mInstalling dependent components and libraries via yum...\x1b[0m"
     ${SUDO} yum install pkg-config make gcc gcc-c++ nasm yasm freetype-devel -y
-    if [ "$ENABLE_SRT" = "true" ]; then
-	${SUDO} yum install tcl openssl-devel cmake automake -y
-    fi
   elif [[ "$OS" =~ .*ubuntu.* ]]
   then
     echo -e "\x1b[32mInstalling dependent components and libraries via apt-get...\x1b[0m"
     ${SUDO} apt-get update
     ${SUDO} apt-get install pkg-config make gcc g++ nasm yasm libfreetype6-dev -y
-    if [ "$ENABLE_SRT" = "true" ]; then
-        ${SUDO} apt-get install tcl cmake libssl-dev build-essential -y
-    fi
   else
     echo -e "\x1b[32mUnsupported platform...\x1b[0m"
   fi
@@ -118,12 +93,8 @@ install_ffmpeg(){
   local SRC="${DIR}.tar.bz2"
   local SRC_URL="http://ffmpeg.org/releases/${SRC}"
   local SRC_MD5SUM="9985185a8de3678e5b55b1c63276f8b5"
-  local PREFIX_DIR="${this}/ffmpeg-install"
 
-  local LIST_LIBS=`ls ${this}/lib/libav* 2>/dev/null`
-  pushd ${this} >/dev/null
-  [[ ! -z $LIST_LIBS ]] && echo "ffmpeg already installed." && return 0
-
+  echo "Downloading ffmpeg-${VERSION}"
   [[ ! -s ${SRC} ]] && wget -c ${SRC_URL}
   if ! (echo "${SRC_MD5SUM} ${SRC}" | md5sum --check) ; then
       echo "Downloaded file ${SRC} is corrupted."
@@ -132,30 +103,39 @@ install_ffmpeg(){
   fi
   rm -fr ${DIR}
   tar xf ${SRC}
-  pushd ${DIR} >/dev/null
-  if [ "$ENABLE_SRT" = "true" ]; then
-    PKG_CONFIG_PATH=${PREFIX_DIR}/lib/pkgconfig CFLAGS=-fPIC ./configure --prefix=${PREFIX_DIR} --enable-shared \
-      --disable-static --disable-libvpx --disable-vaapi --enable-libfreetype --enable-libsrt
-  else
-    CFLAGS=-fPIC ./configure --prefix=${PREFIX_DIR} --enable-shared \
-      --disable-static --disable-libvpx --disable-vaapi --enable-libfreetype
-  fi
+
+  echo "Building ffmpeg-${VERSION}"
+  pushd ${DIR}
+  PKG_CONFIG_PATH=${DOWNLOAD_DIR}/lib/pkgconfig CFLAGS=-fPIC ./configure --prefix=${DOWNLOAD_DIR} --enable-shared --disable-static --disable-libvpx --disable-vaapi --enable-libfreetype --enable-libsrt && \
   make -j4 -s V=0 && make install
   popd
-  popd
-
-  cp -P ${PREFIX_DIR}/lib/*.so.* ${this}/lib/
-  cp -P ${PREFIX_DIR}/lib/*.so ${this}/lib/
 }
 
-parse_arguments $*
+echo "This script will download and compile a libsrt enabled ffmpeg."
+read -p "Continue to compile ffmpeg with libsrt? [No/yes]" yn
+case $yn in
+  [Yy]* ) ;;
+  [Nn]* ) exit 0;;
+  * ) ;;
+esac
 
 echo "Install building dependencies..."
 install_build_deps
 
-if [ "$ENABLE_SRT" = "true" ]; then
-install_srt
-fi
+[[ ! -d ${DOWNLOAD_DIR} ]] && mkdir ${DOWNLOAD_DIR};
 
-echo "Install ffmpeg..."
+pushd ${DOWNLOAD_DIR}
+install_srt
 install_ffmpeg
+popd
+
+[[ ! -d ${TARGET_DIR} ]] && mkdir ${TARGET_DIR};
+
+echo "Copy libs to ${TARGET_DIR}"
+cp -P ${DOWNLOAD_DIR}/lib/*.so.* ${TARGET_DIR}
+cp -P ${DOWNLOAD_DIR}/lib/*.so ${TARGET_DIR}/
+
+echo "Compiling finish."
+echo "Downloaded source dir: ${DOWNLOAD_DIR}"
+echo "Compiled library dir: ${TARGET_DIR}"
+
