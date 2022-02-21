@@ -20,6 +20,39 @@ check_proxy(){
   fi
 }
 
+install_srt(){
+  local VERSION="1.4.1"
+  local SRC="v${VERSION}.tar.gz"
+  local SRC_URL=" https://github.com/Haivision/srt/archive/${SRC}"
+  local SRC_DIR="srt-${VERSION}"
+
+  local LIST_LIBS=`ls ${PREFIX_DIR}/lib/libsrt.* 2>/dev/null`
+  [ "$INCR_INSTALL" = true ]  && [[ ! -z $LIST_LIBS ]] && \
+  echo "srt already installed." && return 0
+
+  if [ "$CHECK_INSTALL" = true ]; then
+    if [[ ! -z $LIST_LIBS ]]; then
+      echo "srt - Yes"
+    else
+      echo "srt - No"
+    fi
+    return 0
+  fi
+
+  mkdir -p ${LIB_DIR}
+  pushd ${LIB_DIR}
+  wget ${SRC_URL}
+  rm -fr ${SRC_DIR}
+  tar xf ${SRC}
+  pushd ${SRC_DIR}
+  echo "current path is:"
+  pwd
+  echo "prefix dir is:"
+  echo ${PREFIX_DIR}
+  ./configure --prefix=${PREFIX_DIR}
+  make && make install
+}
+
 install_fdkaac(){
   local VERSION="0.1.6"
   local SRC="fdk-aac-${VERSION}.tar.gz"
@@ -55,6 +88,10 @@ install_ffmpeg(){
   local LIST_LIBS=`ls ${PREFIX_DIR}/lib/libav* 2>/dev/null`
   $INCR_INSTALL && [[ ! -z $LIST_LIBS ]] && echo "ffmpeg already installed." && return 0
 
+  if [ "$ENABLE_SRT" = true ]; then
+    SRT_OPTION="--enable-libsrt"
+  fi
+
   mkdir -p ${LIB_DIR}
   pushd ${LIB_DIR}
   [[ ! -s ${SRC} ]] && wget -c ${SRC_URL}
@@ -67,8 +104,8 @@ install_ffmpeg(){
   tar xf ${SRC}
   pushd ${DIR}
   [[ "${DISABLE_NONFREE}" == "true" ]] && \
-  PKG_CONFIG_PATH=${PREFIX_DIR}/lib/pkgconfig CFLAGS=-fPIC ./configure --prefix=${PREFIX_DIR} --enable-shared --disable-static --disable-libvpx --disable-vaapi --enable-libfreetype || \
-  PKG_CONFIG_PATH=${PREFIX_DIR}/lib/pkgconfig CFLAGS=-fPIC ./configure --prefix=${PREFIX_DIR} --enable-shared --disable-static --disable-libvpx --disable-vaapi --enable-libfreetype --enable-libfdk-aac --enable-nonfree && \
+  PKG_CONFIG_PATH=${PREFIX_DIR}/lib/pkgconfig CFLAGS=-fPIC ./configure --prefix=${PREFIX_DIR} --enable-shared --disable-static --disable-libvpx --disable-vaapi --enable-libfreetype ${SRT_OPTION} || \
+  PKG_CONFIG_PATH=${PREFIX_DIR}/lib/pkgconfig CFLAGS=-fPIC ./configure --prefix=${PREFIX_DIR} --enable-shared --disable-static --disable-libvpx --disable-vaapi --enable-libfreetype --enable-libfdk-aac --enable-nonfree ${SRT_OPTION} && \
   make -j4 -s V=0 && make install
   popd
   popd

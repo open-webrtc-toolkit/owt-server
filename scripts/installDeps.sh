@@ -13,6 +13,7 @@ CLEANUP=false
 NO_INTERNAL=false
 INCR_INSTALL=false
 ONLY_INSTALL=""
+ENABLE_SRT=false
 SUDO=""
 
 if [[ $EUID -ne 0 ]]; then
@@ -33,6 +34,9 @@ parse_arguments(){
         ;;
       "--incremental")
         INCR_INSTALL=true
+        ;;
+      "--enable-srt")
+        ENABLE_SRT=true
         ;;
       "--only")
         shift
@@ -97,6 +101,11 @@ fi
 
 pause "Installing Node.js ... [press Enter]"
 install_node
+
+if [ "$ENABLE_SRT" = "true" ]; then
+  pause "Installing libsrt library.... [press Enter]"
+  install_srt
+fi
 
 if [ "$DISABLE_NONFREE" = "true" ]; then
   pause "Nonfree libraries disabled: aac transcoding unavailable. [press Enter]"

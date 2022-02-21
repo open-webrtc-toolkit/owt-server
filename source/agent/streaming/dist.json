@@ -6,6 +6,7 @@
         "files": [
             "agent.toml",
             "log4js_configuration.json",
+	    "compile_ffmpeg_with_libsrt.sh",
             "install_deps.sh",
             "configLoader.js",
             "../index.js",

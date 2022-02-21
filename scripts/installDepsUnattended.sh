@@ -13,6 +13,7 @@ CLEANUP=false
 NIGHTLY=false
 NO_INTERNAL=false
 INCR_INSTALL=false
+ENABLE_SRT=false
 SUDO=""
 
 if [[ $EUID -ne 0 ]]; then
@@ -33,6 +34,9 @@ parse_arguments(){
         ;;
       "--no-internal")
         NO_INTERNAL=true
+        ;;
+      "--enable-srt")
+        ENABLE_SRT=true
         ;;
       "--incremental")
         INCR_INSTALL=true
@@ -77,6 +81,9 @@ fi
 install_node
 
 if [ "$NIGHTLY" != "true" ]; then
+  if [ "$ENABLE_SRT" = "true" ]; then
+    install_srt
+  fi
 
   if [ "$DISABLE_NONFREE" = "true" ]; then
     install_mediadeps
