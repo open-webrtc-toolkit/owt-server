@@ -45,10 +45,6 @@ install_srt(){
   rm -fr ${SRC_DIR}
   tar xf ${SRC}
   pushd ${SRC_DIR}
-  echo "current path is:"
-  pwd
-  echo "prefix dir is:"
-  echo ${PREFIX_DIR}
   ./configure --prefix=${PREFIX_DIR}
   make && make install
 }
@@ -88,10 +84,6 @@ install_ffmpeg(){
   local LIST_LIBS=`ls ${PREFIX_DIR}/lib/libav* 2>/dev/null`
   $INCR_INSTALL && [[ ! -z $LIST_LIBS ]] && echo "ffmpeg already installed." && return 0
 
-  if [ "$ENABLE_SRT" = true ]; then
-    SRT_OPTION="--enable-libsrt"
-  fi
-
   mkdir -p ${LIB_DIR}
   pushd ${LIB_DIR}
   [[ ! -s ${SRC} ]] && wget -c ${SRC_URL}
@@ -104,8 +96,8 @@ install_ffmpeg(){
   tar xf ${SRC}
   pushd ${DIR}
   [[ "${DISABLE_NONFREE}" == "true" ]] && \
-  PKG_CONFIG_PATH=${PREFIX_DIR}/lib/pkgconfig CFLAGS=-fPIC ./configure --prefix=${PREFIX_DIR} --enable-shared --disable-static --disable-libvpx --disable-vaapi --enable-libfreetype ${SRT_OPTION} || \
-  PKG_CONFIG_PATH=${PREFIX_DIR}/lib/pkgconfig CFLAGS=-fPIC ./configure --prefix=${PREFIX_DIR} --enable-shared --disable-static --disable-libvpx --disable-vaapi --enable-libfreetype --enable-libfdk-aac --enable-nonfree ${SRT_OPTION} && \
+  PKG_CONFIG_PATH=${PREFIX_DIR}/lib/pkgconfig CFLAGS=-fPIC ./configure --prefix=${PREFIX_DIR} --enable-shared --disable-static --disable-libvpx --disable-vaapi --enable-libfreetype --enable-libsrt || \
+  PKG_CONFIG_PATH=${PREFIX_DIR}/lib/pkgconfig CFLAGS=-fPIC ./configure --prefix=${PREFIX_DIR} --enable-shared --disable-static --disable-libvpx --disable-vaapi --enable-libfreetype --enable-libfdk-aac --enable-nonfree --enable-libsrt && \
   make -j4 -s V=0 && make install
   popd
   popd

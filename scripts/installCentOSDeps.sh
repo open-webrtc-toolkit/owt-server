@@ -37,7 +37,7 @@ installYumDeps(){
   ${SUDO} yum install rabbitmq-server mongodb mongodb-server java-1.7.0-openjdk gyp intel-gpu-tools which libtool freetype-devel -y
   ${SUDO} yum install glib2-devel boost-devel gstreamer1-plugins-base-devel -y
   ${SUDO} yum install centos-release-scl -y
-  ${SUDO} yum install devtoolset-7-gcc* -y
+  ${SUDO} yum install devtoolset-7-gcc* tcl -y
 }
 
 installRepo(){
@@ -49,11 +49,13 @@ installRepo(){
 }
 
 install_mediadeps_nonfree(){
+  install_srt
   install_fdkaac
   install_ffmpeg
 }
 
 install_mediadeps(){
+  install_srt
   install_ffmpeg
 }
 

@@ -6,7 +6,6 @@
 this=`dirname "$0"`
 this=`cd "$this"; pwd`
 SUDO=""
-ENABLE_SRT=false
 if [[ $EUID -ne 0 ]]; then
    SUDO="sudo -E"
 fi
@@ -17,10 +16,6 @@ echo $1
 parse_arguments(){
   while [ "$1" != "" ]; do
     case $1 in
-      "--enable-srt")
-	echo "Enable SRT"
-        ENABLE_SRT=true
-        ;;
       "--cleanup")
         CLEANUP=true
         ;;
@@ -153,9 +148,7 @@ parse_arguments $*
 echo "Install building dependencies..."
 install_build_deps
 
-if [ "$ENABLE_SRT" = "true" ]; then
 install_srt
-fi
 
 echo "Install ffmpeg..."
 install_ffmpeg
