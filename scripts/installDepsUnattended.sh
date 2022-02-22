@@ -15,7 +15,6 @@ NO_INTERNAL=false
 INCR_INSTALL=false
 CHECK_INSTALL=false
 ENABLE_WEBTRANSPORT=false
-ENABLE_SRT=false
 SUDO=""
 
 if [ "$GITHUB_ACTIONS" == "true" ]; then
