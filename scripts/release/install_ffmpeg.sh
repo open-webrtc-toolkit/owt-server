@@ -10,22 +10,6 @@ if [[ $EUID -ne 0 ]]; then
    SUDO="sudo -E"
 fi
 
-echo "Streaming agent install ffmpeg"
-echo $1
-
-parse_arguments(){
-  while [ "$1" != "" ]; do
-    case $1 in
-      "--cleanup")
-        CLEANUP=true
-        ;;
-    esac
-    shift
-  done
-}
-
-
-
 detect_OS() {
   lsb_release >/dev/null 2>/dev/null
   if [ $? = 0 ]
