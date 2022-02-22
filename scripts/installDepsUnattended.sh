@@ -104,6 +104,7 @@ if [ "$GITHUB_ACTIONS" != "true" ]; then
 fi
 
 if [ "$NIGHTLY" != "true" ] && [ "$GITHUB_ACTIONS" != "true" ]; then
+
   if [ "$DISABLE_NONFREE" = "true" ]; then
     install_mediadeps
   else
