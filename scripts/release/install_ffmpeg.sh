@@ -6,7 +6,6 @@
 this=`dirname "$0"`
 this=`cd "$this"; pwd`
 SUDO=""
-ENABLE_SRT=false
 if [[ $EUID -ne 0 ]]; then
    SUDO="sudo -E"
 fi
