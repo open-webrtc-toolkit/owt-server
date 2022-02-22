@@ -34,7 +34,6 @@ print_help(){
   echo "    --check                 check whether dependencies are installed"
   echo "    --incremental           skip dependencies which are already installed"
   echo "    --with-nonfree-libs     install nonfree dependencies"
-  echo "    --enable-srt            install dependencies with srt"
   echo "    --cleanup               remove intermediate files after installation"
   echo "    --help                  print help of this script"
   echo
@@ -61,9 +60,6 @@ parse_arguments(){
         ;;
       "--check")
         CHECK_INSTALL=true
-        ;;
-      "--enable-srt")
-        ENABLE_SRT=true
         ;;
     esac
     shift
@@ -109,11 +105,6 @@ if [ "$GITHUB_ACTIONS" != "true" ]; then
 fi
 
 if [ "$NIGHTLY" != "true" ] && [ "$GITHUB_ACTIONS" != "true" ]; then
-
-  if [ "$ENABLE_SRT" = "true" ]; then
-    install_srt
-  fi
-
   if [ "$DISABLE_NONFREE" = "true" ]; then
     install_mediadeps
   else

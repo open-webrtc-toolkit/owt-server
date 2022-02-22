@@ -15,7 +15,6 @@ INCR_INSTALL=false
 CHECK_INSTALL=false
 ONLY_INSTALL=""
 ENABLE_WEBTRANSPORT=false
-ENABLE_SRT=false
 SUDO=""
 
 if [[ $EUID -ne 0 ]]; then
@@ -30,7 +29,6 @@ print_help(){
   echo "    --check                 check whether dependencies are installed"
   echo "    --incremental           skip dependencies which are already installed"
   echo "    --enable-webtransport   install dependencies with webtransport"
-  echo "    --enable-srt            install dependencies with srt"
   echo "    --with-nonfree-libs     install nonfree dependencies"
   echo "    --cleanup               remove intermediate files after installation"
   echo "    --only [dep]            only install specified dependency [dep]"
@@ -59,9 +57,6 @@ parse_arguments(){
         ;;
       "--enable-webtransport")
         ENABLE_WEBTRANSPORT=true
-        ;;
-      "--enable-srt")
-        ENABLE_SRT=true
         ;;
       "--help")
         print_help
@@ -150,12 +145,6 @@ fi
 [ "$CHECK_INSTALL" != true ] && \
 pause "Installing Node.js ... [press Enter]"
 install_node
-
-if [ "$ENABLE_SRT" = "true" ]; then
-  [ "$CHECK_INSTALL" != true ] && \
-  pause "Installing libsrt library.... [press Enter]"
-  install_srt
-fi
 
 if [ "$DISABLE_NONFREE" = "true" ]; then
   [ "$CHECK_INSTALL" != true ] && \

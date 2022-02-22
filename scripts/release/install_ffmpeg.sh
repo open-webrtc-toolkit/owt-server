@@ -17,10 +17,6 @@ echo $1
 parse_arguments(){
   while [ "$1" != "" ]; do
     case $1 in
-      "--enable-srt")
-	echo "Enable SRT"
-        ENABLE_SRT=true
-        ;;
       "--cleanup")
         CLEANUP=true
         ;;
@@ -77,25 +73,19 @@ install_build_deps() {
   if [[ "$OS" =~ .*centos.* ]]
   then
     echo -e "\x1b[32mInstalling dependent components and libraries via yum...\x1b[0m"
-    ${SUDO} yum install pkg-config make gcc gcc-c++ nasm yasm freetype-devel -y
-    if [ "$ENABLE_SRT" = "true" ]; then
-	${SUDO} yum install tcl openssl-devel cmake automake -y
-    fi
+    ${SUDO} yum install pkg-config make gcc gcc-c++ nasm yasm freetype-devel tcl openssl-devel cmake automake -y
   elif [[ "$OS" =~ .*ubuntu.* ]]
   then
     echo -e "\x1b[32mInstalling dependent components and libraries via apt-get...\x1b[0m"
     ${SUDO} apt-get update
-    ${SUDO} apt-get install pkg-config make gcc g++ nasm yasm libfreetype6-dev -y
-    if [ "$ENABLE_SRT" = "true" ]; then
-        ${SUDO} apt-get install tcl cmake libssl-dev build-essential -y
-    fi
+    ${SUDO} apt-get install pkg-config make gcc g++ nasm yasm libfreetype6-dev tcl cmake libssl-dev build-essential -y
   else
     echo -e "\x1b[32mUnsupported platform...\x1b[0m"
   fi
 }
 
 install_srt(){
-  local VERSION="1.4.1"
+  local VERSION="1.4.4"
   local SRC="v${VERSION}.tar.gz"
   local SRC_URL=" https://github.com/Haivision/srt/archive/${SRC}"
   local SRC_DIR="srt-${VERSION}"
@@ -113,11 +103,11 @@ install_srt(){
 }
 
 install_ffmpeg(){
-  local VERSION="4.1.3"
+  local VERSION="4.4.1"
   local DIR="ffmpeg-${VERSION}"
   local SRC="${DIR}.tar.bz2"
   local SRC_URL="http://ffmpeg.org/releases/${SRC}"
-  local SRC_MD5SUM="9985185a8de3678e5b55b1c63276f8b5"
+  local SRC_MD5SUM="9c2ca54e7f353a861e57525ff6da335b"
   local PREFIX_DIR="${this}/ffmpeg-install"
 
   local LIST_LIBS=`ls ${this}/lib/libav* 2>/dev/null`
@@ -133,13 +123,8 @@ install_ffmpeg(){
   rm -fr ${DIR}
   tar xf ${SRC}
   pushd ${DIR} >/dev/null
-  if [ "$ENABLE_SRT" = "true" ]; then
-    PKG_CONFIG_PATH=${PREFIX_DIR}/lib/pkgconfig CFLAGS=-fPIC ./configure --prefix=${PREFIX_DIR} --enable-shared \
-      --disable-static --disable-libvpx --disable-vaapi --enable-libfreetype --enable-libsrt
-  else
-    CFLAGS=-fPIC ./configure --prefix=${PREFIX_DIR} --enable-shared \
-      --disable-static --disable-libvpx --disable-vaapi --enable-libfreetype
-  fi
+  PKG_CONFIG_PATH=${PREFIX_DIR}/lib/pkgconfig CFLAGS=-fPIC ./configure --prefix=${PREFIX_DIR} --enable-shared \
+    --disable-static --disable-libvpx --disable-vaapi --enable-libfreetype --enable-libsrt
   make -j4 -s V=0 && make install
   popd
   popd
@@ -153,9 +138,7 @@ parse_arguments $*
 echo "Install building dependencies..."
 install_build_deps
 
-if [ "$ENABLE_SRT" = "true" ]; then
 install_srt
-fi
 
 echo "Install ffmpeg..."
 install_ffmpeg

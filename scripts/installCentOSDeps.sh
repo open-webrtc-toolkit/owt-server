@@ -40,7 +40,7 @@ installYumDeps(){
   ${SUDO} yum install devtoolset-7-gcc* -y
   ${SUDO} yum install docbook2X -y
   ${SUDO} yum install libffi-devel -y
-  ${SUDO} yum install ca-certificates -y
+  ${SUDO} yum install ca-certificates tcl -y
 }
 
 installRepo(){
@@ -57,11 +57,13 @@ installRepo(){
 }
 
 install_mediadeps_nonfree(){
+  install_srt
   install_fdkaac
   install_ffmpeg
 }
 
 install_mediadeps(){
+  install_srt
   install_ffmpeg
 }
 

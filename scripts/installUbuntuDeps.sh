@@ -5,7 +5,7 @@ install_apt_deps(){
   ${SUDO} apt-get install git make gcc g++ libglib2.0-dev docbook2x pkg-config -y
   ${SUDO} apt-get install libboost-regex-dev libboost-thread-dev libboost-system-dev liblog4cxx-dev -y
   ${SUDO} apt-get install openjdk-8-jre curl libboost-test-dev nasm yasm gyp libx11-dev libkrb5-dev intel-gpu-tools -y
-  ${SUDO} apt-get install m4 autoconf libtool automake cmake libfreetype6-dev libgstreamer-plugins-base1.0-dev -y
+  ${SUDO} apt-get install m4 autoconf libtool automake cmake libfreetype6-dev libgstreamer-plugins-base1.0-dev tcl -y
   if [ "$GITHUB_ACTIONS" != "true" ]; then
     ${SUDO} apt-get install rabbitmq-server mongodb -y
   else
@@ -31,11 +31,13 @@ install_gcc_7(){
 }
 
 install_mediadeps_nonfree(){
+  install_srt
   install_fdkaac
   install_ffmpeg
 }
 
 install_mediadeps(){
+  install_srt
   install_ffmpeg
 }
 
