@@ -5,7 +5,6 @@
 
 this=`dirname "$0"`
 this=`cd "$this"; pwd`
-CURRENT_PATH=`pwd`
 SUDO=""
 if [[ $EUID -ne 0 ]]; then
    SUDO="sudo -E"
