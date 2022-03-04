@@ -10,6 +10,14 @@ if [[ $EUID -ne 0 ]]; then
    SUDO="sudo -E"
 fi
 
+ENABLE_SRT=false
+SRT_OPTION=" "
+AGENT=`echo $this | awk -F "/" '{print $NF}'`
+if [ "$AGENT" = "streaming_agent" ]; then
+  ENABLE_SRT=true
+  SRT_OPTION="--enable-libsrt"
+fi
+
 detect_OS() {
   lsb_release >/dev/null 2>/dev/null
   if [ $? = 0 ]
@@ -57,14 +65,61 @@ install_build_deps() {
   then
     echo -e "\x1b[32mInstalling dependent components and libraries via yum...\x1b[0m"
     ${SUDO} yum install pkg-config make gcc gcc-c++ nasm yasm freetype-devel -y
+    if [ "$ENABLE_SRT" = "true" ]; then
+	${SUDO} yum install tcl openssl-devel cmake automake -y
+    fi
   elif [[ "$OS" =~ .*ubuntu.* ]]
   then
     echo -e "\x1b[32mInstalling dependent components and libraries via apt-get...\x1b[0m"
     ${SUDO} apt-get update
     ${SUDO} apt-get install pkg-config make gcc g++ nasm yasm libfreetype6-dev -y
+    if [ "$ENABLE_SRT" = "true" ]; then
+        ${SUDO} apt-get install tcl cmake libssl-dev build-essential -y
+    fi
   else
     echo -e "\x1b[32mUnsupported platform...\x1b[0m"
   fi
+}
+
+install_openssl(){
+  local PREFIX_DIR="${this}/ffmpeg-install"
+  local LIST_LIBS=`ls ${PREFIX_DIR}/lib/libssl* 2>/dev/null`
+  pushd ${this} >/dev/null
+  [[ ! -z $LIST_LIBS ]] && echo "openssl already installed." && return 0
+
+  local SSL_BASE_VERSION="1.1.1"
+  local SSL_VERSION="1.1.1j"
+  rm -rf openssl-1*
+
+  wget -c https://www.openssl.org/source/openssl-${SSL_VERSION}.tar.gz
+  tar xf openssl-${SSL_VERSION}.tar.gz
+  cd openssl-${SSL_VERSION}
+  ./config no-ssl3 --prefix=$PREFIX_DIR -fPIC --libdir=lib
+  make depend
+  make -s V=0
+  make install
+
+  popd
+}
+
+
+install_srt(){
+  local VERSION="1.4.1"
+  local SRC="v${VERSION}.tar.gz"
+  local SRC_URL=" https://github.com/Haivision/srt/archive/${SRC}"
+  local SRC_DIR="srt-${VERSION}"
+  local PREFIX_DIR="${this}/ffmpeg-install"
+
+  local LIST_LIBS=`ls ${this}/lib/libsrt* 2>/dev/null`
+  pushd ${this} >/dev/null
+  [[ ! -z $LIST_LIBS ]] && echo "srt already installed." && return 0
+  wget ${SRC_URL}
+  rm -fr ${SRC_DIR}
+  tar xf ${SRC}
+  pushd ${SRC_DIR}
+  ./configure --prefix=${PREFIX_DIR}
+  make && make install
+  popd
 }
 
 install_ffmpeg(){
@@ -88,8 +143,8 @@ install_ffmpeg(){
   rm -fr ${DIR}
   tar xf ${SRC}
   pushd ${DIR} >/dev/null
-  CFLAGS=-fPIC ./configure --prefix=${PREFIX_DIR} --enable-shared \
-    --disable-static --disable-libvpx --disable-vaapi --enable-libfreetype
+  PKG_CONFIG_PATH=${PREFIX_DIR}/lib/pkgconfig CFLAGS=-fPIC ./configure --prefix=${PREFIX_DIR} --enable-shared \
+      --disable-static --disable-libvpx --disable-vaapi --enable-libfreetype ${SRT_OPTION}
   make -j4 -s V=0 && make install
   popd
   popd
@@ -100,6 +155,11 @@ install_ffmpeg(){
 
 echo "Install building dependencies..."
 install_build_deps
+
+if [ "$ENABLE_SRT" = "true" ]; then
+  install_openssl
+  install_srt
+fi
 
 echo "Install ffmpeg..."
 install_ffmpeg
