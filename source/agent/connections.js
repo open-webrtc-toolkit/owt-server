@@ -63,7 +63,7 @@ module.exports = function Connections () {
                 log.debug('remove audio from:', audioFrom);
                 var dest = connections[connectionId].connection.receiver('audio');
                 const isNanObj = nanObjects.includes(dest.constructor.name) ? true : false;
-                connections[audioFrom].connection.removeDestination('audio', dest, nanObjects);
+                connections[audioFrom].connection.removeDestination('audio', dest, isNanObj);
                 connections[connectionId].audioFrom = undefined;
             }
 
@@ -71,7 +71,7 @@ module.exports = function Connections () {
                 log.debug('remove video from:', videoFrom);
                 var dest = connections[connectionId].connection.receiver('video');
                 const isNanObj = nanObjects.includes(dest.constructor.name) ? true : false;
-                connections[videoFrom].connection.removeDestination('video', dest, nanObjects);
+                connections[videoFrom].connection.removeDestination('video', dest, isNanObj);
                 connections[connectionId].videoFrom = undefined;
             }
         }
