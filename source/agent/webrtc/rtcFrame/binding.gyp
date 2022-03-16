@@ -114,8 +114,8 @@
           'cflags_cc' : [
             '-Wall', '-O3', '-g' , '-std=gnu++14', '-fexceptions',
             '-nostdinc++',
-            '-isystem<(webrtc_abs_dir)/src/buildtools/third_party/libc++/trunk/include',
-            '-isystem<(webrtc_abs_dir)/src/buildtools/third_party/libc++abi/trunk/include'
+            '-I<(webrtc_abs_dir)/src/buildtools/third_party/libc++/trunk/include',
+            '-I<(webrtc_abs_dir)/src/buildtools/third_party/libc++abi/trunk/include'
           ]
       }]
     ]
