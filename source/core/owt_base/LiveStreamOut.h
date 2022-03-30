@@ -46,6 +46,7 @@ public:
     LiveStreamOut(const std::string& url, bool hasAudio, bool hasVideo, EventRegistry* handle, int streamingTimeout, StreamingOptions& options);
     ~LiveStreamOut();
 
+    void onFrame(const Frame&) override;
 protected:
     bool isAudioFormatSupported(FrameFormat format) override;
     bool isVideoFormatSupported(FrameFormat format) override;
@@ -57,6 +58,7 @@ protected:
 
 private:
     StreamingOptions m_options;
+    uint32_t m_startTimeStamp;
 };
 
 }

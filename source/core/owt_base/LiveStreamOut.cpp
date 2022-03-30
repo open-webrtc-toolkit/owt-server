@@ -16,6 +16,7 @@ DEFINE_LOGGER(LiveStreamOut, "owt.LiveStreamOut");
 LiveStreamOut::LiveStreamOut(const std::string& url, bool hasAudio, bool hasVideo, EventRegistry* handle, int streamingTimeout, StreamingOptions& options)
     : AVStreamOut(url, hasAudio, hasVideo, handle, streamingTimeout)
     , m_options(options)
+    , m_startTimeStamp(0)
 {
     switch(m_options.format) {
         case STREAMING_FORMAT_RTSP:
@@ -53,6 +54,15 @@ LiveStreamOut::LiveStreamOut(const std::string& url, bool hasAudio, bool hasVide
 LiveStreamOut::~LiveStreamOut()
 {
     close();
+}
+
+void LiveStreamOut::onFrame(const Frame& frame)
+{
+    if (m_startTimeStamp == 0) {
+        m_startTimeStamp = frame.timeStamp;
+        ELOG_WARN("Setting start timestamp %u", m_startTimeStamp);
+    }
+    AVStreamOut::onFrame(frame);
 }
 
 bool LiveStreamOut::isAudioFormatSupported(FrameFormat format)
@@ -123,10 +133,16 @@ bool LiveStreamOut::getHeaderOpt(std::string& url, AVDictionary **options)
         av_dict_set(options, "hls_segment_filename", segment_uri.c_str(), 0);
 
         av_dict_set(options, "hls_flags", "delete_segments", 0);
+        av_dict_set(options, "hls_flags", "program_date_time", 1);
 
         av_dict_set_int(options, "hls_time", m_options.hls_time, 0);
         av_dict_set_int(options, "hls_list_size", m_options.hls_list_size, 0);
 
+        if (m_startTimeStamp > 0) {
+            av_dict_set_int(options, "hls_init_prog_date_time",
+                            m_startTimeStamp, 0);
+            m_startTimeStamp = 0;
+        }
         if (url.find("http://") == 0
                 || url.find("https://") == 0) {
             av_dict_set(options, "method", m_options.hls_method, 0);
