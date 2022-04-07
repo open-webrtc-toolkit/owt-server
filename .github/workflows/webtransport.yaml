@@ -41,8 +41,9 @@ jobs:
           repo: open-webrtc-toolkit/owt-sdk-quic
       - name: Generate certificates
         run: |
-          wget https://chromium.googlesource.com/chromium/src/+archive/refs/tags/93.0.4575.1/net/tools/quic/certs.tar.gz
+          wget https://chromium.googlesource.com/chromium/src/+archive/refs/tags/98.0.4694.2/net/tools/quic/certs.tar.gz
           tar xvzf certs.tar.gz
+          cp ../../../addons/quic/test/scripts/generate-certs.sh ./generate-certs.sh
           ./generate-certs.sh
           openssl pkcs12 -inkey out/leaf_cert.key -in out/leaf_cert.pem -export -out out/leaf_cert.pfx -passout pass:abc123
         working-directory: ./source/agent/quic/e2e-test/scripts
