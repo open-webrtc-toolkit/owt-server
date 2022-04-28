@@ -12,28 +12,16 @@ const amqper = require('./amqpClient')();
 const fs = require('fs');
 const toml = require('toml');
 
-const STREAM_LAYER = 'stream-service';
+const STREAM_LAYER_ID = 'stream-service';
 
 const defaultPreference = {
   audio: {optional: [{codec: 'opus'}]},
   video: {optional: [{codec: 'vp8'}, {codec: 'h264'}]},
 };
 
-class ControllerInterface {
-
-  onRTCSignaling(clientId, requestName, requestData) {
-    log.warn('onPortalSignaling is not implemented');
-  }
-
-  onNotification(endpoints, event, data) {
-    log.warn('onStreamEvent is not implemented');
-  }
-}
-
-class SimpleController extends ControllerInterface {
+class BasicController {
 
   constructor(rpcId, rpcClient) {
-    super();
     this.rpcChannel = createChannel(rpcClient);
     this.rpcId = rpcId;
     this.domain = null;
@@ -45,8 +33,15 @@ class SimpleController extends ControllerInterface {
     this.streams = new Map();
   }
 
+  // Receive signalling from portal
   onRTCSignaling(clientId, requestName, requestData, callback) {
     log.debug('onRTCSignaling:', clientId, requestName, requestData);
+    if (!this.processSignaling(clientId, requestName, requestData)) {
+      // Skip signaling
+      callback('callback', 'error');
+      return;
+    }
+
     if (requestName === 'join') {
       this.clients.set(clientId, requestData);
       const count = (this.portals.get(requestData.portal) || 0);
@@ -54,7 +49,7 @@ class SimpleController extends ControllerInterface {
       if (!this.domain) {
         this.domain = requestData.domain;
         // RPC
-        this.rpcChannel.makeRPC(STREAM_LAYER, 'addNotificationListener', [this.domain, this.rpcId])
+        this.rpcChannel.makeRPC(STREAM_LAYER_ID, 'addNotificationListener', [this.domain, this.rpcId])
           .catch((e) => log.debug('addNotificationListener error:', e));
       }
     } else if (requestName === 'leave') {
@@ -66,50 +61,62 @@ class SimpleController extends ControllerInterface {
       }
     } else if (requestName === 'publish') {
       // Initialize control info
-      const formatPreference = requestData.media.tracks.map((track) => {
-        return defaultPreference[track.type];
-      });
-      const controlData = {
-        owner: clientId,
-        origin: {isp:'isp', region:'region'},
-        formatPreference,
-        domain: this.domain,
-      };
-      requestData.control = controlData;
+      if (!requestData.control) {
+        const formatPreference = requestData.media.tracks.map((track) => {
+          return defaultPreference[track.type];
+        });
+        const controlData = {
+          owner: clientId,
+          origin: {isp:'isp', region:'region'},
+          formatPreference,
+          domain: this.domain,
+        };
+        requestData.control = controlData;
+      }
     } else if (requestName === 'subscribe') {
       // Initialize control info
-      const formatPreference = requestData.media.tracks.map((track) => {
-        const trackPreference = defaultPreference[track.type];
-        const sourceStream = this.streams.get(track.from);
-        if (sourceStream) {
-          const fromTrack = sourceStream.media.tracks.find((t) => {
-            return t.type === track.type;
-          });
-          if (fromTrack) {
-            trackPreference.preferred = fromTrack.format;
+      if (!requestData.control) {
+        const formatPreference = requestData.media.tracks.map((track) => {
+          const trackPreference = defaultPreference[track.type];
+          const sourceStream = this.streams.get(track.from);
+          if (sourceStream) {
+            const fromTrack = sourceStream.media.tracks.find((t) => {
+              return t.type === track.type;
+            });
+            if (fromTrack) {
+              trackPreference.preferred = fromTrack.format;
+            }
           }
-        }
-        return trackPreference;
-      });
-      const controlData = {
-        owner: clientId,
-        origin: {isp:'isp', region:'region'},
-        formatPreference,
-      };
-      requestData.control = controlData;
+          return trackPreference;
+        });
+        const controlData = {
+          owner: clientId,
+          origin: {isp:'isp', region:'region'},
+          formatPreference,
+        };
+        requestData.control = controlData;
+      }
+    } else {
+      // Other requests
     }
 
     // To stream service
-    this.rpcChannel.makeRPC(STREAM_LAYER, 'onRTCSignaling', [clientId, requestName, requestData])
+    this.rpcChannel.makeRPC(STREAM_LAYER_ID, 'onRTCSignaling', [clientId, requestName, requestData])
       .then((ret) => {
         callback('callback', ret);
       })
       .catch((e) => log.debug('onRTCSignaling error:', e));
   }
 
+  // Receive notification from stream service
   // endpoints = {from, to}
-  onNotification(endpoints, name, data) {
+  onNotification(endpoints, name, data, callback) {
     log.debug('onNotification:', endpoints, name, data);
+    if (!this.processNotification(endpoints, name, data)) {
+      // Skip notification
+      callback('callback', 'error');
+      return;
+    }
     // Redirect to portals
     if (endpoints.to) {
       // Send to specific user
@@ -119,7 +126,7 @@ class SimpleController extends ControllerInterface {
           .then((ret) => {
             callback('callback', ret);
           })
-          .catch((e) => log.debug('onNotification error:', e));
+          .catch((e) => log.debug('onNotification error:', e.stack));
       }
     } else {
       // Broadcast
@@ -143,16 +150,42 @@ class SimpleController extends ControllerInterface {
     }
   }
 
+  // Called on exit
   close() {
     // RPC
-    this.rpcChannel.makeRPC(STREAM_LAYER, 'removeNotificationListener', [this.domain, this.rpcId])
+    this.rpcChannel.makeRPC(STREAM_LAYER_ID, 'removeNotificationListener', [this.domain, this.rpcId])
       .catch((e) => log.debug('removeNotificationListener error:', e));
+  }
+
+  // Export some methods as RPC interface
+  // Override this function to change RPC interface
+  rpcInterface() {
+    return {
+      onRTCSignaling: this.onRTCSignaling.bind(this),
+      onNotification: this.onNotification.bind(this),
+      close: this.close.bind(this),
+    }
+  }
+
+  // Called when received portal signaling
+  // Return true to pass signaling to stream service
+  // Override this function to change signaling forwarding
+  processSignaling(clientId, requestName, requestData) {
+    return true;
+  }
+
+
+  // Called when received stream service notification
+  // Return true to pass notification to portal
+  // Override this function to change notification forwarding
+  processNotification(endpoints, name, data) {
+    return true;
   }
 
 }
 
 function RPCInterface(rpcClient, rpcID) {
-  return new SimpleController(rpcID, rpcClient);
+  return new BasicController(rpcID, rpcClient).rpcInterface();
 }
 
 module.exports = RPCInterface;
