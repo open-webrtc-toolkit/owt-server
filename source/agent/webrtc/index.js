@@ -4,6 +4,7 @@
 
 'use strict';
 var path = require('path');
+var EventEmitter = require('events').EventEmitter;
 
 var WrtcConnection = require('./wrtcConnection');
 var Connections = require('./connections');
@@ -22,6 +23,10 @@ threadPool.start();
 var ioThreadPool = new addon.IOThreadPool(global.config.webrtc.io_workers || 8);
 ioThreadPool.start();
 
+// Setup GRPC server
+var createGrpcInterface = require('./grpcAdapter').createGrpcInterface;
+var enableGRPC = global.config.agent.enable_grpc || false;
+
 module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
     var that = {
       agentID: parentRpcId,
@@ -38,13 +43,28 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
     var mappingPublicId = new Map();
     // Map { operationId => transportId }
     var mappingTransports = new Map();
+    var streamingEmitter = new EventEmitter();
     
     var notifyTransportStatus = function (controller, transportId, status) {
         rpcClient.remoteCast(controller, 'onTransportProgress', [transportId, status]);
+        // Emit GRPC notifications
+        const notification = {
+            name: 'onTransportProgress',
+            data: {transportId, status},
+        };
+        streamingEmitter.emit('notification', notification);
     };
 
     var notifyMediaUpdate = function (controller, publicTrackId, direction, mediaUpdate) {
         rpcClient.remoteCast(controller, 'onMediaUpdate', [publicTrackId, direction, mediaUpdate]);
+        // Emit GRPC notifications
+        const data = mediaUpdate;
+        data.trackId = publicTrackId;
+        const notification = {
+            name: 'onMediaUpdate',
+            data,
+        };
+        streamingEmitter.emit('notification', notification);
     };
 
     /* updateInfo = {
@@ -53,6 +73,17 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
      */
     var notifyTrackUpdate = function (controller, transportId, updateInfo) {
         rpcClient.remoteCast(controller, 'onTrackUpdate', [transportId, updateInfo]);
+        // Emit GRPC notifications
+        if (updateInfo.type === 'track-added') {
+            updateInfo[updateInfo.mediaType] = updateInfo.mediaFormat;
+            updateInfo.direction = updateInfo.direction.toUpperCase();
+        }
+        updateInfo.type = updateInfo.type.toUpperCase().replace('-', '_');
+        const notification = {
+            name: 'onMediaUpdate',
+            data: updateInfo,
+        };
+        streamingEmitter.emit('notification', notification);
     };
 
     var handleTrackInfo = function (transportId, trackInfo, controller) {
@@ -408,5 +439,9 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
         connections.onFaultDetected(message);
     };
 
+    if (enableGRPC) {
+        // Export GRPC interface.
+        return createGrpcInterface(that, streamingEmitter);
+    }
     return that;
 };

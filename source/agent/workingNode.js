@@ -24,6 +24,7 @@ function init_controller() {
     var parentID = process.argv[3];
     var purpose = nodeConfig.purpose;
     var clusterWorkerIP = nodeConfig.cluster.worker.ip;
+    var enableGRPC = nodeConfig.agent.enable_grpc || false;
 
     global.config = nodeConfig;
 
@@ -43,7 +44,20 @@ function init_controller() {
                     }
                 }, function (monitor) {
                     log.info(rpcID + ' as monitor ready');
-                    process.send('READY');
+                    // Send RPC server address
+                    if (enableGRPC) {
+                        log.info('Start grpc server');
+                        var grpcTools = require('./grpcTools');
+                        grpcTools.startServer(purpose, controller.grpcInterface)
+                            .then((port) => {
+                                const rpcAddress = clusterWorkerIP + ':' + port;
+                                process.send('READY:' + rpcAddress);
+                            }).catch((err) => {
+                                log.warn('Start grpc server failed:', e);
+                            });
+                    } else {
+                        process.send('READY');
+                    }
                     setInterval(() => {
                       process.send('IMOK');
                     }, 1000);
@@ -107,7 +121,7 @@ process.on('uncaughtException', async (err) => {
 });
 
 process.on('unhandledRejection', (reason) => {
-    log.info('Reason: ' + reason);
+    log.info('Reason: ', reason.stack);
 });
 
 process.on('SIGUSR2', function() {
