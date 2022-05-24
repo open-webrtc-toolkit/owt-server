@@ -9,6 +9,8 @@ var spawn = require('child_process').spawn;
 var logger = require('./logger').logger;
 var log = logger.getLogger('NodeManager');
 
+var enableGRPC = false;
+
 /*
  * * @param {object}   spec                      -The specification of nodeManager.
  * * @param {string}   spec.parentId             -The rpcId of parent.
@@ -33,6 +35,8 @@ module.exports = function (spec, spawnOptions, onNodeAbnormallyQuit, onTaskAdded
   var tasks = {}; // {node_id: {RoomID: [TaskID]}}
   
   var spawn_failed = false;
+  var node_addresses = {}; // {node_id: grpcAddress}
+  var rev_addresses = {}; // {grpcAddress: node_id}
   
   function tasksOnNode(id) {
     return [];
@@ -44,6 +48,8 @@ module.exports = function (spec, spawnOptions, onNodeAbnormallyQuit, onTaskAdded
   
       delete processes[id];
       delete tasks[id];
+      delete rev_addresses[node_addresses[id]];
+      delete node_addresses[id];
       var index = nodes.indexOf(id);
       if (index !== -1) {
           nodes.splice(index, 1);
@@ -112,7 +118,7 @@ module.exports = function (spec, spawnOptions, onNodeAbnormallyQuit, onTaskAdded
       });
       child.on('message', function (message) { // currently only used for sending ready message from node to agent;
           log.debug('message from node', id, ':', message);
-          if (message === 'READY') {
+          if (message.indexOf('READY') === 0) {
               child.READY = true;
               child.alive_count = 0;
               child.check_alive_interval = setInterval(function() {
@@ -124,6 +130,12 @@ module.exports = function (spec, spawnOptions, onNodeAbnormallyQuit, onTaskAdded
                 child.alive_count = 0;
               }, 3000);
               spawn_failed = false;
+              if (message.indexOf('READY:') === 0) {
+                enableGRPC = true;
+                const rpcAddress = message.substring(6);
+                node_addresses[id] = rpcAddress;
+                rev_addresses[rpcAddress] = id;
+              }
           } else if (message === 'IMOK') {
             child.alive_count += 1;
           } else {
@@ -279,6 +291,10 @@ module.exports = function (spec, spawnOptions, onNodeAbnormallyQuit, onTaskAdded
     return waitTillNodeReady(nodeId, 1500/*FIXME: Use a more reasonable timeout value instead of hard coding*/)
       .then((nodeId) => {
         addTask(nodeId, task);
+        // Returns server address if grpc
+        if (enableGRPC) {
+          return node_addresses[nodeId];
+        }
         return nodeId;
       }).catch(function(err) {
         tasks[nodeId] = undefined;
@@ -289,6 +305,9 @@ module.exports = function (spec, spawnOptions, onNodeAbnormallyQuit, onTaskAdded
   
   that.recycleNode = (id, task) => {
     log.debug('recycleNode, id:', id, 'task:', task);
+    if (enableGRPC) {
+      id = rev_addresses[id];
+    }
     return new Promise(resolve => {
       removeTask(id, task, function() {
         dropNode(id);
