@@ -3337,7 +3337,29 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
 
     //RPC for cluster cascading
     handleCascadingEvents: conference.handleCascadingEvents,
-    onCascadingConnected: conference.onCascadingConnected
+    onCascadingConnected: conference.onCascadingConnected,
+    // Callback for GRPC
+    processNotification: (notification) => {
+      const name = notification.name;
+      const data = notification.data;
+      switch (name) {
+        case 'onMediaUpdate': {
+          conference.onMediaUpdate(data.trackId, 'in', data);
+          break;
+        }
+        case 'onTrackUpdate': {
+          conference.onTrackUpdate(data.transportId, data);
+          break;
+        }
+        case 'onTransportProgress': {
+          conference.onTransportProgress(data.transportId, data.status);
+          break;
+        }
+        default:
+          break;
+      }
+
+    }
   };
 
   that.onFaultDetected = conference.onFaultDetected;

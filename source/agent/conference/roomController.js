@@ -6,7 +6,6 @@
 
 var assert = require('assert');
 var logger = require('./logger').logger;
-var makeRPC = require('./makeRPC').makeRPC;
 
 // Logger
 var log = logger.getLogger('RoomController');
@@ -47,6 +46,8 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
         enable_audio_transcoding = config.transcoding && !!config.transcoding.audio,
         enable_video_transcoding = config.transcoding && !!config.transcoding.video,
         internal_conn_protocol = config.internalConnProtocol;
+
+    var makeRPC = rpcReq.makeRPC;
 
     var internalTicket = uuid().replace(/-/g, '');
 

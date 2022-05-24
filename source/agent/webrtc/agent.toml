@@ -5,6 +5,9 @@ maxProcesses = 13 #default: 13
 #Number of precesses that agent runs when it starts. 1 <= prerunProcesses <= maxProcesses.
 prerunProcesses = 2 #default: 2
 
+# Setup as GRPC server
+enable_grpc = true
+
 
 [cluster]
 name = "owt-cluster"

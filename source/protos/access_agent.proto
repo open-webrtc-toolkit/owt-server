@@ -1,0 +1,128 @@
+//
+syntax = "proto3";
+
+import "google/protobuf/any.proto";
+import "format.proto";
+
+package owt;
+
+message SimpleReply {
+  optional string message = 1;
+}
+
+// Publish
+message MediaPubOption {
+  optional AudioFormat audio = 1;
+  optional VideoFormat video = 2;
+}
+
+message PublishRequest {
+  optional string id = 1;
+  string type = 2;
+  optional MediaPubOption media = 3;
+  optional google.protobuf.Any option = 4; // Type specific parameters
+  optional string domain = 5;
+}
+
+message PublishReply {
+  string id = 1;
+}
+
+// Unpublish
+message UnpublishRequest {
+  string id = 1;
+}
+
+// Subscribe
+message MediaSubOption {
+  message AudioSubOption {
+    string from = 1;
+    AudioFormat format = 2;
+  }
+  optional AudioSubOption audio = 1;
+  message VideoSubOption {
+    string from = 1;
+    VideoFormat format = 2;
+    VideoParameter parameters = 3;
+  }
+  optional VideoSubOption video = 2;
+}
+
+message SubscribeRequest {
+  optional string id = 1;
+  string type = 2;
+  MediaSubOption media = 3;
+  optional google.protobuf.Any option = 4; // Type specific parameters
+  optional string domain = 5;
+}
+
+message SubscribeReply {
+  string id = 1;
+}
+
+// Unsubscribe
+message UnsubscribeRequest {
+  string id = 1;
+}
+
+// Linkup
+message LinkSource {
+  message TrackInfo {
+    string id = 1;
+    optional string ip = 2;
+    optional int32 port = 3;
+  }
+  optional TrackInfo audio = 1;
+  optional TrackInfo video = 2;
+  optional TrackInfo data = 3;
+}
+
+message LinkupRequest {
+  string id = 1;
+  LinkSource from = 2;
+}
+
+// Cutoff
+message CutoffRequest {
+  string id = 1;
+}
+
+// ProgressNotification
+message ListenRequest {
+  string id = 1;
+}
+
+message ProgressNotification {
+  string type = 1;
+  string name = 2; // Notification name
+  google.protobuf.Any data = 3; // Name specific data
+}
+
+// Progress "name": "onMediaUpdate"
+message MediaUpdateData {
+  string trackId = 1;
+  optional VideoParameter video = 2;
+}
+
+// List publications or subscriptions
+
+// Internal connections
+message CreateInternalRequest {
+  string id = 1;
+  string direction = 2;
+  message InternalOpt {
+    string protocol = 1;
+    string ticket = 2;
+  }
+  InternalOpt internalOpt = 3; // Name specific data
+}
+
+message InternalReply {
+  string ip = 1;
+  int32 port = 2;
+}
+
+message DestroyInternalRequest {
+  string id = 1;
+  string direction = 2;
+}
