@@ -1,0 +1,10 @@
+{
+  "webrtc": {
+    "file": "webrtc_agent.proto",
+    "package": "owt",
+    "service": "WebRTCAgent"
+  },
+  "internal": {
+    "file": "internal.proto"
+  }
+}
