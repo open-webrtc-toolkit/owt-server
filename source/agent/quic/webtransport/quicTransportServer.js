@@ -27,9 +27,11 @@ module.exports = class QuicTransportServer extends EventEmitter {
     super();
     this._server = new addon.QuicTransportServer(port, pfxPath, password);
     this._connections = new Map(); // Key is transport ID.
-    this._streams = new Map(); // Key is content session ID.
+    // Key is content session ID + track ID.
+    // TODO: Remove stream from this map when the session is end.
+    this._streams = new Map();
     this._unAuthenticatedConnections = []; // When it's authenticated, it will be moved to this.connections.
-    this._unAssociatedStreams = []; // No content session ID assgined to them.
+    this._unAssociatedStreams = []; // No content session ID assigned to them.
     this._validateTokenCallback = validateTokenCallback;
     this._server.onconnection = (connection) => {
       this._unAuthenticatedConnections.push(connection);
@@ -172,10 +174,10 @@ module.exports = class QuicTransportServer extends EventEmitter {
 
   // Create a send stream for specfied QuicTransport. If specified QuicTransport
   // doesn't exist, no stream will be created.
-  createSendStream(transportId, contentSessionId) {
+  createSendStream(transportId, contentSessionId, trackId) {
     log.debug(
         'Create send stream ' + contentSessionId + ' on transport ' +
-        transportId);
+        transportId + ', track ID: ' + trackId);
     if (!this._connections.has(transportId)) {
       // TODO: Waiting for transport to be created, and create stream for it.
       // It's a common case that subscribe request is received by QUIC agent
@@ -184,9 +186,13 @@ module.exports = class QuicTransportServer extends EventEmitter {
       return;
     }
     const stream = this._connections.get(transportId).createBidirectionalStream();
-    const uuidBytes=this._uuidStringToUint8Array(contentSessionId);
+    let uuidBytes = this._uuidStringToUint8Array(contentSessionId);
     stream.write(uuidBytes, uuidBytes.length);
-    this._streams.set(contentSessionId, stream);
+    this._streams.set(contentSessionId + trackId, stream);
+    if (trackId) {
+      uuidBytes = this._uuidStringToUint8Array(trackId);
+      stream.write(uuidBytes, uuidBytes.length);
+    }
     return stream;
   }
 

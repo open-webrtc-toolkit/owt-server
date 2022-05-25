@@ -48,6 +48,9 @@ minport = 0 #default: 0
 
 #########################################################################################
 [quic]
+# Sending media data over WebTransport stream or datagram. Default value is 'datagram'. This is an experimental feature for performance comparison. It will be moved to client's request.
+mediaOutMode = "datagram"
+
 # Key store path doesn't work right now.
 keystorePath = "./cert/certificate.pfx"
 

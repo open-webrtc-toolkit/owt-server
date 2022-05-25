@@ -179,13 +179,13 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
       return frameSource;
     };
 
-    const createFrameDestination = (subscriptionId) => {
+    const createFrameDestination = (subscriptionId, options, isDatagram) => {
       if (frameDestinationMap.has(subscriptionId)) {
         log.warn('Frame destination for ' + subscriptionId + ' exists.');
         return;
       }
       const frameDestination =
-          new addon.WebTransportFrameDestination(subscriptionId);
+          new addon.WebTransportFrameDestination(subscriptionId, isDatagram);
       frameDestinationMap.set(subscriptionId, frameDestination);
       return frameDestination;
     };
@@ -307,16 +307,32 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
       switch (connectionType) {
         case 'quic':
           if (options.tracks && options.tracks.length) {  // Media.
-            conn = createFrameDestination(connectionId, options, callback);
+            // Sending media to client over reliable stream or unreliable
+            // datagram.
+            let isDatagrame = true;
+            if (global.config.quic.mediaOutMode === 'stream') {
+              isDatagrame = false;
+            }
+            conn = createFrameDestination(connectionId, options, isDatagrame);
             const webTransportConnection =
                 quicTransportServer.getConnection(options.transport.id);
-            webTransportConnection.onclose = () => {
-              conn.removeDatagramOutput(webTransportConnection);
-            };
-            conn.addDatagramOutput(webTransportConnection);
-            notifyStatus(
-                options.controller, connectionId, 'out',
-                {type: 'rtp', rtp: conn.rtpConfig});
+            if (isDatagrame) {
+              webTransportConnection.onclose = () => {
+                conn.removeDatagramOutput(webTransportConnection);
+              };
+              conn.addDatagramOutput(webTransportConnection);
+            } else {
+              for (const track of options.tracks) {
+                const trackId =
+                    track.type === 'audio' ? audioTrackId : videoTrackId;
+                const stream = quicTransportServer.createSendStream(
+                    options.transport.id, connectionId, trackId);
+                stream.onclose = () => {
+                  conn.removeStreamOutput(connectionId);
+                };
+                conn.addStreamOutput(trackId, stream);
+              }
+            }
           } else {
             // TODO: Remove StreamPipeline, move to WebTransportFrameDestination.
             conn = createStreamPipeline(connectionId, 'out', options, callback);
@@ -327,6 +343,12 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
           if (!conn) {
             return;
           }
+          // RTP info only available when output is datagram. It's undefined
+          // when output is stream. A client considers it as reliable stream
+          // when it's undefined.
+          notifyStatus(
+              options.controller, connectionId, 'out',
+              {type: 'rtp', rtp: conn.rtpConfig, datagram: false});
           break;
         default:
           log.error('Connection type invalid:' + connectionType);
