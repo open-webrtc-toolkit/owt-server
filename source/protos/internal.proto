@@ -14,4 +14,5 @@ message RequestOption {
   optional AudioFormat audio = 4;
   optional VideoFormat video = 5;
   optional bool data = 6;
+  optional string publisher = 7;
 }

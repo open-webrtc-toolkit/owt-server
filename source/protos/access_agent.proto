@@ -6,10 +6,6 @@ import "format.proto";
 
 package owt;
 
-message SimpleReply {
-  optional string message = 1;
-}
-
 // Publish
 message MediaPubOption {
   optional AudioFormat audio = 1;

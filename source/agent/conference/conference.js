@@ -3355,6 +3355,11 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
           conference.onTransportProgress(data.transportId, data.status);
           break;
         }
+        case 'onAudioActiveness': {
+          data.target.view = data.target.label;
+          conference.onAudioActiveness(room_id, data.activeAudioId, data.target);
+          break;
+        }
         default:
           break;
       }
