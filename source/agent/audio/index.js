@@ -19,6 +19,13 @@ var log = logger.getLogger('AudioNode');
 var {InternalConnectionRouter} = require('./internalConnectionRouter');
 
 
+// Setup GRPC server
+var createGrpcInterface = require('./grpcAdapter').createGrpcInterface;
+var enableGRPC = global.config.agent.enable_grpc || false;
+
+var EventEmitter = require('events').EventEmitter;
+
+
 module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
     var that = {
       agentID: parentRpcId,
@@ -51,6 +58,9 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
         connections = {},
 
         router = new InternalConnectionRouter(global.config.internal);
+
+    // For GRPC notifications
+    var streamingEmitter = new EventEmitter();
 
     var addInput = function (stream_id, owner, codec, options, on_ok, on_error) {
         if (engine) {
@@ -145,6 +155,16 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
             ctrlr && rpcClient.remoteCall(ctrlr, 'onAudioActiveness',
                 [belongToRoom, streamId, target],
                 {callback: function(){}});
+            // Emit GRPC notifications
+            const notification = {
+                name: 'onAudioActiveness',
+                data: {
+                    domain: belong_to_room,
+                    activeAudioId: streamId,
+                    target
+                }
+            };
+            streamingEmitter.emit('notification', notification);
         });
         engine = selector;
         for (let i = 0; i < activeStreamIds.length; i++) {
@@ -286,6 +306,16 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
                 controller, 'onAudioActiveness',
                 [belong_to_room, activeInput, {view}],
                 {callback: function(){}});
+                // Emit GRPC notifications
+                const notification = {
+                    name: 'onAudioActiveness',
+                    data: {
+                        domain: belong_to_room,
+                        activeAudioId: activeInput,
+                        target: {label: view}
+                    },
+                };
+                streamingEmitter.emit('notification', notification);
         });
     };
 
@@ -330,6 +360,11 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
             }
         }
     };
+
+    if (enableGRPC) {
+        // Export GRPC interface.
+        return createGrpcInterface(that, streamingEmitter);
+    }
 
     return that;
 };

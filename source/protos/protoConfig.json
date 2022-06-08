@@ -4,6 +4,11 @@
     "package": "owt",
     "service": "WebRTCAgent"
   },
+  "audio": {
+    "file": "audio_agent.proto",
+    "package": "owt",
+    "service": "AudioAgent"
+  },
   "internal": {
     "file": "internal.proto"
   }

@@ -8,9 +8,12 @@ const grpcTools = require('./grpcTools');
 const packOption = grpcTools.packOption;
 const makeRPC = require('./makeRPC').makeRPC;
 
+const grpcPurposes = ['webrtc', 'audio'];
+
 var RpcRequest = function(rpcChannel, listener) {
   var that = {};
   var grpcNode = {};
+  var nodeType = {}; // NodeId => Type
   var listener = listener;
 
   that.getRoomConfig = function(configServer, sessionId) {
@@ -22,11 +25,13 @@ var RpcRequest = function(rpcChannel, listener) {
       .then(function(workerAgent) {
         return rpcChannel.makeRPC(workerAgent.id, 'getNode', [forWhom])
           .then(function(workerNode) {
-            if (purpose === 'webrtc') {
+            if (grpcPurposes.includes(purpose)) {
+              // console.log('start client:', purpose, workerNode);
               grpcNode[workerNode] = grpcTools.startClient(
                 purpose,
                 workerNode
               );
+              nodeType[workerNode] = purpose;
               // Register listener
               const call = grpcNode[workerNode].listenToNotifications({id: ''});
               call.on('data', (notification) => {
@@ -47,11 +52,13 @@ var RpcRequest = function(rpcChannel, listener) {
       . catch((result) => {
         if (grpcNode[workerNode]) {
           delete grpcNode[workerAgent];
+          delete nodeType[workerAgent];
         }
         return 'ok';
       }, (err) => {
         if (grpcNode[workerNode]) {
           delete grpcNode[workerAgent];
+          delete nodeType[workerAgent];
         }
         return 'ok';
       });
@@ -262,6 +269,70 @@ var RpcRequest = function(rpcChannel, listener) {
         })
         .catch((err) => {
           onError && onError(err);
+        });
+      } else if (rpcName === 'init') {
+        const type = nodeType[remoteNode];
+        const initOption = {
+          service: parameters[0],
+          controller: parameters[3],
+          label: parameters[4]
+        };
+        const req = {
+          id: parameters[2],
+          type: type,
+          option: packOption(type, initOption)
+        };
+        grpcNode[remoteNode].init(req, (err, result) => {
+          if (!err) {
+            onOk && onOk(result);
+          } else {
+            onError && onError(err);
+          }
+        });
+      } else if (rpcName === 'generate') {
+        const req = {
+          id: parameters[0],
+          media: {}
+        };
+        if (parameters.length === 2) {
+          req.media.audio = {format: {codec: parameters[1]}};
+        }
+        grpcNode[remoteNode].generate(req, (err, result) => {
+          if (!err) {
+            onOk && onOk(result.id);
+          } else {
+            onError && onError(err);
+          }
+        });
+      } else if (rpcName === 'degenerate') {
+        const req = {id: parameters[0]};
+        grpcNode[remoteNode].degenerate(req, (err, result) => {
+          if (!err) {
+            onOk && onOk(result);
+          } else {
+            onError && onError(err);
+          }
+        });
+      } else if (rpcName === 'enableVAD') {
+        const req = {periodMs: parameters[0]};
+        grpcNode[remoteNode].enableVad(req, (err, result) => {
+          if (!err) {
+            onOk && onOk(result);
+          } else {
+            onError && onError(err);
+          }
+        });
+      } else if (rpcName === 'resetVAD' || rpcName === 'deinit') {
+        const req = {};
+        if (rpcName === 'resetVAD') {
+          rpcName = 'resetVad';
+        }
+        grpcNode[remoteNode][rpcName](req, (err, result) => {
+          if (!err) {
+            onOk && onOk(result);
+          } else {
+            onError && onError(err);
+          }
         });
       } else {
         console.log('Unknow rpc name!');
