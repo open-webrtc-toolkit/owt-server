@@ -39,3 +39,12 @@ message FormatPreference {
   optional GenericFormat preferred = 1;
   repeated GenericFormat optional = 2;
 }
+
+// Simple reply with an optional message
+message SimpleReply {
+  optional string message = 1;
+}
+
+// Empty message
+message Empty {
+}
