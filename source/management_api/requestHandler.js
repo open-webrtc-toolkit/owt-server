@@ -494,11 +494,11 @@ exports.notifySipPortal = function (changeType, room, callback) {
     }});
 };
 
-const getMediaBridge = (roomId, task) => {
+const getBridgeNode = (purpose, roomId, task) => {
   return new Promise((resolve, reject) => {
-    rpc.callRpc(cluster_name, 'schedule', ['mediabridge', task, 'preference', 30 * 1000], {callback: function (result) {
+    rpc.callRpc(cluster_name, 'schedule', [purpose, task, 'preference', 30 * 1000], {callback: function (result) {
         if (result === 'timeout' || result === 'error') {
-            reject('Error in scheduling media bridge');
+            reject('Error in scheduling bridge for purpose:', purpose);
         } else {
             rpc.callRpc(result.id, 'getNode', [{room:roomId, task:task}], {callback: function (result) {
                 if (result === 'timeout' || result === 'error') {
@@ -512,18 +512,23 @@ const getMediaBridge = (roomId, task) => {
   });
 };
 
-const startEventCascading = (pubReq) => {
-
-}
-
-const startMediaCascading = (pubReq) => {
-  
-}
-
+const getBridgeInfo = (purpose, roomId, task) => {
+  return getBridgeNode(purpose, roomId, task)
+    .then((result) => {
+      return new Promise((resolve, reject) => {
+        rpc.callRpc(result.id, 'getInfo', undefined, {callback: function (result) {
+            if (result === 'timeout' || result === 'error') {
+                reject('Error in getting media bridge info');
+            } else {
+                resolve(result);
+            }
+        }});
+      });
+    })
+};
 
 exports.startCascading = function (pubReq, callback) {
   var roomId = pubReq.room;
-  var token = Math.floor(Math.random() * 100000000000) + '';
   return validateId('Room ID', roomId)
     .then((ok) => {
       return validateReq('cascading-req', pubReq);
@@ -547,6 +552,28 @@ exports.startCascading = function (pubReq, callback) {
           callback(result);
         }
       }}, 90 * 1000);
+    })
+    .catch((err) => {
+      callback('error');
+    });
+}
+
+exports.getBridges = function (info, callback) {
+  var bridges = {};
+  return validateId('Room ID', info.room)
+    .then((ok) => {
+      return getBridgeInfo("eventbridge", info.room, info.targetCluster);
+    }).then((bridge) => {
+      bridges.eventbridgeip = bridge.ip;
+      bridges.eventbridgeport = bridge.port;
+      return Promise.resolve('ok');
+    }).then((ok) => {
+      return getBridgeInfo("mediabridge", info.room, info.targetCluster);
+    }).then((bridge) => {
+      bridges.mediabridgeip = bridge.ip;
+      bridges.mediabridgeport = bridge.port;
+      callback(bridges);
+      return Promise.resolve('ok');
     })
     .catch((err) => {
       callback('error');

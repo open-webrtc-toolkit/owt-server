@@ -29,3 +29,8 @@ audio = "most-used"
 video = "least-used"
 analytics = "least-used"
 mediabridge = "last-used"
+
+[cloud]
+url = "none"   #default none:not connect to cascading cloud, specify cloud service url for the cluster to register to cloud
+region = "BJ"
+clusterID = "" #A unique cluster ID reporting to cascading cloud

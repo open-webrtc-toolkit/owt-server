@@ -47,12 +47,13 @@ maxport = 0 #default: 0
 minport = 0 #default: 0
 
 #########################################################################################
-[cascading]
+[bridge]
 # Key store path doesn't work right now.
 keystorePath = "./cert/certificate.pfx"
 
+# ip address/hostname of QUIC server for media cascading is going to listen on. 
+ip_address = '' #default: ""
+hostname = "" #default: ""
+
 # Port of QUIC server for media cascading is going to listen on. 
 port = 7800 #default: 7800
-
-# FQDN of QUIC agent. It's included in WebTransport tokens as a part of the WebTransport URL client connects to. IP address will be included in WebTransport tokens if hostname is empty.
-hostname = ""

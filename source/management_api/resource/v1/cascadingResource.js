@@ -22,3 +22,16 @@ exports.startCascading = function (req, res, next) {
     });
 };
 
+exports.getBridges = function (req, res, next) {
+    var info = {
+        room: req.params.room,
+        targetCluster: req.body.targetCluster
+    };
+    requestHandler.getBridges(req.params.room, function (result) {
+        if (result === 'error') {
+            return next(new e.CloudError('Operation failed'));
+        }
+        res.send(result);
+    });
+};
+

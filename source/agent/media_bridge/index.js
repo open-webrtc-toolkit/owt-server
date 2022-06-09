@@ -53,6 +53,50 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
         global.config.cluster.name :
         undefined;
     var port = global && global.config && global.config.bridge ? global.config.bridge.port : 8700;
+    var bridge = global.config.bridge;
+
+    var ip_address;
+    (function getPublicIP() {
+      var BINDED_INTERFACE_NAME = global.config.bridge.networkInterface;
+      var interfaces = require('os').networkInterfaces(),
+        addresses = [],
+        k,
+        k2,
+        address;
+
+      for (k in interfaces) {
+        if (interfaces.hasOwnProperty(k)) {
+          for (k2 in interfaces[k]) {
+            if (interfaces[k].hasOwnProperty(k2)) {
+              address = interfaces[k][k2];
+              if (address.family === 'IPv4' && !address.internal) {
+                if (k === BINDED_INTERFACE_NAME || !BINDED_INTERFACE_NAME) {
+                  addresses.push(address.address);
+                }
+              }
+              if (address.family === 'IPv6' && !address.internal) {
+                if (k === BINDED_INTERFACE_NAME || !BINDED_INTERFACE_NAME) {
+                  addresses.push('[' + address.address + ']');
+                }
+              }
+            }
+          }
+        }
+      }
+
+      if (bridge.hostname === '' || bridge.hostname === undefined) {
+        if (bridge.ip_address === '' || bridge.ip_address === undefined){
+          ip_address = addresses[0];
+        } else {
+          ip_address = bridge.ip_address;
+        }
+      } else {
+        ip_address = bridge.hostname;
+      }
+
+    })();
+
+
 
     const getConferenceController = async (roomId) => {
       return await rpcChannel.makeRPC(clusterName, 'schedule', [
@@ -180,6 +224,15 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
         const port = router.internalPort;
         log.info("getInternalAddress ip:", ip, " port:", port);
         callback('callback', {ip, port});
+    };
+
+    that.getInfo = function(callback) {
+        var info = {
+            ip: ip_address,
+            port: port
+        };
+        log.info("get bridge Address ip:", ip, " port:", port);
+        callback('callback', info);
     };
 
     // functions: publish, unpublish, subscribe, unsubscribe, linkup, cutoff

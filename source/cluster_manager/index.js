@@ -41,6 +41,10 @@ config.rabbit = config.rabbit || {};
 config.rabbit.host = config.rabbit.host || 'localhost';
 config.rabbit.port = config.rabbit.port || 5672;
 
+config.cloud.url = config.cloud.url;
+config.cloud.region = config.cloud.region;
+config.cloud.clusterID = config.cloud.clusterID;
+
 function startup () {
     var enableService = function () {
         var id = Math.floor(Math.random() * 1000000000);
@@ -48,7 +52,8 @@ function startup () {
                     checkAlivePeriod: config.manager.check_alive_interval,
                     checkAliveCount: config.manager.check_alive_count,
                     scheduleKeepTime: config.manager.schedule_reserve_time,
-                    strategy: config.strategy
+                    strategy: config.strategy,
+                    url: config.cloud.url, region: config.cloud.region, clusterID: config.cloud.clusterID
                    };
 
         amqper.asTopicParticipant(config.manager.name + '.management', function(channel) {

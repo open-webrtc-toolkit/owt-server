@@ -40,7 +40,6 @@ exports.connect = function (options) {
             rpcClient = rpcCli;
         }, function(reason) {
             log.error('Initializing as rpc client failed, reason:', reason);
-            stopServers();
             process.exit();
       });
     }, function(reason) {

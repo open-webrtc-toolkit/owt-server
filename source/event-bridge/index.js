@@ -93,23 +93,23 @@ var dropAll = function() {
 };
 
 var startServers = function(id) {
-var rpcChannel = require('./rpcChannel')(rpcClient);
-var rpcReq = require('./rpcRequest')(rpcChannel);
+  var rpcChannel = require('./rpcChannel')(rpcClient);
+  var rpcReq = require('./rpcRequest')(rpcChannel);
 
-event_cascading = require('./eventCascading')({port: config.bridge.port,
-                                                 ssl: config.bridge.ssl,
-                                                 clusterName: config.cluster.name,
-                                                 selfRpcId: id},
-                                                 rpcReq);
-  event_cascading.start();
-  /*return event_cascading.start()
-    .then(function() {
-      log.info('start event bridge server ok.');
-    })
-    .catch(function(err) {
-      log.error('Failed to start servers, reason:', err && err.message);
-      throw err;
-    });*/
+  event_cascading = require('./eventCascading')({port: config.bridge.port,
+                                                   ssl: config.bridge.ssl,
+                                                   clusterName: config.cluster.name,
+                                                   selfRpcId: id},
+                                                   rpcReq);
+    event_cascading.start();
+    /*return event_cascading.start()
+      .then(function() {
+        log.info('start event bridge server ok.');
+      })
+      .catch(function(err) {
+        log.error('Failed to start servers, reason:', err && err.message);
+        throw err;
+      });*/
 };
 
 var stopServers = function() {
@@ -134,6 +134,9 @@ var rpcPublic = {
   broadcast: function(controller, excludeList, event, data, callback) {
     event_cascading && event_cascading.broadcast(controller, excludeList, event, data);
     callback('callback', 'ok');
+  },
+  getInfo: function() {
+    callback('callback', {ip:ip_address, port:config.bridge.port})
   },
   startCascading: function(data, callback) {
     event_cascading && event_cascading.startCascading(data);
