@@ -231,7 +231,7 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
             ip: ip_address,
             port: port
         };
-        log.info("get bridge Address ip:", ip, " port:", port);
+        log.info("get bridge Address ip:", info.ip, " port:", info.port);
         callback('callback', info);
     };
 

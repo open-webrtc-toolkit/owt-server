@@ -248,6 +248,10 @@ var ClusterManager = function (clusterName, selfId, spec) {
         }
     };
 
+    var getClusterID = function (on_ok) {
+        return on_ok(spec.clusterID);
+    };
+
     var registerInfo = function (info, on_ok) {
         on_ok('ok');
         var data = {
@@ -395,6 +399,11 @@ var ClusterManager = function (clusterName, selfId, spec) {
                 callback('callback', worker);
             }, function (error_reason) {
                 callback('callback', 'error', error_reason);
+            });
+        },
+        getClusterID: function (callback) {
+            getClusterID(function (cluster) {
+                callback('callback', cluster);
             });
         },
         registerInfo: function (info, callback) {

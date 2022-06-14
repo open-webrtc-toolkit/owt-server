@@ -27,7 +27,7 @@ exports.getBridges = function (req, res, next) {
         room: req.params.room,
         targetCluster: req.body.targetCluster
     };
-    requestHandler.getBridges(req.params.room, function (result) {
+    requestHandler.getBridges(info, function (result) {
         if (result === 'error') {
             return next(new e.CloudError('Operation failed'));
         }

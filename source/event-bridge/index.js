@@ -51,6 +51,7 @@ var amqper = require('./amqpClient')();
 var rpcClient;
 var bridge;
 var event_cascading;
+var worker;
 
 var ip_address;
 (function getPublicIP() {
@@ -88,8 +89,42 @@ var ip_address;
   }
 })();
 
-var dropAll = function() {
-  socketio_server && socketio_server.drop('all');
+var joinCluster = function (on_ok) {
+  var joinOK = on_ok;
+
+  var joinFailed = function (reason) {
+    log.error('event bridge join cluster failed. reason:', reason);
+    worker && worker.quit();
+    process.exit();
+  };
+
+  var loss = function () {
+    log.info('event bridge lost.');
+  };
+
+  var recovery = function () {
+    log.info('event bridge recovered.');
+  };
+
+  var spec = {rpcClient: rpcClient,
+              purpose: 'eventbridge',
+              clusterName: config.cluster.name,
+              joinRetry: config.cluster.join_retry,
+              info: {ip: ip_address,
+                     port: config.bridge.port,
+                     state: 2,
+                     max_load: config.cluster.max_load,
+                     capacity: {}
+                    },
+              onJoinOK: joinOK,
+              onJoinFailed: joinFailed,
+              onLoss: loss,
+              onRecovery: recovery,
+              loadCollection: {period: config.cluster.report_load_interval,
+                               item: {name: 'cpu'}}
+             };
+
+  worker = require('./clusterWorker')(spec);
 };
 
 var startServers = function(id) {
@@ -148,8 +183,9 @@ amqper.connect(config.rabbit, function () {
   amqper.asRpcClient(function(rpcClnt) {
     rpcClient = rpcClnt;
     log.info('bridge initializing as rpc client ok and client is:', rpcClnt);
-      log.info('bridge join cluster ok, with rpcID eventbridge');
-        amqper.asRpcServer("eventbridge", rpcPublic, function(rpcSvr) {
+    joinCluster(function(id) {
+      log.info('bridge join cluster ok, with rpcID:', id);
+        amqper.asRpcServer(id, rpcPublic, function(rpcSvr) {
           log.info('bridge initializing as rpc server ok');
             amqper.asMonitor(function (data) {
               if (data.reason === 'abnormal' || data.reason === 'error' || data.reason === 'quit') {
@@ -167,17 +203,18 @@ amqper.connect(config.rabbit, function () {
               }
             }, function (monitor) {
               log.info('eventbridge as monitor ready');
-              startServers("eventbridge");
+              startServers(id);
             }, function(reason) {
-              log.error('bridge initializing as rpc client failed, reason:', reason);
+              log.error('bridge initializing as monitor failed, reason:', reason);
               stopServers();
               process.exit();
             });
       }, function(reason) {
-        log.error('bridge initializing as rpc client failed, reason:', reason);
+        log.error('bridge initializing as rpc server failed, reason:', reason);
         stopServers();
         process.exit();
       });
+    });
   }, function(reason) {
     log.error('bridge initializing as rpc client failed, reason:', reason);
     stopServers();

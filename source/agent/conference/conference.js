@@ -209,6 +209,11 @@ var Conference = function (rpcClient, selfRpcId) {
 
   var cascadingEventBridges = new Set();
 
+/*
+ * A unique cluster ID used for cascading, the value is fetched from cluster manager
+ */
+  var clusterID;
+
   /*
    * {TrackId: string(StreamId)}
    */
@@ -351,6 +356,7 @@ var Conference = function (rpcClient, selfRpcId) {
       }
     } else {
       is_initializing = true;
+      var cluster = global.config.cluster.name || 'owt-cluster';
       return dataAccess.room.config(roomId)
         .then(function(config) {
             //log.debug('initializing room:', roomId, 'got config:', JSON.stringify(config));
@@ -361,7 +367,7 @@ var Conference = function (rpcClient, selfRpcId) {
             return new Promise(function(resolve, reject) {
               RoomController.create(
                 {
-                  cluster: global.config.cluster.name || 'owt-cluster',
+                  cluster: cluster,
                   rpcReq: rpcReq,
                   rpcClient: rpcClient,
                   room: roomId,
@@ -480,6 +486,12 @@ var Conference = function (rpcClient, selfRpcId) {
                   reject('roomController init failed. reason: ' + reason);
                 });
             });
+        }).then(() => {
+          return rpcReq.getClusterID(cluster);
+        }).then((id) => {
+          log.info("Get cluster id:", id);
+          clusterID = id;
+          return Promise.resolve('ok');
         }).catch(function(err) {
           log.error('Init room failed, reason:', err);
           is_initializing = false;
@@ -709,7 +721,7 @@ var Conference = function (rpcClient, selfRpcId) {
                 if (casStreams[id]) {
                   delete casStreams[id];
                 } else {
-                  sendMsgTo('cascading', {rpcId: selfRpcId}, {type: "addStream", data: {cluster:global.config.cluster.id, id: id, media: media, data: data, info: info}});
+                  sendMsgTo('cascading', {rpcId: selfRpcId}, {type: "addStream", data: {cluster:clusterID, id: id, media: media, data: data, info: info}});
                 }
               }
             }, 10);
@@ -738,7 +750,7 @@ var Conference = function (rpcClient, selfRpcId) {
                   if (casStreams[id]) {
                     delete casStreams[id];
                   } else {
-                    sendMsgTo('cascading', {rpcId: selfRpcId}, {type: "addStream", data: {cluster:global.config.cluster.id, id: id, media: media, data: data, info: info}});
+                    sendMsgTo('cascading', {rpcId: selfRpcId}, {type: "addStream", data: {cluster:clusterID, id: id, media: media, data: data, info: info}});
                   }
                 }
               }, 10);
@@ -3188,7 +3200,7 @@ var Conference = function (rpcClient, selfRpcId) {
         if (streams[sid].type !== 'mixed') {
           if (!streams[sid].isInConnecting) {
             data.streams[sid] = streams[sid];
-            data.streams[sid].cluster = global.config.cluster.id;
+            data.streams[sid].cluster = clusterID;
           }
         }
       }

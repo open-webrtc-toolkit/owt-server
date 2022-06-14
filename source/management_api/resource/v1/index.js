@@ -72,6 +72,6 @@ router.post('/rooms/:room/tokens', tokensResource.create);
 
 //Cluster cascading management
 router.post('/rooms/:room/cascading', cascadingResource.startCascading);
-router.post('/rooms/:room/bridges', cascadingResource.getBridges);
+router.get('/rooms/:room/bridges', cascadingResource.getBridges);
 
 module.exports = router
