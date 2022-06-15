@@ -2835,6 +2835,14 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
           conference.onAudioActiveness(room_id, data.activeAudioId, data.target);
           break;
         }
+        case 'onVideoLayoutChange': {
+          conference.onVideoLayoutChange(data.owner, data.regions, data.label, (n, code, r) => {
+            if (code === 'error') {
+              log.warn('onVideoLayoutChange error:', r);
+            }
+          });
+          break;
+        }
         default:
           break;
       }

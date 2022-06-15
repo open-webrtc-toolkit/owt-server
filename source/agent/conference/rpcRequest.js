@@ -8,7 +8,7 @@ const grpcTools = require('./grpcTools');
 const packOption = grpcTools.packOption;
 const makeRPC = require('./makeRPC').makeRPC;
 
-const grpcPurposes = ['webrtc', 'audio'];
+const grpcPurposes = ['webrtc', 'audio', 'video'];
 
 var RpcRequest = function(rpcChannel, listener) {
   var that = {};
@@ -275,7 +275,8 @@ var RpcRequest = function(rpcChannel, listener) {
         const initOption = {
           service: parameters[0],
           controller: parameters[3],
-          label: parameters[4]
+          label: parameters[4],
+          init: parameters[1]
         };
         const req = {
           id: parameters[2],
@@ -296,10 +297,23 @@ var RpcRequest = function(rpcChannel, listener) {
         };
         if (parameters.length === 2) {
           req.media.audio = {format: {codec: parameters[1]}};
+        } else if (parameters.length === 5) {
+          parameters = parameters.map(
+              (par) => (par === 'unspecified' ? undefined : par));
+          req.media.video = {
+            format: {codec: parameters[0]},
+            parameters: {
+              resolution: parameters[1],
+              framerate: parameters[2],
+              bitrate: parameters[3],
+              keyFrameInterval: parameters[4]
+            }
+          };
         }
         grpcNode[remoteNode].generate(req, (err, result) => {
           if (!err) {
-            onOk && onOk(result.id);
+            const resp = req.media.audio ? result.id : result;
+            onOk && onOk(resp);
           } else {
             onError && onError(err);
           }
@@ -327,6 +341,57 @@ var RpcRequest = function(rpcChannel, listener) {
         if (rpcName === 'resetVAD') {
           rpcName = 'resetVad';
         }
+        grpcNode[remoteNode][rpcName](req, (err, result) => {
+          if (!err) {
+            onOk && onOk(result);
+          } else {
+            onError && onError(err);
+          }
+        });
+      } else if (rpcName === 'setInputActive') {
+        const req = {
+          id: parameters[0],
+          active: parameters[1]
+        };
+        grpcNode[remoteNode][rpcName](req, (err, result) => {
+          if (!err) {
+            onOk && onOk(result);
+          } else {
+            onError && onError(err);
+          }
+        });
+      } else if (rpcName === 'getRegion') {
+        const req = {id: parameters[0]};
+        grpcNode[remoteNode][rpcName](req, (err, result) => {
+          if (!err) {
+            onOk && onOk(result.message);
+          } else {
+            onError && onError(err);
+          }
+        });
+      } else if (rpcName === 'setRegion') {
+        const req = {
+          streamId: parameters[0],
+          regionId: parameters[1]
+        };
+        grpcNode[remoteNode][rpcName](req, (err, result) => {
+          if (!err) {
+            onOk && onOk(result);
+          } else {
+            onError && onError(err);
+          }
+        });
+      } else if (rpcName === 'setLayout') {
+        const req = {regions: parameters[0]};
+        grpcNode[remoteNode][rpcName](req, (err, result) => {
+          if (!err) {
+            onOk && onOk(result.regions);
+          } else {
+            onError && onError(err);
+          }
+        });
+      } else if (rpcName === 'setPrimary' || rpcName === 'forceKeyFrame') {
+        const req = {id: parameters[0]};
         grpcNode[remoteNode][rpcName](req, (err, result) => {
           if (!err) {
             onOk && onOk(result);
