@@ -22,6 +22,8 @@ const colorMap = {
     'black': { r: 0, g: 0, b: 0 }
 };
 
+const isUnspecified = (value) => (value === undefined || value === 'unspecified');
+
 const useHardware = global.config.video.hardwareAccelerated;
 const gaccPluginEnabled = global.config.video.enableBetterHEVCQuality || false;
 const MFE_timeout = global.config.video.MFE_timeout || 0;
@@ -187,7 +189,7 @@ class InputManager {
     }
 }
 
-function VMixer(rpcClient, clusterIP, VideoMixer, router) {
+function VMixer(rpcClient, clusterIP, VideoMixer, router, streamingEmitter) {
     var that = {},
         engine,
         layoutProcessor,
@@ -392,7 +394,7 @@ function VMixer(rpcClient, clusterIP, VideoMixer, router) {
         layoutProcessor.on('layoutChange', function (layoutSolution) {
             log.debug('layoutChange', layoutSolution);
             if (typeof engine.updateLayoutSolution === 'function') {
-               engine.updateLayoutSolution(layoutSolution.filter((obj) => {return obj.input !== undefined;}));
+                engine.updateLayoutSolution(layoutSolution.filter((obj) => {return obj.input !== undefined;}));
             } else {
                 log.warn('No native method: updateLayoutSolution');
             }
@@ -400,6 +402,16 @@ function VMixer(rpcClient, clusterIP, VideoMixer, router) {
             var streamRegions = formatLayoutSolution(layoutSolution);
             var layoutChangeArgs = [belong_to, streamRegions, view];
             rpcClient.remoteCall(controller, 'onVideoLayoutChange', layoutChangeArgs);
+            // Emit GRPC notifications
+            const notification = {
+                name: 'onAudioActiveness',
+                data: {
+                    owner: belongTo,
+                    label: view,
+                    regions: streamRegions
+                }
+            };
+            streamingEmitter.emit('notification', notification);
         });
         belong_to = belongTo;
         controller = layoutcontroller;
@@ -463,11 +475,11 @@ function VMixer(rpcClient, clusterIP, VideoMixer, router) {
     that.generate = function (codec, resolution, framerate, bitrate, keyFrameInterval, callback) {
         log.debug('generate, codec:', codec, 'resolution:', resolution, 'framerate:', framerate, 'bitrate:', bitrate, 'keyFrameInterval:', keyFrameInterval);
         codec = (codec || supported_codecs.encode[0]).toLowerCase();
-        resolution = (resolution === 'unspecified' ? default_resolution : resolution);
-        framerate = (framerate === 'unspecified' ? default_framerate : framerate);
+        resolution = (isUnspecified(resolution) ? default_resolution : resolution);
+        framerate = (isUnspecified(framerate) ? default_framerate : framerate);
         var bitrate_factor = (typeof bitrate === 'string' ? (bitrate === 'unspecified' ? 1.0 : (Number(bitrate.replace('x', '')) || 0)) : 0);
         bitrate = (bitrate_factor ? calcDefaultBitrate(codec, resolution, framerate, motion_factor) * bitrate_factor : bitrate);
-        keyFrameInterval = (keyFrameInterval === 'unspecified' ? default_kfi : keyFrameInterval);
+        keyFrameInterval = (isUnspecified(keyFrameInterval) ? default_kfi : keyFrameInterval);
 
         for (var stream_id in outputs) {
             if (outputs[stream_id].codec === codec &&

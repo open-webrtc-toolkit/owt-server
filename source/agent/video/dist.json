@@ -25,6 +25,9 @@
             "../../common/makeRPC.js",
             "../../common/rpcChannel.js",
             "../../common/mediaUtil.js",
+            "../../common/grpcTools.js",
+            "../../protos/protoConfig.json",
+            "../../protos/*.proto",
             "../../../scripts/release/install_ffmpeg.sh",
             "../../../scripts/release/initauth.js",
             "../../../scripts/detectOS.sh",
@@ -37,6 +40,10 @@
                 "vmixer.js",
                 "vtranscoder.js",
                 "../connections.js",
+                "grpcAdapter.js",
+                "../../common/grpcTools.js",
+                "../../protos/protoConfig.json",
+                "../../protos/*.proto",
                 "../internalConnectionRouter.js"
             ],
             "avatars": [
