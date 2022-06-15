@@ -6,7 +6,7 @@ import "process_agent.proto";
 
 package owt;
 
-// The webrtc service definition.
+// The audio service definition.
 service AudioAgent {
   // Init
   rpc Init(InitRequest) returns (InitReply) {}
