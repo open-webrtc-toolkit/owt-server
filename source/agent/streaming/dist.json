@@ -20,6 +20,9 @@
             "../../common/logger.js",
             "../../common/makeRPC.js",
             "../../common/rpcChannel.js",
+            "../../common/grpcTools.js",
+            "../../protos/protoConfig.json",
+            "../../protos/*.proto",
             "../../../scripts/release/install_ffmpeg.sh",
             "../../../scripts/release/initauth.js",
             "../../../scripts/detectOS.sh"
@@ -27,6 +30,10 @@
         "folders": {
             "streaming": [
                 "index.js",
+                "grpcAdapter.js",
+                "../../common/grpcTools.js",
+                "../../protos/protoConfig.json",
+                "../../protos/*.proto",
                 "../connections.js",
                 "../internalConnectionRouter.js"
             ]

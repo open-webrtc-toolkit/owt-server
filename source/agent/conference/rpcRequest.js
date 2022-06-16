@@ -8,7 +8,7 @@ const grpcTools = require('./grpcTools');
 const packOption = grpcTools.packOption;
 const makeRPC = require('./makeRPC').makeRPC;
 
-const grpcPurposes = ['webrtc', 'audio', 'video'];
+const grpcPurposes = ['webrtc', 'audio', 'video', 'streaming', 'recording'];
 
 var RpcRequest = function(rpcChannel, listener) {
   var that = {};

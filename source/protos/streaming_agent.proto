@@ -1,0 +1,66 @@
+//
+syntax = "proto3";
+
+import "access_agent.proto";
+
+package owt;
+
+// The streaming service definition.
+service StreamingAgent {
+  // Publish
+  rpc Publish (PublishRequest) returns (PublishReply) {}
+  rpc Unpublish (UnpublishRequest) returns (SimpleReply) {}
+  // Subscribe
+  rpc Subscribe (SubscribeRequest) returns (SubscribeReply) {}
+  rpc Unsubscribe (UnsubscribeRequest) returns (SimpleReply) {}
+  // Link & Cut
+  rpc Linkup (LinkupRequest) returns (SimpleReply) {}
+  rpc Cutoff (CutoffRequest) returns (SimpleReply) {}
+
+  // Listen to notifications (streaming RPC)
+  rpc ListenToNotifications (ListenRequest) returns (stream ProgressNotification) {}
+
+  // Internal connections
+  rpc CreateInternalConnection (CreateInternalRequest) returns (InternalReply) {}
+  rpc DestroyInternalConnection (DestroyInternalRequest) returns (SimpleReply) {}
+}
+
+// The progress message for webrtc sessions ("type": "webrtc").
+// Progress "name": "onSessionProgress".
+message SessionProgressData {
+  string id = 1;
+  message Status {
+    optional string type = 1;
+    optional string reason = 2;
+  }
+  Status status = 2;
+  optional string direction = 3;
+}
+
+// Publish/Subscribe option
+message RequestOption {
+  message MediaOption {
+    optional bool audio = 1;
+    optional bool video = 2;
+  }
+  optional MediaOption media = 1;
+
+  message StreamingConfig {
+    optional string url = 1;
+    optional string protocol = 2;
+    optional string transportProtocol = 3;
+    optional int32 bufferSize = 4;
+    optional string container = 5;
+
+    message StreamingParameter {
+      string method = 1;
+      optional int32 hlsTime = 2;
+      optional int32 hlsListSize = 3;
+      optional int32 dashSegDuration = 4;
+      optional int32 dashWindowSize = 5;
+    }
+    optional StreamingParameter parameters = 6;
+  }
+  StreamingConfig connection = 2;
+  optional string controller = 3;
+}
