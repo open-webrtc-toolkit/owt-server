@@ -14,6 +14,16 @@
     "package": "owt",
     "service": "VideoAgent"
   },
+  "streaming": {
+    "file": "streaming_agent.proto",
+    "package": "owt",
+    "service": "StreamingAgent"
+  },
+  "recording": {
+    "file": "streaming_agent.proto",
+    "package": "owt",
+    "service": "StreamingAgent"
+  },
   "internal": {
     "file": "internal.proto"
   }
