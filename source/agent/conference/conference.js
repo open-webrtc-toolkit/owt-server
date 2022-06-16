@@ -3368,6 +3368,10 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
           });
           break;
         }
+        case 'onSessionProgress': {
+          conference.onSessionProgress(data.id, data.direction, data.status);
+          break;
+        }
         default:
           break;
       }
