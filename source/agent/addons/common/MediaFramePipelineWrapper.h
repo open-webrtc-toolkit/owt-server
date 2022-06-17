@@ -6,10 +6,10 @@
 #ifndef MEDIAFRAMEPIPELINEWRAPPER_H
 #define MEDIAFRAMEPIPELINEWRAPPER_H
 
+#include <MediaFramePipeline.h>
+#include <nan.h>
 #include <node.h>
 #include <node_object_wrap.h>
-#include <MediaFramePipeline.h>
-
 
 /*
  * Wrapper class of owt_base::FrameDestination
@@ -30,5 +30,13 @@ public:
   owt_base::FrameSource* src;
 };
 
+/*
+ * Nan::ObjectWrap of owt_base::FrameSource and owt_base::FrameDestination, represents a node in the media or data pipeline.
+ */
+class NanFrameNode : public Nan::ObjectWrap {
+public:
+    virtual owt_base::FrameSource* FrameSource() = 0;
+    virtual owt_base::FrameDestination* FrameDestination() = 0;
+};
 
 #endif

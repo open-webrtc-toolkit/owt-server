@@ -155,6 +155,7 @@ module.exports = function (spec) {
                             log.info('Unknown by cluster manager', cluster_name);
                             tryRecovery(function () {
                                 log.info('Rejoin cluster', cluster_name, 'OK.');
+                                on_recovery(id);
                             });
                         }
                     }

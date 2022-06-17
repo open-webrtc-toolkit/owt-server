@@ -14,11 +14,11 @@ Persistent<Function> AudioMixer::constructor;
 AudioMixer::AudioMixer() {};
 AudioMixer::~AudioMixer() {};
 
-void AudioMixer::Init(Handle<Object> exports, Handle<Object> module) {
+void AudioMixer::Init(Local<Object> exports, Local<Object> module) {
   Isolate* isolate = exports->GetIsolate();
   // Prepare constructor template
   Local<FunctionTemplate> tpl = FunctionTemplate::New(isolate, New);
-  tpl->SetClassName(String::NewFromUtf8(isolate, "AudioMixer"));
+  tpl->SetClassName(Nan::New("AudioMixer").ToLocalChecked());
   tpl->InstanceTemplate()->SetInternalFieldCount(1);
   // Prototype
   NODE_SET_PROTOTYPE_METHOD(tpl, "close", close);
@@ -31,22 +31,27 @@ void AudioMixer::Init(Handle<Object> exports, Handle<Object> module) {
   NODE_SET_PROTOTYPE_METHOD(tpl, "addOutput", addOutput);
   NODE_SET_PROTOTYPE_METHOD(tpl, "removeOutput", removeOutput);
 
-  constructor.Reset(isolate, tpl->GetFunction());
-  module->Set(String::NewFromUtf8(isolate, "exports"), tpl->GetFunction());
+
+  constructor.Reset(isolate, Nan::GetFunction(tpl).ToLocalChecked());
+  Nan::Set(module, Nan::New("exports").ToLocalChecked(), Nan::GetFunction(tpl).ToLocalChecked());
 }
 
 void AudioMixer::New(const v8::FunctionCallbackInfo<v8::Value>& args) {
   Isolate* isolate = Isolate::GetCurrent();
   HandleScope scope(isolate);
 
-  String::Utf8Value param0(args[0]->ToString());
-  std::string config = std::string(*param0);
+  if (args[0]->IsString()) {
+    Nan::Utf8String param0(Nan::To<v8::String>(args[0]).ToLocalChecked());
+    std::string config = std::string(*param0);
 
-  AudioMixer* obj = new AudioMixer();
-  obj->me = new mcu::AudioMixer(config);
+    AudioMixer* obj = new AudioMixer();
+    obj->me = new mcu::AudioMixer(config);
 
-  obj->Wrap(args.This());
-  args.GetReturnValue().Set(args.This());
+    obj->Wrap(args.This());
+    args.GetReturnValue().Set(args.This());
+  } else {
+    Nan::ThrowError("Argument is not string");
+  }
 }
 
 void AudioMixer::close(const v8::FunctionCallbackInfo<v8::Value>& args) {
@@ -65,12 +70,12 @@ void AudioMixer::enableVAD(const v8::FunctionCallbackInfo<v8::Value>& args) {
   if (obj->me == nullptr)
     return;
 
-  int period = args[0]->IntegerValue();
+  int period = Nan::To<int32_t>(args[0]).FromJust();
 
   obj->me->setEventRegistry(obj);
   obj->me->enableVAD(period);
   if (args.Length() > 1 && args[1]->IsFunction())
-    Local<Object>::New(isolate, obj->m_store)->Set(String::NewFromUtf8(isolate, "vad"), args[1]);
+    Nan::Set(Nan::New(obj->m_store), Nan::New("vad").ToLocalChecked(), args[1]);
 }
 
 void AudioMixer::disableVAD(const v8::FunctionCallbackInfo<v8::Value>& args) {
@@ -96,13 +101,13 @@ void AudioMixer::addInput(const v8::FunctionCallbackInfo<v8::Value>& args) {
   AudioMixer* obj = ObjectWrap::Unwrap<AudioMixer>(args.Holder());
   mcu::AudioMixer* me = obj->me;
 
-  String::Utf8Value param0(args[0]->ToString());
+  Nan::Utf8String param0(Nan::To<v8::String>(args[0]).ToLocalChecked());
   std::string endpointID = std::string(*param0);
-  String::Utf8Value param1(args[1]->ToString());
+  Nan::Utf8String param1(Nan::To<v8::String>(args[1]).ToLocalChecked());
   std::string streamID = std::string(*param1);
-  String::Utf8Value param2(args[2]->ToString());
+  Nan::Utf8String param2(Nan::To<v8::String>(args[2]).ToLocalChecked());
   std::string codec = std::string(*param2);
-  FrameSource* param3 = ObjectWrap::Unwrap<FrameSource>(args[3]->ToObject());
+  FrameSource* param3 = ObjectWrap::Unwrap<FrameSource>(args[3]->ToObject(Nan::GetCurrentContext()).ToLocalChecked());
   owt_base::FrameSource* src = param3->src;
 
   bool r = me->addInput(endpointID, streamID, codec, src);
@@ -117,9 +122,9 @@ void AudioMixer::removeInput(const v8::FunctionCallbackInfo<v8::Value>& args) {
   AudioMixer* obj = ObjectWrap::Unwrap<AudioMixer>(args.Holder());
   mcu::AudioMixer* me = obj->me;
 
-  String::Utf8Value param0(args[0]->ToString());
+  Nan::Utf8String param0(Nan::To<v8::String>(args[0]).ToLocalChecked());
   std::string endpointID = std::string(*param0);
-  String::Utf8Value param1(args[1]->ToString());
+  Nan::Utf8String param1(Nan::To<v8::String>(args[1]).ToLocalChecked());
   std::string streamID = std::string(*param1);
 
   me->removeInput(endpointID, streamID);
@@ -132,11 +137,11 @@ void AudioMixer::setInputActive(const v8::FunctionCallbackInfo<v8::Value>& args)
   AudioMixer* obj = ObjectWrap::Unwrap<AudioMixer>(args.Holder());
   mcu::AudioMixer* me = obj->me;
 
-  String::Utf8Value param0(args[0]->ToString());
+  Nan::Utf8String param0(Nan::To<v8::String>(args[0]).ToLocalChecked());
   std::string endpointID = std::string(*param0);
-  String::Utf8Value param1(args[1]->ToString());
+  Nan::Utf8String param1(Nan::To<v8::String>(args[1]).ToLocalChecked());
   std::string streamID = std::string(*param1);
-  bool active = args[2]->ToBoolean()->Value();
+  bool active = Nan::To<bool>(args[2]).FromJust();
 
   me->setInputActive(endpointID, streamID, active);
 }
@@ -148,13 +153,14 @@ void AudioMixer::addOutput(const v8::FunctionCallbackInfo<v8::Value>& args) {
   AudioMixer* obj = ObjectWrap::Unwrap<AudioMixer>(args.Holder());
   mcu::AudioMixer* me = obj->me;
 
-  String::Utf8Value param0(args[0]->ToString());
+  Nan::Utf8String param0(Nan::To<v8::String>(args[0]).ToLocalChecked());
   std::string endpointID = std::string(*param0);
-  String::Utf8Value param1(args[1]->ToString());
+  Nan::Utf8String param1(Nan::To<v8::String>(args[1]).ToLocalChecked());
   std::string streamID = std::string(*param1);
-  String::Utf8Value param2(args[2]->ToString());
+  Nan::Utf8String param2(Nan::To<v8::String>(args[2]).ToLocalChecked());
   std::string codec = std::string(*param2);
-  FrameDestination* param3 = ObjectWrap::Unwrap<FrameDestination>(args[3]->ToObject());
+  FrameDestination* param3 = ObjectWrap::Unwrap<FrameDestination>(
+      args[3]->ToObject(Nan::GetCurrentContext()).ToLocalChecked());
   owt_base::FrameDestination* dest = param3->dest;
 
   bool r = me->addOutput(endpointID, streamID, codec, dest);
@@ -169,9 +175,9 @@ void AudioMixer::removeOutput(const v8::FunctionCallbackInfo<v8::Value>& args) {
   AudioMixer* obj = ObjectWrap::Unwrap<AudioMixer>(args.Holder());
   mcu::AudioMixer* me = obj->me;
 
-  String::Utf8Value param0(args[0]->ToString());
+  Nan::Utf8String param0(Nan::To<v8::String>(args[0]).ToLocalChecked());
   std::string endpointID = std::string(*param0);
-  String::Utf8Value param1(args[1]->ToString());
+  Nan::Utf8String param1(Nan::To<v8::String>(args[1]).ToLocalChecked());
   std::string streamID = std::string(*param1);
 
   me->removeOutput(endpointID, streamID);

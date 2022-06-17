@@ -41,10 +41,10 @@ AudioSendAdapterImpl::~AudioSendAdapterImpl()
     boost::unique_lock<boost::shared_mutex> lock(m_rtpRtcpMutex);
 }
 
-int AudioSendAdapterImpl::onRtcpData(char* data, int len)
+int AudioSendAdapterImpl::onRtcpData(const char* data, int len)
 {
     boost::shared_lock<boost::shared_mutex> lock(m_rtpRtcpMutex);
-    m_rtpRtcp->IncomingRtcpPacket(reinterpret_cast<uint8_t*>(data), len);
+    m_rtpRtcp->IncomingRtcpPacket(reinterpret_cast<const uint8_t*>(data), len);
     return len;
 }
 

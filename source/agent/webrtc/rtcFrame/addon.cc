@@ -4,6 +4,7 @@
 
 #include "AudioFrameConstructorWrapper.h"
 #include "AudioFramePacketizerWrapper.h"
+#include "CallBaseWrapper.h"
 #include "VideoFrameConstructorWrapper.h"
 #include "VideoFramePacketizerWrapper.h"
 
@@ -11,11 +12,12 @@
 
 using namespace v8;
 
-void InitAll(Handle<Object> exports) {
+void InitAll(Local<Object> exports) {
   AudioFrameConstructor::Init(exports);
   AudioFramePacketizer::Init(exports);
   VideoFrameConstructor::Init(exports);
   VideoFramePacketizer::Init(exports);
+  CallBase::Init(exports);
 }
 
 NODE_MODULE(addon, InitAll)

@@ -13,37 +13,40 @@
 #include <memory>
 #include <mutex>
 
+#include <call/rtp_transport_controller_send.h>
 #include <system_wrappers/include/clock.h>
+#include <system_wrappers/include/field_trial.h>
 
 namespace rtc_adapter {
 
-class RTCProcessThread {
-public:
-    RTCProcessThread(const char* task_name)
-    : m_processThread(webrtc::ProcessThread::Create(task_name))
-    {
-        m_processThread->Start();
-    }
-    ~RTCProcessThread()
-    {
-        m_processThread->Stop();
-    }
+static rtc::scoped_refptr<webrtc::SharedModuleThread> g_moduleThread;
 
-    webrtc::ProcessThread* unwrap()
-    {
-        return m_processThread.get();
-    }
-private:
-    std::unique_ptr<webrtc::ProcessThread> m_processThread;
-};
+static std::unique_ptr<webrtc::FieldTrialBasedConfig> g_fieldTrial= []()
+{
+    auto config = std::make_unique<webrtc::FieldTrialBasedConfig>();
+    /*
+    webrtc::field_trial::InitFieldTrialsFromString(
+        "WebRTC-KeyframeInterval/"
+        "max_wait_for_keyframe_ms:500,"
+        "max_wait_for_frame_ms:1500/"
+        "WebRTC-TaskQueuePacer/Enabled/");
+    */
+    return config;
+}();
 
-static std::unique_ptr<RTCProcessThread> g_moduleThread
-    = std::make_unique<RTCProcessThread>("ModuleProcessThread");
-static std::unique_ptr<RTCProcessThread> g_pacerThread
-    = std::make_unique<RTCProcessThread>("PacerThread");
+static std::shared_ptr<webrtc::RtcEventLog> g_eventLog =
+    std::make_shared<webrtc::RtcEventLogNull>();
+
+static std::shared_ptr<webrtc::TaskQueueFactory> g_taskQueueFactory =
+    createStaticTaskQueueFactory();
+static std::shared_ptr<rtc::TaskQueue> g_taskQueue =
+    std::make_shared<rtc::TaskQueue>(g_taskQueueFactory->CreateTaskQueue(
+        "CallTaskQueue",
+        webrtc::TaskQueueFactory::Priority::NORMAL));
 
 class RtcAdapterImpl : public RtcAdapter,
-                       public CallOwner {
+                       public CallOwner,
+                       public webrtc::TargetTransferRateObserver {
 public:
     RtcAdapterImpl();
     virtual ~RtcAdapterImpl();
@@ -58,55 +61,111 @@ public:
     AudioSendAdapter* createAudioSender(const Config&) override;
     void destoryAudioSender(AudioSendAdapter*) override;
 
+
+    typedef std::shared_ptr<webrtc::Call> CallPtr;
+    typedef std::shared_ptr<webrtc::RtpTransportControllerSendInterface> ControllerSendPtr;
+
     // Implement CallOwner
-    std::shared_ptr<webrtc::Call> call() override { return m_call; }
+    std::shared_ptr<webrtc::Call> call() override
+    {
+        return m_callPtr ? (*m_callPtr) : nullptr;
+    }
     std::shared_ptr<webrtc::TaskQueueFactory> taskQueueFactory() override
     {
-        return m_taskQueueFactory;
+        return g_taskQueueFactory;
     }
-    std::shared_ptr<rtc::TaskQueue> taskQueue() override { return m_taskQueue; }
-    std::shared_ptr<webrtc::RtcEventLog> eventLog() override { return m_eventLog; }
+    std::shared_ptr<rtc::TaskQueue> taskQueue() override { return g_taskQueue; }
+    std::shared_ptr<webrtc::RtcEventLog> eventLog() override { return g_eventLog; }
+    webrtc::WebRtcKeyValueConfig* trial() override { return g_fieldTrial.get(); }
+    ControllerSendPtr rtpTransportController() override
+    {
+        return m_transportControllerSend;
+    }
+    uint32_t estimatedBandwidth() override { return m_estimatedBandwidth; }
+
+    //Implements webrtc::TargetTransferRateObjserver
+    void OnTargetTransferRate(webrtc::TargetTransferRate) override;
 
 private:
     void initCall();
+    void initRtpTransportController();
 
-    std::shared_ptr<webrtc::TaskQueueFactory> m_taskQueueFactory;
-    std::shared_ptr<rtc::TaskQueue> m_taskQueue;
-    std::shared_ptr<webrtc::RtcEventLog> m_eventLog;
-    std::shared_ptr<webrtc::Call> m_call;
+    std::shared_ptr<CallPtr> m_callPtr;
+
+    // For sender
+    ControllerSendPtr m_transportControllerSend = nullptr;
+    uint32_t m_estimatedBandwidth = 0;
 };
 
 RtcAdapterImpl::RtcAdapterImpl()
-    : m_taskQueueFactory(createStaticTaskQueueFactory())
-    , m_taskQueue(std::make_shared<rtc::TaskQueue>(m_taskQueueFactory->CreateTaskQueue(
-          "CallTaskQueue",
-          webrtc::TaskQueueFactory::Priority::NORMAL)))
-    , m_eventLog(std::make_shared<webrtc::RtcEventLogNull>())
 {
 }
 
 RtcAdapterImpl::~RtcAdapterImpl()
 {
+    if (m_callPtr) {
+        std::shared_ptr<CallPtr> pCallPtr = m_callPtr;
+        m_callPtr.reset();
+        g_taskQueue->PostTask([pCallPtr]() {
+            if (*pCallPtr) {
+                (*pCallPtr).reset();
+            }
+        });
+    }
 }
 
 void RtcAdapterImpl::initCall()
 {
-    m_taskQueue->PostTask([this]() {
+    if (m_callPtr) {
+        return;
+    }
+    m_callPtr.reset(new CallPtr());
+    std::shared_ptr<CallPtr> pCallPtr = m_callPtr;
+    g_taskQueue->PostTask([pCallPtr]() {
         // Initialize call
-        if (!m_call) {
-            webrtc::Call::Config call_config(m_eventLog.get());
-            call_config.task_queue_factory = m_taskQueueFactory.get();
+        if (!(*pCallPtr)) {
+            webrtc::Call::Config call_config(g_eventLog.get());
+            call_config.task_queue_factory = g_taskQueueFactory.get();
+            call_config.trials = g_fieldTrial.get();
 
-            std::unique_ptr<webrtc::ProcessThread> moduleThreadProxy =
-                std::make_unique<ProcessThreadProxy>(g_moduleThread->unwrap());
+            if (!g_moduleThread) {
+                g_moduleThread = webrtc::SharedModuleThread::Create(
+                    webrtc::ProcessThread::Create("ModuleProcessThread"), nullptr);
+            }
+
+            // Empty thread for pacer
             std::unique_ptr<webrtc::ProcessThread> pacerThreadProxy =
-                std::make_unique<ProcessThreadProxy>(g_pacerThread->unwrap());
-            m_call.reset(webrtc::Call::Create(
+                std::make_unique<ProcessThreadProxy>(nullptr);
+
+            (*pCallPtr).reset(webrtc::Call::Create(
                 call_config, webrtc::Clock::GetRealTimeClock(),
-                std::move(moduleThreadProxy),
+                g_moduleThread,
                 std::move(pacerThreadProxy)));
         }
     });
+}
+
+void RtcAdapterImpl::initRtpTransportController()
+{
+    if (!m_transportControllerSend) {
+        RTC_LOG(LS_INFO) << "Init RtptransportcontrollerSend";
+        // Empty thread for pacer
+        std::unique_ptr<webrtc::ProcessThread> pacerThreadProxy =
+            std::make_unique<ProcessThreadProxy>(nullptr);
+
+        m_transportControllerSend = std::make_shared<webrtc::RtpTransportControllerSend>(
+            webrtc::Clock::GetRealTimeClock(), g_eventLog.get(),
+            nullptr/*network_state_predicator_factory*/,
+            nullptr/*network_controller_factory*/, webrtc::BitrateConstraints(),
+            std::move(pacerThreadProxy)/*pacer_thread*/, g_taskQueueFactory.get(), g_fieldTrial.get());
+        m_transportControllerSend->RegisterTargetTransferRateObserver(this);
+    }
+}
+
+void RtcAdapterImpl::OnTargetTransferRate(webrtc::TargetTransferRate msg) {
+  uint32_t target_bitrate_bps = msg.target_rate.bps();
+  RTC_LOG(LS_INFO) << "OnTargetTransferRate(bps): " << target_bitrate_bps;
+  m_estimatedBandwidth = target_bitrate_bps;
 }
 
 VideoReceiveAdapter* RtcAdapterImpl::createVideoReceiver(const Config& config)
@@ -123,6 +182,7 @@ void RtcAdapterImpl::destoryVideoReceiver(VideoReceiveAdapter* video_recv_adapte
 
 VideoSendAdapter* RtcAdapterImpl::createVideoSender(const Config& config)
 {
+    initRtpTransportController();
     return new VideoSendAdapterImpl(this, config);
 }
 void RtcAdapterImpl::destoryVideoSender(VideoSendAdapter* video_send_adapter)

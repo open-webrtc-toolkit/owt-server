@@ -11,15 +11,38 @@
 
 using namespace v8;
 
+static std::string getString(v8::Local<v8::Value> value) {
+  Nan::Utf8String value_str(Nan::To<v8::String>(value).ToLocalChecked());
+  return std::string(*value_str);
+}
+
+static Local<Value> nanGetChecked(v8::Local<v8::Object> obj, std::string key) {
+  return Nan::Get(obj, Nan::New(key).ToLocalChecked()).ToLocalChecked();
+}
+
+static Local<Value> nanGetChecked(v8::Local<v8::Object> obj, uint32_t index) {
+  return Nan::Get(obj, index).ToLocalChecked();
+}
+
+static mcu::Rational parseRational(Isolate* isolate, Local<Value> rational) {
+  mcu::Rational ret = { 0, 1 };
+  if (rational->IsObject()) {
+    Local<Object> obj = Nan::To<v8::Object>(rational).ToLocalChecked();
+    ret.numerator = Nan::To<int32_t>(nanGetChecked(obj, "numerator")).FromJust();
+    ret.denominator = Nan::To<int32_t>(nanGetChecked(obj, "denominator")).FromJust();
+  }
+  return ret;
+}
+
 Persistent<Function> VideoMixer::constructor;
 VideoMixer::VideoMixer() {};
 VideoMixer::~VideoMixer() {};
 
-void VideoMixer::Init(Handle<Object> exports, Handle<Object> module) {
+void VideoMixer::Init(Local<Object> exports, Local<Object> module) {
   Isolate* isolate = exports->GetIsolate();
   // Prepare constructor template
   Local<FunctionTemplate> tpl = FunctionTemplate::New(isolate, New);
-  tpl->SetClassName(String::NewFromUtf8(isolate, "VideoMixer"));
+  tpl->SetClassName(Nan::New("VideoMixer").ToLocalChecked());
   tpl->InstanceTemplate()->SetInternalFieldCount(1);
   // Prototype
   NODE_SET_PROTOTYPE_METHOD(tpl, "close", close);
@@ -33,34 +56,35 @@ void VideoMixer::Init(Handle<Object> exports, Handle<Object> module) {
   NODE_SET_PROTOTYPE_METHOD(tpl, "drawText", drawText);
   NODE_SET_PROTOTYPE_METHOD(tpl, "clearText", clearText);
 
-  constructor.Reset(isolate, tpl->GetFunction());
-  module->Set(String::NewFromUtf8(isolate, "exports"), tpl->GetFunction());
+  constructor.Reset(isolate, Nan::GetFunction(tpl).ToLocalChecked());
+  Nan::Set(module, Nan::New("exports").ToLocalChecked(),
+           Nan::GetFunction(tpl).ToLocalChecked());
 }
 
 void VideoMixer::New(const v8::FunctionCallbackInfo<v8::Value>& args) {
   Isolate* isolate = Isolate::GetCurrent();
   HandleScope scope(isolate);
 
-  Local<Object> options = args[0]->ToObject();
+  Local<Object> options = Nan::To<v8::Object>(args[0]).ToLocalChecked();
   mcu::VideoMixerConfig config;
 
-  config.maxInput = options->Get(String::NewFromUtf8(isolate, "maxinput"))->Int32Value();
-  config.crop = options->Get(String::NewFromUtf8(isolate, "crop"))->ToBoolean()->BooleanValue();
+  config.maxInput = Nan::To<int32_t>(nanGetChecked(options, "maxinput")).FromJust();
+  config.crop = Nan::To<bool>(nanGetChecked(options, "crop")).FromJust();
+  Local<Value> resolution = nanGetChecked(options, "resolution");
 
-  Local<Value> resolution = options->Get(String::NewFromUtf8(isolate, "resolution"));
   if (resolution->IsString()) {
-    config.resolution = std::string(*String::Utf8Value(resolution->ToString()));
+    config.resolution = getString(resolution);
   }
+  Local<Value> background = nanGetChecked(options, "backgroundcolor");
 
-  Local<Value> background = options->Get(String::NewFromUtf8(isolate, "backgroundcolor"));
   if (background->IsObject()) {
-    Local<Object> colorObj = background->ToObject();
-    config.bgColor.r = colorObj->Get(String::NewFromUtf8(isolate, "r"))->Int32Value();
-    config.bgColor.g = colorObj->Get(String::NewFromUtf8(isolate, "g"))->Int32Value();
-    config.bgColor.b = colorObj->Get(String::NewFromUtf8(isolate, "b"))->Int32Value();
+    Local<Object> colorObj = Nan::To<v8::Object>(background).ToLocalChecked();
+    config.bgColor.r = Nan::To<int32_t>(nanGetChecked(colorObj, "r")).FromJust();
+    config.bgColor.g = Nan::To<int32_t>(nanGetChecked(colorObj, "g")).FromJust();
+    config.bgColor.b = Nan::To<int32_t>(nanGetChecked(colorObj, "b")).FromJust();
   }
-  config.useGacc = options->Get(String::NewFromUtf8(isolate, "gaccplugin"))->ToBoolean()->BooleanValue();
-  config.MFE_timeout = options->Get(String::NewFromUtf8(isolate, "MFE_timeout"))->Int32Value();
+  config.useGacc = Nan::To<bool>(nanGetChecked(options, "gaccplugin")).FromJust();
+  config.MFE_timeout = Nan::To<int32_t>(nanGetChecked(options, "MFE_timeout")).FromJust();
 
   VideoMixer* obj = new VideoMixer();
   obj->me = new mcu::VideoMixer(config);
@@ -87,15 +111,14 @@ void VideoMixer::addInput(const v8::FunctionCallbackInfo<v8::Value>& args) {
   VideoMixer* obj = ObjectWrap::Unwrap<VideoMixer>(args.Holder());
   mcu::VideoMixer* me = obj->me;
 
-  int inputIndex = args[0]->Int32Value();
-  String::Utf8Value param1(args[1]->ToString());
-  std::string codec = std::string(*param1);
-  FrameSource* param2 = ObjectWrap::Unwrap<FrameSource>(args[2]->ToObject());
+  int inputIndex = Nan::To<int32_t>(args[0]).FromJust();
+  std::string codec = getString(args[1]);
+  FrameSource* param2 = ObjectWrap::Unwrap<FrameSource>(
+    Nan::To<v8::Object>(args[2]).ToLocalChecked());
   owt_base::FrameSource* src = param2->src;
 
   // Set avatar data
-  String::Utf8Value param3(args[3]->ToString());
-  std::string avatarData = std::string(*param3);
+  std::string avatarData = getString(args[3]);
 
   int r = me->addInput(inputIndex, codec, src, avatarData);
 
@@ -109,7 +132,7 @@ void VideoMixer::removeInput(const v8::FunctionCallbackInfo<v8::Value>& args) {
   VideoMixer* obj = ObjectWrap::Unwrap<VideoMixer>(args.Holder());
   mcu::VideoMixer* me = obj->me;
 
-  int inputIndex = args[0]->Int32Value();
+  int inputIndex = Nan::To<int32_t>(args[0]).FromJust();
   me->removeInput(inputIndex);
 }
 
@@ -120,8 +143,8 @@ void VideoMixer::setInputActive(const v8::FunctionCallbackInfo<v8::Value>& args)
   VideoMixer* obj = ObjectWrap::Unwrap<VideoMixer>(args.Holder());
   mcu::VideoMixer* me = obj->me;
 
-  int inputIndex = args[0]->Int32Value();
-  bool active = args[1]->ToBoolean()->Value();
+  int inputIndex = Nan::To<int32_t>(args[0]).FromJust();
+  bool active = Nan::To<bool>(args[1]).FromJust();
 
   me->setInputActive(inputIndex, active);
 }
@@ -133,16 +156,14 @@ void VideoMixer::addOutput(const v8::FunctionCallbackInfo<v8::Value>& args) {
   VideoMixer* obj = ObjectWrap::Unwrap<VideoMixer>(args.Holder());
   mcu::VideoMixer* me = obj->me;
 
-  String::Utf8Value param0(args[0]->ToString());
-  std::string outStreamID = std::string(*param0);
-  String::Utf8Value param1(args[1]->ToString());
-  std::string codec = std::string(*param1);
-  String::Utf8Value param2(args[2]->ToString());
-  std::string resolution = std::string(*param2);
-  unsigned int framerateFPS = args[3]->Uint32Value();
-  unsigned int bitrateKbps = args[4]->Uint32Value();
-  unsigned int keyFrameIntervalSeconds = args[5]->Uint32Value();
-  FrameDestination* param6 = ObjectWrap::Unwrap<FrameDestination>(args[6]->ToObject());
+  std::string outStreamID = getString(args[0]);
+  std::string codec = getString(args[1]);
+  std::string resolution = getString(args[2]);
+  unsigned int framerateFPS = Nan::To<uint32_t>(args[3]).FromJust();
+  unsigned int bitrateKbps = Nan::To<uint32_t>(args[4]).FromJust();
+  unsigned int keyFrameIntervalSeconds = Nan::To<uint32_t>(args[5]).FromJust();
+  FrameDestination* param6 = ObjectWrap::Unwrap<FrameDestination>(
+    Nan::To<v8::Object>(args[6]).ToLocalChecked());
   owt_base::FrameDestination* dest = param6->dest;
 
   owt_base::VideoCodecProfile profile = owt_base::PROFILE_UNKNOWN;
@@ -172,20 +193,9 @@ void VideoMixer::removeOutput(const v8::FunctionCallbackInfo<v8::Value>& args) {
   VideoMixer* obj = ObjectWrap::Unwrap<VideoMixer>(args.Holder());
   mcu::VideoMixer* me = obj->me;
 
-  String::Utf8Value param0(args[0]->ToString());
-  std::string outStreamID = std::string(*param0);
+  std::string outStreamID = getString(args[0]);
 
   me->removeOutput(outStreamID);
-}
-
-mcu::Rational parseRational(Isolate* isolate, Local<Value> rational) {
-  mcu::Rational ret = { 0, 1 };
-  if (rational->IsObject()) {
-    Local<Object> obj = rational->ToObject();
-    ret.numerator = obj->Get(String::NewFromUtf8(isolate, "numerator"))->Int32Value();
-    ret.denominator = obj->Get(String::NewFromUtf8(isolate, "denominator"))->Int32Value();
-  }
-  return ret;
 }
 
 void VideoMixer::updateLayoutSolution(const v8::FunctionCallbackInfo<v8::Value>& args) {
@@ -199,33 +209,35 @@ void VideoMixer::updateLayoutSolution(const v8::FunctionCallbackInfo<v8::Value>&
     return;
   }
 
-  Local<Object> jsSolution = args[0]->ToObject();
+  Local<Object> jsSolution = Nan::To<v8::Object>(args[0]).ToLocalChecked();
   if (jsSolution->IsArray()) {
     mcu::LayoutSolution solution;
-    int length = jsSolution->Get(String::NewFromUtf8(isolate, "length"))->ToObject()->Uint32Value();
+    int length = Nan::To<int32_t>(nanGetChecked(jsSolution, "length")).FromMaybe(0);
     for (int i = 0; i < length; i++) {
-      if (!jsSolution->Get(i)->IsObject())
+      Local<Value> item = nanGetChecked(jsSolution, i);
+      if (!item->IsObject())
         continue;
-      Local<Object> jsInputRegion = jsSolution->Get(i)->ToObject();
-      int input = jsInputRegion->Get(String::NewFromUtf8(isolate, "input"))->NumberValue();
-      Local<Object> regObj = jsInputRegion->Get(String::NewFromUtf8(isolate, "region"))->ToObject();
+      Local<Object> jsInputRegion = Nan::To<v8::Object>(item).ToLocalChecked();
+      int input = Nan::To<int32_t>(nanGetChecked(jsInputRegion, "input")).FromJust();
+      Local<Object> regObj = Nan::To<v8::Object>(
+        nanGetChecked(jsInputRegion, "region")).ToLocalChecked();
 
       mcu::Region region;
-      region.id = *String::Utf8Value(regObj->Get(String::NewFromUtf8(isolate, "id")));
+      region.id = getString(nanGetChecked(regObj, "id"));
 
-      Local<Value> area = regObj->Get(String::NewFromUtf8(isolate, "area"));
+      Local<Value> area = nanGetChecked(regObj, "area");
       if (area->IsObject()) {
-        Local<Object> areaObj = area->ToObject();
-        region.shape = *String::Utf8Value(regObj->Get(String::NewFromUtf8(isolate, "shape")));
+        Local<Object> areaObj = Nan::To<v8::Object>(area).ToLocalChecked();
+        region.shape = getString(nanGetChecked(regObj, "shape"));
         if (region.shape == "rectangle") {
-          region.area.rect.left = parseRational(isolate, areaObj->Get(String::NewFromUtf8(isolate, "left")));
-          region.area.rect.top = parseRational(isolate, areaObj->Get(String::NewFromUtf8(isolate, "top")));
-          region.area.rect.width = parseRational(isolate, areaObj->Get(String::NewFromUtf8(isolate, "width")));
-          region.area.rect.height = parseRational(isolate, areaObj->Get(String::NewFromUtf8(isolate, "height")));
+          region.area.rect.left = parseRational(isolate, nanGetChecked(areaObj, "left"));
+          region.area.rect.top = parseRational(isolate, nanGetChecked(areaObj, "top"));
+          region.area.rect.width = parseRational(isolate, nanGetChecked(areaObj, "width"));
+          region.area.rect.height = parseRational(isolate, nanGetChecked(areaObj, "height"));
         } else if (region.shape == "circle") {
-          region.area.circle.centerW = parseRational(isolate, areaObj->Get(String::NewFromUtf8(isolate, "centerW")));
-          region.area.circle.centerH = parseRational(isolate, areaObj->Get(String::NewFromUtf8(isolate, "centerH")));
-          region.area.circle.radius = parseRational(isolate, areaObj->Get(String::NewFromUtf8(isolate, "radius")));
+          region.area.circle.centerW = parseRational(isolate, nanGetChecked(areaObj, "centerW"));
+          region.area.circle.centerH = parseRational(isolate, nanGetChecked(areaObj, "centerH"));
+          region.area.circle.radius = parseRational(isolate, nanGetChecked(areaObj, "radius"));
         }
       }
 
@@ -246,8 +258,7 @@ void VideoMixer::forceKeyFrame(const v8::FunctionCallbackInfo<v8::Value>& args) 
   VideoMixer* obj = ObjectWrap::Unwrap<VideoMixer>(args.Holder());
   mcu::VideoMixer* me = obj->me;
 
-  String::Utf8Value param0(args[0]->ToString());
-  std::string outStreamID = std::string(*param0);
+  std::string outStreamID = getString(args[0]);
 
   me->forceKeyFrame(outStreamID);
 }
@@ -259,8 +270,7 @@ void VideoMixer::drawText(const v8::FunctionCallbackInfo<v8::Value>& args) {
   VideoMixer* obj = ObjectWrap::Unwrap<VideoMixer>(args.Holder());
   mcu::VideoMixer* me = obj->me;
 
-  String::Utf8Value param0(args[0]->ToString());
-  std::string textSpec = std::string(*param0);
+  std::string textSpec = getString(args[0]);
 
   me->drawText(textSpec);
 }

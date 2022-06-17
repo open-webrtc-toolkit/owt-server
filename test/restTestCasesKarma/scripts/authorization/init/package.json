@@ -8,7 +8,7 @@
     "express": "*",
     "fraction.js": "*",
     "log4js": "^6.3.0",
-    "mongojs": "",
+    "mongodb": "^3.6.4",
     "mongoose": "^5.3.9",
     "toml": "*"
   },

@@ -1,30 +1,25 @@
 {
   "name": "OWT-Server-QUIC-Agent",
-  "version": "4.3.0",
+  "version": "5.0.0",
   "dependencies": {
     "amqplib": "^0.7.0",
-    "log4js": "^1.1.1",
+    "log4js": "^6.4.0",
     "node-getopt": "*",
     "toml": "*"
   },
   "devDependencies": {
+    "browserify": "^17.0.0",
     "chai": "^4.2.0",
     "chai-as-promised": "^7.1.1",
+    "karma": "^6.3.16",
+    "karma-browserify": "^8.0.0",
+    "karma-chai": "^0.1.0",
+    "karma-chrome-launcher": "^3.1.0",
+    "karma-mocha": "^2.0.1",
+    "karma-mocha-reporter": "^2.2.5",
     "mocha": "^5.2.0",
     "node-gyp": "*",
     "sinon": "^9.0.2"
-  },
-  "engine": {
-    "node": "8.15.0"
-  },
-  "bin": "index.js",
-  "pkg": {
-    "assets": [
-      "node_modules*"
-    ],
-    "targets": [
-      "node8"
-    ]
   },
   "scripts": {
     "test": "node_modules/mocha/bin/mocha quic/webtransport/test/quicTransportServerTest.js"

@@ -20,15 +20,16 @@ void SipCallConnection::Init(Local<Object> exports) {
   // Prepare constructor template
   Isolate* isolate = Isolate::GetCurrent();
   Local<FunctionTemplate> tpl = FunctionTemplate::New(isolate, New);
-  tpl->SetClassName(String::NewFromUtf8(isolate, "SipCallConnection"));
+  tpl->SetClassName(Nan::New("SipCallConnection").ToLocalChecked());
   tpl->InstanceTemplate()->SetInternalFieldCount(1);
   // Prototype
   NODE_SET_PROTOTYPE_METHOD(tpl, "close", close);
   NODE_SET_PROTOTYPE_METHOD(tpl, "setAudioReceiver", setAudioReceiver);
   NODE_SET_PROTOTYPE_METHOD(tpl, "setVideoReceiver", setVideoReceiver);
 
-  constructor.Reset(isolate, tpl->GetFunction());
-  exports->Set(String::NewFromUtf8(isolate, "SipCallConnection"), tpl->GetFunction());
+  constructor.Reset(isolate, Nan::GetFunction(tpl).ToLocalChecked());
+  Nan::Set(exports, Nan::New("SipCallConnection").ToLocalChecked(),
+           Nan::GetFunction(tpl).ToLocalChecked());
 }
 
 void SipCallConnection::New(const FunctionCallbackInfo<Value>& args) {
@@ -36,9 +37,10 @@ void SipCallConnection::New(const FunctionCallbackInfo<Value>& args) {
   HandleScope scope(isolate);
   SipCallConnection* obj = new SipCallConnection();
 
-  SipGateway* gateway = node::ObjectWrap::Unwrap<SipGateway>(args[0]->ToObject());
+  SipGateway* gateway = node::ObjectWrap::Unwrap<SipGateway>(
+    Nan::To<v8::Object>(args[0]).ToLocalChecked());
 
-  v8::String::Utf8Value str0(args[1]->ToString());
+  Nan::Utf8String str0(Nan::To<v8::String>(args[0]).ToLocalChecked());
   std::string calleeURI = std::string(*str0);
   obj->me = new sip_gateway::SipCallConnection(gateway->me, calleeURI);
   obj->msink = obj->me;
@@ -63,7 +65,8 @@ void SipCallConnection::setAudioReceiver(const FunctionCallbackInfo<Value>& args
 
   SipCallConnection* obj = Nan::ObjectWrap::Unwrap<SipCallConnection>(args.Holder());
   sip_gateway::SipCallConnection* me = obj->me;
-  MediaSink* param = Nan::ObjectWrap::Unwrap<MediaSink>(args[0]->ToObject());
+  MediaSink* param = Nan::ObjectWrap::Unwrap<MediaSink>(
+    Nan::To<v8::Object>(args[0]).ToLocalChecked());
   erizo::MediaSink* mr = param->msink;
   me->setAudioSink(mr);
 }
@@ -75,9 +78,9 @@ void SipCallConnection::setVideoReceiver(const FunctionCallbackInfo<Value>& args
   SipCallConnection* obj = Nan::ObjectWrap::Unwrap<SipCallConnection>(args.Holder());
   sip_gateway::SipCallConnection* me = obj->me;
 
-  MediaSink* param = Nan::ObjectWrap::Unwrap<MediaSink>(args[0]->ToObject());
+  MediaSink* param = Nan::ObjectWrap::Unwrap<MediaSink>(
+    Nan::To<v8::Object>(args[0]).ToLocalChecked());
   erizo::MediaSink* mr = param->msink;
 
   me->setVideoSink(mr);
 }
-

@@ -11,10 +11,11 @@
 #include <node.h>
 #include <node_object_wrap.h>
 #include <uv.h>
+#include <nan.h>
 
 class VideoGstAnalyzerWrap: public node::ObjectWrap, public NodeEventRegistry {
   public:
-  static void Init(v8::Handle<v8::Object>, v8::Handle<v8::Object>);
+  static void Init(v8::Local<v8::Object>, v8::Local<v8::Object>);
   mcu::VideoGstAnalyzer* me;
 
  private:
@@ -24,14 +25,10 @@ class VideoGstAnalyzerWrap: public node::ObjectWrap, public NodeEventRegistry {
 
   static void New(const v8::FunctionCallbackInfo<v8::Value>& args);
   static void close(const v8::FunctionCallbackInfo<v8::Value>& args);
-  static void getListeningPort(const v8::FunctionCallbackInfo<v8::Value>& args);
   static void createPipeline(const v8::FunctionCallbackInfo<v8::Value>& args);
   static void clearPipeline(const v8::FunctionCallbackInfo<v8::Value>& args);
-  static void emitListenTo(const v8::FunctionCallbackInfo<v8::Value>& args);
-  static void setPlaying(const v8::FunctionCallbackInfo<v8::Value>& args);
-  static void setInputParam(const v8::FunctionCallbackInfo<v8::Value>& args);
-  static void addElementMany(const v8::FunctionCallbackInfo<v8::Value>& args);
-  static void disconnect(const v8::FunctionCallbackInfo<v8::Value>& args);
+  static void linkInput(const v8::FunctionCallbackInfo<v8::Value>& args);
+  static void removeOutput(const v8::FunctionCallbackInfo<v8::Value>& args);
   static void addOutput(const v8::FunctionCallbackInfo<v8::Value>& args);
   static void addEventListener(const v8::FunctionCallbackInfo<v8::Value>& args);
 };

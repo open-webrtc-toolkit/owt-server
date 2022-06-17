@@ -160,9 +160,23 @@ void AudioRanker::updateInputInternal(std::string streamId, int level, bool trig
         }
 
         if (inTopK && level != audioProc->iter()->first) {
+            ELOG_DEBUG("Top K internal change: %s %s",
+                audioProc->streamId().c_str(), audioProc->ownerId().c_str());
+            int sameLevelNum = 0;
+            auto oldUp = m_topK.upper_bound(audioProc->iter()->first);
+            auto oldLevel = audioProc->iter()->first;
+            if (oldUp == m_topK.end()) {
+                sameLevelNum = m_topK.count(oldLevel);
+            }
             m_topK.erase(audioProc->iter());
             auto newIt = m_topK.emplace(level, audioProc);
+            auto newLevel = level;
             audioProc->setIter(newIt);
+            auto newUp = m_topK.upper_bound(level);
+            if ((oldUp != newUp || (sameLevelNum > 1 && newLevel > oldLevel)) && triggerChange) {
+                ELOG_DEBUG("Top K internal trigger");
+                triggerRankChange();
+            }
         }
     } else {
         // Previous in others, check if it's still in
@@ -241,14 +255,16 @@ void AudioRanker::triggerRankChange()
             }
         }
 
+        size_t order = 0;
         for (auto& pair : m_topK) {
+            order++;
             auto audioProc = pair.second;
             FrameDestination* output = audioProc->linkedOutput();
             int index = m_outputIndexes[output];
             ELOG_DEBUG("update output index: %d, streamId: %s",
                 index, audioProc->streamId().c_str());
             updates[index].first = audioProc->streamId();
-            updates[index].second = audioProc->ownerId();
+            updates[index].second = (order == m_topK.size() ? "major" : "minor");
         }
 
         bool hasChange = false;
@@ -338,7 +354,7 @@ void AudioRanker::AudioLevelProcessor::onFeedback(const FeedbackMsg& msg)
 
 void AudioRanker::AudioLevelProcessor::deliverOwnerData()
 {
-    ELOG_DEBUG("deliver ownerID as metadata");
+    ELOG_DEBUG("deliver ownerID as metadata %s", m_ownerId.c_str());
     // Pass owner ID metadata to linkedoutput
     MetaData ownerData;
     ownerData.type = META_DATA_OWNER_ID;

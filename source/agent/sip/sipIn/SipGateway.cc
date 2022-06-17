@@ -8,6 +8,7 @@
 
 #include "SipGateway.h"
 #include "../../addons/common/NodeEventRegistry.h"
+#include <nan.h>
 
 using namespace v8;
 
@@ -19,7 +20,7 @@ void SipGateway::Init(Local<Object> exports) {
   // Prepare constructor template
   Isolate* isolate = Isolate::GetCurrent();
   Local<FunctionTemplate> tpl = FunctionTemplate::New(isolate, New);
-  tpl->SetClassName(String::NewFromUtf8(isolate, "SipGateway"));
+  tpl->SetClassName(Nan::New("SipGateway").ToLocalChecked());
   tpl->InstanceTemplate()->SetInternalFieldCount(1);
   // Prototype
   SETUP_EVENTED_PROTOTYPE_METHODS(tpl);
@@ -29,8 +30,9 @@ void SipGateway::Init(Local<Object> exports) {
   NODE_SET_PROTOTYPE_METHOD(tpl, "hangup", hangup);
   NODE_SET_PROTOTYPE_METHOD(tpl, "accept", accept);
   NODE_SET_PROTOTYPE_METHOD(tpl, "reject", reject);
-  constructor.Reset(isolate, tpl->GetFunction());
-  exports->Set(String::NewFromUtf8(isolate, "SipGateway"), tpl->GetFunction());
+  constructor.Reset(isolate, Nan::GetFunction(tpl).ToLocalChecked());
+  Nan::Set(exports, Nan::New("SipGateway").ToLocalChecked(),
+           Nan::GetFunction(tpl).ToLocalChecked());
 }
 
 void SipGateway::New(const FunctionCallbackInfo<Value>& args) {
@@ -61,14 +63,16 @@ void SipGateway::makeCall(const FunctionCallbackInfo<Value>& args) {
 
   if (args.Length() < 3 || !args[0]->IsString() || !args[1]->IsBoolean() ||
       !args[2]->IsBoolean()) {
-    isolate->ThrowException(Exception::TypeError(String::NewFromUtf8(isolate, "Wrong arguments")));
+    Nan::ThrowError("Wrong arguments");
+    return;
   }
   SipGateway* obj = ObjectWrap::Unwrap<SipGateway>(args.Holder());
   sip_gateway::SipGateway* me = obj->me;
-  v8::String::Utf8Value str0(args[0]->ToString());
-  std::string calleeURI = std::string(*str0);
-  bool requireAudio = args[1]->BooleanValue();
-  bool requireVideo = args[2]->BooleanValue();
+
+  Nan::Utf8String param0(Nan::To<v8::String>(args[0]).ToLocalChecked());
+  std::string calleeURI = std::string(*param0);
+  bool requireAudio = Nan::To<bool>(args[1]).FromJust();
+  bool requireVideo = Nan::To<bool>(args[2]).FromJust();
   bool isSuccess = me->makeCall(calleeURI, requireAudio, requireVideo);
   args.GetReturnValue().Set(Boolean::New(isolate,isSuccess));
 }
@@ -77,8 +81,8 @@ void SipGateway::hangup(const FunctionCallbackInfo<Value>& args) {
   Isolate* isolate = Isolate::GetCurrent();
   HandleScope scope(isolate);
 
-  v8::String::Utf8Value str0(args[0]->ToString());
-  std::string calleeURI = std::string(*str0);
+  Nan::Utf8String param0(Nan::To<v8::String>(args[0]).ToLocalChecked());
+  std::string calleeURI = std::string(*param0);
 
   SipGateway* obj = ObjectWrap::Unwrap<SipGateway>(args.Holder());
   sip_gateway::SipGateway* me = obj->me;
@@ -89,8 +93,8 @@ void SipGateway::accept(const FunctionCallbackInfo<Value>& args) {
   Isolate* isolate = Isolate::GetCurrent();
   HandleScope scope(isolate);
 
-  v8::String::Utf8Value str0(args[0]->ToString());
-  std::string calleeURI = std::string(*str0);
+  Nan::Utf8String param0(Nan::To<v8::String>(args[0]).ToLocalChecked());
+  std::string calleeURI = std::string(*param0);
 
   SipGateway* obj = ObjectWrap::Unwrap<SipGateway>(args.Holder());
   sip_gateway::SipGateway* me = obj->me;
@@ -102,8 +106,8 @@ void SipGateway::reject(const FunctionCallbackInfo<Value>& args) {
   Isolate* isolate = Isolate::GetCurrent();
   HandleScope scope(isolate);
 
-  v8::String::Utf8Value str0(args[0]->ToString());
-  std::string calleeURI = std::string(*str0);
+  Nan::Utf8String param0(Nan::To<v8::String>(args[0]).ToLocalChecked());
+  std::string calleeURI = std::string(*param0);
 
   SipGateway* obj = ObjectWrap::Unwrap<SipGateway>(args.Holder());
   sip_gateway::SipGateway* me = obj->me;
@@ -116,14 +120,15 @@ void SipGateway::sipReg(const FunctionCallbackInfo<Value>& args) {
 
   if (args.Length() < 4 || !args[0]->IsString() || !args[1]->IsString() ||
       !args[2]->IsString() || !args[3]->IsString()) {
-     isolate->ThrowException(Exception::TypeError(String::NewFromUtf8(isolate, "Wrong arguments")));
+    Nan::ThrowError("Wrong arguments");
+    return;
   }
   SipGateway* obj = ObjectWrap::Unwrap<SipGateway>(args.Holder());
   sip_gateway::SipGateway* me = obj->me;
-  v8::String::Utf8Value str0(args[0]->ToString());
-  v8::String::Utf8Value str1(args[1]->ToString());
-  v8::String::Utf8Value str2(args[2]->ToString());
-  v8::String::Utf8Value str3(args[3]->ToString());
+  Nan::Utf8String str0(Nan::To<v8::String>(args[0]).ToLocalChecked());
+  Nan::Utf8String str1(Nan::To<v8::String>(args[1]).ToLocalChecked());
+  Nan::Utf8String str2(Nan::To<v8::String>(args[2]).ToLocalChecked());
+  Nan::Utf8String str3(Nan::To<v8::String>(args[3]).ToLocalChecked());
   std::string sipServerAddr = std::string(*str0);
   std::string userName = std::string(*str1);
   std::string password = std::string(*str2);

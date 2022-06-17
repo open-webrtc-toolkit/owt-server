@@ -153,15 +153,16 @@ module.exports = function (spec, spawnOptions, onNodeAbnormallyQuit, onTaskAdded
   };
   
   var fillNodes = function() {
-      for (var i = idle_nodes.length; i < spec.prerunNodeNum; i++) {
+      var runningNodes = nodes.length + idle_nodes.length;
+      var spaceInIdle = spec.prerunNodeNum - idle_nodes.length;
+      var nodesToStart = spec.maxNodeNum < 0 ? spaceInIdle : Math.min(spaceInIdle, spec.maxNodeNum - runningNodes);
+
+      for (var i = 0; i < nodesToStart; i++) {
           launchNode();
       }
   };
   
   var addTask = function(nodeId, task) {
-      tasks[nodeId] = tasks[nodeId] || {};
-      tasks[nodeId][task.room] = tasks[nodeId][task.room] || [];
-  
       if (tasks[nodeId][task.room].indexOf(task.task) === -1) {
           onTaskAdded(task.task);
       }
@@ -224,25 +225,24 @@ module.exports = function (spec, spawnOptions, onNodeAbnormallyQuit, onTaskAdded
   };
 
   let findNodeUsedByRoom = (nodeList, roomId) => {
-    return new Promise((resolve, reject) => {
       for (let i in nodeList) {
         let node_id = nodeList[i];
         if (tasks[node_id] !== undefined && tasks[node_id][roomId] !== undefined) {
-          resolve(node_id);
+          return node_id;
         }
       }
-    reject('Not found');
-    });
+    return undefined;
   };
 
-  let pickInIdle = () => {
-    return new Promise((resolve, reject) => {
+  let  pickInIdle = (room) => {
       if (idle_nodes.length < 1) {
         log.error('getNode error:', 'No available node');
-        reject('No available node');
+        return undefined;
       }
   
       let node_id = idle_nodes.shift();
+      tasks[node_id] = tasks[node_id] || {};
+      tasks[node_id][room] = tasks[node_id][room] || [];
       nodes.push(node_id);
       setTimeout(() => {
         if ((spec.maxNodeNum < 0) || ((nodes.length + idle_nodes.length) < spec.maxNodeNum)) {
@@ -252,8 +252,7 @@ module.exports = function (spec, spawnOptions, onNodeAbnormallyQuit, onTaskAdded
         }
       }, 0);
 
-      resolve(node_id);
-    });
+      return node_id;
   };
 
   that.getNode = (task) => {
@@ -262,31 +261,29 @@ module.exports = function (spec, spawnOptions, onNodeAbnormallyQuit, onTaskAdded
       return Promise.reject('Invalid task');
     }
 
-    let getByRoom;
+    let nodeId = undefined;
     if (spec.consumeNodeByRoom) {
-      getByRoom = findNodeUsedByRoom(nodes, task.room)
-        .then((foundOne) => {
-          return foundOne
-        }, (notFound) => {
-          return findNodeUsedByRoom(idle_nodes, task.room);
-        });
-    } else {
-      getByRoom = Promise.reject('Not found');
+      nodeId = findNodeUsedByRoom(nodes, task.room);
+      if (nodeId === undefined) {
+        nodeId = findNodeUsedByRoom(idle_nodes, task.room);
+      }
     }
 
-    return getByRoom
-      .then((foundOne) => {
-        return foundOne;
-      }, (notFound) => {
-        log.debug('not found existing node');
-        return pickInIdle();
-      })
+    if (nodeId === undefined) {
+      nodeId = pickInIdle(task.room);
+    }
+
+    if (nodeId === undefined) {
+      return Promise.reject('Not found');
+    }
+    return waitTillNodeReady(nodeId, 1500/*FIXME: Use a more reasonable timeout value instead of hard coding*/)
       .then((nodeId) => {
-        log.debug('got nodeId:', nodeId);
-        return waitTillNodeReady(nodeId, 1500/*FIXME: Use a more reasonable timeout value instead of hard coding*/);
-      }).then((nodeId) => {
         addTask(nodeId, task);
         return nodeId;
+      }).catch(function(err) {
+        tasks[nodeId] = undefined;
+        tasks[nodeId][task.room] = undefined;
+        return Promise.reject(err);
       });
   };
   
@@ -310,6 +307,11 @@ module.exports = function (spec, spawnOptions, onNodeAbnormallyQuit, onTaskAdded
       }
       reject('No such a task');
     });
+  };
+
+  that.recover = function() {
+    spawn_failed = false;
+    fillNodes();
   };
   
   that.dropAllNodes = function(quietly) {

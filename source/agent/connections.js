@@ -8,6 +8,10 @@ var logger = require('../logger').logger;
 // Logger
 var log = logger.getLogger('Connections');
 
+// TODO: Add a new method isNanAddon to NAN addon objects.
+// Names of NAN addons.
+const nanObjects = [ 'QuicTransportStream', 'WebTransportFrameSource', 'WebTransportFrameDestination' ];
+
 module.exports = function Connections () {
     var that = {},
         /*{ConnectionID: {type: 'webrtc' | 'avstream' | 'recording' | 'internal',
@@ -29,7 +33,8 @@ module.exports = function Connections () {
                         log.debug('remove audio subscription:', connections[connection_id].audioFrom);
                         var dest = connections[connection_id].connection.receiver('audio');
                         if (dest) {
-                            connections[connectionId].connection.removeDestination('audio', dest);
+                            const isNanObj = nanObjects.includes(dest.constructor.name) ? true : false;
+                            connections[connectionId].connection.removeDestination('audio', dest, isNanObj);
                         }
                         connections[connection_id].audioFrom = undefined;
                     }
@@ -38,7 +43,8 @@ module.exports = function Connections () {
                         log.debug('remove video subscription:', connections[connection_id].videoFrom);
                         var dest = connections[connection_id].connection.receiver('video');
                         if (dest) {
-                            connections[connectionId].connection.removeDestination('video', dest);
+                            const isNanObj = nanObjects.includes(dest.constructor.name) ? true : false;
+                            connections[connectionId].connection.removeDestination('video', dest, isNanObj);
                         }
                         connections[connection_id].videoFrom = undefined;
                     }
@@ -56,14 +62,16 @@ module.exports = function Connections () {
             if (audioFrom && connections[audioFrom] && connections[audioFrom].direction === 'in') {
                 log.debug('remove audio from:', audioFrom);
                 var dest = connections[connectionId].connection.receiver('audio');
-                connections[audioFrom].connection.removeDestination('audio', dest);
+                const isNanObj = nanObjects.includes(dest.constructor.name) ? true : false;
+                connections[audioFrom].connection.removeDestination('audio', dest, isNanObj);
                 connections[connectionId].audioFrom = undefined;
             }
 
             if (videoFrom && connections[videoFrom] && connections[videoFrom].direction === 'in') {
                 log.debug('remove video from:', videoFrom);
                 var dest = connections[connectionId].connection.receiver('video');
-                connections[videoFrom].connection.removeDestination('video', dest);
+                const isNanObj = nanObjects.includes(dest.constructor.name) ? true : false;
+                connections[videoFrom].connection.removeDestination('video', dest, isNanObj);
                 connections[connectionId].videoFrom = undefined;
             }
         }
@@ -124,10 +132,12 @@ module.exports = function Connections () {
                 if (!dest) {
                     return Promise.reject({ type : 'failed', reason : 'Destination connection(' + name + ') is not ready' });
                 }
-                connections[from].connection.addDestination(name, dest);
+                const isNanObj = nanObjects.includes(dest.constructor.name) ? true : false;
+                connections[from].connection.addDestination(name, dest, isNanObj);
                 connections[connectionId][name + 'From'] = from;
             }
         }
+        log.debug('linkup complete.');
         return Promise.resolve('ok');
     };
 

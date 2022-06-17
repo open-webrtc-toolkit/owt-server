@@ -1,9 +1,10 @@
-#!/bin/bash
+#!/bin/bash -e
 #
 # http://eh.meklu.org/script/meksysinfo
 
-lsb_release >/dev/null 2>/dev/null
-if [ $? = 0 ]
+lsb_release_ret=0
+lsb_release >/dev/null 2>/dev/null || lsb_release_ret=$?
+if [ $lsb_release_ret = 0 ]
 then
   lsb_release -ds | sed 's/^\"//g;s/\"$//g'
 # a bunch of fallbacks if no lsb_release is available

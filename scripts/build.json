@@ -3,7 +3,6 @@
         "include" : [
             "video-mixer-sw",
             "video-transcoder-sw",
-            "video-analyzer-sw",
             "internal-io",
             "logger",
             "media-frame-multicaster",
@@ -11,7 +10,6 @@
             "audio-ranker",
             "webrtc",
             "avstream",
-            "gst-pipeline",
             "sip"
         ]
     },
@@ -32,6 +30,8 @@
     "mcu-all" : {
         "include" : [
             "mcu",
+            "video-analyzer-sw",
+            "gst-pipeline",
             "video-mixer-msdk",
             "video-transcoder-msdk"
         ]
@@ -39,6 +39,8 @@
     "all" : {
         "include" : [
             "mcu",
+            "video-analyzer-sw",
+            "gst-pipeline",
             "video-mixer-msdk",
             "video-transcoder-msdk"
         ]

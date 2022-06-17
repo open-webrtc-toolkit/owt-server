@@ -3,18 +3,9 @@
   "version":"5.0.0",
   "dependencies": {
     "amqplib": "^0.7.0",
-    "log4js": "^1.1.1",
+    "log4js": "^6.4.0",
     "toml": "*",
-    "mongoose": "^5.9.6",
+    "mongoose": "^5.13.12",
     "fraction.js": "*"
-  },
-  "bin": "sip_portal.js",
-  "pkg": {
-    "assets": [
-      "node_modules*"
-    ],
-    "targets": [
-      "node8"
-    ]
   }
 }

@@ -1,6 +1,6 @@
 {
-  "appenders": [
-    {
+  "appenders": {
+    "out": {
       "type": "console",
       "layout": {
         "type": "pattern",
@@ -8,20 +8,20 @@
         "replaceConsole": true
       }
     }
-  ],
-  "levels": {
-    "ClusterWorker": "INFO",
-    "LoadCollector": "INFO",
-    "AmqpClient": "INFO",
-    "WorkingJS": "INFO",
-    "NodeManager": "INFO",
-    "WebrtcNode": "INFO",
-    "WrtcConnection": "WARN",
-    "Connection": "WARN",
-    "Sdp": "INFO",
-    "SdpInfo": "INFO",
-    "WorkingAgent": "INFO",
-    "Connections": "INFO",
-    "InternalConnectionFactory": "INFO"
+  },
+  "categories": {
+    "default": { "appenders": [ "out" ], "level": "info" },
+    "ClusterWorker": { "appenders": [ "out" ], "level": "info" },
+    "LoadCollector": { "appenders": [ "out" ], "level": "info" },
+    "AmqpClient": { "appenders": [ "out" ], "level": "info" },
+    "WorkingAgent": { "appenders": [ "out" ], "level": "info" },
+    "NodeManager": { "appenders": [ "out" ], "level": "info" },
+    "WebrtcNode": { "appenders": [ "out" ], "level": "info" },
+    "WrtcConnection": { "appenders": [ "out" ], "level": "warn" },
+    "Connection": { "appenders": [ "out" ], "level": "warn" },
+    "Sdp": { "appenders": [ "out" ], "level": "info" },
+    "SdpInfo": { "appenders": [ "out" ], "level": "info" },
+    "Connections": { "appenders": [ "out" ], "level": "info" },
+    "InternalConnectionRouter": { "appenders": [ "out" ], "level": "info" }
   }
 }

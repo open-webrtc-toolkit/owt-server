@@ -13,11 +13,13 @@
       './GstInternalIn.cpp',
     ],
     'include_dirs': [
+      "<!(node -e \"require('nan')\")",
       '/usr/include/gstreamer-1.0',
       '$(CORE_HOME)/common',
       '$(CORE_HOME)/owt_base',
       '$(CORE_HOME)/addons/common',
-      '$(CORE_HOME)/../../build/libdeps/build/include',
+      '$(DEFAULT_DEPENDENCY_PATH)/include',
+      '$(CUSTOM_INCLUDE_PATH)'
     ],
     'libraries': [
       '-lboost_system',
@@ -28,7 +30,7 @@
       '-lgstapp-1.0',
       '-lgthread-2.0',
       '-llog4cxx',
-      '-L$(CORE_HOME)/../../build/libdeps/build/lib',
+      '-L$(DEFAULT_DEPENDENCY_PATH)/lib',
       # '-lusrsctp'
     ],
     # 'INET', 'INET6' flags must be added for usrsctp lib, otherwise the arguments of receive callback would shift

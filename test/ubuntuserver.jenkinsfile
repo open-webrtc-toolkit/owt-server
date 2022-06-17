@@ -20,9 +20,10 @@ pipeline {
             steps {
                 podTemplate(name: 'pack-server-ubuntu-'+env.GIT_BRANCH, label: 'pack-server-ubuntu-'+env.GIT_BRANCH,
                 volumes: [
-        	    persistentVolumeClaim(claimName: 'ubuntu-package',mountPath: '/root/ubuntu_package',readOnly: false),
-                persistentVolumeClaim(claimName: 'webrtc79ubuntu',mountPath: '/root/owt-server/third_party/webrtc-m79',readOnly: false)
-        	    ],
+                persistentVolumeClaim(claimName: 'ubuntu-package',mountPath: '/root/ubuntu_package',readOnly: false),
+                persistentVolumeClaim(claimName: 'quicsdk',mountPath: '/root/quicsdk',readOnly: false),
+                persistentVolumeClaim(claimName: 'webrtc88ubuntu',mountPath: '/root/owt-server/third_party/webrtc-m88',readOnly: false)
+        	],
                 containers: [
                     containerTemplate(name: 'build-images', image: "$env.ubuntu_build_images", ttyEnabled: true, alwaysPullImage: true, privileged: true, resourceRequestCpu: '5000m', resourceLimitCpu: '6000m' , command: 'cat')
                 ]){

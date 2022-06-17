@@ -22,6 +22,7 @@ enum FrameFormat {
     FRAME_FORMAT_VP9,
     FRAME_FORMAT_H264,
     FRAME_FORMAT_H265,
+    FRAME_FORMAT_AV1,
 
     FRAME_FORMAT_MSDK       = 300,
 
@@ -43,6 +44,8 @@ enum FrameFormat {
     FRAME_FORMAT_NELLYMOSER,
 
     FRAME_FORMAT_DATA,  // Generic data frame. We don't know its detailed structure.
+
+    FRAME_FORMAT_RTP,  // RTP packet.
 };
 
 enum VideoCodecProfile {
@@ -104,6 +107,8 @@ inline FrameFormat getFormat(const std::string& codec) {
         return owt_base::FRAME_FORMAT_VP9;
     } else if (codec == "h265") {
         return owt_base::FRAME_FORMAT_H265;
+    } else if (codec == "av1x") {
+        return owt_base::FRAME_FORMAT_AV1;
     } else if (codec == "pcm_48000_2" || codec == "pcm_raw") {
         return owt_base::FRAME_FORMAT_PCM_48000_2;
     } else if (codec == "pcmu") {
@@ -152,6 +157,8 @@ inline const char *getFormatStr(const FrameFormat &format) {
             return "H264";
         case FRAME_FORMAT_H265:
             return "H265";
+        case FRAME_FORMAT_AV1:
+            return "AV1X";
         case FRAME_FORMAT_PCM_48000_2:
             return "PCM_48000_2";
         case FRAME_FORMAT_PCMU:
@@ -205,35 +212,44 @@ inline bool isVideoFrame(const Frame& frame) {
           || frame.format == FRAME_FORMAT_VP8
           || frame.format == FRAME_FORMAT_VP9
           || frame.format == FRAME_FORMAT_H264
-          || frame.format == FRAME_FORMAT_H265;
+          || frame.format == FRAME_FORMAT_H265
+          || frame.format == FRAME_FORMAT_AV1;
 }
 
 inline bool isDataFrame(const Frame& frame) {
-    return frame.format == FRAME_FORMAT_DATA;
+    return frame.format == FRAME_FORMAT_DATA || frame.format == FRAME_FORMAT_RTP;
 }
 
 enum FeedbackType {
     VIDEO_FEEDBACK,
-    AUDIO_FEEDBACK
+    AUDIO_FEEDBACK,
+    // When the feedback is a RTCP packet, it's track kind is not known before parsing. Thus we use DATA_FEEDBACK for RTCP packets.
+    DATA_FEEDBACK
 };
 
 enum FeedbackCmd {
     REQUEST_KEY_FRAME,
     SET_BITRATE,
     REQUEST_OWNER_ID,
+    INIT_STREAM_ID,
     RTCP_PACKET  // FIXME: Temporarily use FeedbackMsg to carry audio rtcp-packets due to the premature AudioFrameConstructor implementation.
 };
 
 struct FeedbackMsg {
+    static const int kMaxBufferByteLength = 128;
     FeedbackType type;
     FeedbackCmd  cmd;
     union {
         unsigned short kbps;
         struct RtcpPacket{// FIXME: Temporarily use FeedbackMsg to carry audio rtcp-packets due to the premature AudioFrameConstructor implementation.
             uint32_t len;
-            char     buf[128];
+            char     buf[kMaxBufferByteLength];
         } rtcp;
     } data;
+    struct MsgBuffer{
+        uint32_t len;
+        char     data[kMaxBufferByteLength];
+    } buffer;
     FeedbackMsg(FeedbackType t, FeedbackCmd c) : type{t}, cmd{c} {}
 };
 
@@ -245,14 +261,14 @@ public:
 
     virtual void onFeedback(const FeedbackMsg&) { };
 
-    void addAudioDestination(FrameDestination*);
-    void removeAudioDestination(FrameDestination*);
+    virtual void addAudioDestination(FrameDestination*);
+    virtual void removeAudioDestination(FrameDestination*);
 
-    void addVideoDestination(FrameDestination*);
-    void removeVideoDestination(FrameDestination*);
+    virtual void addVideoDestination(FrameDestination*);
+    virtual void removeVideoDestination(FrameDestination*);
 
-    void addDataDestination(FrameDestination*);
-    void removeDataDestination(FrameDestination*);
+    virtual void addDataDestination(FrameDestination*);
+    virtual void removeDataDestination(FrameDestination*);
 
 protected:
     void deliverFrame(const Frame&);

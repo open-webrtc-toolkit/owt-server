@@ -23,10 +23,14 @@ VideoFramePacketizer::VideoFramePacketizer(VideoFramePacketizer::Config& config)
     , m_frameHeight(0)
     , m_ssrc(0)
     , m_sendFrameCount(0)
-    , m_rtcAdapter(RtcAdapterFactory::CreateRtcAdapter())
+    , m_rtcAdapter(config.rtcAdapter)
     , m_videoSend(nullptr)
 {
     video_sink_ = nullptr;
+    if (!m_rtcAdapter) {
+        ELOG_DEBUG("Create RtcAdapter");
+        m_rtcAdapter.reset(RtcAdapterFactory::CreateRtcAdapter());
+    }
     init(config);
 }
 
@@ -57,6 +61,9 @@ bool VideoFramePacketizer::init(VideoFramePacketizer::Config& config)
         if (!config.mid.empty()) {
             strncpy(sendConfig.mid, config.mid.c_str(), sizeof(sendConfig.mid) - 1);
             sendConfig.mid_ext = config.midExtId;
+        }
+        if (config.enableBandwidthEstimation) {
+            sendConfig.bandwidth_estimation = true;
         }
         sendConfig.feedback_listener = this;
         sendConfig.rtp_listener = this;
@@ -98,12 +105,44 @@ void VideoFramePacketizer::enable(bool enabled)
     }
 }
 
+uint32_t VideoFramePacketizer::getTotalBitrate()
+{
+    uint32_t totalBitrateBps = 0;
+    if (m_videoSend) {
+        totalBitrateBps = m_videoSend->getStats().total_bitrate_bps;
+    }
+    return totalBitrateBps;
+}
+
+uint32_t VideoFramePacketizer::getRetransmitBitrate()
+{
+    uint32_t retransmitBitrateBps = 0;
+    if (m_videoSend) {
+        retransmitBitrateBps = m_videoSend->getStats().retransmit_bitrate_bps;
+    }
+    return retransmitBitrateBps;
+}
+
+uint32_t VideoFramePacketizer::getEstimatedBandwidth()
+{
+    uint32_t estimatedBandwidth = 0;
+    if (m_videoSend) {
+        estimatedBandwidth = m_videoSend->getStats().estimated_bandwidth;
+    }
+    return estimatedBandwidth;
+}
+
 void VideoFramePacketizer::onFeedback(const FeedbackMsg& msg)
 {
     deliverFeedbackMsg(msg);
 }
 
-void VideoFramePacketizer::onAdapterStats(const AdapterStats& stats) {}
+void VideoFramePacketizer::onAdapterStats(const rtc_adapter::AdapterStats& stats) {
+    // if (stats.estimatedBandwidth) {
+    //     ELOG_DEBUG("updated estimatedBandwidth %d", stats.estimatedBandwidth);
+    //     m_estimatedBitrateBps = stats.estimatedBandwidth;
+    // }
+}
 
 void VideoFramePacketizer::onAdapterData(char* data, int len)
 {

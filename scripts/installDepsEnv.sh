@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -e
 
 SCRIPT=`readlink -e ${BASH_SOURCE[0]}`
 FILENAME=`basename $SCRIPT`

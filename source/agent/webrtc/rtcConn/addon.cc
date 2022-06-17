@@ -13,7 +13,7 @@
 
 using namespace v8;
 
-void InitAll(Handle<Object> exports) {
+void InitAll(Local<Object> exports) {
   dtls::DtlsSocketContext::Init();
   WebRtcConnection::Init(exports);
   MediaStream::Init(exports);

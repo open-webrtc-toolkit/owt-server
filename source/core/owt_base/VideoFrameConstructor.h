@@ -43,7 +43,9 @@ public:
     };
 
     VideoFrameConstructor(VideoInfoListener*, uint32_t transportccExtId = 0);
-    VideoFrameConstructor(VideoFrameConstructor*, VideoInfoListener*, uint32_t transportccExtId = 0);
+    VideoFrameConstructor(std::shared_ptr<rtc_adapter::RtcAdapter>,
+                          VideoInfoListener*,
+                          uint32_t transportccExtId = 0);
     virtual ~VideoFrameConstructor();
 
     void bindTransport(erizo::MediaSource* source, erizo::FeedbackSink* fbSink);

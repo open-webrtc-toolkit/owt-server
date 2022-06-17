@@ -11,6 +11,10 @@ var InternalOut = internalIO.Out;
 var avstream = require('../avstreamLib/build/Release/avstream');
 var AVStreamIn = avstream.AVStreamIn;
 var AVStreamOut = avstream.AVStreamOut;
+
+const MediaFrameMulticaster = require(
+    '../mediaFrameMulticaster/build/Release/mediaFrameMulticaster');
+
 var logger = require('../logger').logger;
 var path = require('path');
 var Connections = require('./connections');
@@ -18,7 +22,7 @@ var Connections = require('./connections');
 // Logger
 var log = logger.getLogger('StreamingNode');
 
-var InternalConnectionFactory = require('./InternalConnectionFactory');
+var {InternalConnectionRouter} = require('./internalConnectionRouter');
 
 module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
     var that = {
@@ -26,7 +30,7 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
       clusterIP: clusterWorkerIP
     };
     var connections = new Connections;
-    var internalConnFactory = new InternalConnectionFactory;
+    var router = new InternalConnectionRouter(global.config.internal);
 
     var notifyStatus = (controller, sessionId, direction, status) => {
         rpcClient.remoteCast(controller, 'onSessionProgress', [sessionId, direction, status]);
@@ -44,6 +48,20 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
             log.debug('avstream-in status message:', message);
             notifyStatus(options.controller, sessionId, 'in', JSON.parse(message));
         });
+
+        var dispatcher = new MediaFrameMulticaster();
+        var source = dispatcher.source();
+        connection.addDestination('audio', dispatcher);
+        connection.addDestination('video', dispatcher);
+        source.close = function () {
+            connection.removeDestination('audio', dispatcher);
+            connection.removeDestination('video', dispatcher);
+            connection.close();
+            dispatcher.close();
+        };
+        connection.source = function () {
+            return source;
+        };
 
         return connection;
     };
@@ -101,16 +119,10 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
         };
     };
 
-    that.createInternalConnection = function (connectionId, direction, internalOpt, callback) {
-        internalOpt.minport = global.config.internal.minport;
-        internalOpt.maxport = global.config.internal.maxport;
-        var portInfo = internalConnFactory.create(connectionId, direction, internalOpt);
-        callback('callback', {ip: global.config.internal.ip_address, port: portInfo});
-    };
-
-    that.destroyInternalConnection = function (connectionId, direction, callback) {
-        internalConnFactory.destroy(connectionId, direction);
-        callback('callback', 'ok');
+    that.getInternalAddress = function(callback) {
+        const ip = global.config.internal.ip_address;
+        const port = router.internalPort;
+        callback('callback', {ip, port});
     };
 
     that.publish = function (connectionId, connectionType, options, callback) {
@@ -121,11 +133,6 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
 
         var conn = null;
         switch (connectionType) {
-            case 'internal':
-                conn = internalConnFactory.fetch(connectionId, 'in');
-                if (conn)
-                    conn.connect(options);
-                break;
             case 'streaming':
                 conn = createAVStreamIn(connectionId, options);
                 break;
@@ -137,19 +144,15 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
             return callback('callback', {type: 'failed', reason: 'Create Connection failed'});
         }
 
-        return connections.addConnection(connectionId, connectionType, options.controller, conn, 'in')
+        router.addLocalSource(connectionId, connectionType, conn.source())
         .then(onSuccess(callback), onError(callback));
     };
 
     that.unpublish = function (connectionId, callback) {
         log.debug('unpublish, connectionId:', connectionId);
-        var conn = connections.getConnection(connectionId);
-        connections.removeConnection(connectionId).then(function(ok) {
-            if (conn && conn.type === 'internal') {
-                internalConnFactory.destroy(connectionId, 'in');
-            } else if (conn) {
-                conn.connection.close();
-            }
+        var conn = router.getConnection(connectionId);
+        router.removeConnection(connectionId).then(function(ok) {
+            conn.close();
             callback('callback', 'ok');
         }, onError(callback));
     };
@@ -162,11 +165,6 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
 
         var conn = null;
         switch (connectionType) {
-            case 'internal':
-                conn = internalConnFactory.fetch(connectionId, 'out');
-                if (conn)
-                    conn.connect(options);
-                break;
             case 'streaming':
                 conn = createAVStreamOut(connectionId, options);
                 break;
@@ -178,43 +176,34 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
             return callback('callback', {type: 'failed', reason: 'Create Connection failed'});
         }
 
-        connections.addConnection(connectionId, connectionType, options.controller, conn, 'out')
+        router.addLocalDestination(connectionId, connectionType, conn)
         .then(onSuccess(callback), onError(callback));
     };
 
     that.unsubscribe = function (connectionId, callback) {
         log.debug('unsubscribe, connectionId:', connectionId);
-        var conn = connections.getConnection(connectionId);
-        connections.removeConnection(connectionId).then(function(ok) {
-            if (conn && conn.type === 'internal') {
-                internalConnFactory.destroy(connectionId, 'out');
-            } else if (conn) {
-                conn.connection.close();
-            }
+        var conn = router.getConnection(connectionId);
+        router.removeConnection(connectionId).then(function(ok) {
+            conn.close();
             callback('callback', 'ok');
         }, onError(callback));
     };
 
-    that.linkup = function (connectionId, audioFrom, videoFrom, dataFrom, callback) {
-        connections.linkupConnection(connectionId, audioFrom, videoFrom).then(onSuccess(callback), onError(callback));
+    // streamInfo = {id: 'string', ip: 'string', port: 'number'}
+    // from = {audio: streamInfo, video: streamInfo, data: streamInfo}
+    that.linkup = function (connectionId, from, callback) {
+        log.debug('linkup, connectionId:', connectionId, 'from:', from);
+        router.linkup(connectionId, from).then(onSuccess(callback), onError(callback));
     };
 
     that.cutoff = function (connectionId, callback) {
-        connections.cutoffConnection(connectionId).then(onSuccess(callback), onError(callback));
+        log.debug('cutoff, connectionId:', connectionId);
+        router.cutoff(connectionId).then(onSuccess(callback), onError(callback));
     };
 
     that.close = function() {
         log.debug('close called');
-        var connIds = connections.getIds();
-        for (let connectionId of connIds) {
-            var conn = connections.getConnection(connectionId);
-            connections.removeConnection(connectionId);
-            if (conn && conn.type === 'internal') {
-                internalConnFactory.destroy(connectionId, conn.direction);
-            } else if (conn) {
-                conn.connection.close();
-            }
-        }
+        router.clear();
     };
 
     that.onFaultDetected = function (message) {
