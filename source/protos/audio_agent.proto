@@ -35,8 +35,7 @@ service AudioAgent {
   rpc Cutoff (CutoffRequest) returns (SimpleReply) {}
 
   // Internal connections
-  rpc CreateInternalConnection (CreateInternalRequest) returns (InternalReply) {}
-  rpc DestroyInternalConnection (DestroyInternalRequest) returns (SimpleReply) {}
+  rpc GetInternalAddress (Empty) returns (AddressReply) {}
 }
 
 // Reply for initialization

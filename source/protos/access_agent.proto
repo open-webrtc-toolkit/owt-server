@@ -113,7 +113,7 @@ message CreateInternalRequest {
   InternalOpt internalOpt = 3; // Name specific data
 }
 
-message InternalReply {
+message AddressReply {
   string ip = 1;
   int32 port = 2;
 }

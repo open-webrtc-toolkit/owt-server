@@ -24,8 +24,13 @@ function createGrpcInterface(controller, streamingEmitter) {
       });
     },
     unpublish: function (call, callback) {
-      controller.unpublish(call.request.id);
-      callback(null, {});
+      controller.unpublish(call.request.id, (n, code, data) => {
+        if (code === 'error') {
+          callback(new Error(data), null);
+        } else {
+          callback(null, {});
+        }
+      });
     },
     subscribe: function (call, callback) {
       const req = call.request;
@@ -39,16 +44,18 @@ function createGrpcInterface(controller, streamingEmitter) {
       });
     },
     unsubscribe: function (call, callback) {
-      controller.unsubscribe(call.request.id);
-      callback(null, {});
+      controller.unsubscribe(call.request.id, (n, code, data) => {
+        if (code === 'error') {
+          callback(new Error(data), null);
+        } else {
+          callback(null, {});
+        }
+      });
     },
     linkup: function (call, callback) {
       const req = call.request;
       controller.linkup(
-        req.id,
-        req.from.audio && req.from.audio.id,
-        req.from.video && req.from.video.id,
-        req.from.data && req.from.data.id,
+        req.id, req.from,
         (n, code, data) => {
           if (code === 'error') {
             callback(new Error(data), null);
@@ -58,8 +65,13 @@ function createGrpcInterface(controller, streamingEmitter) {
         });
     },
     cutoff: function (call, callback) {
-      controller.cutoff(call.request.id);
-      callback(null, {});
+      controller.cutoff(call.request.id, (n, code, data) => {
+        if (code === 'error') {
+          callback(new Error(data), null);
+        } else {
+          callback(null, {});
+        }
+      });
     },
     listenToNotifications: function (call, callback) {
       streamingEmitter.on('notification', (notification) => {
@@ -74,30 +86,12 @@ function createGrpcInterface(controller, streamingEmitter) {
         call.end();
       });
     },
-    createInternalConnection: function (call, callback) {
-      const req = call.request;
-      controller.createInternalConnection(
-        req.id,
-        req.direction,
-        req.internalOpt,
-        (n, code, data) => {
+    getInternalAddress: function (call, callback) {
+      controller.getInternalAddress((n, code, data) => {
           if (code === 'error') {
             callback(new Error(data), null);
           } else {
             callback(null, code);
-          }
-        });
-    },
-    destroyInternalConnection: function (call, callback) {
-      const req = call.request;
-      controller.destroyInternalConnection(
-        req.id,
-        req.direction,
-        (n, code, data) => {
-          if (code === 'error') {
-            callback(new Error(data), null);
-          } else {
-            callback(null, {message: data});
           }
         });
     },

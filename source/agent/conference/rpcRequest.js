@@ -203,11 +203,7 @@ var RpcRequest = function(rpcChannel, listener) {
       if (rpcName === 'linkup') {
         const req = {
           id: parameters[0],
-          from: {
-            audio: {id: parameters[1]},
-            video: {id: parameters[2]},
-            data: {id: parameters[3]}
-          }
+          from: parameters[1],
         };
         grpcNode[remoteNode].linkup(req, (err, result) => {
           if (!err) {
@@ -225,25 +221,8 @@ var RpcRequest = function(rpcChannel, listener) {
             onError && onError(err);
           }
         });
-      } else if (rpcName === 'createInternalConnection') {
-        const req = {
-          id: parameters[0],
-          direction: parameters[1],
-          internalOpt: parameters[2]
-        };
-        grpcNode[remoteNode].createInternalConnection(req, (err, result) => {
-          if (!err) {
-            onOk && onOk(result);
-          } else {
-            onError && onError(err);
-          }
-        });
-      } else if (rpcName === 'destroyInternalConnection') {
-        const req = {
-          id: parameters[0],
-          direction: parameters[1]
-        };
-        grpcNode[remoteNode].destroyInternalConnection(req, (err, result) => {
+      } else if (rpcName === 'getInternalAddress') {
+        grpcNode[remoteNode].getInternalAddress({}, (err, result) => {
           if (!err) {
             onOk && onOk(result);
           } else {
