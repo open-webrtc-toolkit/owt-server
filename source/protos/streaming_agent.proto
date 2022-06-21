@@ -21,8 +21,7 @@ service StreamingAgent {
   rpc ListenToNotifications (ListenRequest) returns (stream ProgressNotification) {}
 
   // Internal connections
-  rpc CreateInternalConnection (CreateInternalRequest) returns (InternalReply) {}
-  rpc DestroyInternalConnection (DestroyInternalRequest) returns (SimpleReply) {}
+  rpc GetInternalAddress (Empty) returns (AddressReply) {}
 }
 
 // The progress message for webrtc sessions ("type": "webrtc").

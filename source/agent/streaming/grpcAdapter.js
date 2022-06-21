@@ -55,10 +55,7 @@ function createGrpcInterface(controller, streamingEmitter) {
     linkup: function (call, callback) {
       const req = call.request;
       controller.linkup(
-        req.id,
-        req.from.audio && req.from.audio.id,
-        req.from.video && req.from.video.id,
-        req.from.data && req.from.data.id,
+        req.id, req.from,
         (n, code, data) => {
           if (code === 'error') {
             callback(new Error(data), null);
@@ -89,30 +86,12 @@ function createGrpcInterface(controller, streamingEmitter) {
         call.end();
       });
     },
-    createInternalConnection: function (call, callback) {
-      const req = call.request;
-      controller.createInternalConnection(
-        req.id,
-        req.direction,
-        req.internalOpt,
-        (n, code, data) => {
+    getInternalAddress: function (call, callback) {
+      controller.getInternalAddress((n, code, data) => {
           if (code === 'error') {
             callback(new Error(data), null);
           } else {
             callback(null, code);
-          }
-        });
-    },
-    destroyInternalConnection: function (call, callback) {
-      const req = call.request;
-      controller.destroyInternalConnection(
-        req.id,
-        req.direction,
-        (n, code, data) => {
-          if (code === 'error') {
-            callback(new Error(data), null);
-          } else {
-            callback(null, {message: data});
           }
         });
     },
