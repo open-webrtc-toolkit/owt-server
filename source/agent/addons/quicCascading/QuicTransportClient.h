@@ -59,7 +59,7 @@ private:
     std::queue<owt::quic::QuicTransportStreamInterface*> stream_messages;
     Nan::Callback *stream_callback_;
     Nan::Callback *connected_callback_;
-    boost::mutex mutex;
+    std::mutex m_streamQueueMutex;
     static Nan::Persistent<v8::Function> s_constructor;
 };
 

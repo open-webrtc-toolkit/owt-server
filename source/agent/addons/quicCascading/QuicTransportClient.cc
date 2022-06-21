@@ -112,20 +112,23 @@ NAUV_WORK_CB(QuicTransportClient::onNewStreamCallback){
         return;
     }
 
-    boost::mutex::scoped_lock lock(obj->mutex);
-
-    v8::Local<v8::Object> streamObject = QuicTransportStream::newInstance(obj->stream_messages.front());
-    QuicTransportStream* stream = Nan::ObjectWrap::Unwrap<QuicTransportStream>(streamObject);
-    obj->stream_messages.front()->SetVisitor(stream);
-
     if (obj->has_stream_callback_) {
+      ELOG_INFO("object has stream callback");
       while (!obj->stream_messages.empty()) {
+          ELOG_INFO("stream_messages is not empty");
+          obj->m_streamQueueMutex.lock();
+          auto quicStream=obj->stream_messages.front();
+          obj->m_streamQueueMutex.unlock();
+          v8::Local<v8::Object> streamObject = QuicTransportStream::newInstance(quicStream);
+          QuicTransportStream* stream = Nan::ObjectWrap::Unwrap<QuicTransportStream>(streamObject);
+          quicStream->SetVisitor(stream);
           Local<Value> args[] = { streamObject };
           Nan::AsyncResource resource("onNewStream");
           resource.runInAsyncScope(Nan::GetCurrentContext()->Global(), obj->stream_callback_->GetFunction(), 1, args);
           obj->stream_messages.pop();
       }
     }
+    ELOG_INFO("onNewStreamCallback ends");
 }
 
 NAUV_WORK_CB(QuicTransportClient::onConnectedCallback){
@@ -144,11 +147,15 @@ NAUV_WORK_CB(QuicTransportClient::onConnectedCallback){
 }
 
 void QuicTransportClient::OnIncomingStream(owt::quic::QuicTransportStreamInterface* stream) {
-    ELOG_DEBUG("QuicTransportClient::OnIncomingStream");
+    ELOG_DEBUG("QuicTransportClient::OnIncomingStream with stream id:%d\n", stream->Id());
     //streams_[stream->Id()] = stream;
+    m_streamQueueMutex.lock();
+    ELOG_INFO("stream_messages push stream");
     this->stream_messages.push(stream);
+    m_streamQueueMutex.unlock();
     m_asyncOnNewStream.data = this;
     uv_async_send(&m_asyncOnNewStream);
+    ELOG_INFO("OnIncomingStream ends");
 }
 
 void QuicTransportClient::OnConnected() {

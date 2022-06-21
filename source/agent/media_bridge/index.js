@@ -96,32 +96,6 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
 
     })();
 
-
-
-    const getConferenceController = async (roomId) => {
-      return await rpcChannel.makeRPC(clusterName, 'schedule', [
-        'conference', roomId, 'preference' /*TODO: specify preference*/,
-        30 * 1000
-      ]);
-    };
-
-    // for algorithms that generate new stream
-  const generateStream = (controller, streamId, streamInfo) => {
-    log.debug('generateStream:', controller, streamId, streamId);
-    do_publish(controller, 'admin', streamId, streamInfo)
-      .then(() => {
-        log.debug('Generated stream:', streamId, 'publish success');
-      })
-      .catch((err) => {
-        log.debug('Generated stream:', streamId, 'publish failed', err);
-      });
-  };
-
-    const notifyStatus = (controller, sessionId, direction, status) => {
-      rpcClient.remoteCast(
-          controller, 'onSessionProgress', [sessionId, direction, status]);
-    };
-
     const createFrameSource = (streamId, options, callback) => {
       if (frameSourceMap.has(streamId)) {
         callback('callback', {
@@ -170,54 +144,6 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
             }
         };
     };
-
-    var do_publish = function(conference_ctl, user, stream_id, stream_info) {
-      return new Promise(function(resolve, reject) {
-          makeRPC(
-              rpcClient,
-              conference_ctl,
-              'publish',
-              [user, stream_id, stream_info],
-              resolve,
-              reject);
-      });
-    }
-
-    var do_subscribe = function(conference_ctl, user, subscription_id, subInfo) {
-      return new Promise(function(resolve, reject) {
-          makeRPC(
-              rpcClient,
-              conference_ctl,
-              'subscribe',
-              [user, subscription_id, subInfo],
-              resolve,
-              reject);
-      });
-    }
-
-    var do_unpublish = function(conference_ctl, user, stream_id) {
-      return new Promise(function(resolve, reject) {
-          makeRPC(
-              rpcClient,
-              conference_ctl,
-              'unpublish',
-              [user, stream_id],
-              resolve,
-              reject);
-      });
-    }
-
-    var do_unsubscribe = function(conference_ctl, user, subscription_id) {
-      return new Promise(function(resolve, reject) {
-          makeRPC(
-              rpcClient,
-              conference_ctl,
-              'unsubscribe',
-              [user, subscription_id],
-              resolve,
-              reject);
-      });
-    }
 
     that.getInternalAddress = function(callback) {
         const ip = global.config.internal.ip_address;
@@ -463,7 +389,7 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
       }      
     }
 
-    that.startCascading = function (data) {
+    that.startCascading = function (data, callback) {
         log.info("startEventCascading with data:", data);
 
         //A new conference request between uncascaded clusters
@@ -505,7 +431,8 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
                     }
                     quicStream.send(JSON.stringify(info));
                   }
-                })       
+                })
+                callback('callback', 'ok');
               });
 
               client.onNewStream((incomingStream) => {
@@ -549,6 +476,7 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
             });
         } else {
             log.debug('Cluster already cascaded');
+            callback('callback', 'ok');
             return Promise.resolve('ok');
         }
     }

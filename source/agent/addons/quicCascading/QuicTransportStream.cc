@@ -170,22 +170,25 @@ NAUV_WORK_CB(QuicTransportStream::onStreamDataCallback){
         return;
     }
 
-    boost::mutex::scoped_lock lock(obj->mutex);
+    //boost::mutex::scoped_lock lock(obj->mutex);
 
     if (obj->has_data_callback_) {
       while (!obj->data_messages.empty()) {
+          ELOG_DEBUG("data_messages is not empty");
+          obj->m_dataQueueMutex.lock();
           Local<Value> args[] = { Nan::New(obj->data_messages.front().c_str()).ToLocalChecked() };
-          Nan::AsyncResource resource("sessionCallback");
+          obj->m_dataQueueMutex.unlock();
+          Nan::AsyncResource resource("onStreamData");
           resource.runInAsyncScope(Nan::GetCurrentContext()->Global(), obj->data_callback_->GetFunction(), 1, args);
           obj->data_messages.pop();
       }
     }
+    ELOG_DEBUG("QuicTransportStream::onStreamDataCallback ends");
 }
 
 NAN_METHOD(QuicTransportStream::getId) {
-  ELOG_DEBUG("QuicTransportStream::getId");
   QuicTransportStream* obj = Nan::ObjectWrap::Unwrap<QuicTransportStream>(info.Holder());
-
+  ELOG_DEBUG("QuicTransportStream::getId:%d\n", obj->m_stream->Id());
   info.GetReturnValue().Set(Nan::New(obj->m_stream->Id()));
 }
 
@@ -222,7 +225,7 @@ void QuicTransportStream::onVideoSourceChanged()
 
 void QuicTransportStream::onFrame(const owt_base::Frame& frame)
 {
-    ELOG_DEBUG("QuicTransportStream::onFrame");
+    //ELOG_DEBUG("QuicTransportStream::onFrame");
     dump(this, frame.payload, frame.length);
     TransportData sendData;
     sendData.buffer.reset(new char[sizeof(Frame) + frame.length + 5]);
@@ -297,7 +300,7 @@ void QuicTransportStream::OnData(owt::quic::QuicTransportStreamInterface* stream
 
             switch (dpos[0]) {
                 case TDT_MEDIA_FRAME:
-                    ELOG_DEBUG("QuicTransportStream deliver frame with trackKind: %s", m_trackKind.c_str());
+                    //ELOG_DEBUG("QuicTransportStream deliver frame with trackKind: %s", m_trackKind.c_str());
                     frame = reinterpret_cast<Frame*>(dpos + 1);
                     frame->payload = reinterpret_cast<uint8_t*>(dpos + 1 + sizeof(Frame));
                     if (m_trackKind == "video") {
@@ -315,9 +318,13 @@ void QuicTransportStream::OnData(owt::quic::QuicTransportStreamInterface* stream
                     deliverFrame(*frame);
                     break;
                 case TDT_MEDIA_METADATA:
+                    ELOG_DEBUG("QuicTransportStream::onData with type TDT_MEDIA_METADATA%s", s_data.c_str());
+                    m_dataQueueMutex.lock();
                     this->data_messages.push(s_data);
+                    m_dataQueueMutex.unlock();
                     m_asyncOnData.data = this;
                     uv_async_send(&m_asyncOnData);
+                    ELOG_DEBUG("QuicTransportStream::onData with type TDT_MEDIA_METADATA end");
                     break;
                 case TDT_FEEDBACK_MSG:
                     ELOG_DEBUG("QuicTransportStream deliver feedback msg");
