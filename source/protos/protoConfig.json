@@ -24,6 +24,16 @@
     "package": "owt",
     "service": "StreamingAgent"
   },
+  "analytics": {
+    "file": "analytics_agent.proto",
+    "package": "owt",
+    "service": "AnalyticsAgent"
+  },
+  "quic": {
+    "file": "analytics_agent.proto",
+    "package": "owt",
+    "service": "QuicAgent"
+  },
   "internal": {
     "file": "internal.proto"
   }

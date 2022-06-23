@@ -1,0 +1,84 @@
+
+//
+syntax = "proto3";
+
+import "access_agent.proto";
+
+package owt;
+
+// The quic service definition.
+service QuicAgent {
+  // Publish
+  rpc Publish (PublishRequest) returns (PublishReply) {}
+  rpc Unpublish (UnpublishRequest) returns (SimpleReply) {}
+  // Subscribe
+  rpc Subscribe (SubscribeRequest) returns (SubscribeReply) {}
+  rpc Unsubscribe (UnsubscribeRequest) returns (SimpleReply) {}
+  // Link & Cut
+  rpc Linkup (LinkupRequest) returns (SimpleReply) {}
+  rpc Cutoff (CutoffRequest) returns (SimpleReply) {}
+
+  // Listen to notifications (streaming RPC)
+  rpc ListenToNotifications (ListenRequest) returns (stream ProgressNotification) {}
+
+  // Internal connections
+  rpc GetInternalAddress (Empty) returns (AddressReply) {}
+
+  // Process signaling message
+  rpc validateTokenCallback (stream ValidateResult) returns (stream Token) {}
+}
+
+// Token for validateTokenCallback
+message Token {
+  string tokenId = 1;
+  string transportId = 2;
+  string participantId = 3;
+  string roomId = 4;
+  uint64 issueTime = 5;
+  string signature = 6;
+}
+
+// Result for validateTokenCallback
+message ValidateResult {
+  string tokenId = 1;
+  bool ok = 2;
+}
+
+// The progress message for webrtc sessions ("type": "webrtc").
+// Progress "name": "onSessionProgress".
+message SessionProgressData {
+  string id = 1;
+  message Status {
+    optional string type = 1;
+    optional string reason = 2;
+    message RtpConfig {
+      message VideoConfig {
+        int32 ssrc = 1;
+      }
+      VideoConfig video = 1;
+    }
+    optional RtpConfig rtp = 3;
+    optional bool datagram = 4;
+    optional bool data = 5;
+  }
+  Status status = 2;
+  optional string direction = 3;
+}
+
+// Publish/Subscribe option
+message RequestOption {
+  message TransportOption {
+    string id = 1;
+    string type = 2;
+  }
+  TransportOption transport = 1;
+  message TrackOption {
+    optional string mid = 1;
+    string type = 2;
+    optional string from = 3;
+    optional FormatPreference formatPreference = 4;
+  }
+  repeated TrackOption tracks = 2;
+  optional string controller = 3;
+  optional string owner = 4;
+}
