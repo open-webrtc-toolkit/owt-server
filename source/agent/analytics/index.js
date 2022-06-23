@@ -11,6 +11,12 @@ const VideoAnalyzer = require('../videoGstPipeline/build/Release/videoAnalyzer-p
 
 var {InternalConnectionRouter} = require('./internalConnectionRouter');
 
+// Setup GRPC server
+var createGrpcInterface = require('./grpcAdapter').createGrpcInterface;
+var enableGRPC = global.config.agent.enable_grpc || false;
+
+var EventEmitter = require('events').EventEmitter;
+
 function doPublish(rpcClient, conference, user, streamId, streamInfo) {
   return new Promise(function(resolve, reject) {
     makeRPC(
@@ -50,6 +56,8 @@ module.exports = function (rpcClient, rpcId, agentId, clusterIp) {
   var outputs = {};
   var engine = new VideoAnalyzer();
   var controller;
+  // For GRPC notifications
+  var streamingEmitter = new EventEmitter();
 
   try {
     algorithms = toml.parse(fs.readFileSync('./plugin.cfg'));
@@ -59,6 +67,16 @@ module.exports = function (rpcClient, rpcId, agentId, clusterIp) {
 
   const notifyStatus = (controller, sessionId, direction, status) => {
     rpcClient.remoteCast(controller, 'onSessionProgress', [sessionId, direction, status]);
+    // Emit GRPC notifications
+    const notification = {
+      name: 'onSessionProgress',
+      data: {
+          id: sessionId,
+          status,
+          direction
+      }
+    };
+    streamingEmitter.emit('notification', notification);
   };
 
   // for algorithms that generate new stream
@@ -71,6 +89,16 @@ module.exports = function (rpcClient, rpcId, agentId, clusterIp) {
       .catch((err) => {
         log.debug('Generated stream:', streamId, 'publish failed', err);
       });
+      // Emit GRPC notifications
+      const notification = {
+        name: 'onStreamAdded',
+        data: {
+            id: streamId,
+            owner: 'admin',
+            info: streamInfo
+        }
+      };
+      streamingEmitter.emit('notification', notification);
   };
   // destroy generated stream
   const destroyStream = (controller, streamId) => {
@@ -82,6 +110,15 @@ module.exports = function (rpcClient, rpcId, agentId, clusterIp) {
       .catch((err) => {
         log.debug('Destroyed stream:', streamId, 'unpublish failed', err);
       });
+      // Emit GRPC notifications
+      const notification = {
+        name: 'onStreamRemoved',
+        data: {
+            id: streamId,
+            owner: 'admin'
+        }
+      };
+      streamingEmitter.emit('notification', notification);
   };
 
   // RPC callback
@@ -141,7 +178,7 @@ module.exports = function (rpcClient, rpcId, agentId, clusterIp) {
       return callback('callback', {type: 'failed', reason: 'invalid connctionType'+connectionType});
     }
 
-      // check options
+    // check options
     if (!algorithms[options.connection.algorithm]) {
       return callback('callback', {type: 'failed', reason: 'Not valid algorithm:'+options.connection.algorithm});
     }
@@ -288,6 +325,11 @@ module.exports = function (rpcClient, rpcId, agentId, clusterIp) {
       }
     }
   };
+
+  if (enableGRPC) {
+    // Export GRPC interface.
+    return createGrpcInterface(that, streamingEmitter);
+  }
 
   return that;
 };

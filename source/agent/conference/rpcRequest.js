@@ -8,7 +8,7 @@ const grpcTools = require('./grpcTools');
 const packOption = grpcTools.packOption;
 const makeRPC = require('./makeRPC').makeRPC;
 
-const grpcPurposes = ['webrtc', 'audio', 'video', 'streaming', 'recording'];
+const grpcPurposes = ['webrtc', 'audio', 'video', 'streaming', 'recording', 'analytics', 'quic'];
 
 var RpcRequest = function(rpcChannel, listener) {
   var that = {};
@@ -41,6 +41,17 @@ var RpcRequest = function(rpcChannel, listener) {
                 }
               });
               call.on('end', () => {});
+              if (purpose === 'quic') {
+                // Register validate callback
+                const call = grpcNode[workerNode].validateTokenCallback();
+                call.on('data', (token) => {
+                  // Validate token
+                  listener.processCallback(token, (result) => {
+                    call.write({tokenId: token.tokenId, ok: result});
+                  });
+                });
+                call.on('end', () => {});
+              }
             }
             return {agent: workerAgent.id, node: workerNode};
           });
@@ -196,6 +207,11 @@ var RpcRequest = function(rpcChannel, listener) {
 
   that.endSipCall = function(sipNode, sipCallId) {
     return rpcChannel.makeRPC(sipNode, 'endCall', [sipCallId]);
+  };
+
+  that.validateAndDeleteWebTransportToken = function(portal, token) {
+    return rpcChannel.makeRPC(
+      portal, 'validateAndDeleteWebTransportToken', [token]);
   };
 
   that.makeRPC = function (_, remoteNode, rpcName, parameters, onOk, onError) {

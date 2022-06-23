@@ -2847,10 +2847,43 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
           conference.onSessionProgress(data.id, data.direction, data.status);
           break;
         }
+        case 'onSessionProgress': {
+          conference.onSessionProgress(data.id, data.direction, data.status);
+          break;
+        }
+        case 'onStreamAdded': {
+          conference.publish(data.owner, data.id, data.info, (n, code, r) => {
+            if (code === 'error') {
+              log.warn('onStreamAdded error:', r);
+            }
+          });
+          break;
+        }
+        case 'onStreamRemoved': {
+          conference.unpublish(data.owner, data.id, (n, code, r) => {
+            if (code === 'error') {
+              log.warn('onStreamRemoved error:', r);
+            }
+          });
+          break;
+        }
         default:
           break;
       }
 
+    },
+    processCallback: (token, callback) => {
+      conference.getPortal(token.participantId, (n, data) => {
+        if (data === 'error') {
+          callback(false);
+        } else {
+          rpcReq.validateAndDeleteWebTransportToken(data, token).then(() => {
+            callback(true);
+          }).catch(() => {
+            callback(false);
+          });
+        }
+      });
     }
   };
 
