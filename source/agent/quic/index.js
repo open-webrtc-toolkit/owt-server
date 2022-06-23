@@ -28,6 +28,11 @@ const {InternalConnectionRouter} = require('./internalConnectionRouter');
 const audioTrackId = '00000000000000000000000000000001';
 const videoTrackId = '00000000000000000000000000000002';
 
+// Setup GRPC server.
+const createGrpcInterface = require('./grpcAdapter').createGrpcInterface;
+const enableGRPC = global.config.agent.enable_grpc || false;
+const EventEmitter = require('events').EventEmitter;
+
 log.info('QUIC transport node.')
 
 module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
@@ -51,6 +56,18 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
     const clusterName = global && global.config && global.config.cluster ?
         global.config.cluster.name :
         undefined;
+    // For GRPC notifications.
+    const streamingEmitter = new EventEmitter();
+    // For token validations.
+    const tokenValidators = new Map(); // Key is token, value is callback(bool)
+
+    streamingEmitter.on('validateResult', (result) => {
+      const validator = tokenValidators.get(result.tokenId);
+      if (validator) {
+        validator(result.ok);
+        tokenValidators.delete(result.tokenId);
+      }
+    });
 
     const getConferenceController = async (roomId) => {
       return await rpcChannel.makeRPC(clusterName, 'schedule', [
@@ -92,11 +109,29 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
       // that time, RTP configuration can be included in response.
       rpcClient.remoteCast(
           controller, 'onSessionProgress', [sessionId, direction, status]);
+      // Emit GRPC notifications
+      const notification = {
+        name: 'onSessionProgress',
+        data: {
+            id: sessionId,
+            direction,
+            status
+        }
+      };
+      streamingEmitter.emit('notification', notification);
     };
 
     const validateToken = async (token) => {
       if (!token || !token.roomId) {
         throw new TypeError('Invalid token.');
+      }
+      if (enableGRPC) {
+        streamingEmitter.emit('token', token);
+        return new Promise((resolve) => {
+          tokenValidators.set(token.tokenId, (ok) => {
+            ok ? resolve('ok') : resolve('error');
+          });
+        });
       }
       const portal = await getRpcPortal(token.roomId, token.participantId);
       return rpcChannel.makeRPC(
@@ -408,6 +443,11 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
     that.onFaultDetected = function (message) {
         router.onFaultDetected(message);
     };
+
+    if (enableGRPC) {
+      // Export GRPC interface.
+      return createGrpcInterface(that, streamingEmitter);
+    }
 
     return that;
 };
