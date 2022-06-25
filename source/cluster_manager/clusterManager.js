@@ -336,7 +336,8 @@ var runAsSlave = function(topicChannel, manager) {
             if (loss_count > 2) {
                 log.info('Lose heart-beat from master.');
                 clearInterval(interval);
-                topicChannel.unsubscribe(['clusterManager.slave.#', 'clusterManager.*.' + manager.id]);
+                //topicChannel.unsubscribe(['clusterManager.slave.#', 'clusterManager.*.' + manager.id]);
+                clearRouterKeys(topicChannel,manager)
                 runAsCandidate(topicChannel, manager, 0);
             }
         }, 30);
@@ -384,8 +385,10 @@ var runAsMaster = function(topicChannel, manager) {
                     log.error('!!Double master!! self:', manager.id, 'another:', message.data.id);
                     //FIXME: This occasion should be handled more elegantly.
                     if (message.data.life_time > life_time) {
-                        log.error('Another master is more senior than me, I quit.');
-                        process.kill(process.pid, 'SIGINT');
+                        //log.error('Another master is more senior than me, I quit.');
+                        //process.kill(process.pid, 'SIGINT');
+                        log.error('Another master is more senior than me, I runAsCandidate.');
+                        runAsCandidate(topicChannel, manager);
                     }
                 }
             };
@@ -416,7 +419,8 @@ var runAsCandidate = function(topicChannel, manager) {
         interval && clearInterval(interval);
         interval = undefined;
         timer = undefined;
-        topicChannel.unsubscribe(['clusterManager.candidate.#']);
+        //topicChannel.unsubscribe(['clusterManager.candidate.#']);
+        clearRouterKeys(topicChannel,manager)
         if (am_i_the_one) {
             runAsMaster(topicChannel, manager);
         } else {
@@ -447,7 +451,8 @@ var runAsCandidate = function(topicChannel, manager) {
             interval = undefined;
             timer && clearTimeout(timer);
             timer = undefined;
-            topicChannel.unsubscribe(['clusterManager.#']);
+            //topicChannel.unsubscribe(['clusterManager.#']);
+            clearRouterKeys(topicChannel,manager)
             runAsSlave(topicChannel, manager);
         }
     };
@@ -457,6 +462,15 @@ var runAsCandidate = function(topicChannel, manager) {
         selfRecommend();
     });
 };
+
+var clearRouterKeys = function(topicChannel,manager){
+    const CANDIDATE_ROUTER_KEY = ["clusterManager.candidate.#"];
+    const MASTER_ROUTER_KEY = ['clusterManager.master.#', 'clusterManager.*.' + manager.id];
+    const SLAVER_ROUTER_KEY = ['clusterManager.slave.#', 'clusterManager.*.' + manager.id];
+    topicChannel.unsubscribe(MASTER_ROUTER_KEY);
+    topicChannel.unsubscribe(SLAVER_ROUTER_KEY);
+    topicChannel.unsubscribe(CANDIDATE_ROUTER_KEY);
+}
 
 exports.run = function (topicChannel, clusterName, id, spec) {
     var manager = new ClusterManager(clusterName, id, spec);
