@@ -62,7 +62,7 @@ class RpcClient {
           const msg = JSON.parse(rawMessage.content.toString());
           log.debug('New message received', msg);
           if (this.callMap[msg.corrID] !== undefined) {
-            log.debug('Callback', msg.type, ' - ', msg.data);
+            if (msg.data === 'error' || msg.data === 'timeout') log.error('Callback', msg.data, ' - ', msg.err);
             clearTimeout(this.callMap[msg.corrID].timer);
             this.callMap[msg.corrID].fn[msg.type].call({}, msg.data, msg.err);
             if (this.callMap[msg.corrID] !== undefined) {
@@ -261,6 +261,7 @@ class TopicParticipant {
   subscribe(patterns, onMessage, onOk) {
     log.debug('subscribe:', this.queue, patterns);
     const channel = this.bus.channel;
+    const consumerTag = patterns.toString()
     if (this.queue && channel) {
       patterns.map((pattern) => {
         channel.bindQueue(this.queue, this.name, pattern)
@@ -271,14 +272,15 @@ class TopicParticipant {
         try {
           const msg = JSON.parse(rawMessage.content.toString());
           if (onMessage) {
-            log.debug('Topic on message:', msg);
-            onMessage(msg);
+            log.debug('Topic on message:', msg, rawMessage.fields.routingKey);
+            onMessage(msg, rawMessage.fields.routingKey);
           }
         } catch (error) {
-          log.error('Error processing topic message:', rawMessage, 'and error:', error);
+          log.error('Error processing topic message:', rawMessage, 'and error:', util.inspect(error));
         }
-      }, {noAck: true}).then((ok) => {
-        this.consumers.set(patterns.toString(), ok.consumerTag);
+      }, {noAck: true,consumerTag:consumerTag}).then((ok) => {
+        log.debug('set consumerTag:', consumerTag,"ok.consumerTag:",ok.consumerTag);
+        this.consumers.set(consumerTag, ok.consumerTag);
         this.subscriptions.set(ok.consumerTag, {patterns, cb: onMessage});
         onOk();
       });
@@ -290,16 +292,18 @@ class TopicParticipant {
   unsubscribe(patterns) {
     log.debug('unsubscribe:', patterns);
     const channel = this.bus.channel;
+    var consumerTag = patterns.toString()
     if (this.queue && channel) {
       patterns.map((pattern) => {
         channel.unbindQueue(this.queue, this.name, pattern)
           .catch((err) => log.error('Failed to unbind queue on topic'));
         log.debug('Ignore topic [' + pattern + ']');
       });
-      const consumerTag = this.consumers.get(patterns.toString());
+      var consumerTag = this.consumers.get(consumerTag);
       if (consumerTag) {
-        this.consumers.delete(patterns.toString());
+        this.consumers.delete(consumerTag);
         this.subscriptions.delete(consumerTag);
+        log.debug('del consumerTag:', consumerTag,"real.consumerTag:",consumerTag);
         channel.cancel(consumerTag)
           .catch((err) => log.error('Failed to cancel:', consumerTag));
       }
@@ -309,7 +313,7 @@ class TopicParticipant {
   }
 
   publish(topic, data) {
-    log.debug('Topic send:', topic, data, this.ready);
+    log.debug('Topic send:', topic, JSON.stringify(data), this.ready);
     const channel = this.bus.channel;
     if (this.ready && channel) {
       const content = JSON.stringify(data);
@@ -441,6 +445,9 @@ class AmqpCli {
     this.options.hostname = options.host;
     this.successCb = onOk;
     this.failureCb = onFailure;
+    if (this.connected) {
+      return onOk();
+    }
     if (fs.existsSync(cipher.astore)) {
       cipher.unlock(cipher.k, cipher.astore, (err, authConfig) => {
         if (!err) {
@@ -520,7 +527,7 @@ class AmqpCli {
         .catch(onFailure);
     } else {
       log.warn('RpcClient already setup');
-      onOk(this.rpcServer);
+      onOk(this.rpcClient);
     }
   }
 
