@@ -1998,7 +1998,34 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
             .then(function (locality) {
                 log.debug('Got new video mixer node:', locality);
                 terminals[vmixerId].locality = locality;
-                return initVideoMixer(vmixerId, view);
+                return new Promise((resolve,reject) => {
+                    if (!self.internalAddresses[locality.node]) {
+                        // Get internal address for new node
+                        self.makeRPC(self.rpcClient, locality.node, 'getInternalAddress', [],
+                            function okCb(addr) {
+                                log.debug('Get internal addr:', locality.node, addr);
+                                self.internalAddresses[locality.node] = {};
+                                self.internalAddresses[locality.node].ip = addr.ip;
+                                self.internalAddresses[locality.node].port = addr.port;
+                                locality.ip = addr.ip;
+                                locality.port = addr.port;
+                                resolve('ok')
+                            },
+                            function errCb(reason) {
+                                log.warn('Failed to get internal addr:', locality.node);
+                                reject('Failed to get internal addr')
+                            });
+                    } else {
+                        locality.ip = self.internalAddresses[locality.node].ip;
+                        locality.port = self.internalAddresses[locality.node].port;
+                        resolve('ok')
+                    }
+                }).catch(err => {
+                    log.error('makeRPC getInternalAddress err:',err)
+                })
+            })
+            .then(() => {
+                return self.initVideoMixer(vmixerId, view);
             })
             .then(function () {
                 return Promise.all(inputs.map(function (vst_id) {

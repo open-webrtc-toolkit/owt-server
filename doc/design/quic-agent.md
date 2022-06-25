@@ -96,7 +96,8 @@ OWT Conference Server is using a self-signed certificate during development phas
 #### Precondition
 - Make sure you are running the tool under Linux and,
 - Openssl tool is correctly setup in your system.
-- Download the tool under chromium/src/net/tools/quic/certs/ from chromium project ([v93.0.4575.1](https://chromium.googlesource.com/chromium/src/+archive/refs/tags/93.0.4575.1/net/tools/quic/certs.tar.gz.)) to local directory named `tool`. This contains three files: `ca.cnf`, `generate-certs.sh` and `leaf.cnf`.
+- Download the tool under chromium/src/net/tools/quic/certs/ from chromium project ([v98.0.4694.2](https://chromium.googlesource.com/chromium/src/+archive/refs/tags/93.0.4575.1/net/tools/quic/certs.tar.gz.)) to local directory named `tool`. This contains three files: `ca.cnf`, `generate-certs.sh` and `leaf.cnf`.
+- Because WebTransport custom certificate verification doesn't support RSA, please modify the script to use ECDSA. You may refer to [this script](../../source/agent/addons/quic/test/scripts/generate-certs.sh) for testing.
 
 #### Certificate Generation
 
