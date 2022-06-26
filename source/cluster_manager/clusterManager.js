@@ -314,6 +314,9 @@ var runAsSlave = function(topicChannel, manager) {
     var loss_count = 0,
         interval;
 
+    clearRouterKeys(topicChannel,manager);
+    var role = "slave";
+
     var requestRuntimeData = function () {
         topicChannel.publish('clusterManager.master', {type: 'requestRuntimeData', data: manager.id});
     };
@@ -331,12 +334,20 @@ var runAsSlave = function(topicChannel, manager) {
     };
 
     var superviseMaster = function () {
+        interval &&  clearInterval(interval);
+        interval = undefined;
+        if(role!="slave"){
+            log.warn('cycle in slave change role:',role);
+            return
+        }
         interval = setInterval(function () {
             loss_count++;
             if (loss_count > 2) {
                 log.info('Lose heart-beat from master.');
-                clearInterval(interval);
-                topicChannel.unsubscribe(['clusterManager.slave.#', 'clusterManager.*.' + manager.id]);
+                interval && clearInterval(interval);
+                interval = undefined;
+                role = "candidate";
+                //topicChannel.unsubscribe(['clusterManager.slave.#', 'clusterManager.*.' + manager.id]);
                 runAsCandidate(topicChannel, manager, 0);
             }
         }, 30);
@@ -350,6 +361,7 @@ var runAsSlave = function(topicChannel, manager) {
 };
 
 var runAsMaster = function(topicChannel, manager) {
+    clearRouterKeys(topicChannel);
     log.info('Run as master.');
     var life_time = 0;
     topicChannel.bus.asRpcServer(manager.name, manager.rpcAPI, function(rpcSvr) {
@@ -373,9 +385,13 @@ var runAsMaster = function(topicChannel, manager) {
            // }, 80);
 
             var onTopicMessage = function (message) {
-           //     has_got_response = true;
+                //     has_got_response = true;
                 if (message.type === 'requestRuntimeData') {
                     var from = message.data;
+                    if (from == manager.id){
+                        log.error('requestRuntimeData from:', from ,"is yourself");
+                        return;
+                    }
                     log.info('requestRuntimeData from:', from);
                     manager.getRuntimeData(function (data) {
                         topicChannel.publish('clusterManager.slave.' + from, {type: 'runtimeData', data: data});
@@ -412,19 +428,36 @@ var runAsCandidate = function(topicChannel, manager) {
         interval,
         has_got_response = false;
 
+    clearRouterKeys(topicChannel)
+    var role = "candidate"
+
     var electMaster = function () {
         interval && clearInterval(interval);
         interval = undefined;
         timer = undefined;
-        topicChannel.unsubscribe(['clusterManager.candidate.#']);
+        //topicChannel.unsubscribe(['clusterManager.candidate.#']);
+        if(role!="candidate"){
+            log.warn('cycle in candidate change role:',role);
+            return;
+        }
         if (am_i_the_one) {
+            role = "master"
+            log.info('i am only the one run as master');
             runAsMaster(topicChannel, manager);
         } else {
+            role = "slave"
+            log.info('i am not only the one run as slave');
             runAsSlave(topicChannel, manager);
         }
     };
 
     var selfRecommend = function () {
+        interval && clearInterval(interval);
+        interval = undefined;
+        if(role!="candidate"){
+            log.warn('cycle in candidate change role:',role);
+            return;
+        }
         interval = setInterval(function () {
             log.debug('Send self recommendation..');
             topicChannel.publish('clusterManager.candidate', {type: 'selfRecommend', data: manager.id});
@@ -442,12 +475,17 @@ var runAsCandidate = function(topicChannel, manager) {
                 am_i_the_one = false;
             }
         } else if (message.type === 'declareMaster') {
-            log.info('Someone else became master.');
             interval && clearInterval(interval);
             interval = undefined;
             timer && clearTimeout(timer);
             timer = undefined;
-            topicChannel.unsubscribe(['clusterManager.#']);
+            if(role!="candidate"){
+                log.warn('cycle in has select role:',role);
+                return;
+            }
+            role = "slave"
+            log.info('Someone else became master.');
+            //topicChannel.unsubscribe(['clusterManager.#']);
             runAsSlave(topicChannel, manager);
         }
     };
@@ -457,6 +495,11 @@ var runAsCandidate = function(topicChannel, manager) {
         selfRecommend();
     });
 };
+
+var clearRouterKeys = function(topicChannel){
+    const CANDIDATE_ROUTER_KEY = ["clusterManager.#"];
+    topicChannel.unsubscribe(CANDIDATE_ROUTER_KEY);
+}
 
 exports.run = function (topicChannel, clusterName, id, spec) {
     var manager = new ClusterManager(clusterName, id, spec);
