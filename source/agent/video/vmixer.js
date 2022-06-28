@@ -404,7 +404,7 @@ function VMixer(rpcClient, clusterIP, VideoMixer, router, streamingEmitter) {
             rpcClient.remoteCall(controller, 'onVideoLayoutChange', layoutChangeArgs);
             // Emit GRPC notifications
             const notification = {
-                name: 'onAudioActiveness',
+                name: 'onVideoLayoutChange',
                 data: {
                     owner: belongTo,
                     label: view,
