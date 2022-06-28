@@ -8,6 +8,7 @@ var Scheduler = require('./scheduler').Scheduler;
 
 // Logger
 var log = logger.getLogger('ClusterManager');
+var role = null;
 
 var ClusterManager = function (clusterName, selfId, spec) {
     var that = {name: clusterName,
@@ -315,7 +316,7 @@ var runAsSlave = function(topicChannel, manager) {
         interval;
 
     clearRouterKeys(topicChannel,manager);
-    var role = "slave";
+    role = "slave";
 
     var requestRuntimeData = function () {
         topicChannel.publish('clusterManager.master', {type: 'requestRuntimeData', data: manager.id});
@@ -334,11 +335,11 @@ var runAsSlave = function(topicChannel, manager) {
     };
 
     var superviseMaster = function () {
-        interval &&  clearInterval(interval);
+        interval && clearInterval(interval);
         interval = undefined;
-        if(role!="slave"){
-            log.warn('cycle in slave change role:',role);
-            return
+        if( role !== "slave"){
+            log.warn('cycle in slave change role:', role);
+            return;
         }
         interval = setInterval(function () {
             loss_count++;
@@ -428,24 +429,24 @@ var runAsCandidate = function(topicChannel, manager) {
         interval,
         has_got_response = false;
 
-    clearRouterKeys(topicChannel)
-    var role = "candidate"
+    clearRouterKeys(topicChannel);
+    role = "candidate";
 
     var electMaster = function () {
         interval && clearInterval(interval);
         interval = undefined;
         timer = undefined;
         //topicChannel.unsubscribe(['clusterManager.candidate.#']);
-        if(role!="candidate"){
-            log.warn('cycle in candidate change role:',role);
+        if(role !== "candidate"){
+            log.warn('cycle in candidate change role:', role);
             return;
         }
         if (am_i_the_one) {
-            role = "master"
+            role = "master";
             log.info('i am only the one run as master');
             runAsMaster(topicChannel, manager);
         } else {
-            role = "slave"
+            role = "slave";
             log.info('i am not only the one run as slave');
             runAsSlave(topicChannel, manager);
         }
@@ -454,8 +455,8 @@ var runAsCandidate = function(topicChannel, manager) {
     var selfRecommend = function () {
         interval && clearInterval(interval);
         interval = undefined;
-        if(role!="candidate"){
-            log.warn('cycle in candidate change role:',role);
+        if(role !== "candidate"){
+            log.warn('cycle in candidate change role:', role);
             return;
         }
         interval = setInterval(function () {
@@ -479,11 +480,11 @@ var runAsCandidate = function(topicChannel, manager) {
             interval = undefined;
             timer && clearTimeout(timer);
             timer = undefined;
-            if(role!="candidate"){
+            if(role !== "candidate"){
                 log.warn('cycle in has select role:',role);
                 return;
             }
-            role = "slave"
+            role = "slave";
             log.info('Someone else became master.');
             //topicChannel.unsubscribe(['clusterManager.#']);
             runAsSlave(topicChannel, manager);
