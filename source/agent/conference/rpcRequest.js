@@ -6,6 +6,8 @@
 
 const grpcTools = require('./grpcTools');
 const packOption = grpcTools.packOption;
+const unpackNotification = grpcTools.unpackNotification;
+
 const makeRPC = require('./makeRPC').makeRPC;
 
 const grpcPurposes = ['webrtc', 'audio', 'video', 'streaming', 'recording', 'analytics', 'quic'];
@@ -27,6 +29,9 @@ var RpcRequest = function(rpcChannel, listener) {
           .then(function(workerNode) {
             if (grpcPurposes.includes(purpose)) {
               // console.log('start client:', purpose, workerNode);
+              if (grpcNode[workerNode]) {
+                return {agent: workerAgent.id, node: workerNode};
+              }
               grpcNode[workerNode] = grpcTools.startClient(
                 purpose,
                 workerNode
@@ -37,7 +42,10 @@ var RpcRequest = function(rpcChannel, listener) {
               call.on('data', (notification) => {
                 if (listener) {
                   // Unpack notification.data
-                  listener.processNotification(notification);
+                  const data = unpackNotification(notification);
+                  if (data) {
+                    listener.processNotification(data);
+                  }
                 }
               });
               call.on('end', () => {});

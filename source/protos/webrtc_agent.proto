@@ -58,21 +58,21 @@ message TransportProgressData {
 // Progress "name": "onTrackUpdate".
 message TrackUpdateData {
   string transportId = 1;
-  enum UpdateType {
-    TRACK_ADDED = 0;
-    TRACK_REMOVED = 1;
-    TRACKS_COMPLETED = 2;
-  }
-  UpdateType type = 2;
+  // enum UpdateType {
+  //   TRACK_ADDED = 0;
+  //   TRACK_REMOVED = 1;
+  //   TRACKS_COMPLETED = 2;
+  // }
+  string type = 2;
   optional string trackId = 3; // TRACK_ADDED or TRACK_REMOVED.
   optional string operationId = 4; // TRACK_ADDED or TRACKS_COMPLETED.
   optional string mid = 5; // TRACK_ADDED.
   optional string rid = 6; // TRACK_ADDED.
-  enum TrackDirection {
-    IN = 0;
-    OUT = 1;
-  }
-  optional TrackDirection direction = 7; // TRACK_ADDED.
+  // enum TrackDirection {
+  //   IN = 0;
+  //   OUT = 1;
+  // }
+  optional string direction = 7; // TRACK_ADDED.
   optional AudioFormat audio = 8; // TRACK_ADDED.
   optional VideoFormat video = 9; // TRACK_ADDED.
 }

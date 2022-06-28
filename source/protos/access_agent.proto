@@ -97,7 +97,10 @@ message ProgressNotification {
 // Progress "name": "onMediaUpdate"
 message MediaUpdateData {
   string trackId = 1;
-  optional VideoParameter video = 2;
+  message VideoUpdate {
+    optional VideoParameter parameters = 1;
+  }
+  optional VideoUpdate video = 2;
 }
 
 // List publications or subscriptions

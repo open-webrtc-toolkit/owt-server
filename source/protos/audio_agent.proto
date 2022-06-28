@@ -51,7 +51,7 @@ message EnableVADRequest {
 
 // The progress message for audio sessions ("type": "audio").
 // Progress "name": "onAudioActiveness".
-message AudioActiveData {
+message AudioActivenessData {
   string activeAudioId = 1;
   message ActiveInfo {
     optional string label = 1;

@@ -5,6 +5,7 @@
 'use strict';
 
 const unpackOption = require('./grpcTools').unpackOption;
+const packNotification = require('./grpcTools').packNotification;
 
 // Create GRPC interface for streaming agent
 function createGrpcInterface(controller, streamingEmitter) {
@@ -75,11 +76,11 @@ function createGrpcInterface(controller, streamingEmitter) {
     },
     listenToNotifications: function (call, callback) {
       streamingEmitter.on('notification', (notification) => {
-        const progress = {
+        const progress = packNotification({
           type: 'video',
           name: notification.name,
           data: notification.data,
-        };
+        });
         call.write(progress);
       });
       streamingEmitter.on('close', () => {

@@ -96,7 +96,7 @@ message LayoutData {
 
 // The progress message for audio sessions ("type": "audio").
 // Progress "name": "onVideoLayoutChange".
-message LayoutChangeData {
+message VideoLayoutChangeData {
   string owner = 1;
   string label = 2;
   repeated RegionMap regions = 3;
