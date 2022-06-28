@@ -77,11 +77,10 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
         // Emit GRPC notifications
         if (updateInfo.type === 'track-added') {
             updateInfo[updateInfo.mediaType] = updateInfo.mediaFormat;
-            updateInfo.direction = updateInfo.direction.toUpperCase();
         }
-        updateInfo.type = updateInfo.type.toUpperCase().replace('-', '_');
+        updateInfo.transportId = transportId;
         const notification = {
-            name: 'onMediaUpdate',
+            name: 'onTrackUpdate',
             data: updateInfo,
         };
         streamingEmitter.emit('notification', notification);
@@ -111,6 +110,7 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
 
             // Bind media-update handler
             track.on('media-update', (jsonUpdate) => {
+                log.debug('notifyMediaUpdate:', publicTrackId, jsonUpdate);
                 notifyMediaUpdate(controller, publicTrackId, track.direction, JSON.parse(jsonUpdate));
             });
             // Notify controller

@@ -31,6 +31,12 @@ function init_controller() {
     log.info('Connecting to rabbitMQ server...');
     rpc.connect(global.config.rabbit, function () {
         rpc.asRpcClient(function(rpcClient) {
+            if (enableGRPC) {
+                rpcClient = {
+                    remoteCast: () => {log.info('fake remote cast')},
+                    remoteCall: () => {log.info('fake remote call')},
+                };
+            }
             controller = require('./' + purpose)(rpcClient, rpcID, parentID, clusterWorkerIP);
             var rpcAPI = (controller.rpcAPI || controller);
 

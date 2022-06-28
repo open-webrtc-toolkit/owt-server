@@ -256,7 +256,7 @@ var Conference = function (rpcClient, selfRpcId) {
   var selfCleanTimer = null;
 
   var rpcChannel = require('./rpcChannel')(rpcClient),
-      rpcReq = require('./rpcRequest')(rpcChannel);
+      rpcReq = require('./rpcRequest')(rpcChannel, that);
 
   var onSessionEstablished = (participantId, sessionId, direction, sessionInfo) => {
     log.debug('onSessionEstablished, participantId:', participantId, 'sessionId:', sessionId, 'direction:', direction, 'sessionInfo:', JSON.stringify(sessionInfo));
@@ -3268,8 +3268,92 @@ var Conference = function (rpcClient, selfRpcId) {
       msg.rpcId = selfRpcId;
       cascadingEventBridges.add(bridgeId);
       sendMsgTo('cascading', msg, {type: 'initialize', data: data});
-      
       callback('callback', result);
+  };
+
+  // Listener callback for GRPC
+  that.processNotification = (notification) => {
+    const name = notification.name;
+    const data = notification.data;
+    switch (name) {
+      case 'onMediaUpdate': {
+        that.onMediaUpdate(data.trackId, 'in', data);
+        break;
+      }
+      case 'onTrackUpdate': {
+        if (data.video) {
+          data.mediaType = 'video';
+          data.mediaFormat = data.video;
+        } else if (data.audio) {
+          data.mediaType = 'audio';
+          data.mediaFormat = data.audio;
+        }
+        that.onTrackUpdate(data.transportId, data);
+        break;
+      }
+      case 'onTransportProgress': {
+        that.onTransportProgress(data.transportId, data.status);
+        break;
+      }
+      case 'onAudioActiveness': {
+        data.target.view = data.target.label;
+        that.onAudioActiveness(room_id, data.activeAudioId, data.target, (n, code, r) => {
+          if (code === 'error') {
+            log.warn('onAudioActiveness error:', r);
+          }
+        });
+        break;
+      }
+      case 'onVideoLayoutChange': {
+        that.onVideoLayoutChange(data.owner, data.regions, data.label, (n, code, r) => {
+          if (code === 'error') {
+            log.warn('onVideoLayoutChange error:', r);
+          }
+        });
+        break;
+      }
+      case 'onSessionProgress': {
+        that.onSessionProgress(data.id, data.direction, data.status);
+        break;
+      }
+      case 'onSessionProgress': {
+        that.onSessionProgress(data.id, data.direction, data.status);
+        break;
+      }
+      case 'onStreamAdded': {
+        that.publish(data.owner, data.id, data.info, (n, code, r) => {
+          if (code === 'error') {
+            log.warn('onStreamAdded error:', r);
+          }
+        });
+        break;
+      }
+      case 'onStreamRemoved': {
+        that.unpublish(data.owner, data.id, (n, code, r) => {
+          if (code === 'error') {
+            log.warn('onStreamRemoved error:', r);
+          }
+        });
+        break;
+      }
+      default:
+        break;
+    }
+  };
+
+  // Listener callback for GRPC
+  that.processCallback = (token, callback) => {
+    that.getPortal(token.participantId, (n, data) => {
+      if (data === 'error') {
+        callback(false);
+      } else {
+        rpcReq.validateAndDeleteWebTransportToken(data, token).then(() => {
+          callback(true);
+        }).catch(() => {
+          callback(false);
+        });
+      }
+    });
   };
 
   return that;

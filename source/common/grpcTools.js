@@ -10,6 +10,17 @@ const protobuf = require('protobufjs');
 
 const config = require('./protoConfig.json');
 
+const notificationTypes = {
+  'onMediaUpdate': 'owt.MediaUpdateData',
+  'onTrackUpdate': 'owt.TrackUpdateData',
+  'onTransportProgress': 'owt.TransportProgressData',
+  'onAudioActiveness': 'owt.AudioActivenessData',
+  'onSessionProgress': 'owt.SessionProgressData',
+  'onVideoLayoutChange': 'owt.VideoLayoutChangeData',
+  'onStreamAdded': 'owt.StreamAddedData',
+  'onStreamRemoved': 'owt.StreamAddedData',
+};
+
 // Return promise with (server, port).
 function startServer(type, serviceObj) {
   if (!config[type]) {
@@ -106,9 +117,51 @@ function unpackOption(type, packedOption) {
   return RequestOption.toObject(optionMessage, {enums: String});
 }
 
+function packNotification(notification) {
+  const protoFile = config[notification.type].file;
+  const dataType = notificationTypes[notification.name];
+  const root = protobuf.loadSync(protoFile);
+  const DataType = root.lookupType(dataType);
+  if (!DataType) {
+    console.log('No notification data type', dataType, protoFile);
+    return null;
+  }
+  const Any = root.lookupType("protobuf.Any");
+  const dataMessage = DataType.create(notification.data);
+  // Pack to Any
+  const anyMessage = Any.create({
+    type_url: dataType,
+    value: DataType.encode(dataMessage).finish()
+  });
+  return {
+    type: notification.type,
+    name: notification.name,
+    data: anyMessage
+  };
+}
+
+function unpackNotification(notification) {
+  const protoFile = config[notification.type].file;
+  const dataType = notification.data.type_url;
+  const root = protobuf.loadSync(protoFile);
+  const DataType = root.lookupType(dataType);
+  if (!DataType) {
+    console.log('No notification data type', dataType, protoFile);
+    return null;
+  }
+  const dataMessage = DataType.decode(notification.data.value);
+  return {
+    type: notification.type,
+    name: notification.name,
+    data: DataType.toObject(dataMessage, {enums: String})
+  };
+}
+
 module.exports = {
   startServer,
   startClient,
   packOption,
   unpackOption,
+  packNotification,
+  unpackNotification,
 };
