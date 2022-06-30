@@ -1,0 +1,24 @@
+
+//
+syntax = "proto3";
+
+import "format.proto";
+
+package owt;
+
+// The node manager service definition.
+service NodeManager {
+  // Init
+  rpc GetNode(TaskRequest) returns (SimpleReply) {}
+  rpc RecycleNode(TaskRequest) returns (SimpleReply) {}
+  rpc QueryNode(TaskRequest) returns (SimpleReply) {}
+}
+
+message TaskRequest {
+  message TaskInfo {
+    string task = 1;
+    string room = 2;
+  }
+  TaskInfo info = 1;
+  optional string id = 2;
+}

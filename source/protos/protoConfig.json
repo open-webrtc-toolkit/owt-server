@@ -34,6 +34,11 @@
     "package": "owt",
     "service": "QuicAgent"
   },
+  "nodeManager" : {
+    "file": "node_manager.proto",
+    "package": "owt",
+    "service": "NodeManager"
+  },
   "internal": {
     "file": "internal.proto"
   }
