@@ -669,3 +669,4 @@ exports.manager = function (topicChannel, clusterName, id, spec) {
     return that;
 };
 
+exports.ClusterManager = ClusterManager;

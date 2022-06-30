@@ -12,11 +12,11 @@ const makeRPC = require('./makeRPC').makeRPC;
 
 const grpcPurposes = ['webrtc', 'audio', 'video', 'streaming', 'recording', 'analytics', 'quic'];
 
-var RpcRequest = function(rpcChannel, listener) {
-  var that = {};
-  var grpcNode = {};
-  var nodeType = {}; // NodeId => Type
-  var listener = listener;
+const RpcRequest = function(rpcChannel, listener) {
+  const that = {};
+  const grpcAgents = {}; // workerAgent => grpcClient
+  const grpcNode = {}; // workerNode => grpcClient
+  const nodeType = {}; // NodeId => Type
 
   that.getRoomConfig = function(configServer, sessionId) {
     return rpcChannel.makeRPC(configServer, 'getRoomConfig', sessionId);
@@ -25,62 +25,86 @@ var RpcRequest = function(rpcChannel, listener) {
   that.getWorkerNode = function(clusterManager, purpose, forWhom, preference) {
     return rpcChannel.makeRPC(clusterManager, 'schedule', [purpose, forWhom.task, preference, 30 * 1000])
       .then(function(workerAgent) {
-        return rpcChannel.makeRPC(workerAgent.id, 'getNode', [forWhom])
-          .then(function(workerNode) {
-            if (grpcPurposes.includes(purpose)) {
-              // console.log('start client:', purpose, workerNode);
-              if (grpcNode[workerNode]) {
-                return {agent: workerAgent.id, node: workerNode};
+        if (grpcPurposes.includes(purpose)) {
+          if (!grpcAgents[workerAgent.id]) {
+            grpcAgents[workerAgent.id] = grpcTools.startClient(
+              'nodeManager',
+              workerAgent.id
+            );
+          }
+          return new Promise((resolve, reject) => {
+            grpcAgents[workerAgent.id].getNode({info: forWhom}, (err, result) => {
+              if (!err) {
+                resolve(result.message);
+              } else {
+                reject(err);
               }
-              grpcNode[workerNode] = grpcTools.startClient(
-                purpose,
-                workerNode
-              );
-              nodeType[workerNode] = purpose;
-              // Register listener
-              const call = grpcNode[workerNode].listenToNotifications({id: ''});
-              call.on('data', (notification) => {
-                if (listener) {
-                  // Unpack notification.data
-                  const data = unpackNotification(notification);
-                  if (data) {
-                    listener.processNotification(data);
-                  }
+            });
+          }).then((workerNode) => {
+            // console.log('start client:', purpose, workerNode);
+            if (grpcNode[workerNode]) {
+              // Has client already
+              return {agent: workerAgent.id, node: workerNode};
+            }
+            grpcNode[workerNode] = grpcTools.startClient(
+              purpose,
+              workerNode
+            );
+            nodeType[workerNode] = purpose;
+            // Register listener
+            const call = grpcNode[workerNode].listenToNotifications({id: ''});
+            call.on('data', (notification) => {
+              if (listener) {
+                // Unpack notification.data
+                const data = unpackNotification(notification);
+                if (data) {
+                  listener.processNotification(data);
                 }
+              }
+            });
+            call.on('end', () => {});
+            if (purpose === 'quic') {
+              // Register validate callback
+              const call = grpcNode[workerNode].validateTokenCallback();
+              call.on('data', (token) => {
+                // Validate token
+                listener.processCallback(token, (result) => {
+                  call.write({tokenId: token.tokenId, ok: result});
+                });
               });
               call.on('end', () => {});
-              if (purpose === 'quic') {
-                // Register validate callback
-                const call = grpcNode[workerNode].validateTokenCallback();
-                call.on('data', (token) => {
-                  // Validate token
-                  listener.processCallback(token, (result) => {
-                    call.write({tokenId: token.tokenId, ok: result});
-                  });
-                });
-                call.on('end', () => {});
-              }
             }
+            return {agent: workerAgent.id, node: workerNode};
+          });
+        }
+
+        return rpcChannel.makeRPC(workerAgent.id, 'getNode', [forWhom])
+          .then(function(workerNode) {
             return {agent: workerAgent.id, node: workerNode};
           });
       });
   };
 
   that.recycleWorkerNode = function(workerAgent, workerNode, forWhom) {
-    return rpcChannel.makeRPC(workerAgent, 'recycleNode', [workerNode, forWhom])
-      . catch((result) => {
-        if (grpcNode[workerNode]) {
-          delete grpcNode[workerAgent];
-          delete nodeType[workerAgent];
-        }
-        return 'ok';
-      }, (err) => {
-        if (grpcNode[workerNode]) {
-          delete grpcNode[workerAgent];
-          delete nodeType[workerAgent];
-        }
-        return 'ok';
+    if (grpcAgents[workerAgent]) {
+      const req = {id: workerNode, info: forWhom};
+      return new Promise((resolve, reject) => {
+        grpcAgents[workerAgent].recycleNode(req, (err, result) => {
+          if (err) {
+            // console.log('recycle node:', err);
+            reject(err);
+          }
+          if (grpcNode[workerNode]) {
+            grpcNode[workerNode].close();
+            delete grpcNode[workerNode];
+            delete nodeType[workerNode];
+          }
+          resolve('ok');
+        });
       });
+    } else {
+      return rpcChannel.makeRPC(workerAgent, 'recycleNode', [workerNode, forWhom]);
+    }
   };
 
   that.initiate = function(accessNode, sessionId, sessionType, direction, Options) {

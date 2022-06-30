@@ -28,15 +28,37 @@ function init_controller() {
 
     global.config = nodeConfig;
 
+    if (enableGRPC) {
+        log.info('Starting grpc server');
+        const checkAlivePeriod = 1000;
+        const mockClient = {
+            remoteCast: (to, method, args) => {
+                log.debug('Mock remote cast:', to, method, args);
+            },
+            remoteCall: (to, method, args) => {
+                log.debug('Mock remote call:', to, method, args)
+            },
+        };
+        controller = require('./' + purpose)(mockClient, rpcID, parentID, clusterWorkerIP);
+        const grpcTools = require('./grpcTools');
+        grpcTools.startServer(purpose, controller.grpcInterface)
+            .then((port) => {
+                // Send RPC server address
+                const rpcAddress = clusterWorkerIP + ':' + port;
+                process.send('READY:' + rpcAddress);
+                setInterval(() => {
+                    process.send('IMOK');
+                }, checkAlivePeriod);
+            }).catch((err) => {
+                log.error('Start grpc server failed:', e);
+                process.send('ERROR');
+            });
+        return;
+    }
+
     log.info('Connecting to rabbitMQ server...');
     rpc.connect(global.config.rabbit, function () {
         rpc.asRpcClient(function(rpcClient) {
-            if (enableGRPC) {
-                rpcClient = {
-                    remoteCast: () => {log.info('fake remote cast')},
-                    remoteCall: () => {log.info('fake remote call')},
-                };
-            }
             controller = require('./' + purpose)(rpcClient, rpcID, parentID, clusterWorkerIP);
             var rpcAPI = (controller.rpcAPI || controller);
 
@@ -50,20 +72,7 @@ function init_controller() {
                     }
                 }, function (monitor) {
                     log.info(rpcID + ' as monitor ready');
-                    // Send RPC server address
-                    if (enableGRPC) {
-                        log.info('Start grpc server');
-                        var grpcTools = require('./grpcTools');
-                        grpcTools.startServer(purpose, controller.grpcInterface)
-                            .then((port) => {
-                                const rpcAddress = clusterWorkerIP + ':' + port;
-                                process.send('READY:' + rpcAddress);
-                            }).catch((err) => {
-                                log.warn('Start grpc server failed:', e);
-                            });
-                    } else {
-                        process.send('READY');
-                    }
+                    process.send('READY');
                     setInterval(() => {
                       process.send('IMOK');
                     }, 1000);

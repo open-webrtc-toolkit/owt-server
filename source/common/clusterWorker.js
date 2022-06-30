@@ -34,7 +34,8 @@ module.exports = function (spec) {
         tasks = [];
 
     var rpcClient = spec.rpcClient,
-        id = spec.purpose + '-' + genID() + '@' + (spec.info.hostname || spec.info.ip),
+        genId = spec.purpose + '-' + genID() + '@' + (spec.info.hostname || spec.info.ip),
+        id = spec.rpcId || genId,
         purpose = spec.purpose,
         info = spec.info,
         cluster_name = spec.clusterName || 'owt-cluster',
@@ -245,6 +246,8 @@ module.exports = function (spec) {
     that.rejectTask = function (task) {
         doRejectTask(task);
     };
+
+    that.id = genId;
 
     joinCluster(join_retry);
     return that;
