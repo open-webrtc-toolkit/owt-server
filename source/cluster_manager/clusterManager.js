@@ -464,3 +464,4 @@ exports.run = function (topicChannel, clusterName, id, spec) {
     runAsCandidate(topicChannel, manager);
 };
 
+exports.ClusterManager = ClusterManager;
