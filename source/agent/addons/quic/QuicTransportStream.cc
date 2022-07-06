@@ -467,7 +467,12 @@ void QuicTransportStream::onFeedback(const owt_base::FeedbackMsg&)
 
 void QuicTransportStream::onFrame(const owt_base::Frame& frame)
 {
-    m_stream->Write(frame.payload, frame.length);
+    size_t wrote = m_stream->Write(frame.payload, frame.length);
+    if (wrote != frame.length) {
+        // TODO: Implement back pressure.
+        // https://github.com/open-webrtc-toolkit/owt-server/issues/1220
+        ELOG_WARN("Failed to write a frame. This frame is dropped.");
+    }
 }
 
 void QuicTransportStream::onVideoSourceChanged()
