@@ -60,7 +60,7 @@ const {
    *    }
    *
    *    object(VideoFormat):: {
-   *      codec: 'h264' | 'vp8' | 'h265' | 'vp9' | 'av1x',
+   *      codec: 'h264' | 'vp8' | 'h265' | 'vp9' | 'av1',
    *      profile: 'constrained-baseline' | 'baseline' | 'main' | 'high' | undefined
    *    }
    *
