@@ -22,8 +22,8 @@ module.exports.detected = (requireHWAcc) => {
   var useHW = false;
   // TODO: support av1x.
   var codecs = {
-    decode: ['vp8', 'vp9', 'h264', 'h265','av1'],
-    encode: ['vp8', 'vp9','av1']
+    decode: ['vp8', 'vp9', 'h264', 'h265', 'av1'],
+    encode: ['vp8', 'vp9', 'av1']
   };
   
   if (requireHWAcc && isHWAccAppliable()) {
