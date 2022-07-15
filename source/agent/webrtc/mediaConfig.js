@@ -233,7 +233,7 @@ const telephoneevent = {
 const mediaConfig = {
   default: {
     rtpMappings: {
-      vp8, vp9, h264, h265,av1, red, rtx,
+      vp8, vp9, h264, h265, av1, red, rtx,
       opus, pcmu, pcma, isac16, isac32, g722, ilbc,
       ulpfec, telephoneevent
     },
