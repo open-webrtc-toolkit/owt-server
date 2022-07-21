@@ -412,7 +412,8 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                 'default': 'unknown',
             };
             var purpose = terminalPurpose[terminal_type] || terminalPurpose['default'];
-            mediaPreference.origin = origin;
+            mediaPreference.region = origin.region;
+            mediaPreference.isp = origin.isp;
             var nodeLocality = (preAssignedNode ? Promise.resolve(preAssignedNode)
                                            : rpcReq.getWorkerNode(cluster, purpose, {room: room_id, task: terminal_id}, mediaPreference));
 
@@ -1994,7 +1995,8 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
             }
         });
         terminals[vmixerId].published = [];
-        mediaPreference.origin = origin;
+        mediaPreference.region = origin.region;
+        mediaPreference.isp = origin.isp;
         return rpcReq.getWorkerNode(cluster, 'video', {room: room_id, task: vmixerId}, mediaPreference)
             .then(function (locality) {
                 log.debug('Got new video mixer node:', locality);
@@ -2216,7 +2218,8 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
         });
         terminals[amixerId].published = [];
 
-        mediaPreference.origin = origin;
+        mediaPreference.region = origin.region;
+        mediaPreference.isp = origin.isp;
         return rpcReq.getWorkerNode(cluster, 'audio', {room: room_id, task: amixerId}, mediaPreference)
             .then(function (locality) {
                 log.debug('Got new audio mixer node:', locality);

@@ -138,7 +138,7 @@ var ClusterManager = function (clusterName, selfId, spec) {
                        port: worker_info.info.port || 0,
                        keepAlive: workers[worker].alive_count});
             } else {
-                on_ok(info);
+                on_ok(worker_info);
             }
         } else {
             on_error('Worker [' + worker + '] does NOT exist.');
@@ -303,6 +303,80 @@ var ClusterManager = function (clusterName, selfId, spec) {
                 callback('callback', worker);
             }, function (error_reason) {
                 callback('callback', 'error', error_reason);
+            });
+        }
+    };
+
+    // API for grpc
+    that.grpcInterface = {
+        join: function (call, callback) {
+            const req = call.request;
+            const result = workerJoin(req.purpose, req.id, req.info);
+            callback(null, {state: result});
+        },
+        quit: function(call, callback) {
+            workerQuit(call.request.id);
+            callback(null, {});
+        },
+        keepAlive: function(call, callback) {
+            keepAlive(call.request.id, function (result) {
+                callback(null, {message: result});
+            });
+        },
+        reportState: function (call, callback) {
+            reportState(call.request.id, call.request.state);
+            callback(null, {});
+        },
+        reportLoad: function (call, callback) {
+            reportLoad(call.request.id, call.request.load);
+            callback(null, {});
+        },
+        pickUpTasks: function (call, callback) {
+            pickUpTasks(call.request.id, call.request.tasks);
+            callback(null, {});
+        },
+        layDownTask: function (call, callback) {
+            layDownTask(call.request.id, call.request.task);
+            callback(null, {});
+        },
+        schedule: function (call, callback) {
+            const purpose = call.request.purpose;
+            const task = call.request.task;
+            const preference = call.request.preference;
+            const reserveTime = call.request.reserveTime;
+            schedule(purpose, task, preference, reserveTime, function(worker, info) {
+                callback(null, {id: worker, info: info});
+            }, function (reason) {
+                callback(new Error(reason), null);
+            });
+        },
+        unschedule: function (call, callback) {
+            unschedule(call.request.id, call.request.task);
+            callback(null, {});
+        },
+        getWorkerAttr: function (call, callback) {
+            getWorkerAttr(call.request.id, function (attr) {
+                callback(null, attr);
+            }, function (reason) {
+                callback(new Error(reason), null);
+            });
+        },
+        getWorkers: function (call, callback) {
+            getWorkers(call.request.purpose, function (workerList) {
+                callback(null, {list: workerList});
+            });
+        },
+        getTasks: function (call, callback) {
+            getTasks(call.request.id, function (taskList) {
+                callback(null, {list: taskList});
+            });
+        },
+        getScheduled: function (call, callback) {
+            const req = call.request;
+            getScheduled(req.purpose, req.task, function (worker) {
+                callback(null, {message: worker});
+            }, function (reason) {
+                callback(new Error(reason), null);
             });
         }
     };

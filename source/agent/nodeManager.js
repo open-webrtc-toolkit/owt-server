@@ -321,6 +321,11 @@ module.exports = function (spec, spawnOptions, onNodeAbnormallyQuit, onTaskAdded
     return new Promise((resolve, reject) => {
       for (var eid in tasks) {
         if (tasks[eid][task] !== undefined) {
+          // Returns server address if grpc
+          if (enableGRPC) {
+            resolve(node_addresses[eid]);
+            return;
+          }
           resolve(eid);
         }
       }

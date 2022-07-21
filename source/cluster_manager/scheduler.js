@@ -11,7 +11,7 @@ var Strategy = require('./strategy');
 var log = logger.getLogger('Scheduler');
 
 var isWorkerAvailable = function (worker) {
-    return worker.load < worker.info.max_load && (worker.state === undefined || worker.state === 2);
+    return worker.load < worker.info.maxLoad && (worker.state === undefined || worker.state === 2);
 };
 
 
@@ -99,7 +99,7 @@ exports.Scheduler = function(spec) {
             log.warn('Double adding worker:', worker);
         }
         workers[worker] = {state: undefined,
-                           load: info.max_load || 1.0,
+                           load: info.maxLoad || 1.0,
                            info: info,
                            tasks: []};
     };
