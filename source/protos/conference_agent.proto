@@ -1,0 +1,427 @@
+
+//
+syntax = "proto3";
+
+import "format.proto";
+
+package owt;
+
+// The conference service definition.
+service ConferenceAgent {
+  // Join the conference
+  rpc Join(JoinRequest) returns (JoinReply) {}
+  // Leave the conference
+  rpc Leave(IdRequest) returns (SimpleReply) {}
+  // Send text
+  rpc Text(TextRequest) returns (SimpleReply) {}
+  // Publish/Subscribe
+  rpc Publish(RoomPublish) returns (SimpleReply) {}
+  rpc Unpublish(EndRequest) returns (SimpleReply) {}
+  rpc Subscribe(RoomSubscribe) returns (SimpleReply) {}
+  rpc Unsubscribe(EndRequest) returns (SimpleReply) {}
+  rpc StreamControl(ControlRequest) returns (SimpleReply) {}
+  rpc SubscriptionControl(ControlRequest) returns (SimpleReply) {}
+
+  // RPC from OAM component.
+  rpc GetParticipants(Empty) returns (ParticipantsReply) {}
+  rpc ControlParticipant(UpdateParticipantRequest) returns (Participant) {}
+  rpc DropParticipant(IdRequest) returns (Participant) {}
+  rpc GetStreams(Empty) returns (StreamsReply) {}
+  rpc GetStreamInfo(IdRequest) returns (Stream) {}
+  rpc ControlStream(ManageControlRequest) returns (Stream) {}
+  rpc DeleteStream(IdRequest) returns (SimpleReply) {}
+  rpc AddStreamingIn(StreamingInRequest) returns (Stream) {}
+  rpc GetSubscriptions(TypeRequest) returns (SubscriptionsReply) {}
+  rpc GetSubscriptionInfo(IdRequest) returns (Subscription) {}
+  rpc AddServerSideSubscription(ServerSubRequest) returns (Subscription) {}
+  rpc ControlSubscription(ManageControlRequest) returns (Subscription) {}
+  rpc DeleteSubscription(TypeRequest) returns (JoinReply) {}
+
+  // SIP calls
+  // rpc GetSipCalls(Empty) returns (SipCallsReply) {}
+  // rpc GetSipCall(IdRequest) returns (SipCall) {}
+  // rpc makeSipCall(Request) returns (JoinReply) {}
+  // rpc controlSipCall(Request) returns (JoinReply) {}
+  // rpc endSipCall(Request) returns (JoinReply) {}
+  // rpc drawText(Request) returns (JoinReply) {}
+  // rpc destroy(Request) returns (JoinReply) {}
+
+  // Signaling
+  rpc OnSessionSignaling(SignalingRequest) returns (SimpleReply) {}
+
+  // Listen to notifications (streaming RPC)
+  rpc ListenToNotifications (IdRequest) returns (stream SignalingNotification) {}
+
+  // Process signaling message
+  // rpc StartSignaling (stream SignalingRequest) returns (stream SignalingNotification) {}
+}
+
+// User permission
+message Permission {
+  message MediaOption {
+    bool audio = 1;
+    bool video = 2;
+  }
+  MediaOption publish = 1;
+  MediaOption subscribe = 2;
+}
+
+// Origin of users, streams
+message Origin {
+  string region = 1;
+  string isp = 2;
+}
+
+// Participant Info
+message Participant {
+  string id = 1;
+  string user = 2;
+  string role = 3;
+  optional string portal = 4;
+  optional Origin origin = 5;
+  optional Permission permission = 6;
+}
+
+// Request to join the room
+message JoinRequest {
+  string roomId = 1;
+  Participant participant = 2;
+}
+
+// Track of stream
+message Track {
+  optional string id = 1;
+  string type = 2;
+  optional string source = 3;
+  optional string direction = 4;
+  optional GenericFormat format = 5;
+  optional VideoParameter parameters = 6;
+  message TrackOptional {
+    repeated GenericFormat format = 1;
+    message ParameterOptional {
+      repeated Resolution resolution = 1;
+      repeated int32 framerate = 2;
+      repeated string bitrate = 3;
+      repeated int32 keyFrameInterval = 4;
+    }
+    optional ParameterOptional parameters = 2;
+  }
+  optional TrackOptional optional = 7;
+  optional string status = 8;
+  optional string mid = 9;
+  optional string rid = 10;
+  optional string from = 11;
+}
+
+// Stream Info
+message Stream {
+  string id = 1;
+  string type = 2;
+  message StreamMedia {
+    repeated Track tracks = 1;
+  }
+  StreamMedia media = 3;
+  bool data = 4;
+  message StreamInfo {
+    // Forward
+    optional string owner = 1;
+    optional string type = 2;
+    repeated string inViews = 3;
+    optional string attributes = 4;
+    optional string activeInput = 5;
+    // Mixed
+    optional string label = 6;
+    repeated RegionMap layout = 7;
+    // Active audio
+    optional string volume = 8;
+  }
+  StreamInfo info = 5;
+}
+
+message JoinReply {
+  Permission permission = 1;
+  message RoomInfo {
+    string id = 1;
+    repeated string views = 2;
+    repeated Participant participants = 3;
+    repeated Stream streams = 4;
+  }
+  RoomInfo room = 2;
+}
+
+// Text request
+message TextRequest {
+  string from = 1;
+  string to = 2;
+  string message = 3;
+}
+
+// Locality info
+message Locality {
+  optional string agent = 1;
+  optional string node = 2;
+}
+
+// Transport info
+message Transport {
+  string type = 1;
+  string id = 2;
+}
+
+// Publish request for conference
+message RoomPublish {
+  string participantId = 1;
+  string streamId = 2;
+  message PublishInfo {
+    string type = 1;
+    // Media option for publish
+    message MediaPubOption {
+      optional AudioFormat audio = 1;
+      optional VideoFormatDetail video = 2;
+      repeated Track tracks = 3; 
+    }
+    optional MediaPubOption media = 2;
+    optional Transport transport = 3;
+    optional string transportId = 4;
+    optional bool data = 5;
+    optional string attributes = 6;
+    Locality locality = 7;
+  }
+  PublishInfo pubInfo = 3;
+}
+
+// Media option for subscribe
+message MediaSubOption {
+  message AudioOption {
+    string from = 1;
+    AudioFormat format = 2;
+    optional string status = 3;
+  }
+  AudioOption audio = 1;
+  message VideoOption {
+    string from = 1;
+    VideoFormat format = 2;
+    VideoParameter parameters = 3;
+    optional string status = 4;
+  }
+  VideoOption video = 2;
+  repeated Track tracks = 3; 
+}
+
+// Subscribe request for conference
+message RoomSubscribe {
+  string participantId = 1;
+  string subscriptionId = 2;
+  message SubscribeInfo {
+    string type = 1;
+    optional MediaSubOption media = 2;
+    optional Transport transport = 3;
+    optional string transportId = 4;
+    optional bool data = 5;
+    optional string attributes = 6;
+  }
+  SubscribeInfo subInfo = 3;
+}
+
+// Message for unpublish/unsubscribe request
+message EndRequest {
+  string participantId = 1;
+  string sessionId = 2;
+}
+
+// Message for stream/subscription control
+message ControlRequest {
+  string participantId = 1;
+  string sessionId = 2;
+  message ControlCommand {
+    string operation = 1;
+    message CommandData {
+      // Get/set region, mix, unmix
+      optional string region = 1;
+      optional string view = 2;
+      // Mute
+      optional string track = 3;
+      // Subscription update
+      optional MediaSubOption update = 4;
+    }
+    CommandData data = 2;
+  }
+  ControlCommand command = 3;
+}
+
+// Signaling request, same as that in webrtc_agent.proto
+message SignalingMessage {
+  string type = 1;
+  optional string sdp = 2; // Field for type "offer", "answer".
+  message CandidateObject {
+    string sdpMid = 1;
+    string sdpMLineIndex = 2;
+    string candidate = 3;
+  }
+  optional CandidateObject candidate = 3; // Field for type "candidate"
+  // Filed for type "removed-candidates"
+  repeated CandidateObject candidates = 4;
+  optional string reason = 5; // Field for type "failed"
+}
+
+message SignalingRequest {
+  string id = 1;
+  SignalingMessage signaling = 2;
+}
+
+// Signaling notification
+message SignalingNotification {
+  string id = 1;
+  string name = 2;
+  message NotificationData {
+    optional string id = 1;
+    optional string status = 2;
+    optional SignalingMessage signaling = 3;
+    optional string data = 4;
+    optional StreamInfo stream = 5;
+  }
+  string data = 3;
+  optional string from = 4;
+  optional string room = 5;
+}
+
+// For GetParticipants
+message ParticipantsReply {
+  repeated Participant result = 1;
+}
+
+// For ControlParticipant
+message UpdateParticipantRequest {
+  string participantId = 1;
+  message PermissionUpdate {
+    string op = 1;
+    string path = 2;
+    message UpdateValue {
+      optional bool audio = 1;
+      optional bool video = 2;
+      optional bool data = 3;
+    }
+    UpdateValue value = 3;
+  }
+  repeated PermissionUpdate authorities = 2;
+}
+
+// For GetStreams
+message StreamsReply {
+  repeated Stream result = 1;
+}
+
+// Message for OAM stream/subscription control
+message ManageControlRequest {
+  string id = 1;
+  repeated string commands = 2;
+}
+
+// Message for AddStreamingInRequest
+message StreamingInRequest {
+  string roomId = 1;
+  message StreamingInfo {
+    string type = 1;
+    // Media option for publish
+    message MediaPubOption {
+      optional AudioFormat audio = 1;
+      optional VideoFormatDetail video = 2;
+    }
+    optional MediaPubOption media = 2;
+    // Streaming connection option
+    message StreamingConnection {
+      string url = 1;
+      optional string transportProtocol = 2;
+      optional int32 bufferSize = 3;
+    }
+    StreamingConnection connection = 3;
+  }
+  StreamingInfo pubInfo = 2;
+}
+
+message TypeRequest {
+  string type = 1;
+  optional string id = 2;
+}
+
+// Subscription info
+message Subscription {
+  string id = 1;
+  message SubMedia {
+    message SubAudio {
+      AudioFormat format = 1;
+      string from = 3;
+      optional string status = 4;
+    }
+    message SubVideo {
+      VideoFormat format = 1;
+      optional VideoParameter parameters = 2;
+      string from = 3;
+      optional string status = 4;
+    }
+    SubAudio audio = 1;
+    SubVideo video = 2;
+  }
+  SubMedia media = 2;
+  optional string url = 3;
+  optional string storage = 4;
+  optional string analytics = 5;
+}
+
+// Subscription list
+message SubscriptionsReply {
+  repeated Subscription result = 1;
+}
+
+// Message for AddServerSideSubscription
+message ServerSubRequest {
+  string roomId = 1;
+  message SubscribeInfo {
+    string type = 1;
+    // Media option for subscribe
+    message MediaSubOption {
+      message AudioSubOption {
+        string from = 1;
+        AudioFormat format = 2;
+      }
+      optional AudioSubOption audio = 1;
+      message VideoSubOption {
+        string from = 1;
+        VideoFormat format = 2;
+        VideoParameter parameters = 3;
+      }
+      optional VideoSubOption video = 2;
+    }
+    optional MediaPubOption media = 2;
+    // Subscribe connection option
+    message SubscribeConnection {
+      optional string protocol = 1;
+      optional string url = 2;
+      message StreamingParameter {
+        string method = 1;
+        optional int32 hlsTime = 2;
+        optional int32 hlsListSize = 3;
+        optional int32 dashSegDuration = 4;
+        optional int32 dashWindowSize = 5;
+      }
+      optional StreamingParameter parameters = 3;
+      optional string container = 4;
+    }
+    SubscribeConnection connection = 3;
+  }
+  SubscribeInfo subInfo = 2;
+}
+
+// SipCall info
+message SipCall {
+  string id = 1;
+  string peer = 2;
+  string type = 3;
+  optional string input = 4;
+  optional Subscription output = 5;
+}
+
+// SipCall list
+message SipCallsReply {
+  repeated SipCall result = 1;
+}

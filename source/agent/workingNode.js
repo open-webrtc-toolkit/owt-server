@@ -45,12 +45,13 @@ function init_controller() {
             .then((port) => {
                 // Send RPC server address
                 const rpcAddress = clusterWorkerIP + ':' + port;
+                mockClient.rpcAddress = rpcAddress;
                 process.send('READY:' + rpcAddress);
                 setInterval(() => {
                     process.send('IMOK');
                 }, checkAlivePeriod);
             }).catch((err) => {
-                log.error('Start grpc server failed:', e);
+                log.error('Start grpc server failed:', err);
                 process.send('ERROR');
             });
         return;
