@@ -59,34 +59,10 @@ message InputActiveRequest {
   bool active = 2;
 }
 
-// Request with an "id" field
-message IdRequest {
-  string id = 1;
-}
-
 // Request for SetRegion
 message RegionRequest {
   string streamId = 1;
   string regionId = 2;
-}
-
-// Region in layout
-message Region {
-  string id = 1;
-  string shape = 2;
-  message Area {
-    Rational left = 1;
-    Rational top = 2;
-    Rational width = 3;
-    Rational height = 4;
-  }
-  Area area = 3;
-}
-
-// Map region with stream input
-message RegionMap {
-  optional string stream = 1;
-  Region region = 2;
 }
 
 // Request/Reply for SetLayout
@@ -125,10 +101,6 @@ message RequestOption {
       int32 keyFrameInterval = 3;
     }
     message LayoutConfig {
-      message Rational {
-        int32 numerator = 1;
-        int32 denominator = 2;
-      }
       message RegionSet {
         repeated Region region = 1;
       }
