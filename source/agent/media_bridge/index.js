@@ -337,6 +337,7 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
 
     that.close = function() {
         router.clear();
+        server.stop();
     };
 
     that.onFaultDetected = function (message) {
@@ -389,6 +390,7 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
       }      
     }
 
+    //Work as quic client to proactively establish quic connection with another OWT cluster
     that.startCascading = function (data, callback) {
         log.info("startEventCascading with data:", data);
 
@@ -470,6 +472,8 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
                         rpcReq.subscribe(controller, 'admin', connectionId, info.options);
                     });
                     }
+                  } else if (info.type === 'unsubscribe') {
+                    //handle unsubscribe request
                   }
                 });
               })
@@ -493,6 +497,7 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
         });
     }
 
+    //work as quic server to wait for another OWT cluster to establish quic connection
     const start = function () {
       server = new addon.QuicTransportServer(port, cf, kf);
 
@@ -548,6 +553,8 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
                 
             });
             }
+          } else if (info.type === 'unsubscribe') {
+            //handle unsusbcribe request
           }
         });
       })

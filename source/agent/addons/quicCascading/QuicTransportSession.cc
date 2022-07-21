@@ -96,7 +96,7 @@ NAUV_WORK_CB(QuicTransportSession::onNewStreamCallback){
         return;
     }
 
-    boost::mutex::scoped_lock lock(obj->mutex);
+    obj->m_sessionQueueMutex.lock();
 
     v8::Local<v8::Object> streamObject = QuicTransportStream::newInstance(obj->stream_messages.front());
     QuicTransportStream* stream = Nan::ObjectWrap::Unwrap<QuicTransportStream>(streamObject);
@@ -110,6 +110,7 @@ NAUV_WORK_CB(QuicTransportSession::onNewStreamCallback){
           obj->stream_messages.pop();
       }
     }
+    obj->m_sessionQueueMutex.unlock();
 }
 
 NAN_METHOD(QuicTransportSession::getId) {
@@ -123,7 +124,9 @@ NAN_METHOD(QuicTransportSession::getId) {
 void QuicTransportSession::OnIncomingStream(owt::quic::QuicTransportStreamInterface* stream) {
     std::cout << "QuicTransportSession::OnIncomingStream and id is:" << stream->Id();
     //streams_[stream->Id()] = stream;
+    m_sessionQueueMutex.lock();
     this->stream_messages.push(stream);
+    m_sessionQueueMutex.unlock();
     m_asyncOnNewStream.data = this;
     uv_async_send(&m_asyncOnNewStream);
 }

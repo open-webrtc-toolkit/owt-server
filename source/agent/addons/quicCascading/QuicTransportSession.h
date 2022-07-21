@@ -48,7 +48,7 @@ private:
     bool has_stream_callback_;
     std::queue<owt::quic::QuicTransportStreamInterface*> stream_messages;
     Nan::Callback *stream_callback_;
-    boost::mutex mutex;
+    std::mutex m_sessionQueueMutex;
     std::unordered_map<std::string, std::unique_ptr<owt::quic::QuicTransportStreamInterface>> streams_;
     static Nan::Persistent<v8::Function> s_constructor;
 };

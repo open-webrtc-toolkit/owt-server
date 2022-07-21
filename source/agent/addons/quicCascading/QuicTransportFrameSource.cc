@@ -89,9 +89,10 @@ NAN_METHOD(QuicTransportFrameSource::addDestination)
     obj->addDataDestination(dest);
 }
 
-void QuicTransportFrameSource::onFeedback(const owt_base::FeedbackMsg&)
+void QuicTransportFrameSource::onFeedback(const owt_base::FeedbackMsg& msg)
 {
-    // No feedbacks righ now.
+    ELOG_DEBUG("onFeedback ");
+    deliverFeedbackMsg(msg);
 }
 
 void QuicTransportFrameSource::onFrame(const owt_base::Frame& frame)

@@ -173,15 +173,15 @@ NAUV_WORK_CB(QuicTransportStream::onStreamDataCallback){
     //boost::mutex::scoped_lock lock(obj->mutex);
 
     if (obj->has_data_callback_) {
+      obj->m_dataQueueMutex.lock();
       while (!obj->data_messages.empty()) {
           ELOG_DEBUG("data_messages is not empty");
-          obj->m_dataQueueMutex.lock();
           Local<Value> args[] = { Nan::New(obj->data_messages.front().c_str()).ToLocalChecked() };
-          obj->m_dataQueueMutex.unlock();
           Nan::AsyncResource resource("onStreamData");
           resource.runInAsyncScope(Nan::GetCurrentContext()->Global(), obj->data_callback_->GetFunction(), 1, args);
           obj->data_messages.pop();
       }
+      obj->m_dataQueueMutex.unlock();
     }
     ELOG_DEBUG("QuicTransportStream::onStreamDataCallback ends");
 }

@@ -114,11 +114,10 @@ NAUV_WORK_CB(QuicTransportClient::onNewStreamCallback){
 
     if (obj->has_stream_callback_) {
       ELOG_INFO("object has stream callback");
+      obj->m_streamQueueMutex.lock();
       while (!obj->stream_messages.empty()) {
           ELOG_INFO("stream_messages is not empty");
-          obj->m_streamQueueMutex.lock();
           auto quicStream=obj->stream_messages.front();
-          obj->m_streamQueueMutex.unlock();
           v8::Local<v8::Object> streamObject = QuicTransportStream::newInstance(quicStream);
           QuicTransportStream* stream = Nan::ObjectWrap::Unwrap<QuicTransportStream>(streamObject);
           quicStream->SetVisitor(stream);
@@ -127,6 +126,7 @@ NAUV_WORK_CB(QuicTransportClient::onNewStreamCallback){
           resource.runInAsyncScope(Nan::GetCurrentContext()->Global(), obj->stream_callback_->GetFunction(), 1, args);
           obj->stream_messages.pop();
       }
+      obj->m_streamQueueMutex.unlock();
     }
     ELOG_INFO("onNewStreamCallback ends");
 }
@@ -149,8 +149,8 @@ NAUV_WORK_CB(QuicTransportClient::onConnectedCallback){
 void QuicTransportClient::OnIncomingStream(owt::quic::QuicTransportStreamInterface* stream) {
     ELOG_DEBUG("QuicTransportClient::OnIncomingStream with stream id:%d\n", stream->Id());
     //streams_[stream->Id()] = stream;
-    m_streamQueueMutex.lock();
     ELOG_INFO("stream_messages push stream");
+    m_streamQueueMutex.lock();
     this->stream_messages.push(stream);
     m_streamQueueMutex.unlock();
     m_asyncOnNewStream.data = this;
