@@ -34,10 +34,20 @@
     "package": "owt",
     "service": "QuicAgent"
   },
+  "conference": {
+    "file": "conference_agent.proto",
+    "package": "owt",
+    "service": "ConferenceAgent"
+  },
   "nodeManager" : {
     "file": "node_manager.proto",
     "package": "owt",
     "service": "NodeManager"
+  },
+  "clusterManager" : {
+    "file": "cluster_manager.proto",
+    "package": "owt",
+    "service": "ClusterManager"
   },
   "internal": {
     "file": "internal.proto"
