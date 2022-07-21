@@ -26,6 +26,19 @@ var genID = (function() {
     };
 })();
 
+/*
+ * @param {object} rpcClient RPC client with remoteCast method.
+ * @param {string} purpose Purpose of this worker.
+ * @param {string} clusterName RPC ID of the cluster manager.
+ * @param {number} joinRetry retry times for join.
+ * @param {object} info Worker info for join.
+ * @param {function} onJoinOK join ok callback.
+ * @param {function} onJoinFailed join failed callback.
+ * @param {function} onLoss loss callback.
+ * @param {function} onRecovery recovery callback.
+ * @param {function} onOverload overload callback.
+ * @param {object} loadCollection load collection for worker.
+ */
 module.exports = function (spec) {
     var that = {};
 
@@ -34,11 +47,11 @@ module.exports = function (spec) {
         tasks = [];
 
     var rpcClient = spec.rpcClient,
-        genId = spec.purpose + '-' + genID() + '@' + (spec.info.hostname || spec.info.ip),
-        id = spec.rpcId || genId,
+        id = spec.purpose + '-' + genID() + '@' + (spec.info.hostname || spec.info.ip),
         purpose = spec.purpose,
         info = spec.info,
         cluster_name = spec.clusterName || 'owt-cluster',
+        cluster_host = spec.clusterHost || 'localhost:10080',
         join_retry = spec.joinRetry || 60,
         keep_alive_period = 800/*MS*/,
         keep_alive_interval = undefined,
@@ -47,6 +60,101 @@ module.exports = function (spec) {
         on_loss = spec.onLoss || function () {log.debug('Lost connection with cluster manager');},
         on_recovery = spec.onRecovery || function () {log.debug('Rejoin cluster successfully.');},
         on_overload = spec.onOverload || function () {log.debug('Overloaded!!');};;
+
+    if (spec.info.grpcPort) {
+        // Enable gRPC
+        log.info('ClusterManager gRPC address:', cluster_host);
+        const grpcTools = require('./grpcTools');
+        const grpcClient = grpcTools.startClient('clusterManager', cluster_host);
+        // Client for gRPC
+        rpcClient = {
+            remoteCast: function (name, method, args) {
+                if (method === 'reportLoad') {
+                    const req = {
+                        id: args[0],
+                        load: args[1]
+                    };
+                    grpcClient.reportLoad(req, (err) => {
+                        if (err) {
+                            log.info('Failed to reportLoad', err);
+                        }
+                    });
+                } else if (method === 'reportState') {
+                    const req = {
+                        id: args[0],
+                        state: args[1]
+                    };
+                    grpcClient.reportState(req, (err) => {
+                        if (err) {
+                            log.info('Failed to reportState', err);
+                        }
+                    });
+                } else if (method === 'pickUpTasks') {
+                    const req = {
+                        id: args[0],
+                        tasks: args[1]
+                    };
+                    grpcClient.pickUpTasks(req, (err) => {
+                        if (err) {
+                            log.info('Failed to pickUpTasks', err);
+                        }
+                    });
+                } else if (method === 'layDownTask') {
+                    const req = {
+                        id: args[0],
+                        task: args[1]
+                    };
+                    grpcClient.layDownTask(req, (err) => {
+                        if (err) {
+                            log.info('Failed to layDownTask', err);
+                        }
+                    });
+                } else if (method === 'unschedule') {
+                    const req = {
+                        id: args[0],
+                        task: args[1]
+                    };
+                    grpcClient.unschedule(req, (err) => {
+                        if (err) {
+                            log.info('Failed to unschedule', err);
+                        }
+                    });
+                } else if (method === 'quit') {
+                    const req = {id: args[0]};
+                    grpcClient.quit(req, (err) => {
+                        if (err) {
+                            log.info('Failed to quit', err);
+                        }
+                    });
+                }
+            }
+        };
+        // Function makeRPC for gRPC
+        makeRPC = function (client, remote, method, args, onOk, onError) {
+            if (method === 'join') {
+                const req = {
+                    purpose: args[0],
+                    id: args[1],
+                    info: args[2]
+                };
+                grpcClient.join(req, (err, result) => {
+                    if (err) {
+                        onError(err);
+                    } else {
+                        onOk(result.state)
+                    }
+                });
+            } else if (method === 'keepAlive') {
+                grpcClient.keepAlive({id: args[0]}, (err, result) => {
+                    if (err) {
+                        onError(err);
+                    } else {
+                        onOk(result.message)
+                    }
+                });
+            }
+        }
+    }
 
     var previous_load = 0.99;
     var reportLoad = function (load) {
@@ -246,8 +354,6 @@ module.exports = function (spec) {
     that.rejectTask = function (task) {
         doRejectTask(task);
     };
-
-    that.id = genId;
 
     joinCluster(join_retry);
     return that;

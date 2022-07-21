@@ -21,15 +21,15 @@ const notificationTypes = {
   'onStreamRemoved': 'owt.StreamAddedData',
 };
 
-// Return promise with (server, port).
-function startServer(type, serviceObj) {
+// Return promise with (port).
+function startServer(type, serviceObj, serverPort = 0) {
   if (!config[type]) {
     return Promise.reject(new Error('Invalid proto type:' + type));
   }
   const protoPath = config[type].file;
   const packageName = config[type].package;
   const serviceName = config[type].service;
-  console.log('path:', protoPath, 'pkg:', packageName, serviceName);
+  // console.log('path:', protoPath, 'pkg:', packageName, serviceName);
   const packageDefinition = protoLoader.loadSync(
     protoPath,
     {keepCase: true,
@@ -47,7 +47,7 @@ function startServer(type, serviceObj) {
   // Start server.
   return new Promise((resolve, reject) => {
     server.bindAsync(
-        '0.0.0.0:0',
+        '0.0.0.0:' + serverPort,
         grpc.ServerCredentials.createInsecure(),
         (err, port) => {
       if (err) {
@@ -68,7 +68,7 @@ function startClient(type, address) {
   const protoPath = config[type].file;
   const packageName = config[type].package;
   const serviceName = config[type].service;
-  console.log('path:', protoPath, 'pkg:', packageName, serviceName, address);
+  // console.log('path:', protoPath, 'pkg:', packageName, serviceName, address);
   const packageDefinition = protoLoader.loadSync(
     protoPath,
     {keepCase: true,

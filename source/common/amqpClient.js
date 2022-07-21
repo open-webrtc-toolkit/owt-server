@@ -654,7 +654,10 @@ class AmqpCli {
   async disconnect() {
     try {
       await this.close();
-      await this.connection.close();
+      if (this.connection) {
+        await this.connection.close();
+        this.connection = null;
+      }
     } catch (err) {
       log.warn('Error closing AMQP connection:', err);
     }

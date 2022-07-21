@@ -17,6 +17,11 @@ check_alive_count = 3
 #The default reservation time if not specified in the scheduling requirement.
 schedule_reserve_time = 60000 #ms
 
+# Setup as GRPC server
+enable_grpc = true
+grpc_host = "localhost"
+grpc_port = 10080
+
 [strategy]
 general = "last-used"
 portal = "last-used"

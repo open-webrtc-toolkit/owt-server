@@ -60,8 +60,9 @@ var monitoringTarget;
 
 var worker;
 var manager;
+var grpcPort;
 
-var joinCluster = function (rpcId, on_ok) {
+var joinCluster = function (on_ok) {
     var joinOK = function (id) {
         myId = id;
         myState = 2;
@@ -103,16 +104,16 @@ var joinCluster = function (rpcId, on_ok) {
             port: config[myPurpose] ? config[myPurpose].port : undefined,
             purpose: myPurpose,
             state: 2,
-            max_load: config.cluster.worker.load.max,
-            capacity: config.capacity
+            maxLoad: config.cluster.worker.load.max,
+            capacity: config.capacity,
+            grpcPort: grpcPort
         },
         onJoinOK: joinOK,
         onJoinFailed: joinFailed,
         onLoss: loss,
         onRecovery: recovery,
         onOverload: overload,
-        loadCollection: config.cluster.worker.load,
-        rpcId: rpcId,
+        loadCollection: config.cluster.worker.load
     });
 };
 
@@ -133,7 +134,7 @@ var init_manager = () => {
 
   manager = nodeManager(
     {
-      parentId: worker.id,
+      parentId: myId,
       prerunNodeNum: config.agent.prerunProcesses,
       maxNodeNum: config.agent.maxProcesses,
       reuseNode: reuseNode,
@@ -216,7 +217,7 @@ const grpcAPI = function (rpcAPI) {
           cbAdapter(callback));
     },
     queryNode: function(call, callback) {
-      rpcAPI.queryNode(call.request.info, cbAdapter(callback));
+      rpcAPI.queryNode(call.request.info.task, cbAdapter(callback));
     }
   };
 };
@@ -225,24 +226,11 @@ if (config.agent.enable_grpc) {
   const grpcTools = require('./grpcTools');
   grpcTools.startServer('nodeManager', grpcAPI(rpcAPI(worker)))
     .then((port) => {
-        // Send RPC server address
-        const rpcAddress = config.cluster.worker.ip + ':' + port;
-        log.info('as rpc server ok', rpcAddress);
-        // TODO: remove amqp client
-        amqper.connect(config.rabbit, function () {
-          log.debug('Initializing RPC facilities, purpose:', myPurpose);
-          amqper.asRpcClient(function(rpcClnt) {
-            rpcClient = rpcClnt;
-            joinCluster(rpcAddress, function (rpcId) {
-              init_manager();
-            });
-          }, function(reason) {
-            log.error('Agent as rpc client failed, reason:', reason);
-            process.exit();
-          });
-        }, function(reason) {
-          log.error('Agent connect to rabbitMQ server failed, reason:', reason);
-          process.exit();
+        // Save GRPC port
+        grpcPort = port;
+        log.info('as rpc server ok', config.cluster.worker.ip + ':' + grpcPort);
+        joinCluster(function (rpcId) {
+          init_manager();
         });
     }).catch((err) => {
         log.error('Start grpc server failed:', err);

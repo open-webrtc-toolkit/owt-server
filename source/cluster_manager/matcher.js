@@ -80,8 +80,8 @@ var videoMatcher = function () {
         for (var i in availableCandidates) {
             var id = availableCandidates[i];
             var capacity = workers[id].info.capacity;
-            if (is_isp_applicable(capacity.isps, preference.origin.isp)) {
-                if (is_region_suited(capacity.regions, preference.origin.region)) {
+            if (is_isp_applicable(capacity.isps, preference.isp)) {
+                if (is_region_suited(capacity.regions, preference.region)) {
                     if (!found_sweet) {
                         found_sweet = true;
                         result = [id];
@@ -129,8 +129,8 @@ var audioMatcher = function () {
         for (var i in candidates) {
             var id = candidates[i];
             var capacity = workers[id].info.capacity;
-            if (is_isp_applicable(capacity.isps, preference.origin.isp)) {
-                if (is_region_suited(capacity.regions, preference.origin.region)) {
+            if (is_isp_applicable(capacity.isps, preference.isp)) {
+                if (is_region_suited(capacity.regions, preference.region)) {
                     if (!found_sweet) {
                         found_sweet = true;
                         result = [id];
