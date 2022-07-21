@@ -42,15 +42,34 @@ config.rabbit.host = config.rabbit.host || 'localhost';
 config.rabbit.port = config.rabbit.port || 5672;
 
 function startup () {
-    var enableService = function () {
-        var id = Math.floor(Math.random() * 1000000000);
-        var spec = {initialTime: config.manager.initial_time,
-                    checkAlivePeriod: config.manager.check_alive_interval,
-                    checkAliveCount: config.manager.check_alive_count,
-                    scheduleKeepTime: config.manager.schedule_reserve_time,
-                    strategy: config.strategy
-                   };
+    var id = Math.floor(Math.random() * 1000000000);
+    var spec = {
+        initialTime: config.manager.initial_time,
+        checkAlivePeriod: config.manager.check_alive_interval,
+        checkAliveCount: config.manager.check_alive_count,
+        scheduleKeepTime: config.manager.schedule_reserve_time,
+        strategy: config.strategy
+    };
 
+    if (config.manager.enable_grpc) {
+        const grpcTools = require('./grpcTools');
+        const grpcHost = config.manager.grpc_host || 'localhost';
+        const grpcPort = config.manager.grpc_port || 10080;
+        const manager = new ClusterManager.ClusterManager(
+            config.manager.name, id, spec);
+        manager.serve();
+        grpcTools.startServer('clusterManager', manager.grpcInterface, grpcPort)
+        .then((port) => {
+            // Send RPC server address
+            const rpcAddress = grpcHost + ':' + port;
+            log.info('As gRPC server ok', rpcAddress);
+        }).catch((err) => {
+            log.error('Start grpc server failed:', err);
+        });
+        return;
+    }
+
+    var enableService = function () {
         amqper.asTopicParticipant(config.manager.name + '.management', function(channel) {
             log.info('Cluster manager up! id:', id);
             ClusterManager.run(channel, config.manager.name, id, spec);
