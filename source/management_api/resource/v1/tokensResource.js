@@ -115,7 +115,7 @@ var generateToken = function(currentRoom, authData, origin, callback) {
             return;
         }
 
-        if(ec.via_host !== '') {
+        if(ec.via_host && ec.via_host !== '') {
             if(ec.via_host.indexOf('https') == 0) {
                 token.secure = true;
                 token.host = ec.via_host.substr(8);

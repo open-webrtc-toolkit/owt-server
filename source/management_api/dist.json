@@ -11,6 +11,9 @@
             "../common/logger.js",
             "../common/cipher.js",
             "../common/amqpClient.js",
+            "../common/grpcTools.js",
+            "../protos/protoConfig.json",
+            "../protos/*.proto",
             "../../scripts/release/initauth.js",
             "../../scripts/release/initcert.js",
             "../../scripts/detectOS.sh"
