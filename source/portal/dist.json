@@ -19,6 +19,9 @@
             "../common/logger.js",
             "../common/makeRPC.js",
             "../common/rpcChannel.js",
+            "../common/grpcTools.js",
+            "../protos/protoConfig.json",
+            "../protos/*.proto",
             "../../scripts/release/initauth.js",
             "../../scripts/release/initcert.js",
             "../../scripts/detectOS.sh"
