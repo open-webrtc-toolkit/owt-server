@@ -149,7 +149,7 @@ var joinCluster = function (on_ok) {
                 state: 2,
                 maxLoad: config.cluster.max_load,
                 capacity: config.capacity,
-                grpcPort: 1, // Enable gRPC
+                grpcPort: (enableGrpc ?  1 : null), // Enable gRPC
               },
               onJoinOK: joinOK,
               onJoinFailed: joinFailed,

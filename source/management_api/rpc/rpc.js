@@ -34,7 +34,7 @@ var cipher = require('../cipher');
 var TIMEOUT = 3000;
 var rpcClient;
 
-const enableGrpc = global.config?.server?.enable_grpc || true;
+const enableGrpc = global.config?.server?.enable_grpc || false;
 const grpcTools = require('../grpcTools');
 const grpcNode = {}; // workerNode => grpcClient
 
