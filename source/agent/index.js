@@ -239,7 +239,7 @@ if (config.agent.enable_grpc) {
     log.debug('Initializing RPC facilities, purpose:', myPurpose);
     amqper.asRpcClient(function(rpcClnt) {
         rpcClient = rpcClnt;
-        joinCluster(null, function (rpcID) {
+        joinCluster(function (rpcID) {
             amqper.asRpcServer(rpcID, rpcAPI(worker), function(rpcServer) {
                 log.info('as rpc server ok.');
                 amqper.asMonitoringTarget(function (monitoringTgt) {

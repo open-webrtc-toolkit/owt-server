@@ -38,7 +38,7 @@ var RpcRequest = function(rpcChannel) {
         delete grpcNode[node];
       });
       call.on('error', (err) => {
-        log.debug('Schedule node error:', err);
+        log.debug('Listen notifications error:', err);
       });
     }
     return grpcNode[node];
