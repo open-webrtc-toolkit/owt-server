@@ -33,7 +33,7 @@ var log = require('./logger').logger.getLogger('RequestHandler');
 var cluster_name = ((global.config || {}).cluster || {}).name || 'owt-cluster';
 var e = require('./errors');
 
-const enableGrpc = true;
+const enableGrpc = global.config?.server?.enable_grpc || false;
 if (enableGrpc) {
   cluster_name = global.config?.cluster?.grpc_host || 'localhost:10080';
 }
