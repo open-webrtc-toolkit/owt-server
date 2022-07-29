@@ -546,12 +546,18 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
             } else {
                 rpcReq.getController(clusterName, info.options.room)
                 .then(function(controller) {
-                controllers[info.options.room] = controller; 
-                log.info("Subscribe to controller:", controller, "connection id:", connectionId, " with info:", info.options.media.tracks);
+                    controllers[info.options.room] = controller;
+                    log.info("Subscribe to controller:", controller, "connection id:", connectionId, " with info:", info.options.media.tracks);
 
-                rpcReq.subscribe(controller, 'admin', connectionId, info.options);
-                
-            });
+                    return rpcReq.subscribe(controller, 'admin', connectionId, info.options);
+                })
+                .then(function(result) {
+                    log.info("subscribe result is:", result);
+
+                })
+                .catch((e) => {
+                    log.info("subscribe failed with error:", e);
+                });
             }
           } else if (info.type === 'unsubscribe') {
             //handle unsusbcribe request

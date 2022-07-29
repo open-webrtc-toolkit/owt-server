@@ -59,6 +59,17 @@ var EventCascading = function(spec, rpcReq) {
     }
   }
 
+  that.destroyRoom = function (data) {
+    //Close related quic stream if room is destroyed
+    for (var item in controllers[msg.rpcId]) {
+      log.info("destroyRoom with data:", data);
+      controllers[msg.rpcId][item].close();
+      delete controllers[msg.rpcId][item];
+    }
+
+    cascadedRooms[data.room] = false;
+  }
+
   const createQuicStream = (controller, clientID, data) => {
     log.info("Create quic stream with controller:", controller, " clientID:", clientID, " and data:",data);
     var quicStream = clients[clientID].createBidirectionalStream();

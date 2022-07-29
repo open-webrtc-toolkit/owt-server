@@ -505,6 +505,7 @@ var Conference = function (rpcClient, selfRpcId) {
 
   var destroyRoom = function() {
     const doClean = () => {
+      sendMsgTo('cascading', 'destroyRoom', {type: 'destroyRoom', data: {rpcId: selfRpcId, room: room_id}});
       accessController && accessController.destroy();
       accessController = undefined;
       roomController && roomController.destroy();
@@ -514,6 +515,8 @@ var Conference = function (rpcClient, selfRpcId) {
       participants = {};
       selfCleanTimer && clearTimeout(selfCleanTimer);
       selfCleanTimer = null;
+      var cluster = global.config.cluster.name || 'owt-cluster';
+      rpcReq.leaveConference(cluster, room_id);
       room_id = undefined;
     };
 
@@ -615,11 +618,12 @@ var Conference = function (rpcClient, selfRpcId) {
 
       var participant = participants[participantId];
       var left_user = participant.getInfo();
-      delete participants[participantId];
+
       if (room_config.notifying.participantActivities) {
         sendMsg('room', 'all', 'participant', {action: 'leave', data: left_user.id});
         !participants[participantId].cascading && sendMsgTo('cascading', {rpcId: selfRpcId}, {type: "addParticipant", data: participantId});
       }
+      delete participants[participantId];
     }
   };
 
@@ -808,10 +812,14 @@ var Conference = function (rpcClient, selfRpcId) {
     return new Promise((resolve, reject) => {
       if (streams[streamId]) {
         for (var sub_id in subscriptions) {
-          let subTrack = subscriptions[sub_id].media.tracks
-            .find(t => (t.from === streamId || trackOwners[t.from] === streamId));
-          if (subTrack) {
-            accessController && accessController.terminate(sub_id, 'out', 'Source stream loss');
+          if (subscriptions[sub_id].info.mediabridge) {
+            delete subscriptions[sub_id];
+          } else {
+            let subTrack = subscriptions[sub_id].media.tracks
+              .find(t => (t.from === streamId || trackOwners[t.from] === streamId));
+            if (subTrack) {
+              accessController && accessController.terminate(sub_id, 'out', 'Source stream loss');
+            }
           }
         }
 
@@ -957,7 +965,7 @@ var Conference = function (rpcClient, selfRpcId) {
       hasSubscription = false;
 
     for (let k in participants) {
-      if (k !== 'admin') {
+      if (k !== 'admin' && k.cascading === false) {
         hasNonAdminParticipant = true;
         break;
       }
@@ -965,7 +973,7 @@ var Conference = function (rpcClient, selfRpcId) {
 
     if (!hasNonAdminParticipant) {
       for (let st in streams) {
-        if (streams[st].type === 'forward') {
+        if (streams[st].type === 'forward' && streams[st].cascading === false) {
           hasPublication = true;
           break;
         }
@@ -1652,7 +1660,7 @@ var Conference = function (rpcClient, selfRpcId) {
       }
 
       log.info("mediabridge addSubscription with media:", subDesc.media);
-      return addSubscription(subscriptionId, subDesc.locality, subDesc.media, subDesc.data, {owner: participantId, type: subDesc.originType}, subDesc.transport)
+      return addSubscription(subscriptionId, subDesc.locality, subDesc.media, subDesc.data, {owner: participantId, type: subDesc.originType, mediabridge: true}, subDesc.transport)
       .then((result) => {
         callback('callback', result);
       })

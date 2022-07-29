@@ -176,6 +176,10 @@ var rpcPublic = {
   startCascading: function(data, callback) {
     event_cascading && event_cascading.startCascading(data);
     callback('callback', 'ok');
+  },
+  destroyRoom: function(participantId, event, data, callback) {
+    event_cascading && event_cascading.destroyRoom(data);
+    callback('callback', 'ok');
   }
 };
 

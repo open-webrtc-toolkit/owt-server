@@ -41,7 +41,7 @@ public:
     // addInputStream(stream, kind)
     // kind could be "data", "audio" or "video".
     static NAN_METHOD(addInputStream);
-    static NAN_METHOD(stop);
+    static NAN_METHOD(close);
     static NAN_METHOD(send);
     static NAN_METHOD(onStreamData);
     static NAN_METHOD(getId);

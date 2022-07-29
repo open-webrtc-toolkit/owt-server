@@ -267,6 +267,30 @@ var ClusterManager = function (clusterName, selfId, spec) {
         send('POST', 'registerCluster', data)
     };
 
+    var leaveConference = function (info, on_ok) {
+        on_ok('ok');
+        var data = {
+            clusterID: spec.clusterID,
+            region: spec.region,
+            conferenceId: info
+        }
+        log.info("Send conference leave event to cloud with data:", data);
+        send('POST', 'leaveConference', data)
+    };
+
+    var unregisterCluster = function () {
+        var data = {
+            clusterID: spec.clusterID,
+            region: spec.region
+        }
+        log.info("Send unregister cluster event to cloud with data:", data);
+        send('POST', 'unregisterCluster', data)
+    };
+
+    that.stopCluster = function () {
+        unregisterCluster();
+    }
+
     that.getRuntimeData = function (on_data) {
         var data = {schedulers: {}, workers: workers};
         for (var purpose in schedulers) {
@@ -408,6 +432,11 @@ var ClusterManager = function (clusterName, selfId, spec) {
         },
         registerInfo: function (info, callback) {
             registerInfo(info, function (worker) {
+                callback('callback', 'ok');
+            });
+        },
+        leaveConference: function (info, callback) {
+            leaveConference(info, function (worker) {
                 callback('callback', 'ok');
             });
         }
@@ -564,9 +593,19 @@ var runAsCandidate = function(topicChannel, manager) {
     });
 };
 
-exports.run = function (topicChannel, clusterName, id, spec) {
-    var manager = new ClusterManager(clusterName, id, spec);
+exports.manager = function (topicChannel, clusterName, id, spec) {
+    var that = {};
+    var manager;
 
-    runAsCandidate(topicChannel, manager);
+    that.run = function (topicChannel){
+        manager = new ClusterManager(clusterName, id, spec);
+        runAsCandidate(topicChannel, manager);
+    }
+
+    that.leave = function () {
+        manager.stopCluster();
+    }
+
+    return that;
 };
 

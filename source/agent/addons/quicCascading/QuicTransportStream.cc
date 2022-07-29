@@ -72,6 +72,7 @@ NAN_MODULE_INIT(QuicTransportStream::init)
     Nan::SetPrototypeMethod(tpl, "addDestination", addDestination);
     Nan::SetPrototypeMethod(tpl, "removeDestination", removeDestination);
     Nan::SetPrototypeMethod(tpl, "send", send);
+    Nan::SetPrototypeMethod(tpl, "close", close);
     Nan::SetPrototypeMethod(tpl, "onStreamData", onStreamData);
     Nan::SetPrototypeMethod(tpl, "getId", getId);
     Nan::SetAccessor(instanceTpl, Nan::New("trackKind").ToLocalChecked(), trackKindGetter, trackKindSetter);
@@ -204,6 +205,14 @@ NAN_SETTER(QuicTransportStream::trackKindSetter) {
   ELOG_DEBUG("QuicTransportStream::setTrackKind with value:%s", obj->m_trackKind.c_str());
 }
 
+NAN_METHOD(QuicTransportStream::close)
+{
+    QuicTransportStream* obj = Nan::ObjectWrap::Unwrap<QuicTransportStream>(info.Holder());
+    obj->m_stream->Close();
+    delete obj->m_stream;
+    obj->m_stream = nullptr;
+}
+
 void QuicTransportStream::onFeedback(const FeedbackMsg& msg) {
     ELOG_DEBUG("QuicTransportStream::onFeedback");
     TransportData sendData;
@@ -226,7 +235,7 @@ void QuicTransportStream::onVideoSourceChanged()
 void QuicTransportStream::onFrame(const owt_base::Frame& frame)
 {
     //ELOG_DEBUG("QuicTransportStream::onFrame");
-    dump(this, frame.payload, frame.length);
+    //dump(this, frame.payload, frame.length);
     TransportData sendData;
     sendData.buffer.reset(new char[sizeof(Frame) + frame.length + 5]);
     *(reinterpret_cast<uint32_t*>(sendData.buffer.get())) = htonl(sizeof(Frame) + frame.length + 1);
@@ -314,7 +323,7 @@ void QuicTransportStream::OnData(owt::quic::QuicTransportStreamInterface* stream
                         }
                       }
                     }
-                    dump(this, frame->payload, frame->length);
+                    //dump(this, frame->payload, frame->length);
                     deliverFrame(*frame);
                     break;
                 case TDT_MEDIA_METADATA:
