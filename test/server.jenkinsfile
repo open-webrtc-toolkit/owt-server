@@ -25,6 +25,7 @@ pipeline {
                 persistentVolumeClaim(claimName: 'webrtc88',mountPath: '/root/owt-server/third_party/webrtc-m88',readOnly: false)
               ],
                 containers: [
+		    containerTemplate(name: 'jnlp', image: "jenkins/inbound-agent:latest-jdk11",  ttyEnabled: true, alwaysPullImage: true, privileged: true, args:'${computer.mac} ${computer.name}'),
                     containerTemplate(name: 'build-images', image: "$env.centos_build_images",  ttyEnabled: true, alwaysPullImage: true, privileged: true, resourceRequestCpu: '5000m', resourceLimitCpu: '6000m', command: 'cat')
                 ]){
                     node ("pack-server-centos-"+env.GIT_BRANCH) {
