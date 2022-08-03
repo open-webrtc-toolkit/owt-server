@@ -578,7 +578,7 @@ cleanup_common(){
 install_boost(){
   if [ -d $LIB_DIR ]; then
     cd $LIB_DIR
-    wget -c http://iweb.dl.sourceforge.net/project/boost/boost/1.65.0/boost_1_65_0.tar.bz2
+    wget -c https://boostorg.jfrog.io/artifactory/main/release/1.65.0/source/boost_1_65_0.tar.bz2
     tar xvf boost_1_65_0.tar.bz2
     cd boost_1_65_0
     chmod +x bootstrap.sh
