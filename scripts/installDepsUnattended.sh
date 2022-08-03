@@ -78,6 +78,8 @@ install_node
 
 if [ "$NIGHTLY" != "true" ]; then
 
+  install_openssl
+
   if [ "$DISABLE_NONFREE" = "true" ]; then
     install_mediadeps
   else
@@ -89,8 +91,6 @@ if [ "$NIGHTLY" != "true" ]; then
   install_zlib
 
   install_libnice014
-
-  install_openssl
 
   install_openh264
 
