@@ -750,7 +750,7 @@ function VTranscoder(rpcClient, clusterIP) {
 
         motion_factor = 1.0,
         default_resolution = {width: 0, height: 0},
-        default_framerate = 30,
+        default_framerate = 0,
         default_kfi = 1000,
 
         input_id = undefined,
