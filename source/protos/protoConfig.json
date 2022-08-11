@@ -51,5 +51,15 @@
   },
   "internal": {
     "file": "internal.proto"
+  },
+  "sipPortal": {
+    "file": "sip_portal.proto",
+    "package": "owt",
+    "service": "SipPortal"
+  },
+  "sip": {
+    "file": "sip_agent.proto",
+    "package": "owt",
+    "service": "SipAgent"
   }
 }

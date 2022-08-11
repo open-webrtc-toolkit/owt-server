@@ -374,6 +374,9 @@ var Conference = function (rpcClient, selfRpcId) {
               const clusterName = global.config.agent.enable_grpc ?
                 global.config.cluster.grpc_host || 'localhost:10080':
                 global.config.cluster.name || 'owt-cluster';
+              if (global.config.agent.enable_grpc) {
+                selfRpcId = rpcClient.rpcAddress;
+              }
               RoomController.create(
                 {
                   cluster: clusterName,
@@ -600,7 +603,7 @@ var Conference = function (rpcClient, selfRpcId) {
         }
       });
       notificationEmitter.emit('notification', {
-        room: rpcClient.rpcAddress,
+        room: selfRpcId,
         name: msg,
         data: JSON.stringify(data),
         from: to === 'all' ? '' : from,
@@ -1217,11 +1220,14 @@ var Conference = function (rpcClient, selfRpcId) {
     }
 
     if (pubInfo.type === 'sip') {
+      pubInfo.media.tracks = null;
+      rpcReq.addSipNode(pubInfo.locality.node);
       return addStream(streamId, pubInfo.locality, pubInfo.transport, pubInfo.media, pubInfo.data, {owner: participantId, type: pubInfo.type})
       .then((result) => {
         callback('callback', result);
       })
       .catch((e) => {
+        log.warn('Add stream failed', e);
         callback('callback', 'error', e.message ? e.message : e);
       });
     } else if (pubInfo.type === 'analytics') {
@@ -1679,11 +1685,13 @@ var Conference = function (rpcClient, selfRpcId) {
     }
 
     if (subDesc.type === 'sip') {
+      subDesc.media.tracks = null;
       return addSubscription(subscriptionId, subDesc.locality, subDesc.media, subDesc.data, {owner: participantId, type: 'sip'}, subDesc.transport)
       .then((result) => {
         callback('callback', result);
       })
       .catch((e) => {
+        log.warn('Add subscription failed', e);
         callback('callback', 'error', e.message ? e.message : e);
       });
     } else if (subDesc.type === 'mediabridge') {
@@ -3553,10 +3561,7 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
     },
     streamControl: function (call, callback) {
       const req = call.request;
-      let command = req.command;
-      if (!req.command.operation !== 'set-region') {
-        command = (req.command.track || req.command.view || req.command.region);
-      }
+      let command = JSON.parse(req.command);
       conference.streamControl(req.participantId, req.sessionId,
         command, grpcCb(callback));
     },

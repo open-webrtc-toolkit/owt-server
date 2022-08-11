@@ -185,7 +185,7 @@ message RoomPublish {
     optional string transportId = 4;
     optional bool data = 5;
     optional string attributes = 6;
-    Locality locality = 7;
+    optional Locality locality = 7;
   }
   PublishInfo pubInfo = 3;
 }
@@ -219,6 +219,8 @@ message RoomSubscribe {
     optional string transportId = 4;
     optional bool data = 5;
     optional string attributes = 6;
+    optional Locality locality = 7;
+    optional Origin origin = 8;
   }
   SubscribeInfo subInfo = 3;
 }
@@ -233,20 +235,7 @@ message EndRequest {
 message ControlRequest {
   string participantId = 1;
   string sessionId = 2;
-  message ControlCommand {
-    string operation = 1;
-    message CommandData {
-      // Get/set region, mix, unmix
-      optional string region = 1;
-      optional string view = 2;
-      // Mute
-      optional string track = 3;
-      // Subscription update
-      optional MediaSubOption update = 4;
-    }
-    CommandData data = 2;
-  }
-  ControlCommand command = 3;
+  string command = 3;
 }
 
 // Signaling request, same as that in webrtc_agent.proto

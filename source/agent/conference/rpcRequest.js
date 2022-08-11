@@ -19,6 +19,7 @@ const RpcRequest = function(rpcChannel, listener) {
   const grpcNode = {}; // workerNode => grpcClient
   const nodeType = {}; // NodeId => Type
   let clusterClient;
+  let sipPortalClient;
 
   that.getRoomConfig = function(configServer, sessionId) {
     return rpcChannel.makeRPC(configServer, 'getRoomConfig', sessionId);
@@ -151,7 +152,7 @@ const RpcRequest = function(rpcChannel, listener) {
 
   that.initiate = function(accessNode, sessionId, sessionType, direction, Options) {
     if (grpcNode[accessNode]) {
-      // Test GRPC
+      // Use GRPC
       return new Promise((resolve, reject) => {
         if (direction === 'in') {
           const req = {
@@ -195,7 +196,7 @@ const RpcRequest = function(rpcChannel, listener) {
 
   that.terminate = function(accessNode, sessionId, direction/*FIXME: direction should be unneccesarry*/) {
     if (grpcNode[accessNode]) {
-      // Test GRPC
+      // Use GRPC
       return new Promise((resolve, reject) => {
         if (direction === 'in') {
           const req = {id: sessionId};
@@ -232,7 +233,7 @@ const RpcRequest = function(rpcChannel, listener) {
   that.onTransportSignaling = function(accessNode, transportId, signaling) {
     // GRPC for webrtc-agent
     if (grpcNode[accessNode]) {
-      // Test GRPC
+      // Use GRPC
       return new Promise((resolve, reject) => {
         const req = {
           id: transportId,
@@ -277,14 +278,61 @@ const RpcRequest = function(rpcChannel, listener) {
   };
 
   that.getSipConnectivity = function(sipPortal, roomId) {
+    if (enableGrpc) {
+      if (!sipPortalClient) {
+        const sipPortal = global.config.cluster.sip_portal || 'localhost:9090';
+        sipPortalClient = startClient('sipPortal', sipPortal);
+      }
+      return new Promise((resolve, reject) => {
+        sipPortalClient.getSipConnectivity({id: roomId}, (err, result) => {
+          if (!err) {
+            const sipNode = result.message;
+            grpcNode[sipNode] = grpcTools.startClient('sip', sipNode);
+            resolve(sipNode);
+          } else {
+            reject(err);
+          }
+        });
+      });
+    }
     return rpcChannel.makeRPC(sipPortal, 'getSipConnectivity', [roomId]);
   };
 
   that.makeSipCall = function(sipNode, peerURI, mediaIn, mediaOut, controller) {
+    if (grpcNode[sipNode]) {
+      // Use GRPC
+      return new Promise((resolve, reject) => {
+        const req = {
+          peerUri: peerURI,
+          mediaIn: mediaIn,
+          mediaOut: mediaOut,
+          controller: controller
+        };
+        grpcNode[sipNode].makeCall(req, (err, result) => {
+          if (!err) {
+            resolve(result.message);
+          } else {
+            reject(err);
+          }
+        });
+      });
+    }
     return rpcChannel.makeRPC(sipNode, 'makeCall', [peerURI, mediaIn, mediaOut, controller]);
   };
 
   that.endSipCall = function(sipNode, sipCallId) {
+    if (grpcNode[sipNode]) {
+      // Use GRPC
+      return new Promise((resolve, reject) => {
+        grpcNode[sipNode].endSipCall({id: sipCallId}, (err, result) => {
+          if (!err) {
+            resolve(result.message);
+          } else {
+            reject(err);
+          }
+        });
+      });
+    }
     return rpcChannel.makeRPC(sipNode, 'endCall', [sipCallId]);
   };
 
@@ -490,6 +538,13 @@ const RpcRequest = function(rpcChannel, listener) {
       return makeRPC(_, remoteNode, rpcName, parameters, onOk, onError);
     }
   };
+
+  that.addSipNode = function (workerNode) {
+    grpcNode[workerNode] = grpcTools.startClient(
+      'sip',
+      workerNode
+    );
+  }
 
   return that;
 };
