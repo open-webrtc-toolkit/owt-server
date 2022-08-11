@@ -30,7 +30,7 @@
                 "selectiveMixer.js",
                 "activeAudioSelector.js",
                 "../connections.js",
-                "../InternalConnectionFactory.js"
+                "../internalConnectionRouter.js"
             ]
         }
     },

@@ -28,7 +28,6 @@ struct AdapterStats {
     int width = 0;
     int height = 0;
     owt_base::FrameFormat format = owt_base::FRAME_FORMAT_UNKNOWN;
-    int estimatedBandwidth = 0;
 };
 
 class AdapterStatsListener {
@@ -44,10 +43,16 @@ public:
 
 class VideoSendAdapter {
 public:
+    struct Stats {
+        uint32_t total_bitrate_bps = 0;
+        uint32_t retransmit_bitrate_bps = 0;
+        uint32_t estimated_bandwidth = 0;
+    };
     virtual void onFrame(const owt_base::Frame&) = 0;
-    virtual int onRtcpData(char* data, int len) = 0;
+    virtual int onRtcpData(const char* data, int len) = 0;
     virtual uint32_t ssrc() = 0;
     virtual void reset() = 0;
+    virtual Stats getStats() = 0;
 };
 
 class AudioReceiveAdapter {
@@ -58,7 +63,7 @@ public:
 class AudioSendAdapter {
 public:
     virtual void onFrame(const owt_base::Frame&) = 0;
-    virtual int onRtcpData(char* data, int len) = 0;
+    virtual int onRtcpData(const char* data, int len) = 0;
     virtual uint32_t ssrc() = 0;
 };
 
@@ -75,6 +80,8 @@ public:
         char mid[32];
         // MID extension ID
         int mid_ext = 0;
+        // Bandwidth estimatin
+        bool bandwidth_estimation = false;
         AdapterDataListener* rtp_listener = nullptr;
         AdapterStatsListener* stats_listener = nullptr;
         AdapterFrameListener* frame_listener = nullptr;

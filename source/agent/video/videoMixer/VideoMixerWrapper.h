@@ -10,13 +10,14 @@
 #include <node.h>
 #include <node_object_wrap.h>
 #include <uv.h>
+#include <nan.h>
 
 /*
  * Wrapper class of mcu::VideoMixer
  */
 class VideoMixer : public node::ObjectWrap {
  public:
-  static void Init(v8::Handle<v8::Object>, v8::Handle<v8::Object>);
+  static void Init(v8::Local<v8::Object>, v8::Local<v8::Object>);
   mcu::VideoMixer* me;
 
  private:

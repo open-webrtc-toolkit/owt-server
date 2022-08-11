@@ -17,8 +17,5 @@
   },
   "scripts": {
     "postinstall": "bash postinstall.sh"
-  },
-  "engine": {
-    "node": "10.21.0"
   }
 }

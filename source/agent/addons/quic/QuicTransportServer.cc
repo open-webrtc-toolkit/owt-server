@@ -8,8 +8,8 @@
 #include "QuicFactory.h"
 #include "QuicTransportStream.h"
 #include "Utils.h"
-#include "owt/quic/quic_transport_factory.h"
-#include "owt/quic/quic_transport_session_interface.h"
+#include "owt/quic/web_transport_factory.h"
+#include "owt/quic/web_transport_session_interface.h"
 
 using v8::Function;
 using v8::FunctionTemplate;
@@ -23,7 +23,7 @@ Nan::Persistent<v8::Function> QuicTransportServer::s_constructor;
 DEFINE_LOGGER(QuicTransportServer, "QuicTransportServer");
 
 QuicTransportServer::QuicTransportServer(int port, const std::string& pfxPath, const std::string& password)
-    : m_quicServer(QuicFactory::getQuicTransportFactory()->CreateQuicTransportServer(port, pfxPath.c_str(), password.c_str()))
+    : m_quicServer(QuicFactory::getQuicTransportFactory()->CreateWebTransportServer(port, pfxPath.c_str(), password.c_str()))
 {
     m_quicServer->SetVisitor(this);
     ELOG_DEBUG("QuicTransportServer::QuicTransportServer");
@@ -52,9 +52,9 @@ NAN_METHOD(QuicTransportServer::newInstance)
     if (info.Length() < 3) {
         return Nan::ThrowTypeError("No enough arguments are provided.");
     }
-    int port = info[0]->IntegerValue();
-    v8::String::Utf8Value pfxPath(Nan::To<v8::String>(info[1]).ToLocalChecked());
-    v8::String::Utf8Value password(Nan::To<v8::String>(info[2]).ToLocalChecked());
+    int port = Nan::To<int32_t>(info[0]).FromJust();
+    Nan::Utf8String pfxPath(Nan::To<v8::String>(info[1]).ToLocalChecked());
+    Nan::Utf8String password(Nan::To<v8::String>(info[2]).ToLocalChecked());
     QuicTransportServer* obj = new QuicTransportServer(port, *pfxPath, *password);
     owt_base::Utils::ZeroMemory(*password, password.length());
     obj->Wrap(info.This());
@@ -113,7 +113,7 @@ void QuicTransportServer::OnEnded()
     ELOG_DEBUG("QuicTransport server ended.");
 }
 
-void QuicTransportServer::OnSession(owt::quic::QuicTransportSessionInterface* session)
+void QuicTransportServer::OnSession(owt::quic::WebTransportSessionInterface* session)
 {
     ELOG_DEBUG("New session created. Connection ID: %s.", session->ConnectionId());
     {

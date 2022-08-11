@@ -4,7 +4,6 @@
 
 #include "VideoReceiveAdapter.h"
 
-#include <common_types.h>
 #include <future>
 #include <modules/video_coding/include/video_error_codes.h>
 #include <modules/video_coding/timing.h>
@@ -78,6 +77,9 @@ int32_t VideoReceiveAdapterImpl::AdapterDecoder::Decode(const webrtc::EncodedIma
     case webrtc::VideoCodecType::kVideoCodecH265:
         format = FRAME_FORMAT_H265;
         break;
+    case webrtc::VideoCodecType::kVideoCodecAV1:
+        format = FRAME_FORMAT_AV1;
+        break;
     default:
         RTC_LOG(LS_WARNING) << "Unknown FORMAT";
         return 0;
@@ -128,8 +130,7 @@ int32_t VideoReceiveAdapterImpl::AdapterDecoder::Decode(const webrtc::EncodedIma
                 AdapterStats stats = {
                     m_parent->m_width,
                     m_parent->m_height,
-                    m_parent->m_format,
-                    0
+                    m_parent->m_format
                 };
                 m_parent->m_statsListener->onAdapterStats(stats);
             }
@@ -210,6 +211,7 @@ void VideoReceiveAdapterImpl::CreateReceiveVideo()
             default_config.renderer = this;
 
             webrtc::VideoReceiveStream::Config video_recv_config(default_config.Copy());
+            video_recv_config.decoder_factory = this;
             video_recv_config.decoders.clear();
             /*
             if (!video_send_config.rtp.rtx.ssrcs.empty()) {
@@ -219,7 +221,6 @@ void VideoReceiveAdapterImpl::CreateReceiveVideo()
             }
             */
             webrtc::VideoReceiveStream::Decoder decoder;
-            decoder.decoder_factory = this;
             // Add VP8 decoder
             decoder.payload_type = VP8_90000_PT;
             decoder.video_format = webrtc::SdpVideoFormat(
@@ -242,6 +243,12 @@ void VideoReceiveAdapterImpl::CreateReceiveVideo()
             decoder.payload_type = H265_90000_PT;
             decoder.video_format = webrtc::SdpVideoFormat(
                 webrtc::CodecTypeToPayloadString(webrtc::VideoCodecType::kVideoCodecH265));
+            RTC_DLOG(LS_INFO) << "Config add decoder:" << decoder.ToString();
+            video_recv_config.decoders.push_back(decoder);
+            // Add AV1 decoder
+            decoder.payload_type = AV1_90000_PT;
+            decoder.video_format = webrtc::SdpVideoFormat(
+                webrtc::CodecTypeToPayloadString(webrtc::VideoCodecType::kVideoCodecAV1));
             RTC_DLOG(LS_INFO) << "Config add decoder:" << decoder.ToString();
             video_recv_config.decoders.push_back(decoder);
 
@@ -269,7 +276,9 @@ std::vector<webrtc::SdpVideoFormat> VideoReceiveAdapterImpl::GetSupportedFormats
         webrtc::SdpVideoFormat(
             webrtc::CodecTypeToPayloadString(webrtc::VideoCodecType::kVideoCodecH264)),
         webrtc::SdpVideoFormat(
-            webrtc::CodecTypeToPayloadString(webrtc::VideoCodecType::kVideoCodecH265))
+            webrtc::CodecTypeToPayloadString(webrtc::VideoCodecType::kVideoCodecH265)),
+        webrtc::SdpVideoFormat(
+            webrtc::CodecTypeToPayloadString(webrtc::VideoCodecType::kVideoCodecAV1))
     };
 }
 

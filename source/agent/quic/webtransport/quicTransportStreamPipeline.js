@@ -19,39 +19,34 @@ const addon = require('../build/Release/quic');
  * `AVStreamIn`.
  */
 module.exports = class QuicTransportStreamPipeline {
-  constructor(contentSessionId, updateStatus) {
+  constructor(contentSessionId) {
     // `contentSessionId` is the ID of publication or subscription.
     this._contentSessionId = contentSessionId;
     this._quicStream = null;
     this._notifiedReady = false;
 
-    this.quicStream = function (stream) {
+    this.quicStream = function(stream) {
       this._quicStream = stream;
-      if (!this._notifiedReady) {
-        updateStatus({
-          type: 'ready',
-          audio: false,
-          video: false,
-          data: true,
-          simulcast: false
-        });
+      if (this.bindRouterAsSourceCallback) {
+        this.bindRouterAsSourceCallback(stream);
       }
     };
 
     this.addDestination = function(name, dst) {
-      this._quicStream.addDestination(dst);
+      this._quicStream.addDestination(name, dst);
     };
 
     this.receiver = function(kind) {
-      if (kind !== 'data') {
-        log.error('Unsupported receiver.');
-        return null;
-      }
       return this._quicStream;
     };
 
-    this.close = function(){
+    this.close = function() {
       this._quicStream.close();
-    }
+    };
+
+    // https://github.com/open-webrtc-toolkit/owt-server/pull/988 changed the
+    // dataflow of frames. Since this object is not a native backed JavaScript
+    // object, router.addLocalSource should be called for this._quicStream.
+    this.bindRouterAsSourceCallback = null;
   }
 };

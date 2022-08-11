@@ -3,23 +3,11 @@
   "version":"5.0.0",
   "dependencies": {
     "amqplib": "^0.7.0",
-    "log4js": "^1.1.1",
+    "log4js": "^6.4.0",
     "node-getopt": "*",
     "toml": "*"
   },
   "devDependencies": {
     "node-gyp": "*"
-  },
-  "engine": {
-    "node": "10.21.0"
-  },
-  "bin": "index.js",
-  "pkg": {
-    "assets": [
-      "node_modules*"
-    ],
-    "targets": [
-      "node8"
-    ]
   }
 }

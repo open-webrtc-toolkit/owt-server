@@ -61,9 +61,9 @@ if (options.help || Object.keys(options).length === 0) {
 
 if (options.lint) {
   // Check lint deps
-  const lintDeps = ['eslint'];
+  const lintDeps = ['eslint', 'eslint-config-google'];
   console.log('Checking lint dependencies...');
-  const npmRoot = execSync(`npm root -g`).toString().trim();
+  const npmRoot = execSync(`npm root`).toString().trim();
   const missingLintDeps = lintDeps.filter((dep) => {
     return !fs.existsSync(path.join(npmRoot, dep));
   });
@@ -72,8 +72,9 @@ if (options.lint) {
     console.log('Lint dependencies OK.');
   } else {
     for (const dep of missingLintDeps) {
-      console.log('Installing eslint');
-      execSync(`npm install eslint --global --save-dev`);
+      console.log('Installing missing eslint deps');
+      chdir(rootDir);
+      execSync(`npm install --save-dev ${dep}`);
     }
   }
 }
@@ -263,7 +264,7 @@ function packCommon(target) {
       const extname = path.extname(filePath);
       if (options.lint && extname === '.js') {
         try {
-          execSync(`eslint -c ${rootDir}/source/.eslintrc.json ${filePath}`);
+          execSync(`${rootDir}/node_modules/.bin/eslint -c ${rootDir}/source/.eslintrc.json ${filePath}`);
         } catch(error) {
           console.error(error.stdout.toString());
         }
@@ -463,7 +464,8 @@ function isLibAllowed(libSrc) {
     'libopenh264',
     'libre',
     'sipLib',
-    'librawquic'
+    'librawquic',
+    'libowt_web_transport',
   ];
   if (!options['archive'] || options['with-ffmpeg']) {
     whiteList.push('libsrt');
@@ -606,6 +608,9 @@ function packScripts() {
   execSync(`cp -a ${rootDir}/scripts/release/package.mcu.json ${distDir}/package.json`);
   execSync(`cp -a ${rootDir}/third_party/NOTICE ${distDir}`);
   execSync(`cp -a ${rootDir}/third_party/ThirdpartyLicenses.txt ${distDir}`);
+  if (process.env.GITHUB_ACTION) {
+    execSync(`cp -a ${rootDir}/scripts/release/init-webtransport.sh ${binDir}`);
+  }
   if (options.binary) {
     execSync(`cp -a ${rootDir}/scripts/release/daemon-bin.sh ${binDir}/daemon.sh`);
   } else {

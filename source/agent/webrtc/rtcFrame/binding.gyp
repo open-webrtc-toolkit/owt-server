@@ -16,6 +16,7 @@
       'AudioFramePacketizerWrapper.cc',
       'VideoFrameConstructorWrapper.cc',
       'VideoFramePacketizerWrapper.cc',
+      'CallBaseWrapper.cc',
       'addon.cc',
     ],
     'dependencies': ['librtcadapter'],
@@ -26,11 +27,13 @@
       '<(source_rel_dir)/core/common',
       '<(source_rel_dir)/core/owt_base',
       '<(source_rel_dir)/core/rtc_adapter',
-      '<(source_rel_dir)/../build/libdeps/build/include',
+      '$(DEFAULT_DEPENDENCY_PATH)/include',
+      '$(CUSTOM_INCLUDE_PATH)',
       '<!@(pkg-config glib-2.0 --cflags-only-I | sed s/-I//g)',
     ],
     'libraries': [
-      '-L<(source_abs_dir)/../build/libdeps/build/lib',
+      '-L$(DEFAULT_DEPENDENCY_PATH)/lib',
+      '-L$(CUSTOM_LIBRARY_PATH)',
       '-lsrtp2',
       '-lssl',
       '-ldl',
@@ -61,7 +64,7 @@
     'variables': {
       'source_rel_dir': '../../..', # relative source dir path
       'source_abs_dir%': '<(module_root_dir)/../../..', # absolute source dir path
-      'webrtc_abs_dir%': '<(module_root_dir)/../../../../third_party/webrtc-m79' # absolute webrtc dir path
+      'webrtc_abs_dir%': '<(module_root_dir)/../../../../third_party/webrtc-m88' # absolute webrtc dir path
     },
     'sources': [
         '<(source_rel_dir)/core/rtc_adapter/RtcAdapter.cc',
@@ -81,11 +84,13 @@
       '<(source_rel_dir)/core/rtc_adapter',
       '<(webrtc_abs_dir)/src', # webrtc include files
       '<(webrtc_abs_dir)/src/third_party/abseil-cpp', # abseil-cpp include files used by webrtc
-      '<(source_rel_dir)/../build/libdeps/build/include',
+      '$(DEFAULT_DEPENDENCY_PATH)/include',
+      '$(CUSTOM_INCLUDE_PATH)',
       '<!@(pkg-config glib-2.0 --cflags-only-I | sed s/-I//g)',
     ],
     'libraries': [
-      '-L<(source_abs_dir)/../build/libdeps/build/lib',
+      '-L$(DEFAULT_DEPENDENCY_PATH)/lib',
+      '-L$(CUSTOM_LIBRARY_PATH)',
       '-lsrtp2',
       '-lssl',
       '-ldl',
@@ -109,8 +114,8 @@
           'cflags_cc' : [
             '-Wall', '-O3', '-g' , '-std=gnu++14', '-fexceptions',
             '-nostdinc++',
-            '-isystem<(webrtc_abs_dir)/src/buildtools/third_party/libc++/trunk/include',
-            '-isystem<(webrtc_abs_dir)/src/buildtools/third_party/libc++abi/trunk/include'
+            '-I<(webrtc_abs_dir)/src/buildtools/third_party/libc++/trunk/include',
+            '-I<(webrtc_abs_dir)/src/buildtools/third_party/libc++abi/trunk/include'
           ]
       }]
     ]

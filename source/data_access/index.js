@@ -25,7 +25,10 @@ mongoose.plugin(schema => { schema.options.usePushEach = true });
 mongoose.Promise = Promise;
 
 var setupConnection = function () {
-  mongoose.connect('mongodb://' + databaseUrl, connectOption)
+  if (databaseUrl.indexOf('mongodb://') !== 0) {
+    databaseUrl = 'mongodb://' + databaseUrl;
+  }
+  mongoose.connect(databaseUrl, connectOption)
     .catch(function (err) {
       console.log(err.message);
     });

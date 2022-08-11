@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -e
 
 install_glib2(){
   if [ -d $LIB_DIR ]; then
@@ -37,13 +37,21 @@ installYumDeps(){
   ${SUDO} yum install rabbitmq-server mongodb mongodb-server java-1.7.0-openjdk gyp intel-gpu-tools which libtool freetype-devel -y
   ${SUDO} yum install glib2-devel boost-devel gstreamer1-plugins-base-devel -y
   ${SUDO} yum install centos-release-scl -y
-  ${SUDO} yum install devtoolset-7-gcc* tcl -y
+  ${SUDO} yum install devtoolset-7-gcc* -y
+  ${SUDO} yum install docbook2X -y
+  ${SUDO} yum install libffi-devel -y
+  ${SUDO} yum install ca-certificates -y
 }
 
 installRepo(){
   wget -c http://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
   wget -c http://rpms.famillecollet.com/enterprise/remi-release-7.rpm
-  ${SUDO} rpm -Uvh remi-release-7*.rpm epel-release-latest-7*.rpm
+  if ${SUDO} rpm -Uvh remi-release-7*.rpm epel-release-latest-7*.rpm
+  then
+    echo "Successfully installed remi and epel"
+  else
+    echo "No need to upgrade or installation went wrong"
+  fi
   ${SUDO} sed -i 's/https/http/g' /etc/yum.repos.d/epel.repo
   rm *.rpm
 }
@@ -60,13 +68,39 @@ install_mediadeps(){
 }
 
 install_glibc(){
+  local LIST_LIBS=`ls ${PREFIX_DIR}/lib/libc.* 2>/dev/null`
+  if [ "$CHECK_INSTALL" = true ]; then
+    if [[ ! -z $LIST_LIBS ]]; then
+      echo "glibc - Yes"
+    else
+      echo "glibc - No"
+    fi
+    return 0
+  fi
+  [ "$INCR_INSTALL" = true ] && [[ ! -z $LIST_LIBS ]] && \
+  echo "glibc already installed." && return 0
+
   cd $LIB_DIR
-  wget -c http://gnu.mirrors.pair.com/gnu/libc/glibc-2.14.tar.xz
-  tar xvf glibc-2.14.tar.xz
-  cd glibc-2.14
-  mkdir build && cd build/
-  ../configure --prefix=$PREFIX_DIR
-  make -j4 -s && make install
+  wget http://ftp.gnu.org/gnu/glibc/glibc-2.18.tar.gz 
+  tar zxf glibc-2.18.tar.gz
+  cd glibc-2.18
+  mkdir -p build && cd build/
+  ../configure --prefix=/usr
+  make -j4 && make install
+}
+
+install_python3(){
+  if [ -f /usr/bin/python3 ]; then
+    echo "python3 already installed." && return 0
+  fi
+  cd $LIB_DIR
+  wget https://www.python.org/ftp/python/3.7.0/Python-3.7.0.tar.xz
+  tar xvf Python-3.7.0.tar.xz
+  cd Python-3.7.0
+  ./configure prefix=/usr/local/python3
+  make && make install
+  ln -s /usr/local/python3/bin/python3 /usr/bin/python3
+  cd ../ && rm -r Python-3.7*
 }
 
 cleanup(){

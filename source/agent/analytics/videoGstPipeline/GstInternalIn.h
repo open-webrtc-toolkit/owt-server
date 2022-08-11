@@ -13,21 +13,13 @@
 #include "MediaFramePipeline.h"
 
 
-class GstInternalIn : public owt_base::RawTransportListener{
+class GstInternalIn : public owt_base::FrameDestination {
     DECLARE_LOGGER();
 public:
-    GstInternalIn(GstAppSrc *data, unsigned int minPort = 0, unsigned int maxPort = 0, std::string ticket = NULL);
+    GstInternalIn(GstAppSrc *data, int framerate);
     virtual ~GstInternalIn();
 
-    unsigned int getListeningPort();
-
-    // Implements FrameSource
-    void onFeedback(const owt_base::FeedbackMsg&);
-
-    // Implements RawTransportListener.
-    void onTransportData(char* buf, int len);
-    void onTransportError() { }
-    void onTransportConnected() { }
+    void onFrame(const owt_base::Frame& frame);
     void setPushData(bool status);
     void setFramerate(int framerate);
 
@@ -38,7 +30,6 @@ private:
     size_t num_frames;
     int m_framerate;
     GstAppSrc *appsrc;
-    boost::shared_ptr<owt_base::RawTransportInterface> m_transport;
 };
 
 #endif /* GstInternalIn_h */

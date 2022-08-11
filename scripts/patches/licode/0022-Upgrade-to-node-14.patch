@@ -1,0 +1,57 @@
+From facdec6ed7516d3c6273543c480aa00af7a81ad1 Mon Sep 17 00:00:00 2001
+From: Chen Li1 <li1.chen@intel.com>
+Date: Thu, 4 Nov 2021 15:41:33 +0800
+Subject: [PATCH] Upgrade to node 14
+
+---
+ erizoAPI/IOThreadPool.cc | 4 ++--
+ erizoAPI/ThreadPool.cc   | 4 ++--
+ 2 files changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/erizoAPI/IOThreadPool.cc b/erizoAPI/IOThreadPool.cc
+index 0144e6b1..41264ad3 100644
+--- a/erizoAPI/IOThreadPool.cc
++++ b/erizoAPI/IOThreadPool.cc
+@@ -29,7 +29,7 @@ NAN_MODULE_INIT(IOThreadPool::Init) {
+   Nan::SetPrototypeMethod(tpl, "close", close);
+   Nan::SetPrototypeMethod(tpl, "start", start);
+ 
+-  constructor.Reset(tpl->GetFunction());
++  constructor.Reset(Nan::GetFunction(tpl).ToLocalChecked());
+   Nan::Set(target, Nan::New("IOThreadPool").ToLocalChecked(), Nan::GetFunction(tpl).ToLocalChecked());
+ }
+ 
+@@ -38,7 +38,7 @@ NAN_METHOD(IOThreadPool::New) {
+     Nan::ThrowError("Wrong number of arguments");
+   }
+ 
+-  unsigned int num_workers = info[0]->IntegerValue();
++  unsigned int num_workers = Nan::To<int32_t>(info[0]).FromJust();
+ 
+   IOThreadPool* obj = new IOThreadPool();
+   obj->me.reset(new erizo::IOThreadPool(num_workers));
+diff --git a/erizoAPI/ThreadPool.cc b/erizoAPI/ThreadPool.cc
+index ddfdcfc9..478e2c37 100644
+--- a/erizoAPI/ThreadPool.cc
++++ b/erizoAPI/ThreadPool.cc
+@@ -29,7 +29,7 @@ NAN_MODULE_INIT(ThreadPool::Init) {
+   Nan::SetPrototypeMethod(tpl, "close", close);
+   Nan::SetPrototypeMethod(tpl, "start", start);
+ 
+-  constructor.Reset(tpl->GetFunction());
++  constructor.Reset(Nan::GetFunction(tpl).ToLocalChecked());
+   Nan::Set(target, Nan::New("ThreadPool").ToLocalChecked(), Nan::GetFunction(tpl).ToLocalChecked());
+ }
+ 
+@@ -38,7 +38,7 @@ NAN_METHOD(ThreadPool::New) {
+     Nan::ThrowError("Wrong number of arguments");
+   }
+ 
+-  unsigned int num_workers = info[0]->IntegerValue();
++  unsigned int num_workers = Nan::To<int32_t>(info[0]).FromJust();
+ 
+   ThreadPool* obj = new ThreadPool();
+   obj->me.reset(new erizo::ThreadPool(num_workers));
+-- 
+2.17.1
+

@@ -15,15 +15,15 @@ Persistent<Function> MulticasterSource::constructor;
 MulticasterSource::MulticasterSource() {};
 MulticasterSource::~MulticasterSource() {};
 
-void MulticasterSource::Init(Handle<Object> exports, Handle<Object> module) {
+void MulticasterSource::Init(Local<Object> exports, Local<Object> module) {
   Isolate* isolate = exports->GetIsolate();
 
   // Constructor for FrameSource
   Local<FunctionTemplate> tpl = FunctionTemplate::New(isolate, New);
-  tpl->SetClassName(String::NewFromUtf8(isolate, "MulticasterSource"));
+  tpl->SetClassName(Nan::New("MulticasterSource").ToLocalChecked());
   tpl->InstanceTemplate()->SetInternalFieldCount(1);
 
-  constructor.Reset(isolate, tpl->GetFunction());
+  constructor.Reset(isolate, Nan::GetFunction(tpl).ToLocalChecked());
 }
 
 void MulticasterSource::New(const FunctionCallbackInfo<Value>& args) {
@@ -31,7 +31,8 @@ void MulticasterSource::New(const FunctionCallbackInfo<Value>& args) {
   HandleScope scope(isolate);
 
   if (args.Length() > 0) {
-    MediaFrameMulticaster* parent = ObjectWrap::Unwrap<MediaFrameMulticaster>(args[0]->ToObject());
+    MediaFrameMulticaster* parent = ObjectWrap::Unwrap<MediaFrameMulticaster>(
+      Nan::To<v8::Object>(args[0]).ToLocalChecked());
     MulticasterSource* obj = new MulticasterSource();
     obj->me = parent->me;
     obj->src = obj->me;
@@ -45,11 +46,11 @@ Persistent<Function> MediaFrameMulticaster::constructor;
 MediaFrameMulticaster::MediaFrameMulticaster() {};
 MediaFrameMulticaster::~MediaFrameMulticaster() {};
 
-void MediaFrameMulticaster::Init(Handle<Object> exports, Handle<Object> module) {
+void MediaFrameMulticaster::Init(Local<Object> exports, Local<Object> module) {
   Isolate* isolate = exports->GetIsolate();
   // Prepare constructor template
   Local<FunctionTemplate> tpl = FunctionTemplate::New(isolate, New);
-  tpl->SetClassName(String::NewFromUtf8(isolate, "MediaFrameMulticaster"));
+  tpl->SetClassName(Nan::New("MediaFrameMulticaster").ToLocalChecked());
   tpl->InstanceTemplate()->SetInternalFieldCount(1);
   // Prototype
   NODE_SET_PROTOTYPE_METHOD(tpl, "close", close);
@@ -57,8 +58,9 @@ void MediaFrameMulticaster::Init(Handle<Object> exports, Handle<Object> module) 
   NODE_SET_PROTOTYPE_METHOD(tpl, "removeDestination", removeDestination);
   NODE_SET_PROTOTYPE_METHOD(tpl, "source", source);
 
-  constructor.Reset(isolate, tpl->GetFunction());
-  module->Set(String::NewFromUtf8(isolate, "exports"), tpl->GetFunction());
+  constructor.Reset(isolate, Nan::GetFunction(tpl).ToLocalChecked());
+  Nan::Set(module, Nan::New("exports").ToLocalChecked(),
+      Nan::GetFunction(tpl).ToLocalChecked());
 
   // Init MulticasterSource
   MulticasterSource::Init(exports, module);
@@ -91,10 +93,11 @@ void MediaFrameMulticaster::addDestination(const FunctionCallbackInfo<Value>& ar
   MediaFrameMulticaster* obj = ObjectWrap::Unwrap<MediaFrameMulticaster>(args.Holder());
   owt_base::MediaFrameMulticaster* me = obj->me;
 
-  String::Utf8Value param0(args[0]->ToString());
+  Nan::Utf8String param0(Nan::To<v8::String>(args[0]).ToLocalChecked());
   std::string track = std::string(*param0);
 
-  FrameDestination* param = ObjectWrap::Unwrap<FrameDestination>(args[1]->ToObject());
+  FrameDestination* param = ObjectWrap::Unwrap<FrameDestination>(
+    Nan::To<v8::Object>(args[1]).ToLocalChecked());
   owt_base::FrameDestination* dest = param->dest;
 
   if (track == "audio") {
@@ -111,10 +114,11 @@ void MediaFrameMulticaster::removeDestination(const FunctionCallbackInfo<Value>&
   MediaFrameMulticaster* obj = ObjectWrap::Unwrap<MediaFrameMulticaster>(args.Holder());
   owt_base::MediaFrameMulticaster* me = obj->me;
 
-  String::Utf8Value param0(args[0]->ToString());
+  Nan::Utf8String param0(Nan::To<v8::String>(args[0]).ToLocalChecked());
   std::string track = std::string(*param0);
 
-  FrameDestination* param = ObjectWrap::Unwrap<FrameDestination>(args[1]->ToObject());
+  FrameDestination* param = ObjectWrap::Unwrap<FrameDestination>(
+    Nan::To<v8::Object>(args[1]).ToLocalChecked());
   owt_base::FrameDestination* dest = param->dest;
 
   if (track == "audio") {

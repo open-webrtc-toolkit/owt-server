@@ -29,9 +29,13 @@ NAN_MODULE_INIT(AudioFrameConstructor::Init) {
   Nan::SetPrototypeMethod(tpl, "enable", enable);
   Nan::SetPrototypeMethod(tpl, "addDestination", addDestination);
   Nan::SetPrototypeMethod(tpl, "removeDestination", removeDestination);
+  Nan::SetPrototypeMethod(tpl, "source", source);
 
-  constructor.Reset(tpl->GetFunction());
-  Nan::Set(target, Nan::New("AudioFrameConstructor").ToLocalChecked(), Nan::GetFunction(tpl).ToLocalChecked());
+  constructor.Reset(Nan::GetFunction(tpl).ToLocalChecked());
+  Nan::Set(target, Nan::New("AudioFrameConstructor").ToLocalChecked(),
+           Nan::GetFunction(tpl).ToLocalChecked());
+
+  AudioFrameSource::Init(target);
 }
 
 NAN_METHOD(AudioFrameConstructor::New) {
@@ -78,7 +82,8 @@ NAN_METHOD(AudioFrameConstructor::addDestination) {
   AudioFrameConstructor* obj = Nan::ObjectWrap::Unwrap<AudioFrameConstructor>(info.Holder());
   owt_base::AudioFrameConstructor* me = obj->me;
 
-  FrameDestination* param = node::ObjectWrap::Unwrap<FrameDestination>(info[0]->ToObject());
+  FrameDestination* param = node::ObjectWrap::Unwrap<FrameDestination>(
+    Nan::To<v8::Object>(info[0]).ToLocalChecked());
   owt_base::FrameDestination* dest = param->dest;
 
   me->addAudioDestination(dest);
@@ -88,7 +93,8 @@ NAN_METHOD(AudioFrameConstructor::removeDestination) {
   AudioFrameConstructor* obj = Nan::ObjectWrap::Unwrap<AudioFrameConstructor>(info.Holder());
   owt_base::AudioFrameConstructor* me = obj->me;
 
-  FrameDestination* param = node::ObjectWrap::Unwrap<FrameDestination>(info[0]->ToObject());
+  FrameDestination* param = node::ObjectWrap::Unwrap<FrameDestination>(
+    Nan::To<v8::Object>(info[0]).ToLocalChecked());
   owt_base::FrameDestination* dest = param->dest;
 
   me->removeAudioDestination(dest);
@@ -98,7 +104,35 @@ NAN_METHOD(AudioFrameConstructor::enable) {
   AudioFrameConstructor* obj = Nan::ObjectWrap::Unwrap<AudioFrameConstructor>(info.Holder());
   owt_base::AudioFrameConstructor* me = obj->me;
 
-  bool b = (info[0]->ToBoolean())->BooleanValue();
+  bool b = Nan::To<bool>(info[0]).FromMaybe(true);
   me->enable(b);
 }
 
+NAN_METHOD(AudioFrameConstructor::source) {
+  const int argc = 1;
+  v8::Local<v8::Value> argv[argc] = {info.Holder()};
+  v8::Local<v8::Function> cons = Nan::New(AudioFrameSource::constructor);
+  info.GetReturnValue().Set(Nan::NewInstance(cons, 1, argv).ToLocalChecked());
+}
+
+// Source object for AudioFrameConstructor
+Nan::Persistent<Function> AudioFrameSource::constructor;
+
+NAN_MODULE_INIT(AudioFrameSource::Init) {
+  Local<FunctionTemplate> tpl = Nan::New<FunctionTemplate>(New);
+  tpl->SetClassName(Nan::New("AudioFrameSource").ToLocalChecked());
+  tpl->InstanceTemplate()->SetInternalFieldCount(1);
+  constructor.Reset(Nan::GetFunction(tpl).ToLocalChecked());
+}
+
+NAN_METHOD(AudioFrameSource::New) {
+  if (info.Length() == 1) {
+    AudioFrameConstructor* parent = Nan::ObjectWrap::Unwrap<AudioFrameConstructor>(
+      Nan::To<v8::Object>(info[0]).ToLocalChecked());
+    AudioFrameSource* obj = new AudioFrameSource();
+    obj->me = parent->me;
+    obj->src = obj->me;
+    obj->Wrap(info.This());
+    info.GetReturnValue().Set(info.This());
+  }
+}

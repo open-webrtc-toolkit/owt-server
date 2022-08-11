@@ -3,10 +3,10 @@
   "version":"5.0.0",
   "dependencies": {
     "amqplib": "^0.7.0",
-    "log4js": "^1.1.1",
+    "log4js": "^6.4.0",
     "node-getopt": "*",
     "toml": "*",
-    "mongoose": "^5.9.6",
+    "mongoose": "^5.13.12",
     "uuid": "^8.0.0",
     "fraction.js": "^4.0.12"
   },
@@ -22,14 +22,5 @@
   "scripts": {
     "test": "mocha ./test -R spec --timeout 5000",
     "test:cover": "istanbul cover _mocha -- ./test -R spec --timeout 5000"
-  },
-  "bin": "index.js",
-  "pkg": {
-    "assets": [
-      "node_modules*"
-    ],
-    "targets": [
-      "node8"
-    ]
   }
 }

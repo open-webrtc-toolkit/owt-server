@@ -31,6 +31,10 @@ class VideoFramePacketizer : public FrameDestination {
 
   static void enable(const v8::FunctionCallbackInfo<v8::Value>& args);
   static void getSsrc(const v8::FunctionCallbackInfo<v8::Value>& args);
+
+  static void getTotalBitrate(const v8::FunctionCallbackInfo<v8::Value>& args);
+  static void getRetransmitBitrate(const v8::FunctionCallbackInfo<v8::Value>& args);
+  static void getEstimatedBandwidth(const v8::FunctionCallbackInfo<v8::Value>& args);
 };
 
 #endif

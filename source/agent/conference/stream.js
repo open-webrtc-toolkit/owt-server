@@ -40,6 +40,11 @@
  *       stream: string(StreamId),
  *       region: object(Region)
  *     }]
+ *   } | object(SelectInfo):: {
+ *     owner: string(ParticipantId),
+ *     type: 'selecting',
+ *     activeInput: 'unknown' | string(StreamId),
+ *     volume: 'major' | 'minor' | undefined,
  *   }
  * }
  */

@@ -85,6 +85,7 @@ class MediaStream : public MediaFilter, public erizo::MediaStreamStatsListener, 
     bool closed_;
     std::string id_;
     std::string label_;
+    Nan::AsyncResource *asyncResource_;
     /*
      * Constructor.
      * Constructs an empty MediaStream without any configuration.

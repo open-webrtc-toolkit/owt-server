@@ -31,6 +31,7 @@ class ActiveAudioSelector extends EventEmitter {
             this.ranker.addOutput(this.topK[i]);
         }
         this.currentRank = Array(k).fill('');
+        this.currentVolume = Array(k).fill('');
         log.debug('Init with K:', k);
     }
 
@@ -55,6 +56,15 @@ class ActiveAudioSelector extends EventEmitter {
                     log.warn('Unknown stream ID', streamId);
                 }
                 pendingAddIndexes.push(i);
+            } else if (this.currentVolume[i] !== changes[i][1]) {
+                let streamId = this.currentRank[i];
+                if (this.inputs.has(streamId)) {
+                    let { owner, codec } = this.inputs.get(streamId);
+                    const volume = changes[i][1];
+                    log.debug('Volume change:', streamId, volume);
+                    this.emit('source-change',
+                        i, owner, streamId, codec, volume);
+                }
             }
         }
         for (let i of pendingAddIndexes) {
@@ -63,12 +73,14 @@ class ActiveAudioSelector extends EventEmitter {
             if (this.inputs.has(streamId)) {
                 let { owner, codec } = this.inputs.get(streamId);
                 log.debug('Active input:', owner, streamId, codec, i);
-                this.emit('source-change', i, owner, streamId, codec);
+                const volume = changes[i][1];
+                this.emit('source-change', i, owner, streamId, codec, volume);
             } else if (streamId !== '') {
                 log.warn('Unknown stream ID', streamId);
             }
         }
         this.currentRank = changes.map(pair => pair[0]);
+        this.currentVolume = changes.map(pair => pair[1]);
     }
 
     addInput(owner, streamId, codec, conn) {
