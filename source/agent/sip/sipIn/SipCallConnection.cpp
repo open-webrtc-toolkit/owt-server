@@ -40,7 +40,7 @@ void SipCallConnection::New(const FunctionCallbackInfo<Value>& args) {
   SipGateway* gateway = node::ObjectWrap::Unwrap<SipGateway>(
     Nan::To<v8::Object>(args[0]).ToLocalChecked());
 
-  Nan::Utf8String str0(Nan::To<v8::String>(args[0]).ToLocalChecked());
+  Nan::Utf8String str0(Nan::To<v8::String>(args[1]).ToLocalChecked());
   std::string calleeURI = std::string(*str0);
   obj->me = new sip_gateway::SipCallConnection(gateway->me, calleeURI);
   obj->msink = obj->me;
