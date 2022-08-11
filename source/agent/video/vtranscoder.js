@@ -201,7 +201,8 @@ function VTranscoder(rpcClient, clusterIP, VideoTranscoder, router) {
         codec = (codec || supported_codecs.encode[0]).toLowerCase();
         resolution = (isUnspecified(resolution) ? default_resolution : resolution);
         framerate = (isUnspecified(framerate) ? default_framerate : framerate);
-        var bitrate_factor = (typeof bitrate === 'string' ? (bitrate === 'unspecified' ? 1.0 : (Number(bitrate.replace('x', '')) || 0)) : 0);
+        var bitrate_factor = (isUnspecified(bitrate) ? 1.0
+            : (typeof bitrate === 'string' ? Number(bitrate.replace('x', '')) : 0));
         bitrate = (bitrate_factor ? calcDefaultBitrate(codec, resolution, framerate, motion_factor) * bitrate_factor : bitrate);
         keyFrameInterval = (isUnspecified(keyFrameInterval) ? default_kfi : keyFrameInterval);
 

@@ -8,7 +8,6 @@ var fs = require('fs');
 var toml = require('toml');
 var amqper = require('./amqpClient')();
 var rpcClient;
-var makeRPC = require('./makeRPC').makeRPC;
 var logger = require('./logger').logger;
 var log = logger.getLogger('SipPortal');
 var sipErizoHelper = require('./sipErizoHelper');
@@ -73,6 +72,27 @@ var api = {
       }
     }
 };
+
+const grpcApi = {
+    handleSipUpdate: function (call, callback) {
+        const update = {
+            type: call.request.type,
+            room_id: call.request.roomId,
+            sip: call.request.sip
+        };
+        api.handleSipUpdate(update);
+        callback(null, {});
+    },
+    getSipConnectivity: function (call, callback) {
+        api.getSipConnectivity(call.request.id, (n, code, data) => {
+            if (code !== 'error') {
+                callback(null, {message: code});
+            } else {
+                callback(new Error(data), null);
+            }
+        })
+    }
+}
 
 var rebuildErizo = function(erizo_id) {
     // Rebuild a new one to resume the biz.
@@ -140,16 +160,7 @@ function createSipConnectivity(room_id, sip_server, sip_user, sip_passwd) {
         return new Promise((resolve, reject) => {
             helper.allocateSipErizo({room: room_id, task: room_id}, function(erizo) {
                 log.debug('allocateSipErizo', erizo);
-                makeRPC(
-                    rpcClient,
-                    erizo.id,
-                    'init',
-                    [{
-                        room_id: room_id,
-                        sip_server: sip_server,
-                        sip_user: sip_user,
-                        sip_passwd: sip_passwd
-                    }],
+                helper.initSipErizo(erizo.id, room_id, {sip_server, sip_user, sip_passwd},
                     function(result) {
                         log.debug("Sip node init successfully.");
                         erizos[room_id] = erizo.id;
@@ -183,10 +194,7 @@ function deleteSipConnectivity(room_id) {
         if (erizos[room_id]) {
             return new Promise((resolve, reject) => {
                 log.debug('deallocateSipErizo', erizos[room_id]);
-                makeRPC(
-                    rpcClient,
-                    erizos[room_id],
-                    'clean');
+                helper.cleanSipErizo(room_id);
                 helper.deallocateSipErizo(erizos[room_id]);
                 delete erizos[room_id];
                 resolve(room_id);
@@ -198,6 +206,21 @@ function deleteSipConnectivity(room_id) {
 }
 
 function startup () {
+    const enableGrpc = global.config.sip_portal?.enable_grpc || false;
+    if (enableGrpc) {
+        const grpcTools = require('./grpcTools');
+        const grpcPort = global.config.sip_portal?.grpc_port || 9090;
+        grpcTools.startServer('sipPortal', grpcApi, grpcPort)
+        .then((port) => {
+            // Send RPC server address
+            const rpcAddress =  'localhost:' + port;
+            log.info('As gRPC server ok', rpcAddress);
+            initSipRooms();
+        }).catch((err) => {
+            log.error('Start grpc server failed:', err);
+        });
+        return;
+    }
     amqper.connect(config.rabbit, function () {
         amqper.asRpcClient(function(rpcClnt) {
             rpcClient = rpcClnt;

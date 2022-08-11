@@ -199,12 +199,11 @@ var RpcRequest = function(rpcChannel) {
   that.streamControl = function(controller, participantId, streamId, command) {
     if (enableGrpc) {
       startConferenceClientIfNeeded(controller);
-      // Mute/unmute only
-      command.data = {track: command.data};
+      // To JSON command
       const req = {
         participantId,
         sessionId: streamId,
-        command
+        command: JSON.stringify(command)
       };
       return new Promise((resolve, reject) => {
         grpcNode[controller].streamControl(req, (err, result) => {

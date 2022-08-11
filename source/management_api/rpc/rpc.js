@@ -72,6 +72,8 @@ function toGrpc(to, method, args, callbacks, timeout) {
         type = 'clusterManager';
     } else if (nodeManagerMethods.includes(method)) {
         type = 'nodeManager';
+    } else if (method === 'handleSipUpdate') {
+        type = 'sipPortal';
     }
     if (!grpcNode[to]) {
         log.debug('Start gRPC client:', type, to);
@@ -311,6 +313,21 @@ function toGrpc(to, method, args, callbacks, timeout) {
                 cb('error');
             } else {
                 cb(result);
+            }
+        });
+    } else if (method === 'handleSipUpdate') {
+        to = global.config.cluster.sip_portal || 'localhost:9090';
+        const req = {
+            type: args[0].type,
+            roomId: args[0].room_id,
+            sip: args[0].sip
+        };
+        grpcNode[to].handleSipUpdate(req, (err, result) => {
+            if (err) {
+                log.info('handleSipUpdate error:', err);
+                cb('error');
+            } else {
+                cb(result.message);
             }
         });
     } else {
