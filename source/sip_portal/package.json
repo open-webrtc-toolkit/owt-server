@@ -6,6 +6,8 @@
     "log4js": "^6.4.0",
     "toml": "*",
     "mongoose": "^5.13.12",
-    "fraction.js": "*"
+    "fraction.js": "*",
+    "@grpc/proto-loader": "^0.5.0",
+    "@grpc/grpc-js": "^1.1.0"
   }
 }

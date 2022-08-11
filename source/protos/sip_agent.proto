@@ -1,0 +1,123 @@
+//
+syntax = "proto3";
+
+import "access_agent.proto";
+
+package owt;
+
+// The sip service definition.
+service SipAgent {
+  rpc Init (InitRequest) returns (SimpleReply) {}
+  rpc KeepAlive (Empty) returns (SimpleReply) {}
+  rpc Clean (Empty) returns (SimpleReply) {}
+  rpc Drop (DropRequest) returns (SimpleReply) {}
+  rpc MakeCall (CallRequest) returns (SimpleReply) {}
+  rpc EndCall (IdRequest) returns (SimpleReply) {}
+  
+  // Link & Cut
+  rpc Linkup (LinkupRequest) returns (SimpleReply) {}
+  rpc Cutoff (CutoffRequest) returns (SimpleReply) {}
+
+  // Listen to notifications (streaming RPC)
+  rpc ListenToNotifications (ListenRequest) returns (stream ProgressNotification) {}
+
+  // Internal connections
+  rpc GetInternalAddress (Empty) returns (AddressReply) {}
+}
+
+// Message for init request
+message InitRequest {
+  string room = 1;
+  string sipServer = 2;
+  string sipUser = 3;
+  string sipPassword = 4;
+}
+
+// Message for drop request
+message DropRequest {
+  string id = 1;
+  string room = 2;
+}
+
+// Message for make call request
+message CallRequest {
+  string peerUri = 1;
+  string room = 2;
+  // Media input for SIP call
+  message SipMediaIn {
+    bool audio = 1;
+    bool video = 2;
+  }
+  SipMediaIn mediaIn = 3;
+  // Media output for SIP call
+  message SipMediaOut {
+    message SipOutConfig {
+      string from = 1;
+      optional VideoParameter parameters = 2;
+    }
+    SipOutConfig audio = 1;
+    SipOutConfig video = 2;
+  }
+  SipMediaOut mediaOut = 4;
+  string controller = 5;
+}
+
+message LocalityInfo {
+  string agent = 1;
+  string node = 2;
+}
+
+// Progress "name": "onJoin".
+message JoinData {
+  string id = 1;
+  string user = 2;
+  string role = 3;
+  string portal = 4;
+  string room = 5;
+}
+
+// Progress "name": "onLeave".
+message LeaveData {
+  string id = 1;
+}
+
+// Progress "name": "onStreamAdded" or "onStreamRemoved".
+message StreamAddedData {
+  string id = 1;
+  string owner = 2;
+  message StreamInfo {
+    string type = 1;
+    message SipMedia {
+      optional AudioFormat audio = 1;
+      optional VideoFormatDetail video = 2;
+    }
+    SipMedia media = 2;
+    LocalityInfo locality = 3;
+  }
+  optional StreamInfo info = 3;
+}
+
+// Progress "name": "onSubscriptionAdded" or "onSubscriptionRemoved"
+message SubscriptionAddedData {
+  string id = 1;
+  string owner = 2;
+  message SubscriptionInfo {
+    string type = 1;
+    message SipMediaSub {
+      message AudioOption {
+        string from = 1;
+        AudioFormat format = 2;
+      }
+      AudioOption audio = 1;
+      message VideoOption {
+        string from = 1;
+        VideoFormat format = 2;
+        VideoParameter parameters = 3;
+      }
+      VideoOption video = 2;
+    }
+    SipMediaSub media = 2;
+    LocalityInfo locality = 3;
+  }
+  optional SubscriptionInfo info = 3;
+}
