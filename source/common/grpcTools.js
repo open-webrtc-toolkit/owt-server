@@ -78,8 +78,10 @@ function startClient(type, address) {
      oneofs: true
     });
   const pkg = grpc.loadPackageDefinition(packageDefinition)[packageName];
+  const useProxy = Number(process.env['GRPC_ARG_HTTP_PROXY']) || 0;
+  const options = {'grpc.enable_http_proxy': useProxy};
   const client = new pkg[serviceName](
-      address, grpc.credentials.createInsecure());
+      address, grpc.credentials.createInsecure(), options);
   return client;
 }
 
