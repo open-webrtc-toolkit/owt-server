@@ -149,14 +149,9 @@ function toGrpc(to, method, args, callbacks, timeout) {
             }
         });
     } else if (method === 'controlParticipant') {
-        args[1].forEach((update) => {
-            if (typeof update.value === 'boolean') {
-                update.value = {data: update.value};
-            }
-        })
         const req = {
             participantId: args[0],
-            authorities: args[1]
+            jsonPatch: JSON.stringify(args[1])
         };
         grpcNode[to].controlParticipant(req, (err, result) => {
             if (err) {
@@ -205,7 +200,7 @@ function toGrpc(to, method, args, callbacks, timeout) {
                 cb('error');
             } else {
                 if (result.info.attributes) {
-                    result.info.attributes = JSON.parse(stream.info.attributes);
+                    result.info.attributes = JSON.parse(result.info.attributes);
                 }
                 cb(result);
             }
@@ -230,7 +225,7 @@ function toGrpc(to, method, args, callbacks, timeout) {
                 cb('error');
             } else {
                 if (result.info.attributes) {
-                    result.info.attributes = JSON.parse(stream.info.attributes);
+                    result.info.attributes = JSON.parse(result.info.attributes);
                 }
                 cb(result);
             }
@@ -292,6 +287,15 @@ function toGrpc(to, method, args, callbacks, timeout) {
         grpcNode[to].deleteSubscription(req, (err, result) => {
             if (err) {
                 log.info('deleteSubscription error:', err);
+                cb('error');
+            } else {
+                cb(result);
+            }
+        });
+    } else if (method === 'destroy') {
+        grpcNode[to].destroy({}, (err, result) => {
+            if (err) {
+                log.info('destroy error:', err);
                 cb('error');
             } else {
                 cb(result);
