@@ -3606,12 +3606,8 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
     },
     controlParticipant: function (call, callback) {
       const req = call.request;
-      req.authorities.forEach((update) => {
-        if (typeof update.value.data === 'boolean') {
-          update.value = update.value.data;
-        }
-      });
-      conference.controlParticipant(req.participantId, req.authorities,
+      const authorities = JSON.parse(req.jsonPatch);
+      conference.controlParticipant(req.participantId, authorities,
         (n, code, data) => {
         if (code === 'error') {
           callback(new Error(data), null);
@@ -3665,7 +3661,7 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
           callback(new Error(data), null);
         } else {
           if (code.info.attributes) {
-            code.info.attributes = JSON.stringify(stream.info.attributes);
+            code.info.attributes = JSON.stringify(code.info.attributes);
           }
           callback(null, code);
         }
@@ -3747,6 +3743,12 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
         }
       });
     },
+    destroy: function (call, callback) {
+      conference.destroy((n, code, data) => {
+        callback(null, {});
+      });
+    },
+
     getSipCalls: function (call, callback) {
       conference.getSipCalls((n, code, data) => {
         if (code === 'error') {
@@ -3770,7 +3772,6 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
     controlSipCall: conference.controlSipCall,
     endSipCall: conference.endSipCall,
     drawText: conference.drawText,
-    destroy: conference.destroy,
   }
 
   that.onFaultDetected = conference.onFaultDetected;

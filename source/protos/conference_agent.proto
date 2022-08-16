@@ -21,6 +21,7 @@ service ConferenceAgent {
   rpc Unsubscribe(EndRequest) returns (SimpleReply) {}
   rpc StreamControl(ControlRequest) returns (SimpleReply) {}
   rpc SubscriptionControl(ControlRequest) returns (SimpleReply) {}
+  rpc Destroy(Empty) returns (SimpleReply) {}
 
   // RPC from OAM component.
   rpc GetParticipants(Empty) returns (ParticipantsReply) {}
@@ -44,7 +45,6 @@ service ConferenceAgent {
   // rpc controlSipCall(Request) returns (JoinReply) {}
   // rpc endSipCall(Request) returns (JoinReply) {}
   // rpc drawText(Request) returns (JoinReply) {}
-  // rpc destroy(Request) returns (JoinReply) {}
 
   // Signaling
   rpc OnSessionSignaling(SignalingRequest) returns (SimpleReply) {}
@@ -282,17 +282,7 @@ message ParticipantsReply {
 // For ControlParticipant
 message UpdateParticipantRequest {
   string participantId = 1;
-  message PermissionUpdate {
-    string op = 1;
-    string path = 2;
-    message UpdateValue {
-      optional bool audio = 1;
-      optional bool video = 2;
-      optional bool data = 3;
-    }
-    UpdateValue value = 3;
-  }
-  repeated PermissionUpdate authorities = 2;
+  string jsonPatch = 2;
 }
 
 // For GetStreams
