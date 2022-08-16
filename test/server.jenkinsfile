@@ -52,7 +52,7 @@ pipeline {
                               persistentVolumeClaim(claimName: 'centos-log', mountPath: '/root/centos_log', readOnly: false)
                               ],
                          containers: [
-                            containerTemplate(name: 'test-images', image: "$env.centos_test_images",  ttyEnabled: true, alwaysPullImage: true, privileged: true,resourceRequestCpu: '3000m', resourceLimitCpu: '4000m', resourceRequestMemory: '3.0Gi', resourceLimitMemory: '4.0Gi', command: 'cat'),
+                            containerTemplate(name: 'test-images', image: "$env.centos_test_images",  ttyEnabled: true, alwaysPullImage: true, privileged: true,resourceRequestCpu: '3000m', resourceLimitCpu: '4000m', resourceRequestMemory: '4.0Gi', resourceLimitMemory: '8.0Gi', command: 'cat'),
                             ]) {
                             node('api-server-centos-'+env.GIT_BRANCH) {
                                 container('test-images') {
@@ -71,7 +71,7 @@ pipeline {
                               persistentVolumeClaim(claimName: 'centos-log', mountPath: '/root/centos_log', readOnly: false)
                               ],
                         containers: [
-                            containerTemplate(name: 'test-images', image: "$env.centos_test_images",  ttyEnabled: true, alwaysPullImage: true, privileged: true, resourceRequestCpu: '3000m', resourceLimitCpu: '4000m', resourceRequestMemory: '3.0Gi', resourceLimitMemory: '4.0Gi', command: 'cat'),
+                            containerTemplate(name: 'test-images', image: "$env.centos_test_images",  ttyEnabled: true, alwaysPullImage: true, privileged: true, resourceRequestCpu: '3000m', resourceLimitCpu: '4000m', resourceRequestMemory: '4.0Gi', resourceLimitMemory: '8.0Gi', command: 'cat'),
                             ]) {
                             node('rest-server-centos-'+env.GIT_BRANCH) {
                                 container('test-images') {
