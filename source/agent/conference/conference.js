@@ -2980,7 +2980,7 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
     },
     subscriptionControl: function (call, callback) {
       const req = call.request;
-      let command = (req.command.track || req.command.update);
+      let command = JSON.parse(req.command);
       conference.subscriptionControl(req.participantId, req.sessionId,
         command, grpcCb(callback));
     },

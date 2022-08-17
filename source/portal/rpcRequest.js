@@ -260,14 +260,13 @@ var RpcRequest = function(rpcChannel) {
   };
 
   that.subscriptionControl = function(controller, participantId, subscriptionId, command) {
+    log.warn('subscriptionConrol, ', participantId, subscriptionId, command)
     if (enableGrpc) {
       startConferenceClientIfNeeded(controller);
-      // Mute/unmute only
-      command.data = {track: command.data};
       const req = {
         participantId,
-        sessionId: streamId,
-        command
+        sessionId: subscriptionId,
+        command: JSON.stringify(command)
       };
       return new Promise((resolve, reject) => {
         grpcNode[controller].subscriptionControl(req, (err, result) => {

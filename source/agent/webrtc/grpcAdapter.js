@@ -109,6 +109,41 @@ function createGrpcInterface(controller, streamingEmitter) {
           }
         });
     },
+    createTransport: function (call, callback) {
+      const req = call.request;
+      controller.createTransport(req.id, req.controller, (n, code, data) => {
+          if (code === 'error') {
+            callback(new Error(data), null);
+          } else {
+            callback(null, {message: data});
+          }
+        });
+    },
+    destroyTransport: function (call, callback) {
+      const req = call.request;
+      controller.destroyTransport(req.id, (n, code, data) => {
+          if (code === 'error') {
+            callback(new Error(data), null);
+          } else {
+            callback(null, {message: data});
+          }
+        });
+    },
+    sessionControl: function (call, callback) {
+      const req = call.request;
+      controller.mediaOnOff(
+        req.id,
+        req.tracks,
+        req.direction,
+        req.action,
+        (n, code, data) => {
+          if (code === 'error') {
+            callback(new Error(data), null);
+          } else {
+            callback(null, {message: data});
+          }
+        });
+    },
   };
 
   return that;
