@@ -252,10 +252,42 @@ const RpcRequest = function(rpcChannel, listener) {
   };
 
   that.destroyTransport = function(accessNode, transportId) {
+    // GRPC for webrtc-agent
+    if (grpcNode[accessNode]) {
+      // Use GRPC
+      const req = {id: transportId};
+      return new Promise((resolve, reject) => {
+        grpcNode[accessNode].destroyTransport(req, (err, result) => {
+          if (!err) {
+            resolve(result);
+          } else {
+            reject(err);
+          }
+        });
+      });
+    }
     return rpcChannel.makeRPC(accessNode, 'destroyTransport', [transportId]);
   }
 
   that.mediaOnOff = function(accessNode, sessionId, track, direction, onOff) {
+    if (grpcNode[accessNode]) {
+      // Use GRPC
+      const req = {
+        id: sessionId,
+        tracks: track,
+        direction: direction,
+        action: onOff
+      };
+      return new Promise((resolve, reject) => {
+        grpcNode[accessNode].sessionControl(req, (err, result) => {
+          if (!err) {
+            resolve(result);
+          } else {
+            reject(err);
+          }
+        });
+      });
+    }
     return rpcChannel.makeRPC(accessNode, 'mediaOnOff', [sessionId, track, direction, onOff]);
   };
 

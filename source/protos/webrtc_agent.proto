@@ -26,6 +26,13 @@ service WebRTCAgent {
 
   // Process signaling message
   rpc ProcessSignaling (SignalingRequest) returns (SimpleReply) {}
+
+  // Transport control
+  rpc CreateTransport (TransportRequest) returns (SimpleReply) {}
+  rpc DestroyTransport (IdRequest) returns (SimpleReply) {}
+
+  // Publication/subscription control
+  rpc SessionControl (ControlRequest) returns (SimpleReply) {}
 }
 
 // Send signaling message
@@ -89,4 +96,18 @@ message RequestOption {
   repeated TrackOption tracks = 2;
   optional string controller = 3;
   optional string owner = 4;
+}
+
+// For creating transport
+message TransportRequest {
+  string id = 1;
+  string controller = 2;
+}
+
+// For webrtc session control
+message ControlRequest {
+  string id = 1;
+  repeated string tracks = 2;
+  string direction = 3;
+  string action = 4;
 }
