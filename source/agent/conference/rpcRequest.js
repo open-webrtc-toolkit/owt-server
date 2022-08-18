@@ -306,6 +306,9 @@ const RpcRequest = function(rpcChannel, listener) {
   };
 
   that.dropUser = function(portal, participantId) {
+    if (enableGrpc) {
+      return Promise.resolve();
+    }
     return rpcChannel.makeRPC(portal, 'drop', [participantId]);
   };
 
@@ -376,6 +379,9 @@ const RpcRequest = function(rpcChannel, listener) {
     return rpcChannel.makeRPC(clusterManager, 'leaveConference', [roomId])
   }
   that.validateAndDeleteWebTransportToken = function(portal, token) {
+    if (enableGrpc) {
+      return Promise.resolve();
+    }
     return rpcChannel.makeRPC(
       portal, 'validateAndDeleteWebTransportToken', [token]);
   };

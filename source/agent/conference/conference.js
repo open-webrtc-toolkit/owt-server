@@ -2390,6 +2390,10 @@ var Conference = function (rpcClient, selfRpcId) {
       var deleted = participants[participantId].getInfo();
       return participants[participantId].drop()
         .then(function(result) {
+          notificationEmitter.emit('notification', {
+            id: participantId,
+            name: 'drop'
+          });
           removeParticipant(participantId);
           return deleted;
         }).catch(function(reason) {
