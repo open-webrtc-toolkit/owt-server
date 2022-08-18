@@ -221,7 +221,10 @@ var startServers = function(id, tokenKey) {
     broadcast: function(controller, excludeList, event, data) {
       socketio_server && socketio_server.broadcast(
         controller, excludeList, event, data);
-    }
+    },
+    drop: function(participantId) {
+      socketio_server && socketio_server.drop(participantId);
+    },
   };
 
   return socketio_server.start()

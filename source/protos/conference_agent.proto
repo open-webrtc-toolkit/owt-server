@@ -262,14 +262,7 @@ message SignalingRequest {
 message SignalingNotification {
   string id = 1;
   string name = 2;
-  message NotificationData {
-    optional string id = 1;
-    optional string status = 2;
-    optional SignalingMessage signaling = 3;
-    optional string data = 4;
-    optional StreamInfo stream = 5;
-  }
-  string data = 3;
+  string data = 3; // JSON data
   optional string from = 4;
   optional string room = 5;
 }

@@ -24,13 +24,17 @@ var RpcRequest = function(rpcChannel) {
     if (handler) {
       const call = grpcNode[node].listenToNotifications({id: 'portal'});
       call.on('data', (notification) => {
-        const data = JSON.parse(notification.data);
-        if (notification.room) {
-          handler.broadcast(
-            notification.room, [notification.from],
-            notification.name, data, () => {});
+        if (notification.name === 'drop') {
+          handler.drop(notification.id);
         } else {
-          handler.notify(notification.id, notification.name, data, () => {});
+          const data = JSON.parse(notification.data);
+          if (notification.room) {
+            handler.broadcast(
+              notification.room, [notification.from],
+              notification.name, data, () => {});
+          } else {
+            handler.notify(notification.id, notification.name, data, () => {});
+          }
         }
       });
       call.on('end', () => {
