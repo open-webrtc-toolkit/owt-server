@@ -77,7 +77,7 @@ function createGrpcInterface(controller, streamingEmitter) {
     listenToNotifications: function (call, callback) {
       streamingEmitter.on('notification', (notification) => {
         const progress = packNotification({
-          type: 'video',
+          type: 'streaming',
           name: notification.name,
           data: notification.data,
         });

@@ -131,7 +131,7 @@ message Stream {
     optional string activeInput = 5;
     // Mixed
     optional string label = 6;
-    repeated RegionMap layout = 7;
+    repeated StringRegionMap layout = 7;
     // Active audio
     optional string volume = 8;
   }
@@ -364,7 +364,7 @@ message ServerSubRequest {
       }
       optional VideoSubOption video = 2;
     }
-    optional MediaPubOption media = 2;
+    optional MediaSubOption media = 2;
     // Subscribe connection option
     message SubscribeConnection {
       optional string protocol = 1;

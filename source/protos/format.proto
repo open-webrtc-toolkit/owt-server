@@ -82,6 +82,24 @@ message RegionMap {
   Region region = 2;
 }
 
+// Region with string coordinator
+message StringRegion {
+  string id = 1;
+  string shape = 2;
+  message Area {
+    string left = 1;
+    string top = 2;
+    string width = 3;
+    string height = 4;
+  }
+  Area area = 3;
+}
+
+message StringRegionMap {
+  optional string stream = 1;
+  StringRegion region = 2;
+}
+
 /// Common request and reply
 // Request with an "id" field
 message IdRequest {
