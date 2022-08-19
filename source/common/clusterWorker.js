@@ -66,6 +66,9 @@ module.exports = function (spec) {
         log.info('ClusterManager gRPC address:', cluster_host);
         const grpcTools = require('./grpcTools');
         const grpcClient = grpcTools.startClient('clusterManager', cluster_host);
+        const GRPC_TIMEOUT = 2000;
+        const opt = () => ({deadline: new Date(Date.now() + GRPC_TIMEOUT)});
+
         // Client for gRPC
         rpcClient = {
             remoteCast: function (name, method, args) {
@@ -74,7 +77,7 @@ module.exports = function (spec) {
                         id: args[0],
                         load: args[1]
                     };
-                    grpcClient.reportLoad(req, (err) => {
+                    grpcClient.reportLoad(req, opt(), (err) => {
                         if (err) {
                             log.info('Failed to reportLoad', err);
                         }
@@ -84,7 +87,7 @@ module.exports = function (spec) {
                         id: args[0],
                         state: args[1]
                     };
-                    grpcClient.reportState(req, (err) => {
+                    grpcClient.reportState(req, opt(), (err) => {
                         if (err) {
                             log.info('Failed to reportState', err);
                         }
@@ -94,7 +97,7 @@ module.exports = function (spec) {
                         id: args[0],
                         tasks: args[1]
                     };
-                    grpcClient.pickUpTasks(req, (err) => {
+                    grpcClient.pickUpTasks(req, opt(), (err) => {
                         if (err) {
                             log.info('Failed to pickUpTasks', err);
                         }
@@ -104,7 +107,7 @@ module.exports = function (spec) {
                         id: args[0],
                         task: args[1]
                     };
-                    grpcClient.layDownTask(req, (err) => {
+                    grpcClient.layDownTask(req, opt(), (err) => {
                         if (err) {
                             log.info('Failed to layDownTask', err);
                         }
@@ -114,14 +117,14 @@ module.exports = function (spec) {
                         id: args[0],
                         task: args[1]
                     };
-                    grpcClient.unschedule(req, (err) => {
+                    grpcClient.unschedule(req, opt(), (err) => {
                         if (err) {
                             log.info('Failed to unschedule', err);
                         }
                     });
                 } else if (method === 'quit') {
                     const req = {id: args[0]};
-                    grpcClient.quit(req, (err) => {
+                    grpcClient.quit(req, opt(), (err) => {
                         if (err) {
                             log.info('Failed to quit', err);
                         }
@@ -137,7 +140,7 @@ module.exports = function (spec) {
                     id: args[1],
                     info: args[2]
                 };
-                grpcClient.join(req, (err, result) => {
+                grpcClient.join(req, opt(), (err, result) => {
                     if (err) {
                         onError(err);
                     } else {
@@ -145,7 +148,7 @@ module.exports = function (spec) {
                     }
                 });
             } else if (method === 'keepAlive') {
-                grpcClient.keepAlive({id: args[0]}, (err, result) => {
+                grpcClient.keepAlive({id: args[0]}, opt(), (err, result) => {
                     if (err) {
                         onError(err);
                     } else {
