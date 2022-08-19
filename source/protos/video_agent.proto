@@ -75,7 +75,7 @@ message LayoutData {
 message VideoLayoutChangeData {
   string owner = 1;
   string label = 2;
-  repeated RegionMap regions = 3;
+  repeated StringRegionMap regions = 3;
   optional string domain = 4;
 }
 
