@@ -7,12 +7,14 @@
 const grpcTools = require('./grpcTools');
 const enableGrpc = config.portal.enable_grpc || false;
 const log = require('./logger').logger.getLogger('RpcRequest');
+const GRPC_TIMEOUT = 2000;
 
 var RpcRequest = function(rpcChannel) {
   var that = {};
   let clusterClient;
   const grpcAgents = {}; // workerAgent => grpcClient
   const grpcNode = {}; // workerNode => grpcClient
+  const opt = () => ({deadline: new Date(Date.now() + GRPC_TIMEOUT)});
 
   const startConferenceClientIfNeeded = function (node) {
     if (grpcNode[node]) {
@@ -64,7 +66,7 @@ var RpcRequest = function(rpcChannel) {
           preference: {}, // Change data for some preference
           reserveTime: 30 * 1000
         };
-        clusterClient.schedule(req, (err, result) => {
+        clusterClient.schedule(req, opt(), (err, result) => {
           if (err) {
             log.debug('Schedule node error:', err);
             reject(err);
@@ -82,7 +84,7 @@ var RpcRequest = function(rpcChannel) {
         }
         return new Promise((resolve, reject) => {
           const req = {info: {room: roomId, task: roomId}};
-          grpcAgents[agentAddress].getNode(req, (err, result) => {
+          grpcAgents[agentAddress].getNode(req, opt(), (err, result) => {
             if (!err) {
               const node = result.message;
               startConferenceClientIfNeeded(node);
@@ -106,7 +108,7 @@ var RpcRequest = function(rpcChannel) {
       startConferenceClientIfNeeded(controller);
       const req = {roomId, participant};
       return new Promise((resolve, reject) => {
-        grpcNode[controller].join(req, (err, result) => {
+        grpcNode[controller].join(req, opt(), (err, result) => {
           if (err) {
             reject(err.message);
           } else {
@@ -123,7 +125,7 @@ var RpcRequest = function(rpcChannel) {
       startConferenceClientIfNeeded(controller);
       const req = {id: participantId};
       return new Promise((resolve, reject) => {
-        grpcNode[controller].leave(req, (err, result) => {
+        grpcNode[controller].leave(req, opt(), (err, result) => {
           if (err) {
             reject(err.message);
           } else {
@@ -144,7 +146,7 @@ var RpcRequest = function(rpcChannel) {
         message
       };
       return new Promise((resolve, reject) => {
-        grpcNode[controller].text(req, (err, result) => {
+        grpcNode[controller].text(req, opt(), (err, result) => {
           if (err) {
             reject(err.message);
           } else {
@@ -168,7 +170,7 @@ var RpcRequest = function(rpcChannel) {
         req.pubInfo.attributes = JSON.stringify(req.pubInfo.attributes);
       }
       return new Promise((resolve, reject) => {
-        grpcNode[controller].publish(req, (err, result) => {
+        grpcNode[controller].publish(req, opt(), (err, result) => {
           if (err) {
             reject(err.message);
           } else {
@@ -188,7 +190,7 @@ var RpcRequest = function(rpcChannel) {
         sessionId: streamId
       };
       return new Promise((resolve, reject) => {
-        grpcNode[controller].unpublish(req, (err, result) => {
+        grpcNode[controller].unpublish(req, opt(), (err, result) => {
           if (err) {
             reject(err.message);
           } else {
@@ -210,7 +212,7 @@ var RpcRequest = function(rpcChannel) {
         command: JSON.stringify(command)
       };
       return new Promise((resolve, reject) => {
-        grpcNode[controller].streamControl(req, (err, result) => {
+        grpcNode[controller].streamControl(req, opt(), (err, result) => {
           if (err) {
             reject(err.message);
           } else {
@@ -231,7 +233,7 @@ var RpcRequest = function(rpcChannel) {
         subInfo: Options
       };
       return new Promise((resolve, reject) => {
-        grpcNode[controller].subscribe(req, (err, result) => {
+        grpcNode[controller].subscribe(req, opt(), (err, result) => {
           if (err) {
             reject(err.message);
           } else {
@@ -251,7 +253,7 @@ var RpcRequest = function(rpcChannel) {
         sessionId: subscriptionId
       };
       return new Promise((resolve, reject) => {
-        grpcNode[controller].unsubscribe(req, (err, result) => {
+        grpcNode[controller].unsubscribe(req, opt(), (err, result) => {
           if (err) {
             reject(err.message);
           } else {
@@ -273,7 +275,7 @@ var RpcRequest = function(rpcChannel) {
         command: JSON.stringify(command)
       };
       return new Promise((resolve, reject) => {
-        grpcNode[controller].subscriptionControl(req, (err, result) => {
+        grpcNode[controller].subscriptionControl(req, opt(), (err, result) => {
           if (err) {
             reject(err.message);
           } else {
@@ -293,7 +295,7 @@ var RpcRequest = function(rpcChannel) {
         signaling
       };
       return new Promise((resolve, reject) => {
-        grpcNode[controller].onSessionSignaling(req, (err, result) => {
+        grpcNode[controller].onSessionSignaling(req, opt(), (err, result) => {
           if (err) {
             reject(err.message);
           } else {

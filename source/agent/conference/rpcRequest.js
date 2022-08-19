@@ -12,6 +12,7 @@ const makeRPC = require('./makeRPC').makeRPC;
 const log = require('./logger').logger.getLogger('RpcRequest');
 
 const enableGrpc = global.config.agent.enable_grpc || false;
+const GRPC_TIMEOUT = 2000;
 
 const RpcRequest = function(rpcChannel, listener) {
   const that = {};
@@ -20,6 +21,8 @@ const RpcRequest = function(rpcChannel, listener) {
   const nodeType = {}; // NodeId => Type
   let clusterClient;
   let sipPortalClient;
+  const opt = () => ({deadline: new Date(Date.now() + GRPC_TIMEOUT)});
+
 
   that.getRoomConfig = function(configServer, sessionId) {
     return rpcChannel.makeRPC(configServer, 'getRoomConfig', sessionId);
@@ -41,7 +44,7 @@ const RpcRequest = function(rpcChannel, listener) {
           preference, // Change data for some preference
           reserveTime: 30 * 1000
         };
-        clusterClient.schedule(req, (err, result) => {
+        clusterClient.schedule(req, opt(), (err, result) => {
           if (err) {
             log.debug('Schedule node error:', err);
             reject(err);
@@ -58,7 +61,7 @@ const RpcRequest = function(rpcChannel, listener) {
           );
         }
         return new Promise((resolve, reject) => {
-          grpcAgents[agentAddress].getNode({info: forWhom}, (err, result) => {
+          grpcAgents[agentAddress].getNode({info: forWhom}, opt(), (err, result) => {
             if (!err) {
               resolve(result.message);
             } else {
@@ -132,7 +135,7 @@ const RpcRequest = function(rpcChannel, listener) {
     if (grpcAgents[workerAgent]) {
       const req = {id: workerNode, info: forWhom};
       return new Promise((resolve, reject) => {
-        grpcAgents[workerAgent].recycleNode(req, (err, result) => {
+        grpcAgents[workerAgent].recycleNode(req, opt(), (err, result) => {
           if (err) {
             log.debug('Recycle node error:', err);
             reject(err);
@@ -160,7 +163,7 @@ const RpcRequest = function(rpcChannel, listener) {
             type: sessionType,
             option: packOption(sessionType, Options)
           };
-          grpcNode[accessNode].publish(req, (err, result) => {
+          grpcNode[accessNode].publish(req, opt(), (err, result) => {
             if (!err) {
               resolve(result);
             } else {
@@ -173,7 +176,7 @@ const RpcRequest = function(rpcChannel, listener) {
             type: sessionType,
             option: packOption(sessionType, Options)
           };
-          grpcNode[accessNode].subscribe(req, (err, result) => {
+          grpcNode[accessNode].subscribe(req, opt(), (err, result) => {
             if (!err) {
               resolve(result);
             } else {
@@ -200,7 +203,7 @@ const RpcRequest = function(rpcChannel, listener) {
       return new Promise((resolve, reject) => {
         if (direction === 'in') {
           const req = {id: sessionId};
-          grpcNode[accessNode].unpublish(req, (err, result) => {
+          grpcNode[accessNode].unpublish(req, opt(), (err, result) => {
             if (!err) {
               resolve(result);
             } else {
@@ -209,7 +212,7 @@ const RpcRequest = function(rpcChannel, listener) {
           });
         } else if (direction === 'out') {
           const req = {id: sessionId};
-          grpcNode[accessNode].unsubscribe(req, (err, result) => {
+          grpcNode[accessNode].unsubscribe(req, opt(), (err, result) => {
             if (!err) {
               resolve(result);
             } else {
@@ -239,7 +242,7 @@ const RpcRequest = function(rpcChannel, listener) {
           id: transportId,
           signaling: signaling,
         };
-        grpcNode[accessNode].processSignaling(req, (err, result) => {
+        grpcNode[accessNode].processSignaling(req, opt(), (err, result) => {
           if (!err) {
             resolve(result);
           } else {
@@ -257,7 +260,7 @@ const RpcRequest = function(rpcChannel, listener) {
       // Use GRPC
       const req = {id: transportId};
       return new Promise((resolve, reject) => {
-        grpcNode[accessNode].destroyTransport(req, (err, result) => {
+        grpcNode[accessNode].destroyTransport(req, opt(), (err, result) => {
           if (!err) {
             resolve(result);
           } else {
@@ -279,7 +282,7 @@ const RpcRequest = function(rpcChannel, listener) {
         action: onOff
       };
       return new Promise((resolve, reject) => {
-        grpcNode[accessNode].sessionControl(req, (err, result) => {
+        grpcNode[accessNode].sessionControl(req, opt(), (err, result) => {
           if (!err) {
             resolve(result);
           } else {
@@ -319,7 +322,7 @@ const RpcRequest = function(rpcChannel, listener) {
         sipPortalClient = startClient('sipPortal', sipPortal);
       }
       return new Promise((resolve, reject) => {
-        sipPortalClient.getSipConnectivity({id: roomId}, (err, result) => {
+        sipPortalClient.getSipConnectivity({id: roomId}, opt(), (err, result) => {
           if (!err) {
             const sipNode = result.message;
             grpcNode[sipNode] = grpcTools.startClient('sip', sipNode);
@@ -343,7 +346,7 @@ const RpcRequest = function(rpcChannel, listener) {
           mediaOut: mediaOut,
           controller: controller
         };
-        grpcNode[sipNode].makeCall(req, (err, result) => {
+        grpcNode[sipNode].makeCall(req, opt(), (err, result) => {
           if (!err) {
             resolve(result.message);
           } else {
@@ -359,7 +362,7 @@ const RpcRequest = function(rpcChannel, listener) {
     if (grpcNode[sipNode]) {
       // Use GRPC
       return new Promise((resolve, reject) => {
-        grpcNode[sipNode].endSipCall({id: sipCallId}, (err, result) => {
+        grpcNode[sipNode].endSipCall({id: sipCallId}, opt(), (err, result) => {
           if (!err) {
             resolve(result.message);
           } else {
@@ -386,7 +389,7 @@ const RpcRequest = function(rpcChannel, listener) {
           id: parameters[0],
           from: parameters[1],
         };
-        grpcNode[remoteNode].linkup(req, (err, result) => {
+        grpcNode[remoteNode].linkup(req, opt(), (err, result) => {
           if (!err) {
             onOk && onOk(result);
           } else {
@@ -395,7 +398,7 @@ const RpcRequest = function(rpcChannel, listener) {
         });
       } else if (rpcName === 'cutoff') {
         const req = {id: parameters[0]};
-        grpcNode[remoteNode].cutoff(req, (err, result) => {
+        grpcNode[remoteNode].cutoff(req, opt(), (err, result) => {
           if (!err) {
             onOk && onOk(result);
           } else {
@@ -403,7 +406,7 @@ const RpcRequest = function(rpcChannel, listener) {
           }
         });
       } else if (rpcName === 'getInternalAddress') {
-        grpcNode[remoteNode].getInternalAddress({}, (err, result) => {
+        grpcNode[remoteNode].getInternalAddress({}, opt(), (err, result) => {
           if (!err) {
             onOk && onOk(result);
           } else {
@@ -443,7 +446,7 @@ const RpcRequest = function(rpcChannel, listener) {
           type: type,
           option: packOption(type, initOption)
         };
-        grpcNode[remoteNode].init(req, (err, result) => {
+        grpcNode[remoteNode].init(req, opt(), (err, result) => {
           if (!err) {
             onOk && onOk(result);
           } else {
@@ -470,7 +473,7 @@ const RpcRequest = function(rpcChannel, listener) {
             }
           };
         }
-        grpcNode[remoteNode].generate(req, (err, result) => {
+        grpcNode[remoteNode].generate(req, opt(), (err, result) => {
           if (!err) {
             const resp = req.media.audio ? result.id : result;
             onOk && onOk(resp);
@@ -480,7 +483,7 @@ const RpcRequest = function(rpcChannel, listener) {
         });
       } else if (rpcName === 'degenerate') {
         const req = {id: parameters[0]};
-        grpcNode[remoteNode].degenerate(req, (err, result) => {
+        grpcNode[remoteNode].degenerate(req, opt(), (err, result) => {
           if (!err) {
             onOk && onOk(result);
           } else {
@@ -489,7 +492,7 @@ const RpcRequest = function(rpcChannel, listener) {
         });
       } else if (rpcName === 'enableVAD') {
         const req = {periodMs: parameters[0]};
-        grpcNode[remoteNode].enableVad(req, (err, result) => {
+        grpcNode[remoteNode].enableVad(req, opt(), (err, result) => {
           if (!err) {
             onOk && onOk(result);
           } else {
@@ -501,7 +504,7 @@ const RpcRequest = function(rpcChannel, listener) {
         if (rpcName === 'resetVAD') {
           rpcName = 'resetVad';
         }
-        grpcNode[remoteNode][rpcName](req, (err, result) => {
+        grpcNode[remoteNode][rpcName](req, opt(), (err, result) => {
           if (!err) {
             onOk && onOk(result);
           } else {
@@ -513,7 +516,7 @@ const RpcRequest = function(rpcChannel, listener) {
           id: parameters[0],
           active: parameters[1]
         };
-        grpcNode[remoteNode][rpcName](req, (err, result) => {
+        grpcNode[remoteNode][rpcName](req, opt(), (err, result) => {
           if (!err) {
             onOk && onOk(result);
           } else {
@@ -522,7 +525,7 @@ const RpcRequest = function(rpcChannel, listener) {
         });
       } else if (rpcName === 'getRegion') {
         const req = {id: parameters[0]};
-        grpcNode[remoteNode][rpcName](req, (err, result) => {
+        grpcNode[remoteNode][rpcName](req, opt(), (err, result) => {
           if (!err) {
             onOk && onOk(result.message);
           } else {
@@ -534,7 +537,7 @@ const RpcRequest = function(rpcChannel, listener) {
           streamId: parameters[0],
           regionId: parameters[1]
         };
-        grpcNode[remoteNode][rpcName](req, (err, result) => {
+        grpcNode[remoteNode][rpcName](req, opt(), (err, result) => {
           if (!err) {
             onOk && onOk(result);
           } else {
@@ -543,7 +546,7 @@ const RpcRequest = function(rpcChannel, listener) {
         });
       } else if (rpcName === 'setLayout') {
         const req = {regions: parameters[0]};
-        grpcNode[remoteNode][rpcName](req, (err, result) => {
+        grpcNode[remoteNode][rpcName](req, opt(), (err, result) => {
           if (!err) {
             onOk && onOk(result.regions);
           } else {
@@ -552,7 +555,7 @@ const RpcRequest = function(rpcChannel, listener) {
         });
       } else if (rpcName === 'setPrimary' || rpcName === 'forceKeyFrame') {
         const req = {id: parameters[0]};
-        grpcNode[remoteNode][rpcName](req, (err, result) => {
+        grpcNode[remoteNode][rpcName](req, opt(), (err, result) => {
           if (!err) {
             onOk && onOk(result);
           } else {
