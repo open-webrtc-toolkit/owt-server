@@ -534,6 +534,7 @@ class AmqpCli {
     amqp.connect(this.options).then((conn) => {
       log.debug('Connect OK');
       conn.on('error', this._errorHandler);
+      conn.on('close',this._errorHandler);
       this.connection = conn;
       return conn.createChannel();
     })
