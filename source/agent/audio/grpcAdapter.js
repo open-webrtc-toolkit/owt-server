@@ -46,6 +46,16 @@ function createGrpcInterface(controller, streamingEmitter) {
       controller.degenerate(call.request.id);
       callback(null, {});
     },
+    setInputActive: function (call, callback) {
+      const req = call.request;
+      controller.setInputActive(req.id, req.active, (n, code, data) => {
+        if (code === 'error') {
+          callback(new Error(data), null);
+        } else {
+          callback(null, {});
+        }
+      });
+    },
     /* Replace publish/subscribe
     addInput: function (call, callback) {
       const req = call.request;
