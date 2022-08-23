@@ -20,6 +20,7 @@ service AudioAgent {
   // Enable/Reset VAD
   rpc EnableVAD(EnableVADRequest) returns (SimpleReply) {}
   rpc ResetVAD(Empty) returns (SimpleReply) {}
+  rpc SetInputActive(InputActiveRequest) returns (SimpleReply) {}
 
   // Listen to notifications (streaming RPC)
   rpc ListenToNotifications (ListenRequest) returns (stream ProgressNotification) {}
@@ -47,6 +48,12 @@ message InitReply {
 // Request to enable VAD
 message EnableVADRequest {
   int32 periodMs = 1;
+}
+
+// Request for SetInputActive
+message InputActiveRequest {
+  string id = 1;
+  bool active = 2;
 }
 
 // The progress message for audio sessions ("type": "audio").

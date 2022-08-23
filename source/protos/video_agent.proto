@@ -22,7 +22,7 @@ service VideoAgent {
   rpc SetInputActive(InputActiveRequest) returns (SimpleReply) {}
   rpc GetRegion(IdRequest) returns (SimpleReply) {}
   rpc SetRegion(RegionRequest) returns (SimpleReply) {}
-  rpc SetLayout(LayoutData) returns (LayoutData) {}
+  rpc SetLayout(LayoutData) returns (VideoLayoutChangeData) {}
   rpc SetPrimary(IdRequest) returns (SimpleReply) {}
   // Generate key frame
   rpc ForceKeyFrame(IdRequest) returns (SimpleReply) {}
