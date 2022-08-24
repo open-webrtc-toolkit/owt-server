@@ -259,6 +259,14 @@ function toGrpc(to, method, args, callbacks, timeout) {
             roomId: args[0],
             subInfo: args[1]
         };
+        if (req.subInfo.media) {
+            if (req.subInfo.media.audio === false) {
+                delete req.subInfo.media.audio;
+            }
+            if (req.subInfo.media.video === false) {
+                delete req.subInfo.media.video;
+            }
+        }
         grpcNode[to].addServerSideSubscription(req, opt(), (err, result) => {
             if (err) {
                 log.info('addServerSideSubscription error:', err);
