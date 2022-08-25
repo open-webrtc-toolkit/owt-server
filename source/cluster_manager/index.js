@@ -7,10 +7,11 @@
 var amqper = require('./amqpClient')();
 var logger = require('./logger').logger;
 var log = logger.getLogger('Main');
-var ClusterManager = require('./clusterManager');
+var Manager = require('./clusterManager').manager;
 var toml = require('toml');
 var fs = require('fs');
 var config;
+var clusterManager;
 try {
   config = toml.parse(fs.readFileSync('./cluster_manager.toml'));
 } catch (e) {
@@ -41,6 +42,10 @@ config.rabbit = config.rabbit || {};
 config.rabbit.host = config.rabbit.host || 'localhost';
 config.rabbit.port = config.rabbit.port || 5672;
 
+config.cloud.url = config.cloud.url;
+config.cloud.region = config.cloud.region;
+config.cloud.clusterID = config.cloud.clusterID;
+
 function startup () {
     var enableService = function () {
         var id = Math.floor(Math.random() * 1000000000);
@@ -48,12 +53,14 @@ function startup () {
                     checkAlivePeriod: config.manager.check_alive_interval,
                     checkAliveCount: config.manager.check_alive_count,
                     scheduleKeepTime: config.manager.schedule_reserve_time,
-                    strategy: config.strategy
+                    strategy: config.strategy,
+                    url: config.cloud.url, region: config.cloud.region, clusterID: config.cloud.clusterID
                    };
 
         amqper.asTopicParticipant(config.manager.name + '.management', function(channel) {
             log.info('Cluster manager up! id:', id);
-            ClusterManager.run(channel, config.manager.name, id, spec);
+            clusterManager = new Manager(channel, config.manager.name, id, spec);
+            clusterManager.run(channel);
         }, function(reason) {
             log.error('Cluster manager initializing failed, reason:', reason);
             process.kill(process.pid, 'SIGINT');
@@ -74,6 +81,7 @@ startup();
     process.on(sig, async function () {
         log.warn('Exiting on', sig);
         try {
+            clusterManager.leave();
             await amqper.disconnect();
         } catch (e) {
             log.warn('Disconnect:', e);

@@ -38,6 +38,8 @@ for (var prop in opt.options) {
                     value === 'analytics' ||
                     value === 'audio' ||
                     value === 'video' ||
+                    value === 'mediabridge' ||
+                    value === 'eventbridge' ||
                     value === 'quic') {
                     myPurpose = value;
                 } else {

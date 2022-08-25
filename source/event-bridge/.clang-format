@@ -1,0 +1,7 @@
+# There is a .clang-format file in the root directory indicates source code
+# should follow WebKit style. However, it seems that JavaScript code has variety
+# styles. Thus, another .clang-format file is created here to indicate code in
+# this directory follows Chromium style.
+
+Language: JavaScript
+BasedOnStyle: Chromium

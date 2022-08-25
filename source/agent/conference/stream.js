@@ -358,6 +358,15 @@ class SelectedStream extends ForwardStream {
   }
 }
 
+class CascadedStream extends ForwardStream {
+
+  constructor(id, media, data, info, locality, cluster, cascading) {
+    super(id, media, data, info, locality);
+    this.cascading = cascading;
+    this.cluster =  cluster;
+  }
+}
+
 function StreamConfigure(roomConfig) {
   // Set room configuration
   config = roomConfig;
@@ -367,5 +376,6 @@ module.exports = {
   ForwardStream,
   MixedStream,
   SelectedStream,
+  CascadedStream,
   StreamConfigure,
 };

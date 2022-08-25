@@ -86,6 +86,14 @@ var RpcRequest = function(rpcChannel) {
     return rpcChannel.makeRPC(sipNode, 'endCall', [sipCallId]);
   };
 
+  that.getClusterID = function(clusterManager) {
+    return rpcChannel.makeRPC(clusterManager, 'getClusterID', [])
+  }
+
+  that.leaveConference = function(clusterManager, roomId) {
+    return rpcChannel.makeRPC(clusterManager, 'leaveConference', [roomId])
+  }
+
   return that;
 };
 

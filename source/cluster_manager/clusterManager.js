@@ -9,6 +9,8 @@ var Scheduler = require('./scheduler').Scheduler;
 // Logger
 var log = logger.getLogger('ClusterManager');
 var role = null;
+const http = require('http');
+var Url = require("url");
 
 var ClusterManager = function (clusterName, selfId, spec) {
     var that = {name: clusterName,
@@ -28,8 +30,47 @@ var ClusterManager = function (clusterName, selfId, spec) {
 
     /*Id : {purpose: Purpose, alive_count: Number}*/
     var workers = {};
+    var clusterInfo = {};
 
     var data_synchronizer;
+
+    var send = function (method, resource, body) {
+      if (spec.url === "none") {
+        log.info("No cloud url specified");
+        return;
+      }
+      log.info("send info to url:", spec.url);
+      const data = JSON.stringify(body);
+      var url = Url.parse(spec.url + "/" + resource);
+
+      const options = {
+        hostname: url.hostname,
+        port: url.port,
+        path: url.pathname + (url.search ? url.search : ''),
+        method: method,
+        headers: {
+          'Content-Type': 'application/json',
+          'Content-Length': data.length,
+        },
+      };
+      log.info("send options:", options);
+
+      const req = http.request(options, res => {
+        console.log(`statusCode: ${res.statusCode}`);
+
+        res.on('data', d => {
+          process.stdout.write(d);
+        });
+      });
+
+      req.on('error', error => {
+        console.error(error);
+      });
+
+      req.write(data);
+      req.end();
+
+    }
 
     var createScheduler = function (purpose) {
         var strategy = spec.strategy[purpose] ? spec.strategy[purpose] : spec.strategy.general;
@@ -52,6 +93,20 @@ var ClusterManager = function (clusterName, selfId, spec) {
         schedulers[purpose].add(worker, info);
         workers[worker] = {purpose: purpose,
                            alive_count: 0};
+        if (!clusterInfo[purpose]) {
+            clusterInfo[purpose] = new Set()
+            var data = {
+                clusterID: spec.clusterID,
+                region: spec.region,
+                info: {
+                    action: "add",
+                    capacity: purpose
+                }
+            }
+            log.info("Send updateCapacity event add to cloud with data:", data);
+            send('POST', 'updateCapacity', data)
+        }
+        clusterInfo[purpose].add(worker);
         data_synchronizer && data_synchronizer({type: 'worker_join', payload: {purpose: purpose, worker: worker, info: info}});
         return state;
     };
@@ -63,6 +118,23 @@ var ClusterManager = function (clusterName, selfId, spec) {
             monitoringTarget && monitoringTarget.notify('quit', {purpose: workers[worker].purpose, id: worker, type: 'worker'});
             delete workers[worker];
             data_synchronizer && data_synchronizer({type: 'worker_quit', payload: {worker: worker}});
+        }
+
+        var purpose = workers[worker].purpose;
+        if (purpose) {
+            clusterInfo[purpose].delete(worker);
+            if(!clusterInfo[purpose]) {
+               var data = {
+                    clusterID: spec.clusterID,
+                    region: spec.region,
+                    info: {
+                        action: "remove",
+                        capacity: purpose
+                    }
+                }
+                log.info("Send updateCapacity event remove to cloud with data:", data);
+                send('POST', 'updateCapacity', data)
+            }
         }
     };
 
@@ -123,6 +195,10 @@ var ClusterManager = function (clusterName, selfId, spec) {
         data_synchronizer && data_synchronizer({type: 'unscheduled', payload: {worker: worker, task: task}});
     };
 
+    var getClusterInfo = function (on_ok) {
+        on_ok(Object.keys(clusterInfo));
+    };
+
     var getWorkerAttr = function (worker, on_ok, on_error) {
         if (workers[worker]) {
             var worker_info = schedulers[workers[worker].purpose] && schedulers[workers[worker].purpose].getInfo(worker);
@@ -171,6 +247,49 @@ var ClusterManager = function (clusterName, selfId, spec) {
             on_error('Invalid purpose.');
         }
     };
+
+    var getClusterID = function (on_ok) {
+        return on_ok(spec.clusterID);
+    };
+
+    var registerInfo = function (info, on_ok) {
+        on_ok('ok');
+        var data = {
+            clusterID: spec.clusterID,
+            region: spec.region,
+            info: {
+                resturl: info.resturl,
+                servicekey: info.servicekey,
+                serviceid: info.serviceid
+            }
+        }
+        log.info("Send registerCluster event to cloud with data:", data);
+        send('POST', 'registerCluster', data)
+    };
+
+    var leaveConference = function (info, on_ok) {
+        on_ok('ok');
+        var data = {
+            clusterID: spec.clusterID,
+            region: spec.region,
+            conferenceId: info
+        }
+        log.info("Send conference leave event to cloud with data:", data);
+        send('POST', 'leaveConference', data)
+    };
+
+    var unregisterCluster = function () {
+        var data = {
+            clusterID: spec.clusterID,
+            region: spec.region
+        }
+        log.info("Send unregister cluster event to cloud with data:", data);
+        send('POST', 'unregisterCluster', data)
+    };
+
+    that.stopCluster = function () {
+        unregisterCluster();
+    }
 
     that.getRuntimeData = function (on_data) {
         var data = {schedulers: {}, workers: workers};
@@ -304,6 +423,21 @@ var ClusterManager = function (clusterName, selfId, spec) {
                 callback('callback', worker);
             }, function (error_reason) {
                 callback('callback', 'error', error_reason);
+            });
+        },
+        getClusterID: function (callback) {
+            getClusterID(function (cluster) {
+                callback('callback', cluster);
+            });
+        },
+        registerInfo: function (info, callback) {
+            registerInfo(info, function (worker) {
+                callback('callback', 'ok');
+            });
+        },
+        leaveConference: function (info, callback) {
+            leaveConference(info, function (worker) {
+                callback('callback', 'ok');
             });
         }
     };
@@ -443,11 +577,11 @@ var runAsCandidate = function(topicChannel, manager) {
         }
         if (am_i_the_one) {
             role = "master";
-            log.info('i am only the one run as master');
+            log.info('i am the only one run as master');
             runAsMaster(topicChannel, manager);
         } else {
             role = "slave";
-            log.info('i am not only the one run as slave');
+            log.info('i am not the only one run as slave');
             runAsSlave(topicChannel, manager);
         }
     };
@@ -502,9 +636,19 @@ var clearRouterKeys = function(topicChannel){
     topicChannel.unsubscribe(CANDIDATE_ROUTER_KEY);
 }
 
-exports.run = function (topicChannel, clusterName, id, spec) {
-    var manager = new ClusterManager(clusterName, id, spec);
+exports.manager = function (topicChannel, clusterName, id, spec) {
+    var that = {};
+    var manager;
 
-    runAsCandidate(topicChannel, manager);
+    that.run = function (topicChannel){
+        manager = new ClusterManager(clusterName, id, spec);
+        runAsCandidate(topicChannel, manager);
+    }
+
+    that.leave = function () {
+        manager.stopCluster();
+    }
+
+    return that;
 };
 

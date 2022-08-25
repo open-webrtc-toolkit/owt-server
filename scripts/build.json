@@ -32,6 +32,7 @@
             "mcu",
             "video-analyzer-sw",
             "gst-pipeline",
+            "quicCascading",
             "video-mixer-msdk",
             "video-transcoder-msdk"
         ]
@@ -41,6 +42,7 @@
             "mcu",
             "video-analyzer-sw",
             "gst-pipeline",
+            "quicCascading",
             "video-mixer-msdk",
             "video-transcoder-msdk"
         ]
@@ -116,6 +118,12 @@
     ,
     "quicIO" : {
         "path" : "source/agent/addons/quicIO"
+    },
+    "quicCascading" : {
+        "path" : "source/agent/addons/quicCascading"
+    },
+    "mediaBridge" : {
+        "path" : "source/agent/addons/quicCascading"
     },
     "resource-util" : {
         "path" : "source/agent/addons/resourceUtil"

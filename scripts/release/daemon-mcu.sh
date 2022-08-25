@@ -114,6 +114,13 @@ case $startStop in
           > "${stdout}" 2>&1 </dev/null &
         echo $! > ${pid}
         ;;
+      event-bridge )
+        cd ${OWT_HOME}/eventbridge
+        export LD_LIBRARY_PATH=./lib:${LD_LIBRARY_PATH}
+        nohup nice -n ${OWT_NICENESS} node . \
+          > "${stdout}" 2>&1 </dev/null &
+        echo $! > ${pid}
+        ;;
       conference-agent )
         cd ${OWT_HOME}/conference_agent
         nohup nice -n ${OWT_NICENESS} node . -U conference\
@@ -173,6 +180,13 @@ case $startStop in
         cd ${OWT_HOME}/quic_agent
         export LD_LIBRARY_PATH=./lib:${LD_LIBRARY_PATH}
         nohup nice -n ${OWT_NICENESS} node . -U quic\
+          > "${stdout}" 2>&1 </dev/null &
+        echo $! > ${pid}
+        ;;
+      media-bridge )
+        cd ${OWT_HOME}/media_bridge
+        export LD_LIBRARY_PATH=./lib:${LD_LIBRARY_PATH}
+        nohup nice -n ${OWT_NICENESS} node . -U mediabridge\
           > "${stdout}" 2>&1 </dev/null &
         echo $! > ${pid}
         ;;
