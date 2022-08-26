@@ -524,6 +524,8 @@ var Conference = function (rpcClient, selfRpcId) {
       sendMsgTo('cascading', 'destroyRoom', {type: 'destroyRoom', data: {rpcId: selfRpcId, room: room_id}});
       accessController && accessController.destroy();
       accessController = undefined;
+      rtcController && rtcController.destroy();
+      rtcController = undefined;
       roomController && roomController.destroy();
       roomController = undefined;
       subscriptions = {};
