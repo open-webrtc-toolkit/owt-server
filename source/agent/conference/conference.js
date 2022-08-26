@@ -495,6 +495,8 @@ var Conference = function (rpcClient, selfRpcId) {
     const doClean = () => {
       accessController && accessController.destroy();
       accessController = undefined;
+      rtcController && rtcController.destroy();
+      rtcController = undefined;
       roomController && roomController.destroy();
       roomController = undefined;
       subscriptions = {};

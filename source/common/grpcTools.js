@@ -41,7 +41,10 @@ function startServer(type, serviceObj, serverPort = 0) {
   const pkg = grpc.loadPackageDefinition(packageDefinition)[packageName];
   const service = pkg[serviceName].service;
 
-  const server = new grpc.Server();
+  const server = new grpc.Server({
+    'grpc.keepalive_time_ms': 10000,
+    'grpc.keepalive_timeout_ms': 5000
+  });
   server.addService(service, serviceObj);
 
   // Start server.
