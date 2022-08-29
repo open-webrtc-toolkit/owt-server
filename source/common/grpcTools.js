@@ -21,6 +21,23 @@ const notificationTypes = {
   'onStreamRemoved': 'owt.StreamAddedData',
 };
 
+// Check SSL variables
+let useSsl = !!process.env['OWT_GRPC_SSL'];
+let rootCert;
+let privKey;
+let certChain;
+if (useSsl) {
+  const fs = require('fs');
+  try {
+    rootCert = fs.readFileSync(process.env['OWT_GRPC_ROOT_CERT']);
+    privKey = fs.readFileSync(process.env['OWT_GRPC_PRIV_KEY']);
+    certChain = fs.readFileSync(process.env['OWT_GRPC_CERT_CHAIN']);
+  } catch (e) {
+    console.log('Failed to load SSL files for GRPC:', e);
+    useSsl = false;
+  }
+}
+
 // Return promise with (port).
 function startServer(type, serviceObj, serverPort = 0) {
   if (!config[type]) {
@@ -48,11 +65,12 @@ function startServer(type, serviceObj, serverPort = 0) {
   server.addService(service, serviceObj);
 
   // Start server.
+  const keyCert = {private_key: privKey, cert_chain: certChain};
+  const creds = useSsl ?
+    grpc.ServerCredentials.createSsl(rootCert, keyCert, true) :
+    grpc.ServerCredentials.createInsecure();
   return new Promise((resolve, reject) => {
-    server.bindAsync(
-        '0.0.0.0:' + serverPort,
-        grpc.ServerCredentials.createInsecure(),
-        (err, port) => {
+    server.bindAsync('0.0.0.0:' + serverPort, creds, (err, port) => {
       if (err) {
         reject(err);
       } else {
@@ -83,8 +101,9 @@ function startClient(type, address) {
   const pkg = grpc.loadPackageDefinition(packageDefinition)[packageName];
   const useProxy = Number(process.env['GRPC_ARG_HTTP_PROXY']) || 0;
   const options = {'grpc.enable_http_proxy': useProxy};
-  const client = new pkg[serviceName](
-      address, grpc.credentials.createInsecure(), options);
+  const creds = useSsl ? grpc.credentials.createSsl(rootCert, privKey, certChain) :
+    grpc.credentials.createInsecure();
+  const client = new pkg[serviceName](address, creds, options);
   return client;
 }
 
