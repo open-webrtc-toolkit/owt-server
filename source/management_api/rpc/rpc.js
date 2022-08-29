@@ -323,9 +323,49 @@ function toGrpc(to, method, args, callbacks, timeout) {
             }
         });
     } else if (method === 'getSipCall') {
-        grpcNode[to].getSipCalls({id: args[0]}, opt(), (err, result) => {
+        grpcNode[to].getSipCall({id: args[0]}, opt(), (err, result) => {
             if (err) {
                 log.info('getSipCall error:', err);
+                cb('error');
+            } else {
+                cb(result);
+            }
+        });
+    } else if (method === 'makeSipCall') {
+        const req = {
+            id: args[0],
+            peer: args[1].peerURI,
+            mediaIn: args[1].mediaIn,
+            mediaOut: args[1].mediaOut
+        };
+        grpcNode[to].makeSipCall(req, opt(), (err, result) => {
+            if (err) {
+                log.info('makeSipCall error:', err);
+                cb('error');
+            } else {
+                cb(result);
+            }
+        });
+    } else if (method === 'controlSipCall') {
+        const req = {
+            id: args[0],
+            commands: args[1]
+        };
+        req.commands = req.commands.map((command) => {
+            return JSON.stringify(command);
+        });
+        grpcNode[to].controlSipCall(req, opt(), (err, result) => {
+            if (err) {
+                log.info('controlSipCall error:', err);
+                cb('error');
+            } else {
+                cb(result);
+            }
+        });
+    } else if (method === 'endSipCall') {
+        grpcNode[to].endSipCall({id: args[0]}, opt(), (err, result) => {
+            if (err) {
+                log.info('endSipCall error:', err);
                 cb('error');
             } else {
                 cb(result);
