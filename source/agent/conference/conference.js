@@ -3774,10 +3774,47 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
         }
       });
     },
-    makeSipCall: conference.makeSipCall,
-    controlSipCall: conference.controlSipCall,
-    endSipCall: conference.endSipCall,
-    drawText: conference.drawText,
+    makeSipCall: function (call, callback) {
+      const req = call.request;
+      const options = {
+        peerURI: req.peer,
+        mediaIn: req.mediaIn,
+        mediaOut: req.mediaOut
+      };
+      conference.makeSipCall(req.id, options, (n, code, data) => {
+        if (code === 'error') {
+          callback(new Error(data), null);
+        } else {
+          callback(null, code);
+        }
+      });
+    },
+    controlSipCall: function (call, callback) {
+      const req = call.request;
+      req.commands = req.commands.map((command) => {
+        return JSON.parse(command);
+      });
+      conference.controlSipCall(req.id, req.commands, (n, code, data) => {
+        if (code === 'error') {
+          callback(new Error(data), null);
+        } else {
+          callback(null, code);
+        }
+      });
+    },
+    endSipCall: function (call, callback) {
+      const req = call.request;
+      conference.endSipCall(req.id, (n, code, data) => {
+        if (code === 'error') {
+          callback(new Error(data), null);
+        } else {
+          callback(null, code);
+        }
+      });
+    },
+    drawText: function (call, callback) {
+      // No export
+    },
   }
 
   that.onFaultDetected = conference.onFaultDetected;

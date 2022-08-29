@@ -39,12 +39,12 @@ service ConferenceAgent {
   rpc DeleteSubscription(TypeRequest) returns (JoinReply) {}
 
   // SIP calls
-  // rpc GetSipCalls(Empty) returns (SipCallsReply) {}
-  // rpc GetSipCall(IdRequest) returns (SipCall) {}
-  // rpc makeSipCall(Request) returns (JoinReply) {}
-  // rpc controlSipCall(Request) returns (JoinReply) {}
-  // rpc endSipCall(Request) returns (JoinReply) {}
-  // rpc drawText(Request) returns (JoinReply) {}
+  rpc GetSipCalls(Empty) returns (SipCallsReply) {}
+  rpc GetSipCall(IdRequest) returns (SipCall) {}
+  rpc makeSipCall(MakeSipCallRequest) returns (SipCall) {}
+  rpc controlSipCall(ManageControlRequest) returns (SipCall) {}
+  rpc endSipCall(IdRequest) returns (SimpleReply) {}
+  // rpc drawText(Request) returns (SimpleReply) {}
 
   // Signaling
   rpc OnSessionSignaling(SignalingRequest) returns (SimpleReply) {}
@@ -396,4 +396,16 @@ message SipCall {
 // SipCall list
 message SipCallsReply {
   repeated SipCall result = 1;
+}
+
+// Request for MakeSipCall
+message MakeSipCallRequest {
+  string id = 1;
+  string peer = 2;
+  message SipMediaIn {
+    bool audio = 1;
+    bool video = 2;
+  }
+  SipMediaIn mediaIn = 3;
+  MediaSubOption mediaOut = 4;
 }
