@@ -1351,45 +1351,65 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
 
     var removeSubscriptions = function (stream_id) {
         log.debug('removeSubscriptions:', stream_id);
+        var subscribers = [];
+        var published = [];
         if (streams[stream_id]) {
             if (streams[stream_id].audio) {
                 streams[stream_id].audio.subscribers.forEach(function(terminal_id) {
                     if (terminals[terminal_id]) {
-                        for (var subscription_id in terminals[terminal_id].subscribed) {
-                            if (terminals[terminal_id].type !== 'aselect') {
-                                unsubscribeStream(terminal_id, subscription_id);
-                            } else if (terminals[terminal_id]
-                                .subscribed[subscription_id].audio === stream_id) {
-                                unsubscribeStream(terminal_id, subscription_id);
-                            }
-                            if (terminals[terminal_id].type === 'axcoder') {
-                                for (var i in terminals[terminal_id].published) {
-                                    unpublishStream(terminals[terminal_id].published[i]);
-                                }
+                        subscribers.push(terminal_id);
+                    } else {
+                        log.debug('Invalid audio subscriber:', stream_id, terminal_id);
+                    }
+                });
+                subscribers.forEach(function(terminal_id) {
+                    for (var subscription_id in terminals[terminal_id].subscribed) {
+                        if (terminals[terminal_id].type !== 'aselect') {
+                            unsubscribeStream(terminal_id, subscription_id);
+                        } else if (terminals[terminal_id]
+                            .subscribed[subscription_id].audio === stream_id) {
+                            unsubscribeStream(terminal_id, subscription_id);
+                        }
+                        if (terminals[terminal_id].type === 'axcoder') {
+                            for (var i in terminals[terminal_id].published) {
+                                published.push(terminals[terminal_id].published[i]);
                             }
                         }
-                        if (isTerminalFree(terminal_id)) {
-                            deleteTerminal(terminal_id);
-                        }
+                    }
+                    published.forEach(function(stream_id) {
+                        unpublishStream(stream_id);
+                    });
+                    if (isTerminalFree(terminal_id)) {
+                        deleteTerminal(terminal_id);
                     }
                 });
                 streams[stream_id] && (streams[stream_id].audio.subscribers = []);
             }
 
             if (streams[stream_id] && streams[stream_id].video) {
+                subscribers = [];
+                published = [];
                 streams[stream_id].video.subscribers.forEach(function(terminal_id) {
                     if (terminals[terminal_id]) {
-                        for (var subscription_id in terminals[terminal_id].subscribed) {
-                            unsubscribeStream(terminal_id, subscription_id);
-                            if (terminals[terminal_id].type === 'vxcoder') {
-                                for (var i in terminals[terminal_id].published) {
-                                    unpublishStream(terminals[terminal_id].published[i]);
-                                }
+                        subscribers.push(terminal_id);
+                    } else {
+                        log.debug('Invalid video subscriber:', stream_id, terminal_id);
+                    }
+                });
+                subscribers.forEach(function(terminal_id) {
+                    for (var subscription_id in terminals[terminal_id].subscribed) {
+                        unsubscribeStream(terminal_id, subscription_id);
+                        if (terminals[terminal_id].type === 'vxcoder') {
+                            for (var i in terminals[terminal_id].published) {
+                                published.push(terminals[terminal_id].published[i]);
                             }
                         }
-                        if (isTerminalFree(terminal_id)) {
-                            deleteTerminal(terminal_id);
-                        }
+                    }
+                    published.forEach(function(stream_id) {
+                        unpublishStream(stream_id);
+                    });
+                    if (isTerminalFree(terminal_id)) {
+                        deleteTerminal(terminal_id);
                     }
                 });
                 streams[stream_id] && (streams[stream_id].video.subscribers = []);
