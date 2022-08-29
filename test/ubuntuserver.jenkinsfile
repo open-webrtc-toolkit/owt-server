@@ -52,7 +52,7 @@ pipeline {
                         persistentVolumeClaim(claimName: 'ubuntu-log',mountPath: '/root/ubuntu_log',readOnly: false)
                         ],
                         containers: [
-                            containerTemplate(name: 'test-images', image: "$env.ubuntu_test_images",  ttyEnabled: true, alwaysPullImage: true, privileged: true, resourceRequestCpu: '3000m', resourceLimitCpu: '4000m', resourceRequestMemory: '2.0Gi', resourceLimitMemory: '3.0Gi', command: 'cat'),                            ]) {
+                            containerTemplate(name: 'test-images', image: "$env.ubuntu_test_images",  ttyEnabled: true, alwaysPullImage: true, privileged: true, resourceRequestCpu: '3000m', resourceLimitCpu: '4000m', resourceRequestMemory: '3.0Gi', resourceLimitMemory: '4.0Gi', command: 'cat'),                            ]) {
                             node('api-server-ubuntu-'+env.GIT_BRANCH) {
                                 container('test-images') {
                                     sh "/root/startRun.sh * * ubuntu test ${env.GIT_COMMIT} ConferenceClient_API_1 $env.GIT_BRANCH"
@@ -70,7 +70,7 @@ pipeline {
                         persistentVolumeClaim(claimName: 'ubuntu-log',mountPath: '/root/ubuntu_log',readOnly: false)
                         ],
                         containers: [
-                            containerTemplate(name: 'test-images', image: "$env.ubuntu_test_images",  ttyEnabled: true, alwaysPullImage: true, privileged: true,resourceRequestCpu: '3000m', resourceLimitCpu: '4000m', resourceRequestMemory: '2.0Gi', resourceLimitMemory: '3.0Gi', command: 'cat'),
+                            containerTemplate(name: 'test-images', image: "$env.ubuntu_test_images",  ttyEnabled: true, alwaysPullImage: true, privileged: true,resourceRequestCpu: '3000m', resourceLimitCpu: '4000m', resourceRequestMemory: '3.0Gi', resourceLimitMemory: '4.0Gi', command: 'cat'),
                             ]) {
                             node('rest-server-ubuntu-'+env.GIT_BRANCH) {
                                 container('test-images') {
