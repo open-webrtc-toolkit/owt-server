@@ -5,6 +5,7 @@ ssl = true #if use HTTPS
 port = 3000 #default: 3000, port of server
 numberOfProcess = 4 #default: 1
 enableWebTransport = true #default: false.
+enable_grpc = true
 
 [cluster]
 name = "owt-cluster"
