@@ -29,6 +29,7 @@ const RpcRequest = function(rpcChannel, listener) {
   };
 
   that.getWorkerNode = function(clusterManager, purpose, forWhom, preference) {
+    log.warn('getworker node:', purpose, forWhom, 'enable grpc:', enableGrpc, clusterManager);
     if (enableGrpc) {
       if (!clusterClient) {
         clusterClient = grpcTools.startClient(
@@ -102,22 +103,6 @@ const RpcRequest = function(rpcChannel, listener) {
           // On error
           log.debug('Call on error:', err);
         });
-        if (purpose === 'quic') {
-          // Register validate callback
-          const call = grpcNode[workerNode].validateTokenCallback();
-          call.on('data', (token) => {
-            // Validate token
-            listener.processCallback(token, (result) => {
-              call.write({tokenId: token.tokenId, ok: result});
-            });
-          });
-          call.on('end', () => {
-          });
-          call.on('error', (err) => {
-            // On error
-            log.debug('Call on error:', err);
-          });
-        }
         return {agent: agentAddress, node: workerNode};
       });
     }
