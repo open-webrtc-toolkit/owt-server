@@ -7,7 +7,7 @@
 const grpcTools = require('./grpcTools');
 const enableGrpc = config.portal.enable_grpc || false;
 const log = require('./logger').logger.getLogger('RpcRequest');
-const GRPC_TIMEOUT = 2000;
+const GRPC_TIMEOUT = 3000;
 
 var RpcRequest = function(rpcChannel) {
   var that = {};
@@ -20,12 +20,14 @@ var RpcRequest = function(rpcChannel) {
     if (grpcNode[node]) {
       return grpcNode[node];
     }
+    log.debug('Start conference client:', node);
     grpcNode[node] = grpcTools.startClient('conference', node);
     // Add notification listener
     const handler = that.notificationHandler;
     if (handler) {
       const call = grpcNode[node].listenToNotifications({id: 'portal'});
       call.on('data', (notification) => {
+        log.debug('On notification data:', JSON.stringify(notification));
         if (notification.name === 'drop') {
           handler.drop(notification.id);
         } else {
