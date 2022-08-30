@@ -425,7 +425,7 @@ var Conference = function (rpcClient, selfRpcId) {
                                                        }
                                                       }, rpcReq);
 
-                  rtcController = new RtcController(room_id, rpcReq, selfRpcId, global.config.cluster.name || 'owt-cluster');
+                  rtcController = new RtcController(room_id, rpcReq, selfRpcId, clusterName);
                   // Events
                   rtcController.on('transport-established', transportId => {
                     const transport = rtcController.getTransport(transportId);
@@ -460,7 +460,7 @@ var Conference = function (rpcClient, selfRpcId) {
                     onSessionAborted(data.owner, sessionId, data.direction, data.reason);
                   });
 
-                  quicController = new QuicController(room_id, rpcReq, selfRpcId, global.config.clusterName || 'owt-cluster');
+                  quicController = new QuicController(room_id, rpcReq, selfRpcId, clusterName);
                   quicController.on('session-established', (sessionInfo) => {
                     const sessionId = sessionInfo.id;
                     const media = { tracks: sessionInfo.tracks };
@@ -483,7 +483,7 @@ var Conference = function (rpcClient, selfRpcId) {
                     onSessionAborted(data.owner, sessionId, data.direction, data.reason);
                   });
 
-                  accessController = AccessController.create({clusterName: global.config.cluster.name || 'owt-cluster',
+                  accessController = AccessController.create({clusterName: clusterName,
                                                               selfRpcId: selfRpcId,
                                                               inRoom: room_id,
                                                               mediaIn: room_config.mediaIn,
@@ -3376,25 +3376,35 @@ var Conference = function (rpcClient, selfRpcId) {
 
   // Listener callback for GRPC
   const tokens = new Map(); // token => validateCb(bool)
-  that.processCallback = (token, callback) => {
+  that.validateWebTransportToken = (token, callback) => {
+    log.debug('validateWebTransportToken:', token.tokenId);
     that.getPortal(token.participantId, (n, data) => {
       if (data === 'error') {
         callback(false);
       } else {
-        tokens.set(token, callback);
+        tokens.set(token.tokenId, callback);
         notificationEmitter.emit('notification', {
-          id: token,
+          id: token.tokenId,
           name: 'token',
+          data: JSON.stringify(token)
         });
+        const WTOKEN_TIMEOUT = 3000;
+        setTimeout(() => {
+          const cb = tokens.get(token.tokenId);
+          if (cb) {
+            tokens.delete(token.tokenId);
+            cb(false);
+          }
+        }, WTOKEN_TIMEOUT);
       }
     });
   };
-
-  that.processTokenResult = (token, validate) => {
-    if (tokens.has(token)) {
-      const cb = tokens.get(token);
+  that.processTokenResult = (tokenId, validate) => {
+    log.debug('processTokenResult:', tokenId, validate);
+    if (tokens.has(tokenId)) {
+      const cb = tokens.get(tokenId);
       cb(validate);
-      tokens.delete(token);
+      tokens.delete(tokenId);
     }
   };
 
@@ -3601,11 +3611,22 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
       conference.onSessionSignaling(req.id, req.signaling, grpcCb(callback));
     },
     listenToNotifications: function (call) {
-      conference.notificationEmitter.on('notification', (notification) => {
+      log.debug('Start listenToNotification');
+      const writeNotification = (notification) => {
         call.write(notification);
-      });
-      conference.notificationEmitter.on('close', () => {
+      };
+      const endCall = () => {
         call.end();
+      };
+      conference.notificationEmitter.on('notification', writeNotification);
+      conference.notificationEmitter.on('close', endCall);
+      call.on('cancelled', () => {
+        call.end();
+      });
+      call.on('close', () => {
+        log.debug('Stop listenToNotifications');
+        conference.notificationEmitter.off('notification', writeNotification);
+        conference.notificationEmitter.off('close', endCall);
       });
     },
 
@@ -3825,9 +3846,19 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
       // No export
     },
 
+    validateWebTransportToken: function (call, callback) {
+      try {
+        const token = JSON.parse(call.request.data);
+        conference.validateWebTransportToken(token, (ok) => {
+          callback(null, {validate: ok});
+        });
+      } catch (e) {
+        callback(e, null);
+      }
+    },
     postWebTransportTokenResult: function (call, callback) {
       const req = call.request;
-      conference.processTokenResult(req.token, req.validate);
+      conference.processTokenResult(req.id, req.validate);
       callback(null, {});
     },
   }

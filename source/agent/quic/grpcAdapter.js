@@ -97,16 +97,20 @@ function createGrpcInterface(controller, streamingEmitter) {
         });
     },
     validateTokenCallback: function (call, callback) {
+      const writeToken = (token) => {
+        call.write(token);
+      };
+      const endCall = () => {
+        call.end();
+      }
+      streamingEmitter.on('token', writeToken);
+      streamingEmitter.on('close', endCall);
       call.on('data', (result) => {
         streamingEmitter.emit('validateResult', result);
       });
       call.on('end', () => {
-        call.end();
-      });
-      streamingEmitter.on('token', (token) => {
-        call.write(token);
-      });
-      streamingEmitter.on('close', () => {
+        streamingEmitter.off('token', writeToken);
+        streamingEmitter.off('close', endCall);
         call.end();
       });
     }

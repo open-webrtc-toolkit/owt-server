@@ -30,7 +30,7 @@
     "service": "AnalyticsAgent"
   },
   "quic": {
-    "file": "analytics_agent.proto",
+    "file": "quic_agent.proto",
     "package": "owt",
     "service": "QuicAgent"
   },

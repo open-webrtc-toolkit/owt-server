@@ -16,13 +16,13 @@
     "AmqpClient": { "appenders": [ "out" ], "level": "warn" },
     "WorkingJS": { "appenders": [ "out" ], "level": "warn" },
     "NodeManager": { "appenders": [ "out" ], "level": "warn" },
-    "QuicNode": { "appenders": [ "out" ], "level": "info" },
+    "QuicNode": { "appenders": [ "out" ], "level": "debug" },
     "Connection": { "appenders": [ "out" ], "level": "warn" },
     "WorkingAgent": { "appenders": [ "out" ], "level": "warn" },
     "Connections": { "appenders": [ "out" ], "level": "warn" },
     "InternalConnectionRouter": { "appenders": [ "out" ], "level": "warn" },
-    "QuicConnection": { "appenders": [ "out" ], "level": "warn" },
-    "QuicTransportServer": { "appenders": [ "out" ], "level": "warn" },
+    "QuicConnection": { "appenders": [ "out" ], "level": "debug" },
+    "QuicTransportServer": { "appenders": [ "out" ], "level": "debug" },
     "QuicTransportStreamPipeline": { "appenders": [ "out" ], "level": "warn" }
   }
 }

@@ -31,9 +31,9 @@ var RpcRequest = function(rpcChannel) {
         if (notification.name === 'drop') {
           handler.drop(notification.id);
         } else if (notification.name === 'token') {
-          const token = notification.id;
-          handler.validateAndDeleteWebTransportToken(notification.id, (ok) => {
-            const req = {token: token, validate: ok};
+          const token = JSON.parse(notification.data);
+          handler.validateAndDeleteWebTransportToken(token, (ok) => {
+            const req = {id: token.tokenId, validate: ok};
             grpcNode[node].postWebTransportTokenResult(req, () => {});
           });
         } else {
@@ -47,12 +47,14 @@ var RpcRequest = function(rpcChannel) {
           }
         }
       });
-      call.on('end', () => {
+      call.on('end', (err) => {
+        log.warn('Listen notifications end:', err);
+
         grpcNode[node].close();
         delete grpcNode[node];
       });
       call.on('error', (err) => {
-        log.debug('Listen notifications error:', err);
+        log.warn('Listen notifications error:', err);
       });
     }
     return grpcNode[node];

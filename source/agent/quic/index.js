@@ -60,8 +60,13 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
     const streamingEmitter = new EventEmitter();
     // For token validations.
     const tokenValidators = new Map(); // Key is token, value is callback(bool)
+    // For gRPC
+    let grpcTools = enableGRPC ? require('./grpcTools') : null;
+    let clusterClient = null;
+    const grpcClient = {};
 
     streamingEmitter.on('validateResult', (result) => {
+      log.debug('Validate result:', result);
       const validator = tokenValidators.get(result.tokenId);
       if (validator) {
         validator(result.ok);
@@ -121,22 +126,73 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
       streamingEmitter.emit('notification', notification);
     };
 
+    const validateTokenByGRPC = async (token) => {
+      log.debug('validateTokenByGRPC:', token.roomId);
+      const cluster = global.config.cluster?.grpc_host || 'localhost:10080';
+      const GRPC_TIMEOUT = 2000;
+      const opt = () => ({deadline: new Date(Date.now() + GRPC_TIMEOUT)});
+      const roomId = token.roomId;
+      if (!clusterClient) {
+        clusterClient = grpcTools.startClient('clusterManager', cluster);
+      }
+      return new Promise((resolve, reject) => {
+        const req = {
+          purpose: 'conference',
+          task: roomId,
+          preference: {},
+          reserveTime: 30 * 1000
+        };
+        clusterClient.schedule(req, opt(), (err, result) => {
+          if (err) {
+            log.debug('Schedule node error:', err);
+            reject(err);
+          } else {
+            resolve(result);
+          }
+        });
+      }).then((workerAgent) => {
+        const addr = workerAgent.info.ip + ':' + workerAgent.info.grpcPort;
+        if (!grpcClient[addr]) {
+          grpcClient[addr] = grpcTools.startClient('nodeManager', addr);
+        }
+        return new Promise((resolve, reject) => {
+          const req = {info: {room: roomId, task: roomId}}
+          grpcClient[addr].getNode(req, opt(), (err, result) => {
+            if (!err) {
+              resolve(result.message);
+            } else {
+              reject(err);
+            }
+          });
+        });
+      }).then((addr) => {
+        if (!grpcClient[addr]) {
+          grpcClient[addr] = grpcTools.startClient('conference', addr);
+        }
+        return new Promise((resolve, reject) => {
+          const req = {data: JSON.stringify(token)};
+          grpcClient[addr].validateWebTransportToken(req, opt(), (err, ret) => {
+            if (!err) {
+              const value = ret.validate ? 'ok' : 'error';
+              resolve(value);
+            } else {
+              reject(err);
+            }
+          });
+        });
+      }).catch((e) => {
+        log.debug('Validate error:', e);
+        return 'error';
+      });
+    };
+
     const validateToken = async (token) => {
       if (!token || !token.roomId) {
         throw new TypeError('Invalid token.');
       }
       if (enableGRPC) {
-        streamingEmitter.emit('token', token);
-        return new Promise((resolve) => {
-          const VALIDATE_TIMEOUT = 3000;
-          const validateTimer = setTimeout(() => {
-            resolve('error');
-          }, VALIDATE_TIMEOUT);
-          tokenValidators.set(token.tokenId, (ok) => {
-            clearTimeout(validateTimer);
-            ok ? resolve('ok') : resolve('error');
-          });
-        });
+        log.debug('Enable grpc and emit token');
+        return validateTokenByGRPC(token);
       }
       const portal = await getRpcPortal(token.roomId, token.participantId);
       return rpcChannel.makeRPC(

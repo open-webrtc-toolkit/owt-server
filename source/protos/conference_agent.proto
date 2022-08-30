@@ -52,8 +52,10 @@ service ConferenceAgent {
   // Listen to notifications (streaming RPC)
   rpc ListenToNotifications (IdRequest) returns (stream SignalingNotification) {}
 
+  // Validate WebTransportToken
+  rpc ValidateWebTransportToken(TokenInfo) returns (TokenInfo) {}
   // Post validate result for WebTransport token
-  rpc PostWebTransportTokenResult(PostTokenRequest) returns (SimpleReply) {}
+  rpc PostWebTransportTokenResult(TokenInfo) returns (SimpleReply) {}
 
   // Process signaling message
   // rpc StartSignaling (stream SignalingRequest) returns (stream SignalingNotification) {}
@@ -220,7 +222,10 @@ message RoomSubscribe {
     optional MediaSubOption media = 2;
     optional Transport transport = 3;
     optional string transportId = 4;
-    optional bool data = 5;
+    message DataFrom {
+      string from = 1;
+    }
+    optional DataFrom data = 5;
     optional string attributes = 6;
     optional Locality locality = 7;
     optional Origin origin = 8;
@@ -413,8 +418,9 @@ message MakeSipCallRequest {
   MediaSubOption mediaOut = 4;
 }
 
-// Request for PostWebTransportTokenResult
-message PostTokenRequest {
-  string token = 1;
-  bool validate = 2;
+// Request for WebTransportToken
+message TokenInfo {
+  string id = 1;
+  string data = 2;
+  optional bool validate = 3;
 }
