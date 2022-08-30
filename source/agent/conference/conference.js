@@ -2854,18 +2854,27 @@ var Conference = function (rpcClient, selfRpcId) {
   };
 
   // Listener callback for GRPC
+  const tokens = new Map(); // token => validateCb(bool)
   that.processCallback = (token, callback) => {
     that.getPortal(token.participantId, (n, data) => {
       if (data === 'error') {
         callback(false);
       } else {
-        rpcReq.validateAndDeleteWebTransportToken(data, token).then(() => {
-          callback(true);
-        }).catch(() => {
-          callback(false);
+        tokens.set(token, callback);
+        notificationEmitter.emit('notification', {
+          id: token,
+          name: 'token',
         });
       }
     });
+  };
+
+  that.processTokenResult = (token, validate) => {
+    if (tokens.has(token)) {
+      const cb = tokens.get(token);
+      cb(validate);
+      tokens.delete(token);
+    }
   };
 
   return that;
@@ -3217,6 +3226,12 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
     },
     drawText: function (call, callback) {
       // No export
+    },
+
+    postWebTransportTokenResult: function (call, callback) {
+      const req = call.request;
+      conference.processTokenResult(req.token, req.validate);
+      callback(null, {});
     },
   }
 
