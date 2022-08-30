@@ -225,6 +225,13 @@ var startServers = function(id, tokenKey) {
     drop: function(participantId) {
       socketio_server && socketio_server.drop(participantId);
     },
+    validateAndDeleteWebTransportToken: (token, callback) => {
+      if(portal.validateAndDeleteWebTransportToken(token)) {
+        callback(true);
+      } else {
+        callback(false);
+      }
+    },
   };
 
   return socketio_server.start()

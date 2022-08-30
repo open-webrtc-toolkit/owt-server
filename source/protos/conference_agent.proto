@@ -52,6 +52,9 @@ service ConferenceAgent {
   // Listen to notifications (streaming RPC)
   rpc ListenToNotifications (IdRequest) returns (stream SignalingNotification) {}
 
+  // Post validate result for WebTransport token
+  rpc PostWebTransportTokenResult(PostTokenRequest) returns (SimpleReply) {}
+
   // Process signaling message
   // rpc StartSignaling (stream SignalingRequest) returns (stream SignalingNotification) {}
 }
@@ -408,4 +411,10 @@ message MakeSipCallRequest {
   }
   SipMediaIn mediaIn = 3;
   MediaSubOption mediaOut = 4;
+}
+
+// Request for PostWebTransportTokenResult
+message PostTokenRequest {
+  string token = 1;
+  bool validate = 2;
 }

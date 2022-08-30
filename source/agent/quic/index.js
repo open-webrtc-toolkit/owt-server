@@ -128,7 +128,12 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
       if (enableGRPC) {
         streamingEmitter.emit('token', token);
         return new Promise((resolve) => {
+          const VALIDATE_TIMEOUT = 3000;
+          const validateTimer = setTimeout(() => {
+            resolve('error');
+          }, VALIDATE_TIMEOUT);
           tokenValidators.set(token.tokenId, (ok) => {
+            clearTimeout(validateTimer);
             ok ? resolve('ok') : resolve('error');
           });
         });
