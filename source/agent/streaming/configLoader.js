@@ -23,11 +23,12 @@ module.exports.load = () => {
     config.cluster.worker.load = config.cluster.worker.load || {};
     config.cluster.worker.load.max = config.cluster.max_load || 0.85;
     config.cluster.worker.load.period = config.cluster.report_load_interval || 1000;
-    config.cluster.worker.load.item = {
-      name: 'network',
-      interf: 'lo',
-      max_scale: config.cluster.network_max_scale || 1000
-    };
+    config.cluster.worker.load.item = {};
+    config.cluster.worker.load.item.name = config.cluster.load_type || 'network';
+    if (config.cluster.worker.load.item.name === 'network') {
+      config.cluster.worker.load.interf = 'lo';
+      config.cluster.worker.load.max_scale = config.cluster.network_max_scale || 1000;
+    }
 
     config.capacity = config.capacity || {};
 

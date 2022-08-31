@@ -113,6 +113,7 @@ var joinCluster = function (on_ok) {
     });
 };
 
+var rabbit_config_copy = Object.assign({}, config.rabbit);
 var init_manager = () => {
   var reuseNode = !(myPurpose === 'audio'
     || myPurpose === 'video'
@@ -127,6 +128,7 @@ var init_manager = () => {
   };
 
   spawnOptions.config.purpose = myPurpose;
+  spawnOptions.config.rabbit = rabbit_config_copy;
 
   manager = nodeManager(
     {
