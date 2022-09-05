@@ -177,16 +177,25 @@ function createGrpcInterface(controller, streamingEmitter) {
       callback(null, {});
     },
     listenToNotifications: function (call, callback) {
-      streamingEmitter.on('notification', (notification) => {
+      const writeNotification = (notification) => {
         const progress = packNotification({
           type: 'video',
           name: notification.name,
           data: notification.data,
         });
         call.write(progress);
-      });
-      streamingEmitter.on('close', () => {
+      };
+      const endCall = () => {
         call.end();
+      };
+      streamingEmitter.on('notification', writeNotification);
+      streamingEmitter.on('close', endCall);
+      call.on('cancelled', () => {
+        call.end();
+      });
+      call.on('close', () => {
+        streamingEmitter.off('notification', writeNotification);
+        streamingEmitter.off('close', endCall);
       });
     },
     getInternalAddress: function (call, callback) {

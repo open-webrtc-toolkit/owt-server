@@ -29,7 +29,7 @@ const RpcRequest = function(rpcChannel, listener) {
   };
 
   that.getWorkerNode = function(clusterManager, purpose, forWhom, preference) {
-    log.warn('getworker node:', purpose, forWhom, 'enable grpc:', enableGrpc, clusterManager);
+    log.debug('getworker node:', purpose, forWhom, 'enable grpc:', enableGrpc, clusterManager);
     if (enableGrpc) {
       if (!clusterClient) {
         clusterClient = grpcTools.startClient(
