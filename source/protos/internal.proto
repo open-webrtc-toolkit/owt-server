@@ -1,0 +1,18 @@
+//
+syntax = "proto3";
+
+import "google/protobuf/any.proto";
+import "format.proto";
+
+package owt;
+
+// For internal publish/subscribe option
+message RequestOption {
+  optional string controller = 1;
+  optional string ip = 2;
+  optional int32 port = 3;
+  optional AudioFormat audio = 4;
+  optional VideoFormat video = 5;
+  optional bool data = 6;
+  optional string publisher = 7;
+}

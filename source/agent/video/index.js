@@ -14,7 +14,16 @@ const log = logger.getLogger('VideoNode');
 const {InternalConnectionRouter} = require('./internalConnectionRouter');
 const router = new InternalConnectionRouter(global.config.internal);
 
-const useHardware = global.config.video.hardwareAccelerated;
+// Setup GRPC server
+var createGrpcInterface = require('./grpcAdapter').createGrpcInterface;
+var enableGRPC = global.config.agent.enable_grpc || false;
+
+var EventEmitter = require('events').EventEmitter;
+
+var useHardware = global.config.video.hardwareAccelerated,
+    gaccPluginEnabled = global.config.video.enableBetterHEVCQuality || false,
+    MFE_timeout = global.config.video.MFE_timeout || 0,
+    supported_codecs = global.config.video.codecs;
 
 var VideoMixer, VideoTranscoder;
 try {
@@ -40,14 +49,19 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
     };
     let processor = undefined;
 
+    // For GRPC notifications
+    var streamingEmitter = new EventEmitter();
+
     that.init = function (service, config, belongTo, controller, mixView, callback) {
         if (processor === undefined) {
             if (service === 'mixing') {
-                processor = new VMixer(rpcClient, clusterWorkerIP, VideoMixer, router);
+                processor = new VMixer(rpcClient, clusterWorkerIP, VideoMixer,
+                    router, streamingEmitter);
                 processor.initialize(config, belongTo, controller, mixView, callback);
                 that.__proto__ = processor;
             } else if (service === 'transcoding') {
-                processor = new VTranscoder(rpcClient, clusterWorkerIP, VideoTranscoder, router);
+                processor = new VTranscoder(rpcClient, clusterWorkerIP, VideoTranscoder,
+                    router, streamingEmitter);
                 processor.initialize(config.motionFactor, controller, callback);
                 that.__proto__ = processor;
             } else {
@@ -70,6 +84,10 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
         const port = router.internalPort;
         callback('callback', {ip, port});
     };
+    if (enableGRPC) {
+        // Export GRPC interface.
+        return createGrpcInterface(that, streamingEmitter);
+    }
 
     return that;
 };

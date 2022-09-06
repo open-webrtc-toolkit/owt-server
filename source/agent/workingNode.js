@@ -24,8 +24,38 @@ function init_controller() {
     var parentID = process.argv[3];
     var purpose = nodeConfig.purpose;
     var clusterWorkerIP = nodeConfig.cluster.worker.ip;
+    var enableGRPC = nodeConfig.agent.enable_grpc || false;
 
     global.config = nodeConfig;
+
+    if (enableGRPC) {
+        log.info('Starting grpc server');
+        const checkAlivePeriod = 1000;
+        const mockClient = {
+            remoteCast: (to, method, args) => {
+                log.debug('Mock remote cast:', to, method, args);
+            },
+            remoteCall: (to, method, args) => {
+                log.debug('Mock remote call:', to, method, args)
+            },
+        };
+        controller = require('./' + purpose)(mockClient, rpcID, parentID, clusterWorkerIP);
+        const grpcTools = require('./grpcTools');
+        grpcTools.startServer(purpose, controller.grpcInterface)
+            .then((port) => {
+                // Send RPC server address
+                const rpcAddress = clusterWorkerIP + ':' + port;
+                mockClient.rpcAddress = rpcAddress;
+                process.send('READY:' + rpcAddress);
+                setInterval(() => {
+                    process.send('IMOK');
+                }, checkAlivePeriod);
+            }).catch((err) => {
+                log.error('Start grpc server failed:', err);
+                process.send('ERROR');
+            });
+        return;
+    }
 
     log.info('Connecting to rabbitMQ server...');
     rpc.connect(global.config.rabbit, function () {
@@ -107,7 +137,7 @@ process.on('uncaughtException', async (err) => {
 });
 
 process.on('unhandledRejection', (reason) => {
-    log.info('Reason: ' + reason);
+    log.info('Reason: ', reason.stack);
 });
 
 process.on('SIGUSR2', function() {

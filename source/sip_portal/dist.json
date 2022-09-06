@@ -11,7 +11,10 @@
             "../common/cipher.js",
             "../common/amqpClient.js",
             "../common/logger.js",
-            "../common/makeRPC.js"
+            "../common/makeRPC.js",
+            "../common/grpcTools.js",
+            "../protos/protoConfig.json",
+            "../protos/*.proto"
         ],
         "folders": {
             "data_access": [
