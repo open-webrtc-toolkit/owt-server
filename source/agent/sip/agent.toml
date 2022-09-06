@@ -5,7 +5,7 @@ maxProcesses = -1 #default: -1, unlimited
 prerunProcesses = 2 #default: 2
 
 # Setup as GRPC server
-enable_grpc = true
+#enable_grpc = true
 
 [cluster]
 #The name of the cluster to join.

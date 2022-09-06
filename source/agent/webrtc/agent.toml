@@ -6,7 +6,7 @@ maxProcesses = 13 #default: 13
 prerunProcesses = 2 #default: 2
 
 # Setup as GRPC server
-enable_grpc = true
+#enable_grpc = true
 
 
 [cluster]
