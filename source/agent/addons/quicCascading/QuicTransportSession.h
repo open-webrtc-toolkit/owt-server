@@ -28,6 +28,7 @@ class QuicTransportSession : public owt::quic::QuicTransportSessionInterface::Vi
 public:
     explicit QuicTransportSession();
     virtual ~QuicTransportSession();
+    static v8::Local<v8::Object> newInstance(owt::quic::QuicTransportSessionInterface* session);
 
     static NAN_MODULE_INIT(init);
 
@@ -39,27 +40,25 @@ public:
     static NAN_METHOD(onClosedStream);
 
     static NAUV_WORK_CB(onNewStreamCallback);
-    static NAUV_WORK_CB(onStreamClosedCallback);
+    static NAUV_WORK_CB(onClosedStreamCallback);
 
     // Implements QuicTransportSessionInterface.
     void OnIncomingStream(owt::quic::QuicTransportStreamInterface*) override;
     void OnStreamClosed(uint32_t id) override;
-    static v8::Local<v8::Object> newInstance(owt::quic::QuicTransportSessionInterface* session);
 private:
 
     owt::quic::QuicTransportSessionInterface* m_session;
     uv_async_t m_asyncOnNewStream;
-    uv_async_t m_asyncOnStreamClosed;
+    uv_async_t m_asyncOnClosedStream;
     bool has_stream_callback_;
     bool has_streamClosed_callback_;
     std::queue<owt::quic::QuicTransportStreamInterface*> stream_messages;
     std::queue<uint32_t> streamclosed_messages;
     Nan::Callback *stream_callback_;
     Nan::Callback *streamClosed_callback_;
-    Nan::AsyncResource *asyncResource_;
-    Nan::AsyncResource *asyncResourceStreamClosed_;
-    std::mutex m_sessionQueueMutex;
-    std::mutex m_streamClosedQueueMutex;
+    /*Nan::AsyncResource *asyncResource_;
+    Nan::AsyncResource *asyncResourceStreamClosed_;*/
+    //boost::mutex mutex;
     //std::unordered_map<uint32_t, v8::Local<v8::Object>> streams_;
     static Nan::Persistent<v8::Function> s_constructor;
 };

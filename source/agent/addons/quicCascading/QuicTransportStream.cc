@@ -175,8 +175,8 @@ NAUV_WORK_CB(QuicTransportStream::onStreamDataCallback){
     //boost::mutex::scoped_lock lock(obj->mutex);
 
     if (obj->has_data_callback_) {
-      obj->m_dataQueueMutex.lock();
-      ELOG_DEBUG("QuicTransportStream::onStreamDataCallback data_messages size:%d", obj->data_messages.size());
+      //boost::mutex::scoped_lock lock(obj->mutex);
+      ELOG_DEBUG("QuicTransportStream::onStreamDataCallback data_messages size:%d in stream:%d", obj->data_messages.size(), obj->id);
       while (!obj->data_messages.empty()) {
           ELOG_DEBUG("data_messages is not empty");
           Local<Value> args[] = { Nan::New(obj->data_messages.front().c_str()).ToLocalChecked() };
@@ -184,9 +184,8 @@ NAUV_WORK_CB(QuicTransportStream::onStreamDataCallback){
           resource.runInAsyncScope(Nan::GetCurrentContext()->Global(), obj->data_callback_->GetFunction(), 1, args);
           obj->data_messages.pop();
       }
-      obj->m_dataQueueMutex.unlock();
     }
-    ELOG_DEBUG("QuicTransportStream::onStreamDataCallback ends");
+    ELOG_DEBUG("QuicTransportStream::onStreamDataCallback ends in stream:%d", obj->id);
 }
 
 NAN_METHOD(QuicTransportStream::getId) {
@@ -216,7 +215,7 @@ NAN_METHOD(QuicTransportStream::close)
 }
 
 void QuicTransportStream::onFeedback(const FeedbackMsg& msg) {
-    ELOG_DEBUG("QuicTransportStream::onFeedback");
+    ELOG_DEBUG("QuicTransportStream::onFeedback in stream:%d", id);
     TransportData sendData;
     uint32_t payloadLength = sizeof(FeedbackMsg);
     sendData.buffer.reset(new char[payloadLength + 5]);
@@ -252,7 +251,7 @@ void QuicTransportStream::onFrame(const owt_base::Frame& frame)
 
 
 void QuicTransportStream::sendData(const std::string& data) {
-    ELOG_DEBUG("QuicTransportStream::sendData:%s\n", data.c_str());
+    ELOG_DEBUG("QuicTransportStream::sendData:%s in stream:%d\n", data.c_str(), id);
     TransportData sendData;
     uint32_t payloadLength = data.length();
     sendData.buffer.reset(new char[payloadLength + 5]);
@@ -281,7 +280,7 @@ void QuicTransportStream::sendFeedback(const FeedbackMsg& msg) {
 void QuicTransportStream::OnData(owt::quic::QuicTransportStreamInterface* stream, char* buf, size_t len) {
     if (m_receivedBytes + len >= m_bufferSize) {
         m_bufferSize += (m_receivedBytes + len);
-        std::cout << "new_bufferSize: " << m_bufferSize << std::endl;
+        std::cout << "new_bufferSize: " << m_bufferSize << " for stream id:" << id << std::endl;
         boost::shared_array<char> new_buffer;
         new_buffer.reset(new char[m_bufferSize]);
         if (new_buffer.get()) {
@@ -328,15 +327,21 @@ void QuicTransportStream::OnData(owt::quic::QuicTransportStreamInterface* stream
                     //dump(this, frame->payload, frame->length);
                     deliverFrame(*frame);
                     break;
-                case TDT_MEDIA_METADATA:
+                case TDT_MEDIA_METADATA: {
                     ELOG_DEBUG("QuicTransportStream::onData with type TDT_MEDIA_METADATA%s", s_data.c_str());
-                    m_dataQueueMutex.lock();
+                    //boost::mutex::scoped_lock lock(mutex);
                     this->data_messages.push(s_data);
-                    m_dataQueueMutex.unlock();
                     m_asyncOnData.data = this;
-                    uv_async_send(&m_asyncOnData);
-                    ELOG_DEBUG("QuicTransportStream::onData with type TDT_MEDIA_METADATA end");
+                    //uv_async_send(&m_asyncOnData);
+                    if (uv_async_send(&m_asyncOnData) == 0) {
+                        ELOG_INFO("OnData uv_async_send succeed and handle pending is:%d", m_asyncOnData.pending); 
+                    } else {
+                        ELOG_INFO("OnData uv_async_send failed");
+                    };
+                    //lock.unlock();
+                    ELOG_DEBUG("QuicTransportStream::onData with type TDT_MEDIA_METADATA end in thread:%d", std::this_thread::get_id());
                     break;
+                }
                 case TDT_FEEDBACK_MSG:
                     ELOG_DEBUG("QuicTransportStream deliver feedback msg");
                     deliverFeedbackMsg(msg);

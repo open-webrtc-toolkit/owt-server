@@ -174,8 +174,11 @@ var rpcPublic = {
     callback('callback', {ip:ip_address, port:config.bridge.port})
   },
   startCascading: function(data, callback) {
-    event_cascading && event_cascading.startCascading(data);
-    callback('callback', 'ok');
+    event_cascading && event_cascading.startCascading(data, function () {
+      callback('callback', 'ok');
+    }, function(error) {
+      callback('callback', 'error', error);
+    });
   },
   destroyRoom: function(participantId, event, data, callback) {
     event_cascading && event_cascading.destroyRoom(data);

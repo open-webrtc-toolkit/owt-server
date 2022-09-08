@@ -48,6 +48,7 @@ NAN_MODULE_INIT(QuicTransportClient::init)
     Nan::SetPrototypeMethod(tpl, "onConnection", onConnection);
     Nan::SetPrototypeMethod(tpl, "onNewStream", onNewStream);
     Nan::SetPrototypeMethod(tpl, "onClosedStream", onClosedStream);
+    Nan::SetPrototypeMethod(tpl, "onConnectionFailed", onConnectionFailed);
     Nan::SetPrototypeMethod(tpl, "createBidirectionalStream", createBidirectionalStream);
     Nan::SetPrototypeMethod(tpl, "getId", getId);
 
@@ -73,9 +74,11 @@ NAN_METHOD(QuicTransportClient::newInstance)
     uv_async_init(uv_default_loop(), &obj->m_asyncOnNewStream, &QuicTransportClient::onNewStreamCallback);
     uv_async_init(uv_default_loop(), &obj->m_asyncOnConnected, &QuicTransportClient::onConnectedCallback);
     uv_async_init(uv_default_loop(), &obj->m_asyncOnStreamClosed, &QuicTransportClient::onStreamClosedCallback);
+    uv_async_init(uv_default_loop(), &obj->m_asyncOnConnectFail, &QuicTransportClient::onConnectionFailedCallback);
     obj->asyncResourceConnection_ = new Nan::AsyncResource("connectedCallback");
     obj->asyncResourceStream_ = new Nan::AsyncResource("newStreamCallback");
     obj->asyncResourceStreamClosed_ = new Nan::AsyncResource("streamClosedCallback");
+    obj->asyncResourceFailedConnection_ = new Nan::AsyncResource("connectionFailedCallback");
     
     info.GetReturnValue().Set(info.This());
 }
@@ -116,6 +119,14 @@ NAN_METHOD(QuicTransportClient::onConnection) {
   obj->connected_callback_ = new Nan::Callback(info[0].As<Function>());
 }
 
+NAN_METHOD(QuicTransportClient::onConnectionFailed) {
+  ELOG_DEBUG("QuicTransportClient::onConnectionFailed");
+  QuicTransportClient* obj = Nan::ObjectWrap::Unwrap<QuicTransportClient>(info.Holder());
+
+  obj->has_connectionFailed_callback_ = true;
+  obj->connectionfailed_callback_ = new Nan::Callback(info[0].As<Function>());
+}
+
 NAN_METHOD(QuicTransportClient::onClosedStream) {
   QuicTransportClient* obj = Nan::ObjectWrap::Unwrap<QuicTransportClient>(info.Holder());
 
@@ -135,10 +146,7 @@ NAN_METHOD(QuicTransportClient::createBidirectionalStream) {
 
 NAN_METHOD(QuicTransportClient::getId) {
   QuicTransportClient* obj = Nan::ObjectWrap::Unwrap<QuicTransportClient>(info.Holder());
-  uint8_t length = obj->m_quicClient->length();
-  std::string s_data(obj->m_quicClient->Id(), length);
-  ELOG_INFO("QuicTransportSession::getId:%s\n",s_data.c_str());
-  info.GetReturnValue().Set(Nan::New(s_data.c_str()).ToLocalChecked());
+  info.GetReturnValue().Set(Nan::New(obj->m_quicClient->Id()).ToLocalChecked());
 }
 
 NAUV_WORK_CB(QuicTransportClient::onNewStreamCallback){
@@ -151,8 +159,8 @@ NAUV_WORK_CB(QuicTransportClient::onNewStreamCallback){
 
     if (obj->has_stream_callback_) {
       ELOG_INFO("object has stream callback");
-      obj->m_streamQueueMutex.lock();
-      while (!obj->stream_messages.empty()) {
+      //boost::mutex::scoped_lock lock(obj->mutex);
+      if (!obj->stream_messages.empty()) {
           ELOG_INFO("stream_messages is not empty");
           auto quicStream=obj->stream_messages.front();
           v8::Local<v8::Object> streamObject = QuicTransportStream::newInstance(quicStream);
@@ -163,7 +171,6 @@ NAUV_WORK_CB(QuicTransportClient::onNewStreamCallback){
           obj->asyncResourceStream_->runInAsyncScope(Nan::GetCurrentContext()->Global(), obj->stream_callback_->GetFunction(), 1, args);
           obj->stream_messages.pop();
       }
-      obj->m_streamQueueMutex.unlock();
     }
     ELOG_INFO("onNewStreamCallback ends");
 }
@@ -192,7 +199,7 @@ NAUV_WORK_CB(QuicTransportClient::onStreamClosedCallback){
 
     if (obj->has_streamClosed_callback_) {
       ELOG_INFO("object has stream callback");
-      obj->m_streamClosedQueueMutex.lock();
+      boost::mutex::scoped_lock lock(obj->mutex);
       while (!obj->streamclosed_messages.empty()) {
           ELOG_INFO("streamclosed_messages is not empty");
           //auto streamid = obj->streamclosed_messages.front();
@@ -202,16 +209,28 @@ NAUV_WORK_CB(QuicTransportClient::onStreamClosedCallback){
           obj->asyncResourceStreamClosed_->runInAsyncScope(Nan::GetCurrentContext()->Global(), obj->stream_callback_->GetFunction(), 1, args);
           obj->streamclosed_messages.pop();
       }
-      obj->m_streamClosedQueueMutex.unlock();
     }
     ELOG_INFO("onStreamClosedCallback ends");
 }
 
+NAUV_WORK_CB(QuicTransportClient::onConnectionFailedCallback){
+    ELOG_DEBUG("QuicTransportClient::onConnectionFailedCallback");
+    Nan::HandleScope scope;
+    QuicTransportClient* obj = reinterpret_cast<QuicTransportClient*>(async->data);
+    if (!obj) {
+        return;
+    }
+
+    if (obj->has_connectionFailed_callback_) {
+      Local<Value> args[] = {};
+      obj->asyncResourceFailedConnection_->runInAsyncScope(Nan::GetCurrentContext()->Global(), obj->connectionfailed_callback_->GetFunction(), 1, args);
+    }
+}
+
 void QuicTransportClient::OnIncomingStream(owt::quic::QuicTransportStreamInterface* stream) {
     ELOG_DEBUG("QuicTransportClient::OnIncomingStream with stream id:%d\n", stream->Id());
-    m_streamQueueMutex.lock();
+    //boost::mutex::scoped_lock lock(mutex);
     this->stream_messages.push(stream);
-    m_streamQueueMutex.unlock();
     m_asyncOnNewStream.data = this;
     uv_async_send(&m_asyncOnNewStream);
     ELOG_INFO("OnIncomingStream ends");
@@ -225,13 +244,14 @@ void QuicTransportClient::OnConnected() {
 
 void QuicTransportClient::OnConnectionFailed() {
     ELOG_DEBUG("QuicTransport client connection failed.");
+    m_asyncOnConnectFail.data = this;
+    uv_async_send(&m_asyncOnConnectFail);
 }
 
 void QuicTransportClient::OnStreamClosed(uint32_t id) {
     ELOG_DEBUG("QuicTransport client stream:%d is closed\n", id);
-    m_streamClosedQueueMutex.lock();
+    //boost::mutex::scoped_lock lock(mutex);
     this->streamclosed_messages.push(id);
-    m_streamClosedQueueMutex.unlock();
     m_asyncOnStreamClosed.data = this;
     uv_async_send(&m_asyncOnStreamClosed); 
 }

@@ -123,9 +123,7 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
         pipelineMap = outgoingStreamPipelines;
       }
       if (pipelineMap.has(streamId)) {
-        return callback(
-            'callback',
-            {type: 'failed', reason: 'Pipeline for ' + streamId + ' exists.'});
+        return ;
       }
       pipelineMap.set(streamId, streamPipeline);
       return streamPipeline;
@@ -174,10 +172,11 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
         switch (connectionType) {
         case 'mediabridge':
             if (options.originType === 'webrtc') {
-                log.info("origin type is webrtc and pubArgs:", options.pubArgs);
+                log.info("origin type is webrtc and pubArgs:", options.pubArgs, " and session info is:", clusters[options.cluster].session);
+                var sessionid = clusters[options.cluster].session.getId();
                 const pubs = options.pubArgs.map(pubArg => new Promise((resolve, reject) => {
                     var pubId = pubArg.id;
-                    var connId = 'quic-' + pubId;
+                    var connId = 'quic-' + sessionid + '-' + pubId;
 
                     log.info('connId is:', connId);
                     conn = createFrameSource(connId, 'in', options, callback);

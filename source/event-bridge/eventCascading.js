@@ -116,7 +116,7 @@ var EventCascading = function(spec, rpcReq) {
     })
   }
 
-  that.startCascading = function (data) {
+  that.startCascading = function (data, on_ok, on_error) {
     var clientID = data.evIP.replace(/\./g, '-') + '-' + data.evPort;
     log.info("startEventCascading with data:", data, " clientID:", clientID);
 
@@ -132,11 +132,17 @@ var EventCascading = function(spec, rpcReq) {
           cascadedRooms[data.room] = true;
           client.onConnection(() => {
 		        log.info("Quic client connected");
-            createQuicStream(controller, clientID, data);        
+            on_ok('ok');
+            createQuicStream(controller, clientID, data);
           });
 
           client.onClosedStream((closedStreamId) => {
             log.info("client stream:", closedStreamId, " is closed");
+          })
+
+          client.onConnectionFailed(() => {
+            log.info("Quic client failed to connect");
+            on_error("Event bridge quic connection failed");
           })
         });
     } else {

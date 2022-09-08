@@ -3199,7 +3199,7 @@ var Conference = function (rpcClient, selfRpcId) {
       data.participants = {};
       data.streams = {};
       for (var pid in participants) {
-        if (pid !== 'admin') {
+        if (pid !== 'admin' && participants[pid].cascading !== true) {
           data.participants[pid] = participants[pid].getDetail();
           data.participants[pid].origin = participants[pid].getOrigin();
           data.participants[pid].portal = participants[pid].getPortal();
@@ -3208,7 +3208,7 @@ var Conference = function (rpcClient, selfRpcId) {
       }
 
       for (var sid in streams) {
-        if (streams[sid].type !== 'mixed') {
+        if (streams[sid].type !== 'mixed' && streams[sid].cascading !== true) {
           if (!streams[sid].isInConnecting) {
             data.streams[sid] = streams[sid];
             data.streams[sid].cluster = clusterID;

@@ -82,7 +82,7 @@ private:
     bool has_data_callback_;
     std::queue<std::string> data_messages;
     Nan::Callback *data_callback_;
-    std::mutex m_dataQueueMutex;
+    //boost::mutex mutex;
     owt::quic::QuicTransportStreamInterface* m_stream;
     static Nan::Persistent<v8::Function> s_constructor;
     bool m_needKeyFrame;

@@ -7,6 +7,7 @@
 #include <thread>
 #include <chrono>
 #include <iostream>
+//#include <get-uv-event-loop-napi.h>
 
 //using namespace net;
 using namespace owt_base;
@@ -60,9 +61,9 @@ NAN_METHOD(QuicTransportSession::newInstance)
     QuicTransportSession* obj = new QuicTransportSession();
     obj->Wrap(info.This());
     uv_async_init(uv_default_loop(), &obj->m_asyncOnNewStream, &QuicTransportSession::onNewStreamCallback);
-    uv_async_init(uv_default_loop(), &obj->m_asyncOnStreamClosed, &QuicTransportSession::onStreamClosedCallback);
-    obj->asyncResource_ = new Nan::AsyncResource("newStreamCallback");
-    obj->asyncResourceStreamClosed_ = new Nan::AsyncResource("streamClosedCallback");
+    //uv_async_init(uv_default_loop(), &obj->m_asyncOnClosedStream, &QuicTransportSession::onClosedStreamCallback);
+    //obj->asyncResource_ = new Nan::AsyncResource("newStreamCallback");
+    //obj->asyncResourceStreamClosed_ = new Nan::AsyncResource("streamClosedCallback");
     info.GetReturnValue().Set(info.This());
 }
 
@@ -86,26 +87,29 @@ NAN_METHOD(QuicTransportSession::createBidirectionalStream){
 }
 
 NAN_METHOD(QuicTransportSession::onNewStream) {
-    ELOG_DEBUG("QuicTransportSession::onNewStream");
+  ELOG_DEBUG("QuicTransportSession::onNewStream");
   QuicTransportSession* obj = Nan::ObjectWrap::Unwrap<QuicTransportSession>(info.Holder());
 
   obj->has_stream_callback_ = true;
   obj->stream_callback_ = new Nan::Callback(info[0].As<Function>());
+  ELOG_DEBUG("QuicTransportSession::onNewStream end");
 }
 
 NAN_METHOD(QuicTransportSession::onClosedStream) {
+  ELOG_DEBUG("QuicTransportSession::onClosedStream");
   QuicTransportSession* obj = Nan::ObjectWrap::Unwrap<QuicTransportSession>(info.Holder());
 
   obj->has_streamClosed_callback_ = true;
   obj->streamClosed_callback_ = new Nan::Callback(info[0].As<Function>());
+  ELOG_DEBUG("QuicTransportSession::onClosedStream end");
 }
 
 NAN_METHOD(QuicTransportSession::close) {
     ELOG_DEBUG("QuicTransportSession::close");
   QuicTransportSession* obj = Nan::ObjectWrap::Unwrap<QuicTransportSession>(info.Holder());
   obj->m_session->Stop();
-  delete obj->asyncResource_;
-  delete obj->asyncResourceStreamClosed_;
+  /*delete obj->asyncResource_;
+  delete obj->asyncResourceStreamClosed_;*/
 
   delete obj->stream_callback_;
   delete obj->streamClosed_callback_;
@@ -119,24 +123,26 @@ NAUV_WORK_CB(QuicTransportSession::onNewStreamCallback){
         return;
     }
 
-    obj->m_sessionQueueMutex.lock();
+    //boost::mutex::scoped_lock lock(obj->mutex);
 
     v8::Local<v8::Object> streamObject = QuicTransportStream::newInstance(obj->stream_messages.front());
     QuicTransportStream* stream = Nan::ObjectWrap::Unwrap<QuicTransportStream>(streamObject);
     obj->stream_messages.front()->SetVisitor(stream);
+    ELOG_DEBUG("stream_messages size:%d", obj->stream_messages.size());
 
     if (obj->has_stream_callback_) {
-      while (!obj->stream_messages.empty()) {
+      if (!obj->stream_messages.empty()) {
           Local<Value> args[] = { streamObject };
-          obj->asyncResource_->runInAsyncScope(Nan::GetCurrentContext()->Global(), obj->stream_callback_->GetFunction(), 1, args);
+          Nan::AsyncResource resource("onNewStream");
+          resource.runInAsyncScope(Nan::GetCurrentContext()->Global(), obj->stream_callback_->GetFunction(), 1, args);
           obj->stream_messages.pop();
       }
     }
-    obj->m_sessionQueueMutex.unlock();
+    ELOG_DEBUG("QuicTransportSession::onNewStreamCallback ends in session:%d", obj->m_session->Id());
 }
 
-NAUV_WORK_CB(QuicTransportSession::onStreamClosedCallback){
-    ELOG_DEBUG("QuicTransportSession::onStreamClosedCallback");
+NAUV_WORK_CB(QuicTransportSession::onClosedStreamCallback){
+    ELOG_DEBUG("QuicTransportSession::onClosedStreamCallback");
     Nan::HandleScope scope;
     QuicTransportSession* obj = reinterpret_cast<QuicTransportSession*>(async->data);
     if (!obj) {
@@ -145,44 +151,47 @@ NAUV_WORK_CB(QuicTransportSession::onStreamClosedCallback){
 
     if (obj->has_streamClosed_callback_) {
       ELOG_INFO("object has stream callback");
-      obj->m_streamClosedQueueMutex.lock();
-      while (!obj->streamclosed_messages.empty()) {
+      //boost::mutex::scoped_lock lock(obj->mutex);
+      if (!obj->streamclosed_messages.empty()) {
           ELOG_INFO("streamclosed_messages is not empty");
           //auto streamid = obj->streamclosed_messages.front();
           //v8::Local<v8::Object> streamObject = QuicTransportStream::newInstance(quicStream);
           //Local<Value> args[] = { streamObject };
           Local<Value> args[] = { Nan::New(obj->streamclosed_messages.front()) };
-          obj->asyncResourceStreamClosed_->runInAsyncScope(Nan::GetCurrentContext()->Global(), obj->stream_callback_->GetFunction(), 1, args);
+          Nan::AsyncResource resource("onStreamClosed");
+          resource.runInAsyncScope(Nan::GetCurrentContext()->Global(), obj->stream_callback_->GetFunction(), 1, args);
           obj->streamclosed_messages.pop();
       }
-      obj->m_streamClosedQueueMutex.unlock();
     }
     ELOG_INFO("onStreamClosedCallback ends");
 }
 
 NAN_METHOD(QuicTransportSession::getId) {
   QuicTransportSession* obj = Nan::ObjectWrap::Unwrap<QuicTransportSession>(info.Holder());
-  uint8_t length = obj->m_session->length();
+  /*uint8_t length = obj->m_session->length();
   std::string s_data(obj->m_session->Id(), length);
-  ELOG_INFO("QuicTransportSession::getId:%s\n",s_data.c_str());
-  info.GetReturnValue().Set(Nan::New(s_data.c_str()).ToLocalChecked());
+  ELOG_INFO("QuicTransportSession::getId:%s\n",s_data.c_str());*/
+  info.GetReturnValue().Set(Nan::New(obj->m_session->Id()).ToLocalChecked());
 }
 
 void QuicTransportSession::OnIncomingStream(owt::quic::QuicTransportStreamInterface* stream) {
-    std::cout << "QuicTransportSession::OnIncomingStream and id is:" << stream->Id();
-    m_sessionQueueMutex.lock();
+    std::cout << "QuicTransportSession::OnIncomingStream and id is:" << stream->Id() << " in session:" << m_session->Id();
+    //boost::mutex::scoped_lock lock(mutex);
     this->stream_messages.push(stream);
-    m_sessionQueueMutex.unlock();
     m_asyncOnNewStream.data = this;
-    uv_async_send(&m_asyncOnNewStream);
-    ELOG_INFO("OnIncomingStream stream:%d end\n", stream->Id());
+    if (uv_async_send(&m_asyncOnNewStream) == 0) {
+        ELOG_INFO("OnIncomingStream uv_async_send succeed and handle pending is:%d", m_asyncOnNewStream.pending); 
+    } else {
+        ELOG_INFO("OnIncomingStream uv_async_send failed");
+    };
+    //assert(false);
+    ELOG_INFO("OnIncomingStream stream:%d in session:%d in thread:%d end\n", stream->Id(), m_session->Id(), std::this_thread::get_id());
 }
 
 void QuicTransportSession::OnStreamClosed(uint32_t id) {
     ELOG_DEBUG("QuicTransportSession stream:%d is closed\n", id);
-    m_streamClosedQueueMutex.lock();
+    //boost::mutex::scoped_lock lock(mutex);
     this->streamclosed_messages.push(id);
-    m_streamClosedQueueMutex.unlock();
-    m_asyncOnStreamClosed.data = this;
-    uv_async_send(&m_asyncOnStreamClosed); 
+    m_asyncOnClosedStream.data = this;
+    uv_async_send(&m_asyncOnClosedStream); 
 }

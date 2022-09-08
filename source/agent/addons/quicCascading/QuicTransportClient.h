@@ -34,6 +34,7 @@ public:
     static NAN_METHOD(onNewStream);
     static NAN_METHOD(onConnection);
     static NAN_METHOD(onClosedStream);
+    static NAN_METHOD(onConnectionFailed);
     static NAN_METHOD(close);
     static NAN_METHOD(createBidirectionalStream);
     static NAN_METHOD(getId);
@@ -41,6 +42,7 @@ public:
     static NAUV_WORK_CB(onNewStreamCallback);
     static NAUV_WORK_CB(onConnectedCallback);
     static NAUV_WORK_CB(onStreamClosedCallback);
+    static NAUV_WORK_CB(onConnectionFailedCallback);
 
 protected:
     explicit QuicTransportClient(const char* dest_ip, int dest_port);
@@ -59,22 +61,25 @@ private:
 
     uv_async_t m_asyncOnNewStream;
     uv_async_t m_asyncOnConnected;
+    uv_async_t m_asyncOnConnectFail;
     uv_async_t m_asyncOnStreamClosed;
 
     Nan::AsyncResource *asyncResourceConnection_;
     Nan::AsyncResource *asyncResourceStream_;
     Nan::AsyncResource *asyncResourceStreamClosed_;
+    Nan::AsyncResource *asyncResourceFailedConnection_;
 
     bool has_stream_callback_;
     bool has_connected_callback_;
     bool has_streamClosed_callback_;
+    bool has_connectionFailed_callback_;
     std::queue<owt::quic::QuicTransportStreamInterface*> stream_messages;
     std::queue<uint32_t> streamclosed_messages;
     Nan::Callback *stream_callback_;
     Nan::Callback *connected_callback_;
     Nan::Callback *streamClosed_callback_;
-    std::mutex m_streamQueueMutex;
-    std::mutex m_streamClosedQueueMutex;
+    Nan::Callback *connectionfailed_callback_;
+    boost::mutex mutex;
     static Nan::Persistent<v8::Function> s_constructor;
 };
 

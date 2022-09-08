@@ -113,6 +113,7 @@ var ClusterManager = function (clusterName, selfId, spec) {
 
     var workerQuit = function (worker) {
         log.debug('workerQuit, worker:', worker);
+        var purpose = workers[worker].purpose;
         if (workers[worker] && schedulers[workers[worker].purpose]) {
             schedulers[workers[worker].purpose].remove(worker);
             monitoringTarget && monitoringTarget.notify('quit', {purpose: workers[worker].purpose, id: worker, type: 'worker'});
@@ -120,7 +121,6 @@ var ClusterManager = function (clusterName, selfId, spec) {
             data_synchronizer && data_synchronizer({type: 'worker_quit', payload: {worker: worker}});
         }
 
-        var purpose = workers[worker].purpose;
         if (purpose) {
             clusterInfo[purpose].delete(worker);
             if(!clusterInfo[purpose]) {
