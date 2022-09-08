@@ -191,7 +191,7 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
                     connections[pubId] = quicStream;
 
                     quicStream.onStreamData((msg) => {
-                      log.info("quic client stream get data:", msg);
+                      log.info("quic client stream get data:", msg, " in stream:", streamID);
                       var event = JSON.parse(msg);
                       if (event.type === 'ready') {
                         var data = {
@@ -219,11 +219,11 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
 
                     router.addLocalSource(pubId, connectionType, conn);
 
-                    var readyinfo = {
+                    /*var readyinfo = {
                       type: 'ready'
                     }
                     log.info("quic stream:", streamID, " send ready msg");
-                    quicStream.send(JSON.stringify(readyinfo));
+                    quicStream.send(JSON.stringify(readyinfo));*/
                 }));
             } else {
                 conn = createFrameSource(connectionId, 'in', options, callback);
@@ -367,13 +367,13 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
 
       if (!initialized) {
         //Client create initialized stream to exchange cluster info for this session
-        var info = {
+        /*var info = {
           type: 'ready'
         }
-        quicStream.send(JSON.stringify(info));
+        quicStream.send(JSON.stringify(info));*/
         
         quicStream.onStreamData((msg) => {
-          log.info("quic client stream get data:", msg);
+          log.info("quic client stream get data:", msg, " in stream:", streamID);
           var event = JSON.parse(msg);
           if (event.type === 'ready') {
             var info = {
@@ -391,7 +391,7 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
         quicStream.send(JSON.stringify(info));
         
         quicStream.onStreamData((msg) => {
-          log.info("quic client stream get data:", msg);
+          log.info("quic client stream get data:", msg, " in stream:", streamID);
           var event = JSON.parse(msg);
           if (event.type === 'ready') {
             var info = {
@@ -439,7 +439,7 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
                 quicStream.send(JSON.stringify(info));
                 
                 quicStream.onStreamData((msg) => {
-                  log.info("quic client stream get data:", msg);
+                  log.info("quic client stream get data:", msg, " in stream:", streamID, " for client target:", client.id);
                   var event = JSON.parse(msg);
                   if (event.type === 'ready') {
                     var info = {
@@ -458,14 +458,8 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
                 log.info("client get new stream id:", streamId);
                 incomingStream.onStreamData((msg) => {
                   var info = JSON.parse(msg);
-                  log.info("client get stream data:", info);
-                  if (info.type === 'ready') {
-                    log.info("Client stream id:", streamId, " get ready msg and send back ready msg");
-                    var data = {
-                      type: 'ready'
-                    }
-                    incomingStream.send(JSON.stringify(data));
-                  } else if (info.type === 'track') {
+                  log.info("client get stream data:", info, " in stream:", streamId, " for client target:", client.id);
+                  if (info.type === 'track') {
                     log.info("Client stream id:", streamId, " get track msg with info:", info);
                     var conn = createStreamPipeline(info.id, 'out', info.options);
                     conn.quicStream(incomingStream);
@@ -495,6 +489,11 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
                     //handle unsubscribe request
                   }
                 });
+
+                var data = {
+                  type: 'ready'
+                }
+                incomingStream.send(JSON.stringify(data));
               })
 
               client.onClosedStream((closedStreamId) => {
@@ -527,6 +526,7 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
       server.start();
       server.onNewSession((session) => {
       session.connected = true;
+      var sessionId = session.getId();
 
       log.info("Server get new session:");
       session.onNewStream((quicStream) => {
@@ -534,7 +534,7 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
         log.info("Server get new stream id:", streamId);
         quicStream.onStreamData((msg) => {
           var info = JSON.parse(msg);
-          log.info("Server get stream data:", info);
+          log.info("Server get stream data:", info, " in stream:", streamId, " and session:", sessionId);
           if (info.type === 'cluster') {
             session.id = info.cluster;
             if (!clusters[info.cluster]) {
@@ -544,16 +544,10 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
             clusters[info.cluster].signalStream = quicStream;
             rpcReq.getController(clusterName, info.room)
             .then(function(controller) {
-               quicStream.controller = controller; 
+               quicStream.controller = controller;
             });
-          } else if (info.type === 'ready') {
-            log.info("Server stream id:", streamId, " get ready msg and send back ready msg");
-            var data = {
-              type: 'ready'
-            }
-            quicStream.send(JSON.stringify(data));
           } else if (info.type === 'track') {
-            log.info("Server stream id:", streamId, " get track msg and track info:", info);
+            log.info("Server stream id:", streamId, " get track msg and track info:", info, " in stream:", streamId, " and session:", sessionId);
             var conn = createStreamPipeline(info.id, 'out', info.options);
             conn.quicStream(quicStream);
             if (!conn) {
@@ -564,11 +558,11 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
             router.addLocalDestination(info.id, 'mediabridge', conn);
 
           } else if (info.type === 'subscribe') {
-            log.info("Server stream id:", streamId, " get subscribe msg with subscribe info:", info);
+            log.info("Server stream id:", streamId, " get subscribe msg with subscribe info:", info, " and session:", sessionId);
             info.options.locality = {agent: parentRpcId, node: selfRpcId};
             var connectionId = info.options.connectionId;
             if (controllers[info.options.room]) {
-                rpcReq.subscribe(controllers[info.options.room], 'admin', connectionId, info.options); 
+                rpcReq.subscribe(controllers[info.options.room], 'admin', connectionId, info.options);
             } else {
                 rpcReq.getController(clusterName, info.options.room)
                 .then(function(controller) {
@@ -589,6 +583,10 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
             //handle unsusbcribe request
           }
         });
+        var data = {
+          type: 'ready'
+        }
+        quicStream.send(JSON.stringify(data));
       })
 
       session.onClosedStream((closedStreamId) => {

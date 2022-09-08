@@ -165,7 +165,7 @@ NAN_METHOD(QuicTransportStream::onStreamData) {
 }
 
 NAUV_WORK_CB(QuicTransportStream::onStreamDataCallback){
-    ELOG_DEBUG("QuicTransportStream::onStreamDataCallback");
+    ELOG_DEBUG("********QuicTransportStream::onStreamDataCallback");
     Nan::HandleScope scope;
     QuicTransportStream* obj = reinterpret_cast<QuicTransportStream*>(async->data);
     if (!obj) {
@@ -176,21 +176,21 @@ NAUV_WORK_CB(QuicTransportStream::onStreamDataCallback){
 
     if (obj->has_data_callback_) {
       //boost::mutex::scoped_lock lock(obj->mutex);
-      ELOG_DEBUG("QuicTransportStream::onStreamDataCallback data_messages size:%d in stream:%d", obj->data_messages.size(), obj->id);
+      ELOG_DEBUG("**********QuicTransportStream::onStreamDataCallback data_messages size:%d in stream:%d", obj->data_messages.size(), obj->id);
       while (!obj->data_messages.empty()) {
-          ELOG_DEBUG("data_messages is not empty");
+          ELOG_DEBUG("**********data_messages is not empty");
           Local<Value> args[] = { Nan::New(obj->data_messages.front().c_str()).ToLocalChecked() };
           Nan::AsyncResource resource("onStreamData");
           resource.runInAsyncScope(Nan::GetCurrentContext()->Global(), obj->data_callback_->GetFunction(), 1, args);
           obj->data_messages.pop();
       }
     }
-    ELOG_DEBUG("QuicTransportStream::onStreamDataCallback ends in stream:%d", obj->id);
+    ELOG_DEBUG("**************QuicTransportStream::onStreamDataCallback ends in stream:%d", obj->id);
 }
 
 NAN_METHOD(QuicTransportStream::getId) {
   QuicTransportStream* obj = Nan::ObjectWrap::Unwrap<QuicTransportStream>(info.Holder());
-  ELOG_DEBUG("QuicTransportStream::getId:%d\n", obj->id);
+  ELOG_DEBUG("**********QuicTransportStream::getId:%d\n", obj->id);
   info.GetReturnValue().Set(Nan::New(obj->id));
 }
 
@@ -203,7 +203,7 @@ NAN_SETTER(QuicTransportStream::trackKindSetter) {
   QuicTransportStream* obj = Nan::ObjectWrap::Unwrap<QuicTransportStream>(info.Holder());
   Nan::Utf8String trackKind(Nan::To<v8::String>(value).ToLocalChecked());
   obj->m_trackKind = std::string(*trackKind);
-  ELOG_DEBUG("QuicTransportStream::setTrackKind with value:%s", obj->m_trackKind.c_str());
+  ELOG_DEBUG("************QuicTransportStream::setTrackKind with value:%s", obj->m_trackKind.c_str());
 }
 
 NAN_METHOD(QuicTransportStream::close)
@@ -328,7 +328,7 @@ void QuicTransportStream::OnData(owt::quic::QuicTransportStreamInterface* stream
                     deliverFrame(*frame);
                     break;
                 case TDT_MEDIA_METADATA: {
-                    ELOG_DEBUG("QuicTransportStream::onData with type TDT_MEDIA_METADATA%s", s_data.c_str());
+                    ELOG_DEBUG("QuicTransportStream::onData with type TDT_MEDIA_METADATA%s", s_data.c_str(), " in stream:%d", id);
                     //boost::mutex::scoped_lock lock(mutex);
                     this->data_messages.push(s_data);
                     m_asyncOnData.data = this;
@@ -339,7 +339,7 @@ void QuicTransportStream::OnData(owt::quic::QuicTransportStreamInterface* stream
                         ELOG_INFO("OnData uv_async_send failed");
                     };
                     //lock.unlock();
-                    ELOG_DEBUG("QuicTransportStream::onData with type TDT_MEDIA_METADATA end in thread:%d", std::this_thread::get_id());
+                    ELOG_DEBUG("QuicTransportStream::onData with type TDT_MEDIA_METADATA end in stream:%d in thread:%d", id, std::this_thread::get_id());
                     break;
                 }
                 case TDT_FEEDBACK_MSG:
