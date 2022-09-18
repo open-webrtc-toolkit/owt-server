@@ -12,7 +12,7 @@ install_apt_deps(){
     if [ -d $LIB_DIR ]; then
       echo "Installing mongodb-org from tar"
       ${SUDO} apt-get install -y libcurl4 openssl liblzma5
-      wget -P $LIB_DIR https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu1804-4.4.6.tgz
+      wget -q -P $LIB_DIR https://fastdl.mongodb.org/linux/mongodb-linux-x86_64-ubuntu1804-4.4.6.tgz
       tar -zxvf $LIB_DIR/mongodb-linux-x86_64-ubuntu1804-4.4.6.tgz -C $LIB_DIR
       ${SUDO} ln -s $LIB_DIR/mongodb-linux-x86_64-ubuntu1804-4.4.6/bin/* /usr/local/bin/
     else
