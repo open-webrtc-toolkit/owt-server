@@ -329,10 +329,10 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
         }, onError(callback));
         var connid = connectionId.split('@')[0];
         log.info("unsubscribe sub connid:", connid, " connections:", connections);
-        if (connections[connid]) {
+        /*if (connections[connid]) {
             connections[connid].close();
             delete connections[connid];
-        }
+        }*/
 
     };
 
@@ -528,7 +528,7 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
       session.connected = true;
       var sessionId = session.getId();
 
-      log.info("Server get new session:");
+      log.info("Server get new session:", sessionId);
       session.onNewStream((quicStream) => {
         var streamId = quicStream.getId();
         log.info("Server get new stream id:", streamId);

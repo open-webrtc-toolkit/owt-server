@@ -18,8 +18,8 @@ var RpcRequest = function(rpcChannel) {
     return rpcChannel.makeRPC(controller, 'join', [roomId, participant], 6000);
   };
 
-  that.handleCascadingEvents = function(controller, bridgeId, event) {
-    return rpcChannel.makeRPC(controller, 'handleCascadingEvents', [bridgeId,event], 4000);
+  that.handleCascadingEvents = function(controller, bridgeId, clusterId, event) {
+    return rpcChannel.makeRPC(controller, 'handleCascadingEvents', [bridgeId,clusterId,event], 4000);
   };
 
   that.onCascadingConnected = function(controller, bridgeId, sessionId, streamId) {

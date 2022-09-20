@@ -33,8 +33,10 @@ public:
     static NAN_METHOD(stop);
     static NAN_METHOD(start);
     static NAN_METHOD(onNewSession);
+    static NAN_METHOD(onClosedSession);
 
     static NAUV_WORK_CB(onNewSessionCallback);
+    static NAUV_WORK_CB(onClosedSessionCallback);
 
 protected:
     QuicTransportServer() = delete;
@@ -43,6 +45,7 @@ protected:
 
     // Implements QuicTransportClientInterface.
     void OnSession(owt::quic::QuicTransportSessionInterface*) override;
+    void OnClosedSession(char* sessionId, size_t len) override;
     void OnEnded() override;
 private:
 
@@ -50,9 +53,16 @@ private:
 
     std::unique_ptr<owt::quic::QuicTransportServerInterface> m_quicServer;
     uv_async_t m_asyncOnNewSession;
+    uv_async_t m_asyncOnClosedSession;
     bool has_session_callback_;
+    bool has_sessionClosed_callback_;
     std::queue<owt::quic::QuicTransportSessionInterface*> session_messages;
+    std::queue<std::string> sessionId_messages;
     Nan::Callback *session_callback_;
+    Nan::Callback *sessionClosed_callback_;
+    Nan::AsyncResource *asyncResourceNewSession_;
+    Nan::AsyncResource *asyncResourceClosedSession_;
+
     boost::mutex mutex;
     std::unordered_map<std::string, std::unique_ptr<owt::quic::QuicTransportSessionInterface*>> sessions_;
     static Nan::Persistent<v8::Function> s_constructor;

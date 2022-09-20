@@ -577,7 +577,7 @@ var Conference = function (rpcClient, selfRpcId) {
       let excludes = (to === 'others') ? [from] : [];
       let portals = new Set();
       for (let pptId in participants) {
-        if (participants[pptId].cascading !== true) {
+        if (!participants[pptId].cascading) {
           portals.add(participants[pptId].getPortal());
         }
       }
@@ -970,7 +970,7 @@ var Conference = function (rpcClient, selfRpcId) {
       hasSubscription = false;
 
     for (let k in participants) { 
-      if (k !== 'admin' && k.cascading !== true) {
+      if (k !== 'admin' && !k.cascading) {
         hasNonAdminParticipant = true;
         break;
       }
@@ -978,7 +978,7 @@ var Conference = function (rpcClient, selfRpcId) {
 
     if (!hasNonAdminParticipant) {
       for (let st in streams) {
-        if (streams[st].type === 'forward' && streams[st].cascading !== true) {
+        if (streams[st].type === 'forward' && !streams[st].cascading) {
           hasPublication = true;
           break;
         }
@@ -3121,8 +3121,8 @@ var Conference = function (rpcClient, selfRpcId) {
     }
   };
 
-  var addCascadingParticipants = function(bridgeId, participantInfo) {
-    participantInfo.cascading = true;
+  var addCascadingParticipants = function(bridgeId, targetCluster, participantInfo) {
+    participantInfo.cascading = targetCluster;
     participantInfo.portal = bridgeId;
     log.info("Add cascading participant:", participantInfo);
     addParticipant(participantInfo, participantInfo.permission);
@@ -3140,11 +3140,11 @@ var Conference = function (rpcClient, selfRpcId) {
     room_config.notifying.participantActivities && sendMsg('room', 'all', 'stream', {id: msg.id, status: 'add', data: fwdStream.toPortalFormat()});
   }
 
-  var initializeCascading = function(bridgeId, data) {
+  var initializeCascading = function(bridgeId, targetCluster, data) {
     if(data.participants) {
       for (var pid in data.participants) {
         log.info("initialize participant:", data.participants[pid]);
-        addCascadingParticipants(bridgeId, data.participants[pid]);
+        addCascadingParticipants(bridgeId, targetCluster, data.participants[pid]);
       }
     }
 
@@ -3156,12 +3156,32 @@ var Conference = function (rpcClient, selfRpcId) {
     }
   }
 
-  that.handleCascadingEvents = function(bridgeId, events, callback) {
+  var disconnectCascading = function(targetCluster) {
+    for (var participant_id in participants) {
+      if (participants[participant_id].cascading === targetCluster) {
+        removeParticipant(participant_id);
+      }
+    }
+
+    for (var stream_id in streams) {
+      if (streams[stream_id].cluster === targetCluster) {
+        removeStream(stream_id);
+      }
+    }
+
+    for (var stream_id in casStreams) {
+      if (!casStreams[stream_id].cluster === targetCluster) {
+        removeStream(stream_id);
+      }
+    }
+  }
+
+  that.handleCascadingEvents = function(bridgeId, targetCluster, events, callback) {
       log.info('Handle cascading event: ', events);
       var result = 'ok';
       switch (events.type) {
       case 'addParticipant':
-        addCascadingParticipants(bridgeId, events.data);
+        addCascadingParticipants(bridgeId, targetCluster, events.data);
         break;
       case 'removeParticipant':
         removeParticipant(events.data);
@@ -3182,7 +3202,10 @@ var Conference = function (rpcClient, selfRpcId) {
         updateAudioActiveness(events.data.activeInputStream, events.data.target)
         break;
       case 'initialize':
-        initializeCascading(bridgeId, events.data);
+        initializeCascading(bridgeId, targetCluster, events.data);
+        break;
+      case 'onCascadingDisconnected':
+        disconnectCascading(targetCluster);
         break;
       default:
         log.info("Invalid cascading event");
@@ -3199,7 +3222,7 @@ var Conference = function (rpcClient, selfRpcId) {
       data.participants = {};
       data.streams = {};
       for (var pid in participants) {
-        if (pid !== 'admin' && participants[pid].cascading !== true) {
+        if (pid !== 'admin' && !participants[pid].cascading) {
           data.participants[pid] = participants[pid].getDetail();
           data.participants[pid].origin = participants[pid].getOrigin();
           data.participants[pid].portal = participants[pid].getPortal();
@@ -3208,7 +3231,7 @@ var Conference = function (rpcClient, selfRpcId) {
       }
 
       for (var sid in streams) {
-        if (streams[sid].type !== 'mixed' && streams[sid].cascading !== true) {
+        if (streams[sid].type !== 'mixed' && !streams[sid].cascading) {
           if (!streams[sid].isInConnecting) {
             data.streams[sid] = streams[sid];
             data.streams[sid].cluster = clusterID;

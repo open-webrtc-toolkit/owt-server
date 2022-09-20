@@ -54,10 +54,12 @@ QuicTransportStream::QuicTransportStream(owt::quic::QuicTransportStreamInterface
 }
 
 QuicTransportStream::~QuicTransportStream() {
+    ELOG_DEBUG("QuicTransportStream::~QuicTransportStream");
     if (!uv_is_closing(reinterpret_cast<uv_handle_t*>(&m_asyncOnData))) {
         uv_close(reinterpret_cast<uv_handle_t*>(&m_asyncOnData), NULL);
     }
     m_stream->SetVisitor(nullptr);
+    delete asyncResource_;
     /*delete[] m_receiveData.buffer;
     data_callback_.Reset();*/
 }
@@ -90,6 +92,7 @@ NAN_METHOD(QuicTransportStream::newInstance)
     QuicTransportStream* obj = new QuicTransportStream();
     obj->Wrap(info.This());
     uv_async_init(uv_default_loop(), &obj->m_asyncOnData, &QuicTransportStream::onStreamDataCallback);
+    obj->asyncResource_ = new Nan::AsyncResource("streamDataCallback");
     info.GetReturnValue().Set(info.This());
 }
 
@@ -164,30 +167,6 @@ NAN_METHOD(QuicTransportStream::onStreamData) {
   obj->data_callback_ = new Nan::Callback(info[0].As<Function>());
 }
 
-NAUV_WORK_CB(QuicTransportStream::onStreamDataCallback){
-    ELOG_DEBUG("********QuicTransportStream::onStreamDataCallback");
-    Nan::HandleScope scope;
-    QuicTransportStream* obj = reinterpret_cast<QuicTransportStream*>(async->data);
-    if (!obj) {
-        return;
-    }
-
-    //boost::mutex::scoped_lock lock(obj->mutex);
-
-    if (obj->has_data_callback_) {
-      //boost::mutex::scoped_lock lock(obj->mutex);
-      ELOG_DEBUG("**********QuicTransportStream::onStreamDataCallback data_messages size:%d in stream:%d", obj->data_messages.size(), obj->id);
-      while (!obj->data_messages.empty()) {
-          ELOG_DEBUG("**********data_messages is not empty");
-          Local<Value> args[] = { Nan::New(obj->data_messages.front().c_str()).ToLocalChecked() };
-          Nan::AsyncResource resource("onStreamData");
-          resource.runInAsyncScope(Nan::GetCurrentContext()->Global(), obj->data_callback_->GetFunction(), 1, args);
-          obj->data_messages.pop();
-      }
-    }
-    ELOG_DEBUG("**************QuicTransportStream::onStreamDataCallback ends in stream:%d", obj->id);
-}
-
 NAN_METHOD(QuicTransportStream::getId) {
   QuicTransportStream* obj = Nan::ObjectWrap::Unwrap<QuicTransportStream>(info.Holder());
   ELOG_DEBUG("**********QuicTransportStream::getId:%d\n", obj->id);
@@ -212,6 +191,30 @@ NAN_METHOD(QuicTransportStream::close)
     obj->m_stream->Close();
     delete obj->m_stream;
     obj->m_stream = nullptr;
+}
+
+NAUV_WORK_CB(QuicTransportStream::onStreamDataCallback){
+    ELOG_DEBUG("********QuicTransportStream::onStreamDataCallback");
+    Nan::HandleScope scope;
+    QuicTransportStream* obj = reinterpret_cast<QuicTransportStream*>(async->data);
+    if (!obj) {
+        return;
+    }
+
+    //boost::mutex::scoped_lock lock(obj->mutex);
+
+    if (obj->has_data_callback_) {
+      boost::mutex::scoped_lock lock(obj->mutex);
+      ELOG_DEBUG("**********QuicTransportStream::onStreamDataCallback data_messages size:%d in stream:%d", obj->data_messages.size(), obj->id);
+      while (!obj->data_messages.empty()) {
+          ELOG_DEBUG("**********data_messages is not empty");
+          Local<Value> args[] = { Nan::New(obj->data_messages.front().c_str()).ToLocalChecked() };
+
+          obj->asyncResource_->runInAsyncScope(Nan::GetCurrentContext()->Global(), obj->data_callback_->GetFunction(), 1, args);
+          obj->data_messages.pop();
+      }
+    }
+    ELOG_DEBUG("**************QuicTransportStream::onStreamDataCallback ends in stream:%d", obj->id);
 }
 
 void QuicTransportStream::onFeedback(const FeedbackMsg& msg) {

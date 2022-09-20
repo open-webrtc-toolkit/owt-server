@@ -56,9 +56,9 @@ private:
     std::queue<uint32_t> streamclosed_messages;
     Nan::Callback *stream_callback_;
     Nan::Callback *streamClosed_callback_;
-    /*Nan::AsyncResource *asyncResource_;
-    Nan::AsyncResource *asyncResourceStreamClosed_;*/
-    //boost::mutex mutex;
+    Nan::AsyncResource *asyncResourceNewStream_;
+    Nan::AsyncResource *asyncResourceClosedStream_;
+    boost::mutex mutex;
     //std::unordered_map<uint32_t, v8::Local<v8::Object>> streams_;
     static Nan::Persistent<v8::Function> s_constructor;
 };
