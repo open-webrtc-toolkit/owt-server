@@ -243,8 +243,9 @@ var EventCascading = function(spec, rpcReq) {
           var event = {
             type: 'onCascadingDisconnected'
           }
+
+          rpcReq.handleCascadingEvents(sessions[sessionId].streams[closedStreamId].controller, self_rpc_id, sessions[sessionId].target, event);
           delete sessions[sessionId].streams[closedStreamId];
-          rpcReq.handleCascadingEvents(controller, self_rpc_id, sessions[sessionId].target, event);
       })
     });
 

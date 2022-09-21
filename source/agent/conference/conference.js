@@ -3170,7 +3170,7 @@ var Conference = function (rpcClient, selfRpcId) {
     }
 
     for (var stream_id in casStreams) {
-      if (!casStreams[stream_id].cluster === targetCluster) {
+      if (casStreams[stream_id].cluster === targetCluster) {
         removeStream(stream_id);
       }
     }

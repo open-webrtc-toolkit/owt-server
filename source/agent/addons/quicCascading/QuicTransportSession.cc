@@ -157,7 +157,7 @@ NAUV_WORK_CB(QuicTransportSession::onClosedStreamCallback){
 
     if (obj->has_streamClosed_callback_) {
       ELOG_INFO("object has stream callback");
-      boost::mutex::scoped_lock lock(obj->mutex);
+      //boost::mutex::scoped_lock lock(obj->mutex);
       if (!obj->streamclosed_messages.empty()) {
           ELOG_INFO("streamclosed_messages is not empty");
           //auto streamid = obj->streamclosed_messages.front();
@@ -165,7 +165,7 @@ NAUV_WORK_CB(QuicTransportSession::onClosedStreamCallback){
           //Local<Value> args[] = { streamObject };
           Local<Value> args[] = { Nan::New(obj->streamclosed_messages.front()) };
 
-          obj->asyncResourceClosedStream_->runInAsyncScope(Nan::GetCurrentContext()->Global(), obj->stream_callback_->GetFunction(), 1, args);
+          obj->asyncResourceClosedStream_->runInAsyncScope(Nan::GetCurrentContext()->Global(), obj->streamClosed_callback_->GetFunction(), 1, args);
           obj->streamclosed_messages.pop();
       }
     }
