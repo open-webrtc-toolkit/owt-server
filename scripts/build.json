@@ -32,7 +32,6 @@
             "mcu",
             "video-analyzer-sw",
             "gst-pipeline",
-            "quicCascading",
             "video-mixer-msdk",
             "video-transcoder-msdk"
         ]
@@ -42,7 +41,6 @@
             "mcu",
             "video-analyzer-sw",
             "gst-pipeline",
-            "quicCascading",
             "video-mixer-msdk",
             "video-transcoder-msdk"
         ]
