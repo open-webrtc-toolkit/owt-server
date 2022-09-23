@@ -63,7 +63,7 @@ exports.add = function (req, res, next) {
 exports.delete = function (req, res, next) {
   log.debug('Delete processor:', req.params.processor,
             ' for domain ', req.params.domain);
-  callStreamService('removeProcessor', [req.params.processor], (err, ret) => {
+  callStreamService('removeProcessor', [{id: req.params.processor}], (err, ret) => {
     if (err) {
       next(new e.CloudError('Failed to remove processor'));
     } else {

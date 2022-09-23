@@ -265,6 +265,73 @@ class RtcController extends EventEmitter {
     }
   }
 
+  /*
+  sessionConfig = {
+    id: id,
+    transport: {id},
+    media: {
+      tracks: [initTrack]
+    },
+    domain: domain,
+    info: {
+      owner: ownerId,
+      origin: origin,
+      attributes: attrObject,
+      formatPreference: {audio, video}
+    },
+    participant: pariticipantId,
+  }
+   */
+  async createSession(direction, config) {
+    const option = {
+      transportId: config.transport?.id || id,
+      tracks: config.media.tracks,
+      attributes: config.attributes,
+    };
+    option.tracks.forEach((track) => {
+      track.formatPreference = config.info.formatPreference[track.type];
+    });
+    return this.initiate(
+        config.participant, config.id, direction, config.info.origin, option)
+      .then(() => ({id: config.id, transportId: option.transportId}));
+  }
+
+  async removeSession(id, direction, reason) {
+    return this.terminate(id, direction, reason || 'Participant terminate');
+  }
+
+  /*
+  sessionConfig = {
+    id: id,
+    operation: op,
+    data: 'audio/video'
+  }
+   */
+  async controlSession(direction, config) {
+    const id = data.id;
+    if (['pause', 'play'].includes(config.operation)) {
+      const setAudio = config.data.includes('a');
+      const setVideo = config.data.includes('v');
+      let tracks = [];
+      if (this.operations.has(id)) {
+        setTracks = this.operations.get(id).tracks
+          .filter((track) => {
+            return track.id && ((track.type === 'audio' && setAudio) ||
+                (track.type === 'video' && setVideo));
+          })
+          .map((track) => track.id);
+      }
+      const muted = (data.operation === 'pause') ? true : false;
+      if (tracks.length > 0) {
+        return this.setMute(id, setTracks, muted);
+      } else {
+        throw new Error(`Cannot find track for mute/unmute: ${id}`);
+      }
+    } else {
+      throw new Error(`Operation not supported: ${config.operation}`);
+    }
+  }
+
   onSessionProgress(id, type, data) {
     switch(type) {
       case 'onTransportProgress': {
@@ -276,7 +343,7 @@ class RtcController extends EventEmitter {
         break;
       }
       case 'onMediaUpdate': {
-        log.warn('onMediaUpdate!!!');
+        log.debug('onMediaUpdate:', id, type, data);
         const track = this.tracks.get(id);
         const op = this.operations.get(track?.operationId);
         if (op) {

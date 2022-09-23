@@ -7,3 +7,4 @@ port = 5672 #default: 5672
 
 [service]
 name = "stream-service"
+control_agent = "mycontroller"

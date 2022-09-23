@@ -1,6 +1,6 @@
 {
-  "appenders": [
-    {
+  "appenders": {
+    "out": {
       "type": "console",
       "layout": {
         "type": "pattern",
@@ -8,22 +8,15 @@
         "replaceConsole": true
       }
     }
-  ],
-  "levels": {
-    "ClusterWorker": "INFO",
-    "LoadCollector": "INFO",
-    "AmqpClient": "INFO",
-    "WorkingJS": "INFO",
-    "NodeManager": "INFO",
-    "StreamService": "INFO",
-    "StreamingController": "INFO",
-    "RoomController": "INFO",
-    "RtcController": "INFO",
-    "QuicController": "INFO",
-    "Stream": "INFO",
-    "Subscription": "INFO",
-    "WorkingAgent": "INFO",
-    "Connections": "INFO",
-    "InternalConnectionFactory": "INFO"
+  },
+  "categories": {
+    "default": { "appenders": [ "out" ], "level": "debug" },
+    "ClusterWorker": { "appenders": [ "out" ], "level": "info" },
+    "LoadCollector": { "appenders": [ "out" ], "level": "info" },
+    "StreamService": { "appenders": [ "out" ], "level": "debug" },
+    "StreamingController": { "appenders": [ "out" ], "level": "info" },
+    "RtcController": { "appenders": [ "out" ], "level": "info" },
+    "QuicController": { "appenders": [ "out" ], "level": "info" },
+    "Stream": { "appenders": [ "out" ], "level": "info" }
   }
 }

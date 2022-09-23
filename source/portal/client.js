@@ -259,12 +259,7 @@ var Client = function(clientId, sigConnection, portal, version) {
   that.join = (token) => {
     return portal.join(clientId, token)
       .then(function(result){
-        if (result.data.customizedController) {
-          that.keepSignalFormat = true;
-          updateMessageHandler(that.connection.socket);
-        } else {
-          that.inRoom = result.data.room.id;
-        }
+        that.inRoom = result.data.room.id;
         that.tokenCode = result.tokenCode;
         result.data.id = that.id;
         const data = adapter.translateResp(ReqType.Join, result.data);

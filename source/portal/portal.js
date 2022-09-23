@@ -109,31 +109,20 @@ var Portal = function(spec, rpcReq) {
         userInfo = deleteTokenResult.user;
         role = deleteTokenResult.role;
         origin = deleteTokenResult.origin;
-        room_id = deleteTokenResult.room;
         domain = deleteTokenResult.domain;
-        return rpcReq.getController(cluster_name, room_id || domain, customized_controller);
+        room_id = deleteTokenResult.room || domain;
+        return rpcReq.getController(cluster_name, room_id);
       })
       .then(function(controller) {
         log.debug('got controller:', controller);
         room_controller = controller;
-
-        if (!customized_controller) {
-          return rpcReq.join(controller, room_id, {id: participantId, user: userInfo, role: role, portal: self_rpc_id, origin: origin});
-        } else {
-          log.debug('customized_controller:', customized_controller);
-          participants[participantId] = {
-            controller: room_controller,
-          };
-          const joinData = {
-            id: participantId,
-            user: userInfo,
-            role: role,
-            portal: self_rpc_id,
-            origin: origin,
-            domain: domain,
-          };
-          return that.onRTCSignaling(participantId, 'join', joinData);
-        }
+        const joinInfo = {
+          id: participantId,
+          user: userInfo, role: role,
+          portal: self_rpc_id,
+          origin: origin
+        };
+        return rpcReq.join(controller, room_id, joinInfo);
       })
       .then(function(joinResult) {
         log.debug('join ok, result:', joinResult);
@@ -156,7 +145,6 @@ var Portal = function(spec, rpcReq) {
             permission: joinResult.permission,
             room: joinResult.room,
             webTransportToken: webTransportToken,
-            customizedController: customized_controller,
           }
         };
       });

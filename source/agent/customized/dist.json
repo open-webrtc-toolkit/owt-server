@@ -4,15 +4,16 @@
     "common": {
         "package": "package.json",
         "files": [
-            "conference2.js",
+            "mycontroller.js",
             "../conference/configLoader.js",
             "../conference/agent.toml",
             "../conference/log4js_configuration.json",
+            "../../stream_service/session.js",
+            "../../stream_service/domainHandler.js",
             "../nodeManager.js",
             "../workingNode.js",
             "../index.js",
             "../networkHelper.js",
-            "../../common/formatUtil.js",
             "../../common/cipher.js",
             "../../common/amqpClient.js",
             "../../common/clusterWorker.js",
@@ -20,7 +21,6 @@
             "../../common/logger.js",
             "../../common/makeRPC.js",
             "../../common/rpcChannel.js",
-            "../../common/rpcStarter.js",
             "../../../scripts/release/initauth.js"
         ]
     },

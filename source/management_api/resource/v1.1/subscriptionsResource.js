@@ -71,7 +71,7 @@ exports.patch = function (req, res, next) {
 exports.delete = function (req, res, next) {
   log.debug('Delete subscription:', req.params.subscription,
             ' for domain ', req.params.domain);
-  callStreamService('unsubscribe', [req.params.subscription], (err, ret) => {
+  callStreamService('unsubscribe', [{id: req.params.subscription}], (err, ret) => {
     if (err) {
       next(new e.CloudError('Failed to unsubscribe'));
     } else {

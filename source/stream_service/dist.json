@@ -16,6 +16,7 @@
             "audioController.js",
             "videoController.js",
             "analyticsController.js",
+            "domainHandler.js",
             "../agent/conference/rpcRequest.js",
             "../common/amqpClient.js",
             "../common/cipher.js",

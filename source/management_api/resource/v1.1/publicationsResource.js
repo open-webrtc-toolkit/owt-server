@@ -70,7 +70,7 @@ exports.patch = function (req, res, next) {
 exports.delete = function (req, res, next) {
   log.debug('Delete publication:', req.params.publication,
             ' for domain ', req.params.domain);
-  callStreamService('unpublish', [req.params.publication], (err, ret) => {
+  callStreamService('unpublish', [{id: req.params.publication}], (err, ret) => {
     if (err) {
       next(new e.CloudError('Failed to unpublish'));
     } else {

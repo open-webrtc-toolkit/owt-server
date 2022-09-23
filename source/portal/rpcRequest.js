@@ -8,6 +8,7 @@ const grpcTools = require('./grpcTools');
 const enableGrpc = config.portal.enable_grpc || false;
 const log = require('./logger').logger.getLogger('RpcRequest');
 const GRPC_TIMEOUT = 3000;
+const STREAM_ENGINE = global.config?.portal?.stream_engine_name || null;
 
 var RpcRequest = function(rpcChannel) {
   var that = {};
@@ -61,6 +62,9 @@ var RpcRequest = function(rpcChannel) {
   };
 
   that.getController = function(clusterManager, roomId, customizedPurpose) {
+    if (STREAM_ENGINE) {
+      return Promise.resolve(STREAM_ENGINE);
+    }
     if (enableGrpc) {
       if (!clusterClient) {
         clusterClient = grpcTools.startClient(
@@ -115,6 +119,9 @@ var RpcRequest = function(rpcChannel) {
   };
 
   that.join = function(controller, roomId, participant) {
+    if (STREAM_ENGINE) {
+      participant.domain = roomId;
+    }
     if (enableGrpc) {
       startConferenceClientIfNeeded(controller);
       const req = {roomId, participant};
@@ -144,6 +151,10 @@ var RpcRequest = function(rpcChannel) {
           }
         });
       });
+    }
+    if (STREAM_ENGINE) {
+      const req = {id: participantId};
+      return rpcChannel.makeRPC(controller, 'leave', [req]);
     }
     return rpcChannel.makeRPC(controller, 'leave', [participantId]);
   };
@@ -190,6 +201,13 @@ var RpcRequest = function(rpcChannel) {
         });
       });
     }
+    if (STREAM_ENGINE) {
+      const req = Options;
+      req.type = 'webrtc';
+      req.id = streamId;
+      req.participant = participantId;
+      return rpcChannel.makeRPC(controller, 'publish', [req]);
+    }
     return rpcChannel.makeRPC(controller, 'publish', [participantId, streamId, Options]);
   };
 
@@ -209,6 +227,10 @@ var RpcRequest = function(rpcChannel) {
           }
         });
       });
+    }
+    if (STREAM_ENGINE) {
+      const req = {id: streamId, participant: participantId};
+      return rpcChannel.makeRPC(controller, 'unpublish', [req]);
     }
     return rpcChannel.makeRPC(controller, 'unpublish', [participantId, streamId]);
   };
@@ -232,6 +254,13 @@ var RpcRequest = function(rpcChannel) {
         });
       });
     }
+    if (STREAM_ENGINE) {
+      const req = command;
+      req.type = 'webrtc';
+      req.id = streamId;
+      req.participant = participantId;
+      return rpcChannel.makeRPC(controller, 'streamControl', [req]);
+    }
     return rpcChannel.makeRPC(controller, 'streamControl', [participantId, streamId, command], 4000);
   };
 
@@ -253,6 +282,13 @@ var RpcRequest = function(rpcChannel) {
         });
       });
     }
+    if (STREAM_ENGINE) {
+      const req = Options;
+      req.type = 'webrtc';
+      req.id = subscriptionId;
+      req.participant = participantId;
+      return rpcChannel.makeRPC(controller, 'subscribe', [req]);
+    }
     return rpcChannel.makeRPC(controller, 'subscribe', [participantId, subscriptionId, Options]);
   };
 
@@ -272,6 +308,10 @@ var RpcRequest = function(rpcChannel) {
           }
         });
       });
+    }
+    if (STREAM_ENGINE) {
+      const req = {id: subscriptionId, participant: participantId};
+      return rpcChannel.makeRPC(controller, 'unsubscribe', [req]);
     }
     return rpcChannel.makeRPC(controller, 'unsubscribe', [participantId, subscriptionId]);
   };
@@ -295,6 +335,13 @@ var RpcRequest = function(rpcChannel) {
         });
       });
     }
+    if (STREAM_ENGINE) {
+      const req = command;
+      req.type = 'webrtc';
+      req.id = subscriptionId;
+      req.participant = participantId;
+      return rpcChannel.makeRPC(controller, 'subscriptionControl', [req]);
+    }
     return rpcChannel.makeRPC(controller, 'subscriptionControl', [participantId, subscriptionId, command]);
   };
 
@@ -317,14 +364,6 @@ var RpcRequest = function(rpcChannel) {
     }
     return rpcChannel.makeRPC(controller, 'onSessionSignaling', [sessionId, signaling]);
   };
-
-  that.onRTCSignaling = function(controller, clientId, name, data) {
-    return rpcChannel.makeRPC(controller, 'onRTCSignaling', [clientId, name, data]);
-  };
-
-  that.addNotificationListener = function (controller, domain, selfId) {
-    return rpcChannel.makeRPC(controller, 'addNotificationListener', [domain, selfId]);
-  }
 
   return that;
 };

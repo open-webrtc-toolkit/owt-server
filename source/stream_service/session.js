@@ -69,12 +69,18 @@ class Publication {
       },
       data: false,
       info: {
-        owner: 'admin',
+        owner: this.info?.owner,
         type: this.type,
         inViews: [],
         attributes: null,
       }
     };
+  }
+
+  static create(obj) {
+    const pub = new Publication();
+    Object.assign(pub, obj);
+    return pub;
   }
 }
 
