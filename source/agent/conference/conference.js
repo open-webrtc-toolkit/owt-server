@@ -692,7 +692,7 @@ var Conference = function (rpcClient, selfRpcId) {
 
     var fwdStream = null;
     if (casStreams[id]) {
-      fwdStream = new CascadedStream(id, media, data, info, locality, casStreams[id].cluster, true);
+      fwdStream = new CascadedStream(id, media, data, info, locality, casStreams[id].cluster, true, casStreams[id].bridge);
     } else {
       fwdStream = new ForwardStream(id, media, data, info, locality);
     }
@@ -3103,6 +3103,27 @@ var Conference = function (rpcClient, selfRpcId) {
     callback('callback', 'Success');
   };
 
+  var disconnectCascadingByBridge = function(bridgeId) {
+    log.info("Disconnect cascading by bridge id:", bridgeId);
+    for (var participant_id in participants) {
+      if (participants[participant_id].getPortal() === bridgeId) {
+        removeParticipant(participant_id);
+      }
+    }
+
+    for (var stream_id in streams) {
+      if (streams[stream_id].bridge === bridgeId) {
+        removeStream(stream_id);
+      }
+    }
+
+    for (var stream_id in casStreams) {
+      if (casStreams[stream_id].bridge === bridgeId) {
+        removeStream(stream_id);
+      }
+    }
+  }
+
   //This interface is for fault tolerance.
   that.onFaultDetected = function (message) {
     if (message.purpose === 'portal' || message.purpose === 'sip') {
@@ -3118,6 +3139,8 @@ var Conference = function (rpcClient, selfRpcId) {
     } else if (message.purpose === 'audio' ||
                message.purpose === 'video') {
       roomController && roomController.onFaultDetected(message.purpose, message.type, message.id);
+    } else if (message.purpose === 'eventbridge') {
+      disconnectCascadingByBridge(message.id)
     }
   };
 
@@ -3128,9 +3151,9 @@ var Conference = function (rpcClient, selfRpcId) {
     addParticipant(participantInfo, participantInfo.permission);
   }
 
-  var addCascadingStreams = function(msg) {
+  var addCascadingStreams = function(bridgeId, msg) {
     log.info("Add cascading stream id:", msg.id, " data:", msg.data, " info:", msg.info, " media:", msg.media);
-    const fwdStream = new CascadedStream(msg.id, msg.media, msg.data, msg.info, null, msg.cluster, false);
+    const fwdStream = new CascadedStream(msg.id, msg.media, msg.data, msg.info, null, msg.cluster, false, bridgeId);
     const errMsg = fwdStream.checkMediaError();
     if (errMsg) {
       log.error(errMsg);
@@ -3187,7 +3210,7 @@ var Conference = function (rpcClient, selfRpcId) {
         removeParticipant(events.data);
         break;
       case 'addStream':
-        addCascadingStreams(events.data);
+        addCascadingStreams(bridgeId, events.data);
         break;
       case 'updateStreamInfo':
         updateStreamInfo(events.data.id, events.data.info);

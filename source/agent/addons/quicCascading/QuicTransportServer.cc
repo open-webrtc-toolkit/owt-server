@@ -131,7 +131,7 @@ NAUV_WORK_CB(QuicTransportServer::onNewSessionCallback){
     boost::mutex::scoped_lock lock(obj->mutex);
 
     if (obj->has_session_callback_) {
-      if (!obj->session_messages.empty()) {
+      while (!obj->session_messages.empty()) {
         v8::Local<v8::Object> connection = QuicTransportSession::newInstance(obj->session_messages.front());
         QuicTransportSession* con = Nan::ObjectWrap::Unwrap<QuicTransportSession>(connection);
         obj->session_messages.front()->SetVisitor(con);
@@ -153,10 +153,10 @@ NAUV_WORK_CB(QuicTransportServer::onClosedSessionCallback){
         return;
     }
 
-    boost::mutex::scoped_lock lock(obj->mutex);
+    //boost::mutex::scoped_lock lock(obj->mutex);
 
     if (obj->has_sessionClosed_callback_) {
-      if (!obj->sessionId_messages.empty()) {
+      while (!obj->sessionId_messages.empty()) {
         Local<Value> args[] = { Nan::New(obj->sessionId_messages.front().c_str()).ToLocalChecked() };
         obj->asyncResourceClosedSession_->runInAsyncScope(Nan::GetCurrentContext()->Global(), obj->sessionClosed_callback_->GetFunction(), 1, args);
         obj->sessionId_messages.pop();
@@ -168,7 +168,7 @@ NAUV_WORK_CB(QuicTransportServer::onClosedSessionCallback){
 void QuicTransportServer::OnSession(owt::quic::QuicTransportSessionInterface* session) {
     //sessions_[session->Id()] = session;
     ELOG_DEBUG("QuicTransportServer::OnSession");
-    //boost::mutex::scoped_lock lock(mutex);
+    boost::mutex::scoped_lock lock(mutex);
     this->session_messages.push(session);
     m_asyncOnNewSession.data = this;
     uv_async_send(&m_asyncOnNewSession);
@@ -178,7 +178,7 @@ void QuicTransportServer::OnClosedSession(char* sessionId, size_t len) {
     ELOG_DEBUG("QuicTransportServer::OnClosedSession");
     std::string s_data(sessionId, len);
     this->sessionId_messages.push(s_data);
-    m_asyncOnNewSession.data = this;
+    m_asyncOnClosedSession.data = this;
     uv_async_send(&m_asyncOnClosedSession);
 }
 

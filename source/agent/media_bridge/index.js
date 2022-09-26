@@ -44,7 +44,6 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
     const publicationOptions = new Map();
     const subscriptionOptions = new Map();
     let quicTransportServer;
-    let controllers = {};
     let clusters = {};
     //Map OWT internal connections with quic streams
     let connections = {};
@@ -169,11 +168,12 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
         }
 
         var conn = null;
+        var dest = options.cluster + '-' + options.room;
         switch (connectionType) {
         case 'mediabridge':
             if (options.originType === 'webrtc') {
-                log.info("origin type is webrtc and pubArgs:", options.pubArgs, " and session info is:", clusters[options.cluster].session);
-                var sessionid = clusters[options.cluster].session.getId();
+                log.info("origin type is webrtc and pubArgs:", options.pubArgs, " and session info is:", clusters);
+                var sessionid = clusters[dest].quicsession.getId();
                 const pubs = options.pubArgs.map(pubArg => new Promise((resolve, reject) => {
                     var pubId = pubArg.id;
                     var connId = 'quic-' + sessionid + '-' + pubId;
@@ -184,11 +184,22 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
                         return;
                     }
 
-                    var quicStream = clusters[options.cluster].session.createBidirectionalStream();
+                    var quicStream = clusters[dest].quicsession.createBidirectionalStream();
                     var streamID = quicStream.getId();
                     quicStream.trackKind = pubArg.type;
 
                     connections[pubId] = quicStream;
+                    if (clusters[dest]) {
+                        if (!clusters[dest].streams) {
+                            clusters[dest].streams = {};
+                        }
+
+                        if (!clusters[dest].streams[streamID]) {
+                            clusters[dest].streams[streamID] = {};  
+                        }
+                        clusters[dest].streams[streamID].quicstream = quicStream;
+                        clusters[dest].streams[streamID].connid = pubId;
+                    }
 
                     quicStream.onStreamData((msg) => {
                       log.info("quic client stream get data:", msg, " in stream:", streamID);
@@ -231,7 +242,7 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
                     return;
                 }
 
-                var quicStream = clusters[options.cluster].session.createBidirectionalStream();
+                var quicStream = clusters[dest].quicsession.createBidirectionalStream();
                 var streamID = quicStream.getId();
 
                 connections[connectionId] = quicStream;
@@ -253,11 +264,10 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
                   options: options
                 }
 
-                clusters[options.cluster].signalStream.send(JSON.stringify(info));
+                quicStream.send(JSON.stringify(info));
 
             }
             subscriptionOptions.set(connectionId, options);
-
             
             break;
         default:
@@ -329,10 +339,10 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
         }, onError(callback));
         var connid = connectionId.split('@')[0];
         log.info("unsubscribe sub connid:", connid, " connections:", connections);
-        /*if (connections[connid]) {
-            connections[connid].close();
+        if (connections[connid]) {
+            //connections[connid].close();
             delete connections[connid];
-        }*/
+        }
 
     };
 
@@ -351,7 +361,8 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
         router.clear();
         server.stop();
         Object.keys(clusters).forEach(key => {
-            clusters[key].stop();
+            log.info("close cluster:", key, " ");
+            clusters[key].quicsession.stop();
         });;
 
     };
@@ -360,58 +371,13 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
         router.onFaultDetected(message);
     };
 
-    const createQuicStream = (controller, clusterID, initialized, data) => {
-      log.info("Create quic stream with controller:", controller, " clientID:", clientID, " and data:",data);
-      var quicStream = clusters[clusterID].session.createBidirectionalStream();
-      var streamID = quicStream.getId();
-
-      if (!initialized) {
-        //Client create initialized stream to exchange cluster info for this session
-        /*var info = {
-          type: 'ready'
-        }
-        quicStream.send(JSON.stringify(info));*/
-        
-        quicStream.onStreamData((msg) => {
-          log.info("quic client stream get data:", msg, " in stream:", streamID);
-          var event = JSON.parse(msg);
-          if (event.type === 'ready') {
-            var info = {
-              type: 'cluster',
-              cluster: data.selfCluster
-            }
-            quicStream.send(JSON.stringify(info));
-          }
-        })
-      } else {
-        var info = {
-          type: 'subscribe',
-          options: data
-        }
-        quicStream.send(JSON.stringify(info));
-        
-        quicStream.onStreamData((msg) => {
-          log.info("quic client stream get data:", msg, " in stream:", streamID);
-          var event = JSON.parse(msg);
-          if (event.type === 'ready') {
-            var info = {
-              type: 'cluster',
-              cluster: data.selfCluster
-            }
-            quicStream.send(JSON.stringify(info));
-          } else if (event.type === 'publish') {
-
-          }
-        })
-      }      
-    }
-
     //Work as quic client to proactively establish quic connection with another OWT cluster
     that.startCascading = function (data, callback) {
-        log.info("startEventCascading with data:", data);
+        log.info("start media Cascading with data:", data);
+        var dest = data.targetCluster + '-' + data.room;
 
         //A new conference request between uncascaded clusters
-        if(!clusters[data.targetCluster]) {
+        if(!clusters[dest]) {
           return rpcReq.getController(clusterName, data.room)
             .then(function(controller) {
               log.info("Client get controller:", controller);
@@ -419,17 +385,18 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
               client.connected = false;
               client.connect();
               client.id = data.targetCluster;
-              if (!clusters[data.targetCluster]) {
-                clusters[data.targetCluster] = {};
+              if (!clusters[dest]) {
+                clusters[dest] = {};
               }
-              clusters[data.targetCluster].session = client
+              clusters[dest].quicsession = client;
+              clusters[dest].controller = controller;
               client.onConnection(() => {
                 log.info("Quic client connected");
                 client.connected = true;
 
-                var quicStream = clusters[data.targetCluster].session.createBidirectionalStream();
+                var quicStream = clusters[dest].quicsession.createBidirectionalStream();
                 var streamID = quicStream.getId();
-                clusters[data.targetCluster].signalStream = quicStream;
+                clusters[dest].signalStream = quicStream;
 
                 log.info("Create quic stream with controller:", controller, " and data:",data, " streamID:", streamID);
                 //Client create initialized stream to exchange cluster info for this session
@@ -456,6 +423,15 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
               client.onNewStream((incomingStream) => {
                 var streamId = incomingStream.getId();
                 log.info("client get new stream id:", streamId);
+                if (!clusters[dest].streams) {
+                    clusters[dest].streams = {};
+                }
+
+                if (!clusters[dest].streams[streamId]) {
+                    clusters[dest].streams[streamId] = {};
+                }
+
+                clusters[dest].streams[streamId].quicstream = incomingStream;
                 incomingStream.onStreamData((msg) => {
                   var info = JSON.parse(msg);
                   log.info("client get stream data:", info, " in stream:", streamId, " for client target:", client.id);
@@ -469,17 +445,18 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
                     incomingStream.trackKind = info.kind;
                     var connid = 'quic-' + info.id;
                     router.addLocalDestination(info.id, 'mediabridge', conn);
+                    clusters[dest].streams[streamId].connid = info.id;
 
                   } else if (info.type === 'subscribe') {
                     log.info("Client stream id:", streamId, " get subscribe msg with info:", info);
                     info.options.locality = {agent: parentRpcId, node: selfRpcId};
                     var connectionId = info.options.connectionId;
-                    if (controllers[info.options.room]) {
-                        rpcReq.subscribe(controllers[info.options.room], 'admin', connectionId, info.options);
+                    if (clusters[dest].controller) {
+                        rpcReq.subscribe(clusters[dest].controller, 'admin', connectionId, info.options);
                     } else {
                         rpcReq.getController(clusterName, info.options.room)
                         .then(function(controller) {
-                        controllers[info.options.room] = controller;
+                        clusters[dest].controller = controller;
                         log.info("client subscribe to controller:", controller, "connection id:", connectionId, " with info:", info.options.media.tracks);
 
                         rpcReq.subscribe(controller, 'admin', connectionId, info.options);
@@ -496,8 +473,26 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
                 incomingStream.send(JSON.stringify(data));
               })
 
+              client.onConnectionFailed(() => {
+                log.info("Quic client failed to connect with:", dest);
+                delete clusters[dest];
+                callback('callback', 'error', "Media bridge quic connection failed");
+              })
+
+              client.onConnectionClosed((sessionId) => {
+                log.info("Quic client:", sessionId, " connection closed");
+                for (var item in clusters[dest].streams) {
+                   rpcReq.subscribe(controller, 'admin', clusters[dest].streams[item].connid); 
+                }
+                delete clusters[dest];
+              })
+
               client.onClosedStream((closedStreamId) => {
                 log.info("client stream:", closedStreamId, " is closed");
+                if (clusters[dest] && clusters[dest].streams[closedStreamId] && clusters[dest].streams[closedStreamId].connid) {
+                    rpcReq.unsubscribe(controller, 'admin', clusters[dest].streams[closedStreamId].connid);
+                    delete clusters[dest].streams[closedStreamId]
+                }
               })
             });
         } else {
@@ -526,25 +521,41 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
       server.start();
       server.onNewSession((session) => {
       session.connected = true;
+      var dest;
       var sessionId = session.getId();
+      if (!clusters[sessionId]) {
+        clusters[sessionId] = {};
+      }
+      clusters[sessionId].quicsession = session;
 
       log.info("Server get new session:", sessionId);
       session.onNewStream((quicStream) => {
         var streamId = quicStream.getId();
         log.info("Server get new stream id:", streamId);
+        if (clusters[dest]) {
+            if (!clusters[dest].streams) {
+               clusters[dest].streams = {}; 
+            }
+
+            if (!clusters[dest].streams[streamId]) {
+                clusters[dest].streams[streamId] = {};
+            }
+            clusters[dest].streams[streamId].quicstream = quicStream;
+        }
+
         quicStream.onStreamData((msg) => {
           var info = JSON.parse(msg);
           log.info("Server get stream data:", info, " in stream:", streamId, " and session:", sessionId);
           if (info.type === 'cluster') {
-            session.id = info.cluster;
-            if (!clusters[info.cluster]) {
-                clusters[info.cluster] = {};
+            dest = info.cluster + '-' + info.room;
+            if (!clusters[dest]) {
+                clusters[dest] = {};
             }
-            clusters[info.cluster].session = session;
-            clusters[info.cluster].signalStream = quicStream;
+            clusters[dest].quicsession = session; 
+            clusters[dest].signalStream = quicStream;
             rpcReq.getController(clusterName, info.room)
             .then(function(controller) {
-               quicStream.controller = controller;
+               clusters[dest].controller = controller;
             });
           } else if (info.type === 'track') {
             log.info("Server stream id:", streamId, " get track msg and track info:", info, " in stream:", streamId, " and session:", sessionId);
@@ -561,12 +572,12 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
             log.info("Server stream id:", streamId, " get subscribe msg with subscribe info:", info, " and session:", sessionId);
             info.options.locality = {agent: parentRpcId, node: selfRpcId};
             var connectionId = info.options.connectionId;
-            if (controllers[info.options.room]) {
-                rpcReq.subscribe(controllers[info.options.room], 'admin', connectionId, info.options);
+            if (clusters[dest].controller) {
+                rpcReq.subscribe(clusters[dest].controller, 'admin', connectionId, info.options);
             } else {
                 rpcReq.getController(clusterName, info.options.room)
                 .then(function(controller) {
-                    controllers[info.options.room] = controller;
+                    clusters[dest].controller = controller;
                     log.info("Subscribe to controller:", controller, "connection id:", connectionId, " with info:", info.options.media.tracks);
 
                     return rpcReq.subscribe(controller, 'admin', connectionId, info.options);
@@ -591,8 +602,20 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
 
       session.onClosedStream((closedStreamId) => {
         log.info("server stream:", closedStreamId, " is closed");
+        if (clusters[dest] && clusters[dest].streams[closedStreamId] && clusters[dest].streams[closedStreamId].connid) {
+            rpcReq.unsubscribe(controller, 'admin', clusters[dest].streams[closedStreamId].connid);
+            delete clusters[dest].streams[closedStreamId]
+        }
       })
     });
+
+    server.onClosedSession((sessionId) => {
+        log.info("Session:", sessionId, " in server is closed");
+        for (var item in clusters[dest].streams) {
+            rpcReq.subscribe(controller, 'admin', clusters[dest].streams[closedStreamId].connid);  
+        }
+        delete clusters[dest];
+    })
   }
 
   start();

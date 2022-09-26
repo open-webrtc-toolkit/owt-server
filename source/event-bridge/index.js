@@ -149,8 +149,15 @@ var startServers = function(id) {
 
 var stopServers = function() {
   log.info('stop event bridge server ok.');
-  event_cascading && event_cascading.stop();
-  event_cascading = undefined;
+  if (event_cascading) {
+    return event_cascading.stop()
+            .then (() => {
+              event_cascading = undefined;
+              return Promise.resolve('ok');
+            }) ;
+  }
+
+  return Promise.resolve('ok');
 };
 
 var rpcPublic = {
@@ -235,9 +242,11 @@ amqper.connect(config.rabbit, function () {
 ['SIGINT', 'SIGTERM'].map(function (sig) {
   process.on(sig, async function () {
     log.warn('Exiting on', sig);
-    stopServers();
-    amqper.disconnect();
-    process.exit();
+    await stopServers();
+    setTimeout(() => {
+      amqper.disconnect();
+      process.exit();
+    }, 10);
   });
 });
 

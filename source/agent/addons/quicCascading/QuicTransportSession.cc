@@ -132,7 +132,7 @@ NAUV_WORK_CB(QuicTransportSession::onNewStreamCallback){
     boost::mutex::scoped_lock lock(obj->mutex);
 
     if (obj->has_stream_callback_) {
-      if (!obj->stream_messages.empty()) {
+      while (!obj->stream_messages.empty()) {
         v8::Local<v8::Object> streamObject = QuicTransportStream::newInstance(obj->stream_messages.front());
         QuicTransportStream* stream = Nan::ObjectWrap::Unwrap<QuicTransportStream>(streamObject);
         obj->stream_messages.front()->SetVisitor(stream);
@@ -158,7 +158,7 @@ NAUV_WORK_CB(QuicTransportSession::onClosedStreamCallback){
     if (obj->has_streamClosed_callback_) {
       ELOG_INFO("object has stream callback");
       //boost::mutex::scoped_lock lock(obj->mutex);
-      if (!obj->streamclosed_messages.empty()) {
+      while (!obj->streamclosed_messages.empty()) {
           ELOG_INFO("streamclosed_messages is not empty");
           //auto streamid = obj->streamclosed_messages.front();
           //v8::Local<v8::Object> streamObject = QuicTransportStream::newInstance(quicStream);
@@ -182,7 +182,7 @@ NAN_METHOD(QuicTransportSession::getId) {
 
 void QuicTransportSession::OnIncomingStream(owt::quic::QuicTransportStreamInterface* stream) {
     std::cout << "QuicTransportSession::OnIncomingStream and id is:" << stream->Id() << " in session:" << m_session->Id();
-    //boost::mutex::scoped_lock lock(mutex);
+    boost::mutex::scoped_lock lock(mutex);
     this->stream_messages.push(stream);
     m_asyncOnNewStream.data = this;
     if (uv_async_send(&m_asyncOnNewStream) == 0) {

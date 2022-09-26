@@ -64,6 +64,7 @@ private:
     Nan::AsyncResource *asyncResourceClosedSession_;
 
     boost::mutex mutex;
+    boost::mutex closedmutex;
     std::unordered_map<std::string, std::unique_ptr<owt::quic::QuicTransportSessionInterface*>> sessions_;
     static Nan::Persistent<v8::Function> s_constructor;
 };
