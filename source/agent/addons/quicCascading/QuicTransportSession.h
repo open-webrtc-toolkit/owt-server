@@ -38,6 +38,7 @@ public:
     static NAN_METHOD(onNewStream);
     static NAN_METHOD(getId);
     static NAN_METHOD(onClosedStream);
+    static NAN_METHOD(closeStream);
 
     static NAUV_WORK_CB(onNewStreamCallback);
     static NAUV_WORK_CB(onClosedStreamCallback);

@@ -188,7 +188,13 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
                     var streamID = quicStream.getId();
                     quicStream.trackKind = pubArg.type;
 
-                    connections[pubId] = quicStream;
+                    if (!connections[pubId]) {
+                        connections[pubId] = {};
+                    }
+
+                    connections[pubId].session = clusters[dest].quicsession;
+                    connections[pubId].streamid = streamID;
+
                     if (clusters[dest]) {
                         if (!clusters[dest].streams) {
                             clusters[dest].streams = {};
@@ -230,11 +236,11 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
 
                     router.addLocalSource(pubId, connectionType, conn);
 
-                    /*var readyinfo = {
+                    var readyinfo = {
                       type: 'ready'
                     }
                     log.info("quic stream:", streamID, " send ready msg");
-                    quicStream.send(JSON.stringify(readyinfo));*/
+                    quicStream.send(JSON.stringify(readyinfo));
                 }));
             } else {
                 conn = createFrameSource(connectionId, 'in', options, callback);
@@ -245,7 +251,12 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
                 var quicStream = clusters[dest].quicsession.createBidirectionalStream();
                 var streamID = quicStream.getId();
 
-                connections[connectionId] = quicStream;
+                if (!connections[pubId]) {
+                    connections[pubId] = {};
+                }
+
+                connections[pubId].session = clusters[dest].quicsession;
+                connections[pubId].streamid = streamID;
 
                 conn.addInputStream(quicStream);
                 var data = {
@@ -340,7 +351,7 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
         var connid = connectionId.split('@')[0];
         log.info("unsubscribe sub connid:", connid, " connections:", connections);
         if (connections[connid]) {
-            //connections[connid].close();
+            connections[connid].session.closeStream(connections[connid].streamid);
             delete connections[connid];
         }
 
@@ -384,7 +395,7 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
               var client = new addon.QuicTransportClient(data.mediaIP, data.mediaPort);
               client.connected = false;
               client.connect();
-              client.id = data.targetCluster;
+              client.dest = dest;
               if (!clusters[dest]) {
                 clusters[dest] = {};
               }
@@ -393,6 +404,7 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
               client.onConnection(() => {
                 log.info("Quic client connected");
                 client.connected = true;
+                clusters[dest].id = client.getId();
 
                 var quicStream = clusters[dest].quicsession.createBidirectionalStream();
                 var streamID = quicStream.getId();
@@ -481,17 +493,21 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
 
               client.onConnectionClosed((sessionId) => {
                 log.info("Quic client:", sessionId, " connection closed");
-                for (var item in clusters[dest].streams) {
-                   rpcReq.subscribe(controller, 'admin', clusters[dest].streams[item].connid); 
+                for (dest in clusters) {
+                    if (clusters[dest].id === sessionId) {
+                        for (var item in clusters[dest].streams) {
+                            rpcReq.unsubscribe(controller, 'admin', clusters[dest].streams[item].connid); 
+                        }
+                        delete clusters[dest];
+                    }
                 }
-                delete clusters[dest];
               })
 
               client.onClosedStream((closedStreamId) => {
                 log.info("client stream:", closedStreamId, " is closed");
-                if (clusters[dest] && clusters[dest].streams[closedStreamId] && clusters[dest].streams[closedStreamId].connid) {
-                    rpcReq.unsubscribe(controller, 'admin', clusters[dest].streams[closedStreamId].connid);
-                    delete clusters[dest].streams[closedStreamId]
+                if (clusters[client.dest] && clusters[client.dest].streams[closedStreamId] && clusters[client.dest].streams[closedStreamId].connid) {
+                    rpcReq.unsubscribe(clusters[client.dest].controller, 'admin', clusters[client.dest].streams[closedStreamId].connid);
+                    delete clusters[client.dest].streams[closedStreamId]
                 }
               })
             });
@@ -527,6 +543,7 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
         clusters[sessionId] = {};
       }
       clusters[sessionId].quicsession = session;
+      clusters[sessionId].id = sessionId;
 
       log.info("Server get new session:", sessionId);
       session.onNewStream((quicStream) => {
@@ -548,6 +565,7 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
           log.info("Server get stream data:", info, " in stream:", streamId, " and session:", sessionId);
           if (info.type === 'cluster') {
             dest = info.cluster + '-' + info.room;
+            session.dest = dest;
             if (!clusters[dest]) {
                 clusters[dest] = {};
             }
@@ -602,19 +620,21 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
 
       session.onClosedStream((closedStreamId) => {
         log.info("server stream:", closedStreamId, " is closed");
-        if (clusters[dest] && clusters[dest].streams[closedStreamId] && clusters[dest].streams[closedStreamId].connid) {
-            rpcReq.unsubscribe(controller, 'admin', clusters[dest].streams[closedStreamId].connid);
-            delete clusters[dest].streams[closedStreamId]
+        if (clusters[session.dest] && clusters[session.dest].streams[closedStreamId] && clusters[session.dest].streams[closedStreamId].connid) {
+            rpcReq.unsubscribe(clusters[session.dest].controller, 'admin', clusters[session.dest].streams[closedStreamId].connid);
+            delete clusters[session.dest].streams[closedStreamId]
         }
       })
     });
 
     server.onClosedSession((sessionId) => {
         log.info("Session:", sessionId, " in server is closed");
-        for (var item in clusters[dest].streams) {
-            rpcReq.subscribe(controller, 'admin', clusters[dest].streams[closedStreamId].connid);  
+
+        for (var item in clusters[sessionId].streams) {
+            rpcReq.unsubscribe(clusters[sessionId].controller, 'admin', clusters[sessionId].streams[item].connid);  
         }
-        delete clusters[dest];
+        delete clusters[sessionId];
+
     })
   }
 

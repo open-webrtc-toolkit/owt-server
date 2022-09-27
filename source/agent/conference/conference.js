@@ -3174,7 +3174,7 @@ var Conference = function (rpcClient, selfRpcId) {
     if(data.streams) {
       for (var sid in data.streams) {
         log.info("initialize stream:", data.streams[sid]);
-        addCascadingStreams(data.streams[sid]);
+        addCascadingStreams(bridgeId, data.streams[sid]);
       }
     }
   }

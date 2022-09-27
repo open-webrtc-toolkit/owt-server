@@ -52,6 +52,7 @@ NAN_MODULE_INIT(QuicTransportSession::init)
     Nan::SetPrototypeMethod(tpl, "createBidirectionalStream", createBidirectionalStream);
     Nan::SetPrototypeMethod(tpl, "onClosedStream", onClosedStream);
     Nan::SetPrototypeMethod(tpl, "getId", getId);
+    Nan::SetPrototypeMethod(tpl, "closeStream", closeStream);
 
     s_constructor.Reset(Nan::GetFunction(tpl).ToLocalChecked());
     Nan::Set(target, Nan::New("QuicTransportSession").ToLocalChecked(), Nan::GetFunction(tpl).ToLocalChecked());
@@ -178,6 +179,12 @@ NAN_METHOD(QuicTransportSession::getId) {
   std::string s_data(obj->m_session->Id(), length);
   ELOG_INFO("QuicTransportSession::getId:%s\n",s_data.c_str());*/
   info.GetReturnValue().Set(Nan::New(obj->m_session->Id()).ToLocalChecked());
+}
+
+NAN_METHOD(QuicTransportSession::closeStream) {
+  QuicTransportSession* obj = Nan::ObjectWrap::Unwrap<QuicTransportSession>(info.Holder());
+  uint32_t streamId = Nan::To<int32_t>(info[0]).FromJust();
+  obj->m_session->CloseStream(streamId);
 }
 
 void QuicTransportSession::OnIncomingStream(owt::quic::QuicTransportStreamInterface* stream) {

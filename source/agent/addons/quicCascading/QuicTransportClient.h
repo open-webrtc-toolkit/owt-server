@@ -39,6 +39,7 @@ public:
     static NAN_METHOD(close);
     static NAN_METHOD(createBidirectionalStream);
     static NAN_METHOD(getId);
+    static NAN_METHOD(closeStream);
 
     static NAUV_WORK_CB(onConnectedCallback);
     static NAUV_WORK_CB(onConnectionFailedCallback);

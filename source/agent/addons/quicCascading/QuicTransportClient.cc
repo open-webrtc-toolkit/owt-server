@@ -79,6 +79,7 @@ NAN_MODULE_INIT(QuicTransportClient::init)
     Nan::SetPrototypeMethod(tpl, "onClosedStream", onClosedStream);
     Nan::SetPrototypeMethod(tpl, "createBidirectionalStream", createBidirectionalStream);
     Nan::SetPrototypeMethod(tpl, "getId", getId);
+    Nan::SetPrototypeMethod(tpl, "closeStream", closeStream);
 
     s_constructor.Reset(Nan::GetFunction(tpl).ToLocalChecked());
     Nan::Set(target, Nan::New("QuicTransportClient").ToLocalChecked(), Nan::GetFunction(tpl).ToLocalChecked());
@@ -186,6 +187,12 @@ NAN_METHOD(QuicTransportClient::getId) {
   info.GetReturnValue().Set(Nan::New(obj->m_quicClient->Id()).ToLocalChecked());
 }
 
+NAN_METHOD(QuicTransportClient::closeStream) {
+  QuicTransportClient* obj = Nan::ObjectWrap::Unwrap<QuicTransportClient>(info.Holder());
+  uint32_t streamId = Nan::To<int32_t>(info[0]).FromJust();
+  obj->m_quicClient->CloseStream(streamId);
+}
+
 NAUV_WORK_CB(QuicTransportClient::onConnectedCallback){
     ELOG_DEBUG("QuicTransportClient::onConnectedCallback");
     //std::this_thread::sleep_for(std::chrono::milliseconds(50));
@@ -250,7 +257,7 @@ NAUV_WORK_CB(QuicTransportClient::onNewStreamCallback){
     if (obj->has_stream_callback_) {
       ELOG_INFO("object has stream callback");
       boost::mutex::scoped_lock lock(obj->mutex);
-      if (!obj->stream_messages.empty()) {
+      while (!obj->stream_messages.empty()) {
           ELOG_INFO("stream_messages is not empty");
           auto quicStream=obj->stream_messages.front();
           v8::Local<v8::Object> streamObject = QuicTransportStream::newInstance(quicStream);
