@@ -11,10 +11,9 @@ const fs = require('fs');
 const { randomUUID } = require('crypto');
 
 const toml = require('toml');
-const protobuf = require('protobufjs');
 const createChannel = require('./rpcChannel');
 const createRequest = require('./rpcRequest');
-const amqper = require('./amqpClient')();
+const AmqpCient = require('./amqpClient');
 const starter = require('./rpcStarter');
 
 const {RtcController} = require('./rtcController');
@@ -44,6 +43,7 @@ function RTCUser(id, domain, portal) {
   this.id = id;
   this.domain = domain;
   this.portal = portal;
+  this.typeData = {};
   this.pubs = new Set();
   this.subs = new Set();
 }
@@ -66,7 +66,7 @@ Node.prototype.plain = function() {
 }
 
 // RPC interface for stream mesh engine
-function RPCInterface(rpcClient, protoRoot) {
+function RPCInterface(rpcClient) {
   const that = {};
 
   const rpcChannel = createChannel(rpcClient);
@@ -101,6 +101,36 @@ function RPCInterface(rpcClient, protoRoot) {
   // Controllers for different types of streams. Type => controller
   const controllers = {};
 
+  // RPC ID used for recieve session progress
+  that.progressRpcId = 'streamprogress-' + randomUUID().replace(/-/g, '');
+  that.progressHandler = {
+    onSessionProgress: function (id, name, data) {
+      log.debug('progress:', id, name, data);
+      if (publishings.has(id) || subscribings.has(id)) {
+        // Ongoing session
+        const req = publishings.get(id) || subscribings.get(id);
+        controllers[req.type].onSessionProgress(id, name, data);
+      } else if (publications.has(id) || subscriptions.has(id)) {
+        // Completed session
+        const session = publications.get(id) || subscriptions.get(id);
+        controllers[session.type].onSessionProgress(id, name, data);
+      } else { //
+        log.warn('Unknown SessionProgress:', id, name, data);
+      }
+    },
+    // WebRTC progress interface start
+    onTransportProgress: function (transportId, status) {
+      rtcCtrl.onTransportProgress(transportId, status);
+    },
+    onTrackUpdate: function (transportId, info) {
+      rtcCtrl.onTrackUpdate(transportId, info);
+    },
+    onMediaUpdate: function (trackId, direction, mediaUpdate) {
+      rtcCtrl.onSessionProgress(trackId, 'onMediaUpdate', mediaUpdate);
+    },
+    // WebRTC progress interface end
+  };
+
   const matchObject = function (subset, obj) {
     if (typeof subset !== 'object') {
       return true;
@@ -127,6 +157,8 @@ function RPCInterface(rpcClient, protoRoot) {
         log.debug(`getWorkerNode ${config.cluster.name}, ${taskConfig}`);
         const locality = await rpcReq.getWorkerNode(
           config.cluster.name, CONTROL_AGENT, taskConfig, {origin: null});
+        // Default participant for admin operations
+        addParticipant(null, {domain: DEFAULT_DOMAIN});
         domainHandlers.set(domain,
           new RemoteDomainHandler(locality, rpcChannel));
       } else {
@@ -403,7 +435,8 @@ function RPCInterface(rpcClient, protoRoot) {
           for (const subId of relatedSubs) {
             if (subscriptions.has(subId)) {
               const subType = subscriptions.get(subId).type;
-              controllers[subType].removeSession(subId, 'Source stream loss');
+              controllers[subType]
+                .removeSession(subId, 'Source stream loss');
             }
           }
         });
@@ -526,10 +559,11 @@ function RPCInterface(rpcClient, protoRoot) {
 
   // Initialize service
   (function initialize() {
-    // Default participant for admin operations
-    addParticipant(null, {domain: DEFAULT_DOMAIN});
     // Initialize controllers
-    rtcCtrl = new RtcController(null, rpcReq, rpcID, config.cluster.name);
+    const ctrlId = that.progressRpcId;
+    rpcChannel.selfId = ctrlId;
+    rpcChannel.clusterId = config.cluster.name;
+    rtcCtrl = new RtcController(rpcChannel);
     rtcCtrl.on('signaling', (owner, name, data) => {
       log.warn('On signaling:', owner, name, data);
       notifyPortal({to: owner}, name, data);
@@ -537,15 +571,15 @@ function RPCInterface(rpcClient, protoRoot) {
 
     controllers['webrtc'] = rtcCtrl;
     controllers['streaming'] =
-        new StreamingController(rpcReq, rpcID, config.cluster.name);
+        new StreamingController(rpcReq, ctrlId, config.cluster.name);
     controllers['recording'] =
-        new StreamingController(rpcReq, rpcID, config.cluster.name);
+        new StreamingController(rpcReq, ctrlId, config.cluster.name);
     controllers['video'] =
-        new VideoController(rpcChannel, rpcID, config.cluster.name);
+        new VideoController(rpcChannel, ctrlId, config.cluster.name);
     controllers['audio'] =
-        new AudioController(rpcChannel, rpcID, config.cluster.name);
+        new AudioController(rpcChannel, ctrlId, config.cluster.name);
     controllers['analytics'] =
-        new AnalyticsController(rpcChannel, rpcID, config.cluster.name);
+        new AnalyticsController(rpcChannel, ctrlId, config.cluster.name);
 
     for (const type in controllers) {
       const ctrl = controllers[type];
@@ -583,19 +617,15 @@ function RPCInterface(rpcClient, protoRoot) {
     }
   })();
 
-  that.onSessionProgress = function (id, name, data) {
-    log.debug('progress:', id, name, data);
-    if (publishings.has(id) || subscribings.has(id)) {
-      // Ongoing session
-      const req = publishings.get(id) || subscribings.get(id);
-      controllers[req.type].onSessionProgress(id, name, data);
-    } else if (publications.has(id) || subscriptions.has(id)) {
-      // Completed session
-      const session = publications.get(id) || subscriptions.get(id);
-      controllers[session.type].onSessionProgress(id, name, data);
-    } else { //
-      log.warn('Unknown SessionProgress:', id, name, data);
-    }
+  // Interface for portal signaling
+  that.onSessionSignaling = function (id, signaling, callback) {
+    rtcCtrl.onClientTransportSignaling(id, signaling)
+      .then(() => {
+        callback('callback', 'ok');
+      })
+      .catch((e) => {
+        callback('callback', 'error', e.message ? e.message : e);
+      });
   };
 
   // Interface for user control
@@ -628,27 +658,6 @@ function RPCInterface(rpcClient, protoRoot) {
     }
   };
 
-  // WebRTC progress interface start
-  that.onSessionSignaling = function (id, signaling, callback) {
-    rtcCtrl.onClientTransportSignaling(id, signaling)
-      .then(() => {
-        callback('callback', 'ok');
-      })
-      .catch((e) => {
-        callback('callback', 'error', e.message ? e.message : e);
-      });
-  };
-  that.onTransportProgress = function (transportId, status) {
-    rtcCtrl.onTransportProgress(transportId, status);
-  };
-  that.onTrackUpdate = function (transportId, info) {
-    rtcCtrl.onTrackUpdate(transportId, info);
-  };
-  that.onMediaUpdate = function (trackId, direction, mediaUpdate) {
-    rtcCtrl.onSessionProgress(trackId, 'onMediaUpdate', mediaUpdate);
-  };
-  // WebRTC progress interface end
-
   that.publish = function(req, callback) {
     log.debug('publish:', req.type, req);
     const type = req.type;
@@ -664,6 +673,7 @@ function RPCInterface(rpcClient, protoRoot) {
       }).then((ret) => {
         req.id = ret.id;
         req.info = ret.info;
+        req.domain = user.domain;
         publishings.set(req.id, req);
         return controllers[type].createSession('in', req)
       }).then((id) => {
@@ -681,7 +691,8 @@ function RPCInterface(rpcClient, protoRoot) {
     const pubId = req.id;
     if (publications.has(pubId)) {
       const type = publications.get(pubId).type;
-      return controllers[type].removeSession(pubId, 'in', 'Participant terminate')
+      const reason = 'Participant terminate';
+      return controllers[type].removeSession(pubId, 'in', reason)
         .then(() => {
           callback('callback', 'ok');
         }).catch((err) => {
@@ -744,6 +755,7 @@ function RPCInterface(rpcClient, protoRoot) {
       }).then((ret) => {
         req.id = ret.id;
         req.info = ret.info;
+        req.domain = user.domain;
         subscribings.set(req.id, req);
         return controllers[type].createSession('out', req);
       }).then((id) => {
@@ -761,7 +773,8 @@ function RPCInterface(rpcClient, protoRoot) {
     const subId = req.id;
     if (subscriptions.has(subId)) {
       const type = subscriptions.get(subId).type;
-      return controllers[type].removeSession(subId, 'out', 'Participant terminate')
+      const reason = 'Participant terminate';
+      return controllers[type].removeSession(subId, 'out', reason)
         .then(() => {
           callback('callback', 'ok');
         }).catch((err) => {
@@ -783,7 +796,7 @@ function RPCInterface(rpcClient, protoRoot) {
     callback('callback', ret);
   };
   //participantId, subscriptionId, command
-  that.subscriptionControl = function (config, callback) {
+  that.subscriptionControl = function (req, callback) {
     log.debug('subscriptionControl:', req.type, req);
     const type = req.type;
     const user = participants.get(req.participant || null);
@@ -878,35 +891,37 @@ function RPCInterface(rpcClient, protoRoot) {
   return that;
 }
 
-
 let serviceRPC = null;
 
-protobuf.load(PROTO_FILE, function(err, root) {
-  if (err) {
-    log.warn('Failed to parse proto:', err.stack);
-    return;
-  }
-
-  amqper.connect(config.rabbit, function connectOk() {
-    starter.startClient(amqper)
-      .then((rpcClient) => {
-        serviceRPC = RPCInterface(rpcClient, root);
-        return starter.startServer(amqper, rpcID, serviceRPC);
-      })
-      .then((rpcServer) => {
-        log.info(rpcID + ' as rpc server ready');
-        return starter.startMonitor(amqper, function onData(data) {
-          log.debug('Monitor data:', data);
-        });
-      })
-      .catch((err) => {
-        log.error('Failed to start RPC:', err, err.stack);
-        process.exit();
+const amqper = AmqpCient();
+amqper.connect(config.rabbit, function connectOk() {
+  // Share amqp connection
+  const progressAmqp = AmqpCient();
+  Object.assign(progressAmqp, amqper);
+  starter.startClient(amqper)
+    .then((rpcClient) => {
+      serviceRPC = RPCInterface(rpcClient);
+      const progressRpcId = serviceRPC.progressRpcId;
+      const progressHandler = serviceRPC.progressHandler;
+      starter.startServer(progressAmqp, progressRpcId, progressHandler);
+    })
+    .then(() => {
+      log.info(serviceRPC.progressRpcId + ' as rpc server ready');
+      return starter.startServer(amqper, rpcID, serviceRPC);
+    })
+    .then(() => {
+      log.info(rpcID + ' as rpc server ready');
+      return starter.startMonitor(amqper, function onData(data) {
+        log.debug('Monitor data:', data);
       });
-  }, function connectError(reason) {
-    log.error(rpcID + ' start rpc failed, reason:', reason, reason.stack);
-    process.exit();
-  });
+    })
+    .catch((err) => {
+      log.error('Failed to start RPC:', err, err.stack);
+      process.exit();
+    });
+}, function connectError(reason) {
+  log.error(rpcID + ' start rpc failed, reason:', reason, reason.stack);
+  process.exit();
 });
 
 ['SIGINT', 'SIGTERM'].map(function (sig) {

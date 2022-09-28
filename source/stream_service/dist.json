@@ -17,6 +17,7 @@
             "videoController.js",
             "analyticsController.js",
             "domainHandler.js",
+            "controllers.json",
             "../agent/conference/rpcRequest.js",
             "../common/amqpClient.js",
             "../common/cipher.js",
@@ -27,7 +28,10 @@
             "../../scripts/release/initauth.js",
             "../../scripts/release/initcert.js",
             "../../scripts/detectOS.sh"
-        ]
+        ],
+        "folders": {
+            "controllers": ["controllers/*"]
+        }
     },
     "debug": {
         "folders": {

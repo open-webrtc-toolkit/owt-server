@@ -4,9 +4,9 @@
   "dependencies": {
     "amqplib": "^0.7.0",
     "log4js": "^6.4.0",
-    "node-getopt": "*",
+    "lodash": "^4.17.11",
     "protobufjs": "^6.11.2",
-    "toml": "*"
+    "toml": "^3.0.0"
   },
   "devDependencies": {
     "mocha": "^6.0.2",

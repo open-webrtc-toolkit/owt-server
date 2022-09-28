@@ -105,7 +105,7 @@ class DomainHandler {
     if (!this.participants.has(req.participant)) {
       throw new Error('Invalid pariticpant ID');
     }
-    return {id: req.id};
+    return req;
   }
   // SubscriptionControl from portal
   async subscriptionControl(req) {
@@ -114,7 +114,7 @@ class DomainHandler {
     if (!this.participants.has(req.participant)) {
       throw new Error('Invalid pariticpant ID');
     }
-    return {id: req.id};
+    return req;
   }
 
   // Status of publication/subscription
