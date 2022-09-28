@@ -86,6 +86,7 @@ var EventCascading = function(spec, rpcReq) {
     log.info("Create quic stream with controller:", controller, " clientID:", clientID, " and data:",data);
     var quicStream = sessions[clientID].quicsession.createBidirectionalStream();
     var streamID = quicStream.getId();
+    var id = clientID + '-' + streamID;
 
     if (!sessions[clientID].streams) {
       sessions[clientID].streams = {};
@@ -101,10 +102,10 @@ var EventCascading = function(spec, rpcReq) {
       controllers[controller] = {};
     }
 
-    if (!controllers[controller][streamID]) {
-      controllers[controller][streamID] = {};
+    if (!controllers[controller][id]) {
+      controllers[controller][id] = {};
     }
-    controllers[controller][streamID] = quicStream;
+    controllers[controller][id] = quicStream;
     var info = {
       type: 'bridge',
       room: data.room
@@ -149,6 +150,7 @@ var EventCascading = function(spec, rpcReq) {
           sessions[clientID].quicsession = client;
           sessions[clientID].target = data.targetCluster;
           cascadedRooms[data.room] = true;
+          client.dest = clientID;
           client.onConnection(() => {
 		        log.info("Quic client connected");
             on_ok('ok');
@@ -158,29 +160,30 @@ var EventCascading = function(spec, rpcReq) {
 
           client.onClosedStream((closedStreamId) => {
             log.info("client stream:", closedStreamId, " is closed");
-            delete controllers[controller][closedStreamId];
-            if (sessions[sessionId] && sessions[sessionId].streams[closedStreamId]) {
+            var id = client.dest + '-' + closedStreamId;
+            delete controllers[controller][id];
+            if (sessions[client.dest] && sessions[client.dest].streams[closedStreamId]) {
               var event = {
                 type: 'onCascadingDisconnected'
               }
-              rpcReq.handleCascadingEvents(controller, self_rpc_id, data.targetCluster, event);
+              rpcReq.handleCascadingEvents(sessions[client.dest].streams[closedStreamId].controller, self_rpc_id, sessions[client.dest].target, event);
             }
           })
 
           client.onConnectionFailed(() => {
-            log.info("Quic client failed to connect with:", clientID);
-            delete sessions[clientID]
+            log.info("Quic client failed to connect with:", client.dest);
+            delete sessions[client.dest]
           })
 
           client.onConnectionClosed((sessionId) => {
-            log.info("Quic client:", clientID, " connection closed");
-            for (var item in sessions[clientID].streams) {
+            log.info("Quic client:", client.dest, " connection closed");
+            for (var item in sessions[client.dest].streams) {
               var event = {
                   type: 'onCascadingDisconnected'
                 }
-              rpcReq.handleCascadingEvents(sessions[clientID].streams[item].controller, self_rpc_id, sessions[clientID].target, event);
+              rpcReq.handleCascadingEvents(sessions[client.dest].streams[item].controller, self_rpc_id, sessions[client.dest].target, event);
             }
-            delete sessions[sessionId];
+            delete sessions[client.dest];
           })
         });
     } else {
@@ -204,6 +207,7 @@ var EventCascading = function(spec, rpcReq) {
     server.start();
     server.onNewSession((session) => {
       var sessionId = session.getId();
+      session.id = sessionId;
       if (!sessions[sessionId]) {
         sessions[sessionId] = {};
       }
@@ -222,6 +226,8 @@ var EventCascading = function(spec, rpcReq) {
         }
         sessions[sessionId].streams[streamId].quicstream = quicStream;
         log.info("quicStreams:", sessions);
+        var id = sessionId + '-' + streamId;
+        session.dest = id;
         quicStream.onStreamData((msg) => {
           var event = JSON.parse(msg);
           log.info("Server get stream data:", event);
@@ -235,11 +241,11 @@ var EventCascading = function(spec, rpcReq) {
                 controllers[controller] = {};
               }
 
-              if (!controllers[controller][streamId]) {
-                controllers[controller][streamId] = {};
+              if (!controllers[controller][id]) {
+                controllers[controller][id] = {};
               }
 
-              controllers[controller][streamId] = quicStream;
+              controllers[controller][id] = quicStream;
               rpcReq.onCascadingConnected(controller, self_rpc_id, sessionId, streamId);
             });
           } else if (event.type === 'ready') {
@@ -256,13 +262,13 @@ var EventCascading = function(spec, rpcReq) {
 
       session.onClosedStream((closedStreamId) => {
         log.info("server stream:", closedStreamId, " is closed");
-          delete controllers[sessions[sessionId].streams[closedStreamId].controller][closedStreamId];
-          if (sessions[sessionId] && sessions[sessionId].streams[closedStreamId]) {
+          delete controllers[sessions[session.id].streams[closedStreamId].controller][session.dest];
+          if (sessions[sessionId] && sessions[session.id].streams[closedStreamId]) {
             var event = {
               type: 'onCascadingDisconnected'
             }
-            rpcReq.handleCascadingEvents(sessions[sessionId].streams[closedStreamId].controller, self_rpc_id, sessions[sessionId].target, event);
-            delete sessions[sessionId].streams[closedStreamId];
+            rpcReq.handleCascadingEvents(sessions[session.id].streams[closedStreamId].controller, self_rpc_id, sessions[session.id].target, event);
+            delete sessions[session.id].streams[closedStreamId];
           }          
       })
     });

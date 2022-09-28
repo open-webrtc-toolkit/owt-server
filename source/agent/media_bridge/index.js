@@ -351,7 +351,7 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
         var connid = connectionId.split('@')[0];
         log.info("unsubscribe sub connid:", connid, " connections:", connections);
         if (connections[connid]) {
-            connections[connid].session.closeStream(connections[connid].streamid);
+            //connections[connid].session.closeStream(connections[connid].streamid);
             delete connections[connid];
         }
 
