@@ -11,12 +11,13 @@
             "format.proto",
             "service.proto",
             "service.toml",
-            "rtcController.js",
             "streamingController.js",
             "audioController.js",
             "videoController.js",
             "analyticsController.js",
             "domainHandler.js",
+            "stateStores.js",
+            "stateTypes.js",
             "controllers.json",
             "../agent/conference/rpcRequest.js",
             "../common/amqpClient.js",
@@ -30,7 +31,10 @@
             "../../scripts/detectOS.sh"
         ],
         "folders": {
-            "controllers": ["controllers/*"]
+            "controllers": ["controllers/*"],
+            "data_access": [
+                "../data_access/*"
+            ]
         }
     },
     "debug": {

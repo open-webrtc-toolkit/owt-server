@@ -40,9 +40,7 @@ class TypeController extends EventEmitter {
    */
   constructor(rpc) {
     super();
-    log.debug('rpc:', rpc);
     this.makeRPC = rpc.makeRPC.bind(rpc);
-    log.debug('this.makeRPC:', this.makeRPC);
     this.selfId = rpc.selfId;
     this.clusterId = rpc.clusterId;
   }
@@ -50,7 +48,6 @@ class TypeController extends EventEmitter {
   // Return Promise<{agent: string, node: string}>
   async getWorkerNode(purpose, domain, taskId, preference) {
     log.debug('getWorkerNode:', purpose, domain, taskId, preference);
-    log.debug('this:', this);
     const args =  [purpose, taskId, preference, 30 * 1000];
     return this.makeRPC(this.clusterId, 'schedule', args)
       .then((workerAgent) => {
@@ -70,49 +67,5 @@ class TypeController extends EventEmitter {
   }
 }
 
-class LocalState {
-  constructor(type) {
-    this.type = type ? type + '.' : '';
-    this.tsc = false;
-    this.state = new Map();
-  }
-  async create(key, value) {
-    key = type + key;
-    if (this.state.has(key)) {
-      throw new Error('Duplicate key');
-    }
-    this.state.set(key, value);
-    return value;
-  }
-  async read(key, value) {
-    key = type + key;
-    return this.state.get(key, value);
-  }
-  // condition: {op: string, path: string, value: any}
-  async update(key, value, condition) {
-    key = type + key;
-    if (!this.state.has(key)) {
-      throw new Error(`${key} not found`);
-    }
-    const prev = this.state.get(key);
-    if (condition) {
-      if (condition.op === 'eq') {
-        if (_.get(prev, condition.path) !== condition.value) {
-          throw new Error('Update condition not match');
-        }
-      } else if (condition.op === 'exists') {
-        if (!_.get(prev, condition.path)) {
-          throw new Error('Update condition not match');
-        }
-      }
-    }
-    this.state.set(key, value);
-  }
-  createTransaction() {
-    throw new Error('Transaction not supported');
-  }
-}
-
-
 exports.TypeController = TypeController;
-exports.LocalState = LocalState;
+// exports.LocalState = LocalState;

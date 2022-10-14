@@ -1,11 +1,12 @@
 {
   "name": "OWT-Server-Stream-Service",
-  "version":"5.0.0",
+  "version": "5.0.0",
   "dependencies": {
     "amqplib": "^0.7.0",
     "log4js": "^6.4.0",
     "lodash": "^4.17.11",
     "protobufjs": "^6.11.2",
+    "mongodb": "^4.10.0",
     "toml": "^3.0.0"
   },
   "devDependencies": {

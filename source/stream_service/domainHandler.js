@@ -4,6 +4,7 @@
 
 'use strict';
 
+const {randomUUID} = require('crypto');
 const log = require('./logger').logger.getLogger('DomainHandler');
 const {Publication, Subscription, Processor} = require('./session');
 
@@ -37,7 +38,7 @@ class DomainHandler {
       throw new Error('Duplicate join ID');
     }
     // Build join response
-    const ret = {
+    const response = {
       permission: {},
       room: {
         id: this.domain,
@@ -46,13 +47,17 @@ class DomainHandler {
       },
     };
     for (const [id, ppt] of this.participants) {
-      ret.room.participants.push(ppt);
+      response.room.participants.push(ppt);
     }
     for (const [id, st] of this.streams) {
-      ret.room.streams.push(st.toSignalingFormat());
+      response.room.streams.push(st.toSignalingFormat());
     }
+    req.notifying = true;
     this.participants.set(req.id, req);
-    return ret;
+    return {
+      participant: req,
+      response,
+    };
   }
 
   // Leave from portal
@@ -143,6 +148,11 @@ class DomainHandler {
       }
     }
   }
+  // Add processor request
+  async addProcessor(req) {
+    req.id = req.id || randomUUID().replace(/-/g, '');
+    return req;
+  }
 }
 
 class RemoteDomainHandler {
@@ -154,6 +164,7 @@ class RemoteDomainHandler {
     'streamControl',
     'subscriptionControl',
     'onStatus',
+    'addProcessor',
   ];
 
   constructor(locality, rpcChannel) {

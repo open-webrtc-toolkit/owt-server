@@ -24,6 +24,8 @@ const {AnalyticsController} = require('./analyticsController');
 
 const {Publication, Subscription, Processor} = require('./session');
 const {DomainHandler, RemoteDomainHandler} = require('./domainHandler');
+const {StateStores} = require('./stateStores');
+const State = require('./stateTypes');
 
 const PROTO_FILE = "service.proto";
 
@@ -37,33 +39,39 @@ try {
 
 const rpcID = config.service.name || 'stream-service';
 const CONTROL_AGENT = config.service.control_agent || null;
+const DB_URL = config.mongo?.dataBaseURL || 'localhost/owtstreams';
+const ADMIN = 'admin';
 const DEFAULT_DOMAIN = '';
 
-function RTCUser(id, domain, portal) {
-  this.id = id;
-  this.domain = domain;
-  this.portal = portal;
-  this.typeData = {};
-  this.pubs = new Set();
-  this.subs = new Set();
-}
+// class RTCUser {
+//   constructor(id, domain, portal) {
+//     this.id = id;
+//     this.domain = domain;
+//     this.portal = portal;
+//     this.typeData = {};
+//     this.pubs = new Set();
+//     this.subs = new Set();
+//   }
+// }
 
-function Node(id, agent, type) {
-  this.id = id;
-  this.agent = agent;
-  this.type = type;
-  this.pubs = new Set();
-  this.subs = new Set();
-}
-Node.prototype.isEmpty = function() {
-  return this.pubs.size === 0 && this.subs.size === 0;
-}
-Node.prototype.plain = function() {
-  const plain = Object.assign({}, this);
-  plain.pubs = [...this.pubs];
-  plain.subs = [...this.subs];
-  return plain;
-}
+// class Node {
+//   constructor(id, agent, type) {
+//     this.id = id;
+//     this.agent = agent;
+//     this.type = type;
+//     this.pubs = new Set();
+//     this.subs = new Set();
+//   }
+//   isEmpty() {
+//     return this.pubs.size === 0 && this.subs.size === 0;
+//   }
+//   plain() {
+//     const plain = Object.assign({}, this);
+//     plain.pubs = [...this.pubs];
+//     plain.subs = [...this.subs];
+//     return plain;
+//   }
+// }
 
 // RPC interface for stream mesh engine
 function RPCInterface(rpcClient) {
@@ -72,27 +80,17 @@ function RPCInterface(rpcClient) {
   const rpcChannel = createChannel(rpcClient);
   const rpcReq = createRequest(rpcChannel);
 
-  // WebRTC participants from portal. Id => RTCUser
-  const participants = new Map();
-  // All completed publications
-  const publications = new Map();
-  // All completed subscriptions
-  const subscriptions = new Map();
   // Ongoing publications
   const publishings = new Map();
   // Ongoing subscriptions
   const subscribings = new Map();
   // Addresses for node. id => {ip, port}
   const nodeAddress = new Map();
-  // Addresses for track. id => {ip, port}
-  const trackAddress = new Map();
-    // All subscribers to track. id => Set {SubscriptionId}
-  const trackSubscribers = new Map();
-  // Locality node info. id => {agent, node, type, pubs, subs}
-  const nodes = new Map();
+  // Ongoing processors
+  const processings = new Map();
   // All processors
   const processors = new Map();
-  // Domain => Domain controller RPC ID
+  // Domain => Domain controller
   const domainHandlers = new Map();
   // Portals
   const portals = new Set();
@@ -100,6 +98,8 @@ function RPCInterface(rpcClient) {
   let rtcCtrl = null;
   // Controllers for different types of streams. Type => controller
   const controllers = {};
+  // Shared state for streams
+  const stateStores = new StateStores(DB_URL);
 
   // RPC ID used for recieve session progress
   that.progressRpcId = 'streamprogress-' + randomUUID().replace(/-/g, '');
@@ -110,10 +110,6 @@ function RPCInterface(rpcClient) {
         // Ongoing session
         const req = publishings.get(id) || subscribings.get(id);
         controllers[req.type].onSessionProgress(id, name, data);
-      } else if (publications.has(id) || subscriptions.has(id)) {
-        // Completed session
-        const session = publications.get(id) || subscriptions.get(id);
-        controllers[session.type].onSessionProgress(id, name, data);
       } else { //
         log.warn('Unknown SessionProgress:', id, name, data);
       }
@@ -157,13 +153,19 @@ function RPCInterface(rpcClient) {
         log.debug(`getWorkerNode ${config.cluster.name}, ${taskConfig}`);
         const locality = await rpcReq.getWorkerNode(
           config.cluster.name, CONTROL_AGENT, taskConfig, {origin: null});
-        // Default participant for admin operations
-        addParticipant(null, {domain: DEFAULT_DOMAIN});
         domainHandlers.set(domain,
           new RemoteDomainHandler(locality, rpcChannel));
       } else {
         domainHandlers.set(domain, new DomainHandler());
       }
+      const domainState = new State.Domain(domain, null);
+      stateStores.create('domains', domainState.plain())
+        .then(() => {
+          const admin = new State.User(ADMIN, domain, null);
+          return stateStores.create('participants', admin.plain());
+        }).catch((e) => {
+          log.info('Failed to save domain state:', domain, e?.message);
+        });
     }
     return domainHandlers.get(domain);
   };
@@ -182,64 +184,82 @@ function RPCInterface(rpcClient) {
   const notifyPortal = function (endpoints, event, data) {
     log.debug('notifyPortal:', endpoints, event, data);
     if (endpoints.to) {
-      const portal = participants.get(endpoints.to)?.portal;
-      if (portal) {
-        rpcReq.sendMsg(portal, endpoints.to, event, data);
-      } else {
-        log.debug('Participant not exist:', endpoints.to);
-      }
+      stateStores.read('participants', {id: endpoints.to})
+        .then((user) => {
+          const portal = user?.portal;
+          if (portal) {
+            return rpcReq.sendMsg(portal, endpoints.to, event, data);
+          } else {
+            log.debug('Participant not exist:', endpoints.to);
+          }
+        }).catch((e) => {
+          log.debug('Failed to send message to portal:', e?.message);
+        });
     } else {
-      const excludes = [];
-      if (endpoints.from) {
-        excludes.push(endpoints.from);
-      }
-      for (const portal of portals) {
-        rpcReq.broadcast(portal, rpcID, excludes, event, data);
-      }
+      stateStores.read('domains', {id: endpoints.domain})
+        .then((dm) => {
+          log.debug('domain:', dm);
+          const excludes = [];
+          if (endpoints.from) {
+            excludes.push(endpoints.from);
+          }
+          for (const portal of dm.portals) {
+            rpcReq.broadcast(portal, rpcID, excludes, event, data)
+              .catch((e) => {
+                log.debug('Failed to broadcast to portal:', e?.message);
+              });
+          }
+        }).catch((e) => {
+          log.debug('Failed to get domain portals:', e?.message);
+        });
     }
   };
 
-  const addParticipant = function (id, config) {
-    const user = new RTCUser(id, config.domain, config.portal);
+  // Participant control
+  const addParticipant = async function (id, config) {
+    const user = new State.User(id, config.domain, config.portal);
     user.type = config.portal ? 'portal' : 'manage';
-    participants.set(id, user);
+    user.notifying = config.notifying;
+    await stateStores.create('participants', user.plain());
     if (config.portal) {
-      portals.add(config.portal);
+      const filter = {id: config.domain};
+      const updates = {'portals': config.portal};
+      await stateStores.setAdd('domains', filter, updates);
     }
-    if (id) {
+    if (id && user.notifying) {
       const notification = {
         action: 'join',
         data: {id: id, user: config.user, role: config.role},
       };
-      notifyPortal({from: id}, 'participant', notification);
+      const endpoints = {from: id, domain: user.domain};
+      notifyPortal(endpoints, 'participant', notification);
     }
   };
-
-  const removeParticipant = function (id) {
-    if (participants.has(id)) {
-      const user = participants.get(id);
-      participants.delete(id);
+  const removeParticipant = async function (id) {
+    const user = await stateStores.read('participants', {id});
+    // Remove in state
+    const removed = await stateStores.delete('participants', {id});
+    if (user && removed) {
       // Clean related resources
       const subClean = [];
       const pubClean = [];
       const reason = 'Participant leave'
       for (const subId of user.subs) {
-        if (subscriptions.has(subId)) {
-          const type = subscriptions.get(subId).type;
-          subClean.push(
-            controllers[type].removeSession(subId, 'out', reason));
-        } else {
-          log.debug('Non-existent subscription in leave:', subId);
-        }
+        const prom = stateStores.read('subscriptions', {id: subId})
+        .then((sub) => {
+          if (sub) {
+            return stopSession(subId, sub.type, 'out', reason);
+          }
+        });
       }
       for (const pubId of user.pubs) {
-        if (publications.has(pubId)) {
-          const type = publications.get(pubId).type;
-          pubClean.push(
-            controllers[type].removeSession(pubId, 'in', reason));
-        } else {
-          log.debug('Non-existent publication in leave:', pubId);
-        }
+        const prom = stateStores.read('publications', {id: pubId})
+        .then((pub) => {
+          if (pub) {
+            return stopSession(pubId, pub.type, 'in', reason);
+          }
+        });
+        pubClean.push(prom);
       }
       // Clean subscriptions before publications
       Promise.all(subClean)
@@ -252,25 +272,66 @@ function RPCInterface(rpcClient) {
         .catch((e) => {
           log.debug('Error during publications clean up:', e);
         });
-      const notification = {
-        action: 'leave',
-        data: id,
-      };
-      notifyPortal({from: id}, 'participant', notification);
+      if (id && user.notifying) {
+        const notification = {
+          action: 'leave',
+          data: id,
+        };
+        const endpoints = {
+          from: id,
+          domain: user.domain
+        };
+        notifyPortal(endpoints, 'participant', notification);
+      }
       return user;
     }
     return null;
   };
 
+  // Save worker node states
+  const saveWorkerNode = async function (locality, type) {
+    const node = new State.WorkerNode(
+      locality.node, locality.agent, type);
+    try {
+      await stateStores.create('nodes', node.plain());
+    } catch (e) {
+      log.debug('Failed to create node:', e?.message);
+    }
+    return node;
+  };
+
   // Get internal stream address for node
-  const getInternalAddress = async function (localityNode) {
-    if (nodeAddress.has(localityNode)) {
-      return nodeAddress.get(localityNode);
+  const getInternalAddress = async function (nodeId) {
+    if (nodeAddress.has(nodeId)) {
+      return nodeAddress.get(nodeId);
+    }
+    const plainNode = await stateStores.read('nodes', {id: nodeId});
+    if (!plainNode) {
+      throw new Error('No node for internal address');
+    }
+    if (plainNode.address) {
+      nodeAddress.set(nodeId, plainNode.address);
+      return plainNode.address;
     }
     const addr = await rpcChannel.makeRPC(
-      localityNode, 'getInternalAddress', [])
-    nodeAddress.set(localityNode, addr);
+      nodeId, 'getInternalAddress', []);
+    await stateStores.update('nodes', {id: nodeId}, {address: addr});
+    nodeAddress.set(nodeId, addr);
     return addr;
+  };
+
+  // Stop publication or subscription
+  const stopSession = async function(id, type, direction, reason) {
+    if (!controllers[type]) {
+      log.warn('Invalid type in stopSession:', type);
+      return;
+    }
+    if (direction === 'in') {
+      publishings.get(id)._aborted = true;
+    } else if (direction === 'out') {
+      subscribings.get(id)._aborted = true;
+    }
+    return controllers[type].removeSession(id, direction, reason);
   };
 
   // Link subscription tracks to their subscribed source
@@ -279,34 +340,40 @@ function RPCInterface(rpcClient) {
     log.debug('linkSubscription:', JSON.stringify(subscription));
     // SubTrack => SubSource {audio, video, data}
     const links = new Map();
+    const updatePros = [];
     for (const type in subscription.sink) {
       for (const track of subscription.sink[type]) {
-        // Convert from publicationId to trackId
-        if (publications.has(track.from) && !trackAddress.has(track.from)) {
-          const prevFrom = track.from;
-          track.from = publications.get(track.from).source[type][0].id;
-          log.debug('Update subscription from:', prevFrom, '->', track.from);
-        }
-        const linkAddr = trackAddress.get(track.from);
-        const fromInfo = links.get(track.id) || {};
-        if (linkAddr) {
+        // Convert from publicationId to trackId if needed
+        const prom = stateStores.read('publications', {id: track.from})
+        .then(async (pub) => {
+          if (pub) {
+            const prevFrom = track.from;
+            track.from = pub.source[type][0].id;
+            log.debug('Update subscription from:', prevFrom, '->', track.from);
+          }
+          const srcTrack = await stateStores.read('sourceTracks', {id: track.from});
+          if (!srcTrack?.address) {
+            throw new Error(`Failed to get link address for ${track.from}`);
+          }
+          const linkAddr = Object.assign({id: track.from}, srcTrack.address);
+          const fromInfo = links.get(track.id) || {};
           if (fromInfo[type]) {
-            log.warn('Conflict source for subscription track:', track.from);
-            continue;
+            log.warn('Overwrite link address:', fromInfo[type], linkAddr);
           }
           fromInfo[type] = linkAddr;
-        } else {
-          log.warn('Failed to get link address for:', track.from);
-          continue;
-        }
-        links.set(track.id, fromInfo);
-        trackSubscribers.get(track.from).add(subscription.id);
+          links.set(track.id, fromInfo);
+          // Update state
+          const subAdd = {'linkedSubs': subscription.id};
+          return stateStores.setAdd('sourceTracks', {id: srcTrack.id}, subAdd);
+        });
+        updatePros.push(prom);
       }
     }
-
+    
+    await Promise.all(updatePros);
     const linkPros = [];
     for (const [trackId, fromInfo] of links) {
-      // rpc linkup
+      // RPC linkup
       const subNode = subscription.locality.node;
       log.debug('linkup:', subNode, trackId, fromInfo);
       linkPros.push(
@@ -319,24 +386,26 @@ function RPCInterface(rpcClient) {
   const cutSubscription = function (subscription) {
     // cutoff
     log.debug('cutSubscription:', JSON.stringify(subscription));
-    const links = [];
     for (const type in subscription.sink) {
       subscription.sink[type].forEach((track) => {
-        // rpc cutoff
+        // Update state
+        const subRemove = {'linkedSubs': subscription.id};
+        stateStores.setRemove('sourceTracks', {id: track.from}, subRemove)
+          .catch((e) => {
+            log.debug('Failed to update source track:', e?.message);
+          });
+        // RPC cutoff
         const subNode = subscription.locality.node;
-        log.warn('cutoff:', subNode, track.id, track.from);
+        log.debug('Cutoff:', subNode, track.id, track.from);
         rpcChannel.makeRPC(subNode, 'cutoff', [track.id])
-          .then((ok) => {
-            log.debug('cutoff ok');
-          })
           .catch((reason) => {
-            log.warn('cutoff failed, reason:', reason);
+            log.debug('Cutoff failed, reason:', reason);
           });
       });
     }
   };
 
-  const addPublication = function (publication) {
+  const addPublication = async function (publication) {
     log.debug('addPublication:', publication.id);
     if (!publishings.has(publication.id)) {
       log.error('No publishing to add!');
@@ -344,104 +413,106 @@ function RPCInterface(rpcClient) {
     }
     const locality = publication.locality;
     const owner = publication.info.owner;
-    const user = participants.get(owner);
-    if (!user || !(locality?.node)) {
-      let reason = '';
-      if (!user) {
-        log.debug('Participant leave during publish:', publication.id);
-        reason = 'Participant leave';
-      } else {
-        log.debug('No locaility for publication:', publication.id);
-        reason = 'Locality missing';
-      }
-      publishings.delete(publication.id);
-      controllers[publication.type]
-        .removeSession(publication.id, 'in', reason)
-        .catch((e) => {
-          log.debug('Failed to remove publication:', publication.id);
-        });
-      return;
+    const user = await stateStores.read('participants', {id: owner});
+    if (!user) {
+      log.debug('Participant leave during publish:', publication.id);
+      throw new Error('Participant leave');
     }
-
-    getInternalAddress(locality.node).then((addr) => {
-      for (const type in publication.source) {
-        publication.source[type].forEach((track) => {
-          trackAddress.set(track.id, Object.assign({id: track.id}, addr));
-          log.debug('Track address:', track.id, trackAddress.get(track.id));
-          trackSubscribers.set(track.id, new Set());
-        });
-      }
-      // Update in participant & node
-      user.pubs.add(publication.id);
-      if (!nodes.has(locality.node)) {
-        nodes.set(locality.node,
-          new Node(locality.node, locality.agent, publication.type));
-      }
-      nodes.get(locality.node).pubs.add(publication.id);
-      // Publication completed
-      publishings.delete(publication.id);
-      publications.set(publication.id, publication);
-      // Send notification
-      const notification = {
-        id: publication.id,
-        status: 'add',
-        data: publication.toSignalingFormat(),
-      };
-      notifyPortal({domain: publication.domain}, 'stream', notification);
-      const status = {
-        type: 'publication',
-        status: 'add',
-        data: publication
-      };
-      notifyDomainHandler(publication.domain, status);
-    }).catch((e) => {
-      publishings.delete(publication.id);
-      controllers[publication.type]
-        .removeSession(publication.id, 'in', 'No internal address')
-        .catch((e) => {
-          log.debug('Failed to remove publication:', publication.id);
-        });
-    });
+    if (!(locality?.node)) {
+      log.debug('No locaility for publication:', publication.id);
+      throw new Error('Locality missing');
+    }
+    // Get internal address for publish tracks
+    const node = await saveWorkerNode(locality, publication.type);
+    const addr = await getInternalAddress(locality.node);
+    const trackMap = new Map();
+    for (const type in publication.source) {
+      publication.source[type].forEach((track) => {
+        const srcTrack = new State.SourceTrack(track.id, publication.id);
+        srcTrack.address = addr;
+        log.debug('Track address:', track.id, addr);
+        trackMap.set(srcTrack.id, srcTrack);
+      });
+    }
+    // Update in participant, node, publication, states
+    const pubAdd = {'pubs': publication.id};
+    await stateStores.setAdd('participants', {id: owner}, pubAdd);
+    await stateStores.setAdd('nodes', {id: node.id}, pubAdd);
+    // Save publication tracks
+    for (const [, srcTrack] of trackMap) {
+      await stateStores.create('sourceTracks', srcTrack.plain());
+    }
+    await stateStores.create('publications', publication);
+    // Send notification
+    const notification = {
+      id: publication.id,
+      status: 'add',
+      data: publication.toSignalingFormat(),
+    };
+    notifyPortal({domain: publication.domain}, 'stream', notification);
+    const status = {
+      type: 'publication',
+      status: 'add',
+      data: publication
+    };
+    notifyDomainHandler(publication.domain, status);
+    // Check if publication aborted during setup
+    if (publishings.get(publication.id)?._aborted) {
+      log.debug('Publication aborted during setup:', publication.id);
+      removePublication(publication.id);
+    }
   };
 
   const removePublication = function (id) {
     log.debug('removePublication:', id);
-    const publication = publications.get(id);
-    if (publication) {
-      const owner = publication.info.owner;
-      const user = participants.get(owner || null);
-      const domain = publication.domain;
-      const node = nodes.get(publication.locality.node);
-      if (user) {
-        user.pubs.delete(id);
+    stateStores.read('publications', {id}).then(async (publication) => {
+      if (!publication) {
+        log.debug('No publication:', id);
+        return;
       }
-      if (node) {
-        node.pubs.delete(id);
-        if (node.isEmpty()) {
-          nodes.delete(node.id);
+      // Delete pub state first
+      const removed = await stateStores.delete('publications', {id});
+      if (!removed) {
+        log.debug('Publication already removed:', id);
+        return;
+      }
+      const owner = publication.info.owner;
+      const nodeId = publication.locality.node;
+      const domain = publication.domain;
+      // clean source track data
+      const removedTracks = new Map();
+      for (const type in publication.source) {
+        for (const track of publication.source[type]) {
+          removedTracks.set(track.id, track);
         }
       }
-      // clean source track data
-      for (const type in publication.source) {
-        publication.source[type].forEach((track) => {
-          const relatedSubs = trackSubscribers.get(track.id);
-          if (!relatedSubs) {
-            // Same track has been cleaned
-            return;
-          }
-          log.debug('Clean publication track:', track.id, relatedSubs);
-          trackSubscribers.delete(track.id);
+      for (const [id, track] of removedTracks) {
+        stateStores.read('sourceTracks', {id: track.id}).then((srcTrack) => {
+          log.debug('Clean track:', track.id, srcTrack.linkedSubs);
           // Remove all related subscriptions
-          for (const subId of relatedSubs) {
-            if (subscriptions.has(subId)) {
-              const subType = subscriptions.get(subId).type;
-              controllers[subType]
-                .removeSession(subId, 'Source stream loss');
-            }
+          const reason = 'Source stream loss';
+          for (const subId of srcTrack.linkedSubs) {
+            stateStores.read('subscriptions', {id: subId}).then((sub) => {
+              return stopSession(subId, sub.type, 'out', reason);
+            }).catch((e) => {
+              log.debug('Failed to remove related sub:', subId);
+            });
           }
+        }).catch((e) => {
+          log.debug('Failed to remove source track:', track.id);
         });
       }
-      publications.delete(id);
+      // Update states
+      const stateErrorHandler = (e) => {
+        log.debug('Clean state error for removePublication:', e?.message);
+      };
+      stateStores.setRemove('participants', {id: owner}, {'pubs': id})
+        .catch(stateErrorHandler);
+      stateStores.setRemove('nodes', {id: nodeId}, {'pubs': id})
+        .catch(stateErrorHandler);
+      stateStores.delete('sourceTracks', {parent: id})
+        .catch(stateErrorHandler);
+      // Notify portal & controller
       notifyPortal({domain}, 'stream', {id: id, status: 'remove'});
       const status = {
         type: 'publication',
@@ -449,112 +520,118 @@ function RPCInterface(rpcClient) {
         data: {id}
       };
       notifyDomainHandler(domain, status);
-    }
+      publishings.delete(id);
+    }).catch((e) => log.debug('removePublication:', e?.message));
   };
 
   const updatePublication = function (updates) {
-    if (!publications.has(updates.id)) {
-      log.warn('Update invalid publication:', updates.id);
+    log.debug('updatePublication:', updates);
+    if (!updates.id) {
+      log.warn('Updates missing id:', updates);
       return;
     }
-    const publication = publications.get(updates.id);
-    updates.tracks.forEach((track) => {
-      publication.removeSource(track.type, track.id);
-      publication.addSource(
-        track.type, track.id, track.format, track.parameters);
-    });
-    const notification = {
-      id: publication.id,
-      status: 'update',
-      data: {field: '.', value: publication.toSignalingFormat()},
-    };
-    notifyPortal({domain: publication.domain}, 'stream', notification);
-    const status = {
-      type: 'publication',
-      status: 'update',
-      data: publication
-    };
-    notifyDomainHandler(publication.domain, status);
+    stateStores.read('publications', {id: updates.id})
+    .then(async (publication) => {
+      updates.tracks.forEach((track) => {
+        publication.removeSource(track.type, track.id);
+        publication.addSource(
+          track.type, track.id, track.format, track.parameters);
+      });
+      const pubUpdate = {source: publication.source};
+      await stateStores.update('publications', {id: updates.id}, pubUpdate);
+      const notification = {
+        id: publication.id,
+        status: 'update',
+        data: {field: '.', value: publication.toSignalingFormat()},
+      };
+      notifyPortal({domain: publication.domain}, 'stream', notification);
+      const status = {
+        type: 'publication',
+        status: 'update',
+        data: publication
+      };
+      notifyDomainHandler(publication.domain, status);
+    }).catch((e) => log.debug('updatePublication:', e?.message));
   };
 
-  const addSubscription = function (subscription) {
+  const addSubscription = async function (subscription) {
     log.debug('addSubscription:', subscription.id);
-    subscriptions.set(subscription.id, subscription);
-    const owner = subscription.info.owner;
-    const user = participants.get(owner);
-    const locality = subscription.locality;
-    if (!user || !(locality?.node)) {
-      let reason = '';
-      if (!user) {
-        log.debug('Participant leave during subscribe:', subscription.id);
-        reason = 'Participant leave';
-      } else {
-        log.debug('No locaility for subscription:', subscription.id);
-        reason = 'Locality missing';
-      }
-      subscribings.delete(subscription.id);
-      controllers[subscription.type]
-        .removeSession(subscription.id, 'out', reason)
-        .catch((e) => {
-          log.debug('Failed to remove subscription:', subscription.id);
-        });
+    if (!subscribings.has(subscription.id)) {
+      log.error('No subscribing to add!');
       return;
     }
-    linkSubscription(subscription).then(() => {
-      // Update participant & node
-      user.subs.add(subscription.id);
-      if (!nodes.has(locality.node)) {
-        nodes.set(locality.node,
-          new Node(locality.node, locality.agent, subscription.type));
-      }
-      nodes.get(locality.node).subs.add(subscription.id);
-      // Subscription completed
-      subscribings.delete(subscription.id);
-      subscriptions.set(subscription.id, subscription);
-      // Send notification
-      const status = {
-        type: 'subscription',
-        status: 'add',
-        data: subscription
-      };
-      notifyDomainHandler(subscription.domain, status);
-    }).catch((e) => {
+    const owner = subscription.info.owner;
+    const locality = subscription.locality;
+    const user = await stateStores.read('participants', {id: owner});
+    if (!user) {
+      log.debug('Participant leave during subscribe:', subscription.id);
+      throw new Error('Participant leave');
+    }
+    if (!(locality?.node)) {
+      log.debug('No locaility for subscription:', subscription.id);
+      throw new Error('Locality missing');
+    }
+    await saveWorkerNode(locality, subscription.type);
+    try {
+      await linkSubscription(subscription);
+    } catch (e) {
       log.debug('Subscription link failed:', e);
       cutSubscription(subscription);
-      subscribings.delete(subscription.id);
-      controllers[subscription.type]
-        .removeSession(subscription.id, 'out', 'Link failed')
-        .catch((e) => {
-          log.debug('Failed to remove subscription:', subscription.id);
-        });
-    })
+      throw new Error('Link failed');
+    }
+    // Update subscription related states
+    const subAdd = {'subs': subscription.id};
+    await stateStores.setAdd('participants', {id: owner}, subAdd);
+    await stateStores.setAdd('nodes', {id: locality.node}, subAdd);
+    await stateStores.create('subscriptions', subscription);
+    // Send notification
+    const status = {
+      type: 'subscription',
+      status: 'add',
+      data: subscription
+    };
+    notifyDomainHandler(subscription.domain, status);
+    // Check if publication aborted during setup
+    if (publishings.get(subscription.id)?._aborted) {
+      log.debug('Subscription aborted during setup:', subscription.id);
+      removeSubscription(subscription.id); 
+    }
   };
 
   const removeSubscription = function (id) {
-    const subscription = subscriptions.get(id);
-    if (subscription) {
+    log.debug('removeSubscription:', id);
+    stateStores.read('subscriptions', {id}).then(async (subscription) => {
+      if (!subscription) {
+        log.debug('No subscription:', id);
+        return;
+      }
+      // Delete sub state first
+      const removed = await stateStores.delete('subscriptions', {id});
+      if (!removed) {
+        log.debug('Subscription already removed:', id);
+        return;
+      }
       const owner = subscription.info.owner;
-      const user = participants.get(owner || null);
-      const node = nodes.get(subscription.locality.node);
-      // cut off
+      const nodeId = subscription.locality.node;
+      // Cut off
       cutSubscription(subscription);
-      if (user) {
-        user.subs.delete(id);
-      }
-      if (node) {
-        node.subs.delete(id);
-        if (node.isEmpty()) {
-          nodes.delete(node.id);
-        }
-      }
-      subscriptions.delete(id);
+      // Update states
+      const stateErrorHandler = (e) => {
+        log.debug('Clean state error removeSubscription:', e?.message);
+      };
+      stateStores.setRemove('participants', {id: owner}, {'subs': id})
+        .catch(stateErrorHandler);
+      stateStores.setRemove('nodes', {id: nodeId}, {'subs': id})
+        .catch(stateErrorHandler);
+      // Notify controller
       const status = {
         type: 'subscription',
         status: 'remove',
         data: {id}
       };
       notifyDomainHandler(subscription.domain, status);
-    }
+      subscribings.delete(id);
+    });
   };
 
   // Initialize service
@@ -583,34 +660,49 @@ function RPCInterface(rpcClient) {
 
     for (const type in controllers) {
       const ctrl = controllers[type];
-      ctrl.on('session-established', async (id, session) => {
+      ctrl.on('session-established', (id, session) => {
         log.debug('onSessionEstablished', id, session);
+        if (!session.id || !controllers[session?.type]) {
+          log.warn('Invalid format for established session');
+          return;
+        }
         if (session.source) {
           // Add publication
-          addPublication(session);
+          addPublication(session).catch((e) => {
+            stopSession(session.id, session.type, 'in', e?.message)
+              .catch((e) => {
+                log.debug('Failed to remove publication:', session.id);
+              });
+          });
         } else if (session.sink) {
           // Add subscription
-          addSubscription(session);
+          addSubscription(session).catch((e) => {
+            stopSession(session.id, session.type, 'out', e?.message)
+              .catch((e) => {
+                log.debug('Failed to remove subscription:', session.id);
+              });
+          });
         } else {
-          log.warn('Unknown session:', id, session);
-          // May remove session
+          log.warn('Unknown established session:', id, session);
         }
       });
-      ctrl.on('session-aborted', async (id, reason) => {
-        try {
-          if (publications.has(id)) {
-            removePublication(id);
-          } else if (subscriptions.has(id)) {
-            removeSubscription(id);
-          }
-        } catch (e) {
-          log.warn('Error during session-aborted:', e.stack || e);
+      ctrl.on('session-aborted', (id, data) => {
+        log.debug('onSessionAborted', id, data);
+        if (publishings.has(id)) {
+          publishings.get(id)._aborted = true;
+          removePublication(id);
+        } else if (subscribings.has(id)) {
+          subscribings.get(id)._aborted = true;
+          removeSubscription(id);
+        } else {
+          log.warn('Unknown aborted session:', id);
         }
       });
       ctrl.on('session-updated', (id, update) => {
-        if (publications.has(id)) {
+        log.debug('onSessionUpdated:', id, update);
+        if (publishings.has(id)) {
           updatePublication(update.data);
-        } else if (subscriptions.has(id)) {
+        } else if (subscribings.has(id)) {
           //updateSubscription
         }
       });
@@ -632,133 +724,129 @@ function RPCInterface(rpcClient) {
   that.join = function (req, callback) {
     log.debug('join:', req);
     getDomainHandler(req.domain)
-      .then((handler) => {
-        return handler.join(req);
-      }).then((ret) => {
-        addParticipant(req.id, req);
-        callback('callback', ret);
+      .then(async (handler) => {
+        const ret = await handler.join(req);
+        await addParticipant(ret.participant.id, ret.participant);
+        callback('callback', ret.response);
       }).catch((err) => {
+        log.info('join:', err, err.stack);
         callback('callback', 'error', err && err.message);
       });
   };
   that.leave = function (req, callback) {
     log.debug('leave:', req);
-    const user = removeParticipant(req.id)
-    if (user) {
-      getDomainHandler(user.domain)
-        .then((handler) => {
-          return handler.leave(req);
-        }).then(() => {
+    removeParticipant(req.id)
+      .then(async (user) => {
+        if (user) {
+          const handler = await getDomainHandler(user.domain);
+          await handler.leave(req);
           callback('callback', 'ok');
-        }).catch((err) => {
-          callback('callback', 'error', err && err.message);
-        });
-    } else {
-      callback('callback', 'error', 'Invalid participant leave');
-    }
+        } else {
+          callback('callback', 'error', 'Invalid participant leave');
+        }
+      }).catch((err) => {
+        callback('callback', 'error', err && err.message);
+      });
   };
-
+  // Interfaces for publication
   that.publish = function(req, callback) {
     log.debug('publish:', req.type, req);
     const type = req.type;
-    const user = participants.get(req.participant || null);
-    if (!user) {
-      callback('callback', 'error', 'Participant not joined');
-      return;
-    }
     if (controllers[type]) {
-      getDomainHandler(user.domain)
-      .then((handler) => {
-        return handler.publish(req);
-      }).then((ret) => {
+      stateStores.read('participants', {id: req.participant || ADMIN})
+      .then(async (user) => {
+        if (!user) {
+          throw new Error('Participant not joined');
+        }
+        req.domain = user.domain;
+        const handler = await getDomainHandler(user.domain);
+        const ret = await handler.publish(req);
+        //TODO
         req.id = ret.id;
         req.info = ret.info;
-        req.domain = user.domain;
+        if (publishings.has(req.id)) {
+          throw new Error(`Ongoing publication ${req.id}`);
+        }
         publishings.set(req.id, req);
-        return controllers[type].createSession('in', req)
-      }).then((id) => {
+        const id = await controllers[type].createSession('in', req)
         callback('callback', {id});
       }).catch((err) => {
-        log.warn('Failed to publish:', err, err.stack, err.message);
-        callback('callback', 'error', err && err.message);
+        log.warn('Failed to publish:', err?.stack, err?.message);
+        callback('callback', 'error', err?.message);
       });
     } else {
-      throw new Error('Invalid type:' + type);
+      callback('callback', 'error', 'Invalid type:' + type);
     }
   };
   that.unpublish = function(req, callback) {
     log.debug('unpublish:', req.id);
     const pubId = req.id;
-    if (publications.has(pubId)) {
-      const type = publications.get(pubId).type;
+    stateStores.read('publications', {id: pubId})
+    .then(async (pub) => {
+      if (!pub) {
+        throw new Error('Publication not found');
+      }
       const reason = 'Participant terminate';
-      return controllers[type].removeSession(pubId, 'in', reason)
-        .then(() => {
-          callback('callback', 'ok');
-        }).catch((err) => {
-          log.warn('Failed to unpublish:', err, err.stack);
-          callback('callback', 'error', err && err.message);
-        });
-    } else {
-      callback('callback', 'error', 'Publication not found');
-    }
+      await stopSession(pubId, pub.type, 'in', reason);
+      callback('callback', 'ok');
+    }).catch((err) => {
+      log.warn('Failed to unpublish:', err, err.stack);
+      callback('callback', 'error', err && err.message);
+    });
+
   };
   that.getPublications = function(filter, callback) {
     log.debug('getPublications:', filter, callback);
-    const ret = [];
-    for (const [id, publication] of publications) {
-      if (matchObject(filter, publication)) {
-        ret.push(publication);
-      }
-    }
-    callback('callback', ret);
+    const query = filter?.query || {};
+    stateStores.readMany('publications', query).then((ret) => {
+      callback('callback', ret);
+    }).catch((e) => {
+      log.debug('Get publications error:', e, e?.stack);
+      callback('callback', 'error', e?.message);
+    });
   };
   // participantId, streamId, command
   that.streamControl = function (req, callback) {
     log.debug('streamControl:', req.type, req);
     const type = req.type;
-    const user = participants.get(req.participant || null);
-    if (!user) {
-      callback('callback', 'error', 'Participant not joined');
-      return;
-    }
     if (controllers[type]) {
-      getDomainHandler(user.domain)
-      .then((handler) => {
-        return handler.streamControl(req);
-      }).then((ret) => {
-        return controllers[type].controlSession('in', ret)
-      }).then((id) => {
-        // publications.set(id, new Publication(id, type, pubConfig.info));
+      stateStores.read('participants', {id: req.participant || ADMIN})
+      .then(async (user) => {
+        if (!user) {
+          throw new Error('Participant not joined');
+        }
+        const handler = await getDomainHandler(user.domain);
+        const ret = await handler.streamControl(req);
+        const id = await controllers[type].controlSession('in', ret);
         callback('callback', {id});
       }).catch((err) => {
         log.warn('Failed to streamControl:', err, err.stack, err.message);
         callback('callback', 'error', err && err.message);
       });
     } else {
-      throw new Error('Invalid type:' + type);
+      callback('callback', 'error', 'Invalid type:' + type);
     }
   };
-
+  // Interfaces for subscription
   that.subscribe = function(req, callback) {
     log.debug('subscribe:', req.type, req);
     const type = req.type;
-    const user = participants.get(req.participant || null);
-    if (!user) {
-      callback('callback', 'error', 'Participant not joined');
-      return;
-    }
     if (controllers[type]) {
-      getDomainHandler(user.domain)
-      .then((handler) => {
-        return handler.subscribe(req);
-      }).then((ret) => {
+      stateStores.read('participants', {id: req.participant || ADMIN})
+      .then(async (user) => {
+        if (!user) {
+          throw new Error('Participant not joined');
+        }
+        req.domain = user.domain;
+        const handler = await getDomainHandler(user.domain);
+        const ret = await handler.subscribe(req);
         req.id = ret.id;
         req.info = ret.info;
-        req.domain = user.domain;
+        if (subscribings.has(req.id)) {
+          throw new Error(`Ongoing subscription ${req.id}`);
+        }
         subscribings.set(req.id, req);
-        return controllers[type].createSession('out', req);
-      }).then((id) => {
+        const id = await controllers[type].createSession('out', req);
         callback('callback', {id});
       }).catch((err) => {
         log.warn('Failed to subscribe:', err, err.stack, err.message);
@@ -771,114 +859,114 @@ function RPCInterface(rpcClient) {
   that.unsubscribe = function(req, callback) {
     log.debug('unsubscribe:', req.id);
     const subId = req.id;
-    if (subscriptions.has(subId)) {
-      const type = subscriptions.get(subId).type;
+    stateStores.read('subscriptions', {id: subId})
+    .then(async (sub) => {
+      if (!sub) {
+        throw new Error('Subscription not found');
+      }
       const reason = 'Participant terminate';
-      return controllers[type].removeSession(subId, 'out', reason)
-        .then(() => {
-          callback('callback', 'ok');
-        }).catch((err) => {
-          log.warn('Failed to unsubscribe:', err, err.stack);
-          callback('callback', 'error', err && err.message);
-        });
-    } else {
-      callback('callback', 'error', 'Subscription not found');
-    }
+      await stopSession(subId, sub.type, 'out', reason);
+      callback('callback', 'ok');
+    }).catch((err) => {
+      log.warn('Failed to unsubscribe:', err, err.stack);
+      callback('callback', 'error', err && err.message);
+    });
   };
   that.getSubscriptions = function(filter, callback) {
     log.debug('getSubscriptions:', filter);
-    const ret = [];
-    for (const [id, subscription] of subscriptions) {
-      if (matchObject(filter, subscription)) {
-        ret.push(subscription);
-      }
-    }
-    callback('callback', ret);
+    const query = filter?.query || {};
+    stateStores.readMany('subscriptions', query).then((ret) => {
+      callback('callback', ret);
+    }).catch((e) => {
+      log.debug('Get subscriptions error:', e, e?.stack);
+      callback('callback', 'error', e?.message);
+    });
   };
   //participantId, subscriptionId, command
   that.subscriptionControl = function (req, callback) {
     log.debug('subscriptionControl:', req.type, req);
     const type = req.type;
-    const user = participants.get(req.participant || null);
-    if (!user) {
-      callback('callback', 'error', 'Participant not joined');
-      return;
-    }
     if (controllers[type]) {
-      getDomainHandler(user.domain)
-      .then((handler) => {
-        return handler.subscriptionControl(req);
-      }).then((ret) => {
-        return controllers[type].controlSession('out', ret)
-      }).then((id) => {
+      stateStores.read('participants', {id: req.participant || ADMIN})
+      .then(async (user) => {
+        if (!user) {
+          throw new Error('Participant not joined');
+        }
+        const handler = await getDomainHandler(user.domain);
+        const ret = await handler.subscriptionControl(req);
+        const id = await controllers[type].controlSession('out', ret);
         callback('callback', {id});
       }).catch((err) => {
         log.warn('Failed to subscriptionControl:', err, err.stack, err.message);
         callback('callback', 'error', err && err.message);
       });
     } else {
-      throw new Error('Invalid type:' + type);
+      callback('callback', 'error', 'Invalid type:' + type);
     }
   };
 
   that.getNodes = function(filter, callback) {
     log.debug('getNodes:', filter);
     const ret = [];
-    for (const [id, node] of nodes) {
-      if (matchObject(filter, node)) {
-        ret.push(node.plain());
-      }
-    }
+    // for (const [id, node] of nodes) {
+    //   if (matchObject(filter, node)) {
+    //     ret.push(node.plain());
+    //   }
+    // }
     callback('callback', ret);
   }
-
+  // Interfaces for processor
   that.addProcessor = function (req, callback) {
     log.debug('addProcessor:', req.type, req);
     const type = req.type;
     if (controllers[type] && controllers[type].addProcessor) {
-      req.id = req.id || randomUUID().replace(/-/g, '');
-      req.info = {};
-      return controllers[type].addProcessor(req)
-        .then((proc) => {
-          proc.controllerType = type;
-          processors.set(req.id, proc);
-          callback('callback', proc);
-        }).catch((err) => {
-          log.warn('Failed to addProcessor:', err, err.stack, err.message);
-          callback('callback', 'error', err && err.message);
-        });
+      stateStores.read('participants', {id: req.participant || ADMIN})
+      .then(async (user) => {
+        if (!user) {
+          throw new Error('Participant not joined');
+        }
+        req.domain = user.domain;
+        const handler = await getDomainHandler(user.domain);
+        const ret = await handler.addProcessor(req);
+        const proc = await controllers[type].addProcessor(ret)
+        proc.controllerType = type;
+        await stateStores.create('processors', proc);
+        callback('callback', proc);
+      }).catch((err) => {
+        log.warn('Failed to addProcessor:', err, err.stack, err.message);
+        callback('callback', 'error', err && err.message);
+      });
     } else {
       callback('callback', 'error', 'Invalid type:' + type);
     }
   };
-
   that.removeProcessor = function (req, callback) {
     log.debug('removeProcessor:', req.id);
-    const processorId = req.id;
-    if (processors.has(processorId)) {
-      const type = processors.get(processorId).controllerType;
-      return controllers[type].removeProcessor(processorId)
-        .then((ok) => {
-          processors.delete(processorId);
-          callback('callback', 'ok');
-        }).catch((err) => {
-          log.warn('Failed to removeProcessor:', err, err.stack, err.message);
-          callback('callback', 'error', err && err.message);
-        });
-    } else {
-      callback('callback', 'error', 'Processor not found');
-    }
+    const procId = req.id;
+    stateStores.read('processors', {id: procId})
+    .then(async (proc) => {
+      if (!proc) {
+        throw new Error('Processor not found');
+      }
+      const removed = await stateStores.delete('processors', {id: procId});
+      if (removed) {
+        await controllers[req.type].removeProcessor(procId);
+      }
+      callback('callback', 'ok');
+    }).catch((err) => {
+      log.warn('Failed to removeProcessor:', err, err.stack, err.message);
+      callback('callback', 'error', err && err.message);
+    });
   };
-
   that.getProcessors = function (filter, callback) {
     log.debug('getProcessors:', filter);
-    const ret = [];
-    for (const [id, processor] of processors) {
-      if (matchObject(filter, processor)) {
-        ret.push(processor);
-      }
-    }
-    callback('callback', ret);
+    const query = filter?.query || {};
+    stateStores.readMany('processors', query).then((ret) => {
+      callback('callback', ret);
+    }).catch((e) => {
+      log.debug('Get processors error:', e, e?.stack);
+      callback('callback', 'error', e?.message);
+    });
   };
 
   that.close = function () {
@@ -886,6 +974,7 @@ function RPCInterface(rpcClient) {
     for (const type in controllers) {
       controllers[type].destroy();
     }
+    stateStores.close();
   };
 
   return that;
