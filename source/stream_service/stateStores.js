@@ -65,7 +65,7 @@ class StateStores {
   // CRUD operations
   async create(type, obj) {
     const db = await this.prepare;
-    obj._id = (obj.id || obj._id);
+    obj.id && (obj._id = obj.id);
     return new Promise((resolve, reject) => {
       db.collection(type).insertOne(obj, (err, result) => {
         if (err) {
@@ -78,7 +78,7 @@ class StateStores {
   }
   async read(type, query) {
     const db = await this.prepare;
-    query._id = (query.id || query._id);
+    query.id && (query._id = query.id);
     return new Promise((resolve, reject) => {
       db.collection(type).findOne(query, (err, result) => {
         if (err) {
@@ -109,7 +109,7 @@ class StateStores {
   // update: {jsonPath: value}
   async update(type, filter, updates) {
     const db = await this.prepare;
-    filter._id = (filter.id || filter._id);
+    filter.id && (filter._id = filter.id);
     const mongoUpdate = {'$set': updates};
     for (const key in updates) {
       if (updates[key] === null) {
@@ -130,9 +130,9 @@ class StateStores {
   }
   async delete(type, filter) {
     const db = await this.prepare;
-    filter._id = (filter.id || filter._id);
+    filter.id && (filter._id = filter.id);
     return new Promise((resolve, reject) => {
-      db.collection(type).deleteOne(filter, (err, result) => {
+      db.collection(type).deleteMany(filter, (err, result) => {
         if (err) {
           reject(err);
         } else {
@@ -144,7 +144,7 @@ class StateStores {
   // Add value in set
   async setAdd(type, filter, updates) {
     const db = await this.prepare;
-    filter._id = (filter.id || filter._id);
+    filter.id && (filter._id = filter.id);
     const mongoUpdate = {'$addToSet': updates};
     return new Promise((resolve, reject) => {
       db.collection(type).updateOne(filter, mongoUpdate, (err, result) => {
@@ -159,7 +159,7 @@ class StateStores {
   // Remove value in set
   async setRemove(type, filter, updates) {
     const db = await this.prepare;
-    filter._id = (filter.id || filter._id);
+    filter.id && (filter._id = filter.id);
     const mongoUpdate = {'$pull': updates};
     return new Promise((resolve, reject) => {
       db.collection(type).updateOne(filter, mongoUpdate, (err, result) => {

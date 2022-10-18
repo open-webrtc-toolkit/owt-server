@@ -18,6 +18,7 @@
             "domainHandler.js",
             "stateStores.js",
             "stateTypes.js",
+            "scheduler.js",
             "controllers.json",
             "../agent/conference/rpcRequest.js",
             "../common/amqpClient.js",

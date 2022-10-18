@@ -242,4 +242,3 @@ exports.Publication = Publication;
 exports.Subscription = Subscription;
 exports.Processor = Processor;
 exports.SourceTrack = SourceTrack;
-

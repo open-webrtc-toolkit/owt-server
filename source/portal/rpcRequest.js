@@ -119,9 +119,6 @@ var RpcRequest = function(rpcChannel) {
   };
 
   that.join = function(controller, roomId, participant) {
-    if (STREAM_ENGINE) {
-      participant.domain = roomId;
-    }
     if (enableGrpc) {
       startConferenceClientIfNeeded(controller);
       const req = {roomId, participant};
@@ -134,6 +131,11 @@ var RpcRequest = function(rpcChannel) {
           }
         });
       });
+    }
+    if (STREAM_ENGINE) {
+      participant.domain = roomId;
+      participant.participant = participant.id;
+      return rpcChannel.makeRPC(controller, 'join', [participant], 6000);
     }
     return rpcChannel.makeRPC(controller, 'join', [roomId, participant], 6000);
   };
@@ -153,7 +155,7 @@ var RpcRequest = function(rpcChannel) {
       });
     }
     if (STREAM_ENGINE) {
-      const req = {id: participantId};
+      const req = {id: participantId, participant: participantId};
       return rpcChannel.makeRPC(controller, 'leave', [req]);
     }
     return rpcChannel.makeRPC(controller, 'leave', [participantId]);
@@ -361,6 +363,14 @@ var RpcRequest = function(rpcChannel) {
           }
         });
       });
+    }
+    if (STREAM_ENGINE) {
+      const req = {
+        id: sessionId,
+        signaling,
+        participant: participantId
+      };
+      return rpcChannel.makeRPC(controller, 'onSessionSignaling', [req]);
     }
     return rpcChannel.makeRPC(controller, 'onSessionSignaling', [sessionId, signaling]);
   };

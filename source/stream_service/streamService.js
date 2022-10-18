@@ -26,70 +26,41 @@ const {Publication, Subscription, Processor} = require('./session');
 const {DomainHandler, RemoteDomainHandler} = require('./domainHandler');
 const {StateStores} = require('./stateStores');
 const State = require('./stateTypes');
+const {ServiceScheduler} = require('./scheduler');
+
 
 const PROTO_FILE = "service.proto";
 
 let config;
 try {
-    config = toml.parse(fs.readFileSync('./service.toml')) || {};
+  config = toml.parse(fs.readFileSync('./service.toml')) || {};
 } catch (e) {
-    log.warn('Failed to parse config:', e);
-    process.exit(1);
+  log.warn('Failed to parse config:', e);
+  process.exit(1);
 }
 
-const rpcID = config.service.name || 'stream-service';
+const rpcID = config.service.name ||
+  'streamservice-' + randomUUID().replace(/-/g, '');
+const schedulerID = config.scheduler &&
+  (config.scheduler.name || 'stream-service');
+const startScheduler = config.scheduler?.start || false;
 const CONTROL_AGENT = config.service.control_agent || null;
 const DB_URL = config.mongo?.dataBaseURL || 'localhost/owtstreams';
 const ADMIN = 'admin';
 const DEFAULT_DOMAIN = '';
 
-// class RTCUser {
-//   constructor(id, domain, portal) {
-//     this.id = id;
-//     this.domain = domain;
-//     this.portal = portal;
-//     this.typeData = {};
-//     this.pubs = new Set();
-//     this.subs = new Set();
-//   }
-// }
-
-// class Node {
-//   constructor(id, agent, type) {
-//     this.id = id;
-//     this.agent = agent;
-//     this.type = type;
-//     this.pubs = new Set();
-//     this.subs = new Set();
-//   }
-//   isEmpty() {
-//     return this.pubs.size === 0 && this.subs.size === 0;
-//   }
-//   plain() {
-//     const plain = Object.assign({}, this);
-//     plain.pubs = [...this.pubs];
-//     plain.subs = [...this.subs];
-//     return plain;
-//   }
-// }
-
-// RPC interface for stream mesh engine
-function RPCInterface(rpcClient) {
+// stream mesh engine
+function streamEngine(rpcClient) {
+  // RPC API
   const that = {};
-
   const rpcChannel = createChannel(rpcClient);
   const rpcReq = createRequest(rpcChannel);
-
   // Ongoing publications
   const publishings = new Map();
   // Ongoing subscriptions
   const subscribings = new Map();
   // Addresses for node. id => {ip, port}
   const nodeAddress = new Map();
-  // Ongoing processors
-  const processings = new Map();
-  // All processors
-  const processors = new Map();
   // Domain => Domain controller
   const domainHandlers = new Map();
   // Portals
@@ -100,46 +71,9 @@ function RPCInterface(rpcClient) {
   const controllers = {};
   // Shared state for streams
   const stateStores = new StateStores(DB_URL);
-
-  // RPC ID used for recieve session progress
-  that.progressRpcId = 'streamprogress-' + randomUUID().replace(/-/g, '');
-  that.progressHandler = {
-    onSessionProgress: function (id, name, data) {
-      log.debug('progress:', id, name, data);
-      if (publishings.has(id) || subscribings.has(id)) {
-        // Ongoing session
-        const req = publishings.get(id) || subscribings.get(id);
-        controllers[req.type].onSessionProgress(id, name, data);
-      } else { //
-        log.warn('Unknown SessionProgress:', id, name, data);
-      }
-    },
-    // WebRTC progress interface start
-    onTransportProgress: function (transportId, status) {
-      rtcCtrl.onTransportProgress(transportId, status);
-    },
-    onTrackUpdate: function (transportId, info) {
-      rtcCtrl.onTrackUpdate(transportId, info);
-    },
-    onMediaUpdate: function (trackId, direction, mediaUpdate) {
-      rtcCtrl.onSessionProgress(trackId, 'onMediaUpdate', mediaUpdate);
-    },
-    // WebRTC progress interface end
-  };
-
-  const matchObject = function (subset, obj) {
-    if (typeof subset !== 'object') {
-      return true;
-    }
-    let match = true;
-    for (const key in subset) {
-      if (subset[key] !== obj[key]) {
-        match = false;
-        break;
-      }
-    }
-    return match;
-  };
+  // Schedulers
+  const scheduler = startScheduler ?
+    new ServiceScheduler(rpcChannel, stateStores) : null;
 
   // Get request handler for specified domain
   const getDomainHandler = async function (domain) {
@@ -204,7 +138,8 @@ function RPCInterface(rpcClient) {
             excludes.push(endpoints.from);
           }
           for (const portal of dm.portals) {
-            rpcReq.broadcast(portal, rpcID, excludes, event, data)
+            const controller = schedulerID || rpcID;
+            rpcReq.broadcast(portal, controller, excludes, event, data)
               .catch((e) => {
                 log.debug('Failed to broadcast to portal:', e?.message);
               });
@@ -636,13 +571,16 @@ function RPCInterface(rpcClient) {
 
   // Initialize service
   (function initialize() {
+    // Save service state
+    stateStores.create('streamEngineNodes', {id: rpcID})
+      .catch((e) => log.debug('Failed to save service state:', e));
     // Initialize controllers
-    const ctrlId = that.progressRpcId;
+    const ctrlId = rpcID;
     rpcChannel.selfId = ctrlId;
     rpcChannel.clusterId = config.cluster.name;
     rtcCtrl = new RtcController(rpcChannel);
     rtcCtrl.on('signaling', (owner, name, data) => {
-      log.warn('On signaling:', owner, name, data);
+      log.debug('On signaling:', owner, name, data);
       notifyPortal({to: owner}, name, data);
     });
 
@@ -707,11 +645,32 @@ function RPCInterface(rpcClient) {
         }
       });
     }
+
+    // RPC interface for recieving session progress
+    that.onSessionProgress = function (id, name, data) {
+      log.debug('progress:', id, name, data);
+      if (publishings.has(id) || subscribings.has(id)) {
+        // Ongoing session
+        const req = publishings.get(id) || subscribings.get(id);
+        controllers[req.type].onSessionProgress(id, name, data);
+      } else { //
+        log.warn('Unknown SessionProgress:', id, name, data);
+      }
+    };
+    that.onTransportProgress = function (transportId, status) {
+      rtcCtrl.onTransportProgress(transportId, status);
+    };
+    that.onTrackUpdate = function (transportId, info) {
+      rtcCtrl.onTrackUpdate(transportId, info);
+    };
+    that.onMediaUpdate = function (trackId, direction, mediaUpdate) {
+      rtcCtrl.onSessionProgress(trackId, 'onMediaUpdate', mediaUpdate);
+    };
   })();
 
   // Interface for portal signaling
-  that.onSessionSignaling = function (id, signaling, callback) {
-    rtcCtrl.onClientTransportSignaling(id, signaling)
+  that.onSessionSignaling = function (req, callback) {
+    rtcCtrl.onClientTransportSignaling(req.id, req.signaling)
       .then(() => {
         callback('callback', 'ok');
       })
@@ -969,37 +928,54 @@ function RPCInterface(rpcClient) {
     });
   };
 
-  that.close = function () {
+  that.close = async function () {
     rtcCtrl.destroy();
     for (const type in controllers) {
       controllers[type].destroy();
     }
+    try {
+      log.debug('clean:', rpcID);
+      await stateStores.delete('streamEngineNodes', {id: rpcID});
+      await stateStores.delete('scheduleMaps', {node: rpcID});
+      const others = await stateStores.readMany('streamEngineNodes', {});
+      if (others.total === 0) {
+        // Clean all states
+        await stateStores.delete('participants', {});
+        await stateStores.delete('domains', {});
+        await stateStores.delete('nodes', {});
+        await stateStores.delete('publications', {});
+        await stateStores.delete('subscriptions', {});
+        await stateStores.delete('sourceTracks', {});
+      }
+    } catch (e) {
+      log.debug('Clean state stores:', e);
+    }
     stateStores.close();
   };
 
-  return that;
+  return {
+    API: that, // RPC API for stream mesh engine
+    scheduler: scheduler // Scheduler for stream mesh engine
+  };
 }
 
-let serviceRPC = null;
+let streamMeshEngine = null;
 
 const amqper = AmqpCient();
 amqper.connect(config.rabbit, function connectOk() {
   // Share amqp connection
-  const progressAmqp = AmqpCient();
-  Object.assign(progressAmqp, amqper);
+  const schedulerAmqp = AmqpCient();
+  Object.assign(schedulerAmqp, amqper);
   starter.startClient(amqper)
-    .then((rpcClient) => {
-      serviceRPC = RPCInterface(rpcClient);
-      const progressRpcId = serviceRPC.progressRpcId;
-      const progressHandler = serviceRPC.progressHandler;
-      starter.startServer(progressAmqp, progressRpcId, progressHandler);
-    })
-    .then(() => {
-      log.info(serviceRPC.progressRpcId + ' as rpc server ready');
-      return starter.startServer(amqper, rpcID, serviceRPC);
-    })
-    .then(() => {
+    .then(async (rpcClient) => {
+      streamMeshEngine = streamEngine(rpcClient);
+      await starter.startServer(amqper, rpcID, streamMeshEngine.API);
       log.info(rpcID + ' as rpc server ready');
+      if (startScheduler) {
+        await starter.startServer(schedulerAmqp, schedulerID,
+          streamMeshEngine.scheduler.getAPI());
+        log.info(schedulerID + ' as rpc server ready');
+      }
       return starter.startMonitor(amqper, function onData(data) {
         log.debug('Monitor data:', data);
       });
@@ -1013,17 +989,21 @@ amqper.connect(config.rabbit, function connectOk() {
   process.exit();
 });
 
+async function terminator() {
+  log.debug('terminate!');
+  try {
+    if (streamMeshEngine) {
+      await streamMeshEngine.API.close();
+    }
+    await amqper.disconnect();
+  } catch(e) {
+    log.warn('AMQP disconnect failed:', e?.message);
+  }
+  process.exit();
+}
+
 ['SIGINT', 'SIGTERM'].map(function (sig) {
-    process.on(sig, async function () {
-        log.warn('Exiting on', sig);
-        serviceRPC && serviceRPC.close();
-        try {
-            await amqper.disconnect();
-        } catch(e) {
-            log.warn('Exiting e:', e);
-        }
-        process.exit();
-    });
+  process.on(sig, terminator);
 });
 
 process.on('exit', function () {

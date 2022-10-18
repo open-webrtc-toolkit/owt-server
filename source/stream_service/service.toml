@@ -1,10 +1,18 @@
 [cluster]
 name = "owt-cluster"
 
+[service]
+#name = "stream-service"
+control_agent = "mycontroller"
+
+#Use scheduler for service requests
+[scheduler]
+name = "stream-service"
+start = true #Start a scheduler with server
+
 [rabbit]
 host = "localhost" #default: "localhost"
 port = 5672 #default: 5672
 
-[service]
-name = "stream-service"
-control_agent = "mycontroller"
+[mongo]
+dataBaseURL = "localhost/owtstreams" #default: "localhost/owtstreams"
