@@ -17,7 +17,7 @@
     "karma-chrome-launcher": "^3.1.0",
     "karma-mocha": "^2.0.1",
     "karma-mocha-reporter": "^2.2.5",
-    "mocha": "^5.2.0",
+    "mocha": "^10.0.0",
     "node-gyp": "*",
     "sinon": "^9.0.2"
   },
