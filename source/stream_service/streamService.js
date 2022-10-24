@@ -15,18 +15,12 @@ const createChannel = require('./rpcChannel');
 const createRequest = require('./rpcRequest');
 const AmqpCient = require('./amqpClient');
 const starter = require('./rpcStarter');
-
-const {RtcController} = require('./rtcController');
-const {StreamingController} = require('./streamingController');
-const {VideoController} = require('./videoController');
-const {AudioController} = require('./audioController');
-const {AnalyticsController} = require('./analyticsController');
-
-const {Publication, Subscription, Processor} = require('./session');
 const {DomainHandler, RemoteDomainHandler} = require('./domainHandler');
 const {StateStores} = require('./stateStores');
 const State = require('./stateTypes');
 const {ServiceScheduler} = require('./scheduler');
+
+const controllerConfig = require('./controllers.json');
 
 
 const PROTO_FILE = "service.proto";
@@ -63,10 +57,6 @@ function streamEngine(rpcClient) {
   const nodeAddress = new Map();
   // Domain => Domain controller
   const domainHandlers = new Map();
-  // Portals
-  const portals = new Set();
-  // Controller for webrtc streams
-  let rtcCtrl = null;
   // Controllers for different types of streams. Type => controller
   const controllers = {};
   // Shared state for streams
@@ -95,8 +85,8 @@ function streamEngine(rpcClient) {
       const domainState = new State.Domain(domain, null);
       stateStores.create('domains', domainState.plain())
         .then(() => {
-          const admin = new State.User(ADMIN, domain, null);
-          return stateStores.create('participants', admin.plain());
+          // const admin = new State.User(ADMIN, domain, null);
+          // return stateStores.create('participants', admin.plain());
         }).catch((e) => {
           log.info('Failed to save domain state:', domain, e?.message);
         });
@@ -154,7 +144,7 @@ function streamEngine(rpcClient) {
   const addParticipant = async function (id, config) {
     const user = new State.User(id, config.domain, config.portal);
     user.type = config.portal ? 'portal' : 'manage';
-    user.notifying = config.notifying;
+    user.notifying = config.notifying ?? false;
     await stateStores.create('participants', user.plain());
     if (config.portal) {
       const filter = {id: config.domain};
@@ -186,6 +176,7 @@ function streamEngine(rpcClient) {
             return stopSession(subId, sub.type, 'out', reason);
           }
         });
+        subClean.push(prom);
       }
       for (const pubId of user.pubs) {
         const prom = stateStores.read('publications', {id: pubId})
@@ -282,11 +273,15 @@ function streamEngine(rpcClient) {
         const prom = stateStores.read('publications', {id: track.from})
         .then(async (pub) => {
           if (pub) {
+            if (!pub.source[type].length === 0) {
+              throw new Error(`No ${type}: ${track.from} to subscribe}`);
+            }
             const prevFrom = track.from;
             track.from = pub.source[type][0].id;
             log.debug('Update subscription from:', prevFrom, '->', track.from);
           }
-          const srcTrack = await stateStores.read('sourceTracks', {id: track.from});
+          const srcTrack = await stateStores.read(
+              'sourceTracks', {id: track.from});
           if (!srcTrack?.address) {
             throw new Error(`Failed to get link address for ${track.from}`);
           }
@@ -304,7 +299,6 @@ function streamEngine(rpcClient) {
         updatePros.push(prom);
       }
     }
-    
     await Promise.all(updatePros);
     const linkPros = [];
     for (const [trackId, fromInfo] of links) {
@@ -347,7 +341,7 @@ function streamEngine(rpcClient) {
       return;
     }
     const locality = publication.locality;
-    const owner = publication.info.owner;
+    const owner = publishings.get(publication.id).participant;
     const user = await stateStores.read('participants', {id: owner});
     if (!user) {
       log.debug('Participant leave during publish:', publication.id);
@@ -467,13 +461,9 @@ function streamEngine(rpcClient) {
     }
     stateStores.read('publications', {id: updates.id})
     .then(async (publication) => {
-      updates.tracks.forEach((track) => {
-        publication.removeSource(track.type, track.id);
-        publication.addSource(
-          track.type, track.id, track.format, track.parameters);
-      });
-      const pubUpdate = {source: publication.source};
+      const pubUpdate = {source: updates.source};
       await stateStores.update('publications', {id: updates.id}, pubUpdate);
+      publication.source = updates.source;
       const notification = {
         id: publication.id,
         status: 'update',
@@ -495,7 +485,7 @@ function streamEngine(rpcClient) {
       log.error('No subscribing to add!');
       return;
     }
-    const owner = subscription.info.owner;
+    const owner = subscribings.get(subscription.id).participant;
     const locality = subscription.locality;
     const user = await stateStores.read('participants', {id: owner});
     if (!user) {
@@ -527,7 +517,7 @@ function streamEngine(rpcClient) {
     };
     notifyDomainHandler(subscription.domain, status);
     // Check if publication aborted during setup
-    if (publishings.get(subscription.id)?._aborted) {
+    if (subscribings.get(subscription.id)?._aborted) {
       log.debug('Subscription aborted during setup:', subscription.id);
       removeSubscription(subscription.id); 
     }
@@ -578,26 +568,17 @@ function streamEngine(rpcClient) {
     const ctrlId = rpcID;
     rpcChannel.selfId = ctrlId;
     rpcChannel.clusterId = config.cluster.name;
-    rtcCtrl = new RtcController(rpcChannel);
-    rtcCtrl.on('signaling', (owner, name, data) => {
-      log.debug('On signaling:', owner, name, data);
-      notifyPortal({to: owner}, name, data);
-    });
-
-    controllers['webrtc'] = rtcCtrl;
-    controllers['streaming'] =
-        new StreamingController(rpcReq, ctrlId, config.cluster.name);
-    controllers['recording'] =
-        new StreamingController(rpcReq, ctrlId, config.cluster.name);
-    controllers['video'] =
-        new VideoController(rpcChannel, ctrlId, config.cluster.name);
-    controllers['audio'] =
-        new AudioController(rpcChannel, ctrlId, config.cluster.name);
-    controllers['analytics'] =
-        new AnalyticsController(rpcChannel, ctrlId, config.cluster.name);
+    // Load controller from JSON config
+    for (const type in controllerConfig) {
+      const config = controllerConfig[type];
+      log.debug('Controller config:', type, config);
+      const ControllerClass = require(config.requirePath)[config.className];
+      controllers[type] = new ControllerClass(rpcChannel);
+    }
 
     for (const type in controllers) {
       const ctrl = controllers[type];
+      // Add event handlers for controllers
       ctrl.on('session-established', (id, session) => {
         log.debug('onSessionEstablished', id, session);
         if (!session.id || !controllers[session?.type]) {
@@ -644,9 +625,21 @@ function streamEngine(rpcClient) {
           //updateSubscription
         }
       });
+      ctrl.on('signaling', (owner, name, data) => {
+        log.debug('On signaling:', owner, name, data);
+        notifyPortal({to: owner}, name, data);
+      });
+      // Add RPC interface for receiving progress from worker node
+      if (ctrl.progressListeners) {
+        log.debug('Add progress listeners RPC for type:', type);
+        const listeners = ctrl.progressListeners();
+        for (const method in listeners) {
+          that[method] = listeners[method];
+        }
+      }
     }
 
-    // RPC interface for recieving session progress
+    // RPC interface for receiving session progress from worker node
     that.onSessionProgress = function (id, name, data) {
       log.debug('progress:', id, name, data);
       if (publishings.has(id) || subscribings.has(id)) {
@@ -657,20 +650,13 @@ function streamEngine(rpcClient) {
         log.warn('Unknown SessionProgress:', id, name, data);
       }
     };
-    that.onTransportProgress = function (transportId, status) {
-      rtcCtrl.onTransportProgress(transportId, status);
-    };
-    that.onTrackUpdate = function (transportId, info) {
-      rtcCtrl.onTrackUpdate(transportId, info);
-    };
-    that.onMediaUpdate = function (trackId, direction, mediaUpdate) {
-      rtcCtrl.onSessionProgress(trackId, 'onMediaUpdate', mediaUpdate);
-    };
   })();
 
   // Interface for portal signaling
   that.onSessionSignaling = function (req, callback) {
-    rtcCtrl.onClientTransportSignaling(req.id, req.signaling)
+    log.debug('onSessionSignaling:', req);
+    const type = (publishings.get(req.id) || subscribings.get(req.id))?.type;
+    controllers[type].onClientTransportSignaling(req.id, req.signaling)
       .then(() => {
         callback('callback', 'ok');
       })
@@ -686,7 +672,20 @@ function streamEngine(rpcClient) {
       .then(async (handler) => {
         const ret = await handler.join(req);
         await addParticipant(ret.participant.id, ret.participant);
-        callback('callback', ret.response);
+        // Build join response
+        const response = {room: {id: req.domain}};
+        const ppts = await stateStores.readMany(
+            'participants', {domain: req.domain});
+        const pubs = await stateStores.readMany(
+            'publications', {domain: req.domain});
+        response.room.participants = ppts.data.filter((ppt) => {
+          return ppt.notifying;
+        });
+        response.room.streams = pubs.data.map((plainPub) => {
+          const pub = State.Publication.from(plainPub);
+          return pub.toSignalingFormat();
+        });
+        callback('callback', response);
       }).catch((err) => {
         log.info('join:', err, err.stack);
         callback('callback', 'error', err && err.message);
@@ -712,22 +711,18 @@ function streamEngine(rpcClient) {
     log.debug('publish:', req.type, req);
     const type = req.type;
     if (controllers[type]) {
-      stateStores.read('participants', {id: req.participant || ADMIN})
+      stateStores.read('participants', {id: req.participant})
       .then(async (user) => {
-        if (!user) {
-          throw new Error('Participant not joined');
+        if (user) {
+          req.domain = user.domain;
         }
-        req.domain = user.domain;
-        const handler = await getDomainHandler(user.domain);
+        const handler = await getDomainHandler(req.domain);
         const ret = await handler.publish(req);
-        //TODO
-        req.id = ret.id;
-        req.info = ret.info;
-        if (publishings.has(req.id)) {
-          throw new Error(`Ongoing publication ${req.id}`);
+        if (publishings.has(ret.id)) {
+          throw new Error(`Ongoing publication ${ret.id}`);
         }
-        publishings.set(req.id, req);
-        const id = await controllers[type].createSession('in', req)
+        publishings.set(ret.id, ret);
+        const id = await controllers[type].createSession('in', ret)
         callback('callback', {id});
       }).catch((err) => {
         log.warn('Failed to publish:', err?.stack, err?.message);
@@ -764,17 +759,16 @@ function streamEngine(rpcClient) {
       callback('callback', 'error', e?.message);
     });
   };
-  // participantId, streamId, command
   that.streamControl = function (req, callback) {
     log.debug('streamControl:', req.type, req);
     const type = req.type;
     if (controllers[type]) {
-      stateStores.read('participants', {id: req.participant || ADMIN})
+      stateStores.read('participants', {id: req.participant})
       .then(async (user) => {
-        if (!user) {
-          throw new Error('Participant not joined');
+        if (user) {
+          req.domain = user.domain;
         }
-        const handler = await getDomainHandler(user.domain);
+        const handler = await getDomainHandler(req.domain);
         const ret = await handler.streamControl(req);
         const id = await controllers[type].controlSession('in', ret);
         callback('callback', {id});
@@ -791,21 +785,18 @@ function streamEngine(rpcClient) {
     log.debug('subscribe:', req.type, req);
     const type = req.type;
     if (controllers[type]) {
-      stateStores.read('participants', {id: req.participant || ADMIN})
+      stateStores.read('participants', {id: req.participant})
       .then(async (user) => {
-        if (!user) {
-          throw new Error('Participant not joined');
+        if (user) {
+          req.domain = user.domain;
         }
-        req.domain = user.domain;
-        const handler = await getDomainHandler(user.domain);
+        const handler = await getDomainHandler(req.domain);
         const ret = await handler.subscribe(req);
-        req.id = ret.id;
-        req.info = ret.info;
-        if (subscribings.has(req.id)) {
-          throw new Error(`Ongoing subscription ${req.id}`);
+        if (subscribings.has(ret.id)) {
+          throw new Error(`Ongoing subscription ${ret.id}`);
         }
-        subscribings.set(req.id, req);
-        const id = await controllers[type].createSession('out', req);
+        subscribings.set(ret.id, ret);
+        const id = await controllers[type].createSession('out', ret);
         callback('callback', {id});
       }).catch((err) => {
         log.warn('Failed to subscribe:', err, err.stack, err.message);
@@ -841,17 +832,16 @@ function streamEngine(rpcClient) {
       callback('callback', 'error', e?.message);
     });
   };
-  //participantId, subscriptionId, command
   that.subscriptionControl = function (req, callback) {
     log.debug('subscriptionControl:', req.type, req);
     const type = req.type;
     if (controllers[type]) {
-      stateStores.read('participants', {id: req.participant || ADMIN})
+      stateStores.read('participants', {id: req.participant})
       .then(async (user) => {
-        if (!user) {
-          throw new Error('Participant not joined');
+        if (user) {
+          req.domain = user.domain;
         }
-        const handler = await getDomainHandler(user.domain);
+        const handler = await getDomainHandler(req.domain);
         const ret = await handler.subscriptionControl(req);
         const id = await controllers[type].controlSession('out', ret);
         callback('callback', {id});
@@ -863,29 +853,28 @@ function streamEngine(rpcClient) {
       callback('callback', 'error', 'Invalid type:' + type);
     }
   };
-
+  // Get worker nodes in use
   that.getNodes = function(filter, callback) {
     log.debug('getNodes:', filter);
-    const ret = [];
-    // for (const [id, node] of nodes) {
-    //   if (matchObject(filter, node)) {
-    //     ret.push(node.plain());
-    //   }
-    // }
-    callback('callback', ret);
+    const query = filter?.query || {};
+    stateStores.readMany('nodes', query).then((ret) => {
+      callback('callback', ret);
+    }).catch((e) => {
+      log.debug('Get nodes error:', e, e?.stack);
+      callback('callback', 'error', e?.message);
+    });
   }
   // Interfaces for processor
   that.addProcessor = function (req, callback) {
     log.debug('addProcessor:', req.type, req);
     const type = req.type;
     if (controllers[type] && controllers[type].addProcessor) {
-      stateStores.read('participants', {id: req.participant || ADMIN})
+      stateStores.read('participants', {id: req.participant})
       .then(async (user) => {
-        if (!user) {
-          throw new Error('Participant not joined');
+        if (user) {
+          req.domain = user.domain;
         }
-        req.domain = user.domain;
-        const handler = await getDomainHandler(user.domain);
+        const handler = await getDomainHandler(req.domain);
         const ret = await handler.addProcessor(req);
         const proc = await controllers[type].addProcessor(ret)
         proc.controllerType = type;
@@ -927,9 +916,13 @@ function streamEngine(rpcClient) {
       callback('callback', 'error', e?.message);
     });
   };
+  // Send notifications to portal
+  that.notifyPortal = function (req, callback) {
+    notifyPortal(req.endpoints, req.event, req.data);
+    callback('callback', 'ok');
+  };
 
   that.close = async function () {
-    rtcCtrl.destroy();
     for (const type in controllers) {
       controllers[type].destroy();
     }

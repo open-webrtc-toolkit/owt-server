@@ -4,9 +4,9 @@
 
 'use strict';
 
-const { EventEmitter } = require('events');
-const log = require('./logger').logger.getLogger('StreamingController');
-const {Publication, Subscription} = require('./session');
+const log = require('../logger').logger.getLogger('StreamingController');
+const {TypeController} = require('./typeController');
+const {Publication, Subscription} = require('../stateTypes')
 
 function StreamingSession(config, direction) {
   const session = Object.assign({}, config);
@@ -20,19 +20,9 @@ function StreamingSession(config, direction) {
  * 'session-updated': (id, Publication|Subscription)
  * 'session-aborted': (id, reason)
  */
-class StreamingController extends EventEmitter {
-
-  /* rpcReq {
-   *   getWorkerNode, recycleWorkerNode, initiate, terminate,
-   *   onTransportSignaling, mediaOnOff, sendMsg
-   * }
-   */
-  constructor(rpcReq, selfRpcId, clusterRpcId) {
-    log.debug(`constructor ${selfRpcId}, ${clusterRpcId}`);
-    super();
-    this.selfRpcId = selfRpcId;
-    this.rpcReq = rpcReq;
-    this.clusterRpcId = clusterRpcId;
+class StreamingController extends TypeController {
+  constructor(rpc) {
+    super(rpc);
     // Map {sessionId => StreamingSession}
     /*
     StreamingSession = {
@@ -78,19 +68,17 @@ class StreamingController extends EventEmitter {
     }
   }
    */
-  async createSession(direction, sessionConfig) {
-    const id = sessionConfig.id;
-    const session = StreamingSession(sessionConfig, direction);
+  async createSession(direction, config) {
+    const id = config.id;
+    const session = StreamingSession(config, direction);
     if (!this.sessions.has(id)) {
       this.sessions.set(id, session);
-      const taskConfig = {room: session.domain, task: id};
-      const origin = {};
-      log.debug(`getWorkerNode ${this.clusterRpcId}, ${taskConfig}, ${origin}`);
-      const locality = await this.rpcReq.getWorkerNode(
-          this.clusterRpcId, sessionConfig.type, taskConfig, origin);
+      const origin = config.info?.origin || {};
+      const locality = await this.getWorkerNode(
+          config.type, config.domain, id, origin);
       this.sessions.get(id).locality = locality;
       this.sessions.get(id).state = 'initiating';
-      const options = sessionConfig;
+      const options = config;
       if (direction === 'in') {
         if (options.media.audio === undefined) {
           options.media.audio = 'auto';
@@ -99,11 +87,13 @@ class StreamingController extends EventEmitter {
           options.media.video = 'auto';
         }
       }
-      options.controller = this.selfRpcId;
-      return this.rpcReq.initiate(locality.node, id, sessionConfig.type, direction, options)
+      options.controller = this.selfId;
+      const rpcNode = locality.node;
+      const method = direction === 'in' ? 'publish' : 'subscribe';
+      return this.makeRPC(rpcNode, method, [id, config.type, options])
         .then(() => id);
     } else {
-      return Promise.reject(new Error('Session ID already exists'));
+      throw new Error('Session ID already exists');
     }
   }
 
@@ -111,11 +101,15 @@ class StreamingController extends EventEmitter {
     if (this.sessions.has(id)) {
       if (this.sessions.get(id).locality) {
         const locality = this.sessions.get(id).locality;
+        const domain = this.sessions.get(id).domain;
+        reason = reason || 'Participant terminate';
+        const method = direction === 'in' ? 'unpublish' : 'unsubscribe';
         try {
-          await this.rpcReq.terminate(locality.node, id, direction);
+          await this.makeRPC(locality.node, method, [id]);
+          log.debug(`to recycleWorkerNode: ${locality} task:, ${id}`);
+          await this.recycleWorkerNode(locality, domain, id);
         } catch (e) {
-          log.debug(e, e.stack);
-          log.debug(`Session terminate failed ${id}, ${reason}, ${e.stack}`);
+          log.debug(`Failed to terminate session: ${id}`);
         }
       } else {
         throw new Error(`Session does NOT initiated:${id}`);
@@ -146,7 +140,7 @@ class StreamingController extends EventEmitter {
           const videoTrack = {id, format: data.video};
           publication.source.video.push(videoTrack);
         }
-        log.debug('a', data.audio, 'v', data.video);
+        log.debug('a:', data.audio, 'v:', data.video);
         this.emit('session-established', id, publication);
       } else {
         const subscription = new Subscription(id, type, {});

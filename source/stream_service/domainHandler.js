@@ -77,15 +77,15 @@ class DomainHandler {
     if (!this.participants.has(req.participant)) {
       throw new Error('Invalid participant ID');
     }
-    const id = req.id || randomUUID().replace(/-/g, '');
-    const info = {
+    req.id = req.id || randomUUID().replace(/-/g, '');
+    req.info = {
       owner: this.participant,
       type: req.type,
       attributes: req.attributes,
       formatPreference: FORMAT_PREFERENCE,
       origin: {domain: this.domain},
     };
-    return {id, info};
+    return req;
   }
   // Subscribe from portal
   async subscribe(req) {
@@ -94,14 +94,14 @@ class DomainHandler {
     if (!this.participants.has(req.participant)) {
       throw new Error('Invalid pariticpant ID');
     }
-    const id = req.id || randomUUID().replace(/-/g, '');
-    const info = {
+    req.id = req.id || randomUUID().replace(/-/g, '');
+    req.info = {
       owner: this.participant,
       type: req.type,
       formatPreference: FORMAT_PREFERENCE,
       origin: {domain: this.domain},
     };
-    return {id, info};
+    return req;
   }
   // StreamControl from portal
   async streamControl(req) {

@@ -95,6 +95,7 @@ class Publication {
       data: [],
     };
     this.locality = null;
+    this.participant = null;
     this.domain = '';
   }
   addSource(trackType, trackId, format, parameters) {
@@ -117,34 +118,66 @@ class Publication {
     return false;
   };
   toSignalingFormat() {
+    const info = this.info || {};
     const tracks = [];
     const optional = {
-      format: [],
-      parameters: {
-        resolution: [],
-        bitrate: [],
-        framerate: [],
-        keyFrameInterval: [],
+      audio: {format: []},
+      video: {
+        format: [],
+        parameters: {
+          resolution: [],
+          bitrate: [],
+          framerate: [],
+          keyFrameInterval: [],
+        }
       }
     };
+    const audioOptional = info.optional?.audio;
+    if (audioOptional) {
+      if (Array.isArray(audioOptional.format)) {
+        optional.audio.format = audioOptional.format;
+      }
+    }
+    const videoOptional = info.optional?.video;
+    if (videoOptional) {
+      // Check info optional format
+      if (Array.isArray(videoOptional.format)) {
+        optional.video.format = videoOptional.format;
+      }
+      const params = videoOptional.params;
+      if (Array.isArray(params?.resolution)) {
+        optional.video.parameters.resolution = params.resolution;
+      }
+      if (Array.isArray(params?.bitrate)) {
+        optional.video.parameters.bitrate = params.bitrate;
+      }
+      if (Array.isArray(params?.framerate)) {
+        optional.video.parameters.framerate = params.framerate;
+      }
+      if (Array.isArray(params?.keyFrameInterval)) {
+        optional.video.parameters.keyFrameInterval = params.keyFrameInterval;
+      }
+    }
     this.source.audio.forEach((track) => {
-        tracks.push(Object.assign({type: 'audio', optional}, track));
+        tracks.push(Object.assign(
+          {type: 'audio', optional: optional.audio}, track));
     });
     this.source.video.forEach((track) => {
-        tracks.push(Object.assign({type: 'video', optional}, track));
+        tracks.push(Object.assign(
+          {type: 'video', optional: optional.video}, track));
     });
     return {
       id: this.id,
-      type: "forward",
+      type: info.streamType || "forward",
       media: {
         tracks,
       },
-      data: false,
+      data: (this.source.data.length > 0),
       info: {
-        owner: this.info?.owner,
+        owner: this.participant || info.owner,
         type: this.type,
-        inViews: [],
-        attributes: null,
+        inViews: info.inViews || [],
+        attributes: info.attributes,
       }
     };
   }

@@ -6,7 +6,7 @@
 
 const log = require('../logger').logger.getLogger('RtcController');
 const {TypeController} = require('./typeController');
-const {Publication, Subscription} = require('../session')
+const {Publication, Subscription} = require('../stateTypes')
 
 // Transport/Operation state
 const INITIALIZING = 'initializing';
@@ -82,14 +82,14 @@ class Operation {
   }
   toSessionFormat() {
     if (Publication && Subscription) {
-      const info = {owner: this.transport.owner};
+      const info = this.info;
       if (this.direction === 'in') {
         const publication = new Publication(this.id, 'webrtc', info);
         publication.locality = this.transport.locality;
         this.tracks.forEach((track) => {
           publication.source[track.type].push(track);
         });
-        publication.domain = this.transport.origin.domain;
+        publication.domain = this.transport.domain;
         return publication;
       } else {
         const subscription = new Subscription(this.id, 'webrtc', info);
@@ -97,7 +97,7 @@ class Operation {
         this.tracks.forEach((track) => {
           subscription.sink[track.type].push(track);
         });
-        subscription.domain = this.transport.origin.domain;
+        subscription.domain = this.transport.domain;
         return subscription;
       }
     }
@@ -127,13 +127,13 @@ class RtcController extends TypeController {
       tracks: [initTrack]
     },
     domain: domain,
+    participant: pariticipantId,
     info: {
       owner: ownerId,
       origin: origin,
       attributes: attrObject,
       formatPreference: {audio, video}
     },
-    participant: pariticipantId,
   }
    */
   async createSession(direction, config) {
@@ -164,6 +164,7 @@ class RtcController extends TypeController {
     });
     const op = new Operation(
       sessionId, transport, direction, option.tracks, false, option.attributes);
+    op.info = config.info;
     this.operations.set(sessionId, op);
     // Make RPC call
     const rpcNode = transport.locality.node;
@@ -248,8 +249,8 @@ class RtcController extends TypeController {
         this.onTransportProgress(transportId, status);
     });
   };
-  // ProgressListener
-  progressListener() {
+  // RPC API as progress listener
+  progressListeners() {
     return {
       onTransportProgress: this.onTransportProgress.bind(this),
       onTrackUpdate: this.onTrackUpdate.bind(this),
@@ -257,7 +258,20 @@ class RtcController extends TypeController {
     };
   }
 
+  onMediaUpdate(id, direction, data) {
+    log.debug('onMediaUpdate:', id, direction, data);
+    const track = this.tracks.get(id);
+    const op = this.operations.get(track?.operationId);
+    if (op) {
+      track.parameters = track.parameters || {};
+      track.parameters.resolution = data.video?.parameters?.resolution;
+      this.emit('session-updated', op.id,
+        {type: 'update', data: op.toSessionFormat()});
+    }
+  }
+
   onSessionProgress(id, type, data) {
+    log.warn('onSessionProgress', id, type, data);
     switch(type) {
       case 'onTransportProgress': {
         this.onTransportProgress(id, data);
@@ -269,14 +283,6 @@ class RtcController extends TypeController {
       }
       case 'onMediaUpdate': {
         log.debug('onMediaUpdate:', id, type, data);
-        const track = this.tracks.get(id);
-        const op = this.operations.get(track?.operationId);
-        if (op) {
-          const updateParameters = data.video?.parameters;
-          track.parameters = track.parameters || {};
-          track.parameters.resolution = data.video?.parameters?.resolution;
-          this.emit('session-updated', op.id, {type: 'update', data: op});
-        }
         break;
       }
       default:
@@ -299,7 +305,8 @@ class RtcController extends TypeController {
       for (const [id, operation] of this.operations) {
         if (operation.transportId === transportId &&
             operation.state === COMPLETED) {
-          this.emit('session-established', operation.id, operation.toSessionFormat());
+          this.emit('session-established',
+              operation.id, operation.toSessionFormat());
           this.emit('signaling', transport.owner, 'progress',
               {id: transportId, sessionId: operation.id, status: 'ready'});
         }
@@ -321,7 +328,9 @@ class RtcController extends TypeController {
       } else {
         log.warn(`No locality for failed transport ${transportId}`);
       }
-    } else if (status.type === 'offer' || status.type === 'answer' || status.type === 'candidate') {
+    } else if (status.type === 'offer' ||
+        status.type === 'answer' ||
+        status.type === 'candidate') {
       this.emit('transport-signaling', transport.owner, transportId, status);
       this.emit('signaling', transport.owner, 'progress',
           {id: transportId, status: 'soac', data: status});
@@ -407,6 +416,7 @@ class RtcController extends TypeController {
     if (!this.transports.has(tId)) {
       const locality = await this.getWorkerNode('webrtc', domain, tId, origin);
       this.transports.set(tId, new Transport(tId, ownerId, origin, locality));
+      this.transports.get(tId).domain = domain;
     }
     return this.transports.get(tId);
   }

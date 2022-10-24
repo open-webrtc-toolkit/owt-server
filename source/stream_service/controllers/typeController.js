@@ -5,7 +5,6 @@
 'use strict';
 
 const { EventEmitter } = require('events');
-const _ = require('lodash');
 const log = require('../logger').logger.getLogger('TypeController');
 
 /* Events
@@ -26,16 +25,6 @@ class TypeController extends EventEmitter {
    *   makeRPC: (string, string, Array<any>)=>Promise<any>,
    *   selfId: string,
    *   clusterId: string,
-   * }
-   * stateManage: {
-   *   create: (key: string, any)=>Promise<any>,
-   *   read: (key: string, any)=>Promise<void>,
-   *   update: (key: string, any, condition: any)=>Promise<void>
-   *   delete: (key: string)=>Promise<void>
-   *   createTransaction: ()=> Transaction {
-   *     run: (function)=>Promise<boolean>,
-   *     end: ()=>Promise<void>
-   *   }
    * }
    */
   constructor(rpc) {

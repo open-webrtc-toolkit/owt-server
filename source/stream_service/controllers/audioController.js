@@ -1,16 +1,12 @@
-// Copyright (C) <2020> Intel Corporation
+// Copyright (C) <2022> Intel Corporation
 //
 // SPDX-License-Identifier: Apache-2.0
 
 'use strict';
 
-const { EventEmitter } = require('events');
-const log = require('./logger').logger.getLogger('AudioController');
-const {
-  Publication,
-  Subscription,
-  Processor,
-} = require('./session');
+const log = require('../logger').logger.getLogger('AudioController');
+const {TypeController} = require('./typeController');
+const {Publication, Subscription, Processor} = require('../stateTypes')
 
 function AudioSession(config, direction) {
   const session = Object.assign({}, config);
@@ -24,14 +20,10 @@ function AudioSession(config, direction) {
  * 'session-updated': (id, Publication|Subscription)
  * 'session-aborted': (id, reason)
  */
-class AudioController extends EventEmitter {
+class AudioController extends TypeController {
 
-  constructor(rpcChannel, selfRpcId, clusterRpcId) {
-    log.debug(`constructor ${selfRpcId}, ${clusterRpcId}`);
-    super();
-    this.rpcChannel = rpcChannel;
-    this.selfRpcId = selfRpcId;
-    this.clusterRpcId = clusterRpcId;
+  constructor(rpc) {
+    super(rpc);
     // Map {processorId => Processor}
     this.processors = new Map();
     this.sessions = new Map();
@@ -49,26 +41,23 @@ class AudioController extends EventEmitter {
    * }
    */
   async addProcessor(audioConfig) {
-    const rpcChannel = this.rpcChannel;
-    const taskConfig = {room: audioConfig.domain, task: audioConfig.id};
     // Audio preference never used
     const mediaPreference = audioConfig.mediaPreference || {
       audio: {encode:[], decode:[]},
       origin: '',
     };
-    const locality = await this._getWorkerNode(
-        this.clusterRpcId, 'audio', taskConfig, mediaPreference);
-
+    const locality = await this.getWorkerNode(
+      'audio', audioConfig.domain, audioConfig.id, mediaPreference);
     if (audioConfig.mixing) {
       const amixer = new Processor(audioConfig.id, 'amixer', audioConfig);
       amixer.locality = locality;
       amixer.domain = audioConfig.domain;
       const mixConfig = audioConfig.mixing;
       try {
-        await rpcChannel.makeRPC(locality.node, 'init',
-            ['mixing', mixConfig, mixConfig.id, this.selfRpcId, mixConfig.view]);
+        await this.makeRPC(locality.node, 'init',
+            ['mixing', mixConfig, mixConfig.id, this.selfId, mixConfig.view]);
       } catch (e) {
-        this._recycleWorkerNode(locality.agent, locality.node, taskConfig)
+        this.recycleWorkerNode(locality, audioConfig.domain, audioConfig.id)
             .catch((err) => log.debug('Failed to recycleNode:', err));
         throw e;
       }
@@ -80,10 +69,10 @@ class AudioController extends EventEmitter {
       atranscoder.domain = audioConfig.domain;
       const transcodeConfig = audioConfig.transcoding;
       try {
-        await rpcChannel.makeRPC(locality.node, 'init',
-          ['transcoding', transcodeConfig, transcodeConfig.id, this.selfRpcId, '']);
+        await this.makeRPC(locality.node, 'init',
+          ['transcoding', transcodeConfig, transcodeConfig.id, this.selfId, '']);
       } catch (e) {
-        this._recycleWorkerNode(locality.agent, locality.node, taskConfig)
+        this.recycleWorkerNode(locality, audioConfig.domain, audioConfig.id)
             .catch((err) => log.debug('Failed to recycleNode:', err));
         throw e;
       }
@@ -95,14 +84,11 @@ class AudioController extends EventEmitter {
       aselector.domain = audioConfig.domain;
       const selectorConfig = audioConfig.selecting;
       try {
-        await rpcChannel.makeRPC(locality.node, 'init',
-          ['selecting', selectorConfig, selectorConfig.id, this.selfRpcId, '']);
+        await this.makeRPC(locality.node, 'init',
+          ['selecting', selectorConfig, selectorConfig.id, this.selfId, '']);
         // Create publication for active audio streams after return
         process.nextTick(() => {
           for (const streamId of selectorConfig.activeStreamIds) {
-            const pubInfo = {
-              processor: audioConfig.id,
-            };
             const publication = new Publication(output.id, 'audio', sessionConfig);
             publication.domain = audioConfig.domain;
             publication.locality = locality;
@@ -113,7 +99,7 @@ class AudioController extends EventEmitter {
           }
         });
       } catch (e) {
-        this._recycleWorkerNode(locality.agent, locality.node, taskConfig)
+        this.recycleWorkerNode(locality, audioConfig.domain, audioConfig.id)
             .catch((err) => log.debug('Failed to recycleNode:', err));
         throw e;
       }
@@ -123,7 +109,6 @@ class AudioController extends EventEmitter {
   }
 
   async removeProcessor(id) {
-    const rpcChannel = this.rpcChannel;
     const processor = this.processors.get(id);
     if (processor) {
       const audioConfig = this.processors.get(id).info;
@@ -131,9 +116,8 @@ class AudioController extends EventEmitter {
           || audioConfig.selecting).id;
       const locality = processor.locality;
       // Deinit does not have callback
-      rpcChannel.makeRPC(locality.node, 'deinit', [taskId])
+      this.makeRPC(locality.node, 'deinit', [taskId])
         .catch((e) => log.debug('Failed to deinit:', taskId, e));
-
       // Remove related inputs & outputs
       processor.inputs.audio.forEach((audioTrack) => {
         this.emit('session-aborted', audioTrack.id, 'Processor removed');
@@ -142,9 +126,8 @@ class AudioController extends EventEmitter {
         this.emit('session-aborted', audioTrack.id, 'Processor removed');
       });
       this.processors.delete(id);
-      const taskConfig = {room: audioConfig.domain, task: audioConfig.id};
       // Recycle node
-      this._recycleWorkerNode(locality.agent, locality.node, taskConfig)
+      this.recycleWorkerNode(locality, audioConfig.domain, audioConfig.id)
           .catch((err) => log.debug('Failed to recycleNode:', err));
     } else {
       return Promise.reject(new Error('Invalid processor ID'));
@@ -183,7 +166,6 @@ class AudioController extends EventEmitter {
       return Promise.reject(new Error('Invalid processor ID'));
     }
 
-    const rpcChannel = this.rpcChannel;
     const session = AudioSession(sessionConfig, direction);
     if (direction === 'in') {
       // Generate audio stream for mixer/transcoder
@@ -191,14 +173,11 @@ class AudioController extends EventEmitter {
       const participant = (processor.type === 'atranscoder') ?
           fomrat.codec : sessionConfig.participant;
       // output = "streamId"
-      const outputId = await rpcChannel.makeRPC(processor.locality.node, 'generate',
+      const outputId = await this.makeRPC(processor.locality.node, 'generate',
           [participant, format.codec]);
       sessionConfig.id = outputId;
       this.sessions.set(outputId, session);
       // Create publication
-      const pubInfo = {
-        processor: sessionConfig.processor,
-      };
       const publication = new Publication(outputId, 'audio', sessionConfig);
       publication.domain = processor.domain;
       publication.locality = processor.locality;
@@ -213,11 +192,11 @@ class AudioController extends EventEmitter {
       // Add input
       const inputId = sessionConfig.id;
       const inputConfig = {
-        controller: this.selfRpcId,
+        controller: this.selfId,
         publisher: sessionConfig.info?.owner || 'common',
         audio: {codec: sessionConfig.media?.audio?.format?.codec},
       };
-      await rpcChannel.makeRPC(processor.locality.node, 'publish',
+      await this.makeRPC(processor.locality.node, 'publish',
           [inputId, 'internal', inputConfig]);
       this.sessions.set(inputId, session);
       // Create subscription
@@ -237,35 +216,33 @@ class AudioController extends EventEmitter {
   }
 
   async removeSession(id, direction, reason) {
+    reason = reason || 'Participant terminate';
     if (this.sessions.has(id)) {
-      const rpcChannel = this.rpcChannel;
       const session = this.sessions.get(id);
       const processor = this.processors.get(session.processor);
       if (!processor) {
         throw new Error(`Processor for ${id} not found`);
       }
-
       if (session.direction === 'in') {
         // Degenerate
-        rpcChannel.makeRPC(processor.locality.node, 'degenerate', [id])
+        this.makeRPC(processor.locality.node, 'degenerate', [id])
           .catch((e) => log.debug('ignore degenerate callback'));
-
         const idx = processor.outputs.audio.findIndex((track) => track.id === id);
         if (idx >= 0) {
           processor.outputs.audio.splice(idx, 1);
-          this.emit('session-aborted', id, 'Participant terminate');
+          this.emit('session-aborted', id, reason);
         }
       } else {
         // Remove input
-        log.debug('session:', session);
+        log.debug('Remove session:', session);
         // Let cutoff do remove-input
         const inputId = session.media?.audio?.from;
-        rpcChannel.makeRPC(processor.locality.node, 'unpublish', [inputId])
+        this.makeRPC(processor.locality.node, 'unpublish', [inputId])
           .catch((e) => log.debug('ignore unpublish callback'));
         const idx = processor.inputs.audio.findIndex((track) => track.id === id);
         if (idx >= 0) {
           processor.inputs.audio.splice(idx, 1);
-          this.emit('session-aborted', id, 'Participant terminate');
+          this.emit('session-aborted', id, reason);
         }
       }
     } else {
@@ -273,7 +250,7 @@ class AudioController extends EventEmitter {
     }
   }
 
-  terminateByLocality(type, id) {
+  async terminateByLocality(type, id) {
     log.debug(`terminateByLocality ${type} ${id}`);
     const terminations = [];
     this.processors.forEach((processor, processorId) => {
@@ -296,32 +273,8 @@ class AudioController extends EventEmitter {
     this.processors.forEach((processor, processorId) => {
       const p = this.removeProcessor(processorId);
       terminations.push(p);
-    })
-    return Promise.all(terminations).then(() => {
-      //
     });
   }
-
-  _getWorkerNode(clusterManager, purpose, forWhom, preference) {
-    const rpcChannel = this.rpcChannel;
-    return rpcChannel.makeRPC(clusterManager, 'schedule', [purpose, forWhom.task, preference, 30 * 1000])
-      .then(function(workerAgent) {
-        return rpcChannel.makeRPC(workerAgent.id, 'getNode', [forWhom])
-          .then(function(workerNode) {
-            return {agent: workerAgent.id, node: workerNode};
-          });
-      });
-  }
-
-  _recycleWorkerNode(workerAgent, workerNode, forWhom) {
-    return this.rpcChannel.makeRPC(workerAgent, 'recycleNode', [workerNode, forWhom])
-      . catch((result) => {
-        return 'ok';
-      }, (err) => {
-        return 'ok';
-      });
-  }
-
 }
 
 exports.AudioController = AudioController;

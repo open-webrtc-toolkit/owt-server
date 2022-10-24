@@ -4,13 +4,9 @@
 
 'use strict';
 
-const { EventEmitter } = require('events');
-const log = require('./logger').logger.getLogger('AnalyticsController');
-const {
-  Publication,
-  Subscription,
-  Processor,
-} = require('./session');
+const log = require('../logger').logger.getLogger('AnalyticsController');
+const {TypeController} = require('./typeController');
+const {Publication, Subscription, Processor} = require('../stateTypes')
 
 function AnalyticsSession(config, direction) {
   const session = Object.assign({}, config);
@@ -24,14 +20,9 @@ function AnalyticsSession(config, direction) {
  * 'session-updated': (id, Publication|Subscription)
  * 'session-aborted': (id, reason)
  */
-class AnalyticsController extends EventEmitter {
-
-  constructor(rpcChannel, selfRpcId, clusterRpcId) {
-    log.debug(`constructor ${selfRpcId}, ${clusterRpcId}`);
-    super();
-    this.rpcChannel = rpcChannel;
-    this.selfRpcId = selfRpcId;
-    this.clusterRpcId = clusterRpcId;
+class AnalyticsController extends TypeController {
+  constructor(rpc) {
+    super(rpc);
     // Map {processorId => Processor}
     this.processors = new Map();
     this.sessions = new Map();
@@ -48,12 +39,10 @@ class AnalyticsController extends EventEmitter {
    */
   async addProcessor(procConfig) {
     log.debug('addProcessor:', procConfig);
-    const rpcChannel = this.rpcChannel;
-    const taskConfig = {room: procConfig.domain, task: procConfig.id};
     // Unused media preference for analytics
     const mediaPreference = {audio: {encode:[], decode:[]}};
-    const locality = await this._getWorkerNode(
-        this.clusterRpcId, 'analytics', taskConfig, mediaPreference);
+    const locality = await this.getWorkerNode(
+      'audio', procConfig.domain, procConfig.id, mediaPreference);
     log.debug('locality:', locality);
     const analyzer = new Processor(procConfig.id, 'analyzer', procConfig);
     analyzer.locality = locality;
@@ -64,11 +53,9 @@ class AnalyticsController extends EventEmitter {
   }
 
   async removeProcessor(id) {
-    const rpcChannel = this.rpcChannel;
     const processor = this.processors.get(id);
     if (processor) {
       const procConfig = this.processors.get(id).info;
-      const taskId = procConfig.analytics.id;
       const locality = processor.locality;
       // Add clean up method for analytics agent
 
@@ -80,9 +67,8 @@ class AnalyticsController extends EventEmitter {
         this.emit('session-aborted', videoTrack.id, 'Processor removed');
       });
       this.processors.delete(id);
-      const taskConfig = {room: procConfig.domain, task: procConfig.id};
       // Recycle node
-      this._recycleWorkerNode(locality.agent, locality.node, taskConfig)
+      this.recycleWorkerNode(locality, procConfig.domain, procConfig.id)
           .catch((err) => log.debug('Failed to recycleNode:', err));
     } else {
       return Promise.reject(new Error('Invalid processor ID'));
@@ -127,7 +113,6 @@ class AnalyticsController extends EventEmitter {
       return Promise.reject(new Error('Invalid processor ID'));
     }
 
-    const rpcChannel = this.rpcChannel;
     const session = AnalyticsSession(sessionConfig, direction);
     if (direction === 'in') {
       // Generate video stream for analyzer
@@ -152,9 +137,9 @@ class AnalyticsController extends EventEmitter {
       const options = {
         media: sessionConfig.media,
         connection: sessionConfig.connection,
-        controller: this.selfRpcId,
+        controller: this.selfId,
       };
-      await rpcChannel.makeRPC(processor.locality.node, 'subscribe',
+      await this.makeRPC(processor.locality.node, 'subscribe',
           [inputId, 'analytics', options]);
       this.sessions.set(inputId, session);
       // Create subscription
@@ -177,31 +162,31 @@ class AnalyticsController extends EventEmitter {
 
   async removeSession(id, direction, reason) {
     if (this.sessions.has(id)) {
-      const rpcChannel = this.rpcChannel;
       const session = this.sessions.get(id);
       const processor = this.processors.get(session.processor);
       if (!processor) {
         throw new Error(`Processor for ${id} not found`);
       }
 
-      if (session.direction === 'in') {
+      reason = reason || 'Participant terminate';
+      if (direction === 'in') {
         // Degenerate
         const idx = processor.outputs.video.findIndex((track) => track.id === id);
         if (idx >= 0) {
           processor.outputs.audio.splice(idx, 1);
-          this.emit('session-aborted', id, 'Participant terminate');
+          this.emit('session-aborted', id, reason);
         }
       } else {
         // Remove input
         log.debug('session:', session);
         // Let cutoff do remove-input
         const inputId = session.media?.audio?.from;
-        rpcChannel.makeRPC(processor.locality.node, 'unsubscribe', [inputId])
+        this.makeRPC(processor.locality.node, 'unsubscribe', [inputId])
           .catch((e) => log.debug('ignore unpublish callback'));
         const idx = processor.inputs.audio.findIndex((track) => track.id === id);
         if (idx >= 0) {
           processor.inputs.video.splice(idx, 1);
-          this.emit('session-aborted', id, 'Participant terminate');
+          this.emit('session-aborted', id, reason);
         }
       }
     } else {
@@ -262,27 +247,6 @@ class AnalyticsController extends EventEmitter {
       //
     });
   }
-
-  _getWorkerNode(clusterManager, purpose, forWhom, preference) {
-    const rpcChannel = this.rpcChannel;
-    return rpcChannel.makeRPC(clusterManager, 'schedule', [purpose, forWhom.task, preference, 30 * 1000])
-      .then(function(workerAgent) {
-        return rpcChannel.makeRPC(workerAgent.id, 'getNode', [forWhom])
-          .then(function(workerNode) {
-            return {agent: workerAgent.id, node: workerNode};
-          });
-      });
-  }
-
-  _recycleWorkerNode(workerAgent, workerNode, forWhom) {
-    return this.rpcChannel.makeRPC(workerAgent, 'recycleNode', [workerNode, forWhom])
-      . catch((result) => {
-        return 'ok';
-      }, (err) => {
-        return 'ok';
-      });
-  }
-
 }
 
 exports.AnalyticsController = AnalyticsController;

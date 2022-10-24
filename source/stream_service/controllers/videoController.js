@@ -4,13 +4,9 @@
 
 'use strict';
 
-const { EventEmitter } = require('events');
-const log = require('./logger').logger.getLogger('VideoController');
-const {
-  Publication,
-  Subscription,
-  Processor,
-} = require('./session');
+const log = require('../logger').logger.getLogger('VideoController');
+const {TypeController} = require('./typeController');
+const {Publication, Subscription, Processor} = require('../stateTypes')
 
 function VideoSession(config, direction) {
   const session = Object.assign({}, config);
@@ -24,14 +20,9 @@ function VideoSession(config, direction) {
  * 'session-updated': (id, Publication|Subscription)
  * 'session-aborted': (id, reason)
  */
-class VideoController extends EventEmitter {
-
-  constructor(rpcChannel, selfRpcId, clusterRpcId) {
-    log.debug(`constructor ${selfRpcId}, ${clusterRpcId}`);
-    super();
-    this.rpcChannel = rpcChannel;
-    this.selfRpcId = selfRpcId;
-    this.clusterRpcId = clusterRpcId;
+class VideoController extends TypeController {
+  constructor(rpc) {
+    super(rpc);
     // Map {processorId => Processor}
     this.processors = new Map();
     this.sessions = new Map();
@@ -48,8 +39,6 @@ class VideoController extends EventEmitter {
    * }
    */
   async addProcessor(videoConfig) {
-    const rpcChannel = this.rpcChannel;
-    const taskConfig = {room: videoConfig.domain, task: videoConfig.id};
     const mediaPreference = videoConfig.mediaPreference || {
       video: {
         encode: ['vp8', 'vp9', 'h264_CB', 'h264_B', 'h265'],
@@ -57,19 +46,18 @@ class VideoController extends EventEmitter {
       },
       origin: '',
     };
-    const locality = await this._getWorkerNode(
-        this.clusterRpcId, 'video', taskConfig, mediaPreference);
-
+    const locality = await this.getWorkerNode(
+        'video', videoConfig.domain, videoConfig.id, mediaPreference);
     if (videoConfig.mixing) {
       const vmixer = new Processor(videoConfig.id, 'vmixer', videoConfig);
       vmixer.locality = locality;
       vmixer.domain = videoConfig.domain;
       const mixConfig = videoConfig.mixing;
       try {
-        await rpcChannel.makeRPC(locality.node, 'init',
-            ['mixing', mixConfig, mixConfig.id, this.selfRpcId, mixConfig.view]);
+        await this.makeRPC(locality.node, 'init',
+            ['mixing', mixConfig, mixConfig.id, this.selfId, mixConfig.view]);
       } catch (e) {
-        this._recycleWorkerNode(locality.agent, locality.node, taskConfig)
+        this.recycleWorkerNode(locality, videoConfig.domain, videoConfig.id)
             .catch((err) => log.debug('Failed to recycleNode:', err));
         throw e;
       }
@@ -82,10 +70,10 @@ class VideoController extends EventEmitter {
       vtranscoder.domain = videoConfig.domain;
       const transcodeConfig = videoConfig.transcoding;
       try {
-        await rpcChannel.makeRPC(locality.node, 'init',
-          ['transcoding', transcodeConfig, transcodeConfig.id, this.selfRpcId, ''])
+        await this.makeRPC(locality.node, 'init',
+          ['transcoding', transcodeConfig, transcodeConfig.id, this.selfId, ''])
       } catch (e) {
-        this._recycleWorkerNode(locality.agent, locality.node, taskConfig)
+        this.recycleWorkerNode(locality, videoConfig.domain, videoConfig.id)
             .catch((err) => log.debug('Failed to recycleNode:', err));
         throw e;
       }
@@ -95,14 +83,13 @@ class VideoController extends EventEmitter {
   }
 
   async removeProcessor(id) {
-    const rpcChannel = this.rpcChannel;
     const processor = this.processors.get(id);
     if (processor) {
       const videoConfig = this.processors.get(id).info;
       const taskId = (videoConfig.mixing || videoConfig.transcoding).id;
       const locality = processor.locality;
       // Deinit does not have callback
-      rpcChannel.makeRPC(locality.node, 'deinit', [taskId])
+      this.makeRPC(locality.node, 'deinit', [taskId])
         .catch((e) => log.debug('Failed to deinit:', taskId, e));
 
       // Remove related inputs & outputs
@@ -113,9 +100,8 @@ class VideoController extends EventEmitter {
         this.emit('session-aborted', videoTrack.id, 'Processor removed');
       });
       this.processors.delete(id);
-      const taskConfig = {room: videoConfig.domain, task: videoConfig.id};
       // Recycle node
-      this._recycleWorkerNode(locality.agent, locality.node, taskConfig)
+      this.recycleWorkerNode(locality, videoConfig.domain, videoConfig.id)
           .catch((err) => log.debug('Failed to recycleNode:', err));
     }
   }
@@ -151,7 +137,6 @@ class VideoController extends EventEmitter {
       return Promise.reject(new Error('Invalid processor ID'));
     }
 
-    const rpcChannel = this.rpcChannel;
     const session = VideoSession(sessionConfig, direction);
     if (direction === 'in') {
       // Generate video stream for mixer/transcoder
@@ -160,7 +145,7 @@ class VideoController extends EventEmitter {
         format, resolution, framerate, bitrate, keyFrameInterval,
       } = setting;
       // output = {id, resolution, framerate, bitrate, keyFrameInterval}
-      const output = await rpcChannel.makeRPC(processor.locality.node, 'generate',
+      const output = await this.makeRPC(processor.locality.node, 'generate',
           [format.codec, resolution, framerate, bitrate, keyFrameInterval]);
       sessionConfig.id = output.id;
       this.sessions.set(output.id, session);
@@ -182,11 +167,11 @@ class VideoController extends EventEmitter {
       // Add input
       const inputId = sessionConfig.id;
       const inputConfig = {
-        controller: this.selfRpcId,
+        controller: this.selfId,
         publisher: sessionConfig.info?.owner || 'common',
         video: {codec: sessionConfig.media?.video?.format?.codec},
       };
-      await rpcChannel.makeRPC(processor.locality.node, 'publish',
+      await this.makeRPC(processor.locality.node, 'publish',
           [inputId, 'internal', inputConfig]);
       this.sessions.set(inputId, session);
       // Create subscription
@@ -271,27 +256,6 @@ class VideoController extends EventEmitter {
       //
     });
   }
-
-  _getWorkerNode(clusterManager, purpose, forWhom, preference) {
-    const rpcChannel = this.rpcChannel;
-    return rpcChannel.makeRPC(clusterManager, 'schedule', [purpose, forWhom.task, preference, 30 * 1000])
-      .then(function(workerAgent) {
-        return rpcChannel.makeRPC(workerAgent.id, 'getNode', [forWhom])
-          .then(function(workerNode) {
-            return {agent: workerAgent.id, node: workerNode};
-          });
-      });
-  }
-
-  _recycleWorkerNode(workerAgent, workerNode, forWhom) {
-    return this.rpcChannel.makeRPC(workerAgent, 'recycleNode', [workerNode, forWhom])
-      . catch((result) => {
-        return 'ok';
-      }, (err) => {
-        return 'ok';
-      });
-  }
-
 }
 
 exports.VideoController = VideoController;
