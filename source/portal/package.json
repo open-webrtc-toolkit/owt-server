@@ -8,7 +8,7 @@
     "toml": "*",
     "sprintf-js": "^1.0.3",
     "ajv": "^6.12.3",
-    "mongoose": "^5.13.12",
+    "mongoose": "^5.13.15",
     "fraction.js": "^4.0.12",
     "uuid": "^8.0.0"
   },
