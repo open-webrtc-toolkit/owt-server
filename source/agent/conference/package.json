@@ -6,7 +6,7 @@
     "log4js": "^6.4.0",
     "node-getopt": "*",
     "toml": "*",
-    "mongoose": "^5.13.12",
+    "mongoose": "^5.13.15",
     "uuid": "^8.0.0",
     "fraction.js": "^4.0.12"
   },
