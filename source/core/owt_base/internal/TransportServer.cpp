@@ -52,8 +52,7 @@ bool TransportServer::enableSecure()
     ELOG_DEBUG("Server enable secure");
     m_isSecure = true;
 
-    m_sslContext.reset(new boost::asio::ssl::context(
-        m_service->service(), boost::asio::ssl::context::sslv23));
+    m_sslContext.reset(new boost::asio::ssl::context(boost::asio::ssl::context::sslv23));
     m_sslContext->set_options(
         boost::asio::ssl::context::default_workarounds
         | boost::asio::ssl::context::single_dh_use);
