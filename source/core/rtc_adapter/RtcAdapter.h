@@ -81,7 +81,7 @@ public:
         char mid[32];
         // MID extension ID
         int mid_ext = 0;
-        // Bandwidth estimatin
+        // Bandwidth estimation
         bool bandwidth_estimation = false;
         AdapterDataListener* rtp_listener = nullptr;
         AdapterStatsListener* stats_listener = nullptr;

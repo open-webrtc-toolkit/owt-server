@@ -326,7 +326,7 @@ int VideoReceiveAdapterImpl::onRtpData(char* data, int len)
     taskQueue()->PostTask([this, buffer]() {
         call()->Receiver()->DeliverPacket(
             webrtc::MediaType::VIDEO,
-            buffer,//rtc::CopyOnWriteBuffer(wp->data, wp->length),
+            buffer,
             rtc::TimeUTCMicros());
     });
     return len;

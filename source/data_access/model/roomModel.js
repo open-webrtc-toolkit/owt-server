@@ -116,7 +116,7 @@ var RoomSchema = new Schema({
     type: Boolean,
     default: false
   },
-  enableBandwidthAdaption: {
+  enableBandwidthAdaptation: {
     type: Boolean,
     default: false
   },

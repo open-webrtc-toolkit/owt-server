@@ -63,8 +63,6 @@ NAN_METHOD(VideoFrameConstructor::New) {
         obj->me = new owt_base::VideoFrameConstructor(obj);
       }
     } else {
-      // CallBase* baseWrapper = Nan::ObjectWrap::Unwrap<CallBase>(
-      //   Nan::To<v8::Object>(info[0]).ToLocalChecked());
       VideoFrameConstructor* parent =
         Nan::ObjectWrap::Unwrap<VideoFrameConstructor>(
           Nan::To<v8::Object>(info[1]).ToLocalChecked());

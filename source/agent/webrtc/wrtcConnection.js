@@ -116,13 +116,6 @@ class WrtcStream extends EventEmitter {
       if (video) {
         this.videoFrameConstructor = new VideoFrameConstructor(
           this._onMediaUpdate.bind(this), video.transportcc, wrtc.callBase);
-        if (this.scalabilityMode) {
-          const spatial = parseInt(this.scalabilityMode[1]);
-          const temporal = parseInt(this.scalabilityMode[3]);
-          if (spatial >= 0 && temporal >= 0) {
-            // this.videoFrameConstructor.setPreferredLayers(spatial, temporal);
-          }
-        }
         this.videoFrameConstructor.bindTransport(wrtc.getMediaStream(id));
         wrtc.setVideoSsrcList(id, video.ssrcs);
       }

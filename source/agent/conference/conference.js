@@ -787,7 +787,7 @@ var Conference = function (rpcClient, selfRpcId) {
     for (const from of subscription.froms()) {
       const streamId = streams[from] ? from : trackOwners[from];
       if (streams[streamId]) {
-        if (streams[streamId].type === 'forward' && room_config.enableBandwidthAdaption) {
+        if (streams[streamId].type === 'forward' && room_config.enableBandwidthAdaptation) {
           // Create layer stream or find simulcast tracks
           const svcTrack = streams[streamId].media.tracks.find(t => t.scalabilityMode);
           let createSwitch = null;
@@ -1412,7 +1412,7 @@ var Conference = function (rpcClient, selfRpcId) {
         const controller = subDesc.type === 'webrtc' ? rtcController : quicController;
         const rtcSubInfo = translateRtcSubIfNeeded(subDesc);
         // Check bandwidth estimation
-        if (room_config.enableBandwidthAdaption) {
+        if (room_config.enableBandwidthAdaptation) {
           rtcSubInfo.enableBWE = true;
         }
         if (rtcSubInfo.tracks){
