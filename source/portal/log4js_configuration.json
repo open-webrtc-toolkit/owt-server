@@ -1,6 +1,6 @@
 {
-  "appenders": [
-    {
+  "appenders": {
+    "out": {
       "type": "console",
       "layout": {
         "type": "pattern",
@@ -8,17 +8,18 @@
         "replaceConsole": true
       }
     }
-  ],
-  "levels": {
-    "ClusterWorker": "INFO",
-    "LoadCollector": "INFO",
-    "Main": "INFO",
-    "LegacyClient": "INFO",
-    "V10Client": "INFO",
-    "V11Client": "INFO",
-    "SocketIOServer": "INFO",
-    "Portal": "INFO",
-    "RpcClient": "INFO",
-    "AmqpClient": "INFO"
+  },
+  "categories": {
+    "default": { "appenders": [ "out" ], "level": "info" },
+    "ClusterWorker": { "appenders": [ "out" ], "level": "info" },
+    "LoadCollector": { "appenders": [ "out" ], "level": "info" },
+    "Main": { "appenders": [ "out" ], "level": "info" },
+    "LegacyClient": { "appenders": [ "out" ], "level": "info" },
+    "V10Client": { "appenders": [ "out" ], "level": "info" },
+    "V11Client": { "appenders": [ "out" ], "level": "info" },
+    "SocketIOServer": { "appenders": [ "out" ], "level": "info" },
+    "Portal": { "appenders": [ "out" ], "level": "info" },
+    "RpcClient": { "appenders": [ "out" ], "level": "info" },
+    "AmqpClient": { "appenders": [ "out" ], "level": "info" }
   }
 }

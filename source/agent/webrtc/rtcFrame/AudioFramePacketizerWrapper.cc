@@ -8,6 +8,7 @@
 
 #include "AudioFramePacketizerWrapper.h"
 #include "MediaWrapper.h"
+#include <nan.h>
 
 using namespace v8;
 
@@ -19,7 +20,7 @@ void AudioFramePacketizer::Init(v8::Local<v8::Object> exports) {
   Isolate* isolate = Isolate::GetCurrent();
   // Prepare constructor template
   Local<FunctionTemplate> tpl = FunctionTemplate::New(isolate, New);
-  tpl->SetClassName(String::NewFromUtf8(isolate, "AudioFramePacketizer"));
+  tpl->SetClassName(Nan::New("AudioFramePacketizer").ToLocalChecked());
   tpl->InstanceTemplate()->SetInternalFieldCount(1);
   // Prototype
   NODE_SET_PROTOTYPE_METHOD(tpl, "close", close);
@@ -30,8 +31,9 @@ void AudioFramePacketizer::Init(v8::Local<v8::Object> exports) {
   NODE_SET_PROTOTYPE_METHOD(tpl, "ssrc", getSsrc);
   NODE_SET_PROTOTYPE_METHOD(tpl, "setOwner", setOwner);
 
-  constructor.Reset(isolate, tpl->GetFunction());
-  exports->Set(String::NewFromUtf8(isolate, "AudioFramePacketizer"), tpl->GetFunction());
+  constructor.Reset(isolate, Nan::GetFunction(tpl).ToLocalChecked());
+  Nan::Set(exports, Nan::New("AudioFramePacketizer").ToLocalChecked(),
+           Nan::GetFunction(tpl).ToLocalChecked());
 }
 
 void AudioFramePacketizer::New(const FunctionCallbackInfo<Value>& args) {
@@ -41,9 +43,9 @@ void AudioFramePacketizer::New(const FunctionCallbackInfo<Value>& args) {
   std::string mid;
   int midExtId = -1;
   if (args.Length() == 2) {
-    v8::String::Utf8Value param0(isolate, Nan::To<v8::String>(args[0]).ToLocalChecked());
+    Nan::Utf8String param0(Nan::To<v8::String>(args[0]).ToLocalChecked());
     mid = std::string(*param0);
-    midExtId = args[1]->IntegerValue(Nan::GetCurrentContext()).ToChecked();
+    midExtId = Nan::To<int32_t>(args[1]).FromJust();
   }
   AudioFramePacketizer* obj = new AudioFramePacketizer();
   owt_base::AudioFramePacketizer::Config config;
@@ -94,7 +96,7 @@ void AudioFramePacketizer::enable(const v8::FunctionCallbackInfo<v8::Value>& arg
   AudioFramePacketizer* obj = ObjectWrap::Unwrap<AudioFramePacketizer>(args.Holder());
   owt_base::AudioFramePacketizer* me = obj->me;
 
-  bool b = (args[0]->ToBoolean(Nan::GetCurrentContext()).ToLocalChecked())->BooleanValue();
+  bool b = Nan::To<bool>(args[0]).FromJust();
   me->enable(b);
 }
 
@@ -116,7 +118,7 @@ void AudioFramePacketizer::setOwner(const v8::FunctionCallbackInfo<v8::Value>& a
   AudioFramePacketizer* obj = ObjectWrap::Unwrap<AudioFramePacketizer>(args.Holder());
   owt_base::AudioFramePacketizer* me = obj->me;
 
-  v8::String::Utf8Value param(isolate, Nan::To<v8::String>(args[0]).ToLocalChecked());
+  Nan::Utf8String param(Nan::To<v8::String>(args[0]).ToLocalChecked());
   std::string ownerId = std::string(*param);
 
   me->setOwner(ownerId);

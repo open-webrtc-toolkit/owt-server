@@ -36,12 +36,14 @@ QuicTransportStream::QuicTransportStream(owt::quic::WebTransportStreamInterface*
     , m_hasSink(false)
     , m_buffer(nullptr)
     , m_bufferSize(0)
-    , m_isMedia(false)
+    , m_trackKind("unknown")
+    , m_frameFormat(owt_base::FRAME_FORMAT_UNKNOWN)
     , m_readingFrameSize(false)
     , m_frameSizeOffset(0)
     , m_frameSizeArray(new uint8_t[frameHeaderSize])
     , m_currentFrameSize(0)
     , m_receivedFrameOffset(0)
+    , m_audioTimeStamp(0)
 {
 }
 
@@ -123,7 +125,7 @@ NAN_MODULE_INIT(QuicTransportStream::init)
     Nan::SetPrototypeMethod(tpl, "write", write);
     Nan::SetPrototypeMethod(tpl, "readTrackId", readTrackId);
     Nan::SetPrototypeMethod(tpl, "addDestination", addDestination);
-    Nan::SetAccessor(instanceTpl, Nan::New("isMedia").ToLocalChecked(), isMediaGetter, isMediaSetter);
+    Nan::SetAccessor(instanceTpl, Nan::New("trackKind").ToLocalChecked(), trackKindGetter, trackKindSetter);
     Nan::SetAccessor(instanceTpl, Nan::New("ondata").ToLocalChecked(), onDataGetter, onDataSetter);
 
     s_constructor.Reset(Nan::GetFunction(tpl).ToLocalChecked());
@@ -151,8 +153,9 @@ NAN_METHOD(QuicTransportStream::write)
         return;
     }
     QuicTransportStream* obj = Nan::ObjectWrap::Unwrap<QuicTransportStream>(info.Holder());
-    uint8_t* buffer = (uint8_t*)node::Buffer::Data(info[0]->ToObject());
-    unsigned int length = info[1]->Uint32Value();
+    uint8_t* buffer = (uint8_t*)node::Buffer::Data(
+        Nan::To<v8::Object>(info[0]).ToLocalChecked());
+    unsigned int length = Nan::To<uint32_t>(info[1]).FromJust();
     auto written = obj->m_stream->Write(buffer, length);
     info.GetReturnValue().Set(Nan::New(static_cast<int>(written)));
 }
@@ -174,15 +177,16 @@ NAN_METHOD(QuicTransportStream::addDestination)
     std::string track = std::string(*param0);
     bool isNanDestination(false);
     if (info.Length() == 3) {
-        isNanDestination = info[2]->ToBoolean(Nan::GetCurrentContext()).ToLocalChecked()->Value();
+        isNanDestination = Nan::To<bool>(info[2]).FromJust();
     }
     owt_base::FrameDestination* dest(nullptr);
     if (isNanDestination) {
-        NanFrameNode* param = Nan::ObjectWrap::Unwrap<NanFrameNode>(info[1]->ToObject());
+        NanFrameNode* param = Nan::ObjectWrap::Unwrap<NanFrameNode>(
+            Nan::To<v8::Object>(info[1]).ToLocalChecked());
         dest = param->FrameDestination();
     } else {
         ::FrameDestination* param = node::ObjectWrap::Unwrap<::FrameDestination>(
-            info[1]->ToObject(Nan::GetCurrentContext()).ToLocalChecked());
+            Nan::To<v8::Object>(info[1]).ToLocalChecked());
         dest = param->dest;
     }
     if (track == "audio") {
@@ -212,15 +216,16 @@ void QuicTransportStream::CheckReadableData()
     }
 }
 
-NAN_GETTER(QuicTransportStream::isMediaGetter){
+NAN_GETTER(QuicTransportStream::trackKindGetter){
     QuicTransportStream* obj = Nan::ObjectWrap::Unwrap<QuicTransportStream>(info.Holder());
-    info.GetReturnValue().Set(Nan::New(obj->m_isMedia));
+    info.GetReturnValue().Set(Nan::New(obj->m_trackKind).ToLocalChecked());
 }
 
-NAN_SETTER(QuicTransportStream::isMediaSetter)
+NAN_SETTER(QuicTransportStream::trackKindSetter)
 {
     QuicTransportStream* obj = Nan::ObjectWrap::Unwrap<QuicTransportStream>(info.Holder());
-    obj->m_isMedia = value->ToBoolean(Nan::GetCurrentContext()).ToLocalChecked()->Value();
+    Nan::Utf8String trackKind(Nan::To<v8::String>(value).ToLocalChecked());
+    obj->m_trackKind = std::string(*trackKind);
 }
 
 NAN_GETTER(QuicTransportStream::onDataGetter)
@@ -365,10 +370,14 @@ void QuicTransportStream::SignalOnData()
         return;
     }
 
+    if (m_trackKind == "unknown") {
+        return;
+    }
+
     while (m_stream->ReadableBytes() > 0) {
         auto readableBytes = m_stream->ReadableBytes();
         // Future check if it's an audio stream or video stream. Audio is not supported at this time.
-        if (m_isMedia) {
+        if (m_trackKind == "audio" || m_trackKind == "video") {
             // A new frame.
             if (m_currentFrameSize == 0 && m_receivedFrameOffset == 0 && !m_readingFrameSize) {
                 m_readingFrameSize = true;
@@ -403,16 +412,29 @@ void QuicTransportStream::SignalOnData()
             // Complete frame.
             if (m_receivedFrameOffset == m_currentFrameSize) {
                 owt_base::Frame frame;
-                frame.format = owt_base::FRAME_FORMAT_I420;
+                if (m_trackKind == "audio") {
+                    frame.format = owt_base::FRAME_FORMAT_OPUS;
+                    frame.timeStamp = m_audioTimeStamp;
+                    // TODO: Fill a correct timestamp and check overflow.
+                    m_audioTimeStamp += 10 * 1000;
+                    // TODO: Get format from signaling message.
+                    frame.additionalInfo.audio.isRtpPacket = false;
+                    frame.additionalInfo.audio.sampleRate = 48000;
+                    frame.additionalInfo.audio.channels = 2;
+                } else if (m_trackKind == "video") {
+                    frame.format = owt_base::FRAME_FORMAT_H264;
+                    // Transport layer doesn't know a frame's type. Video agent is able to parse the type of a frame from bistream. However, video agent doesn't feed the frame to decoder when a key frame is requested.
+                    frame.additionalInfo.video.isKeyFrame = "key";
+                } else {
+                    ELOG_ERROR("Unexpected track kind: %s.", m_trackKind.c_str());
+                }
                 frame.length = m_currentFrameSize;
                 frame.payload = m_buffer;
-                // Transport layer doesn't know a frame's type. Video agent is able to parse the type of a frame from bistream. However, video agent doesn't feed the frame to decoder when a key frame is requested.
-                frame.additionalInfo.video.isKeyFrame = "key";
                 deliverFrame(frame);
                 m_currentFrameSize = 0;
                 m_receivedFrameOffset = 0;
             }
-        } else {
+        } else if (m_trackKind == "data") {
             if (readableBytes > m_bufferSize) {
                 ReallocateBuffer(readableBytes);
             }
@@ -445,7 +467,12 @@ void QuicTransportStream::onFeedback(const owt_base::FeedbackMsg&)
 
 void QuicTransportStream::onFrame(const owt_base::Frame& frame)
 {
-    m_stream->Write(frame.payload, frame.length);
+    size_t wrote = m_stream->Write(frame.payload, frame.length);
+    if (wrote != frame.length) {
+        // TODO: Implement back pressure.
+        // https://github.com/open-webrtc-toolkit/owt-server/issues/1220
+        ELOG_WARN("Failed to write a frame. This frame is dropped.");
+    }
 }
 
 void QuicTransportStream::onVideoSourceChanged()

@@ -37,7 +37,7 @@ public:
 
     // Implement VideoSendAdapter
     void onFrame(const owt_base::Frame&) override;
-    int onRtcpData(char* data, int len) override;
+    int onRtcpData(const char* data, int len) override;
     void reset() override;
     uint32_t ssrc() { return m_ssrc; }
     VideoSendAdapter::Stats getStats() override { return m_stats; }

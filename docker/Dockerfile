@@ -104,7 +104,7 @@ RUN cd /home/FFmpeg && \
 
 
 # Install node
-ARG NODE_VER=v10.21.0
+ARG NODE_VER=v14.19.0
 ARG NODE_REPO=https://nodejs.org/dist/${NODE_VER}/node-${NODE_VER}-linux-x64.tar.xz
 
 RUN wget ${NODE_REPO} && \
@@ -192,9 +192,9 @@ RUN cd ${SERVER_PATH}/third_party && mkdir webrtc  && cd webrtc &&\
     ./src/tools-woogeen/install.sh && \
     ./src/tools-woogeen/build.sh 
 
-# Install webrtc79 for owt
-RUN mkdir ${SERVER_PATH}/third_party/webrtc-m79 && \
-    cd ${SERVER_PATH}/third_party/webrtc-m79 && \
+# Install webrtc88 for owt
+RUN mkdir ${SERVER_PATH}/third_party/webrtc-m88 && \
+    cd ${SERVER_PATH}/third_party/webrtc-m88 && \
     /bin/bash ${SERVER_PATH}/scripts/installWebrtc.sh
 
 # Get js client sdk for owt
@@ -214,7 +214,7 @@ WORKDIR /home
 
 # Prerequisites
 # Install node
-ARG NODE_VER=v10.21.0
+ARG NODE_VER=v14.19.0
 ARG NODE_REPO=https://nodejs.org/dist/${NODE_VER}/node-${NODE_VER}-linux-x64.tar.xz
 
 RUN apt-get update && apt-get install -y -q --no-install-recommends ca-certificates wget xz-utils rabbitmq-server mongodb libboost-system-dev libboost-thread-dev liblog4cxx-dev libglib2.0-0 libfreetype6-dev curl sudo

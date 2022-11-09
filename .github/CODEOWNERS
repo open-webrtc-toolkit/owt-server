@@ -5,6 +5,7 @@
 scripts/ @starwarfan @qwu16
 docker/ @qwu16
 source/agent/addons @starwarfan
+source/agent/addons/quic @jianjunz
 source/agent/analytics @qwu16
 source/agent/audio @daijh @starwarfan
 source/agent/conference @starwarfan @qwu16

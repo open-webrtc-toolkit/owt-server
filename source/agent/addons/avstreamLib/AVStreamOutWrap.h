@@ -15,8 +15,8 @@
  */
 class AVStreamOutWrap : public FrameDestination, public NodeEventRegistry {
  public:
-  static void Init(v8::Handle<v8::Object>);
-  static void Init(v8::Handle<v8::Object>, v8::Handle<v8::Object>);
+  static void Init(v8::Local<v8::Object>);
+  static void Init(v8::Local<v8::Object>, v8::Local<v8::Object>);
   owt_base::AVStreamOut* me;
 
  private:

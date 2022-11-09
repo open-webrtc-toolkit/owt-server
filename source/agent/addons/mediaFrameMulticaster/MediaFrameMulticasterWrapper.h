@@ -17,7 +17,7 @@
  */
 class MediaFrameMulticaster : public FrameDestination {
  public:
-  static void Init(v8::Handle<v8::Object>, v8::Handle<v8::Object>);
+  static void Init(v8::Local<v8::Object>, v8::Local<v8::Object>);
   owt_base::MediaFrameMulticaster* me;
 
  private:
@@ -36,7 +36,7 @@ class MediaFrameMulticaster : public FrameDestination {
 
 class MulticasterSource : public FrameSource {
  public:
-  static void Init(v8::Handle<v8::Object>, v8::Handle<v8::Object>);
+  static void Init(v8::Local<v8::Object>, v8::Local<v8::Object>);
   owt_base::MediaFrameMulticaster* me;
 
  private:

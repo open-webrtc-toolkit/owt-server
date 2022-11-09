@@ -5,7 +5,7 @@
 #ifndef INTERNALCONFIG_H
 #define INTERNALCONFIG_H
 
-#include <node.h>
+#include <nan.h>
 
 void InitInternalConfig(v8::Local<v8::Object> exports);
 

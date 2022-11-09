@@ -40,6 +40,7 @@ installYumDeps(){
   ${SUDO} yum install devtoolset-7-gcc* -y
   ${SUDO} yum install docbook2X -y
   ${SUDO} yum install libffi-devel -y
+  ${SUDO} yum install ca-certificates -y
 }
 
 installRepo(){
@@ -65,6 +66,18 @@ install_mediadeps(){
 }
 
 install_glibc(){
+  local LIST_LIBS=`ls ${PREFIX_DIR}/lib/libc.* 2>/dev/null`
+  if [ "$CHECK_INSTALL" = true ]; then
+    if [[ ! -z $LIST_LIBS ]]; then
+      echo "glibc - Yes"
+    else
+      echo "glibc - No"
+    fi
+    return 0
+  fi
+  [ "$INCR_INSTALL" = true ] && [[ ! -z $LIST_LIBS ]] && \
+  echo "glibc already installed." && return 0
+
   cd $LIB_DIR
   wget http://ftp.gnu.org/gnu/glibc/glibc-2.18.tar.gz 
   tar zxf glibc-2.18.tar.gz

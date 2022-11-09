@@ -39,9 +39,11 @@ private:
     static NAN_METHOD(newInstance);
     static NAN_METHOD(addDestination);
     static NAN_METHOD(removeDestination);
-    // addInputStream(stream, kind)
+    // addStreamInput(stream, kind)
     // kind could be "data", "audio" or "video".
-    static NAN_METHOD(addInputStream);
+    static NAN_METHOD(addStreamInput);
+    // receiver() is required by connection.js.
+    static NAN_METHOD(receiver);
 
     static Nan::Persistent<v8::Function> s_constructor;
 

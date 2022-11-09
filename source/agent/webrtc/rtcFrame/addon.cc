@@ -12,7 +12,7 @@
 
 using namespace v8;
 
-void InitAll(Handle<Object> exports) {
+void InitAll(Local<Object> exports) {
   AudioFrameConstructor::Init(exports);
   AudioFramePacketizer::Init(exports);
   VideoFrameConstructor::Init(exports);

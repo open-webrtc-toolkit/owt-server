@@ -15,7 +15,7 @@
 
 class VideoGstAnalyzerWrap: public node::ObjectWrap, public NodeEventRegistry {
   public:
-  static void Init(v8::Handle<v8::Object>, v8::Handle<v8::Object>);
+  static void Init(v8::Local<v8::Object>, v8::Local<v8::Object>);
   mcu::VideoGstAnalyzer* me;
 
  private:

@@ -442,6 +442,10 @@ var Conference = function (rpcClient, selfRpcId) {
                     onSessionEstablished(transport.owner, sessionId, direction, conferenceSessionInfo);
                   });
 
+                  quicController.on('session-updated', (sessionId, data) => {
+                      sendMsgTo(data.owner, 'progress', { id : sessionId, status : 'rtp', data: data.data.rtp });
+                  });
+
                   quicController.on('session-aborted', (sessionId, data) => {
                     onSessionAborted(data.owner, sessionId, data.direction, data.reason);
                   });
@@ -1225,7 +1229,8 @@ var Conference = function (rpcClient, selfRpcId) {
     if (trackOwners[tsId]) {
       track = streams[trackOwners[tsId]].media.tracks
         .find(t => (t.id === tsId && t.type === type));
-    } else if (streams[tsId]) {
+    }
+    if (!track && streams[tsId]) {
       track = streams[tsId].media.tracks
         .find(t => t.type === type);
     }
@@ -1908,7 +1913,7 @@ var Conference = function (rpcClient, selfRpcId) {
 
   that.onSessionProgress = function(sessionId, direction, sessionStatus) {
       log.debug('onSessionProgress, sessionId:', sessionId, 'direction:', direction, 'sessionStatus:', sessionStatus);
-      if (sessionStatus.data) {
+      if (sessionStatus.data || sessionStatus.rtp) {
           quicController && quicController.onSessionProgress(sessionId, sessionStatus);
       } else {
           accessController && accessController.onSessionStatus(sessionId, sessionStatus);

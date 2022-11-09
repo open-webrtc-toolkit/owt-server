@@ -44,8 +44,7 @@ bool TransportClient::enableSecure()
     ELOG_DEBUG("Client enable secure");
     m_isSecure = true;
 
-    m_sslContext.reset(new boost::asio::ssl::context(
-                    m_service->service(), boost::asio::ssl::context::sslv23));
+    m_sslContext.reset(new boost::asio::ssl::context(boost::asio::ssl::context::sslv23));
     m_sslContext->set_verify_mode(boost::asio::ssl::context::verify_peer);
     m_sslContext->use_certificate_file(kServerCrt, boost::asio::ssl::context::pem);
     m_sslContext->set_password_callback(boost::bind(&TransportSecret::getPassphrase));

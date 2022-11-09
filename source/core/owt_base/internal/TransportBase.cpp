@@ -165,7 +165,10 @@ void TransportSession::sendData(TransportData data)
 void TransportSession::prepareSend(TransportData data)
 {
     // Only access m_sendQueue in IO service thread.
-    m_sendQueue.push(data);
+    TransportMessage toSend(data.buffer.get(), data.length);
+    TransportData wrappedData{toSend.messageData(),
+                              toSend.messageLength()};
+    m_sendQueue.push(wrappedData);
     if (m_sendQueue.size() == 1) {
         sendHandler();
     }
@@ -184,24 +187,21 @@ void TransportSession::sendHandler()
         return;
     }
 
-    TransportData data = m_sendQueue.front();
-    TransportMessage toSend(data.buffer.get(), data.length);
-    TransportData wrappedData{toSend.messageData(),
-                              toSend.messageLength()};
+    TransportData& data = m_sendQueue.front();
 
-    ELOG_DEBUG("SendHandler- %p %zu", this, (size_t)wrappedData.length);
+    ELOG_DEBUG("SendHandler- %p %zu", this, (size_t)data.length);
     auto self(shared_from_this());
     if (m_sslSocket) {
         boost::asio::async_write(
             *m_sslSocket,
-            boost::asio::buffer(wrappedData.buffer.get(), wrappedData.length),
+            boost::asio::buffer(data.buffer.get(), data.length),
             boost::bind(&TransportSession::writeHandler, self,
                 boost::asio::placeholders::error,
                 boost::asio::placeholders::bytes_transferred));
     } else {
         boost::asio::async_write(
             m_socket,
-            boost::asio::buffer(wrappedData.buffer.get(), wrappedData.length),
+            boost::asio::buffer(data.buffer.get(), data.length),
             boost::bind(&TransportSession::writeHandler, self,
                 boost::asio::placeholders::error,
                 boost::asio::placeholders::bytes_transferred));

@@ -11,6 +11,7 @@
 // QuicStream associated with QuicStreamPipeline could be a QuicStream instance
 // or |undefined|, which means QuicStream is not ready at this moment. It also
 // allows updating its associated QuicStream to a new one.
+
 // publish, unpublish, subscribe, unsubscribe, linkup, cutoff are required by
 // all agents. They are defined in base-agent.js.
 
@@ -24,6 +25,8 @@ const addon = require('./build/Release/quic');
 const cipher = require('../cipher');
 const path = require('path');
 const {InternalConnectionRouter} = require('./internalConnectionRouter');
+const audioTrackId = '00000000000000000000000000000001';
+const videoTrackId = '00000000000000000000000000000002';
 
 log.info('QUIC transport node.')
 
@@ -40,6 +43,8 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
         new Map();  // Key is subscription ID, value is stream pipeline.
     const frameSourceMap =
         new Map();  // Key is publication ID, value is WebTransportFrameSource.
+    const frameDestinationMap = new Map();  // Key is subscription ID, value is
+                                            // WebTransportFrameDestination.
     const publicationOptions = new Map();
     const subscriptionOptions = new Map();
     let quicTransportServer;
@@ -77,6 +82,14 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
     };
 
     const notifyStatus = (controller, sessionId, direction, status) => {
+      // Event name follows WebRTC agent.
+      // A new status "rtp" is added for RTP configuration. It would be good if
+      // this configuration is included in the response of a subscribe request.
+      // However, it may change a lot to achieve it, so we extend
+      // onSessionProgress for it. In the long term, WebTransport connections
+      // will have its own mechanism to accept publish or subscribe requests,
+      // possibly via REST, which doesn't depend on Socket.IO connection. At
+      // that time, RTP configuration can be included in response.
       rpcClient.remoteCast(
           controller, 'onSessionProgress', [sessionId, direction, status]);
     };
@@ -105,7 +118,6 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
         log.debug(
             'A stream with session ID ' + stream.contentSessionId +
             ' is added.');
-        // Set isMedia=true if the session is for media.
         if (outgoingStreamPipelines.has(stream.contentSessionId)) {
           const pipeline = outgoingStreamPipelines.get(stream.contentSessionId);
           pipeline.quicStream(stream);
@@ -119,10 +131,10 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
           const options = publicationOptions.get(stream.contentSessionId);
           // Only publications for media have tracks.
           if (options.tracks && options.tracks.length) {
-            stream.isMedia = true;
             stream.readTrackId();
           } else {
-            frameSourceMap.get(stream.contentSessionId).addInputStream(stream);
+            stream.trackKind = 'data';
+            frameSourceMap.get(stream.contentSessionId).addStreamInput(stream);
           }
         } else {
           log.warn(
@@ -133,8 +145,18 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
         }
       });
       quicTransportServer.on('trackid', (stream) => {
+        // TODO: Defined track ID and get track kind based on ID. Currently it
+        // is hard coded.
+        if (stream.trackId === audioTrackId) {
+          stream.trackKind = 'audio';
+        } else if (stream.trackId === videoTrackId) {
+          stream.trackKind = 'video';
+        } else {
+          log.warn('Unexpected track ID: ' + stream.trackId);
+          return;
+        }
         if (frameSourceMap.has(stream.contentSessionId)) {
-          frameSourceMap.get(stream.contentSessionId).addInputStream(stream);
+          frameSourceMap.get(stream.contentSessionId).addStreamInput(stream);
         }
       });
       quicTransportServer.on('connectionadded', (connection) => {
@@ -150,19 +172,29 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
           type: 'failed',
           reason: 'Frame source for ' + streamId + ' exists.'
         });
+        return;
       }
       const frameSource = new addon.WebTransportFrameSource(streamId);
       frameSourceMap.set(streamId, frameSource);
       return frameSource;
     };
 
-    const createStreamPipeline =
-        function(streamId, direction, options, callback) {
+    const createFrameDestination = (subscriptionId, options, isDatagram) => {
+      if (frameDestinationMap.has(subscriptionId)) {
+        log.warn('Frame destination for ' + subscriptionId + ' exists.');
+        return;
+      }
+      const frameDestination =
+          new addon.WebTransportFrameDestination(subscriptionId, isDatagram);
+      frameDestinationMap.set(subscriptionId, frameDestination);
+      return frameDestination;
+    };
+
+    const createStreamPipeline = function(
+        streamId, direction, options) {
       // Client is expected to create a QuicTransport before sending publish or
       // subscription requests.
-      const streamPipeline = new QuicTransportStreamPipeline(streamId, status=>{
-        notifyStatus(options.controller, streamId, direction, status)
-      });
+      const streamPipeline = new QuicTransportStreamPipeline(streamId);
       // If a stream pipeline already exists, just replace the old.
       let pipelineMap;
       if (direction === 'in') {
@@ -171,9 +203,8 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
         pipelineMap = outgoingStreamPipelines;
       }
       if (pipelineMap.has(streamId)) {
-        return callback(
-            'callback',
-            {type: 'failed', reason: 'Pipeline for ' + streamId + ' exists.'});
+        log.warn('Pipeline for ' + streamId + ' exists.');
+        return;
       }
       pipelineMap.set(streamId, streamPipeline);
       return streamPipeline;
@@ -202,7 +233,7 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
     };
 
     // functions: publish, unpublish, subscribe, unsubscribe, linkup, cutoff
-    that.publish = function(connectionId, connectionType, options, callback) {
+    that.publish = async function(connectionId, connectionType, options, callback) {
         log.debug('publish, connectionId:', connectionId, 'connectionType:', connectionType, 'options:', options);
         if (router.getConnection(connectionId)) {
             return callback('callback', {type: 'failed', reason: 'Connection already exists:'+connectionId});
@@ -224,7 +255,12 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
             log.error('Create connection failed', connectionId, connectionType);
             return callback('callback', {type: 'failed', reason: 'Create Connection failed'});
         }
-        router.addLocalSource(connectionId, connectionType, conn);
+        try {
+            await router.addLocalSource(connectionId, connectionType, conn);
+        } catch (e) {
+            onError(callback)();
+            return;
+        }
         onSuccess(callback)();
         notifyStatus(options.controller, connectionId, 'in', {
           type: 'ready',
@@ -240,7 +276,9 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
         var conn = router.getConnection(connectionId);
         router.removeConnection(connectionId).then(function(ok) {
             if (conn) {
+              if (typeof conn.close === 'function') {
                 conn.close();
+              }
             }
             callback('callback', 'ok');
         }, onError(callback));
@@ -249,37 +287,91 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
         }
     };
 
-    that.subscribe = function (connectionId, connectionType, options, callback) {
-        if (connectionType == 'quic') {
-            if (options.transport && options.transport.type) {
-                connectionType = options.transport.type;
+    that.subscribe = async function(connectionId, connectionType, options, callback) {
+      if (connectionType == 'quic') {
+        if (options.transport && options.transport.type) {
+          connectionType = options.transport.type;
+        }
+      }
+      log.debug(
+          'subscribe, connectionId:', connectionId,
+          'connectionType:', connectionType, 'options:', options);
+      if (router.getConnection(connectionId)) {
+        return callback('callback', {
+          type: 'failed',
+          reason: 'Connection already exists:' + connectionId
+        });
+      }
+
+      let conn = null;
+      switch (connectionType) {
+        case 'quic':
+          if (options.tracks && options.tracks.length) {  // Media.
+            // Sending media to client over reliable stream or unreliable
+            // datagram.
+            let isDatagrame = true;
+            if (global.config.quic.mediaOutMode === 'stream') {
+              isDatagrame = false;
             }
-        }
-        log.debug('subscribe, connectionId:', connectionId, 'connectionType:', connectionType, 'options:', options);
-        if (router.getConnection(connectionId)) {
-            return callback('callback', {type: 'failed', reason: 'Connection already exists:'+connectionId});
-        }
+            conn = createFrameDestination(connectionId, options, isDatagrame);
+            const webTransportConnection =
+                quicTransportServer.getConnection(options.transport.id);
+            if (isDatagrame) {
+              webTransportConnection.onclose = () => {
+                conn.removeDatagramOutput(webTransportConnection);
+              };
+              conn.addDatagramOutput(webTransportConnection);
+            } else {
+              for (const track of options.tracks) {
+                const trackId =
+                    track.type === 'audio' ? audioTrackId : videoTrackId;
+                const stream = quicTransportServer.createSendStream(
+                    options.transport.id, connectionId, trackId);
+                stream.onclose = () => {
+                  conn.removeStreamOutput(connectionId);
+                };
+                conn.addStreamOutput(trackId, stream);
+              }
+            }
+          } else {
+            // TODO: Remove StreamPipeline, move to WebTransportFrameDestination.
+            conn = createStreamPipeline(connectionId, 'out', options, callback);
+            const stream = quicTransportServer.createSendStream(
+                options.transport.id, connectionId);
+            conn.quicStream(stream);
+          }
+          if (!conn) {
+            return;
+          }
+          // RTP info only available when output is datagram. It's undefined
+          // when output is stream. A client considers it as reliable stream
+          // when it's undefined.
+          notifyStatus(
+              options.controller, connectionId, 'out',
+              {type: 'rtp', rtp: conn.rtpConfig, datagram: false});
+          break;
+        default:
+          log.error('Connection type invalid:' + connectionType);
+      }
+      if (!conn) {
+        log.error('Create connection failed', connectionId, connectionType);
+        return callback(
+            'callback', {type: 'failed', reason: 'Create Connection failed'});
+      }
 
-        var conn = null;
-        switch (connectionType) {
-            case 'quic':
-                conn = createStreamPipeline(connectionId, 'out', options, callback);
-                const stream = quicTransportServer.createSendStream(options.transport.id, connectionId);
-                conn.quicStream(stream);
-                if (!conn) {
-                    return;
-                }
-                break;
-            default:
-                log.error('Connection type invalid:' + connectionType);
-        }
-        if (!conn) {
-            log.error('Create connection failed', connectionId, connectionType);
-            return callback('callback', {type: 'failed', reason: 'Create Connection failed'});
-        }
-
-        router.addLocalDestination(connectionId, connectionType, conn)
-        .then(onSuccess(callback), onError(callback));
+      try {
+        await router.addLocalDestination(connectionId, connectionType, conn);
+      } catch (e) {
+        onError(callback)();
+      }
+      onSuccess(callback)();
+      notifyStatus(options.controller, connectionId, 'out', {
+        type: 'ready',
+        audio: undefined,
+        video: undefined,
+        data: true,
+        simulcast: false
+      });
     };
 
     that.unsubscribe = function (connectionId, callback) {
@@ -287,7 +379,9 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
         var conn = router.getConnection(connectionId);
         router.removeConnection(connectionId).then(function(ok) {
             if (conn) {
+              if (typeof conn.close === 'function') {
                 conn.close();
+              }
             }
             callback('callback', 'ok');
         }, onError(callback));

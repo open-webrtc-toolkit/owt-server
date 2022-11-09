@@ -604,6 +604,7 @@ class RoomModal extends React.Component {
       'h265': {codec: 'h265'},
       'vp8': {codec: 'vp8'},
       'vp9': {codec: 'vp9'},
+      'av1': {codec: 'av1'}, //for chrome95+
       'av1x': {codec: 'av1x'},
       // audio
       'opus': {codec: 'opus', sampleRate: 48000, channelNum: 2},
@@ -703,7 +704,7 @@ class RoomModal extends React.Component {
       return mediaCheckBox(name, 'mediaIn.audio');
     });
 
-    const videoNames = ['h264', 'h265', 'vp8', 'vp9', 'av1x'];
+    const videoNames = ['h264', 'h265', 'vp8', 'vp9','av1','av1x'];
     const videoCheckBoxes = videoNames.map((name) => {
       return mediaCheckBox(name, 'mediaIn.video');
     });

@@ -557,6 +557,19 @@ A publication can send either media or data. Setting `media:null` and `data:fals
        candidate: string(candidateSdp)
       }
 
+    // Experimental feature, subject to change.
+    object(RtpConfig)::
+    {
+      ssrc:string,
+      sendParameters:object(RTCRtpSendParameters)  // [RTCRtpSendParameters](https://www.w3.org/TR/webrtc/#rtcsendrtpparameters) defined in WebRTC 1.0.
+    }
+
+    object(RtpSendParameters):RTCRtpSendParameters::
+      {
+        audio: object(RtpConfig) | null,
+        video: object(RtpConfig) | null,
+      }
+
     object(TransportOptions)::
       {
         type: "webrtc" | "quic",
@@ -572,10 +585,11 @@ A publication can send either media or data. Setting `media:null` and `data:fals
   object(TransportProgress)::
     {
       id: string(transportId),
-      status: "soac" | "ready" | "error",
+      status: "soac" | "ready" | "error" | "rtp",
       data: object(OfferAnswer) | object(CandidateMessage)  /*If status equals “soac”*/
           | (undefined/*If status equals “ready” and session is NOT for recording*/
           | string(Reason)/*If status equals “error”*/
+          | object(RtpConfig)  /* if status is "rtp" */
     }
 
   object(SessionProgress)::
@@ -611,4 +625,4 @@ Step 2: Receive a response from server.
 }
 ```
 
-Step 3: Create a new WebTransport or get an existing WebTransport, then create a new BidirectionalStream or SendStream. Write data to stream. The URL of WebTransport should be included in token. WebTransport is shared by all media streams, data streams and signaling which belong to the same client.
+Step 3: Create a new WebTransport or get an existing WebTransport, then create a new BidirectionalStream. Write data to stream. The URL of WebTransport should be included in token. WebTransport is shared by all media streams, data streams and signaling which belong to the same client.

@@ -56,7 +56,7 @@ class Operation {
  * 'transport-aborted': (id, reason)
  * Events for conference.js
  * 'session-established': (id, Operation)
- * 'session-updated': (id, Operation)
+ * 'session-updated': (id, {type, owner, data})
  * 'session-aborted': (id, {owner, direction, reason})
  */
 class QuicController extends EventEmitter {
@@ -91,16 +91,15 @@ class QuicController extends EventEmitter {
 
   onSessionProgress(sessionId, status)
   {
-      if (!status.data) {
-          log.error('QUIC agent only support data forwarding.');
+      if (!this.operations.get(sessionId)) {
+          log.error('Invalid session ID.');
           return;
       }
+      const operation=this.operations.get(sessionId);
       if (status.type === 'ready') {
-          if (!this.operations.get(sessionId)) {
-              log.error('Invalid session ID.');
-              return;
-          }
-          this.emit('session-established', this.operations.get(sessionId));
+          this.emit('session-established', operation);
+      } else if (status.type === 'rtp') {
+          this.emit('session-updated', sessionId, { type : 'rtp', owner : operation.transport.owner, data : { rtp : status.rtp } });
       }
   }
 
@@ -158,7 +157,6 @@ class QuicController extends EventEmitter {
 
   // Return Promise
   terminate(sessionId, direction, reason) {
-    console.trace();
     log.debug(`terminate, sessionId: ${sessionId} direction: ${direction}, ${reason}`);
 
     if (!this.operations.has(sessionId)) {
@@ -180,25 +178,6 @@ class QuicController extends EventEmitter {
         const abortData = { direction: operation.direction, owner, reason };
         this.emit('session-aborted', sessionId, abortData);
         this.operations.delete(sessionId);
-
-        let emptyTransport = true;
-        for (const [id, op] of this.operations) {
-          if (op.transportId === transport.id) {
-            emptyTransport = false;
-            break;
-          }
-        }
-        if (emptyTransport) {
-          log.debug(`to recycleWorkerNode: ${locality} task:, ${sessionId}`);
-          const taskConfig = {room: this.roomId, task: sessionId};
-          return this.rpcReq.recycleWorkerNode(locality.agent, locality.node, taskConfig)
-            .catch(reason => {
-              log.debug(`AccessNode not recycled ${locality}, ${reason}`);
-            })
-            .then(() => {
-              this.transports.delete(transport.id);
-            });
-        }
       }
     })
     .catch(reason => {

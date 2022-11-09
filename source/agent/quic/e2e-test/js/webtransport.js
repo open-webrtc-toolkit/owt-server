@@ -6,6 +6,14 @@
 
 const expect = chai.expect;
 
+// Convert certificate fingerprint string to WebTransport certificate hash.
+const convertFingerprintToHash = (fingerprint) => {
+  const values = fingerprint.split(':');
+  return Uint8Array.from(values, x => {
+    return parseInt(x, 16);
+  });
+};
+
 describe('WebTransport end to end tests.', function() {
   it('Write an array and check data received.', (done) => {
     // Prepare data.
@@ -32,8 +40,13 @@ describe('WebTransport end to end tests.', function() {
     createToken(undefined, 'user', 'presenter', async (token) => {
       const conference = new Owt.Conference.ConferenceClient({
         webTransportConfiguration: {
-          serverCertificateFingerprints:
-              [{value: __karma__.config.cert_fingerprint, algorithm: 'sha-256'}]
+          serverCertificateFingerprints: [
+            {value: __karma__.config.cert_fingerprint, algorithm: 'sha-256'}
+          ],
+          serverCertificateHashes: [{
+            value: convertFingerprintToHash(__karma__.config.cert_fingerprint),
+            algorithm: 'sha-256'
+          }],
         }
       });
       let resolveSubscribed;
@@ -41,7 +54,8 @@ describe('WebTransport end to end tests.', function() {
         resolveSubscribed = resolve;
       });
       conference.addEventListener('streamadded', async (event) => {
-        const subscription = await conference.subscribe(event.stream);
+        const subscription = await conference.subscribe(
+            event.stream, {transport: {type: 'quic'}});
         const reader = subscription.stream.readable.getReader();
         resolveSubscribed();
         while (true) {
@@ -57,7 +71,8 @@ describe('WebTransport end to end tests.', function() {
       const localStream = new Owt.Base.LocalStream(
           sendStream,
           new Owt.Base.StreamSourceInfo(undefined, undefined, true));
-      const publication = await conference.publish(localStream);
+      const publication =
+          await conference.publish(localStream, {transport: {type: 'quic'}});
       const writer = sendStream.writable.getWriter();
       await writer.ready;
       await subscribed;

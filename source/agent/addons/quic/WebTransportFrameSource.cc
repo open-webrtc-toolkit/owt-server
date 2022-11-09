@@ -34,7 +34,8 @@ NAN_MODULE_INIT(WebTransportFrameSource::init)
     instanceTpl->SetInternalFieldCount(1);
 
     Nan::SetPrototypeMethod(tpl, "addDestination", addDestination);
-    Nan::SetPrototypeMethod(tpl, "addInputStream", addInputStream);
+    Nan::SetPrototypeMethod(tpl, "addStreamInput", addStreamInput);
+    Nan::SetPrototypeMethod(tpl, "receiver", receiver);
 
     s_constructor.Reset(Nan::GetFunction(tpl).ToLocalChecked());
     Nan::Set(target, Nan::New("WebTransportFrameSource").ToLocalChecked(), Nan::GetFunction(tpl).ToLocalChecked());
@@ -51,13 +52,14 @@ NAN_METHOD(WebTransportFrameSource::newInstance)
     info.GetReturnValue().Set(info.This());
 }
 
-NAN_METHOD(WebTransportFrameSource::addInputStream)
+NAN_METHOD(WebTransportFrameSource::addStreamInput)
 {
     WebTransportFrameSource* obj = Nan::ObjectWrap::Unwrap<WebTransportFrameSource>(info.Holder());
-    NanFrameNode* inputStream = Nan::ObjectWrap::Unwrap<NanFrameNode>(info[0]->ToObject());
-    inputStream->FrameSource()->addDataDestination(obj);
+    NanFrameNode* inputStream = Nan::ObjectWrap::Unwrap<NanFrameNode>(
+        Nan::To<v8::Object>(info[0]).ToLocalChecked());
     inputStream->FrameSource()->addAudioDestination(obj);
     inputStream->FrameSource()->addVideoDestination(obj);
+    inputStream->FrameSource()->addDataDestination(obj);
 }
 
 NAN_METHOD(WebTransportFrameSource::addDestination)
@@ -71,20 +73,26 @@ NAN_METHOD(WebTransportFrameSource::addDestination)
     std::string track = std::string(*param0);
     bool isNanDestination(false);
     if (info.Length() == 3) {
-        isNanDestination = info[2]->ToBoolean(Nan::GetCurrentContext()).ToLocalChecked()->Value();
+        isNanDestination = Nan::To<bool>(info[2]).FromJust();
     }
     owt_base::FrameDestination* dest(nullptr);
     if (isNanDestination) {
-        NanFrameNode* param = Nan::ObjectWrap::Unwrap<NanFrameNode>(info[1]->ToObject());
+        NanFrameNode* param = Nan::ObjectWrap::Unwrap<NanFrameNode>(
+            Nan::To<v8::Object>(info[1]).ToLocalChecked());
         dest = param->FrameDestination();
     } else {
         ::FrameDestination* param = node::ObjectWrap::Unwrap<::FrameDestination>(
-            info[1]->ToObject(Nan::GetCurrentContext()).ToLocalChecked());
+            Nan::To<v8::Object>(info[1]).ToLocalChecked());
         dest = param->dest;
     }
     obj->addAudioDestination(dest);
     obj->addVideoDestination(dest);
     obj->addDataDestination(dest);
+}
+
+NAN_METHOD(WebTransportFrameSource::receiver)
+{
+    info.GetReturnValue().Set(info.This());
 }
 
 void WebTransportFrameSource::onFeedback(const owt_base::FeedbackMsg&)

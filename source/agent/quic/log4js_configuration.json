@@ -1,6 +1,6 @@
 {
-  "appenders": [
-    {
+  "appenders": {
+    "out": {
       "type": "console",
       "layout": {
         "type": "pattern",
@@ -8,20 +8,21 @@
         "replaceConsole": true
       }
     }
-  ],
-  "levels": {
-    "ClusterWorker": "WARN",
-    "LoadCollector": "WARN",
-    "AmqpClient": "WARN",
-    "WorkingJS": "WARN",
-    "NodeManager": "WARN",
-    "QuicNode": "INFO",
-    "Connection": "WARN",
-    "WorkingAgent": "WARN",
-    "Connections": "WARN",
-    "InternalConnectionRouter": "WARN",
-    "QuicConnection": "WARN",
-    "QuicTransportServer": "WARN",
-    "QuicTransportStreamPipeline": "WARN"
+  },
+  "categories": {
+    "default": { "appenders": [ "out" ], "level": "info" },
+    "ClusterWorker": { "appenders": [ "out" ], "level": "warn" },
+    "LoadCollector": { "appenders": [ "out" ], "level": "warn" },
+    "AmqpClient": { "appenders": [ "out" ], "level": "warn" },
+    "WorkingJS": { "appenders": [ "out" ], "level": "warn" },
+    "NodeManager": { "appenders": [ "out" ], "level": "warn" },
+    "QuicNode": { "appenders": [ "out" ], "level": "info" },
+    "Connection": { "appenders": [ "out" ], "level": "warn" },
+    "WorkingAgent": { "appenders": [ "out" ], "level": "warn" },
+    "Connections": { "appenders": [ "out" ], "level": "warn" },
+    "InternalConnectionRouter": { "appenders": [ "out" ], "level": "warn" },
+    "QuicConnection": { "appenders": [ "out" ], "level": "warn" },
+    "QuicTransportServer": { "appenders": [ "out" ], "level": "warn" },
+    "QuicTransportStreamPipeline": { "appenders": [ "out" ], "level": "warn" }
   }
 }

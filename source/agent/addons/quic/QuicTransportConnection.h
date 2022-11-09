@@ -18,7 +18,7 @@
 #include "QuicTransportStream.h"
 #include "owt/quic/web_transport_session_interface.h"
 
-class QuicTransportConnection : public Nan::ObjectWrap, public owt::quic::WebTransportSessionInterface::Visitor, QuicTransportStream::Visitor {
+class QuicTransportConnection : public owt_base::FrameDestination, public NanFrameNode, public owt::quic::WebTransportSessionInterface::Visitor, QuicTransportStream::Visitor {
     DECLARE_LOGGER();
 
 public:
@@ -36,15 +36,27 @@ public:
     static NAN_MODULE_INIT(init);
     static NAN_METHOD(newInstance);
     static NAN_METHOD(createBidirectionalStream);
+    // Close a WebTransport session, take an optional argument of WebTransportCloseInfo defined in https://w3c.github.io/webtransport/#web-transport-close-info.
+    static NAN_METHOD(close);
     static NAUV_WORK_CB(onStreamCallback);
+    static NAUV_WORK_CB(onCloseCallback);
 
     static Nan::Persistent<v8::Function> s_constructor;
+
+    // Overrides owt_base::FrameDestination.
+    void onFrame(const owt_base::Frame&) override;
+    void onVideoSourceChanged() override;
+
+    // Overrides NanFrameNode.
+    owt_base::FrameSource* FrameSource() override { return nullptr; }
+    owt_base::FrameDestination* FrameDestination() override { return this; }
 
 protected:
     // Overrides owt::quic::WebTransportSessionInterface::Visitor.
     void OnIncomingStream(owt::quic::WebTransportStreamInterface*) override;
     void OnCanCreateNewOutgoingStream(bool unidirectional) override { }
-    void OnConnectionClosed() override { }
+    void OnConnectionClosed() override;
+    void OnDatagramReceived(const uint8_t* data, size_t length) override;
 
     // Overrides QuicTransportStream::Visitor.
     void onEnded() override;
@@ -60,6 +72,7 @@ private:
     uv_async_t m_asyncOnStream;
     std::mutex m_streamQueueMutex;
     std::queue<owt::quic::WebTransportStreamInterface*> m_streamsToBeNotified;
+    uv_async_t m_asyncOnClose;
 };
 
 #endif

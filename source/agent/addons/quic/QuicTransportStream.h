@@ -40,8 +40,8 @@ public:
     // TODO: Make this as an async method when it's supported.
     static NAN_METHOD(readTrackId);
 
-    static NAN_GETTER(isMediaGetter);
-    static NAN_SETTER(isMediaSetter);
+    static NAN_GETTER(trackKindGetter);
+    static NAN_SETTER(trackKindSetter);
     static NAN_GETTER(onDataGetter);
     static NAN_SETTER(onDataSetter);
 
@@ -98,8 +98,9 @@ private:
     uint8_t* m_buffer;
     size_t m_bufferSize;
 
-    // Indicates whether this is a media stream. If this is not a media stream, it can only be piped to another QUIC agent.
-    bool m_isMedia;
+    // Indicates the kind of this stream, could be 'audio', 'video', 'data'. If this is not a data track, it can only be piped to another QUIC agent.
+    std::string m_trackKind;
+    owt_base::FrameFormat m_frameFormat;
     Nan::Persistent<v8::Value> m_onDataCallback;
 
     size_t m_readingFrameSize;
@@ -107,6 +108,8 @@ private:
     uint8_t* m_frameSizeArray;
     size_t m_currentFrameSize;
     size_t m_receivedFrameOffset;
+    // TODO: Using wall clock timestamps seems not working. Using an increasing sequence instead. Fix it later.
+    uint32_t m_audioTimeStamp;
 
     uv_async_t m_asyncOnContentSessionId;
     uv_async_t m_asyncOnTrackId;
