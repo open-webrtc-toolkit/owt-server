@@ -280,9 +280,6 @@ var Client = function(clientId, sigConnection, portal, version) {
     that.connection.close(false);
     that.connection = sigConnection;
     listenAt(that.connection.socket);
-    if (that.keepSignalFormat) {
-      updateMessageHandler(that.connection.socket);
-    }
     return Promise.resolve('ok');
   };
 

@@ -73,7 +73,7 @@ app.options('*', function(req, res) {
 });
 
 // Only following paths need authentication.
-var authPaths = ['/v1/rooms*', '/v1.1/rooms*', '/services*', '/v1/cluster*', '/v1.1/cluster*'];
+var authPaths = ['/v1/rooms*', '/v1.1/rooms*', '/services*', '/v1.1/stream-engine*'];
 app.get(authPaths, serverAuthenticator.authenticate);
 app.post(authPaths, serverAuthenticator.authenticate);
 app.delete(authPaths, serverAuthenticator.authenticate);

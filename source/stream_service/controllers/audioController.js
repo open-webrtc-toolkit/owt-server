@@ -15,6 +15,20 @@ function AudioSession(config, direction) {
   return session;
 }
 
+function audioFormatStr(format) {
+  if (!format || !format.codec) {
+    return null;
+  }
+  let str = format.codec;
+  if (format.sampleRate) {
+    str += '_' + format.sampleRate;
+  }
+  if (format.channelNum) {
+    str += '_' + format.channelNum;
+  }
+  return str;
+}
+
 /* Events
  * 'session-established': (id, Publication|Subscription)
  * 'session-updated': (id, Publication|Subscription)
@@ -89,7 +103,7 @@ class AudioController extends TypeController {
         // Create publication for active audio streams after return
         process.nextTick(() => {
           for (const streamId of selectorConfig.activeStreamIds) {
-            const publication = new Publication(output.id, 'audio', sessionConfig);
+            const publication = new Publication(output.id, 'audio', sessionConfig.info);
             publication.domain = audioConfig.domain;
             publication.locality = locality;
             const audioTrack = {id: streamId, format: {codec: 'opus'}};
@@ -171,14 +185,14 @@ class AudioController extends TypeController {
       // Generate audio stream for mixer/transcoder
       const format = sessionConfig.media?.audio?.format;
       const participant = (processor.type === 'atranscoder') ?
-          fomrat.codec : sessionConfig.participant;
+        format.codec : sessionConfig.participant;
       // output = "streamId"
       const outputId = await this.makeRPC(processor.locality.node, 'generate',
-          [participant, format.codec]);
+          [participant, audioFormatStr(format)]);
       sessionConfig.id = outputId;
       this.sessions.set(outputId, session);
       // Create publication
-      const publication = new Publication(outputId, 'audio', sessionConfig);
+      const publication = new Publication(outputId, 'audio', sessionConfig.info);
       publication.domain = processor.domain;
       publication.locality = processor.locality;
       const audioTrack = Object.assign({id: outputId}, sessionConfig.media.audio);
@@ -194,16 +208,13 @@ class AudioController extends TypeController {
       const inputConfig = {
         controller: this.selfId,
         publisher: sessionConfig.info?.owner || 'common',
-        audio: {codec: sessionConfig.media?.audio?.format?.codec},
+        audio: {codec: audioFormatStr(sessionConfig.media?.audio?.format)},
       };
       await this.makeRPC(processor.locality.node, 'publish',
           [inputId, 'internal', inputConfig]);
       this.sessions.set(inputId, session);
       // Create subscription
-      const subInfo = {
-        processor: sessionConfig.processor,
-      };
-      const subscription = new Subscription(inputId, 'audio', sessionConfig);
+      const subscription = new Subscription(inputId, 'audio', sessionConfig.info);
       subscription.domain = processor.domain;
       subscription.locality = processor.locality;
       const audioTrack = Object.assign({id: inputId}, sessionConfig.media.audio);

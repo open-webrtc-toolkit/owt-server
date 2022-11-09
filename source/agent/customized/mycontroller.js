@@ -5,28 +5,13 @@
 'use strict';
 
 const log = require('./logger').logger.getLogger('MyController');
-const {DomainHandler, RemoteDomainHandler} = require('./domainHandler');
+const {Conference} = require('./conferenceLite');
 
-const STREAM_ENGINE_ID = 'stream-service';
-
-class MyController {
-
-  constructor(rpcId, rpcClient) {
-    this.rpcId = rpcId;
-    this.domain = null;
-    // id => JoinData
-    this.clients = new Map();
-    // id => count
-    this.portals = new Map();
-    // id => stream
-    this.streams = new Map();
-  }
-}
 
 function RPCInterface(rpcClient, rpcID) {
-  const controller = new DomainHandler();
+  const controller = new Conference(rpcClient, rpcID);
   const API = {};
-  for (const method of RemoteDomainHandler.supportedMethods) {
+  for (const method of Conference.supportedMethods) {
     API[method] = function (req, callback) {
       controller[method](req).then((ret) => {
         callback('callback', ret ? ret : 'ok');

@@ -6,11 +6,14 @@
 
 const {randomUUID} = require('crypto');
 const log = require('./logger').logger.getLogger('DomainHandler');
-const {Publication, Subscription, Processor} = require('./session');
 
 const FORMAT_PREFERENCE = {
-  audio: {optional: [{codec: 'opus'}]},
-  video: {optional: [{codec: 'vp8'}, {codec: 'h264'}]},
+  audio: {optional: [{codec: 'opus', sampleRate: 48000, channelNum: 2}]},
+  video: {optional: [
+    {codec: 'vp8'},
+    {codec: 'h264', profile: 'CB'},
+    {codec: 'h264', profile: 'B'}
+  ]},
 };
 
 // Up level controller for certain domain streams
@@ -37,26 +40,11 @@ class DomainHandler {
     if (this.participants.has(req.id)) {
       throw new Error('Duplicate join ID');
     }
-    // Build join response
-    const response = {
-      permission: {},
-      room: {
-        id: this.domain,
-        participants: [],
-        streams: [],
-      },
-    };
-    for (const [id, ppt] of this.participants) {
-      response.room.participants.push(ppt);
-    }
-    for (const [id, st] of this.streams) {
-      response.room.streams.push(st.toSignalingFormat());
-    }
     req.notifying = true;
     this.participants.set(req.id, req);
     return {
       participant: req,
-      response,
+      streams: [],
     };
   }
 
@@ -135,7 +123,7 @@ class DomainHandler {
     if (req.type === 'publication') {
       const pub = req.data;
       if (req.status === 'add') {
-        this.streams.set(pub.id, Publication.create(pub));
+        this.streams.set(pub.id, pub);
       } else if (req.status === 'remove') {
         this.streams.delete(pub.id);
       }

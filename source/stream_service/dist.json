@@ -4,7 +4,6 @@
     "common": {
         "package": "package.json",
         "files": [
-            "session.js",
             "streamService.js",
             "package.json",
             "log4js_configuration.json",

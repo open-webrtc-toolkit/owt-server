@@ -22,27 +22,27 @@ router.delete('/rooms/:room/streams/:stream', streamsResource.delete);
 router.post('/rooms/:room/streaming-ins', streamsResource.addStreamingIn);//FIXME: Validation on body.type === 'streaming' is needed.
 router.delete('/rooms/:room/streaming-ins/:stream', streamsResource.delete);
 
-// Cluster
-router.post('/cluster/tokens', tokensResource.create);
+// stream-engine
+router.post('/stream-engine/tokens', tokensResource.create);
 
-router.get('/cluster/publications', publicationsResource.getList);
-router.get('/cluster/publications/:publication', publicationsResource.get);
-router.post('/cluster/publications', publicationsResource.add);
-router.patch('/cluster/publications/:publication', publicationsResource.patch);
-router.delete('/cluster/publications/:publication', publicationsResource.delete);
+router.get('/stream-engine/publications', publicationsResource.getList);
+router.get('/stream-engine/publications/:publication', publicationsResource.get);
+router.post('/stream-engine/publications', publicationsResource.add);
+router.patch('/stream-engine/publications/:publication', publicationsResource.patch);
+router.delete('/stream-engine/publications/:publication', publicationsResource.delete);
 
-router.get('/cluster/subscriptions', subscriptionsResource.getList);
-router.get('/cluster/subscriptions/:subscription', subscriptionsResource.get);
-router.post('/cluster/subscriptions', subscriptionsResource.add);
-router.patch('/cluster/subscriptions/:subscription', subscriptionsResource.patch);
-router.delete('/cluster/subscriptions/:subscription', subscriptionsResource.delete);
+router.get('/stream-engine/subscriptions', subscriptionsResource.getList);
+router.get('/stream-engine/subscriptions/:subscription', subscriptionsResource.get);
+router.post('/stream-engine/subscriptions', subscriptionsResource.add);
+router.patch('/stream-engine/subscriptions/:subscription', subscriptionsResource.patch);
+router.delete('/stream-engine/subscriptions/:subscription', subscriptionsResource.delete);
 
-router.get('/cluster/nodes', publicationsResource.getNodes);
+router.get('/stream-engine/nodes', publicationsResource.getNodes);
 
-router.get('/cluster/processors', processorsResource.getList);
-router.get('/cluster/processors/:processors', processorsResource.get);
-router.post('/cluster/processors', processorsResource.add);
-router.delete('/cluster/processors/:processor', processorsResource.delete);
+router.get('/stream-engine/processors', processorsResource.getList);
+router.get('/stream-engine/processors/:processors', processorsResource.get);
+router.post('/stream-engine/processors', processorsResource.add);
+router.delete('/stream-engine/processors/:processor', processorsResource.delete);
 
 // Same as previous version
 router.use(routerV1);

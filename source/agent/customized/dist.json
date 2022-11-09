@@ -5,11 +5,11 @@
         "package": "package.json",
         "files": [
             "mycontroller.js",
+            "conferenceLite.js",
+            "log4js_configuration.json",
             "../conference/configLoader.js",
             "../conference/agent.toml",
-            "../conference/log4js_configuration.json",
-            "../../stream_service/session.js",
-            "../../stream_service/domainHandler.js",
+            "../../stream_service/stateTypes.js",
             "../nodeManager.js",
             "../workingNode.js",
             "../index.js",
@@ -22,7 +22,12 @@
             "../../common/makeRPC.js",
             "../../common/rpcChannel.js",
             "../../../scripts/release/initauth.js"
-        ]
+        ],
+        "folders": {
+            "data_access": [
+                "../../data_access/*"
+            ]
+        }
     },
     "debug": {
     }

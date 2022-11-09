@@ -4,6 +4,9 @@
   "dependencies": {
     "amqplib": "^0.7.0",
     "log4js": "^6.4.0",
+    "lodash": "^4.17.11",
+    "mongoose": "^5.13.15",
+    "fraction.js": "*",
     "node-getopt": "*",
     "toml": "*",
     "uuid": "^8.0.0"

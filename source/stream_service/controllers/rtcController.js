@@ -169,7 +169,8 @@ class RtcController extends TypeController {
     // Make RPC call
     const rpcNode = transport.locality.node;
     const method = direction === 'in' ? 'publish' : 'subscribe';
-    return this.makeRPC(rpcNode, method, [sessionId, 'webrtc', option]);
+    await this.makeRPC(rpcNode, method, [sessionId, 'webrtc', option]);
+    return sessionId;
   }
   /*
    * sessionId: string
@@ -236,6 +237,9 @@ class RtcController extends TypeController {
       } else {
         throw new Error(`Cannot find track for mute/unmute: ${id}`);
       }
+    } else if (config.operation === 'update') {
+      this.emit('session-updated', config.id,
+        {type: 'update', data: Subscription.from(config.data)});
     } else {
       throw new Error(`Operation not supported: ${config.operation}`);
     }

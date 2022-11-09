@@ -15,6 +15,17 @@ function VideoSession(config, direction) {
   return session;
 }
 
+function videoFormatStr(format) {
+  if (!format || !format.codec) {
+    return null;
+  }
+  let str = format.codec;
+  if (format.profile) {
+    str += '_' + format.profile;
+  }
+  return str;
+}
+
 /* Events
  * 'session-established': (id, Publication|Subscription)
  * 'session-updated': (id, Publication|Subscription)
@@ -131,6 +142,7 @@ class VideoController extends TypeController {
   }
    */
   async createSession(direction, sessionConfig) {
+    log.debug('Create session:', direction, sessionConfig);
     const processor = this.processors.get(sessionConfig.processor);
     if (!processor) {
       log.info('create session: invalid processor ID');
@@ -141,46 +153,51 @@ class VideoController extends TypeController {
     if (direction === 'in') {
       // Generate video stream for mixer/transcoder
       const setting = sessionConfig.media?.video;
+      const format = setting.format || 'unspecified';
       const {
-        format, resolution, framerate, bitrate, keyFrameInterval,
-      } = setting;
+        resolution = 'unspecified',
+        framerate = 'unspecified',
+        bitrate = 'unspecified',
+        keyFrameInterval = 'unspecified'
+      } = (setting.parameters || {});
       // output = {id, resolution, framerate, bitrate, keyFrameInterval}
       const output = await this.makeRPC(processor.locality.node, 'generate',
-          [format.codec, resolution, framerate, bitrate, keyFrameInterval]);
+          [videoFormatStr(format), resolution, framerate, bitrate, keyFrameInterval]);
       sessionConfig.id = output.id;
       this.sessions.set(output.id, session);
       // Create publication
-      const pubInfo = {
-        processor: sessionConfig.processor,
-      };
-      const publication = new Publication(output.id, 'video', sessionConfig);
+      const publication = new Publication(output.id, 'video', sessionConfig.info);
       publication.domain =  processor.domain;
       publication.locality = processor.locality;
+      publication.participant = sessionConfig.participant;
       const videoTrack = Object.assign({id: output.id}, sessionConfig.media.video);
       publication.source.video.push(videoTrack);
       processor.outputs.video.push(videoTrack);
-      process.nextTick(() => {
-        this.emit('session-established', output.id, publication);
+      const ret = Promise.resolve(output.id);
+      ret.then(() => {
+        process.nextTick(() => {
+          this.emit('session-established', output.id, publication);
+        });
       });
-      return output.id;
+      return ret;
     } else {
       // Add input
       const inputId = sessionConfig.id;
       const inputConfig = {
         controller: this.selfId,
         publisher: sessionConfig.info?.owner || 'common',
-        video: {codec: sessionConfig.media?.video?.format?.codec},
+        video: {
+          codec: videoFormatStr(sessionConfig.media?.video?.format)
+        },
       };
       await this.makeRPC(processor.locality.node, 'publish',
           [inputId, 'internal', inputConfig]);
       this.sessions.set(inputId, session);
       // Create subscription
-      const subInfo = {
-        processor: sessionConfig.processor,
-      };
-      const subscription = new Subscription(inputId, 'video', sessionConfig);
+      const subscription = new Subscription(inputId, 'video', sessionConfig.info);
       subscription.domain = processor.domain;
       subscription.locality = processor.locality;
+      subscription.participant = processor.participant;
       const videoTrack = Object.assign({id: inputId}, sessionConfig.media.video);
       subscription.sink.video.push(videoTrack);
       processor.inputs.video.push(videoTrack);
