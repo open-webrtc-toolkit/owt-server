@@ -172,10 +172,10 @@ int sipua_new(struct sipua_entity **sipuap, void *endpoint, const char *sip_serv
 
     params.ep = endpoint;
     /*memcpy((void *)&params.cfg, (void *)cfg, sizeof(struct uag_cfg));*/
-    strncpy(params.sip_server, sip_server, 127);
-    strncpy(params.user_name, user_name, 63);
-    strncpy(params.password, password, 63);
-    strncpy(params.disp_name, disp_name, 63);
+    strncat(params.sip_server, sip_server, 127);
+    strncat(params.user_name, user_name, 63);
+    strncat(params.password, password, 63);
+    strncat(params.disp_name, disp_name, 63);
 
 	pthread_create(&thread, NULL, sipua_run, (void *)&params);
 	n = read(params.pfd[0], &rslt, sizeof(struct new_sipua_rslt));
@@ -276,7 +276,8 @@ void sipua_call(struct sipua_entity *sipua, sipua_bool audio, sipua_bool video, 
 	call_data = mem_zalloc(sizeof(struct sipua_call_data), NULL);
 	call_data->audio = NATURAL_BOOL(audio);
 	call_data->video = NATURAL_BOOL(video);
-	strncpy(call_data->calleeURI, calleeURI, sizeof(call_data->calleeURI));
+	memset(call_data->calleeURI, 0, sizeof(call_data->calleeURI));
+	strncat(call_data->calleeURI, calleeURI, sizeof(call_data->calleeURI) - 1);
 
 	mqueue_push(sipua->mq, SIPUA_CALL, call_data);
 	return;

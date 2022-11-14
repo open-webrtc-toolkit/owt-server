@@ -66,7 +66,7 @@ void WoogeenHandler::write(Context *ctx, std::shared_ptr<DataPacket> packet) {
         int newLen = len - 1 - totalLength + rtpHeaderLength;
         assert(newLen <= 3000);
 
-        memcpy(deliverMediaBuffer, buf, rtpHeaderLength);
+        memcpy((void*)deliverMediaBuffer, (void*)buf, rtpHeaderLength);
         // Copy payload data
         memcpy(deliverMediaBuffer + totalLength, buf + totalLength + 1, newLen - rtpHeaderLength);
         // Copy payload type
