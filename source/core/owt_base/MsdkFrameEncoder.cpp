@@ -369,8 +369,11 @@ retry:
                     , newSize
                     );
 
-            bsBuffer->Data         = (mfxU8 *)realloc(bsBuffer->Data, newSize);
-            bsBuffer->MaxLength    = newSize;
+            uint8_t* tmpBuf = (mfxU8 *)realloc(bsBuffer->Data, newSize);
+            if(tmpBuf) {
+                bsBuffer->Data = (mfxU8 *)tmpBuf;
+                bsBuffer->MaxLength    = newSize;
+            }
 
             goto retry;
         }
