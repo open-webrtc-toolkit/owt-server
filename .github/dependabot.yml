@@ -2,6 +2,10 @@ version: 2
 updates:
 
   - package-ecosystem: "npm"
-    directory: "/"
+    directory: "/source/agent/addons/quic/test"
+    schedule:
+      interval: "monthly"
+  - package-ecosystem: "npm"
+    directory: "/source/agent/quic"
     schedule:
       interval: "monthly"
