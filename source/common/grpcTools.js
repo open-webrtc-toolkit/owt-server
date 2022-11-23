@@ -24,16 +24,31 @@ const notificationTypes = {
 // Check SSL variables
 let useSsl = !!process.env['OWT_GRPC_SSL'];
 let rootCert;
-let privKey;
-let certChain;
+let serverCert, serverKey;
+let clientCert, clientKey;
 if (useSsl) {
+  const {execSync} = require('child_process');
   const fs = require('fs');
+  let cipher;
   try {
-    rootCert = fs.readFileSync(process.env['OWT_GRPC_ROOT_CERT']);
-    privKey = fs.readFileSync(process.env['OWT_GRPC_PRIV_KEY']);
-    certChain = fs.readFileSync(process.env['OWT_GRPC_CERT_CHAIN']);
+    cipher = require('./cipher');
   } catch (e) {
-    console.log('Failed to load SSL files for GRPC:', e);
+    cipher = require('../cipher');
+  }
+  try {
+    const authConfig = cipher.unlockSync(cipher.k, cipher.astore);
+    const execStdio = [null, null, 'ignore'];
+    rootCert = fs.readFileSync(process.env['OWT_GRPC_ROOT_CERT']);
+    serverCert = fs.readFileSync(process.env['OWT_GRPC_SERVER_CERT']);
+    serverKey = execSync(
+      `openssl rsa -passin pass:${authConfig.grpc.serverPass}`+
+      ` -in ${process.env['OWT_GRPC_SERVER_KEY']}`, {stdio: execStdio});
+    clientCert = fs.readFileSync(process.env['OWT_GRPC_CLIENT_CERT']);
+    clientKey = execSync(
+      `openssl rsa -passin pass:${authConfig.grpc.clientPass}`+
+      ` -in ${process.env['OWT_GRPC_CLIENT_KEY']}`, {stdio: execStdio});
+  } catch (e) {
+    // console.log('Failed to load SSL files for GRPC:', e);
     useSsl = false;
   }
 }
@@ -57,17 +72,15 @@ function startServer(type, serviceObj, serverPort = 0) {
     });
   const pkg = grpc.loadPackageDefinition(packageDefinition)[packageName];
   const service = pkg[serviceName].service;
-
   const server = new grpc.Server({
     'grpc.keepalive_time_ms': 10000,
     'grpc.keepalive_timeout_ms': 5000
   });
   server.addService(service, serviceObj);
-
   // Start server.
-  const keyCert = {private_key: privKey, cert_chain: certChain};
+  const keyCerts = [{private_key: serverKey, cert_chain: serverCert}];
   const creds = useSsl ?
-    grpc.ServerCredentials.createSsl(rootCert, keyCert, true) :
+    grpc.ServerCredentials.createSsl(rootCert, keyCerts, false) :
     grpc.ServerCredentials.createInsecure();
   return new Promise((resolve, reject) => {
     server.bindAsync('0.0.0.0:' + serverPort, creds, (err, port) => {
@@ -101,7 +114,7 @@ function startClient(type, address) {
   const pkg = grpc.loadPackageDefinition(packageDefinition)[packageName];
   const useProxy = Number(process.env['GRPC_ARG_HTTP_PROXY']) || 0;
   const options = {'grpc.enable_http_proxy': useProxy};
-  const creds = useSsl ? grpc.credentials.createSsl(rootCert, privKey, certChain) :
+  const creds = useSsl ? grpc.credentials.createSsl(rootCert, clientKey, clientCert) :
     grpc.credentials.createInsecure();
   const client = new pkg[serviceName](address, creds, options);
   return client;

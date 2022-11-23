@@ -59,6 +59,27 @@ function unlock (password, filename, cb) {
   s.pipe(crypto.createDecipheriv(algorithm, password, iv)).pipe(unzip);
 }
 
+function lockSync (password, object, filename) {
+  const buf = Buffer.from(JSON.stringify(object), 'utf8');
+  const data = zlib.gzipSync(buf);
+  const cipher = crypto.createCipheriv(algorithm, password, iv);
+  let enc = cipher.update(data);
+  let enc2 = cipher.final();
+  enc = Buffer.concat([enc, enc2], enc.length + enc2.length) ;
+  fs.writeFileSync(filename, enc);
+}
+
+function unlockSync (password, filename) {
+  const buf = fs.readFileSync(filename);
+  // const dec = decrypt(password, fs.readFileSync(filename, {encoding: 'hex'}));
+  const decipher = crypto.createDecipheriv(algorithm, password, iv);
+  let dec = decipher.update(buf);
+  let dec2 = decipher.final();
+  dec = Buffer.concat([dec, dec2], dec.length + dec2.length);
+  const data = zlib.gunzipSync(dec);
+  return JSON.parse(data.toString());
+}
+
 module.exports = {
   encrypt: encrypt,
   decrypt: decrypt,
@@ -67,5 +88,7 @@ module.exports = {
   astore: '.owt.authstore',
   kstore: '.owt.keystore',
   lock: lock,
-  unlock: unlock
+  unlock: unlock,
+  lockSync: lockSync,
+  unlockSync: unlockSync,
 };
