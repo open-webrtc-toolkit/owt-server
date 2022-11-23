@@ -50,7 +50,7 @@ struct DataPacket {
     DataPacket(const char* data_, int length_)
         : length{ length_ }
     {
-        memcpy(data, data_, length_);
+        memcpy((void*)data, (void*)data_, length_);
     }
 
     char data[1500];
