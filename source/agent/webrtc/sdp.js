@@ -425,9 +425,12 @@ exports.getExtId = function (sdp, extUri) {
   return 0;
 };
 
-exports.filterExt = function (sdp, uri) {
+exports.filterExt = function (sdp, uri, type) {
   const sdpObj = transform.parse(sdp);
   for (const media of sdpObj.media) {
+    if (type && media.type !== type) {
+      continue;
+    }
     if (Array.isArray(media.ext)) {
       media.ext = media.ext.filter(ext => ext.uri !== uri);
     }

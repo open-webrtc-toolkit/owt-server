@@ -189,6 +189,10 @@ module.exports = function (spec, on_status, on_mediaUpdate) {
           // TODO: enable transport-cc for simulcast if bandwidth works
           message = filterExt(message, TransportSeqNumUri);
         }
+        if (audioFrameConstructor) {
+          // TODO: enable transport-cc for audio
+          message = filterExt(message, TransportSeqNumUri, 'audio');
+        }
         log.debug('Answer SDP', message);
         on_status({type: 'answer', sdp: message});
 
