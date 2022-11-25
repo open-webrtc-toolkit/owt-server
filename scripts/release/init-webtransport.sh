@@ -38,6 +38,7 @@ init_software()
     OWT_UPDATE_DONE=true
     ${ROOT}/management_api/init.sh
   fi
+  nvm install-latest-npm
 }
 
 init_auth()
