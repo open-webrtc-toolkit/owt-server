@@ -485,6 +485,9 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
         }).then(function(from_addr) {
             from = from_addr;
             log.debug('spreadStream:', stream_id, 'from:', from, 'to:', to);
+            if (to.port === 0) {
+                return Promise.reject('Internal port failure');
+            }
 
             // Publish/Subscribe internal connections
             return new Promise(function(resolve, reject) {
