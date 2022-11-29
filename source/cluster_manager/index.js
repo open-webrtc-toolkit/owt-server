@@ -58,15 +58,19 @@ function startup () {
 
     if (config.manager.enable_grpc) {
         const grpcTools = require('./grpcTools');
-        const grpcHost = config.manager.grpc_host || 'localhost';
-        const grpcPort = config.manager.grpc_port || 10080;
+        let gHostname = 'localhost';
+        let gPort = 10080;
+        if (config.manager.grpc_host) {
+            [gHostname, gPort] = config.manager.grpc_host.split(':');
+            gPort = Number(gPort) || 10080;
+        }
         const manager = new ClusterManager.ClusterManager(
             config.manager.name, id, spec);
         manager.serve();
-        grpcTools.startServer('clusterManager', manager.grpcInterface, grpcPort)
+        grpcTools.startServer('clusterManager', manager.grpcInterface, gPort)
         .then((port) => {
             // Send RPC server address
-            const rpcAddress = grpcHost + ':' + port;
+            const rpcAddress = gHostname + ':' + port;
             log.info('As gRPC server ok', rpcAddress);
         }).catch((err) => {
             log.error('Start grpc server failed:', err);
