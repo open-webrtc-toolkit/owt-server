@@ -1,5 +1,5 @@
 {
-  "name": "OWT-Server-QUIC-Agent",
+  "name": "OWT-Server-Event-Bridge",
   "version": "5.0.0",
   "dependencies": {
     "amqplib": "^0.7.0",
