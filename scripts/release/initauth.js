@@ -122,6 +122,30 @@ const updateInternal = () => new Promise((resolve, reject) => {
     });
 });
 
+const updateGKeyPass = () => new Promise((resolve, reject) => {
+  question('Update passphrase for gRPC TLS key?[yes/no]')
+    .then((answer) => {
+      answer = answer.toLowerCase();
+      if (answer !== 'y' && answer !== 'yes') {
+        resolve();
+        return;
+      }
+      question(`(${authBase}) Enter passphrase of server key: `)
+        .then((serverPass) => {
+          mutableStdout.muted = false;
+          question(`(${authBase}) Enter passphrase of client key: `)
+            .then((clientPass) => {
+              mutableStdout.muted = false;
+              saveAuth({ grpc: { serverPass, clientPass } }, authStore)
+                .then(resolve)
+                .catch(reject);
+            });
+          mutableStdout.muted = true;
+        });
+      mutableStdout.muted = true;
+    });
+});
+
 const options = {};
 const parseArgs = () => {
   if (process.argv.includes('--rabbitmq')) {
@@ -132,6 +156,9 @@ const parseArgs = () => {
   }
   if (process.argv.includes('--internal')) {
     options.internal = true;
+  }
+  if (process.argv.includes('--grpc')) {
+    options.grpc = true;
   }
   if (Object.keys(options).length === 0) {
     options.rabbit = true;
@@ -154,6 +181,11 @@ parseArgs()
   .then(() => {
     if (options.internal) {
       return updateInternal();
+    }
+  })
+  .then(() => {
+    if (options.grpc) {
+      return updateGKeyPass();
     }
   })
   .finally(() => readline.close());
