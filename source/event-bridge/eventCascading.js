@@ -7,7 +7,6 @@
 var logger = require('./logger').logger;
 var log = logger.getLogger('EventCascading');
 var quicCas = require('./quicCascading/build/Release/quicCascading.node');
-const inspector = require('event-loop-inspector')();
 
 var cf = 'leaf_cert.pem';
 var kf = 'leaf_cert.pkcs8';
@@ -95,8 +94,14 @@ var EventCascading = function(spec, rpcReq) {
     if (!sessions[clientID].streams[streamID]) {
       sessions[clientID].streams[streamID] = {};
     }
+
+    if (!sessions[clientID].cascadedRooms) {
+      sessions[clientID].cascadedRooms = {};
+    }
     sessions[clientID].streams[streamID].quicstream = quicStream;
     sessions[clientID].streams[streamID].controller = controller;
+    sessions[clientID].streams[streamID].roomid = data.room;
+    sessions[clientID].cascadedRooms[data.room] = true;
 
     if (!controllers[controller]) {
       controllers[controller] = {};
@@ -188,15 +193,15 @@ var EventCascading = function(spec, rpcReq) {
         });
     } else {
       //A new different conference request between cascaded clusters
-      if (!cascadedRooms[data.room]) {
+      if (sessions[clientID].cascadedRooms && sessions[clientID].cascadedRooms[data.room]) {
+        log.debug('Cluster already cascaded');
+        return Promise.resolve('ok');
+      } else {
         return rpcReq.getController(cluster_name, data.room)
                 .then(function(controller) {
                   //Create a new quic stream for the new conference to cascading room events
                   createQuicStream(controller, clientID, data);
                 });
-      } else {
-        log.debug('Cluster already cascaded');
-        return Promise.resolve('ok');
       }
     }
   }
@@ -221,6 +226,10 @@ var EventCascading = function(spec, rpcReq) {
           sessions[sessionId].streams = {};
         }
 
+        if (!sessions[sessionId].cascadedRooms) {
+          sessions[sessionId].cascadedRooms = {};
+        }
+
         if (!sessions[sessionId].streams[streamId]) {
           sessions[sessionId].streams[streamId] = {};
         }
@@ -236,6 +245,8 @@ var EventCascading = function(spec, rpcReq) {
             .then(function(controller) {
 
               sessions[sessionId].streams[streamId].controller = controller;
+              sessions[sessionId].streams[streamId].roomid = event.room;
+              sessions[sessionId].cascadedRooms[event.room] = true;
 
               if (!controllers[controller]) {
                 controllers[controller] = {};
@@ -262,12 +273,14 @@ var EventCascading = function(spec, rpcReq) {
 
       session.onClosedStream((closedStreamId) => {
         log.info("server stream:", closedStreamId, " is closed");
-          delete controllers[sessions[session.id].streams[closedStreamId].controller][session.dest];
           if (sessions[sessionId] && sessions[session.id].streams[closedStreamId]) {
+            delete controllers[sessions[session.id].streams[closedStreamId].controller][session.dest];
             var event = {
               type: 'onCascadingDisconnected'
             }
             rpcReq.handleCascadingEvents(sessions[session.id].streams[closedStreamId].controller, self_rpc_id, sessions[session.id].target, event);
+            var roomid = sessions[session.id].streams[closedStreamId].roomid;
+            sessions[session.id].cascadedRooms[roomid] = false;
             delete sessions[session.id].streams[closedStreamId];
           }          
       })
@@ -304,6 +317,25 @@ var EventCascading = function(spec, rpcReq) {
     }).then((result) => {
       server.stop();
       return Promise.resolve('ok');
+    })
+  }
+
+  that.onFaultDetected = function (message) {
+    log.info("onFaultDetected:", message);
+
+    return new Promise((resolve, reject) => {
+      for (var item in sessions) {
+        for (var id in sessions[item].streams) {
+          if ((message.type === 'node' && message.id === sessions[item].streams[id].controller) || (message.type === 'worker' && sessions[item].streams[id].controller.startsWith(message.id))) {
+              log.error('Fault detected on controller (type:', message.type, 'id:', message.id, ')' , 'and remove it');
+              sessions[item].streams[id].quicstream.close();
+              var roomid = sessions[item].streams[id].roomid;
+              sessions[item].cascadedRooms[roomid] = false;
+              delete sessions[item].streams[id];
+          }
+        }
+      }
+      return resolve('ok');
     })
   }
 

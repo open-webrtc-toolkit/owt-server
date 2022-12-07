@@ -48,6 +48,7 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
     //Map OWT internal connections with quic streams
     let connections = {};
     let server;
+    let connectionids = {};
     var cf = 'leaf_cert.pem';
     var kf = 'leaf_cert.pkcs8';
     const clusterName = global && global.config && global.config.cluster ?
@@ -293,17 +294,15 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
     };
 
     that.unpublish = function (connectionId, callback) {
-        log.debug('unpublish, connectionId:', connectionId);
-        var conn = router.getConnection(connectionId);
-        router.removeConnection(connectionId).then(function(ok) {
+        log.debug('unpublish, connectionId:', connectionId, " connectionids:", connectionids);
+        var conn = router.getConnection(connectionids[connectionId]);
+        router.removeConnection(connectionids[connectionId]).then(function(ok) {
             if (conn) {
                 conn.close();
             }
             callback('callback', 'ok');
         }, onError(callback));
-        if (publicationOptions.has(connectionId)) {
-          publicationOptions.delete(connectionId);
-        }
+        delete connectionids[connectionId];
     };
 
     that.subscribe = function (connectionId, connectionType, options, callback) {
@@ -373,13 +372,22 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
         server.stop();
         Object.keys(clusters).forEach(key => {
             log.info("close cluster:", key, " ");
-            clusters[key].quicsession.stop();
+            clusters[key].quicsession.close();
         });;
 
     };
 
     that.onFaultDetected = function (message) {
         router.onFaultDetected(message);
+        if (message.purpose === 'conference') {
+            for (var conn_id in clusters) {
+                if ((message.type === 'node' && message.id === clusters[conn_id].controller) || (message.type === 'worker' && clusters[conn_id].controller.startsWith(message.id))) {
+                    log.error('Fault detected on controller (type:', message.type, 'id:', message.id, ') of connection:', conn_id , 'and remove it');
+                    clusters[conn_id].quicsession.close();
+                    delete clusters[conn_id];
+                }
+            }
+        }
     };
 
     //Work as quic client to proactively establish quic connection with another OWT cluster
@@ -463,6 +471,9 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
                     log.info("Client stream id:", streamId, " get subscribe msg with info:", info);
                     info.options.locality = {agent: parentRpcId, node: selfRpcId};
                     var connectionId = info.options.connectionId;
+                    var str = connectionId.split('-');
+                    connectionids[str[2]] = connectionId;
+                    log.info("get connection id:", connectionId, " split str", str[2], " connectionids:", connectionids);
                     if (clusters[dest].controller) {
                         rpcReq.subscribe(clusters[dest].controller, 'admin', connectionId, info.options);
                     } else {
@@ -590,6 +601,9 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
             log.info("Server stream id:", streamId, " get subscribe msg with subscribe info:", info, " and session:", sessionId);
             info.options.locality = {agent: parentRpcId, node: selfRpcId};
             var connectionId = info.options.connectionId;
+            var str = connectionId.split('-');
+            connectionids[str[2]] = connectionId;
+            log.info("get connection id:", connectionId, " split str", str[2], " connectionids:", connectionids);
             if (clusters[dest].controller) {
                 rpcReq.subscribe(clusters[dest].controller, 'admin', connectionId, info.options);
             } else {

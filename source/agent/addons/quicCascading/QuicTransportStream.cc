@@ -60,6 +60,8 @@ QuicTransportStream::~QuicTransportStream() {
     }
     m_stream->SetVisitor(nullptr);
     delete asyncResource_;
+    delete m_stream;
+    m_stream = nullptr;
     /*delete[] m_receiveData.buffer;
     data_callback_.Reset();*/
 }
@@ -189,8 +191,7 @@ NAN_METHOD(QuicTransportStream::close)
 {
     QuicTransportStream* obj = Nan::ObjectWrap::Unwrap<QuicTransportStream>(info.Holder());
     obj->m_stream->Close();
-    delete obj->m_stream;
-    obj->m_stream = nullptr;
+    obj->m_stream->SetVisitor(nullptr);
 }
 
 NAUV_WORK_CB(QuicTransportStream::onStreamDataCallback){

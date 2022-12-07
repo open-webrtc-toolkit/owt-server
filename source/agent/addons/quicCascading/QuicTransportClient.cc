@@ -33,8 +33,11 @@ QuicTransportClient::QuicTransportClient(const char* dest_ip, int dest_port)
 
 QuicTransportClient::~QuicTransportClient() {
     ELOG_INFO("QuicTransportClient::~QuicTransportClient");
-    m_quicClient->Stop();
-    m_quicClient.reset();
+    if (m_quicClient) {
+        m_quicClient->Stop();
+        m_quicClient->SetVisitor(nullptr);
+        m_quicClient.reset();
+    }
 
     if (!uv_is_closing(reinterpret_cast<uv_handle_t*>(&m_asyncOnConnected))) {
         uv_close(reinterpret_cast<uv_handle_t*>(&m_asyncOnConnected), NULL);
@@ -127,10 +130,12 @@ NAN_METHOD(QuicTransportClient::close) {
   ELOG_DEBUG("QuicTransportClient::close");
   QuicTransportClient* obj = Nan::ObjectWrap::Unwrap<QuicTransportClient>(info.Holder());
   obj->m_quicClient->Stop();
+  obj->m_quicClient->SetVisitor(nullptr);
 
   delete obj->stream_callback_;
   delete obj->connected_callback_;
   delete obj->streamClosed_callback_;
+  obj->m_quicClient.reset();
   ELOG_DEBUG("End of QuicTransportClient::connect");
 }
 

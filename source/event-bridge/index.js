@@ -203,15 +203,9 @@ amqper.connect(config.rabbit, function () {
           log.info('bridge initializing as rpc server ok');
             amqper.asMonitor(function (data) {
               if (data.reason === 'abnormal' || data.reason === 'error' || data.reason === 'quit') {
-                if (bridge !== undefined) {
+                if (event_cascading) {
                   if (data.message.purpose === 'conference') {
-                    return bridge.getParticipantsByController(data.message.type, data.message.id)
-                      .then(function (impactedParticipants) {
-                        impactedParticipants.forEach(function(participantId) {
-                          log.error('Fault on conference controller(type:', data.message.type, 'id:', data.message.id, ') of participant', participantId, 'was detected, drop it.');
-                          //event_cascading && socketio_server.drop(participantId);
-                        });
-                      });
+                    return event_cascading.onFaultDetected(data.message);
                   }
                 }
               }

@@ -38,6 +38,8 @@ QuicTransportSession::~QuicTransportSession() {
     m_session->SetVisitor(nullptr);
     delete asyncResourceNewStream_;
     delete asyncResourceClosedStream_;
+    delete m_session;
+    m_session = NULL;
 }
 
 NAN_MODULE_INIT(QuicTransportSession::init)
@@ -112,14 +114,17 @@ NAN_METHOD(QuicTransportSession::onClosedStream) {
 }
 
 NAN_METHOD(QuicTransportSession::close) {
-    ELOG_DEBUG("QuicTransportSession::close");
+  ELOG_DEBUG("QuicTransportSession::close");
   QuicTransportSession* obj = Nan::ObjectWrap::Unwrap<QuicTransportSession>(info.Holder());
   obj->m_session->Stop();
+  obj->m_session->SetVisitor(nullptr);
   /*delete obj->asyncResource_;
   delete obj->asyncResourceStreamClosed_;*/
 
+  obj->has_stream_callback_ = false;
   delete obj->stream_callback_;
   delete obj->streamClosed_callback_;
+  ELOG_DEBUG("QuicTransportSession::close end");
 }
 
 NAUV_WORK_CB(QuicTransportSession::onNewStreamCallback){
@@ -141,7 +146,9 @@ NAUV_WORK_CB(QuicTransportSession::onNewStreamCallback){
           ELOG_DEBUG("QuicTransportSession::onNewStreamCallback call js stack");
           Local<Value> args[] = { streamObject };
 
-          obj->asyncResourceNewStream_->runInAsyncScope(Nan::GetCurrentContext()->Global(), obj->stream_callback_->GetFunction(), 1, args);
+          if (obj->stream_callback_) {
+            obj->asyncResourceNewStream_->runInAsyncScope(Nan::GetCurrentContext()->Global(), obj->stream_callback_->GetFunction(), 1, args);
+          }
           obj->stream_messages.pop();
       }
     }
@@ -158,7 +165,7 @@ NAUV_WORK_CB(QuicTransportSession::onClosedStreamCallback){
 
     if (obj->has_streamClosed_callback_) {
       ELOG_INFO("object has stream callback");
-      //boost::mutex::scoped_lock lock(obj->mutex);
+      boost::mutex::scoped_lock lock(obj->mutex);
       while (!obj->streamclosed_messages.empty()) {
           ELOG_INFO("streamclosed_messages is not empty");
           //auto streamid = obj->streamclosed_messages.front();
@@ -166,7 +173,9 @@ NAUV_WORK_CB(QuicTransportSession::onClosedStreamCallback){
           //Local<Value> args[] = { streamObject };
           Local<Value> args[] = { Nan::New(obj->streamclosed_messages.front()) };
 
-          obj->asyncResourceClosedStream_->runInAsyncScope(Nan::GetCurrentContext()->Global(), obj->streamClosed_callback_->GetFunction(), 1, args);
+          if (obj->streamClosed_callback_) {
+            obj->asyncResourceClosedStream_->runInAsyncScope(Nan::GetCurrentContext()->Global(), obj->streamClosed_callback_->GetFunction(), 1, args);
+          }
           obj->streamclosed_messages.pop();
       }
     }
@@ -203,7 +212,7 @@ void QuicTransportSession::OnIncomingStream(owt::quic::QuicTransportStreamInterf
 
 void QuicTransportSession::OnStreamClosed(uint32_t id) {
     ELOG_DEBUG("QuicTransportSession stream:%d is closed\n", id);
-    //boost::mutex::scoped_lock lock(mutex);
+    boost::mutex::scoped_lock lock(mutex);
     this->streamclosed_messages.push(id);
     m_asyncOnClosedStream.data = this;
     uv_async_send(&m_asyncOnClosedStream); 

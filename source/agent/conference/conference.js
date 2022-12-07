@@ -626,7 +626,7 @@ var Conference = function (rpcClient, selfRpcId) {
       var left_user = participant.getInfo();
       if (room_config.notifying.participantActivities) {
         sendMsg('room', 'all', 'participant', {action: 'leave', data: left_user.id});
-        !participants[participantId].cascading && sendMsgTo('cascading', {rpcId: selfRpcId}, {type: "addParticipant", data: participantId});
+        !participants[participantId].cascading && sendMsgTo('cascading', {rpcId: selfRpcId}, {type: "removeParticipant", data: participantId});
       }
       delete participants[participantId];
     }

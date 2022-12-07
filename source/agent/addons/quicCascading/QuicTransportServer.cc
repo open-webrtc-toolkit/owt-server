@@ -101,6 +101,7 @@ NAN_METHOD(QuicTransportServer::stop)
     ELOG_DEBUG("QuicTransportServer::stop");
     QuicTransportServer* obj = Nan::ObjectWrap::Unwrap<QuicTransportServer>(info.Holder());
     obj->m_quicServer->Stop();
+    obj->m_quicServer->SetVisitor(nullptr);
     ELOG_DEBUG("End of QuicTransportServer::stop");
 }
 
