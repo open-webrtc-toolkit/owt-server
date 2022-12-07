@@ -34,11 +34,18 @@ var ClusterManager = function (clusterName, selfId, spec) {
 
     var data_synchronizer;
 
+    function validateUrl(url) {
+        try {
+            new Url.URL(url);
+            return true;
+        } catch {
+            return false;
+        }
+    }
+
+    var sendRequest = validateUrl(spec.url);
+
     var send = function (method, resource, body) {
-      if (spec.url === "none") {
-        log.info("No cloud url specified");
-        return;
-      }
       log.info("send info to url:", spec.url);
       const data = JSON.stringify(body);
       var url = Url.parse(spec.url + "/" + resource);
@@ -103,8 +110,10 @@ var ClusterManager = function (clusterName, selfId, spec) {
                     capacity: purpose
                 }
             }
-            log.info("Send updateCapacity event add to cloud with data:", data);
-            send('POST', 'updateCapacity', data)
+            if (sendRequest) {
+                log.info("Send updateCapacity event add to cloud with data:", data);
+                send('POST', 'updateCapacity', data);
+            }
         }
         clusterInfo[purpose].add(worker);
         data_synchronizer && data_synchronizer({type: 'worker_join', payload: {purpose: purpose, worker: worker, info: info}});
@@ -132,8 +141,10 @@ var ClusterManager = function (clusterName, selfId, spec) {
                         capacity: purpose
                     }
                 }
-                log.info("Send updateCapacity event remove to cloud with data:", data);
-                send('POST', 'updateCapacity', data)
+                if (sendRequest) {
+                    log.info("Send updateCapacity event remove to cloud with data:", data);
+                    send('POST', 'updateCapacity', data);
+                }
             }
         }
     };
@@ -263,8 +274,10 @@ var ClusterManager = function (clusterName, selfId, spec) {
                 serviceid: info.serviceid
             }
         }
-        log.info("Send registerCluster event to cloud with data:", data);
-        send('POST', 'registerCluster', data)
+        if (sendRequest) {
+            log.info("Send registerCluster event to cloud with data:", data);
+            send('POST', 'registerCluster', data);
+        }
     };
 
     var leaveConference = function (info, on_ok) {
@@ -274,8 +287,10 @@ var ClusterManager = function (clusterName, selfId, spec) {
             region: spec.region,
             conferenceId: info
         }
-        log.info("Send conference leave event to cloud with data:", data);
-        send('POST', 'leaveConference', data)
+        if (sendRequest) {
+            log.info("Send conference leave event to cloud with data:", data);
+            send('POST', 'leaveConference', data);
+        }
     };
 
     var unregisterCluster = function () {
@@ -283,8 +298,10 @@ var ClusterManager = function (clusterName, selfId, spec) {
             clusterID: spec.clusterID,
             region: spec.region
         }
-        log.info("Send unregister cluster event to cloud with data:", data);
-        send('POST', 'unregisterCluster', data)
+        if (sendRequest) {
+            log.info("Send unregister cluster event to cloud with data:", data);
+            send('POST', 'unregisterCluster', data);
+        }
     };
 
     that.stopCluster = function () {
