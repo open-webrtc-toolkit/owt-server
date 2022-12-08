@@ -494,4 +494,104 @@ exports.notifySipPortal = function (changeType, room, callback) {
     }});
 };
 
+const getBridgeNode = (purpose, roomId, task) => {
+  return new Promise((resolve, reject) => {
+    rpc.callRpc(cluster_name, 'schedule', [purpose, task, 'preference', 30 * 1000], {callback: function (result) {
+        if (result === 'timeout' || result === 'error') {
+            reject('Error in scheduling bridge for purpose:', purpose);
+        } else {
+            rpc.callRpc(result.id, 'getNode', [{room:roomId, task:task}], {callback: function (result) {
+                if (result === 'timeout' || result === 'error') {
+                    reject('Error in scheduling media bridge node');
+                } else {
+                    resolve(result);
+                }
+            }});
+        }
+    }});
+  });
+};
+
+const getBridgeInfo = (purpose, roomId, task) => {
+  if (purpose === "mediabridge") {
+    return getBridgeNode(purpose, roomId, task)
+    .then((result) => {
+      return new Promise((resolve, reject) => {
+        rpc.callRpc(result, 'getInfo', undefined, {callback: function (result) {
+            if (result === 'timeout' || result === 'error') {
+                reject('Error in getting media bridge info');
+            } else {
+                resolve(result);
+            }
+        }});
+      });
+    })
+  } else {
+    return new Promise((resolve, reject) => {
+      rpc.callRpc(cluster_name, 'schedule', [purpose, task, 'preference', 30 * 1000], {callback: function (result) {
+          if (result === 'timeout' || result === 'error') {
+              reject('Error in scheduling bridge for purpose:', purpose);
+          } else {
+              resolve(result);
+          }
+      }});
+    });
+  }
+};
+
+exports.startCascading = function (pubReq, callback) {
+  var roomId = pubReq.room;
+  return validateId('Room ID', roomId)
+    .then((ok) => {
+      return validateReq('cascading-req', pubReq);
+    }).then((ok) => {
+      return getBridgeInfo("eventbridge", roomId, pubReq.targetCluster);
+    }).then((info) => {
+      return new Promise((resolve, reject) => {
+        rpc.callRpc(info.id, 'startCascading', [pubReq], {callback: function (result) {
+          if (result === 'error' || result === 'timeout') {
+            reject('error');
+          } else {
+            resolve(result);
+          }
+        }}, 90 * 1000);
+      });
+    }).then((ok) => {
+      return getBridgeNode("mediabridge",roomId, pubReq.targetCluster);
+    }).then((bridge) => {
+      rpc.callRpc(bridge, 'startCascading', [pubReq], {callback: function (result) {
+        if (result === 'error' || result === 'timeout') {
+          callback('error');
+        } else {
+          callback(result);
+        }
+      }}, 90 * 1000);
+    })
+    .catch((err) => {
+      callback('error');
+    });
+}
+
+exports.getBridges = function (info, callback) {
+  var bridges = {};
+  return validateId('Room ID', info.room)
+    .then((ok) => {
+      return getBridgeInfo("eventbridge", info.room, info.targetCluster);
+    }).then((bridge) => {
+      bridges.eventbridgeip = bridge.info.ip;
+      bridges.eventbridgeport = bridge.info.port;
+      return Promise.resolve('ok');
+    }).then((ok) => {
+      return getBridgeInfo("mediabridge", info.room, info.targetCluster);
+    }).then((bridge) => {
+      bridges.mediabridgeip = bridge.ip;
+      bridges.mediabridgeport = bridge.port;
+      callback(bridges);
+      return Promise.resolve('ok');
+    })
+    .catch((err) => {
+      callback('error');
+    });
+}
+
 

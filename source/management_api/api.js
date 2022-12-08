@@ -32,6 +32,7 @@ var logger = require('./logger').logger;
 var log = logger.getLogger('ManagementServer');
 var fs = require('fs');
 var toml = require('toml');
+var amqper = require('./amqpClient')();
 
 try {
   global.config = toml.parse(fs.readFileSync('./management_api.toml'));
@@ -42,6 +43,7 @@ try {
 
 var e = require('./errors');
 var rpc = require('./rpc/rpc');
+var cluster_name = ((global.config || {}).cluster || {}).name || 'owt-cluster';
 
 var express = require('express');
 var bodyParser = require('body-parser');
@@ -50,6 +52,7 @@ var app = express();
 var serverAuthenticator = require('./auth/serverAuthenticator');
 var servicesResource = require('./resource/servicesResource');
 var serviceResource = require('./resource/serviceResource');
+var cipher = require('./cipher');
 
 // parse application/x-www-form-urlencoded
 app.use(bodyParser.urlencoded({ extended: true }))
@@ -117,6 +120,54 @@ var cluster = require("cluster");
 var serverPort = serverConfig.port || 3000;
 var numCPUs = serverConfig.numberOfProcess || 1;
 
+var ip_address;
+(function getPublicIP() {
+  var BINDED_INTERFACE_NAME = serverConfig.networkInterface;
+  var interfaces = require('os').networkInterfaces(),
+    addresses = [],
+    k,
+    k2,
+    address;
+
+  for (k in interfaces) {
+    if (interfaces.hasOwnProperty(k)) {
+      for (k2 in interfaces[k]) {
+        if (interfaces[k].hasOwnProperty(k2)) {
+          address = interfaces[k][k2];
+          if (address.family === 'IPv4' && !address.internal) {
+            if (k === BINDED_INTERFACE_NAME || !BINDED_INTERFACE_NAME) {
+              addresses.push(address.address);
+            }
+          }
+          if (address.family === 'IPv6' && !address.internal) {
+            if (k === BINDED_INTERFACE_NAME || !BINDED_INTERFACE_NAME) {
+              addresses.push('[' + address.address + ']');
+            }
+          }
+        }
+      }
+    }
+  }
+
+  if (serverConfig.hostname === '' || serverConfig.hostname === undefined) {
+    if (serverConfig.ip_address === '' || serverConfig.ip_address === undefined){
+      ip_address = addresses[0];
+    } else {
+      ip_address = serverConfig.ip_address;
+    }
+  } else {
+    ip_address = serverConfig.hostname;
+  }
+
+})();
+
+var url;
+if (serverConfig.ssl === false) {
+    url = 'http://' + ip_address + ':' + serverPort;
+} else {
+    url = 'https://' + ip_address + ':' + serverPort;
+}
+
 if (cluster.isMaster) {
     // Master Process
 
@@ -126,6 +177,63 @@ if (cluster.isMaster) {
     // there are multiple machine running server.
     var dataAccess = require('./data_access');
     dataAccess.token.genKey();
+
+    var registerInfo = undefined;
+
+    amqper.connect(global.config.rabbit, function () {
+        amqper.asRpcClient(function(rpcCli) {
+            var keepTrying = true;
+            var trySendInfo = function(attempts) {
+                if (attempts <= 0) {
+                    log.info("Send register info to cluster manager timeout");
+                    return
+                }
+                log.info("Send restful info to cluster manager:", registerInfo);
+                rpcCli.remoteCall(cluster_name, 'registerInfo', [registerInfo], { callback : function(result) {
+                    if (result === 'timeout') {
+                        if (keepTrying) {
+                            log.info('Faild to register restful server info, keep trying.');
+                            setTimeout(function() { trySendInfo(attempts - (result === 'timeout' ? 4 : 1)); }, 1000);
+                        }
+                    } else {
+                        log.info('Send register info to cluster manager succeed');
+                        keepTrying = false;
+                    }
+                } }, 1000);
+            }
+
+            if (registerInfo != undefined) {
+                trySendInfo(5);
+            } else {
+                setTimeout(function() { trySendInfo(5); }, 1000);
+            }
+        }, function(reason) {
+            log.error('Initializing as rpc client failed, reason:', reason);
+            process.exit();
+      });
+    }, function(reason) {
+        log.error('Connect to rabbitMQ server failed, reason:', reason);
+        process.exit();
+    });
+
+    dataAccess.service.list(function (err, sers) {
+        if (err) {
+            log.warn('Failed to get service:', err.message);
+        } else {
+            var serviceToCloud = sers.filter((t) => {return t.name === serverConfig.servicename;});
+            log.info('Representing service ', serviceToCloud);
+            var key = serviceToCloud[0].key;
+            if (serviceToCloud[0].encrypted === true) {
+                key = cipher.decrypt(cipher.k, key);
+            }
+
+            registerInfo = {
+                resturl: url,
+                servicekey: key,
+                serviceid: serviceToCloud[0]._id
+            }
+        }
+    });
 
     for (var i = 0; i < numCPUs; i++) {
         cluster.fork();

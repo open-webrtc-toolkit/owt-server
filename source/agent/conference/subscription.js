@@ -185,9 +185,17 @@ class Subscription {
           parameters: this._toCtrlParameters(track.parameters),
           from: (track.source || track.from),
         };
+
+        var trackId;
+        if (!track.id) {
+          trackId = track.source;
+        } else {
+          trackId = track.id;
+        }
+        
         return {
           owner: this.info.owner,
-          id: track.id, // Use track ID for webrtc publication
+          id: trackId, // Use track ID for webrtc publication
           locality: this.locality,
           type: this.info.type,
           media,

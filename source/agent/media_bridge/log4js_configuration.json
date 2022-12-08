@@ -1,0 +1,28 @@
+{
+  "appenders": {
+    "out":{
+      "type": "console",
+      "layout": {
+        "type": "pattern",
+        "pattern": "%d  - %p: %c - %m",
+        "replaceConsole": true
+      }
+    }
+  },
+  "categories": {
+    "default": { "appenders": [ "out" ], "level": "info" },
+    "ClusterWorker": { "appenders": [ "out" ], "level": "info" },
+    "LoadCollector": { "appenders": [ "out" ], "level": "info" },
+    "AmqpClient": { "appenders": [ "out" ], "level": "info" },
+    "WorkingJS": { "appenders": [ "out" ], "level": "info" },
+    "NodeManager": { "appenders": [ "out" ], "level": "info" },
+    "QuicNode": { "appenders": [ "out" ], "level": "info" },
+    "Connection": { "appenders": [ "out" ], "level": "info" },
+    "WorkingAgent": { "appenders": [ "out" ], "level": "info" },
+    "Connections": { "appenders": [ "out" ], "level": "info" },
+    "InternalConnectionFactory": { "appenders": [ "out" ], "level": "info" },
+    "QuicConnection": { "appenders": [ "out" ], "level": "info" },
+    "QuicTransportServer": { "appenders": [ "out" ], "level": "info" },
+    "MediaBridge": { "appenders": [ "out" ], "level": "debug" }
+  }
+}

@@ -5,6 +5,9 @@ ssl = true #if use HTTPS
 port = 3000 #default: 3000, port of server
 numberOfProcess = 4 #default: 1
 enableWebTransport = false #default: false.
+hostname = "" #default: ""
+ip_address = "" #default: ""
+servicename = "sampleService" #service name used to register to cascading cloud for accessing to communicate with this cluster
 
 [cluster]
 name = "owt-cluster"

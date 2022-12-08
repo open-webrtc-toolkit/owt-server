@@ -30,6 +30,7 @@ const {
   MixedStream,
   SelectedStream,
   StreamConfigure,
+  CascadedStream
 } = require('./stream');
 
 const {
@@ -190,9 +191,29 @@ var Conference = function (rpcClient, selfRpcId) {
   var participants = {};
 
   /*
+   * Cascaded participants
+   * {ParticipantId: object(Participant)
+   * }
+   */
+  var casParticipants = {};
+
+  /*
    * {StreamId: object(Stream)}
    */
   var streams = {};
+
+  /*
+   * {StreamId: object(Stream)}
+   */
+  var casStreams = {};
+
+  var cascadingEventBridges = new Set();
+
+ /*
+ * A unique cluster ID used for cascading, the value is fetched from cluster manager
+ */
+  var clusterID;
+
 
   /*
    * {TrackId: string(StreamId)}
@@ -336,6 +357,7 @@ var Conference = function (rpcClient, selfRpcId) {
       }
     } else {
       is_initializing = true;
+      var cluster = global.config.cluster.name || 'owt-cluster';
       return dataAccess.room.config(roomId)
         .then(function(config) {
             //log.debug('initializing room:', roomId, 'got config:', JSON.stringify(config));
@@ -469,6 +491,12 @@ var Conference = function (rpcClient, selfRpcId) {
                   reject('roomController init failed. reason: ' + reason);
                 });
             });
+        }).then(() => {
+          return rpcReq.getClusterID(cluster);
+        }).then((id) => {
+          log.info("Get cluster id:", id);
+          clusterID = id;
+          return Promise.resolve('ok');
         }).catch(function(err) {
           log.error('Init room failed, reason:', err);
           is_initializing = false;
@@ -482,6 +510,7 @@ var Conference = function (rpcClient, selfRpcId) {
 
   var destroyRoom = function() {
     const doClean = () => {
+      sendMsgTo('cascading', 'destroyRoom', {type: 'destroyRoom', data: {rpcId: selfRpcId, room: room_id}});
       accessController && accessController.destroy();
       accessController = undefined;
       roomController && roomController.destroy();
@@ -491,6 +520,8 @@ var Conference = function (rpcClient, selfRpcId) {
       participants = {};
       selfCleanTimer && clearTimeout(selfCleanTimer);
       selfCleanTimer = null;
+      var cluster = global.config.cluster.name || 'owt-cluster';
+      rpcReq.leaveConference(cluster, room_id);
       room_id = undefined;
     };
 
@@ -519,7 +550,16 @@ var Conference = function (rpcClient, selfRpcId) {
 
   const sendMsgTo = function(to, msg, data) {
     if (to !== 'admin') {
-      if (participants[to]) {
+      if (to === 'cascading') {
+         log.info("cascading bridges are:", cascadingEventBridges);
+        cascadingEventBridges.forEach((eventBridge) => {
+          log.info("send message to eventBridge:", eventBridge);
+          if (eventBridge) {
+            log.info("send message to eventBridge:", eventBridge);
+            rpcReq.sendMsg(eventBridge, selfRpcId, msg, data);
+          }
+        });
+      } else if (participants[to]) {
         participants[to].notify(msg, data)
           .catch(function(reason) {
             log.debug('sendMsg fail:', reason);
@@ -537,7 +577,9 @@ var Conference = function (rpcClient, selfRpcId) {
       let excludes = (to === 'others') ? [from] : [];
       let portals = new Set();
       for (let pptId in participants) {
-        portals.add(participants[pptId].getPortal());
+        if (!participants[pptId].cascading) {
+          portals.add(participants[pptId].getPortal());
+        }
       }
       portals.forEach((portal) => {
         if (portal) {
@@ -556,9 +598,13 @@ var Conference = function (rpcClient, selfRpcId) {
                                                     role: participantInfo.role,
                                                     portal: participantInfo.portal,
                                                     origin: participantInfo.origin,
+                                                    cascading: participantInfo.cascading,
                                                     permission: permission
                                                    }, rpcReq);
-    room_config.notifying.participantActivities && sendMsg(participantInfo.id, 'others', 'participant', {action: 'join', data: {id: participantInfo.id, user: participantInfo.user, role: participantInfo.role}});
+    if (room_config.notifying.participantActivities) {
+      sendMsg(participantInfo.id, 'others', 'participant', {action: 'join', data: {id: participantInfo.id, user: participantInfo.user, role: participantInfo.role}});
+      !participantInfo.cascading && sendMsgTo('cascading', {rpcId: selfRpcId}, {type: "addParticipant", data: participantInfo});
+    }
     return Promise.resolve('ok');
   };
 
@@ -578,9 +624,14 @@ var Conference = function (rpcClient, selfRpcId) {
 
       var participant = participants[participantId];
       var left_user = participant.getInfo();
+      if (room_config.notifying.participantActivities) {
+        sendMsg('room', 'all', 'participant', {action: 'leave', data: left_user.id});
+        !participants[participantId].cascading && sendMsgTo('cascading', {rpcId: selfRpcId}, {type: "removeParticipant", data: participantId});
+      }
       delete participants[participantId];
-      room_config.notifying.participantActivities && sendMsg('room', 'all', 'participant', {action: 'leave', data: left_user.id});
     }
+
+
   };
 
   const dropParticipants = function(portal) {
@@ -639,7 +690,13 @@ var Conference = function (rpcClient, selfRpcId) {
       }
     }
 
-    const fwdStream = new ForwardStream(id, media, data, info, locality);
+    var fwdStream = null;
+    if (casStreams[id]) {
+      fwdStream = new CascadedStream(id, media, data, info, locality, casStreams[id].cluster, true, casStreams[id].bridge);
+    } else {
+      fwdStream = new ForwardStream(id, media, data, info, locality);
+    }
+
     const errMsg = fwdStream.checkMediaError();
     if (errMsg) {
       return Promise.reject(errMsg);
@@ -670,8 +727,14 @@ var Conference = function (rpcClient, selfRpcId) {
           });
           if (!isReadded) {
             setTimeout(() => {
-              room_config.notifying.streamChange &&
+              if (room_config.notifying.streamChange) {
                 sendMsg('room', 'all', 'stream', {id: id, status: 'add', data: fwdStream.toPortalFormat()});
+                if (casStreams[id]) {
+                  delete casStreams[id];
+                } else {
+                  sendMsgTo('cascading', {rpcId: selfRpcId}, {type: "addStream", data: {cluster:clusterID, id: id, media: media, data: data, info: info}});
+                }
+              }
             }, 10);
           }
         } else {
@@ -693,8 +756,14 @@ var Conference = function (rpcClient, selfRpcId) {
             streams[id] = fwdStream;
             if (!isReadded) {
               setTimeout(() => {
-                room_config.notifying.streamChange &&
+                if (room_config.notifying.streamChange) {
                   sendMsg('room', 'all', 'stream', {id: id, status: 'add', data: fwdStream.toPortalFormat()});
+                  if (casStreams[id]) {
+                    delete casStreams[id];
+                  } else {
+                    sendMsgTo('cascading', {rpcId: selfRpcId}, {type: "addStream", data: {cluster:clusterID, id: id, media: media, data: data, info: info}});
+                  }
+                }
               }, 10);
             }
             resolve('ok');
@@ -709,13 +778,38 @@ var Conference = function (rpcClient, selfRpcId) {
   };
 
   const updateStreamInfo = (streamId, info) => {
-    if (!streams[streamId].isInConnecting && streams[streamId].update(info)) {
-      room_config.notifying.streamChange &&
-      sendMsg('room', 'all', 'stream', {
-        id: streamId,
-        status: 'update',
-        data: {field: '.', value: streams[streamId].toPortalFormat()}
-      });
+    if (casStreams[streamId]) {
+      log.info("update casStreams info");
+      if (casStreams[streamId].update(info)) {
+        if (room_config.notifying.streamChange) {
+          log.info("Notify stream change to local participant");
+          sendMsg('room', 'all', 'stream', {
+            id: streamId,
+            status: 'update',
+            data: {field: '.', value: casStreams[streamId].toPortalFormat()}
+          });
+        }
+      }
+    } else {
+      log.info("update local streams info");
+      if (!streams[streamId].isInConnecting && streams[streamId].update(info)) {
+        if (room_config.notifying.streamChange) {
+          sendMsg('room', 'all', 'stream', {
+            id: streamId,
+            status: 'update',
+            data: {field: '.', value: streams[streamId].toPortalFormat()}
+          });
+
+          var cascading = streams[streamId].cascading;
+          !cascading && sendMsgTo('cascading', {rpcId: selfRpcId}, {
+            type: 'updateStreamInfo',
+            data: {
+              id: streamId,
+              info: info
+            }
+          });
+        }
+      }
     }
   };
 
@@ -723,10 +817,14 @@ var Conference = function (rpcClient, selfRpcId) {
     return new Promise((resolve, reject) => {
       if (streams[streamId]) {
         for (var sub_id in subscriptions) {
-          let subTrack = subscriptions[sub_id].media.tracks
-            .find(t => (t.from === streamId || trackOwners[t.from] === streamId));
-          if (subTrack) {
-            accessController && accessController.terminate(sub_id, 'out', 'Source stream loss');
+          if (subscriptions[sub_id].info.mediabridge) {
+            delete subscriptions[sub_id];
+          } else {
+            let subTrack = subscriptions[sub_id].media.tracks
+              .find(t => (t.from === streamId || trackOwners[t.from] === streamId));
+            if (subTrack) {
+              accessController && accessController.terminate(sub_id, 'out', 'Source stream loss');
+            }
           }
         }
 
@@ -737,10 +835,20 @@ var Conference = function (rpcClient, selfRpcId) {
             roomController && roomController.unpublish(streams[streamId].info.owner, pubArg.id);
           });
         }
+
+        var cascading = streams[streamId].cascading;
         delete streams[streamId];
         setTimeout(() => {
-          room_config.notifying.streamChange && sendMsg('room', 'all', 'stream', {id: streamId, status: 'remove'});
+          if (room_config.notifying.streamChange) {
+            sendMsg('room', 'all', 'stream', {id: streamId, status: 'remove'});
+            !cascading && sendMsgTo('cascading', {rpcId: selfRpcId}, {type: 'removeStream', data: streamId});
+          }
         }, 10);
+      }
+
+      if (casStreams[streamId]) {
+        delete casStreams[streamId];
+        sendMsg('room', 'all', 'stream', {id: streamId, status: 'remove'});
       }
       resolve('ok');
     });
@@ -861,8 +969,8 @@ var Conference = function (rpcClient, selfRpcId) {
       hasPublication = false,
       hasSubscription = false;
 
-    for (let k in participants) {
-      if (k !== 'admin') {
+    for (let k in participants) { 
+      if (k !== 'admin' && !k.cascading) {
         hasNonAdminParticipant = true;
         break;
       }
@@ -870,7 +978,7 @@ var Conference = function (rpcClient, selfRpcId) {
 
     if (!hasNonAdminParticipant) {
       for (let st in streams) {
-        if (streams[st].type === 'forward') {
+        if (streams[st].type === 'forward' && !streams[st].cascading) {
           hasPublication = true;
           break;
         }
@@ -943,6 +1051,12 @@ var Conference = function (rpcClient, selfRpcId) {
         for (var stream_id in streams) {
           if (!streams[stream_id].isInConnecting) {
             current_streams.push(streams[stream_id].toPortalFormat());
+          }
+        }
+
+        for (var stream_id in casStreams) {
+          if (!casStreams[stream_id].isInConnecting) {
+            current_streams.push(casStreams[stream_id].toPortalFormat());
           }
         }
 
@@ -1165,9 +1279,15 @@ var Conference = function (rpcClient, selfRpcId) {
       track = streams[trackOwners[tsId]].media.tracks
         .find(t => (t.id === tsId && t.type === type));
     }
-    if (!track && streams[tsId]) {
-      track = streams[tsId].media.tracks
+    if (!track) {
+      if (streams[tsId]) {
+        track = streams[tsId].media.tracks
         .find(t => t.type === type);
+      } else if (casStreams[tsId]) {
+        track = casStreams[tsId].media.tracks
+          .find(t => t.type === type);
+      }
+      
     }
     return track;
   };
@@ -1294,6 +1414,187 @@ var Conference = function (rpcClient, selfRpcId) {
     return true;
   };
 
+  const initiateMediaCascading = (participantId, publicationId, pubDesc, streamId) => {
+    log.info("initiateMediaCascading participantId:", participantId, " publicationId", publicationId, " pubDesc", pubDesc, " streamId:", streamId);
+    var subDesc = pubDesc;
+    subDesc.originType = subDesc.type;
+    subDesc.type = 'mediabridge';
+    subDesc.room = room_id;
+    subDesc.pubArgs = [];
+    casStreams[streamId].media.tracks.forEach(track => {
+      log.info('casstream info:', track);
+      var pubArg = {
+        id: track.id,
+        type: track.type,
+        from: streamId
+      };
+      subDesc.pubArgs.push(pubArg);
+    });
+
+    log.info("tracks:", subDesc.pubArgs);
+    var format_preference;
+    subDesc.cluster = casStreams[streamId].cluster;
+    return accessController.initiate(participantId, publicationId, 'in', participants[participantId].getOrigin(), subDesc, format_preference)
+    .then((result) => {
+      if ((subDesc.media.audio && !streams[subDesc.media.audio.from])
+         ||(subDesc.media.video && !streams[subDesc.media.video.from])) {
+        accessController.terminate(participantId, publicationId, 'Participant terminate');
+        return Promise.reject('Target audio/video stream early released');
+      }
+      streams[streamId] = casStreams[streamId];
+      delete casStreams[streamId];
+      log.info("accessController initiate result is:", result);
+      streams[streamId].locality = result;
+
+      return Promise.resolve('ok');
+    })
+    .then(() => {
+      const pubArgs = streams[streamId].toRoomCtrlPubArgs();
+
+      if (subDesc.originType === 'webrtc' || subDesc.originType === 'quic') {
+        const pubs = pubArgs.map(pubArg => new Promise((resolve, reject) => {
+          roomController && roomController.publish(
+            pubArg.owner, pubArg.id, pubArg.locality, {origin: pubArg.media.origin, media:pubArg.media, data:pubArg.data}, pubArg.type, resolve, reject);
+        }));
+        return Promise.all(pubs).then(() => {
+          log.info('roomController publish media bridge webrtc stream succeed');
+        });
+      }
+
+      // For non-webrtc stream
+      const pubArg = pubArgs[0];
+      return roomController && roomController.publish(
+        pubArg.owner, pubArg.id, pubArg.locality, {origin: pubArg.media.origin, media:pubArg.media, data:pubArg.data}, pubArg.type,
+        function() {
+          log.info('roomController publish media bridge stream succeed');
+        }, function(reason) {
+          log.info('roomController.publish failed, reason: ', (reason.message ? reason.message : reason));
+        });
+    })
+  }
+
+  const startSubscribe = (participantId, subscriptionId, subDesc, streamId, callback) => {
+    log.info("startSubscribe with type:", subDesc.type)
+    if (subDesc.type === 'sip') {
+      return addSubscription(subscriptionId, subDesc.locality, subDesc.media, subDesc.data, {owner: participantId, type: 'sip'}, subDesc.transport)
+      .then((result) => {
+        callback('callback', result);
+      })
+      .catch((e) => {
+        callback('callback', 'error', e.message ? e.message : e);
+      });
+    } else {
+      var format_preference;
+      if (subDesc.type === 'webrtc' || subDesc.type === 'quic') {
+        const controller = subDesc.type === 'webrtc' ? rtcController : quicController;
+        const rtcSubInfo = translateRtcSubIfNeeded(subDesc);
+        if (rtcSubInfo.tracks){
+          // Set formatPreference
+          rtcSubInfo.tracks.forEach(track => {
+            const streamId = streams[track.from]? track.from : trackOwners[track.from];
+            const source = getStreamTrack(track.from, track.type);
+            const formatPreference = {};
+            if (streams[streamId].type === 'forward') {
+              formatPreference.preferred = source.format;
+              source.optional && source.optional.format && (formatPreference.optional = source.optional.format);
+            } else {
+              formatPreference.optional = [source.format];
+              source.optional && source.optional.format && (formatPreference.optional = formatPreference.optional.concat(source.optional.format));
+            }
+            track.formatPreference = formatPreference;
+            log.info("startSubscribe with formatPreference:",formatPreference)
+          });
+        }
+        
+        log.info("initiateSubscription");
+        initiateSubscription(subscriptionId, subDesc, {owner: participantId, type: subDesc.type});
+        log.info("controller.initiate");
+        return controller.initiate(participantId, subscriptionId, 'out', participants[participantId].getOrigin(), rtcSubInfo)
+        .then((result) => {
+          const releasedSource = rtcSubInfo.tracks ? rtcSubInfo.tracks.find(track => {
+              const sourceStreamId = trackOwners[track.from] || track.from;
+              return !streams[sourceStreamId];
+          }) : undefined;
+          if (releasedSource) {
+            controller.terminate(participantId, subscriptionId, 'Participant terminate');
+            return Promise.reject('Target audio/video stream early released');
+          }
+          callback('callback', result);
+        })
+        .catch((e) => {
+          removeSubscription(subscriptionId);
+          callback('callback', 'error', e.message ? e.message : e);
+        });
+      }
+
+      if (subDesc.type === 'recording') {
+        var audio_codec = 'none-aac', video_codec;
+        if (subDesc.media.audio) {
+          if (subDesc.media.audio.format) {
+            audio_codec = subDesc.media.audio.format.codec;
+          } else {
+            let track = getStreamTrack(subDesc.media.audio.from, 'audio');
+            audio_codec = track.format.codec;
+          }
+
+          //FIXME: To support codecs other than those in the following list.
+          if ((audio_codec !== 'pcmu') && (audio_codec !== 'pcma') && (audio_codec !== 'opus') && (audio_codec !== 'aac')) {
+            return Promise.reject('Audio codec invalid');
+          }
+        }
+
+        if (subDesc.media.video) {
+          let track = getStreamTrack(subDesc.media.video.from, 'video');
+          video_codec = ((subDesc.media.video.format && subDesc.media.video.format.codec) || track.format.codec);
+        }
+
+        if (!subDesc.connection.container || subDesc.connection.container === 'auto') {
+          subDesc.connection.container = ((audio_codec === 'aac' && (!video_codec || (video_codec === 'h264') || (video_codec === 'h265'))) ? 'mp4' : 'mkv');
+        }
+      }
+
+      if (subDesc.type === 'streaming') {
+        if (subDesc.media.audio && !subDesc.media.audio.format) {
+          var aacFmt = room_config.mediaOut.audio.find((a) => a.codec === 'aac');
+          if (!aacFmt) {
+            return Promise.reject('Audio codec aac not enabled');
+          }
+          subDesc.media.audio.format = aacFmt;
+        }
+
+        //FIXME: To support codecs other than those in the following list.
+        if (subDesc.media.audio && (subDesc.media.audio.format.codec !== 'aac')) {
+          return Promise.reject('Audio codec invalid');
+        }
+
+        if (subDesc.media.video && !subDesc.media.video.format) {
+          subDesc.media.video.format = {codec: 'h264'};
+        }
+
+        //FIXME: To support codecs other than those in the following list.
+        if (subDesc.media.video && (subDesc.media.video.format.codec !== 'h264')) {
+          return Promise.reject('Video codec invalid');
+        }
+      }
+
+      initiateSubscription(subscriptionId, subDesc, {owner: participantId, type: subDesc.type});
+      return accessController.initiate(participantId, subscriptionId, 'out', participants[participantId].getOrigin(), subDesc, format_preference)
+      .then((result) => {
+        if ((subDesc.media.audio && !streams[subDesc.media.audio.from])
+           ||(subDesc.media.video && !streams[subDesc.media.video.from])) {
+          accessController.terminate(participantId, subscriptionId, 'Participant terminate');
+          return Promise.reject('Target audio/video stream early released');
+        }
+        
+        return Promise.resolve(result);
+      })
+      .catch((e) => {
+        removeSubscription(subscriptionId);
+        callback('callback', 'error', e.message ? e.message : e);
+      });
+    }
+  }
+
   that.subscribe = function(participantId, subscriptionId, subDesc, callback) {
     log.debug('subscribe, participantId:', participantId, 'subscriptionId:', subscriptionId, 'subDesc:', JSON.stringify(subDesc));
     if (!accessController || !roomController) {
@@ -1307,7 +1608,8 @@ var Conference = function (rpcClient, selfRpcId) {
 
     let audioTrack = null;
     let videoTrack = null;
-    if (subDesc.type === 'webrtc') {
+    let streamId = null;
+    if (subDesc.type === 'webrtc' || subDesc.type === 'mediabridge') {
       audioTrack = subDesc.media.tracks.find(t => t.type === 'audio');
       videoTrack = subDesc.media.tracks.find(t => t.type === 'video');
     } else if (subDesc.media) {
@@ -1333,8 +1635,47 @@ var Conference = function (rpcClient, selfRpcId) {
       return callback('callback', 'error', 'Target video stream does NOT satisfy:' + requestError.message);
     }
 
+    if (audioTrack) {
+      streamId = audioTrack.from;
+    } else {
+      streamId = videoTrack.from;
+    }
+
+    log.info('subscribe, streamid is:', streamId, 'streams are:', streams, 'casStreams:', casStreams);
+    if (!streams[streamId] && casStreams[streamId]) {
+      return initiateMediaCascading(participantId, streamId, subDesc, streamId, callback)
+        .then((result) => {
+          subDesc.type = subDesc.originType;
+          log.info("startSubscribe participantId:", participantId, " subscriptionId:", subscriptionId, " subDesc:", subDesc, " streamId:", streamId);
+          return startSubscribe(participantId, subscriptionId, subDesc, streamId, callback)
+            .then((result) => {
+              log.info("startSubscribe succeed with result:", result);
+              callback('callback', result);
+            })
+        })
+        .catch((e) => {
+          removeSubscription(subscriptionId);
+          callback('callback', 'error', e.message ? e.message : e);
+        });
+    }
+
     if (subDesc.type === 'sip') {
       return addSubscription(subscriptionId, subDesc.locality, subDesc.media, subDesc.data, {owner: participantId, type: 'sip'}, subDesc.transport)
+      .then((result) => {
+        callback('callback', result);
+      })
+      .catch((e) => {
+        callback('callback', 'error', e.message ? e.message : e);
+      });
+    } else if (subDesc.type === 'mediabridge') {
+      if (subDesc.originType) {
+        subDesc.media.tracks.forEach(track => { 
+          track.id = subscriptionId;
+        });
+      }
+
+      log.info("mediabridge addSubscription with media:", subDesc.media);
+      return addSubscription(subscriptionId, subDesc.locality, subDesc.media, subDesc.data, {owner: participantId, type: subDesc.originType, mediabridge: true}, subDesc.transport)
       .then((result) => {
         callback('callback', result);
       })
@@ -1527,6 +1868,10 @@ var Conference = function (rpcClient, selfRpcId) {
   };
 
   const setStreamMute = function(streamId, track, muted) {
+    if (casStreams[streamId]) {
+      return Promise.reject('Cannot mute casccaded stream');
+    }
+
     if (streams[streamId].type === 'mixed') {
       return Promise.reject('Stream is Mixed');
     }
@@ -1550,9 +1895,13 @@ var Conference = function (rpcClient, selfRpcId) {
           }
         });
         var updateFields = (track === 'av') ? ['audio.status', 'video.status'] : [track + '.status'];
-        room_config.notifying.streamChange && updateFields.forEach((fieldData) => {
-          sendMsg('room', 'all', 'stream', {status: 'update', id: streamId, data: {field: fieldData, value: status}});
-        });
+        if (room_config.notifying.streamChange) {
+          updateFields.forEach((fieldData) => {
+            sendMsg('room', 'all', 'stream', {status: 'update', id: streamId, data: {field: fieldData, value: status}});
+          });
+
+          !streams[streamId].cascading && sendMsgTo('cascading', {rpcId: selfRpcId}, {type: 'setStreamMute', data: {id: streamId, track: track, muted: muted}});
+        }
         return 'ok';
       }, function(reason) {
         log.warn('rtcController set mute failed:', reason);
@@ -1938,12 +2287,20 @@ var Conference = function (rpcClient, selfRpcId) {
             streams[activeAudioId].info.activeOwner = target.owner;
             streams[activeAudioId].info.volume = target.volume;
             //TODO: separate major and activeInput when notifying
-            room_config.notifying.streamChange && sendMsg('room', 'all', 'stream',
+            if (room_config.notifying.streamChange) {
+              sendMsg('room', 'all', 'stream',
               {
                 id: activeAudioId,
                 status: 'update',
                 data: {field: 'activeInput', value: {id: input, volume: target.volume}}
               });
+
+              !streams[streamId].cascading && sendMsgTo('cascading', {rpcId: selfRpcId},
+                {
+                  type: 'onAudioActiveness',
+                  data: {activeInputStream: activeInputStream, target: target}
+                });
+            }
           }
         }
         callback('callback', 'ok');
@@ -1961,6 +2318,11 @@ var Conference = function (rpcClient, selfRpcId) {
     for (var participant_id in participants) {
       (participant_id !== 'admin') && result.push(participants[participant_id].getDetail());
     }
+
+/*    for (var participant_id in casParticipants) {
+      result.push(casParticipants[participant_id].getDetail());
+    }*/
+
     callback('callback', result);
   };
 
@@ -2030,6 +2392,13 @@ var Conference = function (rpcClient, selfRpcId) {
         result.push(streams[stream_id].toPortalFormat());
       }
     }
+
+    for (var stream_id in casStreams) {
+      if (!casStreams[stream_id].isInConnecting) {
+        result.push(casStreams[stream_id].toPortalFormat());
+      }
+    }
+
     callback('callback', result);
   };
 
@@ -2037,6 +2406,8 @@ var Conference = function (rpcClient, selfRpcId) {
     log.debug('getStreamInfo, room_id:', room_id, 'streamId:', streamId);
     if (streams[streamId] && !streams[stream_id].isInConnecting) {
       callback('callback', streams[streamId]);
+    } else if (casStreams[streamId] && !casStreams[stream_id].isInConnecting) {
+      callback('callback', casStreams[streamId]);
     } else {
       callback('callback', 'error', 'Stream does NOT exist');
     }
@@ -2732,6 +3103,27 @@ var Conference = function (rpcClient, selfRpcId) {
     callback('callback', 'Success');
   };
 
+  var disconnectCascadingByBridge = function(bridgeId) {
+    log.info("Disconnect cascading by bridge id:", bridgeId);
+    for (var participant_id in participants) {
+      if (participants[participant_id].getPortal() === bridgeId) {
+        removeParticipant(participant_id);
+      }
+    }
+
+    for (var stream_id in streams) {
+      if (streams[stream_id].bridge === bridgeId) {
+        removeStream(stream_id);
+      }
+    }
+
+    for (var stream_id in casStreams) {
+      if (casStreams[stream_id].bridge === bridgeId) {
+        removeStream(stream_id);
+      }
+    }
+  }
+
   //This interface is for fault tolerance.
   that.onFaultDetected = function (message) {
     if (message.purpose === 'portal' || message.purpose === 'sip') {
@@ -2747,7 +3139,137 @@ var Conference = function (rpcClient, selfRpcId) {
     } else if (message.purpose === 'audio' ||
                message.purpose === 'video') {
       roomController && roomController.onFaultDetected(message.purpose, message.type, message.id);
+    } else if (message.purpose === 'eventbridge') {
+      disconnectCascadingByBridge(message.id)
     }
+  };
+
+  var addCascadingParticipants = function(bridgeId, targetCluster, participantInfo) {
+    participantInfo.cascading = targetCluster;
+    participantInfo.portal = bridgeId;
+    log.info("Add cascading participant:", participantInfo);
+    addParticipant(participantInfo, participantInfo.permission);
+  }
+
+  var addCascadingStreams = function(bridgeId, msg) {
+    log.info("Add cascading stream id:", msg.id, " data:", msg.data, " info:", msg.info, " media:", msg.media);
+    const fwdStream = new CascadedStream(msg.id, msg.media, msg.data, msg.info, null, msg.cluster, false, bridgeId);
+    const errMsg = fwdStream.checkMediaError();
+    if (errMsg) {
+      log.error(errMsg);
+      return;
+    }
+    casStreams[msg.id] = fwdStream;
+    room_config.notifying.participantActivities && sendMsg('room', 'all', 'stream', {id: msg.id, status: 'add', data: fwdStream.toPortalFormat()});
+  }
+
+  var initializeCascading = function(bridgeId, targetCluster, data) {
+    if(data.participants) {
+      for (var pid in data.participants) {
+        log.info("initialize participant:", data.participants[pid]);
+        addCascadingParticipants(bridgeId, targetCluster, data.participants[pid]);
+      }
+    }
+
+    if(data.streams) {
+      for (var sid in data.streams) {
+        log.info("initialize stream:", data.streams[sid]);
+        addCascadingStreams(bridgeId, data.streams[sid]);
+      }
+    }
+  }
+
+  var disconnectCascading = function(targetCluster) {
+    for (var participant_id in participants) {
+      if (participants[participant_id].cascading === targetCluster) {
+        removeParticipant(participant_id);
+      }
+    }
+
+    for (var stream_id in streams) {
+      if (streams[stream_id].cluster === targetCluster) {
+        removeStream(stream_id);
+      }
+    }
+
+    for (var stream_id in casStreams) {
+      if (casStreams[stream_id].cluster === targetCluster) {
+        removeStream(stream_id);
+      }
+    }
+  }
+
+  that.handleCascadingEvents = function(bridgeId, targetCluster, events, callback) {
+      log.info('Handle cascading event: ', events);
+      var result = 'ok';
+      switch (events.type) {
+      case 'addParticipant':
+        addCascadingParticipants(bridgeId, targetCluster, events.data);
+        break;
+      case 'removeParticipant':
+        removeParticipant(events.data);
+        break;
+      case 'addStream':
+        addCascadingStreams(bridgeId, events.data);
+        break;
+      case 'updateStreamInfo':
+        updateStreamInfo(events.data.id, events.data.info);
+        break;
+      case 'removeStream':
+        removeStream(events.data);
+        break;
+      case 'setStreamMute':
+        setStreamMute(events.data.id, events.data.track, events.data.muted);
+        break;
+      case 'onAudioActiveness':
+        updateAudioActiveness(events.data.activeInputStream, events.data.target)
+        break;
+      case 'initialize':
+        initializeCascading(bridgeId, targetCluster, events.data);
+        break;
+      case 'onCascadingDisconnected':
+        disconnectCascading(targetCluster);
+        break;
+      default:
+        log.info("Invalid cascading event");
+        result = 'Invalid cascading event';
+    }
+      callback('callback', result);
+  };
+
+  that.onCascadingConnected = function(bridgeId, sessionID, streamID, callback) {
+      log.debug('event bridge connected ', bridgeId, " participants", participants, " streams",streams);
+      var result = 'ok';
+      var data = {};
+      var msg = {};
+      data.participants = {};
+      data.streams = {};
+      for (var pid in participants) {
+        if (pid !== 'admin' && !participants[pid].cascading) {
+          data.participants[pid] = participants[pid].getDetail();
+          data.participants[pid].origin = participants[pid].getOrigin();
+          data.participants[pid].portal = participants[pid].getPortal();
+          log.info("participant id:", pid, " info:", data.participants[pid]);
+        }
+      }
+
+      for (var sid in streams) {
+        if (streams[sid].type !== 'mixed' && !streams[sid].cascading) {
+          if (!streams[sid].isInConnecting) {
+            data.streams[sid] = streams[sid];
+            data.streams[sid].cluster = clusterID;
+          }
+        }
+      }
+
+      msg.session = sessionID;
+      msg.stream = streamID;
+      msg.type = 'initialize';
+      msg.rpcId = selfRpcId;
+      cascadingEventBridges.add(bridgeId);
+      sendMsgTo('cascading', msg, {type: 'initialize', data: data});
+      
+      callback('callback', result);
   };
 
   return that;
@@ -2811,7 +3333,11 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
     destroy: conference.destroy,
 
     // RPC from QUIC nodes.
-    getPortal: conference.getPortal
+    getPortal: conference.getPortal,
+
+    //RPC for cluster cascading
+    handleCascadingEvents: conference.handleCascadingEvents,
+    onCascadingConnected: conference.onCascadingConnected
   };
 
   that.onFaultDetected = conference.onFaultDetected;
