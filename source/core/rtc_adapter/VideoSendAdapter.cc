@@ -157,7 +157,8 @@ private:
 
 VideoSendAdapterImpl::VideoSendAdapterImpl(
     CallOwner* owner,
-    const RtcAdapter::Config& config)
+    const RtcAdapter::Config& config,
+    webrtc::BitrateStatisticsObserver* ob)
     : m_enableDump(false)
     , m_config(config)
     , m_keyFrameArrived(false)
@@ -170,6 +171,7 @@ VideoSendAdapterImpl::VideoSendAdapterImpl(
     , m_clock(nullptr)
     , m_timeStampOffset(0)
     , m_owner(owner)
+    , m_bitrateObserver(ob)
     , m_feedbackListener(config.feedback_listener)
     , m_rtpListener(config.rtp_listener)
     , m_statsListener(config.stats_listener)
@@ -233,7 +235,9 @@ bool VideoSendAdapterImpl::init()
         //     m_transportControllerSend->packet_router());
         // configuration.paced_sender = m_pacedSender.get();
         configuration.paced_sender = m_transportControllerSend->packet_sender();
-        configuration.send_bitrate_observer = this;
+        if (m_bitrateObserver) {
+            configuration.send_bitrate_observer = m_bitrateObserver;
+        }
     }
 
     m_rtpRtcp = webrtc::RtpRtcp::Create(configuration);
@@ -474,16 +478,23 @@ void VideoSendAdapterImpl::Notify(uint32_t total_bitrate_bps,
                                   uint32_t retransmit_bitrate_bps,
                                   uint32_t ssrc)
 {
+//   if (m_ssrc == ssrc) {
+//     RTC_LOG(LS_INFO) << "total_bitrate_bps:" << total_bitrate_bps
+//                      << " retransmit_bitrate_bps:" << retransmit_bitrate_bps;
+//     m_stats.total_bitrate_bps = total_bitrate_bps;
+//     m_stats.retransmit_bitrate_bps = retransmit_bitrate_bps;
+//     if (m_owner) {
+//         m_stats.estimated_bandwidth = m_owner->estimatedBandwidth(m_ssrc);
+//     }
+//   }
+}
 
-  if (m_ssrc == ssrc) {
-    RTC_LOG(LS_INFO) << "total_bitrate_bps:" << total_bitrate_bps
-                     << " retransmit_bitrate_bps:" << retransmit_bitrate_bps;
-    m_stats.total_bitrate_bps = total_bitrate_bps;
-    m_stats.retransmit_bitrate_bps = retransmit_bitrate_bps;
+VideoSendAdapter::Stats VideoSendAdapterImpl::getStats()
+{
     if (m_owner) {
-        m_stats.estimated_bandwidth = m_owner->estimatedBandwidth();
+        m_stats.estimated_bandwidth = m_owner->estimatedBandwidth(m_ssrc);
     }
-  }
+    return m_stats;
 }
 
 } // namespace rtc_adapter

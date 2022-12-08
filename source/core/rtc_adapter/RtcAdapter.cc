@@ -47,7 +47,8 @@ static constexpr int kStartBitrateBps = 800000;
 
 class RtcAdapterImpl : public RtcAdapter,
                        public CallOwner,
-                       public webrtc::TargetTransferRateObserver {
+                       public webrtc::TargetTransferRateObserver,
+                       public webrtc::BitrateStatisticsObserver {
 public:
     RtcAdapterImpl();
     virtual ~RtcAdapterImpl();
@@ -82,17 +83,16 @@ public:
     {
         return m_transportControllerSend;
     }
-    uint32_t estimatedBandwidth() override
-    {
-        int count = m_videoSenderNumber;
-        count = count > 0 ? count : 1;
-        return m_estimatedBandwidth / count;
-    }
+    uint32_t estimatedBandwidth(uint32_t ssrc) override;
     void registerVideoSender(uint32_t ssrc) override { m_videoSenderNumber++; }
     void deregisterVideoSender(uint32_t ssrc) override { m_videoSenderNumber--; }
 
     //Implements webrtc::TargetTransferRateObjserver
     void OnTargetTransferRate(webrtc::TargetTransferRate) override;
+    //Implements webrtc::BitrateStatisticsObserver
+    void Notify(uint32_t total_bitrate_bps,
+                uint32_t retransmit_bitrate_bps,
+                uint32_t ssrc) override;
 
 private:
     void initCall();
@@ -102,7 +102,11 @@ private:
 
     // For sender
     ControllerSendPtr m_transportControllerSend = nullptr;
+    std::mutex m_bitrateMutex;
+    std::map<uint32_t, uint32_t> m_sendBitrate;
+    std::map<uint32_t, bool> m_adjustBitrate;
     uint32_t m_estimatedBandwidth = 0;
+
     std::atomic<int> m_videoSenderNumber = {0};
 };
 
@@ -174,10 +178,41 @@ void RtcAdapterImpl::initRtpTransportController()
     }
 }
 
-void RtcAdapterImpl::OnTargetTransferRate(webrtc::TargetTransferRate msg) {
-  uint32_t target_bitrate_bps = msg.target_rate.bps();
-  RTC_LOG(LS_INFO) << "OnTargetTransferRate(bps): " << target_bitrate_bps;
-  m_estimatedBandwidth = target_bitrate_bps;
+void RtcAdapterImpl::OnTargetTransferRate(webrtc::TargetTransferRate msg)
+{
+    uint32_t target_bitrate_bps = msg.target_rate.bps();
+    RTC_LOG(LS_INFO) << "OnTargetTransferRate(bps): " << target_bitrate_bps;
+    m_estimatedBandwidth = target_bitrate_bps;
+}
+
+void RtcAdapterImpl::Notify(uint32_t total_bitrate_bps,
+                            uint32_t retransmit_bitrate_bps,
+                            uint32_t ssrc)
+{
+    std::lock_guard<std::mutex> guard(m_bitrateMutex);
+    if (m_sendBitrate.count(ssrc) > 0) {
+        if (total_bitrate_bps == 0) {
+            if (retransmit_bitrate_bps == 0) {
+                m_sendBitrate.erase(ssrc);
+                m_adjustBitrate.erase(ssrc);
+            } else if (retransmit_bitrate_bps == 1) {
+                // Temporarily use this interface for adjust
+                m_adjustBitrate[ssrc] = true;
+            }
+        } else {
+            m_sendBitrate[ssrc] = total_bitrate_bps;
+        }
+    } else {
+        m_sendBitrate[ssrc] = total_bitrate_bps;
+        m_adjustBitrate[ssrc] = false;
+    }
+}
+
+uint32_t RtcAdapterImpl::estimatedBandwidth(uint32_t ssrc)
+{
+    std::lock_guard<std::mutex> guard(m_bitrateMutex);
+    uint32_t total = m_estimatedBandwidth;
+
 }
 
 VideoReceiveAdapter* RtcAdapterImpl::createVideoReceiver(const Config& config)
@@ -195,7 +230,7 @@ void RtcAdapterImpl::destoryVideoReceiver(VideoReceiveAdapter* video_recv_adapte
 VideoSendAdapter* RtcAdapterImpl::createVideoSender(const Config& config)
 {
     initRtpTransportController();
-    return new VideoSendAdapterImpl(this, config);
+    return new VideoSendAdapterImpl(this, config, this);
 }
 void RtcAdapterImpl::destoryVideoSender(VideoSendAdapter* video_send_adapter)
 {
