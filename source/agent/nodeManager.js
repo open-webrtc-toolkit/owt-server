@@ -110,8 +110,8 @@ module.exports = function (spec, spawnOptions, onNodeAbnormallyQuit, onTaskAdded
               setTimeout(() => {spawn_failed = false;}, 2000);
           //}
       });
-      child.on('message', function (message) { // currently only used for sending ready message from node to agent;
-          log.debug('message from node', id, ':', message);
+      child.on('message', function (message) { // currently only used for sending ready message from node to agent;          
+          log[message === "IMOK" ? "trace" : "debug"]('message from node', id, ':', message);
           if (message === 'READY') {
               child.READY = true;
               child.alive_count = 0;
