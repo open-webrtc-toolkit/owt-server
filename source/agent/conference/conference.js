@@ -503,11 +503,13 @@ var Conference = function (rpcClient, selfRpcId) {
                 });
             });
         }).then(() => {
-          return rpcReq.getClusterID(cluster);
-        }).then((id) => {
-          log.info("Get cluster id:", id);
-          clusterID = id;
-          return Promise.resolve('ok');
+          rpcReq.getClusterID(cluster)
+            .then((id) => {
+              log.info('Get cluster id:', id);
+              clusterID = id;
+            }).catch((e) => {
+              log.info('Failed to get cluster ID');
+            });
         }).catch(function(err) {
           log.error('Init room failed, reason:', err);
           is_initializing = false;

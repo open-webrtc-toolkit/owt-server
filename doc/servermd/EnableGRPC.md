@@ -10,7 +10,7 @@ By default, OWT[Open WebRTC Toolkit](https://github.com/open-webrtc-toolkit/owt-
 
 # 2 Enable gRPC for internal RPC
 
-In OWT server package, you can turn on gRPC option by updating configuration files. This section in troduces the configuration settings for internal gRPC.
+In OWT server package, you can turn on gRPC option by updating configuration files. This section introduces the configuration settings for internal gRPC.
 
 # 2.1 Configuration for gRPC
 
@@ -34,17 +34,25 @@ Set the item `enable_grpc` to `true` in these configuration files.
 
     enable_grpc = true
 
-In `cluster_manager/cluster_manager.toml`, set `grpc_host` with `IP|hostname:port` of your own(when using TLS, only hostname is allowed).
+In `cluster_manager/cluster_manager.toml`, set `grpc_host` of section `[manager]` with `IP|hostname:port` of your own(when using TLS, only hostname is allowed).
 
+    [manager]
     grpc_host = "localhost:10080"
 
-In other modules' toml files, edit `grpc_host` to the value of `cluster_manager`.
+In other modules' toml files, edit `host` of section `[cluster]` to the value of `cluster_manager`.
 
-    grpc_host = "localhost:10080"
+    [cluster]
+    host = "localhost:10080"
+
+And to specify hostname of other modules' gRPC service, add following section in toml files.
+
+    [cluster.worker]
+    ip="localhost" # You could also set hostname here. E.g, ip="myhost.com"
 
 If you want to enable HTTP proxy for gRPC, set environment variable `GRPC_ARG_HTTP_PROXY` to `1`, then system proxy will be used.
 
 Restart OWT service after above configuration files being updated.
+Note that RabbitMQ based RPC server will be disabled if gRPC is used.
 
 # 2.2 Enable TLS for gRPC
 
