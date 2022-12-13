@@ -6,7 +6,6 @@
 
 var assert = require('assert');
 var logger = require('./logger').logger;
-var makeRPC = require('./makeRPC').makeRPC;
 
 // Logger
 var log = logger.getLogger('RoomController');
@@ -47,6 +46,8 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
         enable_audio_transcoding = config.transcoding && !!config.transcoding.audio,
         enable_video_transcoding = config.transcoding && !!config.transcoding.video,
         internal_conn_protocol = config.internalConnProtocol;
+
+    var makeRPC = rpcReq.makeRPC;
 
     var internalTicket = uuid().replace(/-/g, '');
 
@@ -411,7 +412,8 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                 'default': 'unknown',
             };
             var purpose = terminalPurpose[terminal_type] || terminalPurpose['default'];
-            mediaPreference.origin = origin;
+            mediaPreference.region = origin && origin.region;
+            mediaPreference.isp = origin && origin.isp;
             var nodeLocality = (preAssignedNode ? Promise.resolve(preAssignedNode)
                                            : rpcReq.getWorkerNode(cluster, purpose, {room: room_id, task: terminal_id}, mediaPreference));
 
@@ -424,6 +426,14 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                         locality: locality,
                         published: [],
                         subscribed: {}};
+                    let getAddrOk = () => {};
+                    let getAddrError = () => {};
+                    if (!internalAddresses[locality.node]) {
+                        locality.gettingAddress = new Promise((resolve, reject) => {
+                            getAddrOk = resolve;
+                            getAddrError = reject;
+                        });
+                    }
                     on_ok();
                     //TODO: trigger terminal ok after getInternalAddress call.
                     // The conference logic requires newTerminal finish fast.
@@ -437,9 +447,13 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
                                 internalAddresses[locality.node].port = addr.port;
                                 locality.ip = addr.ip;
                                 locality.port = addr.port;
+                                getAddrOk();
+                                delete locality.gettingAddress;
                             },
                             function errCb(reason) {
                                 log.warn('Failed to get internal addr:', locality.node);
+                                getAddrError();
+                                delete locality.gettingAddress;
                             });
                     } else {
                         locality.ip = internalAddresses[locality.node].ip;
@@ -565,6 +579,14 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
         if (['vmixer', 'amixer', 'vxcoder', 'axcoder', 'aselect'].includes(target_node_type)) {
             const locality = terminals[stream_owner].locality;
             if (!locality.ip || !locality.port) {
+                if (locality.gettingAddress) {
+                    locality.gettingAddress.then(() => {
+                        spreadStream(stream_id, target_node, target_node_type, on_ok, on_error);
+                    }).catch(() => {
+                        on_spread_failed('Failed to get internal address for locality');
+                    });
+                    return;
+                }
                 log.error('No internal address for locality:', locality);
                 on_spread_failed('No internal address for locality');
             } else {
@@ -2013,7 +2035,8 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
             }
         });
         terminals[vmixerId].published = [];
-        mediaPreference.origin = origin;
+        mediaPreference.region = origin && origin.region;
+        mediaPreference.isp = origin && origin.isp;
         return rpcReq.getWorkerNode(cluster, 'video', {room: room_id, task: vmixerId}, mediaPreference)
             .then(function (locality) {
                 log.debug('Got new video mixer node:', locality);
@@ -2262,7 +2285,8 @@ module.exports.create = function (spec, on_init_ok, on_init_failed) {
         });
         terminals[amixerId].published = [];
 
-        mediaPreference.origin = origin;
+        mediaPreference.region = origin && origin.region;
+        mediaPreference.isp = origin && origin.isp;
         return rpcReq.getWorkerNode(cluster, 'audio', {room: room_id, task: amixerId}, mediaPreference)
             .then(function (locality) {
                 log.debug('Got new audio mixer node:', locality);

@@ -8,6 +8,7 @@ enableWebTransport = false #default: false.
 hostname = "" #default: ""
 ip_address = "" #default: ""
 servicename = "sampleService" #service name used to register to cascading cloud for accessing to communicate with this cluster
+#enable_grpc = true
 
 [cluster]
 name = "owt-cluster"

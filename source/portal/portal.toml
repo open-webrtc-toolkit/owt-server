@@ -19,6 +19,8 @@ reconnection_timeout = 60 #default: 60
 #default: *, allow cross origin request share list. Add http(s)://web-app-server-ip-or-hostname:port to cors list in product deployment, example: ["http://web-app-server-ip-or-hostname:3001", "https://web-app-server-ip-or-hostname:3004"].
 cors = ["*"]
 
+# Setup as GRPC server
+#enable_grpc = true
 
 [cluster]
 name = "owt-cluster"

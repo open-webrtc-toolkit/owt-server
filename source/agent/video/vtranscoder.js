@@ -14,6 +14,8 @@ const {
     isResolutionEqual,
 } = require('../mediaUtil');
 
+const isUnspecified = (value) => (value === undefined || value === 'unspecified');
+
 const useHardware = global.config.video.hardwareAccelerated;
 const gaccPluginEnabled = global.config.video.enableBetterHEVCQuality || false;
 const MFE_timeout = global.config.video.MFE_timeout || 0;
@@ -197,11 +199,12 @@ function VTranscoder(rpcClient, clusterIP, VideoTranscoder, router) {
     that.generate = function (codec, resolution, framerate, bitrate, keyFrameInterval, callback) {
         log.debug('generate, codec:', codec, 'resolution:', resolution, 'framerate:', framerate, 'bitrate:', bitrate, 'keyFrameInterval:', keyFrameInterval);
         codec = (codec || supported_codecs.encode[0]).toLowerCase();
-        resolution = (resolution === 'unspecified' ? default_resolution : resolution);
-        framerate = (framerate === 'unspecified' ? default_framerate : framerate);
-        var bitrate_factor = (typeof bitrate === 'string' ? (bitrate === 'unspecified' ? 1.0 : (Number(bitrate.replace('x', '')) || 0)) : 0);
+        resolution = (isUnspecified(resolution) ? default_resolution : resolution);
+        framerate = (isUnspecified(framerate) ? default_framerate : framerate);
+        var bitrate_factor = (isUnspecified(bitrate) ? 1.0
+            : (typeof bitrate === 'string' ? Number(bitrate.replace('x', '')) : 0));
         bitrate = (bitrate_factor ? calcDefaultBitrate(codec, resolution, framerate, motion_factor) * bitrate_factor : bitrate);
-        keyFrameInterval = (keyFrameInterval === 'unspecified' ? default_kfi : keyFrameInterval);
+        keyFrameInterval = (isUnspecified(keyFrameInterval) ? default_kfi : keyFrameInterval);
 
         for (var stream_id in outputs) {
             if (outputs[stream_id].codec === codec &&

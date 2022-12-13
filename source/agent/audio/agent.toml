@@ -5,6 +5,8 @@ maxProcesses = -1 #default: -1, unlimited
 #Number of precesses that agent runs when it starts. 1 <= prerunProcesses <= maxProcesses.
 prerunProcesses = 2 #default: 2
 
+# Setup as GRPC server
+#enable_grpc = true
 
 [cluster]
 name = "owt-cluster"
@@ -17,7 +19,6 @@ report_load_interval = 1000 #default: 1000, unit: millisecond
 
 #The max CPU load under which this worker can take new tasks.
 max_load = 0.85 #default: 0.85
-
 
 [rabbit]
 host = "localhost" #default: "localhost"

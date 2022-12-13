@@ -1,0 +1,24 @@
+//
+syntax = "proto3";
+
+import "format.proto";
+
+package owt;
+
+// The sip portal service definition.
+service SipPortal {
+  // Publish
+  rpc handleSipUpdate (SipUpdateRequest) returns (SimpleReply) {}
+  rpc getSipConnectivity (IdRequest) returns (SimpleReply) {}
+}
+
+message SipUpdateRequest {
+  string type = 1;
+  string roomId = 2;
+  message SipInfo {
+    string sipServer = 1;
+    string username = 2;
+    string password = 3;
+  }
+  optional SipInfo sip = 3;
+}

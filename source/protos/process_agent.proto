@@ -1,0 +1,65 @@
+//
+syntax = "proto3";
+
+import "google/protobuf/any.proto";
+import "format.proto";
+import "access_agent.proto";
+
+package owt;
+
+// Request for initialization
+message InitRequest {
+  optional string id = 1;
+  string type = 2;
+  optional google.protobuf.Any option = 4; // Type specific parameters
+  optional string domain = 5;
+}
+
+// Message for adding input
+message AddInputRequest {
+  optional string id = 1;
+  string type = 2;
+  message MediaPubOption {
+    optional AudioFormat audio = 1;
+    optional VideoFormat video = 2;
+  }
+  optional MediaPubOption media = 3;
+  optional google.protobuf.Any option = 4; // Type specific parameters
+  optional string domain = 5;
+}
+
+// Remove input
+message RemoveInputRequest {
+  string id = 1;
+}
+
+// Message for generate request (add output)
+message MediaGenerateOption {
+  message AudioOption {
+    AudioFormat format = 1;
+  }
+  optional AudioOption audio = 1;
+  message VideoOption {
+    VideoFormat format = 1;
+    VideoParameter parameters = 2;
+  }
+  optional VideoOption video = 2;
+}
+
+message GenerateRequest {
+  optional string id = 1;
+  optional MediaGenerateOption media = 2;
+  optional google.protobuf.Any option = 3; // Type specific parameters
+  optional string domain = 4;
+}
+
+message GenerateReply {
+  string id = 1;
+  MediaGenerateOption media = 2;
+  optional google.protobuf.Any option = 3; // Type specific parameters
+}
+
+// Message for degenerate request
+message DegenerateRequest {
+  string id = 1;
+}

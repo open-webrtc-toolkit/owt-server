@@ -7,3 +7,6 @@ dataBaseURL = "localhost/owtdb" #default: "localhost/owtdb"
 
 [cluster]
 name = "owt-cluster"
+
+[sip_portal]
+#enable_grpc = true

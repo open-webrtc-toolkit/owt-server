@@ -24,6 +24,12 @@ var log = logger.getLogger('StreamingNode');
 
 var {InternalConnectionRouter} = require('./internalConnectionRouter');
 
+// Setup GRPC server
+var createGrpcInterface = require('./grpcAdapter').createGrpcInterface;
+var enableGRPC = global.config.agent.enable_grpc || false;
+
+var EventEmitter = require('events').EventEmitter;
+
 module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
     var that = {
       agentID: parentRpcId,
@@ -31,9 +37,21 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
     };
     var connections = new Connections;
     var router = new InternalConnectionRouter(global.config.internal);
+    // For GRPC notifications
+    var streamingEmitter = new EventEmitter();
 
     var notifyStatus = (controller, sessionId, direction, status) => {
         rpcClient.remoteCast(controller, 'onSessionProgress', [sessionId, direction, status]);
+        // Emit GRPC notifications
+        const notification = {
+            name: 'onSessionProgress',
+            data: {
+                id: sessionId,
+                direction,
+                status
+            }
+        };
+        streamingEmitter.emit('notification', notification);
     };
 
     var createAVStreamIn = function (sessionId, options) {
@@ -209,6 +227,11 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
     that.onFaultDetected = function (message) {
         connections.onFaultDetected(message);
     };
+
+    if (enableGRPC) {
+        // Export GRPC interface.
+        return createGrpcInterface(that, streamingEmitter);
+    }
 
     return that;
 };
