@@ -60,7 +60,6 @@ private:
     Nan::AsyncResource *asyncResourceNewStream_;
     Nan::AsyncResource *asyncResourceClosedStream_;
     boost::mutex mutex;
-    //std::unordered_map<uint32_t, v8::Local<v8::Object>> streams_;
     static Nan::Persistent<v8::Function> s_constructor;
 };
 
