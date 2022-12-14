@@ -12,7 +12,6 @@
 #include "owt/quic/quic_transport_factory.h"
 #include "owt/quic/quic_transport_session_interface.h"
 
-//using namespace net;
 using namespace owt_base;
 using v8::Function;
 using v8::FunctionTemplate;
@@ -30,7 +29,6 @@ Nan::Persistent<v8::Function> QuicTransportServer::s_constructor;
 QuicTransportServer::QuicTransportServer(unsigned int port, const std::string& cert_file, const std::string& key_file)
         : m_quicServer(QuicFactory::getQuicTransportFactory()->CreateQuicTransportServer(port, cert_file.c_str(), key_file.c_str())) {
   m_quicServer->SetVisitor(this);
-  printf("point address:%p\n", this);
 }
 
 QuicTransportServer::~QuicTransportServer() {
@@ -78,7 +76,6 @@ NAN_METHOD(QuicTransportServer::newInstance)
     Nan::Utf8String pfxPath(Nan::To<v8::String>(info[1]).ToLocalChecked());
     Nan::Utf8String password(Nan::To<v8::String>(info[2]).ToLocalChecked());
     QuicTransportServer* obj = new QuicTransportServer(port, *pfxPath, *password);
-    //owt_base::Utils::ZeroMemory(*password, password.length());
     obj->Wrap(info.This());
     uv_async_init(uv_default_loop(), &obj->m_asyncOnNewSession, &QuicTransportServer::onNewSessionCallback);
     uv_async_init(uv_default_loop(), &obj->m_asyncOnClosedSession, &QuicTransportServer::onClosedSessionCallback);
@@ -150,7 +147,7 @@ NAUV_WORK_CB(QuicTransportServer::onClosedSessionCallback){
     Nan::HandleScope scope;
     QuicTransportServer* obj = reinterpret_cast<QuicTransportServer*>(async->data);
     if (!obj) {
-        printf("QuicTransportServer::onClosedSessionCallback obj is null");
+        ELOG_DEBUG("QuicTransportServer::onClosedSessionCallback obj is null");
         return;
     }
 
@@ -167,7 +164,6 @@ NAUV_WORK_CB(QuicTransportServer::onClosedSessionCallback){
 }
 
 void QuicTransportServer::OnSession(owt::quic::QuicTransportSessionInterface* session) {
-    //sessions_[session->Id()] = session;
     ELOG_DEBUG("QuicTransportServer::OnSession");
     boost::mutex::scoped_lock lock(mutex);
     this->session_messages.push(session);

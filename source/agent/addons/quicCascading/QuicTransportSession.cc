@@ -7,9 +7,7 @@
 #include <thread>
 #include <chrono>
 #include <iostream>
-//#include <get-uv-event-loop-napi.h>
 
-//using namespace net;
 using namespace owt_base;
 using v8::Function;
 using v8::FunctionTemplate;
@@ -118,8 +116,6 @@ NAN_METHOD(QuicTransportSession::close) {
   QuicTransportSession* obj = Nan::ObjectWrap::Unwrap<QuicTransportSession>(info.Holder());
   obj->m_session->Stop();
   obj->m_session->SetVisitor(nullptr);
-  /*delete obj->asyncResource_;
-  delete obj->asyncResourceStreamClosed_;*/
 
   obj->has_stream_callback_ = false;
   delete obj->stream_callback_;
@@ -168,9 +164,6 @@ NAUV_WORK_CB(QuicTransportSession::onClosedStreamCallback){
       boost::mutex::scoped_lock lock(obj->mutex);
       while (!obj->streamclosed_messages.empty()) {
           ELOG_INFO("streamclosed_messages is not empty");
-          //auto streamid = obj->streamclosed_messages.front();
-          //v8::Local<v8::Object> streamObject = QuicTransportStream::newInstance(quicStream);
-          //Local<Value> args[] = { streamObject };
           Local<Value> args[] = { Nan::New(obj->streamclosed_messages.front()) };
 
           if (obj->streamClosed_callback_) {
@@ -184,9 +177,6 @@ NAUV_WORK_CB(QuicTransportSession::onClosedStreamCallback){
 
 NAN_METHOD(QuicTransportSession::getId) {
   QuicTransportSession* obj = Nan::ObjectWrap::Unwrap<QuicTransportSession>(info.Holder());
-  /*uint8_t length = obj->m_session->length();
-  std::string s_data(obj->m_session->Id(), length);
-  ELOG_INFO("QuicTransportSession::getId:%s\n",s_data.c_str());*/
   info.GetReturnValue().Set(Nan::New(obj->m_session->Id()).ToLocalChecked());
 }
 
@@ -206,7 +196,6 @@ void QuicTransportSession::OnIncomingStream(owt::quic::QuicTransportStreamInterf
     } else {
         ELOG_INFO("OnIncomingStream uv_async_send failed");
     };
-    //assert(false);
     ELOG_INFO("OnIncomingStream stream:%d in session:%s in thread:%d end\n", stream->Id(), m_session->Id(), std::this_thread::get_id());
 }
 

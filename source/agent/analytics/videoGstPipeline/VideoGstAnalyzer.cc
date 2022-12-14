@@ -194,7 +194,7 @@ gboolean VideoGstAnalyzer::StreamEventCallBack(GstBus *bus, GstMessage *message,
                 str.append(std::to_string(width));
                 str.append(",\"height\":");
                 str.append(std::to_string(height));
-                str.append("}");
+                str.append("}\0");
                 pStreamObj->notifyAsyncEvent("streamadded", str.c_str());
 
                 gst_caps_unref (caps);

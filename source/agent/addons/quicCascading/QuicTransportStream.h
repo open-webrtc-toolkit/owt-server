@@ -38,8 +38,6 @@ public:
     static NAN_METHOD(newInstance);
     static NAN_METHOD(addDestination);
     static NAN_METHOD(removeDestination);
-    // addInputStream(stream, kind)
-    // kind could be "data", "audio" or "video".
     static NAN_METHOD(addInputStream);
     static NAN_METHOD(close);
     static NAN_METHOD(send);
