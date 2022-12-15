@@ -19,11 +19,7 @@ const {DomainHandler, RemoteDomainHandler} = require('./domainHandler');
 const {StateStores} = require('./stateStores');
 const State = require('./stateTypes');
 const {ServiceScheduler} = require('./scheduler');
-
 const controllerConfig = require('./controllers.json');
-
-
-const PROTO_FILE = "service.proto";
 
 let config;
 try {

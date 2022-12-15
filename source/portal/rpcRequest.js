@@ -347,7 +347,7 @@ var RpcRequest = function(rpcChannel) {
     return rpcChannel.makeRPC(controller, 'subscriptionControl', [participantId, subscriptionId, command]);
   };
 
-  that.onSessionSignaling = function(controller, sessionId, signaling) {
+  that.onSessionSignaling = function(controller, sessionId, signaling, participantId) {
     if (enableGrpc) {
       startConferenceClientIfNeeded(controller);
       const req = {
