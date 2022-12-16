@@ -32,6 +32,7 @@ var configFile = path.resolve(dirName, CONFIG_NAME);
 var samplePackageJson = path.resolve(dirName, SAMPLE_RELATED_PATH, 'package.json');
 var sampleEntryName = (require(samplePackageJson).main || DEFAULT_SAMPLE_ENTRY);
 var sampleServiceFile = path.resolve(dirName, SAMPLE_RELATED_PATH, sampleEntryName);
+var spk = cipher.dk;
 
 function prepareDB(next) {
   if (dbURL.indexOf('mongodb://') !== 0) {
@@ -40,6 +41,9 @@ function prepareDB(next) {
   if (fs.existsSync(cipher.astore)) {
     cipher.unlock(cipher.k, cipher.astore, function cb (err, authConfig) {
       if (!err) {
+        if (authConfig.spk) {
+          spk = Buffer.from(authConfig.spk, 'hex');
+        }
         if (authConfig.mongo && !dbURL.includes('@')) {
           dbURL = "mongodb://" + authConfig.mongo.username
             + ':' + authConfig.mongo.password
@@ -188,7 +192,7 @@ function prepareService (serviceName, next) {
     if (err || !service) {
       var crypto = require('crypto');
       var key = crypto.pbkdf2Sync(crypto.randomBytes(64).toString('hex'), crypto.randomBytes(32).toString('hex'), 4000, 128, 'sha256').toString('base64');
-      service = {name: serviceName, key: cipher.encrypt(cipher.k, key), encrypted: true, rooms: [], __v: 0};
+      service = {name: serviceName, key: cipher.encrypt(spk, key), encrypted: true, rooms: [], __v: 0};
       db.collection('services').insertOne(service, function cb (err, result) {
         if (err) {
           console.log('mongodb: error in adding', serviceName);
@@ -199,7 +203,7 @@ function prepareService (serviceName, next) {
       });
     } else {
       if (service.encrypted === true) {
-        service.key = cipher.decrypt(cipher.k, service.key);
+        service.key = cipher.decrypt(spk, service.key);
       }
       next(service);
     }

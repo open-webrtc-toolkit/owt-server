@@ -110,7 +110,7 @@ exports.authenticate = function (req, res, next) {
 
             var key = serv.key;
             if (serv.encrypted === true) {
-                key = cipher.decrypt(cipher.k, key);
+                key = cipher.decrypt(global.config.spk, key);
             }
 
             // Check if timestamp and cnonce are valids in order to avoid duplicate requests.

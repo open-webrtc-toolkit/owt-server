@@ -69,7 +69,7 @@ exports.create = function (req, res, next) {
     }
 
     service.encrypted = true;
-    service.key = cipher.encrypt(cipher.k, service.key);
+    service.key = cipher.encrypt(global.config.spk, service.key);
     dataAccess.service.create(service, function(err, result) {
         if (err) {
             log.warn('Failed to create service:', err.message);

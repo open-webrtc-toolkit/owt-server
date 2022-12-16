@@ -258,6 +258,13 @@ if (cluster.isMaster) {
 } else {
     // Worker Process
     rpc.connect(global.config.rabbit);
+    // Load spk
+    try {
+      const aconfig = cipher.unlockSync(cipher.k, cipher.astore);
+      global.config.spk = aconfig.spk ? Buffer.from(aconfig.spk, 'hex') : cipher.dk;
+    } catch (e) {
+      global.config.spk = cipher.dk;
+    }
 
     if (serverConfig.ssl === true) {
         var cipher = require('./cipher');
@@ -266,12 +273,13 @@ if (cluster.isMaster) {
         cipher.unlock(cipher.k, keystore, function cb (err, passphrase) {
             if (!err) {
                 try {
-                    require('https').createServer({
-                        pfx: require('fs').readFileSync(serverConfig.keystorePath),
-                        passphrase: passphrase
-                    }, app).listen(serverPort);
+                  require('https').createServer({
+                      pfx: require('fs').readFileSync(serverConfig.keystorePath),
+                      passphrase: passphrase
+                  }, app).listen(serverPort);
                 } catch (e) {
-                    err = e;
+                  log.warn('Failed to start secured server:', e);
+                  return process.exit(1);
                 }
             } else {
                 log.warn('Failed to setup secured server:', err);
