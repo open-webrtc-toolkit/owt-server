@@ -92,7 +92,7 @@ var generateToken = function(currentRoom, authData, origin, callback) {
         return;
     }
 
-    if (!authData.room.roles.find((r) => (r.role === role))) {
+    if (authData.room && !authData.room.roles.find((r) => (r.role === role))) {
         callback(undefined);
         return;
     }
@@ -108,6 +108,7 @@ var generateToken = function(currentRoom, authData, origin, callback) {
 
     // Values to be filled from the erizoController
     token.secure = false;
+    token.domain = authData.domain;
 
     requestHandler.schedulePortal (token.code, origin, function (ec) {
         if (ec === 'timeout') {
@@ -166,6 +167,10 @@ exports.create = function (req, res, next) {
     authData.user = (req.authData.user || (req.body && req.body.user));
     authData.role = (req.authData.role || (req.body && req.body.role));
     var origin = ((req.body && req.body.preference) || {isp: 'isp', region: 'region'});
+    if (req.body && req.body.domain) {
+        authData.domain = req.body.domain;
+        log.debug('Create token domain:', authData.domain);
+    }
 
     generateToken(req.params.room, authData, origin, function (tokenS) {
         if (tokenS === undefined) {

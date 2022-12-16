@@ -196,7 +196,8 @@ var startServers = function(id, tokenKey) {
     tokenServer: 'ManagementApi',
     clusterName: enableGrpc ?
         config.cluster.grpc_host : config.cluster.name,
-    selfRpcId: id
+    selfRpcId: id,
+    customized_controller: config.portal.customized_controller
   }, rpcReq);
 
   socketio_server = require('./socketIOServer')({
@@ -275,7 +276,19 @@ var rpcPublic = {
   broadcast: function(controller, excludeList, event, data, callback) {
     socketio_server && socketio_server.broadcast(controller, excludeList, event, data);
     callback('callback', 'ok');
-  }
+  },
+  onNotification: function(endpoints, name, data, callback) {
+    if (endpoints.to) {
+      socketio_server && socketio_server.notify(endpoints.to, name, data)
+          .catch((err) => log.debug('notify err:', err));
+    } else if (endpoints.domain) {
+      socketio_server && socketio_server.broadcast(
+          endpoints.domain, [endpoints.from], name, data);
+    } else {
+      log.info('Invalid endpoints:', endpoints);
+    }
+    callback('callback', 'ok');
+  },
 };
 
 if (!enableGrpc) {
@@ -291,13 +304,12 @@ if (!enableGrpc) {
                 if (data.reason === 'abnormal' || data.reason === 'error' || data.reason === 'quit') {
                   if (portal !== undefined) {
                     if (data.message.purpose === 'conference') {
-                      return portal.getParticipantsByController(data.message.type, data.message.id)
-                        .then(function (impactedParticipants) {
-                          impactedParticipants.forEach(function(participantId) {
-                            log.error('Fault on conference controller(type:', data.message.type, 'id:', data.message.id, ') of participant', participantId, 'was detected, drop it.');
-                            socketio_server && socketio_server.drop(participantId);
-                          });
-                        });
+                      const impactedParticipants =
+                        portal.getParticipantsByController(data.message.type, data.message.id);
+                      impactedParticipants.forEach(function(participantId) {
+                        log.error('Fault on conference controller(type:', data.message.type, 'id:', data.message.id, ') of participant', participantId, 'was detected, drop it.');
+                        socketio_server && socketio_server.drop(participantId);
+                      });
                     }
                   }
                 }

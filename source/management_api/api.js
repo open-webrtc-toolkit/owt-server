@@ -73,7 +73,7 @@ app.options('*', function(req, res) {
 });
 
 // Only following paths need authentication.
-var authPaths = ['/v1/rooms*', '/v1.1/rooms*', '/services*', '/cluster*'];
+var authPaths = ['/v1/rooms*', '/v1.1/rooms*', '/services*', '/v1.1/stream-engine*'];
 app.get(authPaths, serverAuthenticator.authenticate);
 app.post(authPaths, serverAuthenticator.authenticate);
 app.delete(authPaths, serverAuthenticator.authenticate);
@@ -106,7 +106,7 @@ app.use(function(err, req, res, next) {
     if (err instanceof SyntaxError) {
       err = new e.BadRequestError('Failed to parse JSON body');
     } else {
-      log.warn(err);
+      log.warn(err, err.stack);
       err = new e.AppError(err.name + ' ' + err.message);
     }
   }

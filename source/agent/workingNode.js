@@ -79,15 +79,15 @@ function init_controller() {
                     }, 1000);
                 }, function(reason) {
                     process.send('ERROR');
-                    log.error(reason);
+                    log.error(reason.stack);
                 });
             }, function(reason) {
                 process.send('ERROR');
-                log.error(reason);
+                log.error(reason.stack);
             });
         }, function(reason) {
             process.send('ERROR');
-            log.error(reason);
+            log.error(reason.stack);
         });
     }, function(reason) {
         process.send('ERROR');
@@ -127,7 +127,7 @@ process.on('exit', function () {
 });
 
 process.on('uncaughtException', async (err) => {
-    log.error(err);
+    log.error(err, err.stack);
     try {
         await rpc.disconnect();
     } catch(e) {

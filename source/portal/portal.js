@@ -16,12 +16,14 @@ var Portal = function(spec, rpcReq) {
   var that = {},
     token_key = spec.tokenKey,
     cluster_name = spec.clusterName,
-    self_rpc_id = spec.selfRpcId;
+    self_rpc_id = spec.selfRpcId,
+    customized_controller = spec.customized_controller;
 
   /*
    * {participantId: {
    *     in_room: RoomId,
-   *     controller: RpcId
+   *     controller: RpcId,
+   *     domain: DomainName,
    * }}
    */
   var participants = {};
@@ -94,9 +96,9 @@ var Portal = function(spec, rpcReq) {
       }
     };
 
-    var tokenCode, userInfo, role, origin, room_id, room_controller;
+    var tokenCode, userInfo, role, origin, room_id, room_controller, domain;
 
-    return validateToken(token)
+    return validateToken (token)
       .then(function(validToken) {
         log.debug('token validation ok.');
         return dataAccess.token.delete(validToken.tokenId);
@@ -107,19 +109,27 @@ var Portal = function(spec, rpcReq) {
         userInfo = deleteTokenResult.user;
         role = deleteTokenResult.role;
         origin = deleteTokenResult.origin;
-        room_id = deleteTokenResult.room;
+        domain = deleteTokenResult.domain;
+        room_id = deleteTokenResult.room || domain;
         return rpcReq.getController(cluster_name, room_id);
       })
       .then(function(controller) {
         log.debug('got controller:', controller);
         room_controller = controller;
-        return rpcReq.join(controller, room_id, {id: participantId, user: userInfo, role: role, portal: self_rpc_id, origin: origin});
+        const joinInfo = {
+          id: participantId,
+          user: userInfo, role: role,
+          portal: self_rpc_id,
+          origin: origin
+        };
+        return rpcReq.join(controller, room_id, joinInfo);
       })
       .then(function(joinResult) {
         log.debug('join ok, result:', joinResult);
         participants[participantId] = {
           in_room: room_id,
-          controller: room_controller
+          controller: room_controller,
+          domain: domain,
         };
 
         let webTransportToken = undefined;
@@ -134,10 +144,14 @@ var Portal = function(spec, rpcReq) {
             role: role,
             permission: joinResult.permission,
             room: joinResult.room,
-            webTransportToken: webTransportToken
+            webTransportToken: webTransportToken,
           }
         };
       });
+  };
+
+  that.onRTCSignaling = function (participantId, name, data) {
+    return rpcReq.onRTCSignaling(participants[participantId].controller, participantId, name, data);
   };
 
   that.leave = function(participantId) {
@@ -224,13 +238,11 @@ var Portal = function(spec, rpcReq) {
 
   that.onSessionSignaling = function(participantId, sessionId, signaling) {
     log.debug('onSessionSignaling, participantId:', participantId, 'sessionId:', sessionId, 'signaling:', signaling);
-
-    var participant = participants[participantId];
     if (participants[participantId] === undefined) {
       return Promise.reject('Participant has NOT joined');
     }
  
-    return rpcReq.onSessionSignaling(participants[participantId].controller, sessionId, signaling);
+    return rpcReq.onSessionSignaling(participants[participantId].controller, sessionId, signaling, participantId);
   };
 
   that.text = function(participantId, to, msg) {
@@ -248,9 +260,12 @@ var Portal = function(spec, rpcReq) {
       if ((type === 'node' && participants[participant_id].controller === id) ||
           (type === 'worker' && participants[participant_id].controller.startsWith(id))) {
         result.push(participant_id);
+      } else if (participants[participant_id].domain &&
+          participants[participant_id].domain === id) {
+        result.push(participant_id);
       }
     }
-    return Promise.resolve(result);
+    return result;
   };
 
   return that;

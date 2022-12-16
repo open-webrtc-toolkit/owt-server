@@ -12,6 +12,8 @@ servicename = "sampleService" #service name used to register to cascading cloud 
 
 [cluster]
 name = "owt-cluster"
+stream_engine = "stream-service"
+control_agent = "mycontroller"
 
 [rabbit]
 host = "localhost" #default: "localhost"

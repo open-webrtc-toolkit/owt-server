@@ -1,0 +1,46 @@
+{
+    "name": "stream-service",
+    "dest": "stream_service",
+    "common": {
+        "package": "package.json",
+        "files": [
+            "streamService.js",
+            "package.json",
+            "log4js_configuration.json",
+            "format.proto",
+            "service.proto",
+            "service.toml",
+            "domainHandler.js",
+            "stateStores.js",
+            "stateTypes.js",
+            "scheduler.js",
+            "controllers.json",
+            "rpcRequest.js",
+            "../common/amqpClient.js",
+            "../common/cipher.js",
+            "../common/logger.js",
+            "../common/makeRPC.js",
+            "../common/rpcChannel.js",
+            "../common/rpcStarter.js",
+            "../common/grpcTools.js",
+            "../protos/protoConfig.json",
+            "../protos/*.proto",
+            "../../scripts/release/initauth.js",
+            "../../scripts/release/initcert.js",
+            "../../scripts/detectOS.sh"
+        ],
+        "folders": {
+            "controllers": ["controllers/*"],
+            "data_access": [
+                "../data_access/*"
+            ]
+        }
+    },
+    "debug": {
+        "folders": {
+            "test": [
+                "test/streamServiceTest.js"
+            ]
+        }
+    }
+}

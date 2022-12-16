@@ -1,0 +1,34 @@
+{
+    "name": "customized-agent",
+    "dest": "customized_agent",
+    "common": {
+        "package": "package.json",
+        "files": [
+            "mycontroller.js",
+            "conferenceLite.js",
+            "log4js_configuration.json",
+            "../conference/configLoader.js",
+            "../conference/agent.toml",
+            "../../stream_service/stateTypes.js",
+            "../nodeManager.js",
+            "../workingNode.js",
+            "../index.js",
+            "../networkHelper.js",
+            "../../common/cipher.js",
+            "../../common/amqpClient.js",
+            "../../common/clusterWorker.js",
+            "../../common/loadCollector.js",
+            "../../common/logger.js",
+            "../../common/makeRPC.js",
+            "../../common/rpcChannel.js",
+            "../../../scripts/release/initauth.js"
+        ],
+        "folders": {
+            "data_access": [
+                "../../data_access/*"
+            ]
+        }
+    },
+    "debug": {
+    }
+}

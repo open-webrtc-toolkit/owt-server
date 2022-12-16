@@ -8,6 +8,7 @@ const grpcTools = require('./grpcTools');
 const enableGrpc = config.portal.enable_grpc || false;
 const log = require('./logger').logger.getLogger('RpcRequest');
 const GRPC_TIMEOUT = 3000;
+const STREAM_ENGINE = global.config?.portal?.stream_engine_name || null;
 
 var RpcRequest = function(rpcChannel) {
   var that = {};
@@ -60,7 +61,10 @@ var RpcRequest = function(rpcChannel) {
     return grpcNode[node];
   };
 
-  that.getController = function(clusterManager, roomId) {
+  that.getController = function(clusterManager, roomId, customizedPurpose) {
+    if (STREAM_ENGINE) {
+      return Promise.resolve(STREAM_ENGINE);
+    }
     if (enableGrpc) {
       if (!clusterClient) {
         clusterClient = grpcTools.startClient(
@@ -70,8 +74,9 @@ var RpcRequest = function(rpcChannel) {
       }
       let agentAddress;
       return new Promise((resolve, reject) => {
+        const purpose = customizedPurpose ?? 'conference';
         const req = {
-          purpose: 'conference',
+          purpose,
           task: roomId,
           preference: {}, // Change data for some preference
           reserveTime: 30 * 1000
@@ -127,6 +132,11 @@ var RpcRequest = function(rpcChannel) {
         });
       });
     }
+    if (STREAM_ENGINE) {
+      participant.domain = roomId;
+      participant.participant = participant.id;
+      return rpcChannel.makeRPC(controller, 'join', [participant], 6000);
+    }
     return rpcChannel.makeRPC(controller, 'join', [roomId, participant], 6000);
   };
 
@@ -143,6 +153,10 @@ var RpcRequest = function(rpcChannel) {
           }
         });
       });
+    }
+    if (STREAM_ENGINE) {
+      const req = {id: participantId, participant: participantId};
+      return rpcChannel.makeRPC(controller, 'leave', [req]);
     }
     return rpcChannel.makeRPC(controller, 'leave', [participantId]);
   };
@@ -189,6 +203,13 @@ var RpcRequest = function(rpcChannel) {
         });
       });
     }
+    if (STREAM_ENGINE) {
+      const req = Options;
+      req.type = 'webrtc';
+      req.id = streamId;
+      req.participant = participantId;
+      return rpcChannel.makeRPC(controller, 'publish', [req]);
+    }
     return rpcChannel.makeRPC(controller, 'publish', [participantId, streamId, Options]);
   };
 
@@ -208,6 +229,10 @@ var RpcRequest = function(rpcChannel) {
           }
         });
       });
+    }
+    if (STREAM_ENGINE) {
+      const req = {id: streamId, participant: participantId};
+      return rpcChannel.makeRPC(controller, 'unpublish', [req]);
     }
     return rpcChannel.makeRPC(controller, 'unpublish', [participantId, streamId]);
   };
@@ -231,6 +256,13 @@ var RpcRequest = function(rpcChannel) {
         });
       });
     }
+    if (STREAM_ENGINE) {
+      const req = command;
+      req.type = 'webrtc';
+      req.id = streamId;
+      req.participant = participantId;
+      return rpcChannel.makeRPC(controller, 'streamControl', [req]);
+    }
     return rpcChannel.makeRPC(controller, 'streamControl', [participantId, streamId, command], 4000);
   };
 
@@ -252,6 +284,13 @@ var RpcRequest = function(rpcChannel) {
         });
       });
     }
+    if (STREAM_ENGINE) {
+      const req = Options;
+      req.type = 'webrtc';
+      req.id = subscriptionId;
+      req.participant = participantId;
+      return rpcChannel.makeRPC(controller, 'subscribe', [req]);
+    }
     return rpcChannel.makeRPC(controller, 'subscribe', [participantId, subscriptionId, Options]);
   };
 
@@ -271,6 +310,10 @@ var RpcRequest = function(rpcChannel) {
           }
         });
       });
+    }
+    if (STREAM_ENGINE) {
+      const req = {id: subscriptionId, participant: participantId};
+      return rpcChannel.makeRPC(controller, 'unsubscribe', [req]);
     }
     return rpcChannel.makeRPC(controller, 'unsubscribe', [participantId, subscriptionId]);
   };
@@ -294,10 +337,17 @@ var RpcRequest = function(rpcChannel) {
         });
       });
     }
+    if (STREAM_ENGINE) {
+      const req = command;
+      req.type = 'webrtc';
+      req.id = subscriptionId;
+      req.participant = participantId;
+      return rpcChannel.makeRPC(controller, 'subscriptionControl', [req]);
+    }
     return rpcChannel.makeRPC(controller, 'subscriptionControl', [participantId, subscriptionId, command]);
   };
 
-  that.onSessionSignaling = function(controller, sessionId, signaling) {
+  that.onSessionSignaling = function(controller, sessionId, signaling, participantId) {
     if (enableGrpc) {
       startConferenceClientIfNeeded(controller);
       const req = {
@@ -313,6 +363,14 @@ var RpcRequest = function(rpcChannel) {
           }
         });
       });
+    }
+    if (STREAM_ENGINE) {
+      const req = {
+        id: sessionId,
+        signaling,
+        participant: participantId
+      };
+      return rpcChannel.makeRPC(controller, 'onSessionSignaling', [req]);
     }
     return rpcChannel.makeRPC(controller, 'onSessionSignaling', [sessionId, signaling]);
   };
