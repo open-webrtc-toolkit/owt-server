@@ -80,11 +80,26 @@ function unlockSync (password, filename) {
   return JSON.parse(data.toString());
 }
 
+const defaultK =
+  Buffer.from('3d84a1efc77268c98bc6ca2921eb35a6d82a40a38696d25fbb64ff1733cd2523', 'hex');
+let csk = null;
+// Set credPass with your own pass
+if (global.config?.credPass) {
+  const defaultSalt =
+    Buffer.from('1a7bb4a4f56f15eb875c7a66d8fe893bc9458acd414319d431f6a6dfaef69fa6', 'hex');
+  // crypto.randomBytes(32).toString('hex');
+  // Set credSalt with your own salt
+  const salt = global.config.credSalt || defaultSalt;
+  csk = crypto.pbkdf2Sync(global.config.credPass, salt, 4000, 128, 'sha256');
+  delete global.config.credPass;
+  delete global.config.credSalt;
+}
+
 module.exports = {
   encrypt: encrypt,
   decrypt: decrypt,
-  // Replace k with your key generator
-  k: Buffer.from('3d84a1efc77268c98bc6ca2921eb35a6d82a40a38696d25fbb64ff1733cd2523', 'hex'),
+  k: (csk || defaultK),
+  dk: defaultK,
   astore: '.owt.authstore',
   kstore: '.owt.keystore',
   lock: lock,
