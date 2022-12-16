@@ -22,7 +22,7 @@ cors = ["*"]
 # Setup as GRPC server
 #enable_grpc = true
 #customized_controller = "conference2"
-stream_engine_name = "stream-service"
+#stream_engine_name = "stream-service"
 
 [cluster]
 name = "owt-cluster"
