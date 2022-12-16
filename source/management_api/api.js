@@ -259,8 +259,12 @@ if (cluster.isMaster) {
     // Worker Process
     rpc.connect(global.config.rabbit);
     // Load spk
-    const aconfig = cipher.unlockSync(cipher.k, cipher.astore);
-    global.config.spk = aconfig.spk ? Buffer.from(aconfig.spk, 'hex') : cipher.dk;
+    try {
+      const aconfig = cipher.unlockSync(cipher.k, cipher.astore);
+      global.config.spk = aconfig.spk ? Buffer.from(aconfig.spk, 'hex') : cipher.dk;
+    } catch (e) {
+      global.config.spk = cipher.dk;
+    }
 
     if (serverConfig.ssl === true) {
         var cipher = require('./cipher');
