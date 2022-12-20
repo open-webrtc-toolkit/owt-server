@@ -1,0 +1,30 @@
+{
+  "appenders": {
+    "out": {
+      "type": "console",
+      "layout": {
+        "type": "pattern",
+        "pattern": "%d  - %p: %c - %m",
+        "replaceConsole": true
+      }
+    }
+  },
+  "categories": {
+    "default": { "appenders": [ "out" ], "level": "debug" },
+    "ClusterWorker": { "appenders": [ "out" ], "level": "info" },
+    "LoadCollector": { "appenders": [ "out" ], "level": "info" },
+    "AmqpClient": { "appenders": [ "out" ], "level": "info" },
+    "WorkingJS": { "appenders": [ "out" ], "level": "info" },
+    "NodeManager": { "appenders": [ "out" ], "level": "info" },
+    "Conference": { "appenders": [ "out" ], "level": "info" },
+    "AccessController": { "appenders": [ "out" ], "level": "info" },
+    "RoomController": { "appenders": [ "out" ], "level": "info" },
+    "RtcController": { "appenders": [ "out" ], "level": "info" },
+    "QuicController": { "appenders": [ "out" ], "level": "info" },
+    "Stream": { "appenders": [ "out" ], "level": "info" },
+    "Subscription": { "appenders": [ "out" ], "level": "info" },
+    "WorkingAgent": { "appenders": [ "out" ], "level": "info" },
+    "Connections": { "appenders": [ "out" ], "level": "info" },
+    "InternalConnectionFactory": { "appenders": [ "out" ], "level": "info" }
+  }
+}

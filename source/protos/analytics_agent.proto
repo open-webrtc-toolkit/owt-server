@@ -1,0 +1,91 @@
+//
+syntax = "proto3";
+
+import "access_agent.proto";
+
+package owt;
+
+// The analytics service definition.
+service AnalyticsAgent {
+  // Publish
+  rpc Publish (PublishRequest) returns (PublishReply) {}
+  rpc Unpublish (UnpublishRequest) returns (SimpleReply) {}
+  // Subscribe
+  rpc Subscribe (SubscribeRequest) returns (SubscribeReply) {}
+  rpc Unsubscribe (UnsubscribeRequest) returns (SimpleReply) {}
+  // Link & Cut
+  rpc Linkup (LinkupRequest) returns (SimpleReply) {}
+  rpc Cutoff (CutoffRequest) returns (SimpleReply) {}
+
+  // Listen to notifications (streaming RPC)
+  rpc ListenToNotifications (ListenRequest) returns (stream ProgressNotification) {}
+
+  // Internal connections
+  rpc GetInternalAddress (Empty) returns (AddressReply) {}
+}
+
+// The progress message for webrtc sessions ("type": "webrtc").
+// Progress "name": "onSessionProgress".
+message SessionProgressData {
+  string id = 1;
+  message Status {
+    optional string type = 1;
+    optional string reason = 2;
+    message StatusInfo {
+      string algorithm = 1;
+    }
+    optional StatusInfo info = 3;
+  }
+  Status status = 2;
+  optional string direction = 3;
+}
+
+// Progress "name": "onStreamAdded" or "onStreamRemoved".
+message StreamAddedData {
+  string id = 1;
+  string owner = 2;
+  message StreamInfo {
+    string type = 1;
+    string analyticsId = 2;
+    message AnalyticsMedia {
+      message VideoInfo {
+        string codec = 1;
+        optional string profile = 2;
+        optional Resolution resolution = 3;
+        optional int32 framerate = 4;
+        optional string bitrate = 5;
+        optional int32 keyFrameInterval = 6;
+      }
+      VideoInfo video = 1;
+    }
+    AnalyticsMedia media = 3;
+    message LocalityInfo {
+      string agent = 1;
+      string node = 2;
+    }
+    LocalityInfo locality = 4;
+  }
+  optional StreamInfo info = 3;
+}
+
+// Publish/Subscribe option
+message RequestOption {
+  message MediaOption {
+    message VideoOption {
+      string from = 1;
+    }
+    VideoOption video = 1;
+  }
+  MediaOption media = 1;
+
+  message AnalyticsConfig {
+    string algorithm = 1;
+    message VideoConfig {
+      VideoFormat format = 1;
+      VideoParameter parameters = 2;
+    }
+    VideoConfig video = 2;
+  }
+  AnalyticsConfig connection = 2;
+  optional string controller = 3;
+}

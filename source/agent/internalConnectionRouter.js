@@ -171,7 +171,7 @@ class InternalConnectionRouter {
    * @param {FrameSource} source Wrapper class for FrameSource
    */
   addLocalSource(id, type, source) {
-    const isNativeSource = (type === 'quic');
+    const isNativeSource = (type === 'quic' || type === 'mediabridge');
     this.internalServer.addSource(id, source, isNativeSource);
     return this.connections.addConnection(id, type, '', source, 'in');
   }

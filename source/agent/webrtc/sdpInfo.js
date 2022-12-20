@@ -585,7 +585,7 @@ class SdpInfo {
       if (mediaInfo.ext && Array.isArray(mediaInfo.ext)) {
         const extMappings = [
           'urn:ietf:params:rtp-hdrext:ssrc-audio-level',
-          'http://www.ietf.org/id/draft-holmer-rmcat-transport-wide-cc-extensions-01',
+          // 'http://www.ietf.org/id/draft-holmer-rmcat-transport-wide-cc-extensions-01',
           'urn:ietf:params:rtp-hdrext:sdes:mid',
           'urn:ietf:params:rtp-hdrext:sdes:rtp-stream-id',
           'urn:ietf:params:rtp-hdrext:sdes:repaired-rtp-stream-id',
@@ -594,6 +594,11 @@ class SdpInfo {
           // 'urn:3gpp:video-orientation',
           // 'http://www.webrtc.org/experiments/rtp-hdrext/playout-delay',
         ];
+        if (mediaInfo.type === 'video') {
+          extMappings.push(
+            'http://www.ietf.org/id/draft-holmer-rmcat-transport-wide-cc-extensions-01'
+          );
+        }
         mediaInfo.ext = mediaInfo.ext.filter((e) => {
           return extMappings.includes(e.uri);
         });

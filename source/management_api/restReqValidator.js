@@ -558,6 +558,23 @@ const SipCallUpdate = {
   type: 'array',
   items: {$ref: 'SipCallControlInfo.json'}
 };
+
+const CascadingRequest = {
+  type: 'object',
+  properties: {
+    'type': { 'const': 'cascading' },
+    'evIP': { type: 'string' },
+    'evPort': { type: 'number' },
+    'mediaIP': { type: 'string' },
+    'mediaPort': { type: 'number' },
+    'targetCluster': { type: 'string' },
+    'selfCluster': { type: 'string' },
+    'room': {type: 'string'}
+  },
+  additionalProperties: false,
+  required: ['type', 'evIP', 'evPort', 'room']
+};
+
 var validators = {
   'participant-update': generateValidator(ParticipantUpdate),
   'streamingIn-req': generateValidator(StreamingInRequest),
@@ -565,7 +582,8 @@ var validators = {
   'serverSideSub-req': generateValidator(ServerSideSubscriptionRequest),
   'subscription-update': generateValidator(SubscriptionUpdate),
   'sipcall-add': generateValidator(SipCallAdd),
-  'sipcall-update': generateValidator(SipCallUpdate)
+  'sipcall-update': generateValidator(SipCallUpdate),
+  'cascading-req': generateValidator(CascadingRequest)
 };
 
 // Export JSON validator functions

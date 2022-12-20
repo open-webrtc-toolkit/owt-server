@@ -5,9 +5,15 @@ ssl = true #if use HTTPS
 port = 3000 #default: 3000, port of server
 numberOfProcess = 4 #default: 1
 enableWebTransport = false #default: false.
+hostname = "" #default: ""
+ip_address = "" #default: ""
+servicename = "sampleService" #service name used to register to cascading cloud for accessing to communicate with this cluster
+#enable_grpc = true
 
 [cluster]
 name = "owt-cluster"
+stream_engine = "stream-service"
+control_agent = "mycontroller"
 
 [rabbit]
 host = "localhost" #default: "localhost"

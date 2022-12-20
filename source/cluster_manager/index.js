@@ -11,6 +11,7 @@ var ClusterManager = require('./clusterManager');
 var toml = require('toml');
 var fs = require('fs');
 var config;
+var clusterManager;
 try {
   config = toml.parse(fs.readFileSync('./cluster_manager.toml'));
 } catch (e) {
@@ -41,19 +42,47 @@ config.rabbit = config.rabbit || {};
 config.rabbit.host = config.rabbit.host || 'localhost';
 config.rabbit.port = config.rabbit.port || 5672;
 
-function startup () {
-    var enableService = function () {
-        var id = Math.floor(Math.random() * 1000000000);
-        var spec = {initialTime: config.manager.initial_time,
-                    checkAlivePeriod: config.manager.check_alive_interval,
-                    checkAliveCount: config.manager.check_alive_count,
-                    scheduleKeepTime: config.manager.schedule_reserve_time,
-                    strategy: config.strategy
-                   };
+config.cloud.url = config.cloud.url;
+config.cloud.region = config.cloud.region;
+config.cloud.clusterID = config.cloud.clusterID;
 
+function startup () {
+    var id = Math.floor(Math.random() * 1000000000);
+    var spec = {
+        initialTime: config.manager.initial_time,
+        checkAlivePeriod: config.manager.check_alive_interval,
+        checkAliveCount: config.manager.check_alive_count,
+        scheduleKeepTime: config.manager.schedule_reserve_time,
+        strategy: config.strategy
+    };
+
+    if (config.manager.enable_grpc) {
+        const grpcTools = require('./grpcTools');
+        let gHostname = 'localhost';
+        let gPort = 10080;
+        if (config.manager.grpc_host) {
+            [gHostname, gPort] = config.manager.grpc_host.split(':');
+            gPort = Number(gPort) || 10080;
+        }
+        const manager = new ClusterManager.ClusterManager(
+            config.manager.name, id, spec);
+        manager.serve();
+        grpcTools.startServer('clusterManager', manager.grpcInterface, gPort)
+        .then((port) => {
+            // Send RPC server address
+            const rpcAddress = gHostname + ':' + port;
+            log.info('As gRPC server ok', rpcAddress);
+        }).catch((err) => {
+            log.error('Start grpc server failed:', err);
+        });
+        return;
+    }
+
+    var enableService = function () {
         amqper.asTopicParticipant(config.manager.name + '.management', function(channel) {
             log.info('Cluster manager up! id:', id);
-            ClusterManager.run(channel, config.manager.name, id, spec);
+            clusterManager = new ClusterManager.manager(channel, config.manager.name, id, spec);
+            clusterManager.run(channel);
         }, function(reason) {
             log.error('Cluster manager initializing failed, reason:', reason);
             process.kill(process.pid, 'SIGINT');
@@ -74,6 +103,7 @@ startup();
     process.on(sig, async function () {
         log.warn('Exiting on', sig);
         try {
+            clusterManager.leave();
             await amqper.disconnect();
         } catch (e) {
             log.warn('Disconnect:', e);

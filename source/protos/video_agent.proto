@@ -1,0 +1,117 @@
+
+//
+syntax = "proto3";
+
+import "process_agent.proto";
+
+package owt;
+
+// The video service definition.
+service VideoAgent {
+  // Init
+  rpc Init(InitRequest) returns (InitReply) {}
+  rpc Deinit(Empty) returns (SimpleReply) {}
+  // Add/Remove input
+  rpc AddInput(AddInputRequest) returns (SimpleReply) {}
+  rpc RemoveInput(RemoveInputRequest) returns (SimpleReply) {}
+  // Generate/Degenerate
+  rpc Generate(GenerateRequest) returns (GenerateReply) {}
+  rpc Degenerate(DegenerateRequest) returns (SimpleReply) {}
+
+  // Layout control
+  rpc SetInputActive(InputActiveRequest) returns (SimpleReply) {}
+  rpc GetRegion(IdRequest) returns (SimpleReply) {}
+  rpc SetRegion(RegionRequest) returns (SimpleReply) {}
+  rpc SetLayout(LayoutData) returns (VideoLayoutChangeData) {}
+  rpc SetPrimary(IdRequest) returns (SimpleReply) {}
+  // Generate key frame
+  rpc ForceKeyFrame(IdRequest) returns (SimpleReply) {}
+
+  // Listen to notifications (streaming RPC)
+  rpc ListenToNotifications (ListenRequest) returns (stream ProgressNotification) {}
+
+  // Publish
+  rpc Publish (PublishRequest) returns (PublishReply) {}
+  rpc Unpublish (UnpublishRequest) returns (SimpleReply) {}
+  // Subscribe
+  rpc Subscribe (SubscribeRequest) returns (SubscribeReply) {}
+  rpc Unsubscribe (UnsubscribeRequest) returns (SimpleReply) {}
+  // Link & Cut
+  rpc Linkup (LinkupRequest) returns (SimpleReply) {}
+  rpc Cutoff (CutoffRequest) returns (SimpleReply) {}
+
+  // Internal connections
+  rpc GetInternalAddress (Empty) returns (AddressReply) {}
+}
+
+// Reply for initialization
+message InitReply {
+  message CodecConfig {
+    repeated string decode = 1;
+    repeated string encode = 2;
+  }
+  CodecConfig codecs = 1;
+}
+
+// Request for SetInputActive
+message InputActiveRequest {
+  string id = 1;
+  bool active = 2;
+}
+
+// Request for SetRegion
+message RegionRequest {
+  string streamId = 1;
+  string regionId = 2;
+}
+
+// Request/Reply for SetLayout
+message LayoutData {
+  repeated RegionMap regions = 1;
+}
+
+// The progress message for audio sessions ("type": "audio").
+// Progress "name": "onVideoLayoutChange".
+message VideoLayoutChangeData {
+  string owner = 1;
+  string label = 2;
+  repeated StringRegionMap regions = 3;
+  optional string domain = 4;
+}
+
+// Option for audio agent
+message RequestOption {
+  optional string service = 1;
+  optional string controller = 2;
+  optional string label = 3;
+
+  message InitConfig {
+    message Resolution {
+      int32 width = 1;
+      int32 height = 2;
+    }
+    message Color {
+      int32 r = 1;
+      int32 g = 2;
+      int32 b = 3;
+    }
+    message ConfigParameters {
+      Resolution resolution = 1;
+      int32 framerate = 2;
+      int32 keyFrameInterval = 3;
+    }
+    message LayoutConfig {
+      message RegionSet {
+        repeated Region region = 1;
+      }
+      optional string fitPolicy = 1;
+      repeated RegionSet templates = 2;
+    }
+    optional int32 maxInput = 1;
+    optional double motionFactor = 2;
+    Color bgColor = 3;
+    ConfigParameters parameters = 4;
+    LayoutConfig layout = 5;
+  }
+  InitConfig init = 4;
+}

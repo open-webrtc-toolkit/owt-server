@@ -1,0 +1,116 @@
+//
+syntax = "proto3";
+
+package owt;
+
+/// Media formats
+// Audio Format
+message AudioFormat {
+  string codec = 1;
+  optional uint32 sampleRate = 2;
+  optional uint32 channelNum = 3;
+}
+
+// Video Format
+message VideoFormat {
+  string codec = 1;
+  optional string profile = 2;
+}
+
+message Resolution {
+  int32 width = 1;
+  int32 height = 2;
+}
+
+message VideoParameter {
+  optional Resolution resolution = 1;
+  optional int32 framerate = 2;
+  optional string bitrate = 3;
+  optional int32 keyFrameInterval = 4;
+}
+
+message VideoFormatDetail {
+  string codec = 1;
+  optional string profile = 2;
+  optional Resolution resolution = 3;
+  optional int32 framerate = 4;
+  optional string bitrate = 5;
+  optional int32 keyFrameInterval = 6;
+}
+
+// May be audio or video format
+message GenericFormat {
+  string codec = 1;
+  optional uint32 sampleRate = 2;
+  optional uint32 channelNum = 3;
+  optional string profile = 4;
+}
+
+// Used to specify preference of format
+message FormatPreference {
+  optional GenericFormat preferred = 1;
+  repeated GenericFormat optional = 2;
+}
+
+// Combination of video and audio
+message MediaFormat {
+  optional AudioFormat audio = 1;
+  optional VideoFormatDetail video = 2;
+}
+
+/// Layouts
+// Region in layout
+message Region {
+  message Rational {
+    int32 numerator = 1;
+    int32 denominator = 2;
+  }
+  string id = 1;
+  string shape = 2;
+  message Area {
+    Rational left = 1;
+    Rational top = 2;
+    Rational width = 3;
+    Rational height = 4;
+  }
+  Area area = 3;
+}
+
+// Map region with stream input
+message RegionMap {
+  optional string stream = 1;
+  Region region = 2;
+}
+
+// Region with string coordinator
+message StringRegion {
+  string id = 1;
+  string shape = 2;
+  message Area {
+    string left = 1;
+    string top = 2;
+    string width = 3;
+    string height = 4;
+  }
+  Area area = 3;
+}
+
+message StringRegionMap {
+  optional string stream = 1;
+  StringRegion region = 2;
+}
+
+/// Common request and reply
+// Request with an "id" field
+message IdRequest {
+  string id = 1;
+}
+
+// Simple reply with an optional message
+message SimpleReply {
+  optional string message = 1;
+}
+
+// Empty message
+message Empty {
+}

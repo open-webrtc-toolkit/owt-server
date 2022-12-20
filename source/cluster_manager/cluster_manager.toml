@@ -17,6 +17,10 @@ check_alive_count = 3
 #The default reservation time if not specified in the scheduling requirement.
 schedule_reserve_time = 60000 #ms
 
+# Setup as GRPC server
+#enable_grpc = true
+#grpc_host = "localhost:10080"
+
 [strategy]
 general = "last-used"
 portal = "last-used"
@@ -28,3 +32,10 @@ recording = "randomly-pick"
 audio = "most-used"
 video = "least-used"
 analytics = "least-used"
+eventbridge = "last-used"
+mediabridge = "last-used"
+
+[cloud]
+url = "none"   #default none:not connect to cascading cloud, specify cloud service url for the cluster to register to cloud
+region = "BJ"
+clusterID = "" #A unique cluster ID reporting to cascading cloud

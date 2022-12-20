@@ -26,7 +26,7 @@ const getErrorMessage = function (err) {
   } else if (err && err.message) {
     return err.message;
   } else {
-    log.debug('Unknown error:', err);
+    log.debug('Unknown error:', err.stack);
     return 'Unknown';
   }
 };
@@ -481,15 +481,15 @@ var SocketIOServer = function(spec, portal, observer) {
   };
 
   that.broadcast = function(controller, excludeList, event, data) {
-    log.debug('broadcast controller:', controller, 'exclude:', excludeList, 'event:', event, 'data:', data);
-    portal.getParticipantsByController('node', controller)
-      .then(function (receivers) {
-        for (let clientId of receivers) {
-          if (!excludeList.includes(clientId)) {
-            clients[clientId].notify(event, data);
-          }
-        }
-      });
+    log.debug('broadcast controller:', controller, 'exclude:', excludeList,
+        'event:', event, 'data:', data);
+    const receivers = portal.getParticipantsByController('node', controller);
+    log.debug('receivers:', JSON.stringify(receivers));
+    for (let clientId of receivers) {
+      if (!excludeList.includes(clientId) && clients[clientId]) {
+        clients[clientId].notify(event, data);
+      }
+    }
   }
 
   that.drop = function(participantId) {

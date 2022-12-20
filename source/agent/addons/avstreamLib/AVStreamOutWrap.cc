@@ -120,10 +120,10 @@ void AVStreamOutWrap::New(const v8::FunctionCallbackInfo<v8::Value>& args)
             opts.hls_list_size = Nan::To<int32_t>(
                 Nan::Get(parameters, Nan::New("hlsListSize").ToLocalChecked()).ToLocalChecked()).FromJust();
 
-            strncpy(opts.hls_method,
+            memset(opts.hls_method, 0, sizeof(opts.hls_method));
+            strncat(opts.hls_method,
                     getString(Nan::Get(parameters, Nan::New("method").ToLocalChecked()).ToLocalChecked()).c_str(),
                     sizeof(opts.hls_method) - 1);
-            opts.hls_method[sizeof(opts.hls_method) - 1] = '\0';
 
         } else if (protocol.compare("dash") == 0) {
             Local<Object> parameters = Nan::To<v8::Object>(
@@ -134,10 +134,10 @@ void AVStreamOutWrap::New(const v8::FunctionCallbackInfo<v8::Value>& args)
             opts.dash_window_size = Nan::To<int32_t>(
                 Nan::Get(parameters, Nan::New("dashWindowSize").ToLocalChecked()).ToLocalChecked()).FromJust();
 
-            strncpy(opts.hls_method,
+            memset(opts.dash_method, 0, sizeof(opts.dash_method));
+            strncat(opts.dash_method,
                     getString(Nan::Get(parameters, Nan::New("method").ToLocalChecked()).ToLocalChecked()).c_str(),
-                    sizeof(opts.hls_method) - 1);
-            opts.dash_method[sizeof(opts.dash_method) - 1] = '\0';
+                    sizeof(opts.dash_method) - 1);
         }
 
         obj->me = new owt_base::LiveStreamOut(url, requireAudio, requireVideo, obj, initializeTimeout, opts);

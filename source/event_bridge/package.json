@@ -1,0 +1,18 @@
+{
+  "name": "OWT-Server-Event-Bridge",
+  "version": "5.0.0",
+  "dependencies": {
+    "amqplib": "^0.7.0",
+    "log4js": "*",
+    "node-getopt": "*",
+    "event-loop-inspector" : "^1.2.2",
+    "toml": "*"
+  },
+  "devDependencies": {
+    "chai": "^4.2.0",
+    "chai-as-promised": "^7.1.1",
+    "mocha": "^5.2.0",
+    "node-gyp": "*",
+    "sinon": "^9.0.2"
+  }
+}

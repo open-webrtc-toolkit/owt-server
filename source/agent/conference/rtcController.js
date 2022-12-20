@@ -166,14 +166,14 @@ class RtcController extends EventEmitter {
       if (transport.locality) {
         log.debug(`Destroy transport ${transportId}`);
         this.rpcReq.destroyTransport(transport.locality.node, transportId)
-        .catch((e) => {
-          log.debug(`Faild to clean up transport ${transportId}: ${e}`);
-        }).then(() => {
-          const locality = transport.locality;
-          log.debug(`to recycleWorkerNode: ${locality} task:, ${transportId}`);
-          const taskConfig = {room: this.roomId, task: transportId};
-          return this.rpcReq.recycleWorkerNode(locality.agent, locality.node, taskConfig)
-        }).catch((e) => log.debug(`Failed to recycleWorkerNode ${locality}`));
+          .catch((e) => {
+            log.debug(`Faild to clean up transport ${transportId}: ${e}`);
+          });
+        const locality = transport.locality;
+        log.debug(`to recycleWorkerNode: ${locality} task:, ${transportId}`);
+        const taskConfig = {room: this.roomId, task: transportId};
+        this.rpcReq.recycleWorkerNode(locality.agent, locality.node, taskConfig)
+          .catch((e) => log.debug(`Failed to recycleWorkerNode ${locality}`));
       } else {
         log.warn(`No locality for failed transport ${transportId}`);
       }

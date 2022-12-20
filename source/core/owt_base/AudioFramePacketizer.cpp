@@ -132,7 +132,8 @@ bool AudioFramePacketizer::init(AudioFramePacketizer::Config& config)
         sendConfig.rtp_listener = this;
         sendConfig.stats_listener = this;
         if (!config.mid.empty()) {
-            strncpy(sendConfig.mid, config.mid.c_str(), sizeof(sendConfig.mid) - 1);
+            memset(sendConfig.mid, 0, sizeof(sendConfig.mid));
+            strncat(sendConfig.mid, config.mid.c_str(), sizeof(sendConfig.mid) - 1);
             sendConfig.mid_ext = config.midExtId;
         }
         m_audioSend = m_rtcAdapter->createAudioSender(sendConfig);

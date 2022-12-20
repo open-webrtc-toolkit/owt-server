@@ -10,13 +10,14 @@ var TokenSchema = new Schema({
   user: String,
   role: String,
   room: { type: Schema.Types.ObjectId, ref: 'Room' },
-  service:{ type: Schema.Types.ObjectId, ref: 'Service' },
+  service: { type: Schema.Types.ObjectId, ref: 'Service' },
   creationDate: Date,
   origin: {},
   code: String,
   secure: Boolean,
   host: String,
-  webTransportUrl: String
+  webTransportUrl: String,
+  domain: String,
 });
 
 module.exports = mongoose.model('Token', TokenSchema);

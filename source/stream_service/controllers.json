@@ -1,0 +1,37 @@
+{
+  "webrtc": {
+    "className": "RtcController",
+    "requirePath": "./controllers/rtcController",
+    "test": {}
+  },
+  "audio": {
+    "className": "AudioController",
+    "requirePath": "./controllers/audioController",
+    "test": {}
+  },
+  "video": {
+    "className": "VideoController",
+    "requirePath": "./controllers/videoController",
+    "test": {}
+  },
+  "streaming": {
+    "className": "StreamingController",
+    "requirePath": "./controllers/streamingController",
+    "test": {}
+  },
+  "analytics": {
+    "className": "AnalyticsController",
+    "requirePath": "./controllers/analyticsController",
+    "test": {}
+  },
+  "quic": {
+    "className": "QuicController",
+    "requirePath": "./controllers/quicController",
+    "test": {}
+  },
+  "virtual": {
+    "className": "VirtualController",
+    "requirePath": "./controllers/virtualController",
+    "test": {}
+  }
+}

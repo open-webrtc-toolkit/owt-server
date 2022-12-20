@@ -59,13 +59,51 @@ function unlock (password, filename, cb) {
   s.pipe(crypto.createDecipheriv(algorithm, password, iv)).pipe(unzip);
 }
 
+function lockSync (password, object, filename) {
+  const buf = Buffer.from(JSON.stringify(object), 'utf8');
+  const data = zlib.gzipSync(buf);
+  const cipher = crypto.createCipheriv(algorithm, password, iv);
+  let enc = cipher.update(data);
+  let enc2 = cipher.final();
+  enc = Buffer.concat([enc, enc2], enc.length + enc2.length) ;
+  fs.writeFileSync(filename, enc);
+}
+
+function unlockSync (password, filename) {
+  const buf = fs.readFileSync(filename);
+  // const dec = decrypt(password, fs.readFileSync(filename, {encoding: 'hex'}));
+  const decipher = crypto.createDecipheriv(algorithm, password, iv);
+  let dec = decipher.update(buf);
+  let dec2 = decipher.final();
+  dec = Buffer.concat([dec, dec2], dec.length + dec2.length);
+  const data = zlib.gunzipSync(dec);
+  return JSON.parse(data.toString());
+}
+
+const defaultK =
+  Buffer.from('3d84a1efc77268c98bc6ca2921eb35a6d82a40a38696d25fbb64ff1733cd2523', 'hex');
+let csk = null;
+// Set credPass with your own pass
+if (global.config?.credPass) {
+  const defaultSalt =
+    Buffer.from('1a7bb4a4f56f15eb875c7a66d8fe893bc9458acd414319d431f6a6dfaef69fa6', 'hex');
+  // crypto.randomBytes(32).toString('hex');
+  // Set credSalt with your own salt
+  const salt = global.config.credSalt || defaultSalt;
+  csk = crypto.pbkdf2Sync(global.config.credPass, salt, 4000, 128, 'sha256');
+  delete global.config.credPass;
+  delete global.config.credSalt;
+}
+
 module.exports = {
   encrypt: encrypt,
   decrypt: decrypt,
-  // Replace k with your key generator
-  k: Buffer.from('3d84a1efc77268c98bc6ca2921eb35a6d82a40a38696d25fbb64ff1733cd2523', 'hex'),
+  k: (csk || defaultK),
+  dk: defaultK,
   astore: '.owt.authstore',
   kstore: '.owt.keystore',
   lock: lock,
-  unlock: unlock
+  unlock: unlock,
+  lockSync: lockSync,
+  unlockSync: unlockSync,
 };
