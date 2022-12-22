@@ -53,7 +53,8 @@ function startup () {
         checkAlivePeriod: config.manager.check_alive_interval,
         checkAliveCount: config.manager.check_alive_count,
         scheduleKeepTime: config.manager.schedule_reserve_time,
-        strategy: config.strategy
+        strategy: config.strategy,
+        url: config.cloud.url, region: config.cloud.region, clusterID: config.cloud.clusterID
     };
 
     if (config.manager.enable_grpc) {

@@ -62,6 +62,10 @@ var RpcRequest = function(rpcChannel) {
     return rpcChannel.makeRPC(controller, 'onSessionSignaling', [sessionId, signaling]);
   };
 
+  that.getToken = function(controller) {
+    return rpcChannel.makeRPC(controller, 'getRoomToken', []);
+  }
+
   return that;
 };
 

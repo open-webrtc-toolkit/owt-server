@@ -26,8 +26,8 @@ DEFINE_LOGGER(QuicTransportServer, "QuicTransportServer");
 Nan::Persistent<v8::Function> QuicTransportServer::s_constructor;
 
 // QUIC Incomming
-QuicTransportServer::QuicTransportServer(unsigned int port, const std::string& cert_file, const std::string& key_file)
-        : m_quicServer(QuicFactory::getQuicTransportFactory()->CreateQuicTransportServer(port, cert_file.c_str(), key_file.c_str())) {
+QuicTransportServer::QuicTransportServer(unsigned int port, const std::string& pfxPath, const std::string& password)
+        : m_quicServer(QuicFactory::getQuicTransportFactory()->CreateQuicTransportServer(port, pfxPath.c_str(), password.c_str())) {
   m_quicServer->SetVisitor(this);
 }
 

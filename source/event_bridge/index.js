@@ -19,7 +19,7 @@ try {
 // Configuration default values
 config.bridge = config.bridge || {};
 config.bridge.ip_address = config.bridge.ip_address || '';
-config.bridge.hostname = config.bridge.hostname|| '';
+config.bridge.hostname = config.bridge.hostname || undefined;
 config.bridge.port = config.bridge.port || 7700;
 
 config.cluster = config.cluster || {};
@@ -33,16 +33,6 @@ config.cluster.network_max_scale = config.cluster.network_max_scale || 1000;
 config.rabbit = config.rabbit || {};
 config.rabbit.host = config.rabbit.host || 'localhost';
 config.rabbit.port = config.rabbit.port || 5672;
-
-// Parse bridge hostname and ip_address variables from ENV.
-if (config.bridge.ip_address.indexOf('$') == 0) {
-    config.bridge.ip_address = process.env[config.bridge.ip_address.substr(1)];
-    log.info('ENV: config.bridge.ip_address=' + config.bridge.ip_address);
-}
-if (config.bridge.hostname.indexOf('$') == 0) {
-    config.bridge.hostname = process.env[config.bridge.hostname.substr(1)];
-    log.info('ENV: config.bridge.hostname=' + config.bridge.hostname);
-}
 
 global.config = config;
 
@@ -110,10 +100,10 @@ var joinCluster = function (on_ok) {
               purpose: 'eventbridge',
               clusterName: config.cluster.name,
               joinRetry: config.cluster.join_retry,
-              info: {ip: ip_address,
+              info: {ip: config.bridge.hostname || ip_address,
                      port: config.bridge.port,
                      state: 2,
-                     max_load: config.cluster.max_load,
+                     maxLoad: config.cluster.max_load,
                      capacity: {}
                     },
               onJoinOK: joinOK,

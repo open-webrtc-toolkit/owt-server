@@ -5,6 +5,8 @@
 'use strict';
 
 var logger = require('./logger').logger;
+const cipher = require('./cipher');
+const path = require('path');
 var log = logger.getLogger('EventCascading');
 var quicCas = require('./quicCascading/build/Release/quicCascading.node');
 
@@ -111,10 +113,6 @@ var EventCascading = function(spec, rpcReq) {
       controllers[controller][id] = {};
     }
     controllers[controller][id] = quicStream;
-    var info = {
-      type: 'bridge',
-      room: data.room
-    }
 
     var info = {
       type: 'ready',
@@ -128,7 +126,8 @@ var EventCascading = function(spec, rpcReq) {
       if (event.type === 'ready') {
         var info = {
           type: 'bridge',
-          room: data.room
+          room: data.room,
+          token: data.token
         }
         quicStream.send(JSON.stringify(info));
       } else {
@@ -207,97 +206,134 @@ var EventCascading = function(spec, rpcReq) {
   }
 
   that.start = function () {
-    server = new quicCas.QuicTransportServer(port, cf, kf);
-
-    server.start();
-    server.onNewSession((session) => {
-      var sessionId = session.getId();
-      session.id = sessionId;
-      if (!sessions[sessionId]) {
-        sessions[sessionId] = {};
+  const keystore = path.resolve(path.dirname(global.config.bridge.keystorePath), cipher.kstore);
+    cipher.unlock(cipher.k, keystore, (error, password) => {
+      if (error) {
+        log.error('Failed to read certificate and key.');
+        return;
       }
-      sessions[sessionId].quicsession = session;
+      log.info('path is ' + path.resolve(global.config.bridge.keystorePath));
+      server = new quicCas.QuicTransportServer(port, path.resolve(global.config.bridge.keystorePath),password);
 
-      log.info("Server get new session:", sessionId);
-      session.onNewStream((quicStream) => {
-	    log.info("Server get new stream:", quicStream);
-        var streamId = quicStream.getId();
-        if (!sessions[sessionId].streams) {
-          sessions[sessionId].streams = {};
+      server.start();
+      server.onNewSession((session) => {
+        var sessionId = session.getId();
+        session.id = sessionId;
+        if (!sessions[sessionId]) {
+          sessions[sessionId] = {};
         }
+        sessions[sessionId].quicsession = session;
 
-        if (!sessions[sessionId].cascadedRooms) {
-          sessions[sessionId].cascadedRooms = {};
-        }
-
-        if (!sessions[sessionId].streams[streamId]) {
-          sessions[sessionId].streams[streamId] = {};
-        }
-        sessions[sessionId].streams[streamId].quicstream = quicStream;
-        log.info("quicStreams:", sessions);
-        var id = sessionId + '-' + streamId;
-        session.dest = id;
-        quicStream.onStreamData((msg) => {
-          var event = JSON.parse(msg);
-          log.info("Server get stream data:", event);
-          if (event.type === 'bridge') {
-            rpcReq.getController(cluster_name, event.room)
-            .then(function(controller) {
-
-              sessions[sessionId].streams[streamId].controller = controller;
-              sessions[sessionId].streams[streamId].roomid = event.room;
-              sessions[sessionId].cascadedRooms[event.room] = true;
-
-              if (!controllers[controller]) {
-                controllers[controller] = {};
-              }
-
-              if (!controllers[controller][id]) {
-                controllers[controller][id] = {};
-              }
-
-              controllers[controller][id] = quicStream;
-              rpcReq.onCascadingConnected(controller, self_rpc_id, sessionId, streamId);
-            });
-          } else if (event.type === 'ready') {
-            var info = {
-              type: 'ready'
-            }
-            sessions[sessionId].target = event.target;
-            quicStream.send(JSON.stringify(info));
-          } else {
-            rpcReq.handleCascadingEvents(sessions[sessionId].streams[streamId].controller, self_rpc_id, sessions[sessionId].target, event);
+        log.info("Server get new session:", sessionId);
+        session.onNewStream((quicStream) => {
+          log.info("Server get new stream:", quicStream);
+          var streamId = quicStream.getId();
+          if (!sessions[sessionId].streams) {
+            sessions[sessionId].streams = {};
           }
-        });
-      })
 
-      session.onClosedStream((closedStreamId) => {
-        log.info("server stream:", closedStreamId, " is closed");
-          if (sessions[sessionId] && sessions[session.id].streams[closedStreamId]) {
-            delete controllers[sessions[session.id].streams[closedStreamId].controller][session.dest];
-            var event = {
-              type: 'onCascadingDisconnected'
-            }
-            rpcReq.handleCascadingEvents(sessions[session.id].streams[closedStreamId].controller, self_rpc_id, sessions[session.id].target, event);
-            var roomid = sessions[session.id].streams[closedStreamId].roomid;
-            sessions[session.id].cascadedRooms[roomid] = false;
-            delete sessions[session.id].streams[closedStreamId];
-          }          
-      })
-    });
+          if (!sessions[sessionId].cascadedRooms) {
+            sessions[sessionId].cascadedRooms = {};
+          }
 
-    server.onClosedSession((sessionId) => {
-      log.info("Session:", sessionId, " in server is closed, sessions:", sessions);
-      if (sessions[sessionId].streams) {
-        for (var item in sessions[sessionId].streams) {
-         var event = {
-              type: 'onCascadingDisconnected'
+          if (!sessions[sessionId].streams[streamId]) {
+            sessions[sessionId].streams[streamId] = {};
+          }
+          sessions[sessionId].streams[streamId].quicstream = quicStream;
+          log.info("quicStreams:", sessions);
+          var id = sessionId + '-' + streamId;
+          session.dest = id;
+          session.checkToken = false;
+          quicStream.onStreamData((msg) => {
+            var event = JSON.parse(msg);
+            log.info("Server get stream data:", event);
+            if (event.type === 'bridge') {
+              rpcReq.getController(cluster_name, event.room)
+              .then(function(controller) {
+                sessions[sessionId].streams[streamId].controller = controller;
+                return rpcReq.getToken(controller);
+              })
+              .then(function(token) {
+                log.info("room token is:", token, " cascading token is:", event.token);
+                //Quic connection token checked once for one cluster since one cluster will only have one Quic connection
+                if (session.checkToken) {
+                  var controller = sessions[sessionId].streams[streamId].controller;
+                  sessions[sessionId].streams[streamId].roomid = event.room;
+                  sessions[sessionId].cascadedRooms[event.room] = true;
+
+                  if (!controllers[controller]) {
+                    controllers[controller] = {};
+                  }
+
+                  if (!controllers[controller][id]) {
+                    controllers[controller][id] = {};
+                  }
+
+                  controllers[controller][id] = quicStream;
+                  rpcReq.onCascadingConnected(controller, self_rpc_id, sessionId, streamId);
+                } else {
+                  if (event.token === token) {
+                    session.checkToken = true;
+                    var controller = sessions[sessionId].streams[streamId].controller;
+                    sessions[sessionId].streams[streamId].roomid = event.room;
+                    sessions[sessionId].cascadedRooms[event.room] = true;
+
+                    if (!controllers[controller]) {
+                      controllers[controller] = {};
+                    }
+
+                    if (!controllers[controller][id]) {
+                      controllers[controller][id] = {};
+                    }
+
+                    controllers[controller][id] = quicStream;
+                    rpcReq.onCascadingConnected(controller, self_rpc_id, sessionId, streamId);
+                  } else {
+                    //quic client token validation failed and close the quic stream
+                    quicStream.close();
+                  }
+                }
+
+              });
+            } else if (event.type === 'ready') {
+              var info = {
+                type: 'ready'
+              }
+              sessions[sessionId].target = event.target;
+              quicStream.send(JSON.stringify(info));
+            } else {
+              rpcReq.handleCascadingEvents(sessions[sessionId].streams[streamId].controller, self_rpc_id, sessions[sessionId].target, event);
             }
-            rpcReq.handleCascadingEvents(sessions[sessionId].streams[item].controller, self_rpc_id, sessions[sessionId].target, event);
+          });
+        })
+
+        session.onClosedStream((closedStreamId) => {
+          log.info("server stream:", closedStreamId, " is closed");
+            if (sessions[sessionId] && sessions[session.id].streams[closedStreamId]) {
+              delete controllers[sessions[session.id].streams[closedStreamId].controller][session.dest];
+              var event = {
+                type: 'onCascadingDisconnected'
+              }
+              rpcReq.handleCascadingEvents(sessions[session.id].streams[closedStreamId].controller, self_rpc_id, sessions[session.id].target, event);
+              var roomid = sessions[session.id].streams[closedStreamId].roomid;
+              sessions[session.id].cascadedRooms[roomid] = false;
+              delete sessions[session.id].streams[closedStreamId];
+            }
+        })
+      });
+
+      server.onClosedSession((sessionId) => {
+        log.info("Session:", sessionId, " in server is closed, sessions:", sessions);
+        if (sessions[sessionId].streams) {
+          for (var item in sessions[sessionId].streams) {
+           var event = {
+                type: 'onCascadingDisconnected'
+              }
+              rpcReq.handleCascadingEvents(sessions[sessionId].streams[item].controller, self_rpc_id, sessions[sessionId].target, event);
+          }
         }
-      }
-      
-      delete sessions[sessionId];
+        delete sessions[sessionId];
+      })
     })
   }
 

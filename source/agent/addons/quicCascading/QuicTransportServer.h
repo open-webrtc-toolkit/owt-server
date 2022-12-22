@@ -41,7 +41,7 @@ public:
 protected:
     QuicTransportServer() = delete;
     virtual ~QuicTransportServer();
-    explicit QuicTransportServer(unsigned int port, const std::string& cert_file, const std::string& key_file);
+    explicit QuicTransportServer(unsigned int port, const std::string& pfxPath, const std::string& password);
 
     // Implements QuicTransportClientInterface.
     void OnSession(owt::quic::QuicTransportSessionInterface*) override;
