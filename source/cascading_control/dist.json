@@ -1,0 +1,20 @@
+{
+    "name": "cascading-control",
+    "dest": "cascading-control",
+    "common": {
+        "package": "package.json",
+        "files": [
+            "./*",
+            "../common/cipher.js",
+            "../../scripts/release/initcert.js",
+            "../../scripts/detectOS.sh"
+        ],
+        "folders": {
+            "cert": [
+                "../../cert/*.pfx",
+                "../../cert/.owt.keystore"
+            ]
+        }
+    },
+    "start": "node ."
+}

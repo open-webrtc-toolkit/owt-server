@@ -12,6 +12,7 @@ var RoomController = require('./roomController');
 var dataAccess = require('./data_access');
 var Participant = require('./participant');
 const { QuicController } = require('./quicController');
+var crypto = require('crypto');
 
 // Logger
 var log = logger.getLogger('Conference');
@@ -108,7 +109,7 @@ var Conference = function (rpcClient, selfRpcId) {
   var rtcController;
   let quicController;
 
-  var roomToken = Math.round(Math.random() * 1000000000000000000) + '';
+  var roomToken = crypto.randomBytes(32).toString('hex');
 
   /*
    * {

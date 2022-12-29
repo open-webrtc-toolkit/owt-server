@@ -9,7 +9,6 @@ var Scheduler = require('./scheduler').Scheduler;
 // Logger
 var log = logger.getLogger('ClusterManager');
 var role = null;
-const http = require('http');
 var Url = require("url");
 
 var ClusterManager = function (clusterName, selfId, spec) {
@@ -49,6 +48,7 @@ var ClusterManager = function (clusterName, selfId, spec) {
       log.info("send info to url:", spec.url);
       const data = JSON.stringify(body);
       var url = Url.parse(spec.url + "/" + resource);
+      var ssl = (url.protocol === 'https:' ? true : false);
 
       const options = {
         hostname: url.hostname,
@@ -60,8 +60,9 @@ var ClusterManager = function (clusterName, selfId, spec) {
           'Content-Length': data.length,
         },
       };
+      ssl && (options.rejectUnauthorized = false);
       log.info("send options:", options);
-
+      const http = (ssl ? require('https'): require('http'));
       const req = http.request(options, res => {
         console.log(`statusCode: ${res.statusCode}`);
 
