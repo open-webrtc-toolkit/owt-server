@@ -471,6 +471,9 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
             if (conn) {
                 log.debug('Added switch source:', source.id);
                 const dispatcher = new MediaFrameMulticaster();
+                dispatcher.receiver = function () {
+                    return dispatcher;
+                };
                 const dispatcherId = switchId + switchSources.length;
                 dispatchers.set(dispatcherId, dispatcher);
                 router.addLocalDestination(

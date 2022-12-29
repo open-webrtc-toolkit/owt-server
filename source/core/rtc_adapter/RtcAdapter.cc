@@ -48,7 +48,7 @@ static constexpr int kStartBitrateBps = 800000;
 class RtcAdapterImpl : public RtcAdapter,
                        public CallOwner,
                        public webrtc::TargetTransferRateObserver,
-                       public webrtc::BitrateStatisticsObserver {
+                       public VideoSendAdapterImpl::SendBitrateObserver {
 public:
     RtcAdapterImpl();
     virtual ~RtcAdapterImpl();
@@ -84,15 +84,16 @@ public:
         return m_transportControllerSend;
     }
     uint32_t estimatedBandwidth(uint32_t ssrc) override;
-    void registerVideoSender(uint32_t ssrc) override { m_videoSenderNumber++; }
-    void deregisterVideoSender(uint32_t ssrc) override { m_videoSenderNumber--; }
+    void registerVideoSender(uint32_t ssrc) override;
+    void deregisterVideoSender(uint32_t ssrc) override;
 
     //Implements webrtc::TargetTransferRateObjserver
     void OnTargetTransferRate(webrtc::TargetTransferRate) override;
-    //Implements webrtc::BitrateStatisticsObserver
-    void Notify(uint32_t total_bitrate_bps,
-                uint32_t retransmit_bitrate_bps,
-                uint32_t ssrc) override;
+    //Implements VideoSendAdapterImpl::SendBitrateObserver
+    void notifyBitrate(uint32_t total_bitrate_bps,
+                       uint32_t retransmit_bitrate_bps,
+                       bool adjustable,
+                       uint32_t ssrc) override;
 
 private:
     void initCall();
@@ -105,9 +106,8 @@ private:
     std::mutex m_bitrateMutex;
     std::map<uint32_t, uint32_t> m_sendBitrate;
     std::map<uint32_t, bool> m_adjustBitrate;
+    std::map<uint32_t, uint32_t> m_allocBitrate;
     uint32_t m_estimatedBandwidth = 0;
-
-    std::atomic<int> m_videoSenderNumber = {0};
 };
 
 RtcAdapterImpl::RtcAdapterImpl()
@@ -185,34 +185,73 @@ void RtcAdapterImpl::OnTargetTransferRate(webrtc::TargetTransferRate msg)
     m_estimatedBandwidth = target_bitrate_bps;
 }
 
-void RtcAdapterImpl::Notify(uint32_t total_bitrate_bps,
-                            uint32_t retransmit_bitrate_bps,
-                            uint32_t ssrc)
+void RtcAdapterImpl::registerVideoSender(uint32_t ssrc)
+{
+    std::lock_guard<std::mutex> guard(m_bitrateMutex);
+    m_sendBitrate[ssrc] = 0;
+    m_adjustBitrate[ssrc] = false;
+    m_allocBitrate[ssrc] = 0;
+}
+
+void RtcAdapterImpl::deregisterVideoSender(uint32_t ssrc)
+{
+    std::lock_guard<std::mutex> guard(m_bitrateMutex);
+    m_sendBitrate.erase(ssrc);
+    m_adjustBitrate.erase(ssrc);
+    m_allocBitrate.erase(ssrc);
+}
+
+void RtcAdapterImpl::notifyBitrate(uint32_t total_bitrate_bps,
+                                   uint32_t retransmit_bitrate_bps,
+                                   bool adjustable,
+                                   uint32_t ssrc)
 {
     std::lock_guard<std::mutex> guard(m_bitrateMutex);
     if (m_sendBitrate.count(ssrc) > 0) {
-        if (total_bitrate_bps == 0) {
-            if (retransmit_bitrate_bps == 0) {
-                m_sendBitrate.erase(ssrc);
-                m_adjustBitrate.erase(ssrc);
-            } else if (retransmit_bitrate_bps == 1) {
-                // Temporarily use this interface for adjust
-                m_adjustBitrate[ssrc] = true;
-            }
-        } else {
-            m_sendBitrate[ssrc] = total_bitrate_bps;
+        m_sendBitrate[ssrc] = total_bitrate_bps;
+        m_adjustBitrate[ssrc] = adjustable;
+    } else {
+        return;
+    }
+    uint32_t total = 0;
+    for (auto const& p : m_sendBitrate) {
+        total += p.second;
+    }
+    if (total >= m_estimatedBandwidth) {
+        for (auto const& p : m_sendBitrate) {
+            m_allocBitrate[p.first] = m_estimatedBandwidth;
         }
     } else {
-        m_sendBitrate[ssrc] = total_bitrate_bps;
-        m_adjustBitrate[ssrc] = false;
+        uint32_t remaining = m_estimatedBandwidth;
+        uint32_t adjustNum = 0;
+        for (auto const& p : m_sendBitrate) {
+            if (!m_adjustBitrate[p.first]) {
+                m_allocBitrate[p.first] = p.second;
+                if (remaining >= p.second) {
+                    remaining -= p.second;
+                } else {
+                    remaining = 0;
+                }
+            } else {
+                adjustNum++;
+            }
+        }
+        uint32_t adjustBitrate = (double) remaining / adjustNum;
+        for (auto const& p : m_sendBitrate) {
+            if (m_adjustBitrate[p.first]) {
+                m_allocBitrate[p.first] = adjustBitrate;
+            }
+        }
     }
 }
 
 uint32_t RtcAdapterImpl::estimatedBandwidth(uint32_t ssrc)
 {
     std::lock_guard<std::mutex> guard(m_bitrateMutex);
-    uint32_t total = m_estimatedBandwidth;
-
+    if (m_allocBitrate.count(ssrc) > 0) {
+        return m_allocBitrate[ssrc];
+    }
+    return 0;
 }
 
 VideoReceiveAdapter* RtcAdapterImpl::createVideoReceiver(const Config& config)

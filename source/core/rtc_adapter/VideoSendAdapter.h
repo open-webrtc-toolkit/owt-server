@@ -32,8 +32,15 @@ class VideoSendAdapterImpl : public VideoSendAdapter,
                              public webrtc::RtcpIntraFrameObserver,
                              public webrtc::BitrateStatisticsObserver {
 public:
+    class SendBitrateObserver {
+    public:
+        virtual void notifyBitrate(uint32_t total_bitrate_bps,
+                                   uint32_t retransmit_bitrate_bps,
+                                   bool adjustable,
+                                   uint32_t ssrc) = 0;
+    };
     VideoSendAdapterImpl(CallOwner* owner, const RtcAdapter::Config& config,
-                         webrtc::BitrateStatisticsObserver* ob);
+                         SendBitrateObserver* bitrateObserver);
     ~VideoSendAdapterImpl();
 
     // Implement VideoSendAdapter
@@ -91,7 +98,7 @@ private:
     CallOwner* m_owner;
     std::shared_ptr<webrtc::RtpTransportControllerSendInterface> m_transportControllerSend;
     VideoSendAdapter::Stats m_stats;
-    webrtc::BitrateStatisticsObserver* m_bitrateObserver;
+    SendBitrateObserver* m_bitrateObserver;
 
     std::shared_ptr<webrtc::RtpPacketSender> m_pacedSender;
 

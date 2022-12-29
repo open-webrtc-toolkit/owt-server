@@ -24,6 +24,7 @@ namespace rtc_adapter {
 // in up to 2 times max video bitrate if the bandwidth estimate allows it.
 static const int TRANSMISSION_MAXBITRATE_MULTIPLIER = 2;
 static const int kMaxRtpPacketSize = 1200;
+static const double kBitrateNotifyDiffer = 0.2;
 
 static int getNextNaluPosition(uint8_t* buffer, int buffer_size, bool& is_aud_or_sei, int& sc_len)
 {
@@ -158,7 +159,7 @@ private:
 VideoSendAdapterImpl::VideoSendAdapterImpl(
     CallOwner* owner,
     const RtcAdapter::Config& config,
-    webrtc::BitrateStatisticsObserver* ob)
+    VideoSendAdapterImpl::SendBitrateObserver* ob)
     : m_enableDump(false)
     , m_config(config)
     , m_keyFrameArrived(false)
@@ -235,9 +236,7 @@ bool VideoSendAdapterImpl::init()
         //     m_transportControllerSend->packet_router());
         // configuration.paced_sender = m_pacedSender.get();
         configuration.paced_sender = m_transportControllerSend->packet_sender();
-        if (m_bitrateObserver) {
-            configuration.send_bitrate_observer = m_bitrateObserver;
-        }
+        configuration.send_bitrate_observer = this;
     }
 
     m_rtpRtcp = webrtc::RtpRtcp::Create(configuration);
@@ -478,15 +477,27 @@ void VideoSendAdapterImpl::Notify(uint32_t total_bitrate_bps,
                                   uint32_t retransmit_bitrate_bps,
                                   uint32_t ssrc)
 {
-//   if (m_ssrc == ssrc) {
-//     RTC_LOG(LS_INFO) << "total_bitrate_bps:" << total_bitrate_bps
-//                      << " retransmit_bitrate_bps:" << retransmit_bitrate_bps;
-//     m_stats.total_bitrate_bps = total_bitrate_bps;
-//     m_stats.retransmit_bitrate_bps = retransmit_bitrate_bps;
-//     if (m_owner) {
-//         m_stats.estimated_bandwidth = m_owner->estimatedBandwidth(m_ssrc);
-//     }
-//   }
+  if (m_ssrc == ssrc) {
+    RTC_LOG(LS_INFO) << "total_bitrate_bps:" << total_bitrate_bps
+                     << " retransmit_bitrate_bps:" << retransmit_bitrate_bps;
+    double diff = std::abs(double(m_stats.total_bitrate_bps - total_bitrate_bps));
+    if (m_stats.total_bitrate_bps > 0) {
+        diff = diff / m_stats.total_bitrate_bps;
+    }
+    if (diff > kBitrateNotifyDiffer) {
+        m_stats.total_bitrate_bps = total_bitrate_bps;
+        m_stats.retransmit_bitrate_bps = retransmit_bitrate_bps;
+        if (m_bitrateObserver) {
+            bool adjustBitrate = false;
+            if (m_stats.estimated_bandwidth > 0) {
+                // Adjust bitrate when estimation used
+                adjustBitrate = true;
+            }
+            m_bitrateObserver->notifyBitrate(
+                total_bitrate_bps, retransmit_bitrate_bps, adjustBitrate, m_ssrc);
+        }
+    }
+  }
 }
 
 VideoSendAdapter::Stats VideoSendAdapterImpl::getStats()
