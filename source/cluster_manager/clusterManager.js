@@ -62,7 +62,7 @@ var ClusterManager = function (clusterName, selfId, spec) {
       };
       ssl && (options.rejectUnauthorized = false);
       log.info("send options:", options);
-      const http = (ssl ? require('https'): require('http'));
+      const http = (ssl ? require('https') : require('http'));
       const req = http.request(options, res => {
         console.log(`statusCode: ${res.statusCode}`);
 
