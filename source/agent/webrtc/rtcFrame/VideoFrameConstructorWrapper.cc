@@ -160,10 +160,11 @@ NAN_METHOD(VideoFrameConstructor::setPreferredLayers) {
   VideoFrameConstructor* obj = Nan::ObjectWrap::Unwrap<VideoFrameConstructor>(info.Holder());
   owt_base::VideoFrameConstructor* me = obj->me;
 
-  int spatialId = info[0]->IntegerValue(Nan::GetCurrentContext()).ToChecked();
-  int temporalId = info[1]->IntegerValue(Nan::GetCurrentContext()).ToChecked();
-
-  me->setPreferredLayers(spatialId, temporalId);
+  if (info.Length() >= 2) {
+    int spatialId = info[0]->IntegerValue(Nan::GetCurrentContext()).ToChecked();
+    int temporalId = info[1]->IntegerValue(Nan::GetCurrentContext()).ToChecked();
+    me->setPreferredLayers(spatialId, temporalId);
+  }
 }
 
 NAN_METHOD(VideoFrameConstructor::requestKeyFrame) {
