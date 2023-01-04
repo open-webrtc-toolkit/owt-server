@@ -543,7 +543,13 @@ const getBridgeInfo = (purpose, roomId, task) => {
           if (result === 'timeout' || result === 'error') {
               reject('Error in scheduling bridge for purpose:', purpose);
           } else {
-              resolve(result);
+            rpc.callRpc(result.id, 'getInfo', undefined, {callback: function (result) {
+              if (result === 'timeout' || result === 'error') {
+                  reject('Error in getting media bridge info');
+              } else {
+                  resolve(result);
+              }
+            }});
           }
       }});
     });
@@ -589,8 +595,8 @@ exports.getBridges = function (info, callback) {
     .then((ok) => {
       return getBridgeInfo("eventbridge", info.room, info.targetCluster);
     }).then((bridge) => {
-      bridges.eventbridgeip = bridge.info.ip;
-      bridges.eventbridgeport = bridge.info.port;
+      bridges.eventbridgeip = bridge.ip;
+      bridges.eventbridgeport = bridge.port;
       return Promise.resolve('ok');
     }).then((ok) => {
       return getBridgeInfo("mediabridge", info.room, info.targetCluster);

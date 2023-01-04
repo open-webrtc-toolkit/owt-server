@@ -56,4 +56,4 @@ ip_address = '' #default: ""
 hostname = "" #default: ""
 
 # Port of QUIC server for media cascading is going to listen on. 
-port = 7800 #default: 7800
+port = 0 #default: 0

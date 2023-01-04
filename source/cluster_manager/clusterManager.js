@@ -9,7 +9,6 @@ var Scheduler = require('./scheduler').Scheduler;
 // Logger
 var log = logger.getLogger('ClusterManager');
 var role = null;
-const http = require('http');
 var Url = require("url");
 
 var ClusterManager = function (clusterName, selfId, spec) {
@@ -49,6 +48,7 @@ var ClusterManager = function (clusterName, selfId, spec) {
       log.info("send info to url:", spec.url);
       const data = JSON.stringify(body);
       var url = Url.parse(spec.url + "/" + resource);
+      var ssl = (url.protocol === 'https:' ? true : false);
 
       const options = {
         hostname: url.hostname,
@@ -60,8 +60,9 @@ var ClusterManager = function (clusterName, selfId, spec) {
           'Content-Length': data.length,
         },
       };
+      ssl && (options.rejectUnauthorized = false);
       log.info("send options:", options);
-
+      const http = (ssl ? require('https') : require('http'));
       const req = http.request(options, res => {
         console.log(`statusCode: ${res.statusCode}`);
 
@@ -259,22 +260,37 @@ var ClusterManager = function (clusterName, selfId, spec) {
         }
     };
 
-    var getClusterID = function (on_ok) {
-        return on_ok(spec.clusterID);
+    var getClusterID = function (room_id, roomToken, on_ok) {
+        on_ok(spec.clusterID);
+
+        if (sendRequest) {
+            var data = {
+                clusterID: spec.clusterID,
+                region: spec.region,
+                info: {
+                    room: room_id,
+                    token: roomToken
+                }
+            }
+
+            log.info("Send room info to cloud with data:", data);
+            send('POST', 'updateConference', data);
+        }
     };
 
     var registerInfo = function (info, on_ok) {
         on_ok('ok');
-        var data = {
-            clusterID: spec.clusterID,
-            region: spec.region,
-            info: {
-                resturl: info.resturl,
-                servicekey: info.servicekey,
-                serviceid: info.serviceid
-            }
-        }
         if (sendRequest) {
+            var data = {
+                clusterID: spec.clusterID,
+                region: spec.region,
+                info: {
+                    resturl: info.resturl,
+                    servicekey: info.servicekey,
+                    serviceid: info.serviceid
+                }
+            }
+
             log.info("Send registerCluster event to cloud with data:", data);
             send('POST', 'registerCluster', data);
         }
@@ -442,8 +458,8 @@ var ClusterManager = function (clusterName, selfId, spec) {
                 callback('callback', 'error', error_reason);
             });
         },
-        getClusterID: function (callback) {
-            getClusterID(function (cluster) {
+        getClusterID: function (room_id, roomToken, callback) {
+            getClusterID(room_id, roomToken, function (cluster) {
                 callback('callback', cluster);
             });
         },
