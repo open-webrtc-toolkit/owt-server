@@ -58,6 +58,7 @@ NAN_MODULE_INIT(QuicTransportServer::init)
     Nan::SetPrototypeMethod(tpl, "onClosedSession", onClosedSession);
     Nan::SetPrototypeMethod(tpl, "start", start);
     Nan::SetPrototypeMethod(tpl, "stop", stop);
+    Nan::SetPrototypeMethod(tpl, "getListenPort", getListenPort);
 
     s_constructor.Reset(Nan::GetFunction(tpl).ToLocalChecked());
     Nan::Set(target, Nan::New("QuicTransportServer").ToLocalChecked(), Nan::GetFunction(tpl).ToLocalChecked());
@@ -100,6 +101,14 @@ NAN_METHOD(QuicTransportServer::stop)
     obj->m_quicServer->Stop();
     obj->m_quicServer->SetVisitor(nullptr);
     ELOG_DEBUG("End of QuicTransportServer::stop");
+}
+
+NAN_METHOD(QuicTransportServer::getListenPort)
+{
+    ELOG_DEBUG("QuicTransportServer::getListenPort");
+    QuicTransportServer* obj = Nan::ObjectWrap::Unwrap<QuicTransportServer>(info.Holder());
+    info.GetReturnValue().Set(Nan::New(obj->getListeningPort()));
+    ELOG_DEBUG("End of QuicTransportServer::getListenPort");
 }
 
 NAN_METHOD(QuicTransportServer::onNewSession) {
@@ -181,4 +190,14 @@ void QuicTransportServer::OnClosedSession(char* sessionId, size_t len) {
 
 void QuicTransportServer::OnEnded() {
     ELOG_DEBUG("QuicTransportServer::OnEnded");
+}
+
+unsigned int QuicTransportServer::getListeningPort() {
+    unsigned int port = m_quicServer->GetListenPort();
+    while (port == 0) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(30));
+        port = m_quicServer->GetListenPort();
+    }
+
+    return port;
 }

@@ -55,7 +55,7 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
     const clusterName = global && global.config && global.config.cluster ?
         global.config.cluster.name :
         undefined;
-    var port = global && global.config && global.config.bridge ? global.config.bridge.port : 8700;
+    var port = global && global.config && global.config.bridge ? global.config.bridge.port : 0;
     var bridge = global.config.bridge;
 
     var ip_address;
@@ -154,9 +154,10 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
     };
 
     that.getInfo = function(callback) {
+        var listenPort = server.getListenPort();
         var info = {
             ip: ip_address,
-            port: port
+            port: listenPort
         };
         log.info("get bridge Address ip:", info.ip, " port:", info.port);
         callback('callback', info);

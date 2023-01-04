@@ -311,7 +311,7 @@ app.post('/registerCluster/', function(req, res) {
     if (!clusters[region]) {
         clusters[region] = {};
     }
-    console.log("clusters are:", clusters);
+
     if (!clusters[region][clusterID]) {
         clusters[region][clusterID] = {};
         clusters[region][clusterID].conferences = [];

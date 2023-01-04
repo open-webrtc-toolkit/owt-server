@@ -375,6 +375,10 @@ var EventCascading = function(spec, rpcReq) {
     })
   }
 
+  that.getListeningPort = function () {
+    return server.getListenPort();
+  }
+
 
   return that;
 };
