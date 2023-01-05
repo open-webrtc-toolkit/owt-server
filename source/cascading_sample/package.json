@@ -11,11 +11,11 @@
     "control"
   ],
   "dependencies": {
-    "body-parser": "1.20.1",
-    "errorhandler": "1.5.1",
-    "express": "4.18.2",
-    "morgan": "1.10.0",
-    "spdy": "4.0.2"
+    "body-parser": "^1.20",
+    "errorhandler": "^1.5",
+    "express": "^4.18",
+    "morgan": "^1.10",
+    "spdy": "^4.0"
   },
   "main": "cloud_service.js",
   "engines": {
