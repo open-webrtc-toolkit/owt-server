@@ -19,8 +19,8 @@ try {
 // Configuration default values
 config.bridge = config.bridge || {};
 config.bridge.ip_address = config.bridge.ip_address || '';
-config.bridge.hostname = config.bridge.hostname|| '';
-config.bridge.port = config.bridge.port || 7700;
+config.bridge.hostname = config.bridge.hostname || undefined;
+config.bridge.port = config.bridge.port || 0;
 
 config.cluster = config.cluster || {};
 config.cluster.name = config.cluster.name || 'owt-cluster';
@@ -34,16 +34,6 @@ config.rabbit = config.rabbit || {};
 config.rabbit.host = config.rabbit.host || 'localhost';
 config.rabbit.port = config.rabbit.port || 5672;
 
-// Parse bridge hostname and ip_address variables from ENV.
-if (config.bridge.ip_address.indexOf('$') == 0) {
-    config.bridge.ip_address = process.env[config.bridge.ip_address.substr(1)];
-    log.info('ENV: config.bridge.ip_address=' + config.bridge.ip_address);
-}
-if (config.bridge.hostname.indexOf('$') == 0) {
-    config.bridge.hostname = process.env[config.bridge.hostname.substr(1)];
-    log.info('ENV: config.bridge.hostname=' + config.bridge.hostname);
-}
-
 global.config = config;
 
 
@@ -52,6 +42,7 @@ var rpcClient;
 var bridge;
 var event_cascading;
 var worker;
+var rpcid;
 
 var ip_address;
 (function getPublicIP() {
@@ -110,10 +101,10 @@ var joinCluster = function (on_ok) {
               purpose: 'eventbridge',
               clusterName: config.cluster.name,
               joinRetry: config.cluster.join_retry,
-              info: {ip: ip_address,
+              info: {ip: config.bridge.hostname || ip_address,
                      port: config.bridge.port,
                      state: 2,
-                     max_load: config.cluster.max_load,
+                     maxLoad: config.cluster.max_load,
                      capacity: {}
                     },
               onJoinOK: joinOK,
@@ -177,8 +168,12 @@ var rpcPublic = {
     event_cascading && event_cascading.broadcast(controller, excludeList, event, data);
     callback('callback', 'ok');
   },
-  getInfo: function() {
-    callback('callback', {ip:ip_address, port:config.bridge.port})
+  getInfo: function(callback) {
+    var listenPort = config.bridge.port;
+    if (listenPort === 0) {
+      listenPort = event_cascading.getListeningPort();
+    }
+    callback('callback', {id: rpcid, ip:ip_address, port:listenPort})
   },
   startCascading: function(data, callback) {
     event_cascading && event_cascading.startCascading(data, function () {
@@ -201,6 +196,7 @@ amqper.connect(config.rabbit, function () {
       log.info('bridge join cluster ok, with rpcID:', id);
         amqper.asRpcServer(id, rpcPublic, function(rpcSvr) {
           log.info('bridge initializing as rpc server ok');
+          rpcid = id;
             amqper.asMonitor(function (data) {
               if (data.reason === 'abnormal' || data.reason === 'error' || data.reason === 'quit') {
                 if (event_cascading) {

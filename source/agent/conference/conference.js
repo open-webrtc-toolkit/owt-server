@@ -12,6 +12,7 @@ var RoomController = require('./roomController');
 var dataAccess = require('./data_access');
 var Participant = require('./participant');
 const { QuicController } = require('./quicController');
+var crypto = require('crypto');
 
 // Logger
 var log = logger.getLogger('Conference');
@@ -107,6 +108,8 @@ var Conference = function (rpcClient, selfRpcId) {
 
   var rtcController;
   let quicController;
+
+  var roomToken = crypto.randomBytes(32).toString('hex');
 
   /*
    * {
@@ -503,7 +506,7 @@ var Conference = function (rpcClient, selfRpcId) {
                 });
             });
         }).then(() => {
-          rpcReq.getClusterID(cluster)
+          rpcReq.getClusterID(cluster, room_id, roomToken)
             .then((id) => {
               log.info('Get cluster id:', id);
               clusterID = id;
@@ -3375,6 +3378,10 @@ var Conference = function (rpcClient, selfRpcId) {
       callback('callback', result);
   };
 
+  that.getRoomToken = function(callback) {
+    callback('callback', roomToken);
+  }
+
   // Listener callback for GRPC
   that.processNotification = (notification) => {
     const name = notification.name;
@@ -3545,6 +3552,7 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
     //RPC for cluster cascading
     handleCascadingEvents: conference.handleCascadingEvents,
     onCascadingConnected: conference.onCascadingConnected,
+    getRoomToken: conference.getRoomToken,
     // Callback for GRPC
     processNotification: (notification) => {
       const name = notification.name;

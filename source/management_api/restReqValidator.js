@@ -569,10 +569,11 @@ const CascadingRequest = {
     'mediaPort': { type: 'number' },
     'targetCluster': { type: 'string' },
     'selfCluster': { type: 'string' },
+    'token': { type: 'string' },
     'room': {type: 'string'}
   },
   additionalProperties: false,
-  required: ['type', 'evIP', 'evPort', 'room']
+  required: ['type', 'evIP', 'evPort', 'room', 'token']
 };
 
 var validators = {

@@ -30,8 +30,12 @@ app.use('/console', express.static(__dirname + '/public'));
 const session = require('express-session');
 const {v4: uuidv4} = require('uuid');
 
+function createRandomHex(num) {
+  return crypto.randomBytes(num).toString('hex');
+}
+
 app.use(session({
-  secret: 'servicesecret',
+  secret: createRandomHex(32),
   name: 'owtserver',
   genid: function(req) {
     return uuidv4();

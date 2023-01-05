@@ -34,6 +34,7 @@ public:
     static NAN_METHOD(start);
     static NAN_METHOD(onNewSession);
     static NAN_METHOD(onClosedSession);
+    static NAN_METHOD(getListenPort);
 
     static NAUV_WORK_CB(onNewSessionCallback);
     static NAUV_WORK_CB(onClosedSessionCallback);
@@ -41,7 +42,7 @@ public:
 protected:
     QuicTransportServer() = delete;
     virtual ~QuicTransportServer();
-    explicit QuicTransportServer(unsigned int port, const std::string& cert_file, const std::string& key_file);
+    explicit QuicTransportServer(unsigned int port, const std::string& pfxPath, const std::string& password);
 
     // Implements QuicTransportClientInterface.
     void OnSession(owt::quic::QuicTransportSessionInterface*) override;
@@ -49,7 +50,7 @@ protected:
     void OnEnded() override;
 private:
 
-    unsigned int getServerPort();
+    unsigned int getListeningPort();
 
     std::unique_ptr<owt::quic::QuicTransportServerInterface> m_quicServer;
     uv_async_t m_asyncOnNewSession;

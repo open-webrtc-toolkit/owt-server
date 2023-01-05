@@ -341,8 +341,7 @@ static int module_init(void)
 			"%s/zrtp_zid", config_path) < 0)
 		return ENOMEM;
 	if ((f = fopen(zrtp_zid_path, "rb")) != NULL) {
-		if (fread(zrtp_config.zid, sizeof(zrtp_config.zid),
-			  1, f) != 1) {
+		if (fgets(zrtp_config.zid, 1, f) == NULL) {
 			if (feof(f) || ferror(f)) {
 				warning("zrtp: invalid zrtp_zid file\n");
 			}

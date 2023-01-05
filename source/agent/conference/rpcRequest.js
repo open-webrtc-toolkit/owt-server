@@ -367,8 +367,8 @@ const RpcRequest = function(rpcChannel, listener) {
     return rpcChannel.makeRPC(accessNode, 'createQualitySwitch', [froms]);
   };
 
-  that.getClusterID = function(clusterManager) {
-    return rpcChannel.makeRPC(clusterManager, 'getClusterID', [])
+  that.getClusterID = function(clusterManager, room_id, roomToken) {
+    return rpcChannel.makeRPC(clusterManager, 'getClusterID', [room_id, roomToken])
   }
 
   that.leaveConference = function(clusterManager, roomId) {
