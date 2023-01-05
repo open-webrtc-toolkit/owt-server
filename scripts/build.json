@@ -8,6 +8,7 @@
             "media-frame-multicaster",
             "audio",
             "audio-ranker",
+            "video-switch",
             "webrtc",
             "avstream",
             "sip"

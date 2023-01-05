@@ -15,7 +15,6 @@ var {InternalConnectionRouter} = require('./internalConnectionRouter');
 var log = logger.getLogger('WebrtcNode');
 
 var addon = require('../rtcConn/build/Release/rtcConn.node');
-var videoSwitch = require('../videoSwitch/build/Release/videoSwitch.node').VideoSwitch;
 
 var threadPool = new addon.ThreadPool(global.config.webrtc.num_workers || 24);
 threadPool.start();
@@ -24,8 +23,10 @@ threadPool.start();
 var ioThreadPool = new addon.IOThreadPool(global.config.webrtc.io_workers || 8);
 ioThreadPool.start();
 
+const videoSwitch = require('../videoSwitch/build/Release/videoSwitch.node').VideoSwitch;
 const MediaFrameMulticaster = require(
     '../mediaFrameMulticaster/build/Release/mediaFrameMulticaster');
+
 // Setup GRPC server
 var createGrpcInterface = require('./grpcAdapter').createGrpcInterface;
 var enableGRPC = global.config.agent.enable_grpc || false;
