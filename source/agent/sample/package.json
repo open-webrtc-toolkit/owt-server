@@ -1,5 +1,5 @@
 {
-  "name": "OWT-Server-Sample-Agent",
+  "name": "owt-server-sample-agent",
   "version":"5.0.0",
   "dependencies": {
     "amqplib": "^0.7.0",

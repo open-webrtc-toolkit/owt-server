@@ -6,6 +6,7 @@
         "files": [
             "sample.js",
             "callSample.js",
+            "log4js_configuration.json",
             "../agent.toml",
             "../nodeManager.js",
             "../workingNode.js",
@@ -17,6 +18,7 @@
             "../../common/loadCollector.js",
             "../../common/logger.js",
             "../../common/rpcChannel.js",
+            "../../common/makeRPC.js",
             "../../common/cipher.js",
             "../../../scripts/release/initauth.js"
         ]

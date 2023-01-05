@@ -41,7 +41,11 @@ const originCwd = cwd();
 const osScript = path.join(rootDir, 'scripts/detectOS.sh');
 const osType = execSync(`bash ${osScript}`).toString().toLowerCase();
 
-const experimentalTargets = ['quic-agent', 'media-bridge', 'event-bridge', 'cascading-control'];
+const experimentalTargets = [
+  'quic-agent',
+  'media-bridge', 'event-bridge', 'cascading-control',
+  'sample-agent',
+];
 
 var allTargets = [];
 
