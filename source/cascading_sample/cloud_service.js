@@ -414,7 +414,6 @@ spdy.createServer({
 var cipher = require('./cipher');
 cipher.unlock(cipher.k, 'cert/.owt.keystore', function cb(err, passphrase) {
     if (!err) {
-        console.log("certificate passphrase:", passphrase);
         spdy.createServer({
             pfx: fs.readFileSync('cert/certificate.pfx'),
             passphrase: passphrase
