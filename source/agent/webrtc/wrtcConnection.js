@@ -23,7 +23,49 @@ const { Connection } = require('./connection');
 
 const { SdpInfo } = require('./sdpInfo.js');
 
+/*
+ * This class represents a filtered stream
+ * with specified SVC layers.
+ */
+class LayerStream {
+  constructor(parent, layerId, closeCb) {
+    this.id = parent.wrtc.id + '-' + parent.id + '-' + layerId;
+    this.wrtc = parent.wrtc;
+    this.closeCb = closeCb;
 
+    let pos = layerId.indexOf('l');
+    const spatialId = (pos >= 0) ? parseInt(layerId[pos + 1]) : -1;
+    pos = layerId.indexOf('t');
+    const temporalId = (pos >= 0) ? parseInt(layerId[pos + 1]) : -1;
+    this.videoFrameConstructor = new VideoFrameConstructor(
+      parent.wrtc.callBase, parent.videoFrameConstructor,
+      layerId, spatialId, temporalId);
+  }
+
+  sender() {
+    let sender = null;
+    if (this.videoFrameConstructor) {
+      sender = this.videoFrameConstructor.source();
+      sender.parent = this.videoFrameConstructor;
+    } else {
+      log.error('sender error');
+    }
+    if (sender) {
+      sender.addDestination = (track, dest) => {
+        sender.parent.addDestination(dest);
+      };
+      sender.removeDestination = (track, dest) => {
+        sender.parent.removeDestination(dest);
+      };
+    }
+    return sender;
+  }
+
+  close() {
+    this.closeCb(this);
+    this.videoFrameConstructor.close();
+  }
+}
 
 /*
  * WrtcStream represents a stream object
@@ -37,21 +79,31 @@ class WrtcStream extends EventEmitter {
 
   /*
    * audio: { format, ssrc, mid, midExtId }
-   * video: { format, ssrcs, mid, midExtId, transportcc, red, ulpfec }
+   * video: {
+   *   format, ssrcs, mid, midExtId,
+   *   transportcc, red, ulpfec, scalabilityMode
+   * }
    */
-  constructor(id, wrtc, direction, {audio, video, owner}) {
+  constructor(id, wrtc, direction, {audio, video, owner, enableBWE}) {
     super();
     this.id = id;
     this.wrtc = wrtc;
     this.direction = direction;
     this.audioFormat = audio ? audio.format : null;
     this.videoFormat = video ? video.format : null;
+    this.audio = audio;
+    this.video = video;
     this.audioFrameConstructor = null;
     this.audioFramePacketizer = null;
     this.videoFrameConstructor = null;
     this.videoFramePacketizer = null;
     this.closed = false;
     this.owner = owner;
+    if (video && video.scalabilityMode) {
+      this.scalabilityMode = video.scalabilityMode;
+      // string => LayerStream
+      this.layerStreams = new Map();
+    }
 
     if (direction === 'in') {
       wrtc.addMediaStream(id, {label: id}, true);
@@ -79,7 +131,6 @@ class WrtcStream extends EventEmitter {
         }
       }
       if (video) {
-        let enableBWE = false;
         this.videoFramePacketizer = new VideoFramePacketizer(
           video.red, video.ulpfec, video.transportcc, video.mid,
           video.midExtId, false, wrtc.callBase, enableBWE);
@@ -105,6 +156,13 @@ class WrtcStream extends EventEmitter {
     }
     if (this.videoFrameConstructor) {
       this.videoFrameConstructor.unbindTransport();
+    }
+    // Clear layer streams
+    if (this.layerStreams) {
+      this.layerStreams.forEach((stream, layerId) => {
+        stream.close();
+      });
+      this.layerStreams.clear();
     }
     // Stop media stream
     this.wrtc.removeMediaStream(this.id);
@@ -156,6 +214,10 @@ class WrtcStream extends EventEmitter {
     } else if (track === 'video' && this.videoFrameConstructor) {
       sender = this.videoFrameConstructor.source();
       sender.parent = this.videoFrameConstructor;
+    } else if (!track) {
+      let parent = (this.audioFrameConstructor || this.videoFrameConstructor);
+      sender = parent.source();
+      sender.parent = parent;
     } else {
       log.error('sender error');
     }
@@ -235,6 +297,34 @@ class WrtcStream extends EventEmitter {
     }
   }
 
+  // Get or create a layer stream if SVC, return LayerStream | null
+  getOrCreateLayerStream({spatial, temporal}, closeCb) {
+    if (!this.scalabilityMode) {
+      log.info('No scalabilityMode for layer stream');
+      return null;
+    }
+    if (!(spatial >= 0) && !(temporal >= 0)) {
+      log.info('Invalid layer setting:', spatial, temporal);
+      return null;
+    }
+    // Check layer setting with scalabilityMode
+    if (spatial >= 0 && spatial >= parseInt(this.scalabilityMode[1])) {
+      log.info('Set spatial:', spatial, this.scalabilityMode);
+      return null;
+    }
+    if (temporal >= 0 && temporal >= parseInt(this.scalabilityMode[3])) {
+      log.info('Set temporal:', temporal, this.scalabilityMode);
+      return null;
+    }
+
+    const layerId = ((spatial >= 0) ? 'l' + spatial : '') +
+      ((temporal >= 0) ? 't' + temporal : '');
+    if (!this.layerStreams.has(layerId)) {
+      this.layerStreams.set(layerId, new LayerStream(this, layerId, closeCb));
+    }
+    return this.layerStreams.get(layerId);
+  }
+
   setVideoBitrate(bitrateKBPS, onOk, onError) {
     if (this.videoFrameConstructor) {
       this.videoFrameConstructor.setBitrate(bitrateKBPS);
@@ -263,19 +353,26 @@ module.exports = function (spec, on_status, on_track) {
 
   var remoteSdp = null;
   var localSdp = null;
-  // mid => { operationId, type, sdpDirection, formatPreference, rids, enabled, finalFormat }
+  // mid => { operationId, sdpDirection, type, formatPreference, rids, enabled, finalFormat }
   var operationMap = new Map();
   // composedId => WrtcStream
   var trackMap = new Map();
   // operationId => msid
   var msidMap = new Map();
+  var bweTimer = null;
+  var bweInterval = 3000;
 
-  that.addTrackOperation = function (operationId, mid, type, sdpDirection, formatPreference) {
+  // option = {mid, type, formatPreference, scalabilityMode}
+  that.addTrackOperation = function (operationId, sdpDirection, option) {
     var ret = false;
+    var {mid, type, formatPreference, scalabilityMode} = option;
     if (!operationMap.has(mid)) {
       log.debug(`MID ${mid} for operation ${operationId} add`);
       const enabled = true;
       operationMap.set(mid, {operationId, type, sdpDirection, formatPreference, enabled});
+      if (scalabilityMode) {
+        operationMap.get(mid).scalabilityMode = scalabilityMode;
+      }
       ret = true;
     } else {
       log.warn(`MID ${mid} has mapped operation ${operationMap.get(mid).operationId}`);
@@ -354,16 +451,22 @@ module.exports = function (spec, on_status, on_track) {
   }
 
   const setupTransport = function (mid) {
+    let rids = remoteSdp.rids(mid);
     const opSettings = operationMap.get(mid);
-    const rids = remoteSdp.rids(mid);
     const direction = (opSettings.sdpDirection === 'sendonly') ? 'in' : 'out';
     const simSsrcs = remoteSdp.getLegacySimulcast(mid);
     const trackSettings = remoteSdp.getMediaSettings(mid);
     const mediaType = remoteSdp.mediaType(mid);
 
     trackSettings.owner = owner;
+    trackSettings.enableBWE = that.enableBWE;
     if (opSettings.finalFormat) {
       trackSettings[mediaType].format = opSettings.finalFormat;
+      if (opSettings.finalFormat.codec === 'vp9' && simSsrcs) {
+        // Legacy simulcast for VP9 SVC
+        rids = null;
+        trackSettings['video'].scalabilityMode = opSettings.scalabilityMode;
+      }
     }
 
     if (rids) {
@@ -460,7 +563,6 @@ module.exports = function (spec, on_status, on_track) {
     if (!operationMap.has(mid)) {
       log.warn(`MID ${mid} in offer has no mapped operations (disabled)`);
       remoteSdp.closeMedia(mid);
-      localSdp.closeMedia(mid);
       return;
     }
     if (operationMap.get(mid).sdpDirection !== remoteSdp.mediaDirection(mid)) {
@@ -624,6 +726,8 @@ module.exports = function (spec, on_status, on_track) {
       log.error('wrtc is not ready');
     }
   };
+
+  that.enableBWE = false;
 
   // Libnice collects candidates on |ipAddresses| only.
   var ipAddresses = [];

@@ -359,6 +359,14 @@ const RpcRequest = function(rpcChannel, listener) {
     return rpcChannel.makeRPC(sipNode, 'endCall', [sipCallId]);
   };
 
+  that.createLayerStreams = function(accessNode, trackId, preferredLayers) {
+    return rpcChannel.makeRPC(accessNode, 'createLayerStreams', [trackId, preferredLayers]);
+  };
+
+  that.createQualitySwitch = function(accessNode, froms) {
+    return rpcChannel.makeRPC(accessNode, 'createQualitySwitch', [froms]);
+  };
+
   that.getClusterID = function(clusterManager, room_id, roomToken) {
     return rpcChannel.makeRPC(clusterManager, 'getClusterID', [room_id, roomToken])
   }

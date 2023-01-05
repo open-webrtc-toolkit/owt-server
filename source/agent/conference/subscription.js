@@ -13,6 +13,7 @@
  *       status: 'active' | 'inactive' | undefined,
  *       format: object(AudioFormat) | object(VideoFormat),
  *       parameters: { resolution, framerate, bitrate, keyFrameInterval }
+ *                   | { spatialLayer, temporalLayer }
  *     }
  *   },
  *   info: object(SubscriptionInfo):: {

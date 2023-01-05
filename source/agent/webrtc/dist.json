@@ -63,8 +63,16 @@
                 "name": "internalIO"
             },
             {
+                "folder": "../addons/videoSwitch",
+                "name": "videoSwitch"
+            },
+            {
                 "folder": "../addons/logger",
                 "name": "logger"
+            },
+            {
+                "folder": "../addons/mediaFrameMulticaster",
+                "name": "mediaFrameMulticaster"
             },
             {
                 "folder": "../addons/quicIO",

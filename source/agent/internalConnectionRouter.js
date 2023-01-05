@@ -231,15 +231,15 @@ class InternalConnectionRouter {
    * @param {function} onStat(stat) Callback for internal connection
    */
   getOrCreateRemoteSource({id, ip, port}, onStat) {
-    if (!this.remoteStreams.has(id) && ip && port) {
+    if (this.connections.getConnection(id)) {
+      let conn = this.connections.getConnection(id).connection;
+      return conn;
+    } else if (!this.remoteStreams.has(id) && ip && port) {
       log.debug('RemoteSource created:', id, ip, port);
       let conn = new InternalClient(id, this.protocol, ip, port, onStat);
       conn.receiver = () => conn;
       this.connections.addConnection(id, 'internal', '', conn, 'in');
       this.remoteStreams.set(id, new Set());
-      return conn;
-    } else if (this.connections.getConnection(id)) {
-      let conn = this.connections.getConnection(id).connection;
       return conn;
     } else {
       log.info('Failed to get remote source:', id, ip, port);

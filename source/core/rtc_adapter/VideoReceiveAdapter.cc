@@ -5,6 +5,7 @@
 #include "VideoReceiveAdapter.h"
 
 #include <future>
+#include <modules/rtp_rtcp/source/video_rtp_depacketizer_vp9.h>
 #include <modules/video_coding/include/video_error_codes.h>
 #include <modules/video_coding/timing.h>
 #include <rtc_base/time_utils.h>
@@ -18,6 +19,9 @@ namespace rtc_adapter {
 const uint32_t kBufferSize = 8192;
 // Local SSRC has no meaning for receive stream here
 const uint32_t kLocalSsrc = 1;
+
+const uint32_t kMaxSpatialLayers = 5;
+const uint32_t kMaxTemporalLayers = 4;
 
 static void dump(void* index, FrameFormat format, uint8_t* buf, int len)
 {
@@ -44,18 +48,6 @@ int32_t VideoReceiveAdapterImpl::AdapterDecoder::InitDecode(const webrtc::VideoC
     }
     return 0;
 }
-
-struct DataPacket {
-    DataPacket() = default;
-    DataPacket(const char* data_, int length_)
-        : length{ length_ }
-    {
-        memcpy((void*)data, (void*)data_, length_);
-    }
-
-    char data[1500];
-    int length;
-};
 
 int32_t VideoReceiveAdapterImpl::AdapterDecoder::Decode(const webrtc::EncodedImage& encodedImage,
     bool missing_frames,
@@ -105,7 +97,8 @@ int32_t VideoReceiveAdapterImpl::AdapterDecoder::Decode(const webrtc::EncodedIma
     frame.timeStamp = encodedImage.Timestamp();
     frame.additionalInfo.video.width = m_width;
     frame.additionalInfo.video.height = m_height;
-    frame.additionalInfo.video.isKeyFrame = (encodedImage._frameType == webrtc::VideoFrameType::kVideoFrameKey);
+    frame.additionalInfo.video.isKeyFrame =
+        (encodedImage._frameType == webrtc::VideoFrameType::kVideoFrameKey);
 
     if (m_parent) {
         if (m_parent->m_frameListener) {
@@ -266,6 +259,12 @@ void VideoReceiveAdapterImpl::requestKeyFrame()
     m_isWaitingKeyFrame = true;
 }
 
+void VideoReceiveAdapterImpl::setPreferredLayers(int spatialId, int temporalId)
+{
+    m_preferredSpatialId = spatialId;
+    m_preferredTemporalId = temporalId;
+}
+
 std::vector<webrtc::SdpVideoFormat> VideoReceiveAdapterImpl::GetSupportedFormats() const
 {
     return std::vector<webrtc::SdpVideoFormat>{
@@ -290,11 +289,44 @@ std::unique_ptr<webrtc::VideoDecoder> VideoReceiveAdapterImpl::CreateVideoDecode
 
 int VideoReceiveAdapterImpl::onRtpData(char* data, int len)
 {
-    std::shared_ptr<DataPacket> wp = std::make_shared<DataPacket>(data, len);
-    taskQueue()->PostTask([this, wp]() {
+    rtc::CopyOnWriteBuffer buffer(data, len);
+    if (m_format == FRAME_FORMAT_VP9 &&
+        (m_preferredTemporalId >= 0 || m_preferredSpatialId >= 0)) {
+        webrtc::RtpPacket rtpPacket;
+        webrtc::RTPVideoHeader video_header;
+        if (rtpPacket.Parse((const uint8_t*) data, len)) {
+            if (rtpPacket.PayloadType() == VP9_90000_PT &&
+                webrtc::VideoRtpDepacketizerVp9::ParseRtpPayload(
+                rtpPacket.PayloadBuffer(), &video_header) > 0) {
+                webrtc::RTPVideoHeaderVP9* vp9_header =
+                    absl::get_if<webrtc::RTPVideoHeaderVP9>(
+                        &(video_header.video_type_header));
+                if (vp9_header) {
+                    if ((m_preferredSpatialId >= 0 &&
+                        vp9_header->spatial_idx <= kMaxSpatialLayers &&
+                        vp9_header->spatial_idx > m_preferredSpatialId) ||
+                        (m_preferredTemporalId >= 0 &&
+                        vp9_header->temporal_idx <= kMaxTemporalLayers &&
+                        vp9_header->temporal_idx > m_preferredTemporalId)) {
+                        return len;
+                    }
+                    if (vp9_header->spatial_idx == m_preferredSpatialId &&
+                        vp9_header->end_of_frame && !rtpPacket.Marker()) {
+                        // Set Marker
+                        rtpPacket.SetMarker(true);
+                        buffer = rtpPacket.Buffer();
+                    }
+                }
+            } else {
+                // Empty payload, vp9 parse fail
+            }
+        }
+    }
+
+    taskQueue()->PostTask([this, buffer]() {
         call()->Receiver()->DeliverPacket(
             webrtc::MediaType::VIDEO,
-            rtc::CopyOnWriteBuffer(wp->data, wp->length),
+            buffer,
             rtc::TimeUTCMicros());
     });
     return len;

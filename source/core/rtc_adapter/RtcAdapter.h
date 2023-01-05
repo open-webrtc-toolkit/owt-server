@@ -39,6 +39,7 @@ class VideoReceiveAdapter {
 public:
     virtual int onRtpData(char* data, int len) = 0;
     virtual void requestKeyFrame() = 0;
+    virtual void setPreferredLayers(int spatialId, int temporalId) = 0;
 };
 
 class VideoSendAdapter {
@@ -80,7 +81,7 @@ public:
         char mid[32];
         // MID extension ID
         int mid_ext = 0;
-        // Bandwidth estimatin
+        // Bandwidth estimation
         bool bandwidth_estimation = false;
         AdapterDataListener* rtp_listener = nullptr;
         AdapterStatsListener* stats_listener = nullptr;
