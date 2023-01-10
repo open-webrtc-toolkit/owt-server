@@ -458,6 +458,7 @@ void MsdkFrameDecoder::updateBitstream(const Frame& frame)
         uint8_t* tmpDataBuf = (uint8_t*)realloc(m_bitstream->Data, newSize);
         if (tmpDataBuf == nullptr) {
             free(m_bitstream->Data);
+            m_bitstream->Data = nullptr;
             m_bitstream.reset();
             ELOG_ERROR_T("OOM! Allocate size %d", newSize);
             return;
