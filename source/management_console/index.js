@@ -30,12 +30,7 @@ app.use('/console', express.static(__dirname + '/public'));
 const session = require('express-session');
 const {v4: uuidv4} = require('uuid');
 
-function createRandomHex(num) {
-  return crypto.randomBytes(num).toString('hex');
-}
-
-app.use(session({
-  secret: createRandomHex(32),
+const options = {
   name: 'owtserver',
   genid: function(req) {
     return uuidv4();
@@ -48,7 +43,10 @@ app.use(session({
     sameSite: true,
     maxAge: 600000
   }
-}));
+}
+Object.assign(options, {secret: crypto.randomBytes(32).toString('hex')});
+
+app.use(session(options));
 
 app.use((req, res, next) => {
   res.set('Cache-Control', 'no-store, no-cache');
