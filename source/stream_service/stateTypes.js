@@ -61,7 +61,7 @@ class WorkerNode {
     this.pubs = new Set();
     this.subs = new Set();
     this.procs = new Set();
-    this.address = null;
+    this.streamAddr = null;
   }
   isEmpty() {
     return this.pubs.size === 0 && this.subs.size === 0;
@@ -253,7 +253,7 @@ class SourceTrack {
     this.id = id;
     this.parent = parent;
     this.linkedSubs = new Set(); // Set {SubscriptionId}
-    this.address = null; // Same as WokerNode's
+    this.address = null; // Same as WokerNode's streamAddr
   }
   plain() {
     const plain = Object.assign({}, this);

@@ -231,13 +231,13 @@ function streamEngine(rpcClient) {
     if (!plainNode) {
       throw new Error('No node for internal address');
     }
-    if (plainNode.address) {
-      nodeAddress.set(nodeId, plainNode.address);
-      return plainNode.address;
+    if (plainNode.streamAddr) {
+      nodeAddress.set(nodeId, plainNode.streamAddr);
+      return plainNode.streamAddr;
     }
     const addr = await rpcChannel.makeRPC(
       nodeId, 'getInternalAddress', []);
-    await stateStores.update('nodes', {id: nodeId}, {address: addr});
+    await stateStores.update('nodes', {id: nodeId}, {streamAddr: addr});
     nodeAddress.set(nodeId, addr);
     return addr;
   };
