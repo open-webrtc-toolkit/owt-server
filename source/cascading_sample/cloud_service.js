@@ -305,8 +305,12 @@ app.post('/createToken/', function(req, res) {
 
 app.post('/registerCluster/', function(req, res) {
     var region = req.body.region,
-        clusterID = req.body.clusterID,
-        info = req.body.info;
+        clusterID = req.body.clusterID;
+
+    var info = {};
+
+    Object.assign(info, {servicekey: req.body.info.servicekey, serviceid:req.body.info.serviceid, resturl:req.body.info.resturl});
+
     console.log("register cluster with info:", info, " cluster:", clusterID, " region:", region);
     if (!clusters[region]) {
         clusters[region] = {};
@@ -355,8 +359,12 @@ app.post('/updateCapacity/', function(req, res) {
 
 app.post('/updateConference/', function(req, res) {
     var region = req.body.region,
-        clusterID = req.body.clusterID,
-        info = req.body.info;
+        clusterID = req.body.clusterID;
+
+    var info = {};
+
+    Object.assign(info, {room: req.body.info.room, token: req.body.info.token});
+
     if (conferences[info.room][region][clusterID]) {
         conferences[info.room][region][clusterID].token = info.token;
     }
