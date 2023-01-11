@@ -44,7 +44,10 @@ VideoFramePacketizer::VideoFramePacketizer(VideoFramePacketizer::Config& config)
 
 VideoFramePacketizer::~VideoFramePacketizer()
 {
-    m_feedbackTimer->removeListener(this);
+    if (m_feedbackTimer) {
+        m_feedbackTimer->removeListener(this);
+        m_feedbackTimer.reset();
+    }
     close();
     if (m_videoSend) {
         m_rtcAdapter->destoryVideoSender(m_videoSend);
