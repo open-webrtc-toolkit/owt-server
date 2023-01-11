@@ -455,11 +455,13 @@ void MsdkFrameDecoder::updateBitstream(const Frame& frame)
                 , newSize
                 );
 
-        m_bitstream->Data = (mfxU8 *)realloc(m_bitstream->Data, newSize);
-        if (m_bitstream->Data == nullptr) {
+        m_bitstream->Data = (mfxU8 *) realloc(m_bitstream->Data, newSize);
+        uint8_t* tmpDataBuf = (uint8_t*) m_bitstream->Data;
+        if (tmpDataBuf == nullptr) {
             m_bitstream.reset();
             ELOG_ERROR_T("OOM! Allocate size %d", newSize);
             assert(0);
+            return;
         }
         m_bitstream->MaxLength    = newSize;
     }
