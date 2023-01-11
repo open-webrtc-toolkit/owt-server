@@ -459,7 +459,7 @@ void MsdkFrameDecoder::updateBitstream(const Frame& frame)
         if (m_bitstream->Data == nullptr) {
             m_bitstream.reset();
             ELOG_ERROR_T("OOM! Allocate size %d", newSize);
-            return;
+            assert(0);
         }
         m_bitstream->MaxLength    = newSize;
     }
