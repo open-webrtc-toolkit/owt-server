@@ -1,6 +1,6 @@
 {
   "name": "OWT-Server-Analytics-Agent",
-  "version":"5.0.0",
+  "version":"5.1.0",
   "dependencies": {
     "amqplib": "^0.7.0",
     "log4js": "^6.4.0",
