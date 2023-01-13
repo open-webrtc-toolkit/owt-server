@@ -94,6 +94,20 @@ const h265 = {
   ],
 };
 
+const av1 = {
+  payloadType: 35,
+  encodingName: 'AV1',
+  clockRate: 90000,
+  channels: 1,
+  mediaType: 'video',
+  feedbackTypes: [
+    'ccm fir',
+    'nack',
+    'transport-cc',
+    'goog-remb',
+  ],
+};
+
 const red = {
   payloadType: 116,
   encodingName: 'red',
@@ -219,7 +233,7 @@ const telephoneevent = {
 const mediaConfig = {
   default: {
     rtpMappings: {
-      vp8, vp9, h264, h265, red, rtx,
+      vp8, vp9, h264, h265, av1, red, rtx,
       opus, pcmu, pcma, isac16, isac32, g722, ilbc,
       ulpfec, telephoneevent
     },
