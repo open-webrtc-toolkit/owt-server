@@ -129,7 +129,6 @@ If authentication failed, a response with code 401 would be returned.
 The stream API uses REST model to accessing different resources. Following resources are available:
 
 - Tokens
-- Participants
 - Publications
 - Subscriptions
 - Processors
@@ -186,71 +185,6 @@ response body:
 |:-------------|:-------|
 | text | A token string |
 
-
-## 5.2 Participants {#StreamAPIsection5_1}
-Description:<br>
-Pariticipant is owner of other resources. To publish or subscribe streams, a participant is needed first.<br>
-
-Data Model:<br>
-
-    object(Participant):
-    {
-      id: string(ID),  // Participant's ID
-      domain: string(domainName), // Participant's domain
-      portal: string(portalRpcName), // Participant's portal
-      type: string(type),  // Pariticipant's type
-      notifying: bool(ifNotify) // Whether notify others about its activity
-    }
-
-Resources:<br>
-
-- /v1.1/stream-engine/participants
-
-### List Participants {#StreamAPIsection5_1_1}
-**GET ${host}/v1/rooms/{roomId}/participants**
-
-Description:<br>
-List participants currently in the specified room.<br>
-
-request body:
-
-  **Empty**
-
-response body:
-
-| type | content |
-|:-------------|:-------|
-|      json     |  [ object(ParticipantDeatil) ] |
-
-### Get Participant {#StreamAPIsection5_2_2}
-**GET ${host}/v1/rooms/{roomId}/participants/{participantId}**
-
-Description:<br>
-Get a participant's information from the specified room.<br>
-
-request body:
-
-  **Empty**
-
-response body:
-
-| type | content |
-|:-------------|:-------|
-|      json     |  object(ParticipantDeatil) |
-
-### Drop Participant {#StreamAPIsection5_2_4}
-**DELETE ${host}/v1/rooms/{roomId}/participants/{participantId}**
-
-Description:<br>
-Drop a participant from a room.<br>
-
-request body:
-
-  **Empty**
-
-response body:
-
-  **Empty**
 
 ## 5.2 Publications {#StreamAPIsection5_2}
 Description:<br>
@@ -354,7 +288,7 @@ request body:
         }
     }
 
-For *object(TrackInfo)*, refers to [TrackInfo](../Client-Portal%20Protocol.md#331-participant-joins-a-room).
+For *object(TrackInfo)*, refers to [tracks in MediaOptions](../Client-Portal%20Protocol.md#331-participant-joins-a-room).
 For *format* and *parameters*, refers to [REST API](RESTAPI.md#53-streams-StreamAPIsection53).
 
 response body:
@@ -487,7 +421,7 @@ request body:
         }
     }
 
-For *object(TrackInfo)*, refers to [TrackInfo](../Client-Portal%20Protocol.md#331-participant-joins-a-room).
+For *object(TrackInfo)*, refers to [tracks in MediaOptions](../Client-Portal%20Protocol.md#331-participant-joins-a-room).
 For *format* and *parameters*, refers to [REST API](RESTAPI.md#53-streams-StreamAPIsection53).
 
 response body:
