@@ -274,9 +274,11 @@ Data model:
     }
     object(SourceTrack):
     {
-        format: object(VideoFormat) | object(AudioFormat), // Refers to [REST API](RESTAPI.md#53-streams-StreamAPIsection53)
-        parameters: object(VideoParameters) | undefined // Refers to [REST API](RESTAPI.md#53-streams-StreamAPIsection53)
+        format: object(VideoFormat) | object(AudioFormat),
+        parameters: object(VideoParameters) | undefined
     }
+
+For *object(AudioFormat)*, *object(VideoFormat)*, *object(VideoParameters)*, refers to [REST API](RESTAPI.md#53-streams-StreamAPIsection53).
 
 Resources:
 
@@ -340,7 +342,7 @@ request body:
         info: object(TypeSpecificInfo)
     }
     object(MediaTrack) { // For WebRTC publications
-        tracks: [ object(TrackInfo) ], // [TrackInfo](../Client-Portal%20Protocol.md#331-participant-joins-a-room)
+        tracks: [ object(TrackInfo) ],
     }
     object(MediaInfo) { // For other publications
         audio: {
@@ -350,8 +352,10 @@ request body:
             format: object(VideoFormat),
             parameters: object(VideoParameters)
         }
-        // See format and paramters in [REST API](RESTAPI.md#53-streams-StreamAPIsection53)
     }
+
+For *object(TrackInfo)*, refers to [TrackInfo](../Client-Portal%20Protocol.md#331-participant-joins-a-room).
+For *format* and *parameters*, refers to [REST API](RESTAPI.md#53-streams-StreamAPIsection53).
 
 response body:
 
@@ -469,7 +473,7 @@ request body:
         info: object(TypeSpecificInfo)
     }
     object(MediaTrack) { // For WebRTC subscriptions
-        tracks: [ object(TrackInfo) ], // [TrackInfo](../Client-Portal%20Protocol.md#331-participant-joins-a-room)
+        tracks: [ object(TrackInfo) ],
     }
     object(MediaInfo) { // For other subscriptions
         audio: {
@@ -481,8 +485,10 @@ request body:
             format: object(VideoFormat),
             parameters: object(VideoParameters)
         }
-        // Refers to format and paramters in [REST API](RESTAPI.md#53-streams-StreamAPIsection53)
     }
+
+For *object(TrackInfo)*, refers to [TrackInfo](../Client-Portal%20Protocol.md#331-participant-joins-a-room).
+For *format* and *parameters*, refers to [REST API](RESTAPI.md#53-streams-StreamAPIsection53).
 
 response body:
 
@@ -607,10 +613,10 @@ request body:
         view: string(viewName),
         maxInput: number(maxInputNumber),
         bgColor: {r, g, b}, // r, g, b are numbers from 0 ~ 255.
-        parameters: object(VideoParameters), // Refers to 
+        parameters: object(VideoParameters),
         layout: {
             fitPolicy: string(policy), // "letterbox" or "crop"
-            templates: [ { region: [ object(Region) ] } ], // Refers to [REST API](RESTAPI.md#51-rooms-StreamAPIsection51)
+            templates: [ { region: [ object(Region) ] } ],
         }
     },
     transcoding: { // Video transcoding
@@ -636,6 +642,8 @@ request body:
     analytics: {
         id: string(analyticsId)
     }
+
+For *object(Region)*, refers to [REST API](RESTAPI.md#51-rooms-StreamAPIsection51).
 
 response body:
 
