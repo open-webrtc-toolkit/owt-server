@@ -1539,6 +1539,7 @@ var Conference = function (rpcClient, selfRpcId) {
         return Promise.reject('Target audio/video stream early released');
       }
       streams[streamId] = casStreams[streamId];
+      streams[streamId].cascading = true;
       delete casStreams[streamId];
       log.info("accessController initiate result is:", result);
       streams[streamId].locality = result;
