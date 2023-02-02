@@ -1064,7 +1064,7 @@ var Conference = function (rpcClient, selfRpcId) {
       hasSubscription = false;
 
     for (let k in participants) { 
-      if (k !== 'admin' && !k.cascading) {
+      if (k !== 'admin' && !participants[k].cascading) {
         hasNonAdminParticipant = true;
         break;
       }
