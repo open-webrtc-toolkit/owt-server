@@ -176,6 +176,7 @@ var EventCascading = function(spec, rpcReq) {
 
           client.onConnectionFailed(() => {
             log.info("Quic client failed to connect with:", client.dest);
+            on_error('Connection failed');
             delete sessions[client.dest]
           })
 
@@ -194,11 +195,13 @@ var EventCascading = function(spec, rpcReq) {
       //A new different conference request between cascaded clusters
       if (sessions[clientID].cascadedRooms && sessions[clientID].cascadedRooms[data.room]) {
         log.debug('Cluster already cascaded');
+        on_ok('ok');
         return Promise.resolve('ok');
       } else {
         return rpcReq.getController(cluster_name, data.room)
                 .then(function(controller) {
                   //Create a new quic stream for the new conference to cascading room events
+                  on_ok('ok');
                   createQuicStream(controller, clientID, data);
                 });
       }
