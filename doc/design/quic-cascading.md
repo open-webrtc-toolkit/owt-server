@@ -105,7 +105,9 @@ Users can define several conference templates which includes different room conf
 ### Trigger OWT cascading
 
 Here is the workflow for OWT cascading trigger:
+
  ![trigger flow](./pics/cascading/triggerflow.png)
+
 In step 3, cloud management service will send a create room request with room configuration to ensure that different rooms in different OWT clusters serving for one conference will share the same room configuration. When getting a new client joining conference request and assigning owt cluster to client, cloud management service will trigger cascading if there are other OWT clusters in the same conferencing after getting the new client successfully joined room message from the assigned OWT cluster. 
 If cascading is needed, cloud will send a request to owt1 to get the event/media bridge info, owt1 will schedule an event/media bridge and return related info to cloud:
 Request body:
@@ -218,9 +220,11 @@ This is just a sample to show how cascading clusters control work, please custom
 
 The OWT cluster will report cluster info to cloud control service through cluster_manager module in OWT, you need to configure following items in cascading item in cluster_manager/cluster_manager.toml file before starting it:
 
-url: specify the cloud control url, so that cluster manager module can connect to the url and send cluster info
-region: specify the region this OWT cluster locate, this will be used by cloud control service to schedule incoming clients by region
-clusterID: specify a unique cluster ID for this cluster in the cloud.
+""url:"" specify the cloud control url, so that cluster manager module can connect to the url and send cluster info
+
+""region:"" specify the region this OWT cluster locate, this will be used by cloud control service to schedule incoming clients by region
+
+""clusterID:"" specify a unique cluster ID for this cluster in the cloud.
 
 ### Media/event bridge
 
