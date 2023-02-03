@@ -183,7 +183,7 @@ module.exports.create = function(spec, rpcReq, on_session_established, on_sessio
     log.debug('participantLeave, participantId:', participantId);
     var pl = [];
     for (var session_id in sessions) {
-      if (sessions[session_id].owner === participantId) {
+      if (sessions[session_id].owner === participantId && !sessions[session_id].locality.agent.startsWith('mediabridge')) {
         var direction = sessions[session_id].direction;
         pl.push(terminateSession(session_id));
         on_session_aborted(participantId, session_id, direction, 'Participant leave');
