@@ -657,3 +657,141 @@ response body:
         start: number(offsetInList),
         data: [ object(WorkerNode) ]
     }
+
+# 6 Examples {#StreamAPIsection3}
+This chapter introduces a simple sample which takes 1 WebRTC stream and 1 RTSP stream and generate a mixed stream for them.
+
+## 6.1 Preparation {#StreamAPIsection6_1}
+1. Follow the steps in [Chapter 2](#2-enable-stream-api-streamapisection2) and start OWT service.
+2. Get an OWT service ID and key, which will be print after running `init-all.sh` or you can find one through database.
+3. Create header for requests to stream API, get `AUTH` through `test/genAuth.js SERVICE_ID SERVICE_KEY`.
+4. In this example, we use curl to send requests to stream API, make sure `curl` is installed.
+
+## 6.2 Create a mixed stream {#StreamAPIsection6_2}
+1. Use an OWT client to join service(both conference token and streamAPI token are OK), get client ID `CLIENT_0`, and publish a WebRTC stream through this client, get stream ID `RTC_0`.
+2. Use stream API to publish an RTSP stream, get stream ID `RTSP_0` through response.
+
+curl -k --request POST 'https://$HOSTNAME:3000/v1.1/stream-engine/publications' \
+    --header 'Authorization: $AUTH' \
+    --header 'Content-Type: application/json' \
+    --data-raw '{
+        "type": "streaming", 
+        "connection": {
+            "url": "RTSP_URL" // Can also use local file for test, /tmp/h264.mkv
+        },
+        "media": {
+            "audio": false,
+            "video": true
+        },
+        "participant": "$CLIENT_0"
+    }'
+
+3. Use stream API to create a video mixing processor, get processor ID `PROC_0` through response.
+
+curl --location --request POST 'https://$HOSTNAME:3000/v1.1/stream-engine/processors' \
+    --header 'Authorization: $AUTH' \
+    --header 'Content-Type: application/json' \
+    --data-raw '{
+        "type": "video",
+        "mixing": {
+            "id": "test-mix",
+            "maxInput": 16,
+            "layout": {
+                "fitPolicy": "letterbox",
+                "templates":  [
+                    {
+                        "region": [
+                        {
+                            "id": "1",
+                            "shape": "rectangle",
+                            "area": {
+                                "left": {"numerator" : 0, "denominator": 1 },
+                                "top": {"numerator" : 0, "denominator": 1 },
+                                "width": {"numerator" : 1, "denominator": 2 },
+                                "height": {"numerator" : 1, "denominator": 2 }
+                            }
+                        },
+                        {
+                            "id": "2",
+                            "shape": "rectangle",
+                            "area": {
+                                "left": {"numerator" : 1, "denominator": 2 },
+                                "top": {"numerator" : 1, "denominator": 2 },
+                                "width": {"numerator" : 1, "denominator": 2 },
+                                "height": {"numerator" : 1, "denominator": 2 }
+                            }
+                        },
+                        ]
+                    }
+                ]
+            },
+            "parameters": {
+                "resolution": {"width": 640, "height": 480}
+            },
+            "bgColor": { "r": 155, "g": 155, "b": 155 }
+        },
+        "participant": "$CLIENT_0"
+    }'
+
+4. Subscribe 2 streams for video processor.
+
+curl --location --request POST 'https://$HOSTNAME:3000/v1.1/stream-engine/subscriptions' \
+    --header 'Authorization: $AUTH' \
+    --header 'Content-Type: application/json' \
+    --data-raw '{
+        "type": "video",
+        "media": {
+            "video": {
+                "from": "$RTC_0",
+                "format": {"codec": "h264"}
+            }
+        },
+        "info": {
+            "owner": "test"
+        },
+        "processor": "$PROC_0",
+        "participant": "$CLIENT_0"
+    }'
+
+curl --location --request POST 'https://$HOSTNAME:3000/v1.1/stream-engine/subscriptions' \
+    --header 'Authorization: $AUTH' \
+    --header 'Content-Type: application/json' \
+    --data-raw '{
+        "type": "video",
+        "media": {
+            "video": {
+                "from": "$RTSP_0",
+                "format": {"codec": "h264"}
+            }
+        },
+        "info": {
+            "owner": "test"
+        },
+        "processor": "$PROC_0",
+        "participant": "$CLIENT_0"
+    }'
+
+5. Publish a mixed stream for video processor, get mixed ID `MIX_0`.
+
+curl --location --request POST 'https://$HOSTNAME:3000/v1.1/stream-engine/publications' \
+    --header 'Authorization: $AUTH' \
+    --header 'Content-Type: application/json' \
+    --data-raw '{
+        "type": "video",
+        "media": {
+            "video": {
+                "format": "vp8",
+                "resolution": "unspecified",
+                "framerate": "unspecified",
+                "bitrate": "unspecified",
+                "keyFrameInterval": "unspecified"
+            }
+        },
+        "processor": "$PROC_0",
+        "participant": "$CLIENT_0"
+        "info": {
+            "owner": "test"
+        }
+    }'
+
+6. Client should be able to subscribe `MIX_0`.
