@@ -134,7 +134,7 @@ var init_manager = () => {
     spawnOptions,
     (nodeId, tasks) => {
       monitoringTarget && monitoringTarget.notify('abnormal', {purpose: myPurpose, id: nodeId, type: 'node'});
-      tasks.forEach(() => {
+      tasks.forEach(task => {
         worker && worker.removeTask(task);
       });
     },
