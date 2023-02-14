@@ -772,6 +772,16 @@ function streamEngine(rpcClient) {
         callback('callback', 'error', err && err.message);
       });
   };
+  that.getParticipants = function (filter, callback) {
+    log.debug('getParticipants:', filter, callback);
+    const query = filter?.query || {};
+    stateStores.readMany('participants', query).then((ret) => {
+      callback('callback', ret);
+    }).catch((e) => {
+      log.debug('Get participants error:', e, e?.stack);
+      callback('callback', 'error', e?.message);
+    });
+  };
   // Interfaces for publication
   that.publish = function(req, callback) {
     log.debug('publish:', req.type, req);
@@ -973,7 +983,7 @@ function streamEngine(rpcClient) {
       }
       const removed = await stateStores.delete('processors', {id: procId});
       if (removed) {
-        await controllers[req.type].removeProcessor(procId);
+        await controllers[proc.type].removeProcessor(procId);
       }
       callback('callback', 'ok');
     }).catch((err) => {
@@ -1014,6 +1024,7 @@ function streamEngine(rpcClient) {
         await stateStores.delete('publications', {});
         await stateStores.delete('subscriptions', {});
         await stateStores.delete('sourceTracks', {});
+        await stateStores.delete('processors', {});
       }
     } catch (e) {
       log.debug('Clean state stores:', e);

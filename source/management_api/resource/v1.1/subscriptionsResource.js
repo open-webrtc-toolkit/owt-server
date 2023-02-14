@@ -3,12 +3,10 @@
 // SPDX-License-Identifier: Apache-2.0
 
 'use strict';
-const requestHandler = require('../../requestHandler');
 const e = require('../../errors');
 
 // Logger
 const log = require('../../logger').logger.getLogger('SubscriptionsResource');
-
 const rpc = require('../../rpc/rpc');
 
 const STREAM_SERVICE_ID = global.config.cluster.stream_engine;
@@ -24,9 +22,9 @@ function callStreamService(methodName, args, callback) {
 }
 
 exports.getList = function (req, res, next) {
-  log.debug('Representing subscriptions for domain ', req.params.domain,
-            'and service', req.authData.service._id);
-  callStreamService('getSubscriptions', [{}], (err, pubs) => {
+  log.debug('Representing subscriptions for service', req.authData.service._id);
+  const query = req.body?.query || {};
+  callStreamService('getSubscriptions', [{query}], (err, pubs) => {
     if (err) {
       next(new e.CloudError('Failed to get subscriptions'));
     } else {
@@ -39,7 +37,7 @@ exports.get = function (req, res, next) {
   log.debug('Representing subscription:', req.params.subscription,
             ' for domain ', req.params.domain);
   const query = {id: req.params.subscription};
-  callStreamService('getSubscriptions', [query], (err, pubs) => {
+  callStreamService('getSubscriptions', [{query}], (err, pubs) => {
     if (err) {
       next(new e.CloudError('Failed to get subscriptions'));
     } else {

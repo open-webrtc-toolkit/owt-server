@@ -37,6 +37,7 @@ class ServiceScheduler {
     'removeProcessor',
     'getProcessors',
     'onSessionSignaling',
+    'getParticipants',
   ];
   constructor(rpcChannel, stateStores) {
     this.rpcChannel = rpcChannel;

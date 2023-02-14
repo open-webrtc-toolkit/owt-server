@@ -26,6 +26,20 @@ function videoFormatStr(format) {
   return str;
 }
 
+function toVideoFormat(str) {
+  const i = str.indexOf(str);
+  if (i < 0) {
+    return {
+      codec: str
+    };
+  } else {
+    return {
+      codec: str.substring(0, i),
+      profile: str.substring(i + 1)
+    };
+  }
+}
+
 /* Events
  * 'session-established': (id, Publication|Subscription)
  * 'session-updated': (id, Publication|Subscription)
@@ -60,13 +74,16 @@ class VideoController extends TypeController {
     const locality = await this.getWorkerNode(
         'video', videoConfig.domain, videoConfig.id, mediaPreference);
     if (videoConfig.mixing) {
-      const vmixer = new Processor(videoConfig.id, 'vmixer', videoConfig);
+      const vmixer = new Processor(videoConfig.id, 'video', videoConfig);
+      vmixer.label = 'vmixer';
       vmixer.locality = locality;
       vmixer.domain = videoConfig.domain;
       const mixConfig = videoConfig.mixing;
       try {
-        await this.makeRPC(locality.node, 'init',
+        const ret = await this.makeRPC(locality.node, 'init',
             ['mixing', mixConfig, mixConfig.id, this.selfId, mixConfig.view]);
+        log.debug('Mixer init:', ret);
+        vmixer.codecs = ret.codecs;
       } catch (e) {
         this.recycleWorkerNode(locality, videoConfig.domain, videoConfig.id)
             .catch((err) => log.debug('Failed to recycleNode:', err));
@@ -76,13 +93,16 @@ class VideoController extends TypeController {
       return vmixer;
 
     } else if (videoConfig.transcoding) {
-      const vtranscoder = new Processor(videoConfig.id, 'vxcoder', videoConfig);
+      const vtranscoder = new Processor(videoConfig.id, 'video', videoConfig);
+      vtranscoder.label = 'vxcoder';
       vtranscoder.locality = locality;
       vtranscoder.domain = videoConfig.domain;
       const transcodeConfig = videoConfig.transcoding;
       try {
-        await this.makeRPC(locality.node, 'init',
-          ['transcoding', transcodeConfig, transcodeConfig.id, this.selfId, ''])
+        const ret = await this.makeRPC(locality.node, 'init',
+          ['transcoding', transcodeConfig, transcodeConfig.id, this.selfId, '']);
+        log.debug('Transcoder init:', ret);
+        vtranscoder.codecs = ret.codecs;
       } catch (e) {
         this.recycleWorkerNode(locality, videoConfig.domain, videoConfig.id)
             .catch((err) => log.debug('Failed to recycleNode:', err));
@@ -163,14 +183,24 @@ class VideoController extends TypeController {
       // output = {id, resolution, framerate, bitrate, keyFrameInterval}
       const output = await this.makeRPC(processor.locality.node, 'generate',
           [videoFormatStr(format), resolution, framerate, bitrate, keyFrameInterval]);
+      log.debug('Get output:', output);
       sessionConfig.id = output.id;
+      const outputVideo = {
+        format: toVideoFormat(processor.codecs?.encode?.[0]),
+        parameters: {
+          resolution: output.resolution,
+          framerate: output.framerate,
+          bitrate: output.bitrate,
+          keyFrameInterval: output.keyFrameInterval,
+        }
+      }
       this.sessions.set(output.id, session);
       // Create publication
       const publication = new Publication(output.id, 'video', sessionConfig.info);
       publication.domain =  processor.domain;
       publication.locality = processor.locality;
       publication.participant = sessionConfig.participant;
-      const videoTrack = Object.assign({id: output.id}, sessionConfig.media.video);
+      const videoTrack = Object.assign({id: output.id}, outputVideo);
       publication.source.video.push(videoTrack);
       processor.outputs.video.push(videoTrack);
       const ret = Promise.resolve(output.id);
@@ -183,18 +213,25 @@ class VideoController extends TypeController {
     } else {
       // Add input
       const inputId = sessionConfig.id;
+      if (!sessionConfig.media?.video) {
+        return Promise.reject('No media.video for mixer input');
+      }
+      if (!sessionConfig.media.video.format) {
+        sessionConfig.media.video.format =
+          toVideoFormat(processor.codecs?.decode?.[0]);
+      }
       const inputConfig = {
         controller: this.selfId,
         publisher: sessionConfig.info?.owner || 'common',
         video: {
-          codec: videoFormatStr(sessionConfig.media?.video?.format)
+          codec: videoFormatStr(sessionConfig.media.video.format)
         },
       };
       await this.makeRPC(processor.locality.node, 'publish',
           [inputId, 'internal', inputConfig]);
       this.sessions.set(inputId, session);
       // Create subscription
-      const subscription = new Subscription(inputId, 'video', sessionConfig.info);
+      const subscription = new Subscription(sessionConfig.id, 'video', sessionConfig.info);
       subscription.domain = processor.domain;
       subscription.locality = processor.locality;
       subscription.participant = processor.participant;
@@ -210,18 +247,15 @@ class VideoController extends TypeController {
 
   async removeSession(id, direction, reason) {
     if (this.sessions.has(id)) {
-      const rpcChannel = this.rpcChannel;
       const session = this.sessions.get(id);
       const processor = this.processors.get(session.processor);
       if (!processor) {
         throw new Error(`Processor for ${id} not found`);
       }
-
       if (session.direction === 'in') {
         // Degenerate
-        rpcChannel.makeRPC(processor.locality.node, 'degenerate', [id])
+        this.makeRPC(processor.locality.node, 'degenerate', [id])
           .catch((e) => log.debug('degenerate:', e));
-
         const idx = processor.outputs.video.findIndex((track) => track.id === id);
         if (idx >= 0) {
           processor.outputs.video.splice(idx, 1);
@@ -232,7 +266,7 @@ class VideoController extends TypeController {
         log.debug('session:', session);
         // Let cutoff do remove-input
         const inputId = session.media?.video?.from;
-        rpcChannel.makeRPC(processor.locality.node, 'unpublish', [inputId])
+        this.makeRPC(processor.locality.node, 'unpublish', [inputId])
           .catch((e) => log.debug('ignore unpublish callback'));
         const idx = processor.inputs.video.findIndex((track) => track.id === id);
         if (idx >= 0) {

@@ -210,6 +210,9 @@ module.exports = function (rpcClient, rpcId, agentId, clusterIp) {
 
       this.connectionclose = () => {
         destroyStream(options.controller, newStreamId);
+        // Notify stream engine if needed
+        const data = {id: newStreamId};
+        notifyStatus(options.controller, connectionId, 'onStreamRemoved', data);
       }
       inputs[connectionId] = true;
 
@@ -259,11 +262,10 @@ module.exports = function (rpcClient, rpcId, agentId, clusterIp) {
             }
           }
 
-          // For Stream Engine, onSessionProgress(id, name, data)
+          generateStream(options.controller, newStreamId, streamInfo);
+          // Notify stream engine if needed
           streamInfo.id = newStreamId;
-          notifyStatus(controller, connectionId, 'onNewStream', streamInfo);
-
-          // generateStream(options.controller, newStreamId, streamInfo);
+          notifyStatus(controller, connectionId, 'onStreamAdded', streamInfo);
         } catch (e) {
           log.error("Parse stream added data with error:", e);
         }

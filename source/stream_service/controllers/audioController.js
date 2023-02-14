@@ -63,7 +63,8 @@ class AudioController extends TypeController {
     const locality = await this.getWorkerNode(
       'audio', audioConfig.domain, audioConfig.id, mediaPreference);
     if (audioConfig.mixing) {
-      const amixer = new Processor(audioConfig.id, 'amixer', audioConfig);
+      const amixer = new Processor(audioConfig.id, 'audio', audioConfig);
+      amixer.label = 'amixer';
       amixer.locality = locality;
       amixer.domain = audioConfig.domain;
       const mixConfig = audioConfig.mixing;
@@ -78,7 +79,8 @@ class AudioController extends TypeController {
       this.processors.set(audioConfig.id, amixer);
       return amixer;
     } else if (audioConfig.transcoding) {
-      const atranscoder = new Processor(audioConfig.id, 'axcoder', audioConfig);
+      const atranscoder = new Processor(audioConfig.id, 'audio', audioConfig);
+      atranscoder.label = 'axcoder';
       atranscoder.locality = locality;
       atranscoder.domain = audioConfig.domain;
       const transcodeConfig = audioConfig.transcoding;
@@ -93,7 +95,8 @@ class AudioController extends TypeController {
       this.processors.set(audioConfig.id, atranscoder);
       return atranscoder;
     } else if (audioConfig.selecting) {
-      const aselector = new Processor(audioConfig.id, 'aselector', audioConfig);
+      const aselector = new Processor(audioConfig.id, 'audio', audioConfig);
+      aselector.label = 'aselector';
       aselector.locality = locality;
       aselector.domain = audioConfig.domain;
       const selectorConfig = audioConfig.selecting;
@@ -103,10 +106,15 @@ class AudioController extends TypeController {
         // Create publication for active audio streams after return
         process.nextTick(() => {
           for (const streamId of selectorConfig.activeStreamIds) {
+            const format = {
+              codec: 'opus',
+              sampleRate: 48000,
+              channelNum: 2
+            };
             const publication = new Publication(output.id, 'audio', sessionConfig.info);
             publication.domain = audioConfig.domain;
             publication.locality = locality;
-            const audioTrack = {id: streamId, format: {codec: 'opus'}};
+            const audioTrack = {id: streamId, format};
             publication.source.audio.push(audioTrack);
             aselector.outputs.audio.push(audioTrack);
             this.emit('session-established', streamId, publication);
