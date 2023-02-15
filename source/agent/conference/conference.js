@@ -1733,10 +1733,12 @@ var Conference = function (rpcClient, selfRpcId) {
       return callback('callback', 'error', 'Target video stream does NOT satisfy:' + requestError.message);
     }
 
-    if (audioTrack) {
+    if (audioTrack && audioTrack.from) {
       streamId = audioTrack.from;
-    } else {
+    } else if (videoTrack && videoTrack.from) {
       streamId = videoTrack.from;
+    } else if (subDesc.data && subDesc.data.from) {
+      streamId = subDesc.data.from;
     }
 
     log.info('subscribe, streamid is:', streamId, 'streams are:', streams, 'casStreams:', casStreams);
