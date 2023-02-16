@@ -119,6 +119,7 @@ var serverConfig = global.config.server || {};
 var cluster = require("cluster");
 var serverPort = serverConfig.port || 3000;
 var numCPUs = serverConfig.numberOfProcess || 1;
+var servicename = serverConfig.servicename || 'sampleService';
 
 var ip_address;
 (function getPublicIP() {
@@ -220,7 +221,7 @@ if (cluster.isMaster) {
         if (err) {
             log.warn('Failed to get service:', err.message);
         } else {
-            var serviceToCloud = sers.filter((t) => {return t.name === serverConfig.servicename;});
+            var serviceToCloud = sers.filter((t) => {return t.name === servicename;});
             log.info('Representing service ', serviceToCloud);
             var key = serviceToCloud[0].key;
             if (serviceToCloud[0].encrypted === true) {
