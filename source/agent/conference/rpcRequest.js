@@ -574,10 +574,12 @@ const RpcRequest = function(rpcChannel, listener) {
   };
 
   that.addSipNode = function (workerNode) {
-    grpcNode[workerNode] = grpcTools.startClient(
-      'sip',
-      workerNode
-    );
+    if (enableGrpc) {
+      grpcNode[workerNode] = grpcTools.startClient(
+        'sip',
+        workerNode
+      );
+    }
   }
 
   return that;
