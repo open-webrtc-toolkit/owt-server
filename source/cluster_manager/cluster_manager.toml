@@ -35,7 +35,8 @@ analytics = "least-used"
 eventbridge = "last-used"
 mediabridge = "last-used"
 
-[cloud]
+[cascading]
+enabled = false #disable cascading feature by default
 url = "none"   #default none:not connect to cascading cloud, specify cloud service url for the cluster to register to cloud
 region = "BJ"
 clusterID = "" #A unique cluster ID reporting to cascading cloud
