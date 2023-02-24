@@ -23,6 +23,7 @@
             "../common/rpcChannel.js",
             "../common/rpcStarter.js",
             "../common/grpcTools.js",
+            "../common/formatUtil.js",
             "../protos/protoConfig.json",
             "../protos/*.proto",
             "../../scripts/release/initauth.js",
