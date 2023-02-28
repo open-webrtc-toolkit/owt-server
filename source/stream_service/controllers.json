@@ -19,6 +19,11 @@
     "requirePath": "./controllers/streamingController",
     "test": {}
   },
+  "recording": {
+    "className": "StreamingController",
+    "requirePath": "./controllers/streamingController",
+    "test": {}
+  },
   "analytics": {
     "className": "AnalyticsController",
     "requirePath": "./controllers/analyticsController",
@@ -27,11 +32,6 @@
   "quic": {
     "className": "QuicController",
     "requirePath": "./controllers/quicController",
-    "test": {}
-  },
-  "virtual": {
-    "className": "VirtualController",
-    "requirePath": "./controllers/virtualController",
     "test": {}
   }
 }
