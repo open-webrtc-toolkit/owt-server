@@ -55,7 +55,7 @@ class AggregatedStream {
     this.streams = [];
     this.processor = null;
   }
-  addSetting(id, setting) {
+  addSetting(id, setting, data) {
     const stream = this.streams.find((stream) => {
       if (this.type === 'audio') {
         return isAudioSettingMatch(stream.setting, setting);
@@ -64,10 +64,12 @@ class AggregatedStream {
       }
     });
     if (!stream) {
-      this.streams.push({id, setting});
+      this.streams.push({id, setting, data});
       return true;
+    } else {
+      stream.id = id;
+      return false;
     }
-    return false;
   }
   getSetting(setting) {
     const stream = this.streams.find((stream) => {
@@ -77,7 +79,7 @@ class AggregatedStream {
         return isVideoSettingMatch(stream.setting, setting);
       }
     });
-    return stream?.id || null;
+    return stream;
   }
   getSettings() {
     return this.streams.map((stream) => {
@@ -225,15 +227,6 @@ class Conference {
         initProms.push(p);
         this.videos.set(mixedId, new AggregatedStream(mixedId, 'video'));
       }
-      const pubReq = {
-        id: mixedId,
-        type: 'virtual',
-        data: mixedPub,
-        domain: roomId,
-        participant: roomId
-      };
-      // initProms.push(rpcChannel.makeRPC(
-      //   STREAM_ENGINE, 'publish', [pubReq]));
       this.mixedStreams.set(mixedId, mixedPub);
     }
     await Promise.all(initProms);
@@ -252,14 +245,7 @@ class Conference {
   // Publish from portal
   async publish(req) {
     log.debug('publish:', req);
-    if (req.type === 'virtual') {
-      return req;
-    }
     // Validate request
-    if (!this.participants.has(req.participant) &&
-        req.participant !== this.roomId) {
-      throw new Error('Invalid participant ID');
-    }
     req.id = req.id || randomUUID().replace(/-/g, '');
     if (req.type !== 'video' && req.type !== 'audio') {
       req.info = Object.assign(req.info || {}, {
@@ -296,7 +282,18 @@ class Conference {
       formatPreference
     };
     // Check subscribe source
-    if (req.type === 'webrtc') {
+    if (req.type !== 'audio' && req.type !== 'video') {
+      if (req.type !== 'webrtc') {
+        req.media.tracks = [];
+        if (req.media.audio) {
+          req.media.audio.type = 'audio';
+          req.media.tracks.push(req.media.audio);
+        }
+        if (req.media.video) {
+          req.media.video.type = 'video';
+          req.media.tracks.push(req.media.video);
+        }
+      }
       // Save track from for later linkup
       for (const track of req.media.tracks) {
         const tmpTrackId = track.id ?? req.id;
@@ -409,54 +406,16 @@ class Conference {
           if (from && this.audios.has(from)) {
             log.debug('Pending link from:', track.id, from);
             const stream = this.audios.get(from);
-            const mappedId = stream.getSetting(track);
-            if (mappedId) {
-              track.from = mappedId;
+            const audioSetting = {format: track.format};
+            const mapped = stream.getSetting(audioSetting);
+            if (mapped) {
+              track.from = await mapped.data;
+              log.debug('Update track audio from:', track.id, track.from);
             } else {
-              // Generate audio
-              if (!stream.processor) {
-                if (this.mixedStreams.has(from)) {
-                  log.error('Audio mixer is not ready');
-                  throw new Error('Audio mixer is not ready');
-                }
-                const txReq = {
-                  type: 'audio',
-                  id: this.roomId + '-' + from,
-                  transcoding: {id: from},
-                  domain: this.roomId,
-                  participant: this.roomId
-                };
-                stream.processor = {id: txReq.id};
-                stream.processor = await this.rpcChannel.makeRPC(
-                  STREAM_ENGINE, 'addProcessor', [txReq]);
-                // Add input
-                const audioOption = {
-                  from,
-                  format: stream.getSettings()[0].format,
-                }
-                const inputReq = {
-                  type: 'audio',
-                  id: randomUUID().replace(/-/g, ''),
-                  media: {audio: audioOption},
-                  processor: stream.processor.id,
-                  participant: this.roomId,
-                  info: {owner: ''}
-                };
-                await this.rpcChannel.makeRPC(
-                  STREAM_ENGINE, 'subscribe', [inputReq]);
-              }
-              const genReq = {
-                type: 'audio',
-                id: randomUUID().replace(/-/g, ''),
-                media: {audio: {format: track.format}},
-                processor: stream.processor.id,
-                participant: this.roomId,
-                info: {owner: '', hidden: true}
-              };
-              const outputId = await this.rpcChannel.makeRPC(
-                STREAM_ENGINE, 'publish', [genReq]);
-              stream.addSetting(outputId.id, {format: track.format});
-              track.from = outputId.id;
+              const transcode = this._transcodeAudio(
+                stream, from, audioSetting);
+              stream.addSetting(null, audioSetting, transcode);
+              track.from = await transcode;
               log.debug('Update track audio from:', track.id, track.from);
             }
             hasUpdate = true;
@@ -474,59 +433,19 @@ class Conference {
           }
           if (from && this.videos.has(from)) {
             const stream = this.videos.get(from);
-            const mappedId = stream.getSetting(track);
-            if (mappedId) {
-              track.from = mappedId;
+            const videoSetting = {
+              format: track.format,
+              parameters: track.parameters,
+            };
+            const mapped = stream.getSetting(videoSetting);
+            if (mapped) {
+              track.from = await mapped.data;
+              log.debug('Update track video from:', track.id, track.from);
             } else {
-              // Generate video
-              if (!stream.processor) {
-                if (this.mixedStreams.has(from)) {
-                  log.error('Video mixer is not ready');
-                  throw new Error('Video mixer is not ready');
-                }
-                const txReq = {
-                  type: 'video',
-                  id: this.roomId + '-' + from,
-                  transcoding: {id: from},
-                  domain: this.roomId,
-                  participant: this.roomId,
-                };
-                stream.processor = {id: txReq.id};
-                stream.processor = await this.rpcChannel.makeRPC(
-                  STREAM_ENGINE, 'addProcessor', [txReq]);
-                // Add input
-                const videoOption = {
-                  from,
-                  format: stream.getSettings()[0].format,
-                  parameters: stream.getSettings()[0].parameters,
-                }
-                const inputReq = {
-                  type: 'video',
-                  id: randomUUID().replace(/-/g, ''),
-                  media: {video: videoOption},
-                  processor: stream.processor.id,
-                  participant: this.roomId,
-                  info: {owner: ''}
-                };
-                await this.rpcChannel.makeRPC(
-                  STREAM_ENGINE, 'subscribe', [inputReq]);
-              }
-              const videoSetting = {
-                format: track.format,
-                parameters: track.parameters,
-              };
-              const genReq = {
-                type: 'video',
-                id: randomUUID().replace(/-/g, ''),
-                media: {video: videoSetting},
-                processor: stream.processor.id,
-                participant: this.roomId,
-                info: {owner: '', hidden: true}
-              };
-              const outputId = await this.rpcChannel.makeRPC(
-                STREAM_ENGINE, 'publish', [genReq]);
-              stream.addSetting(outputId.id, videoSetting);
-              track.from = outputId.id;
+              const transcode = this._transcodeVideo(
+                stream, from, videoSetting);
+              stream.addSetting(null, videoSetting, transcode);
+              track.from = await transcode;
               log.debug('Update track video from:', track.id, track.from);
             }
             hasUpdate = true;
@@ -558,6 +477,102 @@ class Conference {
   async addProcessor(req) {
     req.id = req.id || randomUUID().replace(/-/g, '');
     return req;
+  }
+
+  async _transcodeAudio(stream, from, audioSetting) {
+    // Generate audio
+    if (!stream.processor) {
+      if (this.mixedStreams.has(from)) {
+        log.error('Audio mixer is not ready');
+        throw new Error('Audio mixer is not ready');
+      }
+      const txReq = {
+        type: 'audio',
+        id: this.roomId + '-' + from,
+        transcoding: {id: from},
+        domain: this.roomId,
+        participant: this.roomId
+      };
+      stream.processor = {id: txReq.id};
+      stream.processor = await this.rpcChannel.makeRPC(
+        STREAM_ENGINE, 'addProcessor', [txReq]);
+      // Add input
+      const audioOption = {
+        from,
+        format: stream.getSettings()[0].format,
+      }
+      const inputReq = {
+        type: 'audio',
+        id: randomUUID().replace(/-/g, ''),
+        media: {audio: audioOption},
+        processor: stream.processor.id,
+        participant: this.roomId,
+        info: {owner: ''}
+      };
+      await this.rpcChannel.makeRPC(
+        STREAM_ENGINE, 'subscribe', [inputReq]);
+    }
+    const genReq = {
+      type: 'audio',
+      id: randomUUID().replace(/-/g, ''),
+      media: {audio: {format: audioSetting.format}},
+      processor: stream.processor.id,
+      participant: this.roomId,
+      info: {owner: '', hidden: true}
+    };
+    const outputId = await this.rpcChannel.makeRPC(
+      STREAM_ENGINE, 'publish', [genReq]);
+    stream.addSetting(outputId.id, audioSetting);
+    log.debug('Transcode audio completed:', stream.id, outputId.id, audioSetting);
+  }
+
+  async _transcodeVideo(stream, from, videoSetting) {
+    // Generate video
+    if (!stream.processor) {
+      if (this.mixedStreams.has(from)) {
+        log.error('Video mixer is not ready');
+        throw new Error('Video mixer is not ready');
+      }
+      const txReq = {
+        type: 'video',
+        id: this.roomId + '-' + from,
+        transcoding: {id: from},
+        domain: this.roomId,
+        participant: this.roomId,
+      };
+      stream.processor = {id: txReq.id};
+      stream.processor = await this.rpcChannel.makeRPC(
+        STREAM_ENGINE, 'addProcessor', [txReq]);
+      // Add input
+      const videoOption = {
+        from,
+        format: stream.getSettings()[0].format,
+        parameters: stream.getSettings()[0].parameters,
+      }
+      const inputReq = {
+        type: 'video',
+        id: randomUUID().replace(/-/g, ''),
+        media: {video: videoOption},
+        processor: stream.processor.id,
+        participant: this.roomId,
+        info: {owner: ''}
+      };
+      await this.rpcChannel.makeRPC(
+        STREAM_ENGINE, 'subscribe', [inputReq]);
+    }
+    const genReq = {
+      type: 'video',
+      id: randomUUID().replace(/-/g, ''),
+      media: {video: videoSetting},
+      processor: stream.processor.id,
+      participant: this.roomId,
+      info: {owner: '', hidden: true}
+    };
+    const outputId = await this.rpcChannel.makeRPC(
+      STREAM_ENGINE, 'publish', [genReq]);
+    stream.addSetting(outputId.id, videoSetting);
+    log.debug('Transcode video completed:', stream.id, outputId.id, videoSetting);
+    return outputId.id;
   }
 }
 

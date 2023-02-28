@@ -259,7 +259,7 @@ function streamEngine(rpcClient) {
   // Link subscription tracks to their subscribed source
   const linkSubscription = async function (subscription) {
     // Linkup
-    log.debug('linkSubscription:', JSON.stringify(subscription));
+    log.debug('linkSubscription:', subscription.id);
     // SubTrack => SubSource {audio, video, data}
     const links = new Map();
     const updatePros = [];
@@ -710,6 +710,8 @@ function streamEngine(rpcClient) {
         // Ongoing session
         const req = publishings.get(id) || subscribings.get(id);
         controllers[req.type].onSessionProgress(id, name, data);
+      } else if (controllers[data?.type]) {
+        controllers[data?.type].onSessionProgress(id, name, data);
       } else { //
         log.warn('Unknown SessionProgress:', id, name, data);
       }
@@ -719,7 +721,7 @@ function streamEngine(rpcClient) {
   // Interface for portal signaling
   that.onSessionSignaling = function (req, callback) {
     log.debug('onSessionSignaling:', req);
-    const type = (publishings.get(req.id) || subscribings.get(req.id))?.type;
+    const type = req.type || 'webrtc';
     controllers[type].onClientTransportSignaling(req.id, req.signaling)
       .then(() => {
         callback('callback', 'ok');

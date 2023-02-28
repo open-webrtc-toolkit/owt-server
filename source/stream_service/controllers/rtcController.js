@@ -238,8 +238,7 @@ class RtcController extends TypeController {
         throw new Error(`Cannot find track for mute/unmute: ${id}`);
       }
     } else if (config.operation === 'update') {
-      this.emit('session-updated', config.id,
-        {type: 'update', data: Subscription.from(config.data)});
+      super.controlSession(direction, config);
     } else {
       throw new Error(`Operation not supported: ${config.operation}`);
     }
