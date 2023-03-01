@@ -19,7 +19,7 @@ Because it's REST, management clients can be implemented by different programmin
 To enable stream API, add experimental targets `stream-service` and `customized-agent` during packing. `stream-service` is the module that provide stream related API. `customized-agent` is the module that provide server side customization for stream related API.
 
 After packing, the stream API configuration is in stream_service/service.toml.
-Edit portal/portal.toml, set `stream_engine_name` to the same value of stream API configuration.
+Edit portal/portal.toml, set `stream_engine_name` to the same value of stream API configuration(`service.name` or `scheduler.name` in stream_service/service.toml).
 Edit management_api/management_api.toml, set `stream_engine` and `control_agent` to the same values of stream API configuration.
 
 Start OWT service with updated configuration, stream API should be enabled.
