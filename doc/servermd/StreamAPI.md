@@ -236,7 +236,9 @@ request body:
 
     object(ListQuery):
     {
-        KEY: VALUE // Specified key-value pair for query result, such as `{name: "default"}`
+        query: {
+            KEY: VALUE // Specified key-value pair for query result, such as `{name: "default"}`
+        }
     }
 
 response body:
@@ -273,7 +275,9 @@ request body:
         type: string(publishType), // E.g, "streaming", "video", ...
         participant: string(participantId), // Or use domain name as participant ID.
         media: object(MediaTrack) | object(MediaInfo),
-        info: object(TypeSpecificInfo)
+        info: object(TypeSpecificInfo),
+        connection: object(ConnectionInfo) | undefined, // For "streaming"
+        processor: string(processorId) | undefined, // For "audio", "video"
     }
     object(MediaTrack) { // For WebRTC publications
         tracks: [ object(TrackInfo) ],
@@ -287,6 +291,11 @@ request body:
             parameters: object(VideoParameters)
         }
     }
+    object(ConnectionInfo) { // For streaming publications
+      url: string(streamingUrl),
+      transportProtocol: "tcp" | "udp",
+      bufferSize: number(bufferSize),
+    },
 
 For *object(TrackInfo)*, refers to [tracks in MediaOptions](../Client-Portal%20Protocol.md#331-participant-joins-a-room).
 For *format* and *parameters*, refers to [REST API](RESTAPI.md#53-streams-StreamAPIsection53).
@@ -367,7 +376,9 @@ request body:
 
     object(ListQuery):
     {
-        KEY: VALUE // Specified key-value pair for query result, such as `{name: "default"}`
+        query: {
+            KEY: VALUE // Specified key-value pair for query result, such as `{name: "default"}`
+        }
     }
 
 response body:
@@ -404,7 +415,9 @@ request body:
         type: string(subscribeType), // E.g, "streaming", "video", ...
         participant: string(participantId), // Or use domain name as participant ID.
         media: object(MediaTrack) | object(MediaInfo),
-        info: object(TypeSpecificInfo)
+        info: object(TypeSpecificInfo),
+        connection: object(ConnectionInfo) | undefined, // For "streaming", "recording"
+        processor: string(processorId) | undefined, // For "audio", "video", "analytics"
     }
     object(MediaTrack) { // For WebRTC subscriptions
         tracks: [ object(TrackInfo) ],
@@ -413,12 +426,21 @@ request body:
         audio: {
             from: string(sourceAudioId), // Could be publication ID or source track ID
             format: object(AudioFormat),
-        },
+        } | boolean(enable),
         video: {
             from: string(sourceVideoId), // Could be publication ID or source track ID
             format: object(VideoFormat),
             parameters: object(VideoParameters)
-        }
+        } | boolean(enable)
+    }
+    object(ConnectionInfo) {
+        container: "mkv" | "mp4" | undefined, // For "recording"
+        url: string(url) | undefined, // For "streaming"
+        algorithm: string(algorithmName) | undefined, // For "analytics"
+        video: { // For "analytics"
+            format: object(VideoFormat), // Analytics output video format
+            parameters: object(VideoParameters), // Analytics output video parameters
+        } | undefined,
     }
 
 For *object(TrackInfo)*, refers to [tracks in MediaOptions](../Client-Portal%20Protocol.md#331-participant-joins-a-room).
@@ -497,7 +519,9 @@ request body:
 
     object(ListQuery):
     {
-        KEY: VALUE // Specified key-value pair for query result, such as `{name: "default"}`
+        query: {
+            KEY: VALUE // Specified key-value pair for query result, such as `{name: "default"}`
+        }
     }
 
 response body:
@@ -577,6 +601,14 @@ request body:
         id: string(analyticsId)
     }
 
+    // For "sip" type processor
+    sip: {
+        server: string(serverHost),
+        user: string(sipUser),
+        password: string(sipPasswd)
+    },
+    stream: string(outgoingSipStream)
+
 For *object(Region)*, refers to [REST API](RESTAPI.md#51-rooms-StreamAPIsection51).
 
 response body:
@@ -605,7 +637,109 @@ response body:
 
   **Empty**
 
-## 5.5 Nodes {#StreamAPIsection5_5}
+## 5.5 Participants {#StreamAPIsection5_5}
+Description:<br>
+Participants represents owner of publications and subscriptions in OWT server.<br>
+
+Resources:
+
+- /v1.1/stream-engine/participants
+- /v1.1/stream-engine/participants/{participantId}
+
+Data Model:
+
+    Object(Participant) {
+        id: string(ParticipantID),
+        domain: string(domainName), // For example, room ID
+        portal: string(portalId),
+        notifying: boolean(notifyOthers), // Notify other participants about join/leave.
+    }
+
+### List Participants {#StreamAPIsection5_5_1}
+**GET ${host}/v1.1/stream-engine/participants**
+**GET ${host}/v1.1/stream-engine/participants/{participantId}**
+
+Description:<br>
+List participants in stream engine.<br>
+
+request body:
+
+| type | content |
+|:-------------|:-------|
+|      json     | object(ListQuery) |
+
+**Note**: Definition of *ListQuery*.<br>
+
+    object(ListQuery):
+    {
+        query: {
+            KEY: VALUE // Specified key-value pair for query result, such as `{name: "default"}`
+        }
+    }
+
+response body:
+
+| type | content |
+|:-------------|:-------|
+|      json     | Object(ListResult) |
+
+**Note**: Definition of *ListResult*.<br>
+
+    object(ListResult):
+    {
+        total: number(ListSize),
+        start: number(offsetInList),
+        data: [ object(Participant) ]
+    }
+
+### Create Participant {#StreamAPIsection5_5_2}
+**POST ${host}/v1.1/stream-engine/participants**
+
+Description:<br>
+Create a participant with configuration.<br>
+
+request body:
+
+| type | content |
+|:-------------|:-------|
+|  json | object(ParticipantRequest) |
+
+**Note**: Definition of *ParticipantRequest*.<br>
+
+    Object(ParticipantRequest) {
+        id: string(ParticipantID),
+        domain: string(domainName),
+        notifying: boolean(notifyOthers), // Notify other participants about join/leave.
+    }
+
+response body:
+
+| type | content |
+|:-------------|:-------|
+|  json | object(IdObject) |
+
+**Note**: Definition of *IdObject*.<br>
+
+    Object(IdObject) {
+        id: string(createdParticipantId)
+    }
+
+### Delete Participant {#StreamAPIsection5_5_3}
+**DELETE ${host}/v1.1/stream-engine/participants/{participantId}**
+
+Description:<br>
+Drop the specified participant, all related publications and subscriptions will be stopped as well.<br>
+
+request body:
+
+  **Empty**
+
+response body:
+
+  **Empty**
+
+
+## 5.6 Nodes {#StreamAPIsection5_6}
 Description:<br>
 Node represents working process in stream engine.<br>
 
@@ -624,7 +758,7 @@ Data Model:
         streamAddr: {ip: string(host), port: number(port)}
     }
 
-### List Nodes {#StreamAPIsection5_5_1}
+### List Nodes {#StreamAPIsection5_6_1}
 **GET ${host}/v1.1/stream-engine/nodes**
 
 Description:<br>
@@ -640,7 +774,9 @@ request body:
 
     object(ListQuery):
     {
-        KEY: VALUE // Specified key-value pair for query result, such as `{name: "default"}`
+        query: {
+            KEY: VALUE // Specified key-value pair for query result, such as `{name: "default"}`
+        }
     }
 
 response body:
