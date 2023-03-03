@@ -42,9 +42,10 @@ config.rabbit = config.rabbit || {};
 config.rabbit.host = config.rabbit.host || 'localhost';
 config.rabbit.port = config.rabbit.port || 5672;
 
-config.cloud.url = config.cloud.url;
-config.cloud.region = config.cloud.region;
-config.cloud.clusterID = config.cloud.clusterID;
+config.cascading.enabled = config.cascading.enabled || false;
+config.cascading.url = config.cascading.url;
+config.cascading.region = config.cascading.region;
+config.cascading.clusterID = config.cascading.clusterID;
 
 function startup () {
     var id = Math.floor(Math.random() * 1000000000);
@@ -54,7 +55,7 @@ function startup () {
         checkAliveCount: config.manager.check_alive_count,
         scheduleKeepTime: config.manager.schedule_reserve_time,
         strategy: config.strategy,
-        url: config.cloud.url, region: config.cloud.region, clusterID: config.cloud.clusterID
+        enableCascading: config.cascading.enabled, url: config.cascading.url, region: config.cascading.region, clusterID: config.cascading.clusterID
     };
 
     if (config.manager.enable_grpc) {

@@ -35,8 +35,11 @@ var ClusterManager = function (clusterName, selfId, spec) {
 
     function validateUrl(url) {
         try {
-            new Url.URL(url);
-            return true;
+            if (spec.enableCascading) {
+                new Url.URL(url);
+                return true;
+            }
+            return false;
         } catch {
             return false;
         }

@@ -214,13 +214,37 @@ node .
 
 This is just a sample to show how cascading clusters control work, please customize your own scheduling and secured deployment in real practice.
 
+### ManagementAPI configuration
+
+management_api module will report restful server info to cluster manager and then report to cloud control, so that cloud control could communicate with cluster management_api for restful API, please configure following items in cascading item in ```management_api/management_api.toml```:
+
+````
+[cascading]
+enabled: set true to enable cascading feature, disable cascading by default
+servicename: service name used to register to cascading cloud for accessing to communicate with this cluster
+````
+
 ### ClusterManager configuration
 
-The OWT cluster will report cluster info to cloud control service through cluster_manager module in OWT, you need to configure following items in cascading item in cluster_manager/cluster_manager.toml file before starting it:
+The OWT cluster will report cluster info to cloud control service through cluster_manager module in OWT, you need to configure following items in cascading item in ```cluster_manager/cluster_manager.toml``` file before starting it:
 
+````
+[cascading]
+enabled: set true to enable cascading feature, disable cascading by default
 url: specify the cloud control url, so that cluster manager module can connect to the url and send cluster info
 region: specify the region this OWT cluster locate, this will be used by cloud control service to schedule incoming clients by region
 clusterID: specify a unique cluster ID for this cluster in the cloud.
+````
+
+### Conference configuration
+
+conference events will be sent to cascaded clusters through ```conference_agent``` and eventbridge, configure following item in cascading item in ```conference_agent/agent.toml``` to enable event cascading:
+
+````
+[cascading]
+enabled: set true to enable cascading feature, disable cascading by default
+````
+
 
 ### Media/event bridge
 
