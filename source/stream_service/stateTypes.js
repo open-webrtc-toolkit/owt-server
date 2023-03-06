@@ -6,6 +6,8 @@
 
 'use strict';
 
+const {calcResolution} = require('./formatUtil');
+
 // Domain and its controller node
 class Domain {
   constructor(id, node) {
@@ -139,14 +141,11 @@ class Publication {
       }
     }
     const videoOptional = info.optional?.video;
+    const params = videoOptional?.parameters;
     if (videoOptional) {
       // Check info optional format
       if (Array.isArray(videoOptional.format)) {
         optional.video.format = videoOptional.format;
-      }
-      const params = videoOptional.params;
-      if (Array.isArray(params?.resolution)) {
-        optional.video.parameters.resolution = params.resolution;
       }
       if (Array.isArray(params?.bitrate)) {
         optional.video.parameters.bitrate = params.bitrate;
@@ -158,11 +157,26 @@ class Publication {
         optional.video.parameters.keyFrameInterval = params.keyFrameInterval;
       }
     }
+    const generateResolutions = (base) => {
+      if (Array.isArray(params?.resolution)) {
+        const resolutions = params.resolution.map((res) => {
+          return calcResolution(res, base);
+        }).filter((res) => {
+          return res.width <= base.width && res.height <= base.height;
+        });
+        return resolutions;
+      }
+      return [];
+    };
     this.source.audio.forEach((track) => {
         tracks.push(Object.assign(
           {type: 'audio', optional: optional.audio}, track));
     });
     this.source.video.forEach((track) => {
+        if (track.parameters?.resolution) {
+          optional.video.parameters.resolution =
+            generateResolutions(track.parameters.resolution);
+        }
         tracks.push(Object.assign(
           {type: 'video', optional: optional.video}, track));
     });

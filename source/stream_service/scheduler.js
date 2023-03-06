@@ -19,6 +19,7 @@ function stringHash(str) {
 }
 
 const CHECK_INTERVAL = 60 * 1000; // 1 min
+const MAX_RPC_FAILS = 5;
 
 class ServiceScheduler {
   static supportedMethods = [
@@ -37,6 +38,7 @@ class ServiceScheduler {
     'removeProcessor',
     'getProcessors',
     'onSessionSignaling',
+    'getParticipants',
   ];
   constructor(rpcChannel, stateStores) {
     this.rpcChannel = rpcChannel;
@@ -44,6 +46,7 @@ class ServiceScheduler {
     this.checkAliveTimer = setInterval(() => {
       this.checkService();
     }, CHECK_INTERVAL);
+    this.failureCounts = new Map(); // Node => count
   }
 
   async scheduleService(req) {
@@ -58,18 +61,24 @@ class ServiceScheduler {
     const scheduled = await this.stateStores.read('scheduleMaps', {_id: hash});
     if (scheduled) {
       log.debug('scheduled:', scheduled);
-      return scheduled.node;
-    } else {
-      const node = serviceNodes[hash % serviceNodes.length].id;
-      log.debug('node:', node);
-      try {
-        const map = {_id: hash, node};
-        await this.stateStores.create('scheduleMaps', map);
-      } catch (e) {
-        log.debug('Failed to update schedule map:', e?.message);
+      if (!serviceNodes.find((node) => (node.id === scheduled.node))) {
+        // Out of date
+        log.debug('Node out of date:', scheduled);
+        this.stateStores.delete('scheduleMaps', {_id: hash})
+        .catch((e) => log.debug('Failed to delete scheduleMaps:', hash));
+      } else {
+        return scheduled.node;
       }
-      return node;
     }
+    const node = serviceNodes[hash % serviceNodes.length].id;
+    log.debug('node:', node);
+    try {
+      const map = {_id: hash, node};
+      await this.stateStores.create('scheduleMaps', map);
+    } catch (e) {
+      log.debug('Failed to update schedule map:', e?.message);
+    }
+    return node;
   }
 
   // Check service availability
@@ -78,13 +87,18 @@ class ServiceScheduler {
     this.stateStores.readMany('streamEngineNodes', {})
       .then(async (ret) => {
         const serviceNodes = ret.data || [];
-        const req = {id: 'non-existent'};
+        const req = {query: {_id: 'non-existent'}};
         for (const service of serviceNodes) {
           try {
             await this.rpcChannel.makeRPC(
               service.id, 'getNodes', [req]);
+            this.failureCounts.delete(service.id);
           } catch (e) {
             log.warn('Failed to call service node:', service.id);
+            if (!this.failureCounts.has(service.id)) {
+              this.failureCounts.set(service.id, 1);
+            }
+            this._handleCheckFailure(service.id);
           }
         }
       }).catch((e) => {
@@ -97,19 +111,37 @@ class ServiceScheduler {
     const self = this;
     for (const method of ServiceScheduler.supportedMethods) {
       api[method] = async function (req, callback) {
+        let serviceNode = null;
         try {
-          const serviceNode = await self.scheduleService(req);
+          serviceNode = await self.scheduleService(req);
           log.debug('Schedule req:', req, serviceNode);
           const ret = await self.rpcChannel.makeRPC(
             serviceNode, method, [req]);
           log.debug('Schedule ret:', ret, serviceNode);
           callback('callback', ret);
         } catch (e) {
+          if (serviceNode) {
+            self._handleCheckFailure(serviceNode);
+          }
           callback('callback', 'error', e?.message || e);
         }
       };
     }
     return api;
+  }
+
+  _handleCheckFailure(id) {
+    if (!this.failureCounts.has(id)) {
+      return;
+    }
+    let count = this.failureCounts.get(id) + 1;
+    if (count >= MAX_RPC_FAILS) {
+      this.stateStores.delete('streamEngineNodes', {id})
+        .catch((e) => log.info('Fail to clean service node:', id))
+      this.failureCounts.delete(id);
+    } else {
+      this.failureCounts.set(service.id, count);
+    }
   }
 }
 

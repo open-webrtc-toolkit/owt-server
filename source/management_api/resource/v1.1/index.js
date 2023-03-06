@@ -12,6 +12,7 @@ const tokensResource = require('../v1/tokensResource');
 const publicationsResource = require('./publicationsResource');
 const subscriptionsResource = require('./subscriptionsResource');
 const processorsResource = require('./processorsResource');
+const participantsResource = require('./participantsResource');
 const routerV1 = require('../v1');
 
 // Stream(including external streaming-in) management
@@ -43,6 +44,11 @@ router.get('/stream-engine/processors', processorsResource.getList);
 router.get('/stream-engine/processors/:processors', processorsResource.get);
 router.post('/stream-engine/processors', processorsResource.add);
 router.delete('/stream-engine/processors/:processor', processorsResource.delete);
+
+router.get('/stream-engine/participants', participantsResource.getList);
+router.get('/stream-engine/participants/:participant', participantsResource.get);
+router.post('/stream-engine/participants', participantsResource.add);
+router.delete('/stream-engine/participants/:participant', participantsResource.delete);
 
 // Same as previous version
 router.use(routerV1);

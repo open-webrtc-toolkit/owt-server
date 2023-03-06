@@ -247,6 +247,7 @@ module.exports = function (rpcC, selfRpcId, parentRpcId, clusterWorkerIP) {
     var router = new InternalConnectionRouter(global.config.internal);
 
     if (enableGRPC) {
+        erizo.id = null;
         const grpcTools = require('./grpcTools');
         cluster_name = global.config?.cluster?.grpc_host || 'localhost:10080';
         makeRPC = function (_, node, method, args, onOk, onError) {
@@ -713,7 +714,9 @@ module.exports = function (rpcC, selfRpcId, parentRpcId, clusterWorkerIP) {
 
     that.init = function(options, callback) {
         log.debug('init SipGateway:', options.sip_server, options.sip_user);
-        erizo.id = rpcC.rpcAddress
+        if (!erizo.id) {
+            erizo.id = rpcClient.rpcAddress
+        }
 
         if (typeof options.room_id !== 'string' || options.room_id === '') {
             log.error('Invalid room id');

@@ -3,12 +3,10 @@
 // SPDX-License-Identifier: Apache-2.0
 
 'use strict';
-const requestHandler = require('../../requestHandler');
 const e = require('../../errors');
 
 // Logger
 const log = require('../../logger').logger.getLogger('PublicationsResource');
-
 const rpc = require('../../rpc/rpc');
 
 const STREAM_SERVICE_ID = global.config.cluster.stream_engine;
@@ -24,9 +22,9 @@ function callStreamService(methodName, args, callback) {
 }
 
 exports.getList = function (req, res, next) {
-  log.debug('Representing publications for domain ', req.params.domain,
-            'and service', req.authData.service._id);
-  callStreamService('getPublications', [{}], (err, pubs) => {
+  log.debug('Representing publications for service', req.authData.service._id);
+  const query = req.body?.query || {};
+  callStreamService('getPublications', [{query}], (err, pubs) => {
     if (err) {
       next(new e.CloudError('Failed to get publications'));
     } else {
@@ -39,7 +37,7 @@ exports.get = function (req, res, next) {
   log.debug('Representing publication:', req.params.publication,
             ' for domain ', req.params.domain);
   const query = {id: req.params.publication};
-  callStreamService('getPublications', [query], (err, pubs) => {
+  callStreamService('getPublications', [{query}], (err, pubs) => {
     if (err) {
       next(new e.CloudError('Failed to get publications'));
     } else {

@@ -196,8 +196,8 @@ class AnalyticsController extends TypeController {
 
   onSessionProgress(id, type, data) {
     switch(type) {
-      case 'onNewStream': {
-        log.debug('onNewStream:', id, type, data);
+      case 'onStreamAdded': {
+        log.debug('onStreamAdded:', id, type, data);
         const session = this.sessions.get(id);
         const outputConfig = {
           id: data.id,
@@ -211,6 +211,12 @@ class AnalyticsController extends TypeController {
         };
         this.createSession('in', outputConfig)
           .catch((e) => log.debug('Failed to create session on progress:', e));
+        break;
+      }
+      case 'onStreamRemoved': {
+        log.debug('onStreamRemoved:', id, type, data);
+        this.removeSession(id, 'in', 'onStreamRemoved')
+          .catch((e) => log.debug('Failed to remove session on progress:', e));
         break;
       }
       default:

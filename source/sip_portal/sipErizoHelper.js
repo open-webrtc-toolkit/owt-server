@@ -48,7 +48,7 @@ module.exports = function (spec) {
                         onError(err);
                     } else {
                         const addr = result.info.ip + ':' + result.info.grpcPort;
-                        onOk(addr);
+                        onOk({id: addr});
                     }
                 });
             } else if (method === 'getNode') {
@@ -167,14 +167,13 @@ module.exports = function (spec) {
             if (attempt <= 0) {
                 return on_failed('Failed in scheduling a sip agent.');
             }
-
             makeRPC(
                 rpcClient,
                 cluster,
                 'schedule',
                 ['sip', for_whom/*FIXME: use room_id as taskId temporarily, should use for_whom instead later.*/, 'preference'/*FIXME: should fill-in actual preference*/, 10 * 1000],
                 function (result) {
-                    on_ok({id: result});
+                    on_ok(result);
                     keepTrying = false;
                 }, function (reason) {
                     if (keepTrying) {

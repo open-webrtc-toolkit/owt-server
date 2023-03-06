@@ -6,6 +6,7 @@
 
 const { EventEmitter } = require('events');
 const log = require('../logger').logger.getLogger('TypeController');
+const {Publication, Subscription} = require('../stateTypes')
 
 /* Events
  * 'session-established': (id, Publication|Subscription)
@@ -53,6 +54,16 @@ class TypeController extends EventEmitter {
     log.debug('recycleWorkerNode:', locality, domain, taskId);
     const args = [locality.node, {room: domain, task: taskId}];
     return this.makeRPC(locality.agent, 'recycleNode', args);
+  }
+
+  async controlSession(direction, config) {
+    if (config.operation === 'update') {
+      const data = direction === 'in' ?
+        Publication.from(config.data) : Subscription.from(config.data);
+      this.emit('session-updated', config.id, {type: 'update', data});
+    } else {
+      throw new Error(`Unknown control operation: ${config.operation}`);
+    }
   }
 }
 
