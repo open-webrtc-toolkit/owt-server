@@ -26,6 +26,7 @@ public:
     // Implement VideoReceiveAdapter
     int onRtpData(char* data, int len) override;
     void requestKeyFrame() override;
+    void setPreferredLayers(int spatialId, int temporalId) override;
 
     // Implements rtc::VideoSinkInterface<VideoFrame>.
     void OnFrame(const webrtc::VideoFrame& video_frame) override;
@@ -95,6 +96,8 @@ private:
     CallOwner* m_owner;
 
     webrtc::VideoReceiveStream* m_videoRecvStream = nullptr;
+    int m_preferredSpatialId = -1;
+    int m_preferredTemporalId = -1;
 };
 
 } // namespace rtc_adapter

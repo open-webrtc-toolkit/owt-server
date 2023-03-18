@@ -1,0 +1,239 @@
+From 7eff26558567a387ced9face3e4f782b40aa9fa8 Mon Sep 17 00:00:00 2001
+From: Chen Li1 <li1.chen@intel.com>
+Date: Wed, 16 Nov 2022 13:13:31 +0800
+Subject: [PATCH] Update SRTP profiles for SRTP channel
+
+---
+ erizo/src/erizo/DtlsTransport.cpp   |  6 +++---
+ erizo/src/erizo/DtlsTransport.h     |  2 +-
+ erizo/src/erizo/SrtpChannel.cpp     | 17 ++++++++++-------
+ erizo/src/erizo/SrtpChannel.h       |  8 +++++---
+ erizo/src/erizo/dtls/DtlsClient.cpp |  7 ++++---
+ erizo/src/erizo/dtls/DtlsSocket.cpp | 10 +++++++++-
+ erizo/src/erizo/dtls/DtlsSocket.h   | 14 +++++++-------
+ 7 files changed, 39 insertions(+), 25 deletions(-)
+
+diff --git a/erizo/src/erizo/DtlsTransport.cpp b/erizo/src/erizo/DtlsTransport.cpp
+index 6387ffea..b3d721ee 100644
+--- a/erizo/src/erizo/DtlsTransport.cpp
++++ b/erizo/src/erizo/DtlsTransport.cpp
+@@ -270,7 +270,7 @@ void DtlsTransport::writeDtlsPacket(DtlsSocketContext *ctx, packetPtr packet) {
+ }
+ 
+ void DtlsTransport::onHandshakeCompleted(DtlsSocketContext *ctx, std::string clientKey, std::string serverKey,
+-                                         std::string srtp_profile) {
++                                         int srtp_profile) {
+   boost::mutex::scoped_lock lock(sessionMutex_);
+   std::string temp;
+ 
+@@ -287,7 +287,7 @@ void DtlsTransport::onHandshakeCompleted(DtlsSocketContext *ctx, std::string cli
+   }
+   if (ctx == dtlsRtp.get()) {
+     srtp_.reset(new SrtpChannel());
+-    if (srtp_->setRtpParams(clientKey, serverKey)) {
++    if (srtp_->setRtpParams(clientKey, serverKey, srtp_profile)) {
+       readyRtp = true;
+     } else {
+       updateTransportState(TRANSPORT_FAILED);
+@@ -298,7 +298,7 @@ void DtlsTransport::onHandshakeCompleted(DtlsSocketContext *ctx, std::string cli
+   }
+   if (ctx == dtlsRtcp.get()) {
+     srtcp_.reset(new SrtpChannel());
+-    if (srtcp_->setRtpParams(clientKey, serverKey)) {
++    if (srtcp_->setRtpParams(clientKey, serverKey, srtp_profile)) {
+       readyRtcp = true;
+     } else {
+       updateTransportState(TRANSPORT_FAILED);
+diff --git a/erizo/src/erizo/DtlsTransport.h b/erizo/src/erizo/DtlsTransport.h
+index a764d56a..3d72bb48 100644
+--- a/erizo/src/erizo/DtlsTransport.h
++++ b/erizo/src/erizo/DtlsTransport.h
+@@ -36,7 +36,7 @@ class DtlsTransport : dtls::DtlsReceiver, public Transport {
+   void onDtlsPacket(dtls::DtlsSocketContext *ctx, const unsigned char* data, unsigned int len) override;
+   void writeDtlsPacket(dtls::DtlsSocketContext *ctx, packetPtr packet);
+   void onHandshakeCompleted(dtls::DtlsSocketContext *ctx, std::string clientKey, std::string serverKey,
+-                            std::string srtp_profile) override;
++                            int srtp_profile) override;
+   void onHandshakeFailed(dtls::DtlsSocketContext *ctx, const std::string& error) override;
+   void updateIceState(IceState state, IceConnection *conn) override;
+   void processLocalSdp(SdpInfo *localSdp_) override;
+diff --git a/erizo/src/erizo/SrtpChannel.cpp b/erizo/src/erizo/SrtpChannel.cpp
+index fca9f707..f548a1aa 100644
+--- a/erizo/src/erizo/SrtpChannel.cpp
++++ b/erizo/src/erizo/SrtpChannel.cpp
+@@ -65,17 +65,19 @@ SrtpChannel::~SrtpChannel() {
+   }
+ }
+ 
+-bool SrtpChannel::setRtpParams(const std::string &sendingKey, const std::string &receivingKey) {
++bool SrtpChannel::setRtpParams(const std::string &sendingKey, const std::string &receivingKey,
++                               int profile) {
+   ELOG_DEBUG("Configuring srtp local key %s remote key %s", sendingKey.c_str(), receivingKey.c_str());
+-  if (configureSrtpSession(&send_session_,    sendingKey,   SENDING) &&
+-      configureSrtpSession(&receive_session_, receivingKey, RECEIVING)) {
++  if (configureSrtpSession(&send_session_,    sendingKey,   SENDING, profile) &&
++      configureSrtpSession(&receive_session_, receivingKey, RECEIVING, profile)) {
+     active_ = true;
+     return active_;
+   }
+   return false;
+ }
+ 
+-bool SrtpChannel::setRtcpParams(const std::string &sendingKey, const std::string &receivingKey) {
++bool SrtpChannel::setRtcpParams(const std::string &sendingKey, const std::string &receivingKey,
++                                int profile) {
+     return 0;
+ }
+ 
+@@ -147,11 +149,12 @@ int SrtpChannel::unprotectRtcp(char* buffer, int *len) {
+   }
+ }
+ 
+-bool SrtpChannel::configureSrtpSession(srtp_t *session, const std::string &key, enum TransmissionType type) {
++bool SrtpChannel::configureSrtpSession(srtp_t *session, const std::string &key,
++                                      enum TransmissionType type, int profile) {
+   srtp_policy_t policy;
+   memset(&policy, 0, sizeof(policy));
+-  srtp_crypto_policy_set_aes_cm_128_hmac_sha1_80(&policy.rtp);
+-  srtp_crypto_policy_set_aes_cm_128_hmac_sha1_80(&policy.rtcp);
++  srtp_crypto_policy_set_from_profile_for_rtp(&policy.rtp, (srtp_profile_t)profile);
++  srtp_crypto_policy_set_from_profile_for_rtcp(&policy.rtcp, (srtp_profile_t)profile);
+   if (type == SENDING) {
+     policy.ssrc.type = ssrc_any_outbound;
+   } else {
+diff --git a/erizo/src/erizo/SrtpChannel.h b/erizo/src/erizo/SrtpChannel.h
+index c837991d..d98dcb3b 100644
+--- a/erizo/src/erizo/SrtpChannel.h
++++ b/erizo/src/erizo/SrtpChannel.h
+@@ -63,23 +63,25 @@ class SrtpChannel {
+    * Sets a key pair for the RTP channel
+    * @param sendingKey The key for protecting data
+    * @param receivingKey The key for unprotecting data
++   * @param profile The profile ID for unprotecting data
+    * @return true if everything is ok
+    */
+-  bool setRtpParams(const std::string &sendingKey, const std::string &receivingKey);
++  bool setRtpParams(const std::string &sendingKey, const std::string &receivingKey, int profile);
+   /**
+    * Sets a key pair for the RTCP channel
+    * @param sendingKey The key for protecting data
+    * @param receivingKey The key for unprotecting data
++   * @param profile The profile ID for unprotecting data
+    * @return true if everything is ok
+    */
+-  bool setRtcpParams(const std::string &sendingKey, const std::string &receivingKey);
++  bool setRtcpParams(const std::string &sendingKey, const std::string &receivingKey, int profile);
+ 
+  private:
+   enum TransmissionType {
+     SENDING, RECEIVING
+   };
+ 
+-  bool configureSrtpSession(srtp_t *session, const std::string &key, enum TransmissionType type);
++  bool configureSrtpSession(srtp_t *session, const std::string &key, enum TransmissionType type, int profile);
+ 
+   bool active_;
+   srtp_t send_session_;
+diff --git a/erizo/src/erizo/dtls/DtlsClient.cpp b/erizo/src/erizo/dtls/DtlsClient.cpp
+index 8bcc2d5b..9f69b7ce 100644
+--- a/erizo/src/erizo/dtls/DtlsClient.cpp
++++ b/erizo/src/erizo/dtls/DtlsClient.cpp
+@@ -30,7 +30,8 @@ using dtls::DtlsSocketContext;
+ using dtls::DtlsSocket;
+ using std::memcpy;
+ 
+-const char* DtlsSocketContext::DefaultSrtpProfile = "SRTP_AES128_CM_SHA1_80";
++const char* DtlsSocketContext::DefaultSrtpProfile =
++  "SRTP_AES128_CM_SHA1_80:SRTP_AEAD_AES_128_GCM:SRTP_AEAD_AES_256_GCM";
+ 
+ X509 *DtlsSocketContext::mCert = nullptr;
+ EVP_PKEY *DtlsSocketContext::privkey = nullptr;
+@@ -441,11 +442,11 @@ int createCert(const std::string& pAor, int expireDays, int keyLen, X509*& outCe
+         srtp_profile = mSocket->getSrtpProfile();
+ 
+         if (srtp_profile) {
+-          ELOG_DEBUG("SRTP Extension negotiated profile=%s", srtp_profile->name);
++          ELOG_DEBUG("SRTP Extension negotiated profile=%s, id=%d", srtp_profile->name, srtp_profile->id);
+         }
+ 
+         if (receiver != NULL && srtp_profile) {
+-          receiver->onHandshakeCompleted(this, clientKey, serverKey, srtp_profile->name);
++          receiver->onHandshakeCompleted(this, clientKey, serverKey, srtp_profile->id);
+         }
+       } else {
+         ELOG_DEBUG("Peer did not authenticate");
+diff --git a/erizo/src/erizo/dtls/DtlsSocket.cpp b/erizo/src/erizo/dtls/DtlsSocket.cpp
+index 2d8ddd6f..12ea2292 100644
+--- a/erizo/src/erizo/dtls/DtlsSocket.cpp
++++ b/erizo/src/erizo/dtls/DtlsSocket.cpp
+@@ -196,9 +196,16 @@ SrtpSessionKeys* DtlsSocket::getSrtpSessionKeys() {
+   // TODO(pedro): probably an exception candidate
+   assert(mHandshakeCompleted);
+ 
++  int profile = this->getSrtpProfile()->id;
++  ELOG_DEBUG("SRTP profile ID %d:", profile);
++  // 32 for 256_GCM
++  const int SRTP_MASTER_KEY_KEY_LEN = (profile == 8)? 32 : 16;
++  // 14 for sha1_80
++  const int SRTP_MASTER_KEY_SALT_LEN = (profile == 1) ? 14: 12;
++
+   SrtpSessionKeys* keys = new SrtpSessionKeys();
+ 
+-  unsigned char material[SRTP_MASTER_KEY_LEN << 1];
++  unsigned char material[SRTP_MASTER_KEY_KEY_LEN * 2 + SRTP_MASTER_KEY_SALT_LEN * 2];
+   if (!SSL_export_keying_material(mSsl, material, sizeof(material), "EXTRACTOR-dtls_srtp", 19, NULL, 0, 0)) {
+     return keys;
+   }
+@@ -275,6 +282,7 @@ void DtlsSocket::handleTimeout() {
+ // TODO(pedro): assert(0) into exception, as elsewhere
+ void DtlsSocket::createSrtpSessionPolicies(srtp_policy_t& outboundPolicy, srtp_policy_t& inboundPolicy) {
+   assert(mHandshakeCompleted);
++  return;
+ 
+   /* we assume that the default profile is in effect, for now */
+   srtp_profile_t profile = srtp_profile_aes128_cm_sha1_80;
+diff --git a/erizo/src/erizo/dtls/DtlsSocket.h b/erizo/src/erizo/dtls/DtlsSocket.h
+index 5645a423..b29e5346 100644
+--- a/erizo/src/erizo/dtls/DtlsSocket.h
++++ b/erizo/src/erizo/dtls/DtlsSocket.h
+@@ -20,8 +20,8 @@ extern "C" {
+ #include "dtls/bf_dwrap.h"
+ #include "../logger.h"
+ 
+-const int SRTP_MASTER_KEY_KEY_LEN = 16;
+-const int SRTP_MASTER_KEY_SALT_LEN = 14;
++const int SRTP_MASTER_KEY_MAX_KEY_LEN = 32;
++const int SRTP_MASTER_KEY_MAX_SALT_LEN = 14;
+ static const int DTLS_MTU = 1472;
+ 
+ namespace dtls {
+@@ -30,13 +30,13 @@ class DtlsSocketContext;
+ class SrtpSessionKeys {
+  public:
+   SrtpSessionKeys() {
+-    clientMasterKey = new unsigned char[SRTP_MASTER_KEY_KEY_LEN];
++    clientMasterKey = new unsigned char[SRTP_MASTER_KEY_MAX_KEY_LEN];
+     clientMasterKeyLen = 0;
+-    clientMasterSalt = new unsigned char[SRTP_MASTER_KEY_SALT_LEN];
++    clientMasterSalt = new unsigned char[SRTP_MASTER_KEY_MAX_SALT_LEN];
+     clientMasterSaltLen = 0;
+-    serverMasterKey = new unsigned char[SRTP_MASTER_KEY_KEY_LEN];
++    serverMasterKey = new unsigned char[SRTP_MASTER_KEY_MAX_KEY_LEN];
+     serverMasterKeyLen = 0;
+-    serverMasterSalt = new unsigned char[SRTP_MASTER_KEY_SALT_LEN];
++    serverMasterSalt = new unsigned char[SRTP_MASTER_KEY_MAX_SALT_LEN];
+     serverMasterSaltLen = 0;
+   }
+   ~SrtpSessionKeys() {
+@@ -132,7 +132,7 @@ class DtlsReceiver {
+  public:
+   virtual void onDtlsPacket(DtlsSocketContext *ctx, const unsigned char* data, unsigned int len) = 0;
+   virtual void onHandshakeCompleted(DtlsSocketContext *ctx, std::string clientKey, std::string serverKey,
+-                                    std::string srtp_profile) = 0;
++                                    int srtp_profile) = 0;
+   virtual void onHandshakeFailed(DtlsSocketContext *ctx, const std::string& error) = 0;
+ };
+ 
+-- 
+2.17.1
+

@@ -1,0 +1,99 @@
+
+//
+syntax = "proto3";
+
+import "format.proto";
+
+package owt;
+
+// The cluster manager service definition.
+service ClusterManager {
+  rpc Join(JoinInfo) returns (JoinReply) {}
+  rpc Quit(TaskRequest) returns (SimpleReply) {}
+  rpc KeepAlive(TaskRequest) returns (SimpleReply) {}
+  rpc ReportLoad(ReportRequest) returns (SimpleReply) {}
+  rpc ReportState(ReportRequest) returns (SimpleReply) {}
+  rpc PickUpTasks(TaskRequest) returns (SimpleReply) {}
+  rpc LayDownTask(TaskRequest) returns (SimpleReply) {}
+  rpc Schedule(ScheduleRequest) returns (JoinInfo) {}
+  rpc Unschedule(TaskRequest) returns (SimpleReply) {}
+  rpc GetWorkerAttr(TaskRequest) returns (JoinInfo) {}
+  rpc GetWorkers(TaskRequest) returns (ListReply) {}
+  rpc GetTasks(TaskRequest) returns (ListReply) {}
+  rpc GetScheduled(TaskRequest) returns (SimpleReply) {}
+}
+
+// Agent capacity info
+message CapacityInfo {
+  repeated string isps = 1;
+  repeated string regions = 2;
+  message VideoCapacity {
+    repeated string decode = 1;
+    repeated string encode = 2;
+  }
+  optional VideoCapacity video = 3;
+}
+
+// Message of cluster worker information
+message WorkerInfo {
+  string ip = 1;
+  optional string hostname = 2;
+  optional int32 port = 3;
+  optional int32 grpcPort = 4;
+  double maxLoad = 5;
+  optional double load = 6;
+  optional int32 state = 7;
+  CapacityInfo capacity = 8;
+  optional bool ssl = 9;
+}
+
+// Message for join request and schedule reply
+message JoinInfo {
+  string id = 1;
+  optional string purpose = 2;
+  WorkerInfo info = 3;
+}
+
+// Message for join reply
+message JoinReply {
+  int32 state = 1;
+}
+
+// Message for query task
+message TaskRequest {
+  string id = 1;
+  optional string task = 2;
+  optional string purpose = 3;
+  repeated string tasks = 4;
+}
+
+// Message for report request
+message ReportRequest {
+  string id = 1;
+  optional int32 state = 2;
+  optional double load = 3;
+}
+
+// Schedule preference
+message Preference {
+  optional string region = 1;
+  optional string isp = 2;
+  message VideoPreference {
+    repeated string decode = 1;
+    repeated string encode = 2;
+  }
+  optional VideoPreference video = 3;
+}
+
+// Message for schedule request
+message ScheduleRequest {
+  string purpose = 1;
+  string task = 2;
+  Preference preference = 3;
+  int32 reserveTime = 4;
+}
+
+// Reply with a string list
+message ListReply {
+  repeated string list = 1;
+}

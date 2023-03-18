@@ -1,0 +1,78 @@
+
+//
+syntax = "proto3";
+
+import "process_agent.proto";
+
+package owt;
+
+// The audio service definition.
+service AudioAgent {
+  // Init
+  rpc Init(InitRequest) returns (InitReply) {}
+  rpc Deinit(Empty) returns (SimpleReply) {}
+  // Add/Remove input
+  rpc AddInput(AddInputRequest) returns (SimpleReply) {}
+  rpc RemoveInput(RemoveInputRequest) returns (SimpleReply) {}
+  // Generate/Degenerate
+  rpc Generate(GenerateRequest) returns (GenerateReply) {}
+  rpc Degenerate(DegenerateRequest) returns (SimpleReply) {}
+  // Enable/Reset VAD
+  rpc EnableVAD(EnableVADRequest) returns (SimpleReply) {}
+  rpc ResetVAD(Empty) returns (SimpleReply) {}
+  rpc SetInputActive(InputActiveRequest) returns (SimpleReply) {}
+
+  // Listen to notifications (streaming RPC)
+  rpc ListenToNotifications (ListenRequest) returns (stream ProgressNotification) {}
+
+  // Publish
+  rpc Publish (PublishRequest) returns (PublishReply) {}
+  rpc Unpublish (UnpublishRequest) returns (SimpleReply) {}
+  // Subscribe
+  rpc Subscribe (SubscribeRequest) returns (SubscribeReply) {}
+  rpc Unsubscribe (UnsubscribeRequest) returns (SimpleReply) {}
+  // Link & Cut
+  rpc Linkup (LinkupRequest) returns (SimpleReply) {}
+  rpc Cutoff (CutoffRequest) returns (SimpleReply) {}
+
+  // Internal connections
+  rpc GetInternalAddress (Empty) returns (AddressReply) {}
+}
+
+// Reply for initialization
+message InitReply {
+  repeated string codecs = 1;
+  optional int32 selectingNum = 2;
+}
+
+// Request to enable VAD
+message EnableVADRequest {
+  int32 periodMs = 1;
+}
+
+// Request for SetInputActive
+message InputActiveRequest {
+  string id = 1;
+  bool active = 2;
+}
+
+// The progress message for audio sessions ("type": "audio").
+// Progress "name": "onAudioActiveness".
+message AudioActivenessData {
+  string activeAudioId = 1;
+  message ActiveInfo {
+    optional string label = 1;
+    optional string id = 2;
+    optional string owner = 3;
+    optional string codec = 4;
+  }
+  ActiveInfo target = 2;
+  optional string domain = 3;
+}
+
+// Option for audio agent
+message RequestOption {
+  optional string service = 1;
+  optional string controller = 2;
+  optional string label = 3;
+}

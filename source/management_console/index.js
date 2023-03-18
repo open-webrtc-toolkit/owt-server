@@ -30,8 +30,7 @@ app.use('/console', express.static(__dirname + '/public'));
 const session = require('express-session');
 const {v4: uuidv4} = require('uuid');
 
-app.use(session({
-  secret: 'servicesecret',
+const options = {
   name: 'owtserver',
   genid: function(req) {
     return uuidv4();
@@ -44,7 +43,10 @@ app.use(session({
     sameSite: true,
     maxAge: 600000
   }
-}));
+}
+Object.assign(options, {secret: crypto.randomBytes(32).toString('hex')});
+
+app.use(session(options));
 
 app.use((req, res, next) => {
   res.set('Cache-Control', 'no-store, no-cache');

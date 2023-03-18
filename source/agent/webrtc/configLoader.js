@@ -18,14 +18,14 @@ module.exports.load = () => {
     config.cluster = config.cluster || {};
     config.cluster.name = config.cluster.name || 'owt-cluster';
     config.cluster.worker = config.cluster.worker || {};
-    config.cluster.worker.ip = config.cluster.worker.ip || (networkHelper.getAddress("firstEnumerated") || {}).ip || 'unkown';
+    config.cluster.worker.ip = config.cluster.worker.ip || (networkHelper.getAddress("firstEnumerated") || {}).ip || 'unknown';
     config.cluster.worker.join_retry = config.cluster.worker.join_retry || 60;
     config.cluster.worker.load = config.cluster.worker.load || {};
     config.cluster.worker.load.max = config.cluster.max_load || 0.85;
     config.cluster.worker.load.period = config.cluster.report_load_interval || 1000;
     config.cluster.worker.load.item = {
       name: 'network',
-      interf: 'lo',
+      interf: config.cluster.network_name || 'lo',
       max_scale: config.cluster.network_max_scale || 1000
     };
 

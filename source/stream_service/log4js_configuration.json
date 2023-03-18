@@ -1,0 +1,22 @@
+{
+  "appenders": {
+    "out": {
+      "type": "console",
+      "layout": {
+        "type": "pattern",
+        "pattern": "%d  - %p: %c - %m",
+        "replaceConsole": true
+      }
+    }
+  },
+  "categories": {
+    "default": { "appenders": [ "out" ], "level": "debug" },
+    "ClusterWorker": { "appenders": [ "out" ], "level": "info" },
+    "LoadCollector": { "appenders": [ "out" ], "level": "info" },
+    "StreamService": { "appenders": [ "out" ], "level": "debug" },
+    "StreamingController": { "appenders": [ "out" ], "level": "info" },
+    "RtcController": { "appenders": [ "out" ], "level": "info" },
+    "QuicController": { "appenders": [ "out" ], "level": "info" },
+    "Stream": { "appenders": [ "out" ], "level": "info" }
+  }
+}

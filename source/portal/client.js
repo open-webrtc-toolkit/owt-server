@@ -66,6 +66,32 @@ var Client = function(clientId, sigConnection, portal, version) {
     return uuid().replace(/-/g, '');
   };
 
+  const updateMessageHandler = (socket) => {
+    const allowedRequests = [
+      'publish',
+      'unpublish',
+      'stream-control',
+      'subscribe',
+      'unsubscribe',
+      'subscription-control',
+      'soac',
+    ];
+
+    allowedRequests.forEach(function(requestName) {
+      socket.on(requestName, function(req, callback) {
+        log.debug('KeepSignalFormat', requestName);
+        if(!that.keepSignalFormat){
+          return safeCall(callback, 'error', 'Illegal request');
+        }
+        return portal.onRTCSignaling(clientId, requestName, req)
+          .then((result) => {
+            log.debug('RTC signaling result:', result);
+            safeCall(callback, 'ok', result);
+          }).catch(onError(requestName, callback));
+      });
+    });
+  };
+
   const listenAt = (socket) => {
     socket.on('text', function(textReq, callback) {
       if(!that.inRoom){
@@ -81,6 +107,9 @@ var Client = function(clientId, sigConnection, portal, version) {
     });
 
     socket.on('publish', function(pubReq, callback) {
+      if (that.keepSignalFormat) {
+        return;
+      }
       if(!that.inRoom){
         return safeCall(callback, 'error', 'Illegal request');
       }
@@ -110,6 +139,9 @@ var Client = function(clientId, sigConnection, portal, version) {
     });
 
     socket.on('unpublish', function(unpubReq, callback) {
+      if (that.keepSignalFormat) {
+        return;
+      }
       if(!that.inRoom){
         return safeCall(callback, 'error', 'Illegal request');
       }
@@ -123,6 +155,9 @@ var Client = function(clientId, sigConnection, portal, version) {
     });
 
     socket.on('stream-control', function(streamCtrlReq, callback) {
+      if (that.keepSignalFormat) {
+        return;
+      }
       if(!that.inRoom){
         return safeCall(callback, 'error', 'Illegal request');
       }
@@ -136,6 +171,9 @@ var Client = function(clientId, sigConnection, portal, version) {
     });
 
     socket.on('subscribe', function(subReq, callback) {
+      if (that.keepSignalFormat) {
+        return;
+      }
       if(!that.inRoom){
         return safeCall(callback, 'error', 'Illegal request');
       }
@@ -165,6 +203,9 @@ var Client = function(clientId, sigConnection, portal, version) {
     });
 
     socket.on('unsubscribe', function(unsubReq, callback) {
+      if (that.keepSignalFormat) {
+        return;
+      }
       if(!that.inRoom){
         return safeCall(callback, 'error', 'Illegal request');
       }
@@ -178,6 +219,9 @@ var Client = function(clientId, sigConnection, portal, version) {
     });
 
     socket.on('subscription-control', function(subCtrlReq, callback) {
+      if (that.keepSignalFormat) {
+        return;
+      }
       if(!that.inRoom){
         return safeCall(callback, 'error', 'Illegal request');
       }
@@ -191,6 +235,9 @@ var Client = function(clientId, sigConnection, portal, version) {
     });
 
     socket.on('soac', function(SOAC, callback) {
+      if (that.keepSignalFormat) {
+        return;
+      }
       if(!that.inRoom){
         return safeCall(callback, 'error', 'Illegal request');
       }

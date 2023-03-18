@@ -1,0 +1,17 @@
+{
+  "name": "OWT-Server-Conference-Controller",
+  "version":"5.1.0",
+  "dependencies": {
+    "amqplib": "^0.7.0",
+    "log4js": "^6.4.0",
+    "lodash": "^4.17.11",
+    "mongoose": "^6.7.3",
+    "fraction.js": "*",
+    "node-getopt": "*",
+    "toml": "*",
+    "uuid": "^8.0.0"
+  },
+  "scripts": {
+    "start": "node . -U mycontroller"
+  }
+}

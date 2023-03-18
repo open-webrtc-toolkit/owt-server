@@ -78,6 +78,9 @@ mkdir -p "$LogDir"
 stdout=${LogDir}/${command}.stdout
 pid=${LogDir}/${command}.pid
 
+CommandDir=${command//-/_}
+StartCmd=""
+
 # Set default scheduling priority
 if [ "$OWT_NICENESS" = "" ]; then
     export OWT_NICENESS=0
@@ -95,6 +98,8 @@ case $startStop in
     check_node_version || exit 1
     rotate_log $stdout
     echo "starting $command, stdout -> $stdout"
+
+
     case ${command} in
       management-api )
         cd ${OWT_HOME}/management_api
@@ -110,6 +115,13 @@ case $startStop in
         ;;
       portal )
         cd ${OWT_HOME}/portal
+        nohup nice -n ${OWT_NICENESS} node . \
+          > "${stdout}" 2>&1 </dev/null &
+        echo $! > ${pid}
+        ;;
+      event-bridge )
+        cd ${OWT_HOME}/eventbridge
+        export LD_LIBRARY_PATH=./lib:${LD_LIBRARY_PATH}
         nohup nice -n ${OWT_NICENESS} node . \
           > "${stdout}" 2>&1 </dev/null &
         echo $! > ${pid}
@@ -176,6 +188,13 @@ case $startStop in
           > "${stdout}" 2>&1 </dev/null &
         echo $! > ${pid}
         ;;
+      media-bridge )
+        cd ${OWT_HOME}/media_bridge
+        export LD_LIBRARY_PATH=./lib:${LD_LIBRARY_PATH}
+        nohup nice -n ${OWT_NICENESS} node . -U mediabridge\
+          > "${stdout}" 2>&1 </dev/null &
+        echo $! > ${pid}
+        ;;
       analytics-agent )
         cd ${OWT_HOME}/analytics_agent
         export LD_LIBRARY_PATH=./lib:${LD_LIBRARY_PATH}
@@ -198,8 +217,16 @@ case $startStop in
         echo $! > ${pid}
         ;;
       * )
-        echo $usage
-        exit 1
+        if [ -d ${OWT_HOME}/${CommandDir} ]; then
+          cd ${OWT_HOME}/${CommandDir}
+          StartCmd=$(node -e "process.stdout.write(require('./package.json').scripts.start)")
+          nohup nice -n ${OWT_NICENESS} ${StartCmd} \
+            > "${stdout}" 2>&1 </dev/null &
+          echo $! > ${pid}
+        else
+          echo $usage
+          exit 1
+        fi
         ;;
     esac
 

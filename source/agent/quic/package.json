@@ -1,11 +1,13 @@
 {
   "name": "OWT-Server-QUIC-Agent",
-  "version": "5.0.0",
+  "version": "5.1.0",
   "dependencies": {
     "amqplib": "^0.7.0",
     "log4js": "^6.4.0",
     "node-getopt": "*",
-    "toml": "*"
+    "toml": "*",
+    "@grpc/proto-loader": "^0.5.0",
+    "@grpc/grpc-js": "^1.1.0"
   },
   "devDependencies": {
     "browserify": "^17.0.0",
@@ -17,7 +19,7 @@
     "karma-chrome-launcher": "^3.1.0",
     "karma-mocha": "^2.0.1",
     "karma-mocha-reporter": "^2.2.5",
-    "mocha": "^5.2.0",
+    "mocha": "^10.0.0",
     "node-gyp": "*",
     "sinon": "^9.0.2"
   },

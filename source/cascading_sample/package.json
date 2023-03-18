@@ -1,0 +1,24 @@
+{
+  "name": "owt-sample-cascading-control",
+  "title": "Open WebRTC Toolkit Cascading Control Sample",
+  "description": "Open WebRTC Toolkit JavaScript Cascading Control Sample",
+  "version": "5.1.0",
+  "homepage": "http://webrtc.intel.com",
+  "author": "Open WebRTC Toolkit authors",
+  "keywords": [
+    "cascading",
+    "library",
+    "control"
+  ],
+  "dependencies": {
+    "body-parser": "^1.20",
+    "errorhandler": "^1.5",
+    "express": "^4.18",
+    "morgan": "^1.10",
+    "spdy": "^4.0"
+  },
+  "main": "cloud_service.js",
+  "engines": {
+    "node": ">=0.10"
+  }
+}

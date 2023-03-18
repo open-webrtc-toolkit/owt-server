@@ -5,6 +5,8 @@ maxProcesses = 1 #default: 13
 #Number of precesses that agent runs when it starts. 1 <= prerunProcesses <= maxProcesses.
 prerunProcesses = 1 #default: 2
 
+# Setup as GRPC server
+#enable_grpc = true
 
 [cluster]
 name = "owt-cluster"
@@ -48,6 +50,9 @@ minport = 0 #default: 0
 
 #########################################################################################
 [quic]
+# Sending media data over WebTransport stream or datagram. Default value is 'datagram'. This is an experimental feature for performance comparison. It will be moved to client's request.
+mediaOutMode = "datagram"
+
 # Key store path doesn't work right now.
 keystorePath = "./cert/certificate.pfx"
 

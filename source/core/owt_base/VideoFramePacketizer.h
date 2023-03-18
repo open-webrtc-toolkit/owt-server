@@ -13,6 +13,7 @@
 #include <boost/scoped_ptr.hpp>
 #include <boost/shared_ptr.hpp>
 #include <boost/thread/shared_mutex.hpp>
+#include <JobTimer.h>
 #include <logger.h>
 
 #include <RtcAdapter.h>
@@ -26,6 +27,7 @@ namespace owt_base {
 class VideoFramePacketizer : public FrameDestination,
                              public erizo::MediaSource,
                              public erizo::FeedbackSink,
+                             public JobTimerListener,
                              public rtc_adapter::AdapterFeedbackListener,
                              public rtc_adapter::AdapterStatsListener,
                              public rtc_adapter::AdapterDataListener {
@@ -68,6 +70,9 @@ public:
     // Implements the AdapterDataListener interfaces.
     void onAdapterData(char* data, int len) override;
 
+    // Implements the JobTimerListener.
+    void onTimeout() override;
+
 private:
     bool init(Config& config);
     void close();
@@ -90,6 +95,8 @@ private:
     uint16_t m_sendFrameCount;
     std::shared_ptr<rtc_adapter::RtcAdapter> m_rtcAdapter;
     rtc_adapter::VideoSendAdapter* m_videoSend;
+
+    std::shared_ptr<SharedJobTimer> m_feedbackTimer;
 };
 }
 #endif /* EncodedVideoFrameSender_h */

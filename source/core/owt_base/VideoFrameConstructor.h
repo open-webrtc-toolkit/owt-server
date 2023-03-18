@@ -24,6 +24,12 @@ public:
     virtual void onVideoInfo(const std::string& videoInfoJSON) = 0;
 };
 
+class KeyFrameRequester {
+public:
+    virtual ~KeyFrameRequester(){}
+    virtual int32_t RequestKeyFrame() = 0;
+};
+
 /**
  * A class to process the incoming streams by leveraging video coding module from
  * webrtc engine, which will framize the frames.
@@ -32,6 +38,7 @@ class VideoFrameConstructor : public erizo::MediaSink,
                               public erizo::FeedbackSource,
                               public FrameSource,
                               public JobTimerListener,
+                              public KeyFrameRequester,
                               public rtc_adapter::AdapterFrameListener,
                               public rtc_adapter::AdapterStatsListener,
                               public rtc_adapter::AdapterDataListener {
@@ -46,6 +53,7 @@ public:
     VideoFrameConstructor(std::shared_ptr<rtc_adapter::RtcAdapter>,
                           VideoInfoListener*,
                           uint32_t transportccExtId = 0);
+    VideoFrameConstructor(KeyFrameRequester* requester);
     virtual ~VideoFrameConstructor();
 
     void bindTransport(erizo::MediaSource* source, erizo::FeedbackSink* fbSink);
@@ -65,9 +73,15 @@ public:
     // Implements the AdapterDataListener interfaces.
     void onAdapterData(char* data, int len) override;
 
-    int32_t RequestKeyFrame();
+    // Implements KeyFrameRequester
+    int32_t RequestKeyFrame() override;
 
     bool setBitrate(uint32_t kbps);
+
+    void setPreferredLayers(int spatialId, int temporalId);
+
+    bool addChildProcessor(std::string id, erizo::MediaSink* sink);
+    bool removeChildProcessor(std::string id);
 
 private:
     Config m_config;
@@ -92,6 +106,11 @@ private:
 
     std::shared_ptr<rtc_adapter::RtcAdapter> m_rtcAdapter;
     rtc_adapter::VideoReceiveAdapter* m_videoReceive;
+
+    std::map<std::string, erizo::MediaSink*> m_childProcessors;
+    int m_currentSpatialLayer = -1;
+    int m_currentTemporalLayer = -1;
+    KeyFrameRequester* m_requester = nullptr;
 };
 
 } // namespace owt_base

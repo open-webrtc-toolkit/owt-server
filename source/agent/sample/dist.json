@@ -1,0 +1,31 @@
+{
+    "name": "sample-agent",
+    "dest": "sample_agent",
+    "common": {
+        "package": "package.json",
+        "files": [
+            "sample.js",
+            "callSample.js",
+            "log4js_configuration.json",
+            "../agent.toml",
+            "../nodeManager.js",
+            "../workingNode.js",
+            "../index.js",
+            "../networkHelper.js",
+            "../defaultConfigLoader.js",
+            "../../common/amqpClient.js",
+            "../../common/clusterWorker.js",
+            "../../common/loadCollector.js",
+            "../../common/logger.js",
+            "../../common/rpcChannel.js",
+            "../../common/makeRPC.js",
+            "../../common/cipher.js",
+            "../../../scripts/release/initauth.js"
+        ]
+    },
+    "debug": {
+    },
+    "scripts": {
+        "start": "node . -U sample"
+    }
+}

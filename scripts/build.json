@@ -8,6 +8,7 @@
             "media-frame-multicaster",
             "audio",
             "audio-ranker",
+            "video-switch",
             "webrtc",
             "avstream",
             "sip"
@@ -112,10 +113,18 @@
     },
     "audio-ranker-test" : {
         "path" : "source/agent/addons/audioRanker/test"
-    }
-    ,
+    },
+    "video-switch" : {
+        "path" : "source/agent/addons/videoSwitch"
+    },
     "quicIO" : {
         "path" : "source/agent/addons/quicIO"
+    },
+    "quicCascading" : {
+        "path" : "source/agent/addons/quicCascading"
+    },
+    "mediaBridge" : {
+        "path" : "source/agent/addons/quicCascading"
     },
     "resource-util" : {
         "path" : "source/agent/addons/resourceUtil"

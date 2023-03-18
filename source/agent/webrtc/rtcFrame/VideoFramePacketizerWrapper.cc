@@ -45,7 +45,7 @@ void VideoFramePacketizer::New(const FunctionCallbackInfo<Value>& args) {
 
   bool supportRED = args.Length() > 0 ? Nan::To<bool>(args[0]).FromJust() : false;
   bool supportULPFEC = args.Length() > 1 ? Nan::To<bool>(args[1]).FromJust() : false;
-  int transportccExt = (args.Length() == 3) ? Nan::To<int32_t>(args[2]).FromJust() : -1;
+  int transportccExt = (args.Length() > 2) ? Nan::To<int32_t>(args[2]).FromJust() : -1;
   std::string mid;
   int midExtId = -1;
   if (args.Length() >= 5) {

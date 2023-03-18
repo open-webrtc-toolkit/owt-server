@@ -1,9 +1,11 @@
 {
   "name": "OWT-MCU-Cluster-Manager",
-  "version":"5.0.0",
+  "version":"5.1.0",
   "dependencies": {
     "amqplib": "^0.7.0",
     "log4js": "^6.4.0",
-    "toml": "*"
+    "toml": "*",
+    "@grpc/proto-loader": "^0.5.0",
+    "@grpc/grpc-js": "^1.1.0"
   }
 }

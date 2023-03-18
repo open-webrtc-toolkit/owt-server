@@ -22,7 +22,7 @@ usage() {
 install_boost() {
   echo -e "\x1b[32mInstalling boost...\x1b[0m"
   pushd ${this} >/dev/null
-  wget -c http://iweb.dl.sourceforge.net/project/boost/boost/1.65.0/boost_1_65_0.tar.bz2
+  wget -c https://boostorg.jfrog.io/artifactory/main/release/1.65.0/source/boost_1_65_0.tar.bz2
   tar xvf boost_1_65_0.tar.bz2
   pushd boost_1_65_0 >/dev/null
   ./bootstrap.sh

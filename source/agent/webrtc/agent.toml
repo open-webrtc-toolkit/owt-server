@@ -5,6 +5,9 @@ maxProcesses = 13 #default: 13
 #Number of precesses that agent runs when it starts. 1 <= prerunProcesses <= maxProcesses.
 prerunProcesses = 2 #default: 2
 
+# Setup as GRPC server
+#enable_grpc = true
+
 
 [cluster]
 name = "owt-cluster"
@@ -17,6 +20,9 @@ report_load_interval = 1000 #default: 1000, unit: millisecond
 
 #The max network load under which this worker can take new tasks.
 max_load = 0.85 #default: 0.85
+
+#The name of network-interface for reporting load.
+network_name = "lo"
 
 #The bandwidth of network-interface used for WebRTC peerconnections. 
 network_max_scale = 1000 #unit: Mbps

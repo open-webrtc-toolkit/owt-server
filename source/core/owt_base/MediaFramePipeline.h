@@ -107,7 +107,7 @@ inline FrameFormat getFormat(const std::string& codec) {
         return owt_base::FRAME_FORMAT_VP9;
     } else if (codec == "h265") {
         return owt_base::FRAME_FORMAT_H265;
-    } else if (codec == "av1x") {
+    } else if (codec == "av1") {
         return owt_base::FRAME_FORMAT_AV1;
     } else if (codec == "pcm_48000_2" || codec == "pcm_raw") {
         return owt_base::FRAME_FORMAT_PCM_48000_2;

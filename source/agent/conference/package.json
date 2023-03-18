@@ -1,14 +1,16 @@
 {
   "name": "OWT-Server-Conference-Controller",
-  "version":"5.0.0",
+  "version":"5.1.0",
   "dependencies": {
     "amqplib": "^0.7.0",
     "log4js": "^6.4.0",
     "node-getopt": "*",
     "toml": "*",
-    "mongoose": "^5.13.12",
+    "mongoose": "^6.7.3",
     "uuid": "^8.0.0",
-    "fraction.js": "^4.0.12"
+    "fraction.js": "^4.0.12",
+    "@grpc/proto-loader": "^0.5.0",
+    "@grpc/grpc-js": "^1.1.0"
   },
   "devDependencies": {
     "mocha": "^6.0.2",

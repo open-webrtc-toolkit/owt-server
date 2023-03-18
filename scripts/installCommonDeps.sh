@@ -95,7 +95,7 @@ install_ffmpeg(){
 }
 
 install_zlib() {
-  local VERSION="1.2.12"
+  local VERSION="1.2.13"
 
   local LIST_LIBS=`ls ${PREFIX_DIR}/lib/libz* 2>/dev/null`
   [ "$INCR_INSTALL" = true ]  && [[ ! -z $LIST_LIBS ]] && \
@@ -211,7 +211,7 @@ install_openssl(){
 
   if [ -d $LIB_DIR ]; then
     local SSL_BASE_VERSION="1.1.1"
-    local SSL_VERSION="1.1.1m"
+    local SSL_VERSION="1.1.1q"
     cd $LIB_DIR
     rm -f ./build/lib/libssl.*
     rm -f ./build/lib/libcrypto.*
@@ -746,7 +746,7 @@ install_boost(){
 
   if [ -d $LIB_DIR ]; then
     cd $LIB_DIR
-    wget -c http://iweb.dl.sourceforge.net/project/boost/boost/1.65.0/boost_1_65_0.tar.bz2
+    wget -c https://boostorg.jfrog.io/artifactory/main/release/1.65.0/source/boost_1_65_0.tar.bz2
     tar xvf boost_1_65_0.tar.bz2
     cd boost_1_65_0
     chmod +x bootstrap.sh

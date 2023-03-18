@@ -1,0 +1,17 @@
+{
+  "name": "OWT-Server-Media-bridge",
+  "version": "5.1.0",
+  "dependencies": {
+    "amqplib": "^0.7.0",
+    "log4js": "*",
+    "node-getopt": "*",
+    "toml": "*"
+  },
+  "devDependencies": {
+    "chai": "^4.2.0",
+    "chai-as-promised": "^7.1.1",
+    "mocha": "^5.2.0",
+    "node-gyp": "*",
+    "sinon": "^9.0.2"
+  }
+}

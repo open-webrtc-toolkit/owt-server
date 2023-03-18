@@ -34,6 +34,41 @@ const Q_OPTION = {
   autoDelete: true,
 };
 
+var translateToRegx = function(regx) {
+  let regxParts = regx.split('.');
+  let regxStr = "";
+  let len = regxParts.length;
+  let jumpOut = false;
+  for (let i in regxParts) {
+    let part = regxParts[i];
+    switch (part) {
+      case "*":
+        if (i == len - 1) {
+          regxStr += "[.]";
+        }
+        regxStr += "[^.]+?";
+        break;
+      case "#":
+        regxStr += ".*";
+        jumpOut = true;
+        break;
+      default:
+        regxStr += part;
+        break;
+    }
+
+    if (jumpOut) {
+      break;
+    }
+
+    if (i < len - 2) {
+      regxStr += "[.]";
+    }
+  }
+
+  return new RegExp(`^${regxStr}$`);
+}
+
 class RpcClient {
   constructor(amqpCli) {
     this.bus = amqpCli;
@@ -237,7 +272,6 @@ class TopicParticipant {
     this.name = name;
     this.queue = '';
     this.onMessage = null;
-    this.consumers = new Map();
     this.subscriptions = new Map(); // {patterns, cb}
     this.ready = false;
   }
@@ -251,7 +285,6 @@ class TopicParticipant {
       log.debug('TopicQueue:', result.queue);
       this.queue = result.queue;
       this.ready = true;
-      this.consumers.clear();
       this.subscriptions.forEach((sub, tag) => {
         this.subscribe(sub.patterns, sub.cb, () => {});
       });
@@ -261,24 +294,33 @@ class TopicParticipant {
   subscribe(patterns, onMessage, onOk) {
     log.debug('subscribe:', this.queue, patterns);
     const channel = this.bus.channel;
+    const consumerTag = patterns.toString()
     if (this.queue && channel) {
       patterns.map((pattern) => {
         channel.bindQueue(this.queue, this.name, pattern)
           .then(() => log.debug('Follow topic [' + pattern + '] ok.'))
           .catch((err) => log.error('Failed to bind queue on topic'));
       });
+      let self = this;
       channel.consume(this.queue, (rawMessage) => {
         try {
           const msg = JSON.parse(rawMessage.content.toString());
-          if (onMessage) {
-            log.debug('Topic on message:', msg);
-            onMessage(msg);
+          let found = false;
+          self.subscriptions.forEach((sub, tag) => {
+               if(sub.cb == onMessage){
+                  found = true;
+               }
+          });
+
+          if (found) {
+            log.debug('Topic on message:', msg, rawMessage.fields.routingKey);
+            onMessage(msg, rawMessage.fields.routingKey);
           }
         } catch (error) {
           log.error('Error processing topic message:', rawMessage, 'and error:', error);
         }
-      }, {noAck: true}).then((ok) => {
-        this.consumers.set(patterns.toString(), ok.consumerTag);
+      }, {noAck: true,consumerTag:consumerTag}).then((ok) => {
+        log.debug('set consumerTag:', consumerTag,"ok.consumerTag:",ok.consumerTag);
         this.subscriptions.set(ok.consumerTag, {patterns, cb: onMessage});
         onOk();
       });
@@ -296,12 +338,42 @@ class TopicParticipant {
           .catch((err) => log.error('Failed to unbind queue on topic'));
         log.debug('Ignore topic [' + pattern + ']');
       });
-      const consumerTag = this.consumers.get(patterns.toString());
-      if (consumerTag) {
-        this.consumers.delete(patterns.toString());
-        this.subscriptions.delete(consumerTag);
-        channel.cancel(consumerTag)
-          .catch((err) => log.error('Failed to cancel:', consumerTag));
+
+      let cancleTags = new Set();
+      for (let index in patterns) {
+        let pattern = patterns[index];
+        let regx = translateToRegx(pattern);
+        log.debug("translateToRegx:",pattern, "=>", regx);
+        this.subscriptions.forEach((sub, tag) => {
+          let hits = {};
+          let i = 0;
+          sub.patterns.forEach((oldPattern,index) => {
+            if (regx.test(oldPattern)) {
+              hits[index] = oldPattern;
+              i++;
+            }
+          });
+
+          log.debug("hits:", hits,"hits.length:",i,"sub.patterns.length:",sub.patterns.length);
+          if (i >= sub.patterns.length) {
+            cancleTags.add(tag);
+          } else {
+            for (let index in hits) {
+              sub.patterns.splice(index,1);
+            }
+          }
+        });
+      }
+
+      if (cancleTags.size > 0) {
+        cancleTags.forEach((consumerTag) => {
+          channel.cancel(consumerTag)
+              .then((ret) => {
+                this.subscriptions.delete(consumerTag);
+                log.debug('del consumerTag:', consumerTag, "real.consumerTag:", consumerTag, "ret:", ret);
+              })
+              .catch((err) => log.error('Failed to cancel:', consumerTag));
+        });
       }
     } else {
       this.ready = false;
@@ -462,6 +534,7 @@ class AmqpCli {
     amqp.connect(this.options).then((conn) => {
       log.debug('Connect OK');
       conn.on('error', this._errorHandler);
+      conn.on('close',this._errorHandler);
       this.connection = conn;
       return conn.createChannel();
     })
@@ -520,7 +593,7 @@ class AmqpCli {
         .catch(onFailure);
     } else {
       log.warn('RpcClient already setup');
-      onOk(this.rpcServer);
+      onOk(this.rpcClient);
     }
   }
 
@@ -581,7 +654,10 @@ class AmqpCli {
   async disconnect() {
     try {
       await this.close();
-      await this.connection.close();
+      if (this.connection) {
+        await this.connection.close();
+        this.connection = null;
+      }
     } catch (err) {
       log.warn('Error closing AMQP connection:', err);
     }

@@ -25,6 +25,7 @@
     "Subscription": { "appenders": [ "out" ], "level": "info" },
     "WorkingAgent": { "appenders": [ "out" ], "level": "info" },
     "Connections": { "appenders": [ "out" ], "level": "info" },
-    "InternalConnectionFactory": { "appenders": [ "out" ], "level": "info" }
+    "InternalConnectionFactory": { "appenders": [ "out" ], "level": "info" },
+    "RpcRequest": { "appenders": [ "out" ], "level": "info" }
   }
 }

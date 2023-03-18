@@ -17,6 +17,7 @@ var streamingOutsResource = require('./streamingOutsResource');
 var recordingsResource = require('./recordingsResource');
 var sipcallsResource = require('./sipcallsResource');
 var analyticsResource = require('./analyticsResource');
+var cascadingResource = require('./cascadingResource');
 
 //Room management
 router.post('/rooms', roomsResource.createRoom); //FIXME: The definition of 'options' needs to be refined.
@@ -68,5 +69,9 @@ router.delete('/rooms/:room/analytics/:id', analyticsResource.delete);
 
 //Create token.
 router.post('/rooms/:room/tokens', tokensResource.create);
+
+//Cluster cascading management
+router.post('/rooms/:room/cascading', cascadingResource.startCascading);
+router.get('/rooms/:room/bridges', cascadingResource.getBridges);
 
 module.exports = router

@@ -59,7 +59,14 @@ const saveAuth = (obj, filename) => new Promise((resolve, reject) => {
   }
 });
 
-const updateRabbit = () => new Promise((resolve, reject) => {
+const updateRabbit = (cleanup) => new Promise((resolve, reject) => {
+  if (cleanup) {
+    console.log('Cleanup RabbitMQ account...');
+    saveAuth({rabbit: null}, authStore)
+      .then(resolve)
+      .catch(reject);
+    return;
+  }
   question('Update RabbitMQ account?[yes/no]')
     .then((answer) => {
       answer = answer.toLowerCase();
@@ -81,7 +88,14 @@ const updateRabbit = () => new Promise((resolve, reject) => {
     });
 });
 
-const updateMongo = () => new Promise((resolve, reject) => {
+const updateMongo = (cleanup) => new Promise((resolve, reject) => {
+  if (cleanup) {
+    console.log('Cleanup MongoDB account...');
+    saveAuth({mongo: null}, authStore)
+      .then(resolve)
+      .catch(reject);
+    return;
+  }
   question('Update MongoDB account?[yes/no]')
     .then((answer) => {
       answer = answer.toLowerCase();
@@ -103,7 +117,14 @@ const updateMongo = () => new Promise((resolve, reject) => {
     });
 });
 
-const updateInternal = () => new Promise((resolve, reject) => {
+const updateInternal = (cleanup) => new Promise((resolve, reject) => {
+  if (cleanup) {
+    console.log('Cleanup internal passphrase...');
+    saveAuth({internalPass: null}, authStore)
+      .then(resolve)
+      .catch(reject);
+    return;
+  }
   question('Update internal passphrase?[yes/no]')
     .then((answer) => {
       answer = answer.toLowerCase();
@@ -122,8 +143,78 @@ const updateInternal = () => new Promise((resolve, reject) => {
     });
 });
 
+const updateGKeyPass = (cleanup) => new Promise((resolve, reject) => {
+  if (cleanup) {
+    console.log('Cleanup gRPC TLS key...');
+    saveAuth({grpc: null}, authStore)
+      .then(resolve)
+      .catch(reject);
+    return;
+  }
+  question('Update passphrase for gRPC TLS key?[yes/no]')
+    .then((answer) => {
+      answer = answer.toLowerCase();
+      if (answer !== 'y' && answer !== 'yes') {
+        resolve();
+        return;
+      }
+      question(`(${authBase}) Enter passphrase of server key: `)
+        .then((serverPass) => {
+          mutableStdout.muted = false;
+          question(`(${authBase}) Enter passphrase of client key: `)
+            .then((clientPass) => {
+              mutableStdout.muted = false;
+              saveAuth({ grpc: { serverPass, clientPass } }, authStore)
+                .then(resolve)
+                .catch(reject);
+            });
+          mutableStdout.muted = true;
+        });
+      mutableStdout.muted = true;
+    });
+});
+
+const generateServiceProtectionKey = (cleanup) => new Promise((resolve, reject) => {
+  if (cleanup) {
+    console.log('Cleanup service protection key...');
+    saveAuth({spk: null}, authStore)
+      .then(resolve)
+      .catch(reject);
+    return;
+  }
+  question('Generate service protection key?[yes/no]')
+    .then((answer) => {
+      answer = answer.toLowerCase();
+      if (answer === 'y' || answer === 'yes') {
+        const spk = require('crypto').randomBytes(64).toString('hex');
+        saveAuth({spk: spk}, authStore)
+          .then(() => {
+            console.log(`Service protection key generated: ${spk}`);
+            resolve();
+          })
+          .catch(reject);
+      } else {
+        resolve();
+      }
+    });
+});
+
+const printUsage = () => {
+  let usage = 'Usage:\n';
+  usage += '  --rabbitmq  Update RabbitMQ account(default)\n';
+  usage += '  --mongodb   Update MongoDB account(default)\n';
+  usage += '  --internal  Update internal TLS key passphrase\n';
+  usage += '  --grpc      Update gRPC TLS key passphrase\n';
+  usage += '  --spk       Generate service protection key\n';
+  usage += '  --cleanup   Clean up selected credentials\n';
+  console.log(usage);
+}
 const options = {};
 const parseArgs = () => {
+  if (process.argv.includes('--help')) {
+    printUsage();
+    process.exit(0);
+  }
   if (process.argv.includes('--rabbitmq')) {
     options.rabbit = true;
   }
@@ -133,7 +224,20 @@ const parseArgs = () => {
   if (process.argv.includes('--internal')) {
     options.internal = true;
   }
-  if (Object.keys(options).length === 0) {
+  if (process.argv.includes('--grpc')) {
+    options.grpc = true;
+  }
+  if (process.argv.includes('--spk')) {
+    options.spk = true;
+  }
+  if (process.argv.includes('--cleanup')) {
+    options.cleanup = true;
+  }
+  let selectedUpdate = Object.keys(options).length;
+  if (options.cleanup) {
+    selectedUpdate -= 1;
+  }
+  if (selectedUpdate === 0) {
     options.rabbit = true;
     options.mongo = true;
   }
@@ -143,17 +247,27 @@ const parseArgs = () => {
 parseArgs()
   .then(() => {
     if (options.rabbit) {
-      return updateRabbit();
+      return updateRabbit(options.cleanup);
     }
   })
   .then(() => {
     if (options.mongo) {
-      return updateMongo();
+      return updateMongo(options.cleanup);
     }
   })
   .then(() => {
     if (options.internal) {
-      return updateInternal();
+      return updateInternal(options.cleanup);
+    }
+  })
+  .then(() => {
+    if (options.grpc) {
+      return updateGKeyPass(options.cleanup);
+    }
+  })
+  .then(() => {
+    if (options.spk) {
+      return generateServiceProtectionKey(options.cleanup);
     }
   })
   .finally(() => readline.close());

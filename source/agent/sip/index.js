@@ -19,6 +19,12 @@ var cluster_name = ((global.config || {}).cluster || {}).name || 'owt-cluster';
 var log = logger.getLogger('SipNode');
 var {InternalConnectionRouter} = require('./internalConnectionRouter');
 
+// Setup GRPC server
+var createGrpcInterface = require('./grpcAdapter').createGrpcInterface;
+var enableGRPC = global.config.agent.enable_grpc || false;
+var EventEmitter = require('events').EventEmitter;
+var grpcNode = {};
+
 // resolution map
 var resolution_map = {
     'sif' : {'width' : 352, 'height' : 240},
@@ -235,8 +241,151 @@ module.exports = function (rpcC, selfRpcId, parentRpcId, clusterWorkerIP) {
         calls = {},
         subscriptions = {},
         recycling_mode = false;
+    // For GRPC notifications
+    var streamingEmitter = new EventEmitter();
 
     var router = new InternalConnectionRouter(global.config.internal);
+
+    if (enableGRPC) {
+        erizo.id = null;
+        const grpcTools = require('./grpcTools');
+        cluster_name = global.config?.cluster?.grpc_host || 'localhost:10080';
+        makeRPC = function (_, node, method, args, onOk, onError) {
+            if (method === 'schedule') {
+                if (!grpcNode[node]) {
+                    grpcNode[node] = grpcTools.startClient('clusterManager', node);
+                }
+                const req = {
+                    purpose: args[0],
+                    task: args[1],
+                    preference: {}, // Change data for some preference
+                    reserveTime: args[3]
+                  };
+                grpcNode[node].schedule(req, (err, result) => {
+                    if (!err) {
+                        onOk({id: result.info.ip + ':' + result.info.grpcPort});
+                    } else {
+                        onError(err);
+                    }
+                });
+            } else if (method === 'getNode') {
+                if (!grpcNode[node]) {
+                    grpcNode[node] = grpcTools.startClient('nodeManager', node);
+                }
+                grpcNode[node].getNode({info: args[0]}, (err, result) => {
+                    if (!err) {
+                        onOk(result.message);
+                    } else {
+                        onError(err);
+                    }
+                });
+            } else if (method === 'join') {
+                if (!grpcNode[node]) {
+                    grpcNode[node] = grpcTools.startClient('conference', node);
+                }
+                const req = {
+                    roomId: args[0],
+                    participant: args[1]
+                };
+                grpcNode[node].join(req, (err, result) => {
+                    if (!err) {
+                        onOk(result);
+                    } else {
+                        onError(err);
+                    }
+                });
+            } else if (method === 'leave') {
+                if (!grpcNode[node]) {
+                    grpcNode[node] = grpcTools.startClient('conference', node);
+                }
+                grpcNode[node].leave({id: args[0]}, (err, result) => {
+                    if (!err) {
+                        onOk && onOk(result);
+                    } else {
+                        onError && onError(err);
+                    }
+                });
+            } else if (method === 'publish') {
+                if (!grpcNode[node]) {
+                    grpcNode[node] = grpcTools.startClient('conference', node);
+                }
+                const req = {
+                    participantId: args[0],
+                    streamId: args[1],
+                    pubInfo: args[2]
+                };
+                grpcNode[node].publish(req, (err, result) => {
+                    if (!err) {
+                        onOk(result);
+                    } else {
+                        onError(err);
+                    }
+                });
+            } else if (method === 'streamControl') {
+                if (!grpcNode[node]) {
+                    grpcNode[node] = grpcTools.startClient('conference', node);
+                }
+                const req = {
+                    participantId: args[0],
+                    sessionId: args[1],
+                    command: JSON.stringify(args[2])
+                };
+                grpcNode[node].streamControl(req, (err, result) => {
+                    if (!err) {
+                        onOk(result);
+                    } else {
+                        onError(err);
+                    }
+                });
+            } else if (method === 'subscribe') {
+                if (!grpcNode[node]) {
+                    grpcNode[node] = grpcTools.startClient('conference', node);
+                }
+                const req = {
+                    participantId: args[0],
+                    subscriptionId: args[1],
+                    subInfo: args[2]
+                };
+                grpcNode[node].subscribe(req, (err, result) => {
+                    if (!err) {
+                        onOk(result);
+                    } else {
+                        onError(err);
+                    }
+                });
+            } else if (method === 'unsubscribe') {
+                if (!grpcNode[node]) {
+                    grpcNode[node] = grpcTools.startClient('conference', node);
+                }
+                const req = {
+                    participantId: args[0],
+                    sessionId: args[1],
+                };
+                grpcNode[node].unsubscribe(req, (err, result) => {
+                    if (!err) {
+                        onOk(result);
+                    } else {
+                        onError(err);
+                    }
+                });
+            } else if (method === 'unpublish') {
+                if (!grpcNode[node]) {
+                    grpcNode[node] = grpcTools.startClient('conference', node);
+                }
+                const req = {
+                    participantId: args[0],
+                    sessionId: args[1]
+                };
+                grpcNode[node].unpublish(req, (err, result) => {
+                    if (!err) {
+                        onOk(result);
+                    } else {
+                        onError(err);
+                    }
+                });
+            }
+        };
+    }
 
     var getClientId = function(peerURI) {
       for (var c_id in calls) {
@@ -401,7 +550,7 @@ module.exports = function (rpcC, selfRpcId, parentRpcId, clusterWorkerIP) {
             }
             return info;
         }).catch((err) => {
-          log.warn('Call denied...');
+          log.warn('Call denied...', err);
           if (calls[client_id]) {
               gateway.hangup(calls[client_id].peerURI);
               teardownCall(client_id);
@@ -565,6 +714,9 @@ module.exports = function (rpcC, selfRpcId, parentRpcId, clusterWorkerIP) {
 
     that.init = function(options, callback) {
         log.debug('init SipGateway:', options.sip_server, options.sip_user);
+        if (!erizo.id) {
+            erizo.id = rpcClient.rpcAddress
+        }
 
         if (typeof options.room_id !== 'string' || options.room_id === '') {
             log.error('Invalid room id');
@@ -604,14 +756,14 @@ module.exports = function (rpcC, selfRpcId, parentRpcId, clusterWorkerIP) {
 
         gateway.addEventListener('SIPRegisterFailed', function() {
             log.error("Register Failed");
-            gateway.close();
+            gateway && gateway.close();
             gateway = undefined;
             callback('callback', 'error', 'SIP registration fail');
         });
 
         if (!gateway.register(options.sip_server, options.sip_user, options.sip_passwd, options.sip_user)) {
             log.error("Register error!");
-            gateway.close();
+            gateway && gateway.close();
             gateway = undefined;
             callback('callback', 'error', 'SIP registration fail');
         }
@@ -833,6 +985,11 @@ module.exports = function (rpcC, selfRpcId, parentRpcId, clusterWorkerIP) {
             }
         }
     };
+
+    if (enableGRPC) {
+        // Export GRPC interface.
+        return createGrpcInterface(that, streamingEmitter);
+    }
 
     return that;
 };

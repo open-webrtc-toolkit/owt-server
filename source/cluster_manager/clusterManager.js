@@ -8,6 +8,8 @@ var Scheduler = require('./scheduler').Scheduler;
 
 // Logger
 var log = logger.getLogger('ClusterManager');
+var role = null;
+var Url = require("url");
 
 var ClusterManager = function (clusterName, selfId, spec) {
     var that = {name: clusterName,
@@ -27,8 +29,59 @@ var ClusterManager = function (clusterName, selfId, spec) {
 
     /*Id : {purpose: Purpose, alive_count: Number}*/
     var workers = {};
+    var clusterInfo = {};
 
     var data_synchronizer;
+
+    function validateUrl(url) {
+        try {
+            if (spec.enableCascading) {
+                new Url.URL(url);
+                return true;
+            }
+            return false;
+        } catch {
+            return false;
+        }
+    }
+
+    var sendRequest = validateUrl(spec.url);
+
+    var send = function (method, resource, body) {
+      log.info("send info to url:", spec.url);
+      const data = JSON.stringify(body);
+      var url = Url.parse(spec.url + "/" + resource);
+      var ssl = (url.protocol === 'https:' ? true : false);
+
+      const options = {
+        hostname: url.hostname,
+        port: url.port,
+        path: url.pathname + (url.search ? url.search : ''),
+        method: method,
+        headers: {
+          'Content-Type': 'application/json',
+          'Content-Length': data.length,
+        },
+      };
+      ssl && (options.rejectUnauthorized = false);
+      log.info("send options:", options);
+      const http = (ssl ? require('https') : require('http'));
+      const req = http.request(options, res => {
+        console.log(`statusCode: ${res.statusCode}`);
+
+        res.on('data', d => {
+          process.stdout.write(d);
+        });
+      });
+
+      req.on('error', error => {
+        console.error(error);
+      });
+
+      req.write(data);
+      req.end();
+
+    }
 
     var createScheduler = function (purpose) {
         var strategy = spec.strategy[purpose] ? spec.strategy[purpose] : spec.strategy.general;
@@ -51,17 +104,52 @@ var ClusterManager = function (clusterName, selfId, spec) {
         schedulers[purpose].add(worker, info);
         workers[worker] = {purpose: purpose,
                            alive_count: 0};
+        if (!clusterInfo[purpose]) {
+            clusterInfo[purpose] = new Set()
+            var data = {
+                clusterID: spec.clusterID,
+                region: spec.region,
+                info: {
+                    action: "add",
+                    capacity: purpose
+                }
+            }
+            if (sendRequest) {
+                log.info("Send updateCapacity event add to cloud with data:", data);
+                send('POST', 'updateCapacity', data);
+            }
+        }
+        clusterInfo[purpose].add(worker);
         data_synchronizer && data_synchronizer({type: 'worker_join', payload: {purpose: purpose, worker: worker, info: info}});
         return state;
     };
 
     var workerQuit = function (worker) {
         log.debug('workerQuit, worker:', worker);
+        var purpose = workers[worker].purpose;
         if (workers[worker] && schedulers[workers[worker].purpose]) {
             schedulers[workers[worker].purpose].remove(worker);
             monitoringTarget && monitoringTarget.notify('quit', {purpose: workers[worker].purpose, id: worker, type: 'worker'});
             delete workers[worker];
             data_synchronizer && data_synchronizer({type: 'worker_quit', payload: {worker: worker}});
+        }
+
+        if (purpose) {
+            clusterInfo[purpose].delete(worker);
+            if(!clusterInfo[purpose]) {
+               var data = {
+                    clusterID: spec.clusterID,
+                    region: spec.region,
+                    info: {
+                        action: "remove",
+                        capacity: purpose
+                    }
+                }
+                if (sendRequest) {
+                    log.info("Send updateCapacity event remove to cloud with data:", data);
+                    send('POST', 'updateCapacity', data);
+                }
+            }
         }
     };
 
@@ -122,6 +210,10 @@ var ClusterManager = function (clusterName, selfId, spec) {
         data_synchronizer && data_synchronizer({type: 'unscheduled', payload: {worker: worker, task: task}});
     };
 
+    var getClusterInfo = function (on_ok) {
+        on_ok(Object.keys(clusterInfo));
+    };
+
     var getWorkerAttr = function (worker, on_ok, on_error) {
         if (workers[worker]) {
             var worker_info = schedulers[workers[worker].purpose] && schedulers[workers[worker].purpose].getInfo(worker);
@@ -138,7 +230,7 @@ var ClusterManager = function (clusterName, selfId, spec) {
                        port: worker_info.info.port || 0,
                        keepAlive: workers[worker].alive_count});
             } else {
-                on_ok(info);
+                on_ok(worker_info);
             }
         } else {
             on_error('Worker [' + worker + '] does NOT exist.');
@@ -170,6 +262,70 @@ var ClusterManager = function (clusterName, selfId, spec) {
             on_error('Invalid purpose.');
         }
     };
+
+    var getClusterID = function (room_id, roomToken, on_ok) {
+        on_ok(spec.clusterID);
+
+        if (sendRequest) {
+            var data = {
+                clusterID: spec.clusterID,
+                region: spec.region,
+                info: {
+                    room: room_id,
+                    token: roomToken
+                }
+            }
+
+            log.info("Send room info to cloud with data:", data);
+            send('POST', 'updateConference', data);
+        }
+    };
+
+    var registerInfo = function (info, on_ok) {
+        on_ok('ok');
+        if (sendRequest) {
+            var data = {
+                clusterID: spec.clusterID,
+                region: spec.region,
+                info: {
+                    resturl: info.resturl,
+                    servicekey: info.servicekey,
+                    serviceid: info.serviceid
+                }
+            }
+
+            log.info("Send registerCluster event to cloud with data:", data);
+            send('POST', 'registerCluster', data);
+        }
+    };
+
+    var leaveConference = function (info, on_ok) {
+        on_ok('ok');
+        var data = {
+            clusterID: spec.clusterID,
+            region: spec.region,
+            conferenceId: info
+        }
+        if (sendRequest) {
+            log.info("Send conference leave event to cloud with data:", data);
+            send('POST', 'leaveConference', data);
+        }
+    };
+
+    var unregisterCluster = function () {
+        var data = {
+            clusterID: spec.clusterID,
+            region: spec.region
+        }
+        if (sendRequest) {
+            log.info("Send unregister cluster event to cloud with data:", data);
+            send('POST', 'unregisterCluster', data);
+        }
+    };
+
+    that.stopCluster = function () {
+        unregisterCluster();
+    }
 
     that.getRuntimeData = function (on_data) {
         var data = {schedulers: {}, workers: workers};
@@ -304,6 +460,95 @@ var ClusterManager = function (clusterName, selfId, spec) {
             }, function (error_reason) {
                 callback('callback', 'error', error_reason);
             });
+        },
+        getClusterID: function (room_id, roomToken, callback) {
+            getClusterID(room_id, roomToken, function (cluster) {
+                callback('callback', cluster);
+            });
+        },
+        registerInfo: function (info, callback) {
+            registerInfo(info, function (worker) {
+                callback('callback', 'ok');
+            });
+        },
+        leaveConference: function (info, callback) {
+            leaveConference(info, function (worker) {
+                callback('callback', 'ok');
+            });
+        }
+    };
+
+    // API for grpc
+    that.grpcInterface = {
+        join: function (call, callback) {
+            const req = call.request;
+            const result = workerJoin(req.purpose, req.id, req.info);
+            callback(null, {state: result});
+        },
+        quit: function(call, callback) {
+            workerQuit(call.request.id);
+            callback(null, {});
+        },
+        keepAlive: function(call, callback) {
+            keepAlive(call.request.id, function (result) {
+                callback(null, {message: result});
+            });
+        },
+        reportState: function (call, callback) {
+            reportState(call.request.id, call.request.state);
+            callback(null, {});
+        },
+        reportLoad: function (call, callback) {
+            reportLoad(call.request.id, call.request.load);
+            callback(null, {});
+        },
+        pickUpTasks: function (call, callback) {
+            pickUpTasks(call.request.id, call.request.tasks);
+            callback(null, {});
+        },
+        layDownTask: function (call, callback) {
+            layDownTask(call.request.id, call.request.task);
+            callback(null, {});
+        },
+        schedule: function (call, callback) {
+            const purpose = call.request.purpose;
+            const task = call.request.task;
+            const preference = call.request.preference;
+            const reserveTime = call.request.reserveTime;
+            schedule(purpose, task, preference, reserveTime, function(worker, info) {
+                callback(null, {id: worker, info: info});
+            }, function (reason) {
+                callback(new Error(reason), null);
+            });
+        },
+        unschedule: function (call, callback) {
+            unschedule(call.request.id, call.request.task);
+            callback(null, {});
+        },
+        getWorkerAttr: function (call, callback) {
+            getWorkerAttr(call.request.id, function (attr) {
+                callback(null, attr);
+            }, function (reason) {
+                callback(new Error(reason), null);
+            });
+        },
+        getWorkers: function (call, callback) {
+            getWorkers(call.request.purpose, function (workerList) {
+                callback(null, {list: workerList});
+            });
+        },
+        getTasks: function (call, callback) {
+            getTasks(call.request.id, function (taskList) {
+                callback(null, {list: taskList});
+            });
+        },
+        getScheduled: function (call, callback) {
+            const req = call.request;
+            getScheduled(req.purpose, req.task, function (worker) {
+                callback(null, {message: worker});
+            }, function (reason) {
+                callback(new Error(reason), null);
+            });
         }
     };
 
@@ -313,6 +558,9 @@ var ClusterManager = function (clusterName, selfId, spec) {
 var runAsSlave = function(topicChannel, manager) {
     var loss_count = 0,
         interval;
+
+    clearRouterKeys(topicChannel,manager);
+    role = "slave";
 
     var requestRuntimeData = function () {
         topicChannel.publish('clusterManager.master', {type: 'requestRuntimeData', data: manager.id});
@@ -331,12 +579,20 @@ var runAsSlave = function(topicChannel, manager) {
     };
 
     var superviseMaster = function () {
+        interval && clearInterval(interval);
+        interval = undefined;
+        if( role !== "slave"){
+            log.warn('cycle in slave change role:', role);
+            return;
+        }
         interval = setInterval(function () {
             loss_count++;
             if (loss_count > 2) {
                 log.info('Lose heart-beat from master.');
-                clearInterval(interval);
-                topicChannel.unsubscribe(['clusterManager.slave.#', 'clusterManager.*.' + manager.id]);
+                interval && clearInterval(interval);
+                interval = undefined;
+                role = "candidate";
+                //topicChannel.unsubscribe(['clusterManager.slave.#', 'clusterManager.*.' + manager.id]);
                 runAsCandidate(topicChannel, manager, 0);
             }
         }, 30);
@@ -350,6 +606,7 @@ var runAsSlave = function(topicChannel, manager) {
 };
 
 var runAsMaster = function(topicChannel, manager) {
+    clearRouterKeys(topicChannel);
     log.info('Run as master.');
     var life_time = 0;
     topicChannel.bus.asRpcServer(manager.name, manager.rpcAPI, function(rpcSvr) {
@@ -373,9 +630,13 @@ var runAsMaster = function(topicChannel, manager) {
            // }, 80);
 
             var onTopicMessage = function (message) {
-           //     has_got_response = true;
+                //     has_got_response = true;
                 if (message.type === 'requestRuntimeData') {
                     var from = message.data;
+                    if (from == manager.id){
+                        log.error('requestRuntimeData from:', from ,"is yourself");
+                        return;
+                    }
                     log.info('requestRuntimeData from:', from);
                     manager.getRuntimeData(function (data) {
                         topicChannel.publish('clusterManager.slave.' + from, {type: 'runtimeData', data: data});
@@ -412,19 +673,36 @@ var runAsCandidate = function(topicChannel, manager) {
         interval,
         has_got_response = false;
 
+    clearRouterKeys(topicChannel);
+    role = "candidate";
+
     var electMaster = function () {
         interval && clearInterval(interval);
         interval = undefined;
         timer = undefined;
-        topicChannel.unsubscribe(['clusterManager.candidate.#']);
+        //topicChannel.unsubscribe(['clusterManager.candidate.#']);
+        if(role !== "candidate"){
+            log.warn('cycle in candidate change role:', role);
+            return;
+        }
         if (am_i_the_one) {
+            role = "master";
+            log.info('i am the only one run as master');
             runAsMaster(topicChannel, manager);
         } else {
+            role = "slave";
+            log.info('i am not the only one run as slave');
             runAsSlave(topicChannel, manager);
         }
     };
 
     var selfRecommend = function () {
+        interval && clearInterval(interval);
+        interval = undefined;
+        if(role !== "candidate"){
+            log.warn('cycle in candidate change role:', role);
+            return;
+        }
         interval = setInterval(function () {
             log.debug('Send self recommendation..');
             topicChannel.publish('clusterManager.candidate', {type: 'selfRecommend', data: manager.id});
@@ -442,12 +720,17 @@ var runAsCandidate = function(topicChannel, manager) {
                 am_i_the_one = false;
             }
         } else if (message.type === 'declareMaster') {
-            log.info('Someone else became master.');
             interval && clearInterval(interval);
             interval = undefined;
             timer && clearTimeout(timer);
             timer = undefined;
-            topicChannel.unsubscribe(['clusterManager.#']);
+            if(role !== "candidate"){
+                log.warn('cycle in has select role:',role);
+                return;
+            }
+            role = "slave";
+            log.info('Someone else became master.');
+            //topicChannel.unsubscribe(['clusterManager.#']);
             runAsSlave(topicChannel, manager);
         }
     };
@@ -458,9 +741,25 @@ var runAsCandidate = function(topicChannel, manager) {
     });
 };
 
-exports.run = function (topicChannel, clusterName, id, spec) {
-    var manager = new ClusterManager(clusterName, id, spec);
+var clearRouterKeys = function(topicChannel){
+    const CANDIDATE_ROUTER_KEY = ["clusterManager.#"];
+    topicChannel.unsubscribe(CANDIDATE_ROUTER_KEY);
+}
 
-    runAsCandidate(topicChannel, manager);
+exports.manager = function (topicChannel, clusterName, id, spec) {
+    var that = {};
+    var manager;
+
+    that.run = function (topicChannel){
+        manager = new ClusterManager(clusterName, id, spec);
+        runAsCandidate(topicChannel, manager);
+    }
+
+    that.leave = function () {
+        manager.stopCluster();
+    }
+
+    return that;
 };
 
+exports.ClusterManager = ClusterManager;

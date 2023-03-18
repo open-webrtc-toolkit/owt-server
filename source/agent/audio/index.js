@@ -19,6 +19,13 @@ var log = logger.getLogger('AudioNode');
 var {InternalConnectionRouter} = require('./internalConnectionRouter');
 
 
+// Setup GRPC server
+var createGrpcInterface = require('./grpcAdapter').createGrpcInterface;
+var enableGRPC = global.config.agent.enable_grpc || false;
+
+var EventEmitter = require('events').EventEmitter;
+
+
 module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
     var that = {
       agentID: parentRpcId,
@@ -52,6 +59,13 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
 
         router = new InternalConnectionRouter(global.config.internal);
 
+    // For GRPC notifications
+    var streamingEmitter = new EventEmitter();
+    // ConnectionId => InputId
+    const fromMap = new Map();
+    // InputId => options
+    const unlinkedInputs = new Map();
+
     var addInput = function (stream_id, owner, codec, options, on_ok, on_error) {
         if (engine) {
             const conn = router.getOrCreateRemoteSource({
@@ -59,6 +73,13 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
                 ip: options.ip,
                 port: options.port
             });
+
+            if (!conn) {
+                log.debug('addInput waiting to link up:', stream_id);
+                unlinkedInputs.set(stream_id, {options});
+                on_ok(stream_id);
+                return;
+            }
 
             if (engine.addInput(owner, stream_id, codec, conn)) {
                 inputs[stream_id] = {owner: owner,
@@ -145,6 +166,16 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
             ctrlr && rpcClient.remoteCall(ctrlr, 'onAudioActiveness',
                 [belongToRoom, streamId, target],
                 {callback: function(){}});
+            // Emit GRPC notifications
+            const notification = {
+                name: 'onAudioActiveness',
+                data: {
+                    domain: belong_to_room,
+                    activeAudioId: streamId,
+                    target
+                }
+            };
+            streamingEmitter.emit('notification', notification);
         });
         engine = selector;
         for (let i = 0; i < activeStreamIds.length; i++) {
@@ -241,7 +272,12 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
 
     that.unpublish = function (stream_id) {
         log.debug('unpublish, stream_id:', stream_id);
-        removeInput(stream_id);
+        if (fromMap.has(stream_id)) {
+            removeInput(fromMap.get(stream_id));
+            fromMap.delete(stream_id);
+        } else {
+            removeInput(stream_id);
+        }
     };
 
     that.setInputActive = function (stream_id, active, callback) {
@@ -263,13 +299,41 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
         log.debug('unsubscribe, connectionId:', connectionId);
     };
 
-    that.linkup = function (connectionId, audio_stream_id, callback) {
-        log.debug('linkup, connectionId:', connectionId, 'audio_stream_id:', audio_stream_id);
+    // streamInfo = {id: 'string', ip: 'string', port: 'number'}
+    // from = {audio: streamInfo, video: streamInfo, data: streamInfo}
+    that.linkup = function (connectionId, from, callback) {
+        log.debug('linkup, connectionId:', connectionId, 'from:', from);
+        if (unlinkedInputs.has(connectionId)) {
+            const {options} = unlinkedInputs.get(connectionId);
+            unlinkedInputs.delete(connectionId);
+            const fromId = from.video.id;
+            options.ip = from.video?.ip;
+            options.port = from.video?.port;
+            addInput(fromId, options.publisher, options.audio.codec, options, function () {
+                if (unlinkedInputs.has(fromId)) {
+                    // Inputs link failed
+                    unlinkedInputs.delete(fromId);
+                    callback('callback', 'error', 'Invalid link address');
+                } else {
+                    fromMap.set(connectionId, fromId);
+                    callback('callback', 'ok');
+                }
+            }, function (reason) {
+                log.error(reason);
+                callback('callback', 'error', reason);
+            });
+            return;
+        }
         callback('callback', 'ok');
     };
 
     that.cutoff = function (connectionId) {
         log.debug('cutoff, connectionId:', connectionId);
+        if (fromMap.has(connectionId)) {
+            const fromId = fromMap.get(connectionId);
+            fromMap.delete(connectionId);
+            connectionId = fromId;
+        }
         if (connections[connectionId] && connections[connectionId].audioFrom) {
             if (outputs[connections[connectionId].audioFrom]) {
                 outputs[connections[connectionId].audioFrom].dispatcher.removeDestination('audio', connections[connectionId].connection.receiver());
@@ -286,6 +350,16 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
                 controller, 'onAudioActiveness',
                 [belong_to_room, activeInput, {view}],
                 {callback: function(){}});
+                // Emit GRPC notifications
+                const notification = {
+                    name: 'onAudioActiveness',
+                    data: {
+                        domain: belong_to_room,
+                        activeAudioId: activeInput,
+                        target: {label: view}
+                    },
+                };
+                streamingEmitter.emit('notification', notification);
         });
     };
 
@@ -330,6 +404,11 @@ module.exports = function (rpcClient, selfRpcId, parentRpcId, clusterWorkerIP) {
             }
         }
     };
+
+    if (enableGRPC) {
+        // Export GRPC interface.
+        return createGrpcInterface(that, streamingEmitter);
+    }
 
     return that;
 };

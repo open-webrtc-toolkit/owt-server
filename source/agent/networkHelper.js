@@ -3,7 +3,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
 'use strict';
-var toml = require('toml');
 
 module.exports.getAddress = (networkInterface) => {
   let interfaces = require('os').networkInterfaces();

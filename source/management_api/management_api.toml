@@ -5,9 +5,14 @@ ssl = true #if use HTTPS
 port = 3000 #default: 3000, port of server
 numberOfProcess = 4 #default: 1
 enableWebTransport = false #default: false.
+hostname = "" #default: ""
+ip_address = "" #default: ""
+#enable_grpc = true
 
 [cluster]
 name = "owt-cluster"
+stream_engine = "stream-service"
+control_agent = "mycontroller"
 
 [rabbit]
 host = "localhost" #default: "localhost"
@@ -15,3 +20,7 @@ port = 5672 #default: 5672
 
 [mongo]
 dataBaseURL = "localhost/owtdb" #default: "localhost/owtdb"
+
+[cascading]
+enabled = false # disable cascading feature by default
+servicename = "sampleService" #service name used to register to cascading cloud for accessing to communicate with this cluster

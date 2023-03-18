@@ -1122,11 +1122,13 @@ bool LiveStreamIn::parse_avcC(AVPacket *pkt) {
                 ELOG_DEBUG_T("enlarge avcC nals buf %d", nalsize + 4);
 
                 nals_buf_length += nalsize + 4;
-                nals_buf = (uint8_t *)realloc(nals_buf, nals_buf_length);
-                if (nals_buf == nullptr) {
+                uint8_t * nals_buf_tmp = (uint8_t *)realloc(nals_buf, nals_buf_length);
+                if (nals_buf_tmp == nullptr) {
+                    free(nals_buf);
                     ELOG_ERROR_T("OOM! Allocate size %d", nals_buf_length);
                     return false;
                 }
+                nals_buf = nals_buf_tmp;
             }
 
             nals_buf[nals_size] = 0;
@@ -1157,11 +1159,13 @@ bool LiveStreamIn::parse_avcC(AVPacket *pkt) {
                 ELOG_DEBUG_T("enlarge avcC nals buf %d", nalsize + 4);
 
                 nals_buf_length += nalsize + 4;
-                nals_buf = (uint8_t *)realloc(nals_buf, nals_buf_length);
-                if (nals_buf == nullptr) {
+                uint8_t * nals_buf_tmp = (uint8_t *)realloc(nals_buf, nals_buf_length);
+                if (nals_buf_tmp == nullptr) {
+                    free(nals_buf);
                     ELOG_ERROR_T("OOM! Allocate size %d", nals_buf_length);
                     return false;
                 }
+                nals_buf = nals_buf_tmp;
             }
 
             nals_buf[nals_size] = 0;

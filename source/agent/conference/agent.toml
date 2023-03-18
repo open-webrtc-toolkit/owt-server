@@ -7,6 +7,9 @@ prerunProcesses = 2 #default: 2
 
 #Roles defined in services have been moved to database
 
+# Setup as GRPC server
+#enable_grpc = true
+
 [cluster]
 name = "owt-cluster"
 
@@ -30,3 +33,6 @@ dataBaseURL = "localhost/owtdb" #default: "localhost/owtdb"
 [internal]
 # tcp/sctp available, tcp is default
 protocol = "tcp"
+
+[cascading]
+enabled = false # disable cascading feature by default
