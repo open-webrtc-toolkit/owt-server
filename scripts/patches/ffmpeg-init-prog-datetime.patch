@@ -1,0 +1,35 @@
+diff -Naur ffmpeg-4.1.3/libavformat/hlsenc.c ffmpeg-patched/libavformat/hlsenc.c
+--- libavformat/hlsenc.c	2019-04-01 19:16:31.000000000 +0800
++++ libavformat/hlsenc.c	2022-03-29 15:00:13.432493656 +0800
+@@ -227,6 +227,7 @@
+     AVIOContext *m3u8_out;
+     AVIOContext *sub_m3u8_out;
+     int64_t timeout;
++    float init_prog_date_time; // Set by a private option.
+ } HLSContext;
+ 
+ static int hlsenc_io_open(AVFormatContext *s, AVIOContext **pb, char *filename,
+@@ -1347,6 +1348,7 @@
+     double *prog_date_time_p = (hls->flags & HLS_PROGRAM_DATE_TIME) ? &prog_date_time : NULL;
+     int byterange_mode = (hls->flags & HLS_SINGLE_FILE) || (hls->max_seg_size > 0);
+ 
++
+     hls->version = 3;
+     if (byterange_mode) {
+         hls->version = 4;
+@@ -2566,6 +2568,7 @@
+             time_t now0;
+             time(&now0);
+             vs->initial_prog_date_time = now0;
++            vs->initial_prog_date_time = hls->init_prog_date_time;
+         }
+         if (hls->format_options_str) {
+             ret = av_dict_parse_string(&hls->format_options, hls->format_options_str, "=", ":", 0);
+@@ -2804,6 +2807,7 @@
+ static const AVOption options[] = {
+     {"start_number",  "set first number in the sequence",        OFFSET(start_sequence),AV_OPT_TYPE_INT64,  {.i64 = 0},     0, INT64_MAX, E},
+     {"hls_time",      "set segment length in seconds",           OFFSET(time),    AV_OPT_TYPE_FLOAT,  {.dbl = 2},     0, FLT_MAX, E},
++    {"hls_init_prog_date_time",      "set initial prog_date_time",           OFFSET(init_prog_date_time),    AV_OPT_TYPE_FLOAT,  {.dbl = 0},     0, FLT_MAX, E},
+     {"hls_init_time", "set segment length in seconds at init list",           OFFSET(init_time),    AV_OPT_TYPE_FLOAT,  {.dbl = 0},     0, FLT_MAX, E},
+     {"hls_list_size", "set maximum number of playlist entries",  OFFSET(max_nb_segments),    AV_OPT_TYPE_INT,    {.i64 = 5},     0, INT_MAX, E},
+     {"hls_delete_threshold", "set number of unreferenced segments to keep before deleting",  OFFSET(hls_delete_threshold),    AV_OPT_TYPE_INT,    {.i64 = 1},     1, INT_MAX, E},

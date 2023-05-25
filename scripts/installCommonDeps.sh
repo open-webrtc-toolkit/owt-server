@@ -94,6 +94,12 @@ install_ffmpeg(){
   fi
   rm -fr ${DIR}
   tar xf ${SRC}
+
+  # Apply patch
+  pushd ${DIR}
+  patch -p0 < $PATHNAME/patches/ffmpeg-init-prog-datetime.patch
+  popd
+
   pushd ${DIR}
   [[ "${DISABLE_NONFREE}" == "true" ]] && \
   PKG_CONFIG_PATH=${PREFIX_DIR}/lib/pkgconfig:${PREFIX_DIR}/lib64/pkgconfig CFLAGS=-fPIC ./configure --prefix=${PREFIX_DIR} --enable-shared --disable-static --disable-libvpx --disable-vaapi --enable-libfreetype --enable-libsrt || \
