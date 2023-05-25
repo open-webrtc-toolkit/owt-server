@@ -93,7 +93,7 @@ void GstInternalIn::onTransportData(char* buf, int len)
     switch (buf[0]) {
         case owt_base::TDT_MEDIA_FRAME:{
             frame = reinterpret_cast<owt_base::Frame*>(buf + 1);
-            if(frame->additionalInfo.video.width == 1) {
+	    if(frame->format > owt_base::FRAME_FORMAT_H265 || frame->format < owt_base::FRAME_FORMAT_VP8) {
                 ELOG_DEBUG("Not a valid video frame\n");
                 break;
             }
