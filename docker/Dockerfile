@@ -217,7 +217,7 @@ WORKDIR /home
 ARG NODE_VER=v14.19.0
 ARG NODE_REPO=https://nodejs.org/dist/${NODE_VER}/node-${NODE_VER}-linux-x64.tar.xz
 
-RUN apt-get update && apt-get install -y -q --no-install-recommends ca-certificates wget xz-utils rabbitmq-server mongodb libboost-system-dev libboost-thread-dev liblog4cxx-dev libglib2.0-0 libfreetype6-dev curl sudo
+RUN apt-get update && apt-get install -y -q --no-install-recommends ca-certificates wget xz-utils rabbitmq-server mongodb libboost-system-dev libboost-thread-dev liblog4cxx-dev libglib2.0-0 libfreetype6-dev libgstreamer-plugins-base1.0-0 curl sudo
 
 RUN wget ${NODE_REPO} && \
     tar xf node-${NODE_VER}-linux-x64.tar.xz && \
