@@ -25,13 +25,12 @@ namespace mcu {
 
 //WebRTC Audio Conference Mixer Module Audio Frame Mixer
 class AcmmFrameMixer : public AudioFrameMixer,
-                       public JobTimerListener,
                        public AudioMixerOutputReceiver,
                        public AudioMixerVadReceiver {
     DECLARE_LOGGER();
 
     static const int32_t MAX_GROUPS = 10240;
-    static const int32_t MIXER_FREQUENCY = 100;
+    static const int32_t MIXER_INTERVAL_MS = 10;
 
     struct OutputInfo {
         owt_base::FrameFormat format;
@@ -56,9 +55,6 @@ public:
     void removeOutput(const std::string& group, const std::string& outStream) override;
 
     void setEventRegistry(EventRegistry* handle) override;
-
-    // Implements JobTimerListener
-    void onTimeout() override;
 
     // Implements AudioMixerOutputReceiver
     virtual void NewMixedAudio(
@@ -103,6 +99,9 @@ private:
     bool m_vadEnabled;
     boost::shared_ptr<AcmmInput> m_mostActiveInput;
     int32_t m_frequency;
+
+    bool m_running;
+    boost::thread m_thread;
 };
 
 } /* namespace mcu */
