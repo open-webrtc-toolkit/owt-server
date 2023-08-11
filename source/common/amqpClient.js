@@ -162,6 +162,7 @@ class MsgSenderReceiver extends MsgSender {
     this.queue = queue ? queue : getQueueName("topic", this.bus.idx)
     this.subscriptions = new Map(); //{patterns, cb}
     this.log = logger.getLogger('MsgSenderReceiver');
+    this.rebinded = false
   }
 
   translateToRegx(regx) {
@@ -201,6 +202,7 @@ class MsgSenderReceiver extends MsgSender {
   setup() {
     let self = this;
     let channel = null;
+    self.rebinded = false;
     return super.setup().then(() => {
       channel = this.bus.channel;
       return channel.assertQueue(self.queue, self.options);
@@ -232,7 +234,9 @@ class MsgSenderReceiver extends MsgSender {
             }
           });
         });
-        return Promise.all(rebind);
+        return Promise.all(rebind).then(()=>{
+            self.rebinded = true;
+        });
       } else {
         self.log.error('setup failed', "queue:", self.queue);
       }
@@ -379,6 +383,32 @@ class MsgSenderReceiver extends MsgSender {
     } else {
       self.log.error(`Failed to unsubscribe is not ready`);
       self.ready = false;
+    }
+  }
+
+  async isLoss(count = 60) {
+    let self = this;
+    if (self.closed) {
+      self.log.warn("is closed");
+      return true;
+    } else if (self.ready && !self.closed && self.bus.channel) {
+      return false;
+    } else {
+      return new Promise(function (resolve, reject) {
+        let interval = setInterval(function () {
+          count > 0 && count--;
+          if (self.closed) {
+            clearInterval(interval);
+            resolve(true);
+          } else if (self.ready && !self.closed && self.bus.channel && self.rebinded) {
+            clearInterval(interval);
+            resolve(false);
+          } else if (count === 0) {
+            clearInterval(interval);
+            resolve(true);
+          }
+        }, 50);
+      });
     }
   }
 
