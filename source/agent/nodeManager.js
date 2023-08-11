@@ -43,6 +43,10 @@ module.exports = function (spec, spawnOptions, onNodeAbnormallyQuit, onTaskAdded
   };
 
   function cleanupNode (id) {
+      if (!processes.hasOwnProperty(id)) {
+          return;
+      }
+
       processes[id].check_alive_interval && clearInterval(processes[id].check_alive_interval);
       processes[id].check_alive_interval = undefined;
   
@@ -80,28 +84,39 @@ module.exports = function (spec, spawnOptions, onNodeAbnormallyQuit, onTaskAdded
       child.err_log_fd = err;
   
       log.debug('launchNode, id:', id);
-      child.on('close', function (code, signal) {
-          log.debug('Node', id, 'exited with code:', code, 'signal:', signal);
-          if (code !== 0) {
-              log.info('Node', id, 'is closed on unexpected code:', code);
-          }
-  
-          if (processes[id]) {
-              onNodeAbnormallyQuit && onNodeAbnormallyQuit(id, tasksOnNode(id));
-              cleanupNode(id);
-          }
-  
+      /**
+       * keycoding 20230811
+       * 1、when received close event just close the log fd
+       * 2、when received exit event means the process was realy exitd so we invoke the cleanupNode,fillNodes
+       */
+      child.on('close', function () {
           try {
               fs.closeSync(child.out_log_fd);
               fs.closeSync(child.err_log_fd);
+              log.info(`Close fd done, id:, ${id}, out_fd : ${child.out_log_fd}, err_fd:${child.err_log_fd}`);
           } catch (e) {
-              log.warn('Close fd failed');
+              log.warn(`Close fd failed, id ${id}, ${child.out_log_fd}, ${child.err_log_fd}, reason:${util.inspect(e)}`);
           }
-  
+      });
+
+      child.on('exit', function (code, signal) {
+          log.info('Node', id, 'exited with code:', code, 'signal:', signal);
+          let reason = code !== 0 ? 'abnormal' : (signal ? `exit on ${signal}`: 'quit');
+          if (code !== 0) {
+              log.info('Node', id, 'is closed on unexpected code:', code);
+          }
+
+          if (processes[id]) {
+              cleanupNode(id);
+          }
+          onNodeAbnormallyQuit && onNodeAbnormallyQuit(id, tasksOnNode(id), reason);
+
+
           if (!spawn_failed) {
               fillNodes();
           }
       });
+
       child.on('error', function (error) {
           log.error('failed to launch node', id, 'error:', JSON.stringify(error));
           child.READY = false;
@@ -141,13 +156,7 @@ module.exports = function (spec, spawnOptions, onNodeAbnormallyQuit, onTaskAdded
           } else {
               child.READY = false;
               child.kill();
-              try {
-                  fs.closeSync(child.out_log_fd);
-                  fs.closeSync(child.err_log_fd);
-              } catch (e) {
-                  log.warn('Close fd failed');
-              }
-              cleanupNode(id);
+              dropNode(id);
           }
       });
   

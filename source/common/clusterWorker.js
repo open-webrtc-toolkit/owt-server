@@ -155,6 +155,28 @@ module.exports = function (spec) {
                         onOk(result.message)
                     }
                 });
+            } else if (method === 'getScheduled') {
+                const req = {
+                    purpose: args[0],
+                    task: args[1]
+                };
+                grpcClient.getScheduled(req, opt(), (err, result) => {
+                    if (err) {
+                        onError(err);
+                    } else {
+                        const workerId = result.message;
+                        grpcClient.getWorkerAttr({id: workerId}, opt(), (err, result) => {
+                            log.info('getWorkerAtt:', result);
+                            if (err) {
+                                log.info('getWorkerAttr error:', err);
+                                onError(err);
+                            } else {
+                                const addr = result.info.ip + ':' + result.info.grpcPort;
+                                onOk(addr);
+                            }
+                        });
+                    }
+                });
             }
         }
     }
@@ -233,13 +255,31 @@ module.exports = function (spec) {
                 log.debug('Try rejoining cluster', cluster_name, '....');
                 join(function (result) {
                     log.debug('Rejoining result', result);
-                    if (result === 'initializing') {
-                        tasks.length > 0 && pickUpTasks(tasks);
-                    } else {
-                        on_loss();
-                        tasks = [];
-                    }
-                    on_success();
+                    let rejoinPromise = tasks.map((taskId)=>{
+                        return new Promise((resolve)=>{
+                            makeRPC(
+                                rpcClient,
+                                cluster_name,
+                                'getScheduled',
+                                [purpose, taskId],
+                                (result)=>{
+                                    //keycoding 20230811: FIXME the task was scheduled to another agent should be delete from this agent
+                                    log.error('Rejoin cluster and pickUpTasks', taskId, 'failed. reason: has old scheduled:',result);
+                                    resolve();
+                                },
+                                (reason)=>{
+                                    if(reason.indexOf('NO_SUCH_TASK')!==-1){
+                                        log.info('Rejoin cluster and pickUpTasks', taskId, 'success.');
+                                        pickUpTasks([taskId]);
+                                    }
+                                    resolve();
+                                }
+                            );
+                        });
+                    });
+                    Promise.all(rejoinPromise).then(()=>{
+                        on_success();
+                    });
                 }, function (reason) {
                     setTimeout(function() {
                         if (state === 'recovering') {
@@ -261,26 +301,29 @@ module.exports = function (spec) {
                 'keepAlive',
                 [id],
                 function (result) {
-                    loss_count = 0;
+                    //keycoding 20230811: fix when a newer leader was vote,the agent must pickUp itself
                     if (result === 'whoareyou') {
+                        loss_count += 1;
+                        if (loss_count % 300 === 0 || loss_count === 3) {
+                            log.info(`Agent ${id} is not alive any longer(${loss_count}), error_reason: ${result}`);
+                        }
                         if (state !== 'recovering') {
-                            log.info('Unknown by cluster manager', cluster_name);
+                            log.info('Unknown by cluster manager', cluster_name,"loss_count:",loss_count);
                             tryRecovery(function () {
                                 log.info('Rejoin cluster', cluster_name, 'OK.');
                                 on_recovery(id);
                             });
                         }
+                    }else{
+                        if (loss_count >= 3) {
+                            log.info(`Agent ${id} is recover(${loss_count})`);
+                        }
+                        loss_count = 0;
                     }
                 }, function (error_reason) {
                     loss_count += 1;
-                    if (loss_count > 3) {
-                        if (state !== 'recovering') {
-                            log.info('Lost connection with cluster', cluster_name);
-                            tryRecovery(function () {
-                                log.info('Rejoin cluster', cluster_name, 'OK.');
-                                on_recovery(id);
-                            });
-                        }
+                    if (loss_count % 300 === 0 || loss_count === 3) {
+                        log.info(`Agent ${id} is not alive any longer(${loss_count}), error_reason: ${error_reason}`);
                     }
                 });
         }, keep_alive_period);

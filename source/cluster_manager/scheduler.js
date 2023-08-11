@@ -188,7 +188,11 @@ exports.Scheduler = function(spec) {
     };
 
     that.getScheduled = function (task, on_ok, on_error) {
-        tasks[task] ? on_ok(tasks[task].worker) : on_error('No such a task');
+        /**
+         * keycoding 20230811
+         * 1、modify the error msg,let the clusterWork get the real error
+         */
+        tasks[task] ? on_ok(tasks[task].worker) : on_error(`NO_SUCH_TASK:${task}`);
     };
 
     that.setScheduled = function (task, worker, reserveTime) {
@@ -211,6 +215,10 @@ exports.Scheduler = function(spec) {
             tasks[task] = data.tasks[task];
         }
     };
+
+    that.isWorkerAvailable = function(worker){
+        return isWorkerAvailable(workers[worker]);
+    }
 
     that.serve = function () {
         for (var task in tasks) {

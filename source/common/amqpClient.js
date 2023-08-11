@@ -1,22 +1,34 @@
 // Copyright (C) <2021> Intel Corporation
 //
 // SPDX-License-Identifier: Apache-2.0
-
+/**
+ * keycoding 20230811
+ * 1、support rabbitmq reconnect
+ * 2、support mutil rabbitmq ip
+ * 3、queue auto create when it was deleted
+ * 4、direct or topic use the same class MsgSenderReceiver
+ */
 'use strict';
+var os = require("os");
+var path = require('path');
 var fs = require('fs');
 var amqp = require('amqplib');
-var log = require('./logger')
-  .logger.getLogger('AmqpClient');
+var logger = require('./logger').logger;
+var log = logger.getLogger('AmqpClient');
 var cipher = require('./cipher');
-var TIMEOUT = 2000;
-var REMOVAL_TIMEOUT = 7 * 24 * 3600 * 1000;
+var TIMEOUT = 5000;
+var util = require('util');
+var purpose = path.basename(!process.pkg ? __dirname : path.dirname(process.execPath));
+purpose = purpose.replace('_agent', '').replace('current_app', 'app');
+var pid = process.pid;
+
 
 const RPC_EXC = {
   name: 'owtRpc',
   type: 'direct',
   options: {
-    autoDelete: true,
-    durable: false,
+    autoDelete: false,
+    durable: true,
   },
 };
 
@@ -25,131 +37,436 @@ const MONITOR_EXC = {
   type: 'topic',
   options: {
     autoDelete: false,
-    durable: false,
+    durable: true,
   },
 };
 
+/**
+ * keycoding 20230811
+ * 1、message set the default ttl 2min
+ * 2、if no consumers exceed 5 minutes, the queue will be automatically deleted
+ */
 const Q_OPTION = {
-  durable: false,
+  durable: true,
   autoDelete: true,
+  messageTtl: 2 * 60 * 1000,
+  expires: 5 * 60 * 1000
 };
 
-var translateToRegx = function(regx) {
-  let regxParts = regx.split('.');
-  let regxStr = "";
-  let len = regxParts.length;
-  let jumpOut = false;
-  for (let i in regxParts) {
-    let part = regxParts[i];
-    switch (part) {
-      case "*":
-        if (i == len - 1) {
-          regxStr += "[.]";
-        }
-        regxStr += "[^.]+?";
-        break;
-      case "#":
-        regxStr += ".*";
-        jumpOut = true;
-        break;
-      default:
-        regxStr += part;
-        break;
-    }
-
-    if (jumpOut) {
-      break;
-    }
-
-    if (i < len - 2) {
-      regxStr += "[.]";
-    }
-  }
-
-  return new RegExp(`^${regxStr}$`);
+var getQueueName = function (role, index) {
+  log.info("getQueueName:", purpose);
+  let hostIp = os.hostname();
+  return `${purpose}-${role}@${hostIp}-${pid}-${index}-${Date.now()}`
 }
 
-class RpcClient {
-  constructor(amqpCli) {
+var wrapIdx = 0;
+
+class MsgSender {
+  constructor(amqpCli, exchange = RPC_EXC) {
     this.bus = amqpCli;
-    this.callMap = {};
-    this.corrID = 0;
-    this.replyQ = '';
+    this.exchange = exchange;
+    this.log = logger.getLogger('MsgSender');
     this.ready = false;
     this.closed = false;
-  }
+  };
 
   setup() {
-    const channel = this.bus.channel;
-    return channel.assertExchange(
-        RPC_EXC.name, RPC_EXC.type, RPC_EXC.options).then(() => {
-      return channel.assertQueue('', Q_OPTION);
-    }).then((result) => {
-      this.replyQ = result.queue;
-      return channel.bindQueue(this.replyQ, RPC_EXC.name, this.replyQ);
-    }).then(() => {
-      if (this.closed) {
-        return;
+    let self = this;
+    return new Promise((resolve, reject) => {
+      if (self.closed) {
+        reject("has been closed");
       }
-      log.debug('Start consume', this.replyQ, RPC_EXC.name);
-      return channel.consume(this.replyQ, (rawMessage) => {
-        try {
-          const msg = JSON.parse(rawMessage.content.toString());
-          log.debug('New message received', msg);
-          if (this.callMap[msg.corrID] !== undefined) {
-            log.debug('Callback', msg.type, ' - ', msg.data);
-            clearTimeout(this.callMap[msg.corrID].timer);
-            this.callMap[msg.corrID].fn[msg.type].call({}, msg.data, msg.err);
-            if (this.callMap[msg.corrID] !== undefined) {
-              delete this.callMap[msg.corrID];
-            }
-          } else {
-            log.warn('Late rpc reply:', msg);
-          }
-        } catch (err) {
-          log.error('Error processing response: ', err);
-        }
-      }, {noAck: true});
-    }).then((ok) => {
-      this.consumerTag = ok.consumerTag;
-      this.ready = true;
+
+      if (self.ready) {
+        resolve();
+      }
+
+      if (!self.bus.channel) {
+        reject("rabbitmq channel is null");
+      }
+
+      self.bus.channel.assertExchange(self.exchange.name, self.exchange.type, self.exchange.options).then(() => {
+        self.log.info('assertExchange', JSON.stringify(self.exchange));
+        self.ready = true;
+        resolve();
+      }).catch((e) => {
+        self.log.error(`${self.bus.idx} setup failed ${util.inspect(e)}`);
+        reject(e);
+      });
     });
   }
 
-  remoteCall(to, method, args, callbacks, timeout) {
-    log.debug('remoteCall, corrID:', this.corrID, 'to:', to, 'method:', method);
-    const channel = this.bus.channel;
-    if (this.ready && channel) {
-      const corrID = this.corrID++;
-      this.callMap[corrID] = {};
-      this.callMap[corrID].fn = callbacks || {
-        callback: function () {}
-      };
-      this.callMap[corrID].timer = setTimeout(() => {
-        if (this.callMap[corrID]) {
-          for (const i in this.callMap[corrID].fn) {
-            if (typeof this.callMap[corrID].fn[i] === 'function') {
-              this.callMap[corrID].fn[i]('timeout');
+  async notify(to, method, args) {
+    return this.rpcCall(to, {method, args});
+  };
+
+  async remoteCast(to, method, args) {
+    return this.notify(to, method, args);
+  };
+
+  async rpcCall(to, content) {
+    let self = this;
+    if (!await self.isLoss()) {
+      try {
+        content = JSON.stringify(content);
+        self.bus.channel.publish(self.exchange.name, to, Buffer.from(content));
+      } catch (e) {
+        self.log.error('Failed to publish:', util.inspect(e));
+      }
+    } else {
+      self.log.error('Failed to publish:', to, content);
+      self.ready = false;
+    }
+  };
+
+  async isLoss(count = 60) {
+    let self = this;
+    if (self.closed) {
+      self.log.warn("is closed");
+      return true;
+    } else if (self.ready && !self.closed && self.bus.channel) {
+      return false;
+    } else {
+      return new Promise(function (resolve, reject) {
+        let interval = setInterval(function () {
+          count > 0 && count--;
+          if (self.closed) {
+            clearInterval(interval);
+            resolve(true);
+          } else if (self.ready && !self.closed && self.bus.channel) {
+            clearInterval(interval);
+            resolve(false);
+          } else if (count === 0) {
+            clearInterval(interval);
+            resolve(true);
+          }
+        }, 50);
+      });
+    }
+  }
+
+  publish(topic, data) {
+    return this.rpcCall(topic, data);
+  }
+
+  async close() {
+    this.ready = false;
+    this.closed = true;
+  }
+};
+
+class MsgSenderReceiver extends MsgSender {
+  constructor(amqpCli, exchange = RPC_EXC, queue, options = Q_OPTION) {
+    super(amqpCli, exchange);
+    this.options = options;
+    this.queue = queue ? queue : getQueueName("topic", this.bus.idx)
+    this.subscriptions = new Map(); //{patterns, cb}
+    this.log = logger.getLogger('MsgSenderReceiver');
+  }
+
+  translateToRegx(regx) {
+    if (!regx) {
+      return;
+    }
+
+    let regxParts = regx.split('.');
+    let regxStr = "";
+    let len = regxParts.length;
+    let jumpOut = false;
+    for (let i in regxParts) {
+      let part = regxParts[i];
+      switch (part) {
+        case "*":
+          if (i == len - 1) {
+            regxStr += "[.]";
+          }
+          regxStr += "[^.]+?";
+          break;
+        case "#":
+          regxStr += ".*";
+          jumpOut = true;
+          break;
+        default:
+          if (i == 0) {
+            regxStr = part;
+          } else {
+            regxStr += "[.]" + part;
+          }
+          break;
+      }
+    }
+    return new RegExp(`^${regxStr}$`);
+  }
+
+  setup() {
+    let self = this;
+    let channel = null;
+    return super.setup().then(() => {
+      channel = this.bus.channel;
+      return channel.assertQueue(self.queue, self.options);
+    }).then((result) => {
+      if (result) {
+        self.log.info('setup ok', "queue:", result.queue);
+        self.queue = result.queue;
+
+        let resubscribe = [];
+        self.subscriptions.forEach((sub, tag) => {
+          resubscribe.push({oldTag: tag, patterns: sub.patterns.concat(), cb: sub.cb, onOk: sub.onOk})
+        });
+
+        let rebind = resubscribe.map((sub) => {
+          return new Promise((resolve) => {
+            if (self.subscriptions.delete(sub.oldTag)) {
+              self.subscribe(sub.patterns, sub.cb, () => {
+                sub.onOk ? sub.onOk() : null;
+                channel.cancel(sub.oldTag).then((ret) => {
+                  self.log.info('cancel old consumerTag:', sub.oldTag, "ret:", ret);
+                  resolve();
+                }).catch((err) => {
+                  self.log.error('Failed to cancel old consumerTag:', sub.oldTag);
+                  resolve();
+                });
+              });
+            } else {
+              resolve();
+            }
+          });
+        });
+        return Promise.all(rebind);
+      } else {
+        self.log.error('setup failed', "queue:", self.queue);
+      }
+    });
+  }
+
+  async subscribe(patterns, onMessage, onOk) {
+    let self = this;
+    self.log.debug('subscribe:', this.queue, patterns);
+    patterns = patterns.concat();
+    const tagTail = Math.floor(Math.random() * 1000000000)
+    const consumerTag = `${patterns.toString()}.${tagTail}`
+    if (!(await self.isLoss(-1))) {
+      const channel = self.bus.channel;
+      let bindQueuePromise = patterns.map((pattern) => {
+        return channel.bindQueue(self.queue, self.exchange.name, pattern)
+            .then(() => self.log.info(`exchange:${self.exchange.name},queue:${self.queue} Follow [${pattern}] ok.`))
+            .catch((err) => {
+              //队列被删除处理
+              self.subscriptions.set(consumerTag, {patterns, cb: onMessage, onOk: onOk});
+              self.ready = false;
+              throw new Error(`Failed to bind queue:${self.queue} on exchange:${self.exchange.name} for pattern:${pattern}`);
+            });
+      });
+      Promise.all(bindQueuePromise).then(() => {
+        channel.consume(self.queue, (rawMessage) => {
+          if (!rawMessage || !rawMessage.hasOwnProperty("content")) {
+            //队列被删除处理
+            self.ready = false;
+            throw new Error(`subscribe failed patterns:${patterns}, exchange:${self.exchange.name}, queue:${self.queue} might be delete`);
+          }
+          try {
+            const msg = JSON.parse(rawMessage.content.toString());
+            const routingKey = rawMessage.fields.routingKey;
+            self.subscriptions.forEach((sub, tag) => {
+              let callback = undefined;
+              sub.patterns.forEach((pattern, index) => {
+                if (!callback) {
+                  let regx = self.translateToRegx(pattern);
+                  if (regx && regx.test(routingKey)) {
+                    callback = sub.cb;
+                  }
+                }
+              });
+
+              if (callback) {
+                self.log.debug(`exchange:${self.exchange.name},queue:${self.queue} on message:`, msg, rawMessage.fields.routingKey);
+                callback(msg, rawMessage.fields.routingKey);
+              }
+            });
+          } catch (error) {
+            self.log.error(`Error processing exchange:${self.exchange.name},queue:${self.queue} message:`, rawMessage, 'and error:', util.inspect(error));
+          }
+        }, {noAck: true, consumerTag: consumerTag}).then((ok) => {
+          if (ok) {
+            self.log.info('subscribe ok', "exchange", self.exchange.name, "queue:", self.queue, 'patterns:', patterns, "consumerTag:", ok.consumerTag);
+            self.subscriptions.set(ok.consumerTag, {patterns, cb: onMessage});
+          } else {
+            self.log.error('subscribe failed', "exchange", self.exchange.name, "queue:", self.queue, 'patterns:', patterns, "consumerTag:", consumerTag);
+          }
+          onOk ? onOk() : null;
+        });
+      });
+    } else {
+      self.log.error('Failed to subscribe is not ready', "exchange", self.exchange.name, "queue:", self.queue, 'patterns:', patterns);
+      self.ready = false;
+    }
+  }
+
+  async unsubscribe(patterns) {
+    let self = this;
+    patterns = patterns.concat();
+    self.log.info('unsubscribe:', patterns);
+    if (!(await self.isLoss(-1))) {
+      const channel = self.bus.channel;
+      let cancleTags = new Set();
+      let ubindArr = []
+      for (let index in patterns) {
+        let pattern = patterns[index];
+        let regx = self.translateToRegx(pattern);
+        self.log.debug("translateToRegx:", pattern, "=>", regx);
+        if (!regx) {
+          continue
+        }
+        self.subscriptions.forEach((sub, tag) => {
+          let hits = {};
+          let i = 0;
+          sub.patterns.forEach((oldPattern, index) => {
+            if (regx.test(oldPattern)) {
+              hits[index] = oldPattern;
+              i++;
+              ubindArr.push(new Promise(async (resolve) => {
+                try {
+                  await channel.unbindQueue(self.queue, self.exchange.name, oldPattern);
+                  self.log.info(`ubindQueue ${oldPattern} on queue:${self.queue} pattern:${oldPattern}`);
+                  resolve();
+                } catch (e) {
+                  self.log.error(`Failed to ubindQueue ${oldPattern} on queue:${self.queue}`, e);
+                  resolve();
+                }
+              }));
+            }
+          });
+
+          self.log.debug("pattern:", pattern, "hits:", hits, "hits.length:", i, "sub.patterns.length:", sub.patterns.length);
+          if (i >= sub.patterns.length) {
+            cancleTags.add(tag);
+          } else {
+            for (let i in hits) {
+              let index = sub.patterns.findIndex((p) => {
+                return p == hits[i]
+              });
+              if (index != -1) {
+                sub.patterns.splice(index, 1);
+              }
             }
           }
-          delete this.callMap[corrID];
+        });
+      }
+
+      if (ubindArr.length > 0) {
+        await Promise.all(ubindArr);
+      }
+      ubindArr = [];
+      if (cancleTags.size > 0) {
+        cancleTags.forEach((consumerTag) => {
+          self.subscriptions.delete(consumerTag);
+          self.log.debug('del consumerTag:', consumerTag);
+          ubindArr.push(new Promise((resolve) => {
+            channel.cancel(consumerTag).then((ret) => {
+              self.log.info('cancel consumerTag:', consumerTag, "real.consumerTag:", consumerTag, "ret:", ret);
+              resolve();
+            }).catch((err) => {
+              self.log.error('Failed to cancel:', consumerTag);
+              resolve();
+            });
+          }));
+        });
+      }
+      if (ubindArr.length > 0) {
+        await Promise.all(ubindArr);
+      }
+      //keycoding add 2022-06-23 fix slave exit bug end
+    } else {
+      self.log.error(`Failed to unsubscribe is not ready`);
+      self.ready = false;
+    }
+  }
+
+  close() {
+    super.close();
+    let self = this;
+    let recycleArr = [];
+    const channel = self.bus.channel;
+    recycleArr.push(new Promise((resolve) => {
+      if (!channel) {
+        resolve();
+      }
+      channel.deleteQueue(self.queue).then((ret) => {
+        self.log.info(`deleteQueue ${self.queue} success`, ret);
+        resolve();
+      }).catch((err) => {
+        self.log.error(`deleteQueue ${self.queue} failed:`, err && err.message ? err.message : util.inspect(err));
+        resolve();
+      });
+    }));
+    return Promise.all(recycleArr).then(() => {
+      self.subscriptions.clear();
+    });
+  }
+}
+
+class RpcClient extends MsgSenderReceiver {
+  constructor(amqpCli) {
+    super(amqpCli, RPC_EXC, getQueueName("client", amqpCli.idx));
+    this.callMap = {};
+    this.corrID = 0;
+    this.log = logger.getLogger('RpcClient');
+    this.subscriptions.set('rpcClient', {
+      patterns: [this.queue],
+      cb: this.receiveMsg.bind(this)
+    });
+  }
+
+  receiveMsg(msg, routingKey) {
+    let self = this;
+    try {
+      self.log.debug('New message received', msg);
+      if (self.callMap[msg.corrID] !== undefined) {
+        if (msg.data === 'error' || msg.data === 'timeout') self.log.error('Callback', msg.data, ' - ', msg.err);
+        clearTimeout(self.callMap[msg.corrID].timer);
+        self.callMap[msg.corrID].fn[msg.type].call({}, msg.data, msg.err);
+        if (self.callMap[msg.corrID] !== undefined) {
+          delete self.callMap[msg.corrID];
+        }
+      } else {
+        self.log.warn('Late rpc reply:', msg);
+      }
+    } catch (err) {
+      self.log.error('Error processing response: ', util.inspect(err));
+    }
+  }
+
+  async remoteCall(to, method, args, callbacks) {
+    let self = this;
+    self.log.debug('remoteCall, corrID:', self.corrID, 'to:', to, 'method:', method);
+    if (self.ready && !self.closed) {
+      const corrID = this.corrID++;
+      self.callMap[corrID] = {};
+      self.callMap[corrID].fn = callbacks || {
+        callback: function () {
+        }
+      };
+      self.callMap[corrID].timer = setTimeout(() => {
+        if (self.callMap[corrID]) {
+          for (const i in self.callMap[corrID].fn) {
+            if (typeof self.callMap[corrID].fn[i] === 'function') {
+              self.log.debug(`remoteCall, corrID:, ${self.corrID}, to:, ${to}, method:, ${method}, args: ${JSON.stringify(args)}, timeout: ${rpcTimeout}`);
+              self.callMap[corrID].fn[i]('timeout');
+            }
+          }
+          delete self.callMap[corrID];
         }
       }, timeout || TIMEOUT);
 
-      const content = JSON.stringify({
-        method,
-        args,
-        corrID,
-        replyTo: this.replyQ,
-      });
-      log.debug('Publish content:', content);
+      const content = {method, args, corrID, replyTo: self.queue};
+      self.log.debug('Publish content:', JSON.stringify(content));
       try {
-        channel.publish('', to, Buffer.from(content));
+        self.publish(to, content)
       } catch (e) {
-        log.warn('Failed to publish:', e);
+        self.log.error('Failed to publish:', util.inspect(e));
       }
     } else {
-      this.ready = false;
+      self.log.error(`remoteCall, ready === ${self.ready}, to ${to}, method ${method}, args ${JSON.stringify(args)}`);
       for (const i in callbacks) {
         if (typeof callbacks[i] === 'function') {
           callbacks[i]('error', 'rpc client is not ready');
@@ -158,341 +475,254 @@ class RpcClient {
     }
   }
 
-  remoteCast(to, method, args) {
-    const channel = this.bus.channel;
-    if (this.ready && channel) {
-      const content = JSON.stringify({
-        method,
-        args,
-      });
+  async remoteCast(to, method, args) {
+    let self = this;
+    if (self.ready && !self.closed) {
+      const content = {method, args};
       try {
-        channel.publish(RPC_EXC.name, to, Buffer.from(content));
+        self.publish(to, content)
       } catch (e) {
-        log.warn('Failed to publish:', e);
+        self.log.error('Failed to publish:', e);
       }
     } else {
-      this.ready = false;
+      self.log.error(`remoteCast, ready === ${self.ready}, to ${to}, method ${method}, args ${JSON.stringify(args)}`);
     }
+  }
+
+  makeRPC(to, method, args, on_ok, on_error, timeout) {
+    return this.remoteCall(to, method, args, {
+          callback: function (result, error_reason) {
+            if (result === 'error') {
+              typeof on_error === 'function' && on_error(error_reason, result);
+            } else if (result === 'timeout') {
+              typeof on_error === 'function' && on_error('Timeout to make rpc to ' + to + '.' + method, result);
+            } else {
+              typeof on_ok === 'function' && on_ok(result);
+            }
+          }
+        },
+        timeout)
   }
 
   close() {
-    log.debug('RpcClient close');
-    this.closed = true;
-    for (const i in this.callMap) {
-      clearTimeout(this.callMap[i].timer);
+    let self = this;
+    self.ready = false;
+    self.closed = true;
+    for (const i in self.callMap) {
+      clearTimeout(self.callMap[i].timer);
     }
-    this.callMap = {};
-    if (this.consumerTag) {
-      return this.bus.channel.cancel(this.consumerTag)
-        .catch((err) => {
-          log.error('Failed during close RpcClient:', this.replyQ);
-        });
-    }
+    self.callMap = {};
+    return super.close();
   }
 }
 
-class RpcServer {
+class RpcServer extends MsgSenderReceiver {
   constructor(amqpCli, id, methods) {
-    this.bus = amqpCli;
-    this.requestQ = id;
+    super(amqpCli, RPC_EXC, id);
     this.methods = methods;
-    this.ready = false;
-    this.closed = false;
-  }
-
-  setup() {
-    const channel = this.bus.channel;
-    return channel.assertExchange(
-        RPC_EXC.name, RPC_EXC.type, RPC_EXC.options).then(() => {
-      return channel.assertQueue(this.requestQ, Q_OPTION);
-    }).then((result) => {
-      this.requestQ = result.queue;
-      return channel.bindQueue(this.requestQ, RPC_EXC.name, this.requestQ);
-    }).then(() => {
-      if (this.closed) {
-        return;
-      }
-      return channel.consume(this.requestQ, (rawMessage) => {
-        try {
-          const msg = JSON.parse(rawMessage.content.toString());
-          log.debug('New message received', msg);
-          msg.args = msg.args || [];
-          if (msg.replyTo && msg.corrID !== undefined) {
-            msg.args.push((type, result, err) => {
-              const content = JSON.stringify({
-                data: result,
-                corrID: msg.corrID,
-                type: type,
-                err: err,
-              });
-              channel.publish(RPC_EXC.name, msg.replyTo, Buffer.from(content));
-            });
-          }
-          if (typeof this.methods[msg.method] === 'function') {
-            this.methods[msg.method].apply(this.methods, msg.args);
-          } else {
-            log.warn('RPC server does not support this method:', msg.method);
-            if (msg.replyTo && msg.corrID !== undefined) {
-              const content = JSON.stringify({
-                data: 'error',
-                corrID: msg.corrID,
-                type: 'callback',
-                err: 'Not support method',
-              });
-              channel.publish(RPC_EXC.name, msg.replyTo, Buffer.from(content));
-            }
-          }
-        } catch (error) {
-          log.error('Error processing call: ', error);
-          log.error('message:', rawMessage.content.toString());
-        }
-      }, {noAck: true});
-    }).then((ok) => {
-      log.debug('Setup rpc server ok:', this.requestQ);
-      this.consumerTag = ok.consumerTag;
-      this.ready = true;
+    this.log = logger.getLogger('RpcServer');
+    this.subscriptions.set('rpcServer', {
+      patterns: [this.queue],
+      cb: this.receiveMsg.bind(this)
     });
   }
 
-  close() {
-    this.ready = false;
-    this.closed = true;
-    if (this.consumerTag) {
-      return this.bus.channel.cancel(this.consumerTag)
-        .catch((err) => {
-          log.error('Failed to during close RpcServer:', this.requestQ);
+  receiveMsg(msg, routingKey) {
+    let self = this;
+    try {
+      msg.args && msg.args[0] && msg.args[0].method === 'onMessage' && msg.args[0].statusCode && self.log.info(`consume msg, ${JSON.stringify(msg.args[0])}`);
+      if (msg.replyTo && msg.corrID !== undefined) {
+        msg.args.push((type, result, err) => {
+          const content = {
+            data: result,
+            corrID: msg.corrID,
+            type: type,
+            err: err,
+          };
+          self.publish(msg.replyTo, content);
         });
-    }
-  }
-}
-
-class TopicParticipant {
-  constructor(amqpCli, name) {
-    this.bus = amqpCli;
-    this.name = name;
-    this.queue = '';
-    this.onMessage = null;
-    this.subscriptions = new Map(); // {patterns, cb}
-    this.ready = false;
-  }
-
-  setup() {
-    const channel = this.bus.channel;
-    return channel.assertExchange(
-        this.name, 'topic', MONITOR_EXC.options).then(() => {
-      return channel.assertQueue('', {exclusive: true, durable: false});
-    }).then((result) => {
-      log.debug('TopicQueue:', result.queue);
-      this.queue = result.queue;
-      this.ready = true;
-      this.subscriptions.forEach((sub, tag) => {
-        this.subscribe(sub.patterns, sub.cb, () => {});
-      });
-    });
-  }
-
-  subscribe(patterns, onMessage, onOk) {
-    log.debug('subscribe:', this.queue, patterns);
-    const channel = this.bus.channel;
-    const consumerTag = patterns.toString()
-    if (this.queue && channel) {
-      patterns.map((pattern) => {
-        channel.bindQueue(this.queue, this.name, pattern)
-          .then(() => log.debug('Follow topic [' + pattern + '] ok.'))
-          .catch((err) => log.error('Failed to bind queue on topic'));
-      });
-      let self = this;
-      channel.consume(this.queue, (rawMessage) => {
-        try {
-          const msg = JSON.parse(rawMessage.content.toString());
-          let found = false;
-          self.subscriptions.forEach((sub, tag) => {
-               if(sub.cb == onMessage){
-                  found = true;
-               }
-          });
-
-          if (found) {
-            log.debug('Topic on message:', msg, rawMessage.fields.routingKey);
-            onMessage(msg, rawMessage.fields.routingKey);
-          }
-        } catch (error) {
-          log.error('Error processing topic message:', rawMessage, 'and error:', error);
+      }
+      if (typeof self.methods[msg.method] === 'function') {
+        self.methods[msg.method].apply(self.methods, msg.args);
+      } else {
+        self.log.warn('does not support this method:', msg.method);
+        if (msg.replyTo && msg.corrID !== undefined) {
+          const content = {
+            data: 'error',
+            corrID: msg.corrID,
+            type: 'callback',
+            err: 'Not support method',
+          };
+          self.publish(msg.replyTo, content);
         }
-      }, {noAck: true,consumerTag:consumerTag}).then((ok) => {
-        log.debug('set consumerTag:', consumerTag,"ok.consumerTag:",ok.consumerTag);
-        this.subscriptions.set(ok.consumerTag, {patterns, cb: onMessage});
-        onOk();
-      });
-    } else {
-      this.ready = false;
-    }
-  }
-
-  unsubscribe(patterns) {
-    log.debug('unsubscribe:', patterns);
-    const channel = this.bus.channel;
-    if (this.queue && channel) {
-      patterns.map((pattern) => {
-        channel.unbindQueue(this.queue, this.name, pattern)
-          .catch((err) => log.error('Failed to unbind queue on topic'));
-        log.debug('Ignore topic [' + pattern + ']');
-      });
-
-      let cancleTags = new Set();
-      for (let index in patterns) {
-        let pattern = patterns[index];
-        let regx = translateToRegx(pattern);
-        log.debug("translateToRegx:",pattern, "=>", regx);
-        this.subscriptions.forEach((sub, tag) => {
-          let hits = {};
-          let i = 0;
-          sub.patterns.forEach((oldPattern,index) => {
-            if (regx.test(oldPattern)) {
-              hits[index] = oldPattern;
-              i++;
-            }
-          });
-
-          log.debug("hits:", hits,"hits.length:",i,"sub.patterns.length:",sub.patterns.length);
-          if (i >= sub.patterns.length) {
-            cancleTags.add(tag);
-          } else {
-            for (let index in hits) {
-              sub.patterns.splice(index,1);
-            }
-          }
-        });
       }
-
-      if (cancleTags.size > 0) {
-        cancleTags.forEach((consumerTag) => {
-          channel.cancel(consumerTag)
-              .then((ret) => {
-                this.subscriptions.delete(consumerTag);
-                log.debug('del consumerTag:', consumerTag, "real.consumerTag:", consumerTag, "ret:", ret);
-              })
-              .catch((err) => log.error('Failed to cancel:', consumerTag));
-        });
-      }
-    } else {
-      this.ready = false;
-    }
-  }
-
-  publish(topic, data) {
-    log.debug('Topic send:', topic, data, this.ready);
-    const channel = this.bus.channel;
-    if (this.ready && channel) {
-      const content = JSON.stringify(data);
-      log.debug('Publish:', this.name, topic);
-      try {
-        channel.publish(this.name, topic, Buffer.from(content));
-      } catch (e) {
-        log.warn('Failed to publish:', e);
-      }
-    } else {
-      log.debug('TopicParticipant is not ready');
-      this.ready = false;
+    } catch (error) {
+      self.log.error('Error processing call: ', util.inspect(error));
     }
   }
 
   close() {
-    this.ready = false;
-    if (this.queue) {
-      return this.bus.channel.deleteQueue(this.queue)
-        .catch((err) => {
-          log.error('Failed to destroy queue:', this.queue);
-        });
-    }
+    let self = this;
+    self.log.debug('close');
+    return self.unsubscribe([self.queue]).then(()=>{
+      self.ready = false;
+      self.closed = true;
+      self.subscriptions.clear();
+    });
   }
 }
 
-class Monitor {
+class TopicParticipant extends MsgSenderReceiver {
+  constructor(amqpCli, exchange = MONITOR_EXC, queue, options = Q_OPTION) {
+    super(amqpCli, exchange, queue ? queue : getQueueName("topic", amqpCli.idx), options);
+    this.log = logger.getLogger('TopicParticipant');
+  }
+}
+
+class Monitor extends MsgSenderReceiver {
   constructor(amqpCli, onMessage) {
-    this.bus = amqpCli;
-    this.queue = '';
-    this.ready = false;
+    super(amqpCli, MONITOR_EXC, getQueueName("monitor", amqpCli.idx));
     this.onMessage = onMessage;
-  }
-
-  setup() {
-    const channel = this.bus.channel;
-    return channel.assertExchange(
-        MONITOR_EXC.name, MONITOR_EXC.type, MONITOR_EXC.options).then(() => {
-      return channel.assertQueue('', Q_OPTION);
-    }).then((result) => {
-      this.queue = result.queue;
-      return channel.bindQueue(this.queue, MONITOR_EXC.name, 'exit.#');
-    }).then(() => {
-      return channel.consume(this.queue, (rawMessage) => {
-        try {
-          const msg = JSON.parse(rawMessage.content.toString());
-          log.debug('Received monitoring message:', msg);
-          this.onMessage && this.onMessage(msg);
-        } catch (error) {
-          log.error('Error processing monitored message:', rawMessage, 'and error:', error);
-        }
-      }, {noAck: true});
-    }).then((ok) => {
-      this.consumerTag = ok.consumerTag;
-      this.ready = true;
+    this.log = logger.getLogger('Monitor');
+    this.subscriptions.set('monitor', {
+      patterns: ['exit.#'],
+      cb: this.receiveMsg.bind(this)
     });
   }
 
-  close() {
-    this.ready = false;
-    if (this.consumerTag) {
-      return this.bus.channel.cancel(this.consumerTag)
-        .catch((err) => {
-          log.error('Failed to cancel consumer on queue:', this.queue);
-        });
+  receiveMsg(msg, routingKey) {
+    let self = this;
+    try {
+      msg = JSON.parse(msg.toString());
+      self.log.info('Received monitoring message:', msg);
+      self.onMessage && self.onMessage(msg);
+    } catch (error) {
+      this.log.error('Error processing monitored message:', msg, 'and error:', util.inspect(error));
     }
-  };
+  }
 }
 
-class MonitoringTarget {
+class MonitoringTarget extends MsgSender {
   constructor(amqpCli) {
-    this.bus = amqpCli;
-    this.ready = false;
-  }
-
-  setup() {
-    return this.bus.channel.assertExchange(
-        MONITOR_EXC.name, MONITOR_EXC.type, MONITOR_EXC.options)
-      .then(() => {
-        this.ready = true;
-      });
+    super(amqpCli, MONITOR_EXC);
+    this.log = logger.getLogger('MonitoringTarget');
   }
 
   notify(reason, message) {
-    const channel = this.bus.channel;
-    if (this.ready && channel) {
-      const pattern = 'exit.' + reason;
-      const content = JSON.stringify({reason, message});
-      try {
-        channel.publish(
-            MONITOR_EXC.name, pattern, Buffer.from(content));
-      } catch (e) {
-        log.warn('Failed to publish:', e);
-      }
-    } else {
-      this.ready = false;
+    try {
+      this.publish(`exit.${reason}`, {reason, message});
+    } catch (e) {
+      this.log.warn('Failed to publish:', e);
     }
-  }
-
-  close() {
-    this.ready = false;
-    // return this.channel.deleteExchange(MONITOR_EXC.name, {ifUnused: true})
-    //   .catch((err) => log.error('Failed to delete exchange:', this.name));
   }
 }
 
-const RECONNECT = true;
-const RECONNECT_INTERVAL = 1000;
+class ConnDesc {
+  /**
+   * 连接状态描述信息
+   * @param {String} host
+   * @param {AmqpCli} amqpCli
+   */
+  constructor(host, amqpCli) {
+    this.hostname = host;
+    this.isNormal = true;                   //连接状态是否正常
+    this.isConnected = false;
+    this.isStart = false;                   //是否正在连接
+    this.rcCount = 0;
+    this.setuped = false;
+    this.rcLock = false;                    //是否正在重连
+    this.waitRC = 1000;                     //等待重连的时间单位 ms
+    this.lastErrTime = 0;
+    this.conn = amqpCli.connection;
+    this.ch = amqpCli.channel;
+    this.amqpCli = amqpCli;
+  }
+
+  onStart() {
+    this.isStart = true;
+    log.info(`${this.amqpCli.idx} connect to ${this.hostname} start`);
+  };
+
+  async onConnected(conn) {
+    log.info(`${this.amqpCli.idx} connect to ${this.hostname} ok`);
+    this.isConnected = true;
+    this.isNormal = true;
+    this.conn = conn;
+  };
+
+  async onChannelOk(ch) {
+    log.info(`${this.amqpCli.idx} onChannelOk ${this.hostname} ok`);
+    this.ch = ch;
+  };
+
+  async onSetupOk() {
+    log.info(`${this.amqpCli.idx} onSetupOk ${this.hostname} ok`);
+    this.setuped = true;
+    this.rcLock = false;
+  };
+
+
+  tryReconnect() {
+    if (this.rcLock) {
+      return false;
+    }
+    this.rcLock = true;
+    this.rcCount++;
+    return true;
+  };
+
+
+  wait(t) {
+    return new Promise((resolve) => setTimeout(resolve, t));
+  };
+
+  async waitToReconnect() {
+    //liyiyan 2023-03-23 add begin
+    await this.wait(5000);
+    return;
+    //liyiyan 2023-03-23 add end
+
+    if (!this.isNormal) {
+      let wt = Date.now() - this.lastErrTime;
+      if (wt >= 0 && wt < this.waitRC) {
+        await this.wait(this.waitRC - wt);
+        log.info(`${this.amqpCli.idx} waitToReconnect ${this.waitRC - wt} ms done`);
+      } else {
+        log.info(`${this.amqpCli.idx} needn't waitToReconnect ${this.lastErrTime} wt=${wt}`);
+      }
+      this.isNormal = true;
+    }
+  };
+
+  async onConnectError(event, error) {
+    log.error(`${this.amqpCli.idx} onConnectError ${this.hostname}, event: ${event}, error: ${util.inspect(error)}`);
+    this.lastErrTime = Date.now();
+    this.isNormal = false;
+    this.isStart = false;
+    this.isConnected = false;
+    this.setuped = false;
+    let cli = this.amqpCli;
+    try {
+      this.ch && await this.ch.close();
+    } catch (e) {
+      log.warn(`${this.amqpCli.idx}, close channel for host ${this.hostname} catch error: ${util.inspect(e)}`);
+    }
+    try {
+      this.conn && await this.conn.close();
+    } catch (e) {
+      log.warn(`${this.amqpCli.idx}, close connection for host ${this.hostname} catch error: ${util.inspect(e)}`);
+    }
+    this.ch = null;
+    this.conn = null;
+    this.rcLock = false;
+  };
+};
+
+var RECONNECT = true;
 
 class AmqpCli {
   constructor() {
+    this.idx = ++wrapIdx;
     this.options = null;
     this.connection = null;
     this.channel = null;
@@ -500,171 +730,305 @@ class AmqpCli {
     this.rpcServer = null;
     this.monitor = null;
     this.monitoringTarget = null;
+    this.msgSender = null;
     this.topicParticipants = new Map();
     this.connected = false;
-    this.successCb = () => {};
-    this.failureCb = () => {};
-    this.reconnectAttempts = 0;
+    this.successCb = [];
+    this.failureCb = [];
     this._errorHandler = this._errorHandler.bind(this);
+    this._initAfterConnect = this._initAfterConnect.bind(this);
+    this.balanceHosts = null;
+    this.balanceIndex = 0;
+    this.connectStatus = {}; //key: host, value: {isNormal: true||false, isStart:true||false, isConnected: true||false};
+    this.curHost = null;
   }
 
   connect(options, onOk, onFailure) {
     this.options = options;
     this.options.hostname = options.host;
-    this.successCb = onOk;
-    this.failureCb = onFailure;
-    if (fs.existsSync(cipher.astore)) {
-      cipher.unlock(cipher.k, cipher.astore, (err, authConfig) => {
+
+    let connSt = null, idx = 0;
+    if (!this.balanceHosts) {
+      this.balanceHosts = this.options.host.split(',');
+      this.balanceHosts.forEach((host) => {
+        this.connectStatus[host] = new ConnDesc(host, this);
+      });
+      connSt = this._choseConnDesc();
+    } else {
+      connSt = this.connectStatus[this.curHost];
+    }
+
+    if (connSt.isConnected) {
+      log.info(`${this.idx} connection of ${connSt.hostname} already connected`)
+      return onOk();
+    }
+
+    this.successCb.push(onOk);
+    this.failureCb.push(onFailure);
+
+    options.storePath = options.storePath || cipher.astore;
+    if (fs.existsSync(options.storePath)) {
+      cipher.unlock(cipher.k, options.storePath, (err, authConfig) => {
         if (!err) {
           if (authConfig.rabbit) {
             this.options.username = authConfig.rabbit.username;
             this.options.password = authConfig.rabbit.password;
           }
         } else {
-          log.warn('Failed to get rabbitmq auth:', err);
+          log.error('Failed to get rabbitmq auth:', util.inspect(err));
         }
-        this._connect();
+        this._connect(connSt);
       });
     } else {
-      this._connect();
+      this._connect(connSt);
     }
-  }
+  };
 
-  _connect() {
-    amqp.connect(this.options).then((conn) => {
-      log.debug('Connect OK');
-      conn.on('error', this._errorHandler);
-      conn.on('close',this._errorHandler);
-      this.connection = conn;
-      return conn.createChannel();
-    })
-    .then((ch) => {
-      this.channel = ch;
-      this.channel.on('error', (e) => {
-        log.warn('Channel closed:', e);
-        this.channel = null;
-      });
-      if (!this.connected) {
-        this.connected = true;
-        this.successCb();
-      } else {
-        Promise.resolve().then(() => {
-          return (this.rpcServer && this.rpcServer.setup());
-        }).then(() => {
-          return (this.rpcClient && this.rpcClient.setup());
-        }).then(() => {
-          return (this.monitor && this.monitor.setup());
-        }).then(() => {
-          return (this.monitoringTarget && this.monitoringTarget.setup());
-        }).then(() => {
-          const setups = [];
-          this.topicParticipants.forEach((tp) => {
-            setups.push(tp.setup());
-          });
-          return Promise.all(setups);
-        }).catch((e) => {
-          log.warn('Error after reconnect:', e);
-        })
+  /**
+   * 选择连接的函数
+   * @param {ConnDesc} eConnInfo
+   * @returns {ConnDesc} connInfo
+   */
+  _choseConnDesc(eConnInfo = null) {
+    let host, i, k = 0;
+    if (eConnInfo) {
+      k = this.balanceHosts.findIndex((t) => t === eConnInfo.hostname);
+      k = k + 1;
+    } else {
+      k = 0;
+    }
+    host = this.balanceHosts[k % this.balanceHosts.length];
+    this.curHost = host;
+    return this.connectStatus[this.curHost];
+
+    for (i = k; i <= this.balanceHosts.length; i++) {
+      host = this.balanceHosts[(this.balanceIndex++) % this.balanceHosts.length];
+      if (this.connectStatus[host].isNormal) {
+        break;
       }
-    })
-    .catch(this._errorHandler);
+      ;
+    }
+    this.curHost = host;
+
+    return this.connectStatus[this.curHost];
+  };
+
+  /**
+   * 连接成功后的初始化操作
+   * @param {ConnDesc} connSt
+   * @returns
+   */
+  async _initAfterConnect(connSt) {
+    try {
+      log.debug(`${this.idx} _initAfterConnect ${connSt.hostname}`);
+      let conn = connSt.conn;
+      this.channel = await conn.createChannel();
+      this.channel.on('error', (e) => {
+        log.error(`${this.idx} Channel closed:, ${util.inspect(e)}`);
+        //keycoding 20230425 fix channel close bug begin
+        //this.channel = null;
+        connSt.onConnectError('function._initAfterConnect', e);
+        //keycoding 20230425 fix channel close bug end
+      });
+      connSt.onChannelOk(this.channel);
+
+      await (this.rpcClient && this.rpcClient.setup());
+      await (this.rpcServer && this.rpcServer.setup());
+      await (this.monitor && this.monitor.setup());
+      await (this.monitoringTarget && this.monitoringTarget.setup());
+
+      const setups = [];
+      this.topicParticipants.forEach((tp) => {
+        setups.push(tp.setup());
+      });
+      await Promise.all(setups);
+
+      // log.debug(`amqpCli ${this.idx}, start call successCb, length ${this.successCb.length}`);
+      this.successCb.forEach((cb) => {
+        cb();
+      });
+      this.successCb = [];
+      connSt.onSetupOk();
+    } catch (e) {
+      log.error('Error after connect:', util.inspect(e));
+      connSt.onConnectError('function._initAfterConnect', e);
+    }
+  };
+
+
+  /**
+   * 实际的连接操作
+   * @param {ConnDesc} connInfo 连接描述信息
+   * @returns
+   */
+  async _connect(connInfo) {
+    try {
+      let host = connInfo.hostname;
+      if (connInfo.isStart) {
+        log.info(`${this.idx} _connect to ${connInfo.hostname} is starting`);
+        return;
+      }
+      connInfo.onStart();
+      this.options.hostname = host;
+      log.info(`${JSON.stringify(this.options)}`);
+      let conn = await amqp.connect(this.options);
+      conn.on('error', (err) => {
+        return this._errorHandler(err, 'error', connInfo)
+      });
+      conn.on('close', (err) => {
+        return this._errorHandler(err, 'close', connInfo)
+      });
+      conn.on('blocked', (err) => {
+        log.error(`${this.idx} host ${connInfo.hostname} connection block, reason: ${util.inspect(err)}`)
+      });
+      this.connection = conn;
+      this.connected = true;      //note: need to fix
+      await connInfo.onConnected(conn);
+      await this._initAfterConnect(connInfo);
+    } catch (e) {
+      this._errorHandler(e, 'function._connect', connInfo);
+    }
   }
 
-  _errorHandler(err) {
-    log.warn('Connecting error:', err);
-    this.channel = null;
+  /**
+   * 连接出错时的错误处理函数
+   * @param {Error} err 错误信息
+   * @param {ConnDesc} connInfo 连接信息
+   */
+  async _errorHandler(err, event, connInfo) {
+    // log.warn(`amqpCli ${this.idx} Connecting error:`, this.curHost, event, util.inspect(err));
+    this.connected = false;
+    let connSt = connInfo || this.connectStatus[this.curHost];
+
+
     if (RECONNECT) {
-      setTimeout(() => {
-        this._connect();
-      }, RECONNECT_INTERVAL);
+      await connSt.onConnectError(event, err);
+      this.channel = null;
+      this.connection = null;
+      let connSn = this._choseConnDesc(connSt);
+      if (connSn.tryReconnect()) {
+        await connSn.waitToReconnect();
+        this._connect(connSn);
+      } else {
+        log.warn(`${this.idx} Ignore event ${event}, ${connSn.hostname} already is connecting`)
+      }
     } else {
-      this.failureCb();
+      this.failureCb.forEach((cb) => {
+        cb(err)
+      });
       this.close().catch((e) => {
-        log.warn('Error during closing:', e);
+        log.error(`${this.idx} Error during closing:`, util.inspect(e));
+      });
+      // RECONNECT = true;
+    }
+  }
+
+  async asRpcClient(onOk, onFailure) {
+    let self = this;
+    if (!self.rpcClient) {
+      self.rpcClient = new RpcClient(self);
+    }
+    await self.rpcClient.setup().then(() => {
+      onOk(self.rpcClient);
+    }).catch((e) => {
+      onFailure(e);
+    });
+  }
+
+  async asMsgSender(onOk, onFailure) {
+    let self = this;
+    if (!self.msgSender) {
+      self.msgSender = new MsgSender(self);
+    }
+    await self.msgSender.setup().then(() => {
+      onOk(self.msgSender);
+    }).catch((e) => {
+      onFailure(e);
+    });
+  };
+
+  async asRpcServer(id, methods, onOk, onFailure) {
+    let self = this;
+    if (!self.rpcServer) {
+      self.rpcServer = new RpcServer(self, id, methods);
+    }
+    await self.rpcServer.setup().then(() => {
+      onOk(self.rpcServer);
+    }).catch((e) => {
+      onFailure(e);
+    });
+  }
+
+  removeRpcServer() {
+    if (this.rpcServer) {
+      let rpcServer = this.rpcServer;
+      this.rpcServer = undefined;
+      return rpcServer.close().then(() => {
+        return 'ok';
+      }).catch(() => {
+        return 'ok';
       });
     }
+    return Promise.resolve("ok");
   }
 
-  asRpcClient(onOk, onFailure) {
-    if (!this.rpcClient) {
-      this.rpcClient = new RpcClient(this);
-      this.rpcClient.setup()
-        .then(() => onOk(this.rpcClient))
-        .catch(onFailure);
-    } else {
-      log.warn('RpcClient already setup');
-      onOk(this.rpcClient);
+  async asMonitor(messageReceiver, onOk, onFailure) {
+    let self = this;
+    if (!self.monitor) {
+      self.monitor = new Monitor(self, messageReceiver);
     }
+
+    await self.monitor.setup().then(() => {
+      onOk(self.monitor);
+    }).catch((e) => {
+      onFailure(e);
+    });
   }
 
-  asRpcServer(id, methods, onOk, onFailure) {
-    if (!this.rpcServer) {
-      this.rpcServer = new RpcServer(this, id, methods);
-      this.rpcServer.setup()
-        .then(() => onOk(this.rpcServer))
-        .catch(onFailure);
-    } else {
-      log.warn('RpcServer already setup');
-      onOk(this.rpcServer);
+  async asMonitoringTarget(onOk, onFailure) {
+    let self = this;
+    if (!self.monitoringTarget) {
+      self.monitoringTarget = new MonitoringTarget(self);
     }
+    await self.monitoringTarget.setup().then(() => {
+      onOk(self.monitoringTarget);
+    }).catch((e) => {
+      onFailure(e);
+    });
   }
 
-  asMonitor(messageReceiver, onOk, onFailure) {
-    if (!this.monitor) {
-      this.monitor = new Monitor(this, messageReceiver);
-      this.monitor.setup()
-        .then(() => onOk(this.monitor))
-        .catch(onFailure);
-    } else {
-      log.warn('Monitor already setup');
-      onOk(this.rpcServer);
+  async asTopicParticipant(group, onOk, onFailure) {
+    let self = this;
+    let topicParticipant = null;
+    if (!self.topicParticipants.has(group)) {
+      topicParticipant = new TopicParticipant(self, Object.assign({}, MONITOR_EXC, {name: group}));
     }
-  }
 
-  asMonitoringTarget(onOk, onFailure) {
-    if (!this.monitoringTarget) {
-      this.monitoringTarget =
-        new MonitoringTarget(this);
-      this.monitoringTarget.setup()
-        .then(() => onOk(this.monitoringTarget))
-        .catch(onFailure);
-    } else {
-      log.warn('MonitoringTarget already setup');
-      onOk(this.rpcServer);
-    }
-  }
-
-  asTopicParticipant(group, onOk, onFailure) {
-    if (!this.topicParticipants.has(group)) {
-      const topicParticipant =
-        new TopicParticipant(this, group);
-      topicParticipant.setup()
-        .then(() => {
-          this.topicParticipants.set(group, topicParticipant);
-          onOk(topicParticipant);
-        })
-        .catch(onFailure);
-    }
-     else {
-      log.warn('TopicParticipant already setup for:', group);
-      onOk(this.topicParticipants.get(group));
-    }
+    await topicParticipant.setup().then(() => {
+      self.topicParticipants.set(group, topicParticipant);
+      onOk(topicParticipant);
+    }).catch((e) => {
+      log.error("TopicParticipant restart setup", util.inspect(e));
+      onFailure(e)
+    });
   }
 
   async disconnect() {
     try {
+      RECONNECT = false;
       await this.close();
-      if (this.connection) {
-        await this.connection.close();
-        this.connection = null;
-      }
+      await this.connection.close();
     } catch (err) {
-      log.warn('Error closing AMQP connection:', err);
+      log.error('Error closing AMQP connection:', err && err.message ? err.message :util.inspect(err));
     }
   }
 
   close() {
     const closingOps = [];
+    if (this.msgSender) {
+      closingOps.push(this.msgSender.close());
+      this.msgSender = null;
+    }
     if (this.rpcClient) {
       closingOps.push(this.rpcClient.close());
       this.rpcClient = null;

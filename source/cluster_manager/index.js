@@ -53,9 +53,10 @@ function startup () {
         initialTime: config.manager.initial_time,
         checkAlivePeriod: config.manager.check_alive_interval,
         checkAliveCount: config.manager.check_alive_count,
-        scheduleKeepTime: config.manager.schedule_reserve_time,
+        scheduleReserveTime: config.manager.schedule_reserve_time,//keycoding 20230811:fix schedule_reserve_time no used in clusterManager
         strategy: config.strategy,
-        enableCascading: config.cascading.enabled, url: config.cascading.url, region: config.cascading.region, clusterID: config.cascading.clusterID
+        enableCascading: config.cascading.enabled, url: config.cascading.url, region: config.cascading.region, clusterID: config.cascading.clusterID,
+        totalNode: config.manager.totalNode ? config.manager.totalNode : 1 //keycoding 20230811: totalNode for raft to elect leader
     };
 
     if (config.manager.enable_grpc) {
