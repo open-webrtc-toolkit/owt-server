@@ -765,10 +765,8 @@ class AmqpCli {
 
     this.successCb.push(onOk);
     this.failureCb.push(onFailure);
-
-    options.storePath = options.storePath || cipher.astore;
-    if (fs.existsSync(options.storePath)) {
-      cipher.unlock(cipher.k, options.storePath, (err, authConfig) => {
+    if (fs.existsSync(cipher.astore)) {
+      cipher.unlock(cipher.k, cipher.astore, (err, authConfig) => {
         if (!err) {
           if (authConfig.rabbit) {
             this.options.username = authConfig.rabbit.username;
