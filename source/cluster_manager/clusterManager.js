@@ -744,8 +744,8 @@ var runAsLeader = function (topicChannel, manager) {
 
         interval && clearInterval(interval);
         manager.unserve();
-        await topicChannel.bus.removeRpcServer();
         await topicChannel.unsubscribe(routerKeys);
+        await topicChannel.bus.removeRpcServer();
         log.info('leader->candidate');
         await runAsCandidate(topicChannel, manager);
     });
