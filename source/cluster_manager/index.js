@@ -10,6 +10,8 @@ var log = logger.getLogger('Main');
 var ClusterManager = require('./clusterManager');
 var toml = require('toml');
 var fs = require('fs');
+var util = require('util');
+
 var config;
 var clusterManager;
 try {
@@ -53,10 +55,10 @@ function startup () {
         initialTime: config.manager.initial_time,
         checkAlivePeriod: config.manager.check_alive_interval,
         checkAliveCount: config.manager.check_alive_count,
-        scheduleReserveTime: config.manager.schedule_reserve_time,//keycoding 20230811:fix schedule_reserve_time no used in clusterManager
+        scheduleReserveTime: config.manager.schedule_reserve_time,
         strategy: config.strategy,
         enableCascading: config.cascading.enabled, url: config.cascading.url, region: config.cascading.region, clusterID: config.cascading.clusterID,
-        totalNode: config.manager.totalNode ? config.manager.totalNode : 1 //keycoding 20230811: totalNode for raft to elect leader
+        totalNode: config.manager.totalNode ? config.manager.totalNode : 1
     };
 
     if (config.manager.enable_grpc) {
@@ -87,7 +89,7 @@ function startup () {
             clusterManager = new ClusterManager.manager(channel, config.manager.name, id, spec);
             clusterManager.run(channel);
         }, function(reason) {
-            log.error('Cluster manager initializing failed, reason:', reason);
+            log.error('Cluster manager initializing failed, reason:', reason && reason.message ? reason.message : util.inspect(reason));
             process.kill(process.pid, 'SIGINT');
         });
     };
@@ -95,7 +97,7 @@ function startup () {
     amqper.connect(config.rabbit, function () {
         enableService();
     }, function(reason) {
-        log.error('Cluster manager connect to rabbitMQ server failed, reason:', reason);
+        log.error('Cluster manager connect to rabbitMQ server failed, reason:', reason && reason.message ? reason.message : util.inspect(reason));
         process.kill(process.pid, 'SIGINT');
     });
 }

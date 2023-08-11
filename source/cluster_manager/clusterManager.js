@@ -3,12 +3,12 @@
 // SPDX-License-Identifier: Apache-2.0
 
 'use strict';
+const util = require('util');
 var logger = require('./logger').logger;
 var Scheduler = require('./scheduler').Scheduler;
 
 // Logger
 var log = logger.getLogger('ClusterManager');
-var role = null;
 var Url = require("url");
 
 var ClusterManager = function (clusterName, selfId, spec) {
