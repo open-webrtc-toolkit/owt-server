@@ -915,7 +915,7 @@ var runAsCandidate = function (topicChannel, manager) {
             }
 
             //vote for self
-            if(data.id == manager.id && state.lastVoteTerm == data.term){
+            if(data.id == manager.id && state.term == data.term){
                 log.warn("vote for yourself",  "self:", state);
                 state.lastVoteTerm = data.term;
                 state.lastVoteFor = manager.id;
@@ -931,7 +931,6 @@ var runAsCandidate = function (topicChannel, manager) {
                 responseVote(data.term, data.id, data.commitId);
                 return;
             }
-
 
             responseVote( state.term, manager.id, state.commitId);
             // only left the candidate to vote,it means many node found leader is loss
