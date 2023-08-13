@@ -638,7 +638,6 @@ var state = {
 }
 
 var leaderMsgHandler = null;
-
 var runAsFollower = function (topicChannel, manager) {
     var foundLeader,isRunning;
 
@@ -693,7 +692,8 @@ var runAsFollower = function (topicChannel, manager) {
                 return;
             }
 
-            if((++state.commitId) == data.commitId && data.term === state.lastTerm){
+            if((state.commitId+1) == data.commitId && data.term === state.lastTerm){
+                state.commitId++;
                 manager.setUpdatedData(data.data);
             }else{
                 log.warn('appendEntry warn, commitId:',data.commitId,"term:",data.term,'my commitId:',state.commitId,"my lastTerm:",state.lastTerm);
@@ -865,7 +865,7 @@ var runAsCandidate = function (topicChannel, manager) {
 
         state.term = newTerm;
         role = newRole;
-        log.info(`candidate->${newRole}`);
+        log.info(`candidate->${newRole}`,"self:",state);
         await topicChannel.unsubscribe(routerKeys);
         switch(newRole){
             case "candidate":
@@ -896,13 +896,13 @@ var runAsCandidate = function (topicChannel, manager) {
             }
 
             // ignore the older follower to become leader
-            if(state.lastTerm > data.term){
+            if(state.lastTerm > data.lastTerm){
                 log.warn("rejecting vote request since our last term is greater", "data:", data, "self:", state)
                 return;
             }
 
             // ignore the older follower to become leader
-            if(state.lastTerm == data.term && state.commitId > data.commitId){
+            if(state.lastTerm == data.lastTerm && state.commitId > data.commitId){
                 log.warn("rejecting vote request since our last index is greater", "data:", data, "self:", state);
                 return;
             }
@@ -915,7 +915,10 @@ var runAsCandidate = function (topicChannel, manager) {
 
             //vote for self
             if(data.id == manager.id && state.lastVoteTerm == data.term){
+                log.warn("vote for yourself",  "self:", state);
                 state.lastVoteFor = manager.id;
+                responseVote(state.lastVoteTerm, state.lastVoteFor,state.commitId);
+                return
             }
 
             //vote for other who is newer and data is new than me
@@ -923,6 +926,7 @@ var runAsCandidate = function (topicChannel, manager) {
                 state.lastVoteTerm = data.term;
                 state.lastVoteFor = data.id;
             }
+            log.warn("vote for another",  "data:",data, "self:", state);
             responseVote(state.lastVoteTerm, state.lastVoteFor,state.commitId);
 
             // only left the candidate to vote,it means many node found leader is loss
@@ -942,7 +946,7 @@ var runAsCandidate = function (topicChannel, manager) {
             if(data.id == manager.id && !state.voters.has(data.voter)){
                 state.voters.add(data.voter);
                 if( (++state.voteNum) > parseInt(state.totalNode/2)){
-                    log.info(`got vote ${state.voteNum} i run as leader`,"self:", state);
+                    log.info(`got vote:${state.voteNum} run as leader`,"self:", state);
                     await changeRole("leader", state.term);
                 }
             }
