@@ -830,7 +830,8 @@ var runAsLeader = function (topicChannel, manager) {
 };
 
 var runAsCandidate = function (topicChannel, manager) {
-    state.lastVoteTerm = ++ state.term;
+    state.term++;
+    state.lastVoteTerm = -1;
     state.lastVoteFor = -1;
     state.voteNum = 0;
     state.voters = new Set();
@@ -916,8 +917,9 @@ var runAsCandidate = function (topicChannel, manager) {
             //vote for self
             if(data.id == manager.id && state.lastVoteTerm == data.term){
                 log.warn("vote for yourself",  "self:", state);
+                state.lastVoteTerm = data.term;
                 state.lastVoteFor = manager.id;
-                responseVote(state.lastVoteTerm, state.lastVoteFor,state.commitId);
+                responseVote(data.term, data.id, data.commitId);
                 return
             }
 
@@ -925,10 +927,13 @@ var runAsCandidate = function (topicChannel, manager) {
             if(data.term > state.term && data.commitId >= state.commitId){
                 state.lastVoteTerm = data.term;
                 state.lastVoteFor = data.id;
+                log.warn("vote for another",  "data:",data, "self:", state);
+                responseVote(data.term, data.id, data.commitId);
+                return;
             }
-            log.warn("vote for another",  "data:",data, "self:", state);
-            responseVote(state.lastVoteTerm, state.lastVoteFor,state.commitId);
 
+
+            responseVote( state.term, manager.id, state.commitId);
             // only left the candidate to vote,it means many node found leader is loss
             //if(data.term > term){
             //    log.info(`found other candidate term:${data.term} bigger then me:${term}`)
