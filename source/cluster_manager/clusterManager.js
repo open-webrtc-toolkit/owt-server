@@ -597,54 +597,63 @@ var ClusterManager = function (clusterName, selfId, spec) {
  * 2、force to sync runtime data from the new leader
  * 3、it might be the leader own network failure,so the leader should supervise itself to found itself was loss for others
  */
-class Observer {
+class HeartbeatObserver {
     constructor(onLoss) {
         this.interval = undefined;
-        this.loss_count = 0;
+        this.lastContact = new Date();
         this.state = state;
         this.onLoss = onLoss;
     }
 
-    superviseLeader  () {
+    resetTimer () {
         let self = this;
-        self.interval && clearInterval(self.interval);
-        self.interval = undefined;
         let loseTime = undefined;
-        self.interval = setInterval(async function () {
-            self.loss_count += 1;
-            if (self.loss_count == 1) {
-                loseTime = new Date();
-            }
-
-            if (self.loss_count > 2  && self.interval) {
+        this.lastContact = new Date();
+        self.interval && clearInterval(self.interval);
+        self.interval = setInterval( function () {
+            loseTime = new Date();
+            if (loseTime-self.lastContact > 100  && self.interval) {
                 self.interval && clearInterval(self.interval);
                 self.interval = undefined;
-                self.onLoss(loseTime,self.loss_count);
+                self.onLoss(loseTime,self.lastContact);
             }
         }, 30);
     };
+
+    stop(){
+        let self = this;
+        self.interval && clearInterval(self.interval);
+        self.interval = undefined;
+    }
 }
 
 var state = {
     term:0, // current term
     leaderId:0, // candidate and follower found leaderId
     commitId:0,
-    lastTerm:0, // follower last log entry term
     lastVoteTerm:-1, // candidate last vote for other candidate term
     lastVoteFor: -1, // candidate last vote for other candidate.id
     voteNum:0, //candidate laste got vote from other candidate
     totalNode:0,
+    prevLogIndex:-1,// last log entry index
+    prevLogTerm:-1, // last log entry term
     voters:new Set()
-}
+};
 
 var leaderMsgHandler = null;
+
 var runAsFollower = function (topicChannel, manager) {
     var foundLeader,isRunning;
 
     var role = "follower";
     var routerKeys = [`clusterManager.follower.${manager.id}`];
-    var observer = new Observer(async (loseTime,loss_count)=>{
-        log.info("Lose heart-beat from leader:",state.leaderId,"loseTime:", loseTime, 'loss_count:', loss_count);
+    var observer = new HeartbeatObserver(async (loseTime,lastContact)=>{
+        if(role !== "follower"){
+            log.warn('cycle in runAsFollower.HeartbeatObserver:', role);
+            return;
+        }
+
+        log.info("Lose heart-beat from leader:",state.leaderId,"loseTime:", loseTime, 'lastContact:', lastContact);
         role = "candidate";
         await topicChannel.unsubscribe(routerKeys);
         log.info("follower->candidate");
@@ -681,9 +690,11 @@ var runAsFollower = function (topicChannel, manager) {
             }
 
             log.info("syncRuntimeData success", "term:", data.term, "commitId:", data.commitId, "self:", state);
+            observer.resetTimer();
             state.commitId = data.commitId;
             state.term = data.term;
-            state.lastTerm = data.term;
+            state.prevLogIndex = data.commitId;
+            state.prevLogTerm = data.term;
             manager.setRuntimeData(data.data);
             isRunning = false;
         } else if (message.type === 'appendEntry') {
@@ -692,11 +703,14 @@ var runAsFollower = function (topicChannel, manager) {
                 return;
             }
 
-            if((state.commitId+1) == data.commitId && data.term === state.lastTerm){
+            observer.resetTimer();
+            if(state.commitId == data.prevLogIndex && data.prevLogTerm === state.prevLogTerm){
                 state.commitId++;
+                state.prevLogIndex = state.commitId;
+                state.prevLogTerm = data.term;
                 manager.setUpdatedData(data.data);
             }else{
-                log.warn('appendEntry warn, commitId:',data.commitId,"term:",data.term,'my commitId:',state.commitId,"my lastTerm:",state.lastTerm);
+                log.warn('appendEntry warn, commitId:',data.commitId,"term:",data.term,'my commitId:',state.commitId,"my prevLogTerm:",state.prevLogTerm);
                 await syncRuntimeData();
             }
         } else if (message.type === 'heartbeart'){
@@ -705,12 +719,12 @@ var runAsFollower = function (topicChannel, manager) {
                 return;
             }
 
+            observer.resetTimer();
             state.leaderId = data.id;
             state.term = data.term;
-            observer.loss_count = 0;
             if(!foundLeader){
                 foundLeader = true;
-                await syncRuntimeData();
+                (data.id != manager.id) && await syncRuntimeData();
             }
         }
         else {
@@ -722,7 +736,7 @@ var runAsFollower = function (topicChannel, manager) {
     return new Promise((resolve) => {
         topicChannel.subscribe(routerKeys, onTopicMessage, function () {
             leaderMsgHandler = onTopicMessage;
-            observer.superviseLeader();
+            observer.resetTimer();
             log.info(manager.id,`Run as follower success leaderId:`,state.leaderId);
             resolve();
         });
@@ -738,8 +752,12 @@ var runAsLeader = function (topicChannel, manager) {
     var interval;
     var role = "leader"
     var routerKeys = [`clusterManager.leader.${manager.id}`];
-    var observer = new Observer(async (loseTime,loss_count)=>{
-        log.info("Lose heart-beat from leader:",state.leaderId,"loseTime:", loseTime, 'loss_count:', loss_count);
+    var observer = new HeartbeatObserver(async (loseTime,lastContact)=>{
+        if(role !== "leader"){
+            log.warn('cycle in runAsLeader.HeartbeatObserver:', role);
+            return;
+        }
+        log.info("Lose heart-beat from leader:",state.leaderId,"loseTime:", loseTime, 'lastContact:', lastContact);
         role = "candidate";
 
         interval && clearInterval(interval);
@@ -755,10 +773,9 @@ var runAsLeader = function (topicChannel, manager) {
             log.info('Run as asRpcServer.');
             topicChannel.bus.asMonitoringTarget(function (monitoringTgt) {
                 manager.serve(monitoringTgt);
-                observer.superviseLeader();
                 interval && clearInterval(interval);
                 interval = setInterval(function () {
-                    topicChannel.publish('clusterManager.broadcast', {type: 'heartbeart', data:state});
+                    topicChannel.publish('clusterManager.broadcast', {type:'heartbeart', data:state});
                 }, 20);
 
                 var onTopicMessage = async function (message) {
@@ -793,6 +810,7 @@ var runAsLeader = function (topicChannel, manager) {
                                 state.term = message.data.term;
                                 state.leaderId = message.data.id;
 
+                                observer.stop();
                                 interval && clearInterval(interval);
                                 manager.unserve();
                                 await topicChannel.bus.removeRpcServer();
@@ -801,7 +819,7 @@ var runAsLeader = function (topicChannel, manager) {
                                 await runAsFollower(topicChannel, manager);
                             }
                         }else{
-                            observer.loss_count = 0;
+                            observer.resetTimer();
                         }
                     }
                 };
@@ -810,11 +828,14 @@ var runAsLeader = function (topicChannel, manager) {
                     log.info('Cluster leader is in service as leader!');
                     leaderMsgHandler = onTopicMessage;
                     manager.registerDataUpdate(function (data) {
+                        state.prevLogIndex = state.commitId;
+                        state.prevLogTerm = state.term;
                         state.commitId++;
                         data = Object.assign({data}, state);
                         topicChannel.publish('clusterManager.broadcast', {type: 'appendEntry', data: data});
                     });
                     log.info('Run as leader success id:',manager.id);
+                    observer.resetTimer();
                     resolve();
                 });
 
@@ -831,7 +852,7 @@ var runAsLeader = function (topicChannel, manager) {
 
 var runAsCandidate = function (topicChannel, manager) {
     state.term++;
-    state.lastVoteTerm = -1;
+    state.lastVoteTerm = -1 ;
     state.lastVoteFor = -1;
     state.voteNum = 0;
     state.voters = new Set();
@@ -897,13 +918,13 @@ var runAsCandidate = function (topicChannel, manager) {
             }
 
             // ignore the older follower to become leader
-            if(state.lastTerm > data.lastTerm){
+            if(state.prevLogTerm > data.prevLogTerm){
                 log.warn("rejecting vote request since our last term is greater", "data:", data, "self:", state)
                 return;
             }
 
             // ignore the older follower to become leader
-            if(state.lastTerm == data.lastTerm && state.commitId > data.commitId){
+            if(state.prevLogTerm == data.prevLogTerm && state.commitId > data.commitId){
                 log.warn("rejecting vote request since our last index is greater", "data:", data, "self:", state);
                 return;
             }
@@ -931,6 +952,7 @@ var runAsCandidate = function (topicChannel, manager) {
                 responseVote(data.term, data.id, data.commitId);
                 return;
             }
+
 
             responseVote( state.term, manager.id, state.commitId);
             // only left the candidate to vote,it means many node found leader is loss
