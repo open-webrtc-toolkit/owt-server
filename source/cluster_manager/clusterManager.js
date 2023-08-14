@@ -828,11 +828,11 @@ var runAsLeader = function (topicChannel, manager) {
                     log.info('Cluster leader is in service as leader!');
                     leaderMsgHandler = onTopicMessage;
                     manager.registerDataUpdate(function (data) {
-                        state.prevLogIndex = state.commitId;
-                        state.prevLogTerm = state.term;
                         state.commitId++;
                         data = Object.assign({data}, state);
                         topicChannel.publish('clusterManager.broadcast', {type: 'appendEntry', data: data});
+                        state.prevLogIndex = state.commitId;
+                        state.prevLogTerm = state.term;
                     });
                     log.info('Run as leader success id:',manager.id);
                     observer.resetTimer();
