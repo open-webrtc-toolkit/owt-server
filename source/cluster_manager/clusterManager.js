@@ -637,24 +637,25 @@ var state = {
     totalNode:0,
     prevLogIndex:-1,// last log entry index
     prevLogTerm:-1, // last log entry term
-    voters:new Set()
+    voters:new Set(),
+    role:"follower"
 };
 
 var leaderMsgHandler = null;
 
 var runAsFollower = function (topicChannel, manager) {
-    var foundLeader,isRunning;
+    state.role = "follower";
 
-    var role = "follower";
+    var foundLeader,isRunning;
     var routerKeys = [`clusterManager.follower.${manager.id}`];
     var observer = new HeartbeatObserver(async (loseTime,lastContact)=>{
-        if(role !== "follower"){
-            log.warn('cycle in runAsFollower.HeartbeatObserver:', role);
+        if(state.role  !== "follower"){
+            log.warn('cycle in runAsFollower.HeartbeatObserver:', state.role );
             return;
         }
 
         log.info("Lose heart-beat from leader:",state.leaderId,"loseTime:", loseTime, 'lastContact:', lastContact);
-        role = "candidate";
+        state.role = "candidate";
         await topicChannel.unsubscribe(routerKeys);
         log.info("follower->candidate");
         await runAsCandidate(topicChannel, manager);
@@ -744,21 +745,21 @@ var runAsFollower = function (topicChannel, manager) {
 };
 
 var runAsLeader = function (topicChannel, manager) {
+    state.role = "leader";
     state.leaderId = manager.id;
     state.lastVoteFor = state.leaderId;
     state.lastVoteTerm = state.term;
 
     log.info('Run as leader id:',manager.id);
     var interval;
-    var role = "leader"
     var routerKeys = [`clusterManager.leader.${manager.id}`];
     var observer = new HeartbeatObserver(async (loseTime,lastContact)=>{
-        if(role !== "leader"){
-            log.warn('cycle in runAsLeader.HeartbeatObserver:', role);
+        if(state.role !== "leader"){
+            log.warn('cycle in runAsLeader.HeartbeatObserver:', state.role);
             return;
         }
         log.info("Lose heart-beat from leader:",state.leaderId,"loseTime:", loseTime, 'lastContact:', lastContact);
-        role = "candidate";
+        state.role = "candidate";
 
         interval && clearInterval(interval);
         manager.unserve();
@@ -779,8 +780,8 @@ var runAsLeader = function (topicChannel, manager) {
                 }, 20);
 
                 var onTopicMessage = async function (message) {
-                    if (role != "leader") {
-                        log.warn('cycle in master change role:', role);
+                    if (state.role != "leader") {
+                        log.warn('cycle in master change role:', state.role);
                         return;
                     }
                     if (message.type === 'syncRuntimeData') {
@@ -806,7 +807,7 @@ var runAsLeader = function (topicChannel, manager) {
                             log.error('!!Double Leader!! ',"data:",JSON.stringify(message.data),"self:", state);
                             if (message.data.term > state.term && message.data.commitId > state.commitId) {
                                 log.error('Another leader is more senior than me, I quit.');
-                                role = "follower";
+                                state.role = "follower";
                                 state.term = message.data.term;
                                 state.leaderId = message.data.id;
 
@@ -851,6 +852,7 @@ var runAsLeader = function (topicChannel, manager) {
 };
 
 var runAsCandidate = function (topicChannel, manager) {
+    state.role = "candidate";
     state.term++;
     state.lastVoteTerm = -1 ;
     state.lastVoteFor = -1;
@@ -860,7 +862,6 @@ var runAsCandidate = function (topicChannel, manager) {
     let maxElecTimeout = 300;
 
     var timeout = Math.random() * (maxElecTimeout-mixElecTimeout) + mixElecTimeout,timer;
-    var role = "candidate"
     var routerKeys = ['clusterManager.candidate.#'];
 
     var requestVote = function () {
@@ -880,13 +881,13 @@ var runAsCandidate = function (topicChannel, manager) {
     var changeRole = async function(newRole,newTerm){
         timer && clearTimeout(timer);
         timer = undefined;
-        if (role != "candidate") {
-            log.warn('cycle in changeRole:', role, "self:",state);
+        if (state.role != "candidate") {
+            log.warn('cycle in changeRole:', state.role, "self:",state);
             return;
         }
 
         state.term = newTerm;
-        role = newRole;
+        state.role = newRole;
         log.info(`candidate->${newRole}`,"self:",state);
         await topicChannel.unsubscribe(routerKeys);
         switch(newRole){
@@ -904,8 +905,8 @@ var runAsCandidate = function (topicChannel, manager) {
     }
 
     var onTopicMessage = async function (message) {
-        if (role != "candidate") {
-            log.warn('cycle in onTopicMessage:', role, "self:",state);
+        if (state.role != "candidate") {
+            log.warn('cycle in onTopicMessage:', state.role, "self:",state);
             return;
         }
 
