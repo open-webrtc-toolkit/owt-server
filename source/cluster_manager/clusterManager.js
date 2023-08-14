@@ -705,13 +705,13 @@ var runAsFollower = function (topicChannel, manager) {
             }
 
             observer.resetTimer();
-            if(state.commitId == data.prevLogIndex && data.prevLogTerm === state.prevLogTerm){
+            if(state.prevLogIndex == data.prevLogIndex && (state.prevLogTerm === data.prevLogTerm || state.prevLogTerm == data.term)){
                 state.commitId++;
                 state.prevLogIndex = state.commitId;
                 state.prevLogTerm = data.term;
                 manager.setUpdatedData(data.data);
             }else{
-                log.warn('appendEntry warn, commitId:',data.commitId,"term:",data.term,'my commitId:',state.commitId,"my prevLogTerm:",state.prevLogTerm);
+                log.warn('appendEntry warn, prevLogIndex:',data.prevLogIndex,"prevLogTerm:",data.prevLogTerm,'my prevLogIndex:',state.prevLogIndex,"my prevLogTerm:",state.prevLogTerm);
                 await syncRuntimeData();
             }
         } else if (message.type === 'heartbeart'){
