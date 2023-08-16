@@ -147,6 +147,17 @@ module.exports = function (spec) {
                         onOk(result.state)
                     }
                 });
+            } else if (method === 'quit') {
+                const req = {
+                    id: args[0]
+                };
+                grpcClient.quit(req, opt(), (err, result) => {
+                    if (err) {
+                        onError(err);
+                    } else {
+                        onOk()
+                    }
+                });
             } else if (method === 'keepAlive') {
                 grpcClient.keepAlive({id: args[0]}, opt(), (err, result) => {
                     if (err) {
@@ -351,21 +362,21 @@ module.exports = function (spec) {
     };
 
     that.quit = function () {
-        if (state === 'registered') {
-            if (keep_alive_interval) {
-                clearInterval(keep_alive_interval);
-                keep_alive_interval = undefined;
-            }
-
-            rpcClient.remoteCast(
+        if (keep_alive_interval) {
+            clearInterval(keep_alive_interval);
+            keep_alive_interval = undefined;
+        }
+        load_collector && load_collector.stop();
+        return new Promise((resolve)=>{
+            makeRPC(
+                rpcClient,
                 cluster_name,
                 'quit',
-                [id]);
-        } else if (state === 'recovering') {
-            keep_alive_interval && clearInterval(keep_alive_interval);
-        }
-
-        load_collector && load_collector.stop();
+                [id],
+                resolve,
+                resolve
+            );
+        });
     };
 
     that.reportState = function (st) {
