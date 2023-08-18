@@ -144,7 +144,7 @@ var ClusterManager = function (clusterName, selfId, spec) {
         }
 
         if (purpose) {
-            clusterInfo[purpose].delete(worker);
+            clusterInfo[purpose] && clusterInfo[purpose].delete(worker);
             if(!clusterInfo[purpose]) {
                 var data = {
                     clusterID: spec.clusterID,
