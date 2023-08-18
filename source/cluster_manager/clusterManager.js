@@ -754,29 +754,39 @@ var runAsFollower = function (topicChannel, manager) {
 };
 
 var runAsLeader = function (topicChannel, manager) {
-    state.role = "leader";
     state.leaderId = manager.id;
     state.lastVoteFor = state.leaderId;
     state.lastVoteTerm = state.term;
 
     log.info('Run as leader id:',manager.id);
     var interval;
+    state.role = "leader"
     var routerKeys = [`clusterManager.leader.${manager.id}`];
     var observer = new HeartbeatObserver(async (loseTime,lastContact)=>{
+        log.info("Lose heart-beat from leader:",state.leaderId,"loseTime:", loseTime, 'lastContact:', lastContact);
+        await changeRole('candidate');
+    });
+
+    var changeRole = async function(newRole){
         if(state.role !== "leader"){
-            log.warn('cycle in runAsLeader.HeartbeatObserver:', state.role);
+            log.warn('cycle in runAsLeader', state.role);
             return;
         }
-        log.info("Lose heart-beat from leader:",state.leaderId,"loseTime:", loseTime, 'lastContact:', lastContact);
-        state.role = "candidate";
-
+        state.role = newRole;
+        observer.stop();
         interval && clearInterval(interval);
         manager.unserve();
         await topicChannel.unsubscribe(routerKeys);
         await topicChannel.bus.removeRpcServer();
-        log.info('leader->candidate');
-        await runAsCandidate(topicChannel, manager);
-    });
+        log.info(`leader->${state.role}`);
+        switch(newRole){
+            case "candidate":
+                await runAsCandidate(topicChannel, manager);
+                break;
+            case "follower":
+                await runAsFollower(topicChannel, manager);
+        }
+    }
 
     return new Promise((resolve) => {
         topicChannel.bus.asRpcServer(manager.name, manager.rpcAPI, (rpcSvr) => {
@@ -816,17 +826,9 @@ var runAsLeader = function (topicChannel, manager) {
                             log.error('!!Double Leader!! ',"data:",JSON.stringify(message.data),"self:", state);
                             if (message.data.term > state.term && message.data.commitId > state.commitId) {
                                 log.error('Another leader is more senior than me, I quit.');
-                                state.role = "follower";
                                 state.term = message.data.term;
                                 state.leaderId = message.data.id;
-
-                                observer.stop();
-                                interval && clearInterval(interval);
-                                manager.unserve();
-                                await topicChannel.bus.removeRpcServer();
-                                await topicChannel.unsubscribe(routerKeys);
-                                log.info('leader->follower');
-                                await runAsFollower(topicChannel, manager);
+                                await changeRole("follower");
                             }
                         }else{
                             observer.resetTimer();
@@ -839,7 +841,7 @@ var runAsLeader = function (topicChannel, manager) {
                     leaderMsgHandler = onTopicMessage;
                     manager.registerDataUpdate(function (data) {
                         state.commitId++;
-                        data = Object.assign({data}, state);
+                        data = Object.assign({},{data}, state);
                         topicChannel.publish('clusterManager.broadcast', {type: 'appendEntry', data: data});
                         state.prevLogIndex = state.commitId;
                         state.prevLogTerm = state.term;
