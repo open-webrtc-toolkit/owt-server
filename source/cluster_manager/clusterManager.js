@@ -209,21 +209,21 @@ var ClusterManager = function (clusterName, selfId, spec) {
         log.debug('schedule, purpose:', purpose, 'task:', task, ', preference:', preference, 'reserveTime:', reserveTime, 'while state:', state);
         if (state === 'in-service') {
             if (schedulers[purpose]) {
-                schedulers[purpose].schedule(task, preference, reserveTime, function(worker, info) {
+                schedulers[purpose].schedule(task, preference, reserveTime, function (worker, info) {
                     log.debug('schedule OK, got  worker', worker);
                     on_ok(worker, info);
                     data_synchronizer && data_synchronizer({type: 'scheduled', payload: {purpose: purpose, task: task, worker: worker, reserve_time: reserveTime}});
                 }, function (reason) {
                     log.warn('schedule failed, purpose:', purpose, 'task:', task, 'reason:', reason);
-                    on_error('Failed in scheduling ' + purpose + ' worker, reason: ' + reason);
+                    on_error(`Failed in scheduling purpose: ${purpose} for task: ${task}, reason: ${reason}`);
                 });
             } else {
-                log.warn('No scheduler for purpose:', purpose);
-                on_error('No scheduler for purpose: ' + purpose);
+                log.warn(`No scheduler for purpose: ${purpose} for task: ${task}`);
+                on_error(`No scheduler for purpose: ${purpose} for task: ${task}`);
             }
         } else {
-           log.warn('cluster manager is not ready.');
-           on_error('cluster manager is not ready.');
+            log.warn(`Failed in scheduling purpose: ${purpose} for task ${task}, reason: cluster manager is not ready.`);
+            on_error(`Failed in scheduling purpose: ${purpose} for task ${task}, reason: cluster manager is not ready.`);
         }
     };
 
@@ -278,10 +278,19 @@ var ClusterManager = function (clusterName, selfId, spec) {
     };
 
     var getScheduled = function (purpose, task, on_ok, on_error) {
+        let on_ok_check = (worker)=>{
+            if(!schedulers[purpose].isWorkerAvailable(worker)){
+                log.error("work:",worker,"for task:",task,"is no available");
+                on_error(`NO_AVAILABLE_WORKER[${worker}]_TASK[${task}]`);
+            }else{
+                on_ok(worker);
+            }
+        }
         if (schedulers[purpose]) {
-            schedulers[purpose].getScheduled(task, on_ok, on_error);
+            schedulers[purpose].getScheduled(task, on_ok_check, on_error);
         } else {
-            on_error('Invalid purpose.');
+            log.error(`Invalid purpose: ${purpose} for task: ${task}`);
+            on_error(`Invalid purpose: ${purpose} for task: ${task}`);
         }
     };
 
