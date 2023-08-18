@@ -115,7 +115,6 @@ class MsgSender {
       }
     } else {
       self.log.error('Failed to publish:', to, content);
-      self.ready = false;
     }
   };
 
@@ -162,7 +161,7 @@ class MsgSenderReceiver extends MsgSender {
     this.queue = queue ? queue : getQueueName("topic", this.bus.idx)
     this.subscriptions = new Map(); //{patterns, cb}
     this.log = logger.getLogger('MsgSenderReceiver');
-    this.rebinded = false
+    this.rebinded = false;
   }
 
   translateToRegx(regx) {
@@ -235,7 +234,7 @@ class MsgSenderReceiver extends MsgSender {
           });
         });
         return Promise.all(rebind).then(()=>{
-            self.rebinded = true;
+          self.rebinded = true;
         });
       } else {
         self.log.error('setup failed', "queue:", self.queue);
@@ -302,7 +301,6 @@ class MsgSenderReceiver extends MsgSender {
       });
     } else {
       self.log.error('Failed to subscribe is not ready', "exchange", self.exchange.name, "queue:", self.queue, 'patterns:', patterns);
-      self.ready = false;
     }
   }
 
@@ -382,7 +380,6 @@ class MsgSenderReceiver extends MsgSender {
       //keycoding add 2022-06-23 fix slave exit bug end
     } else {
       self.log.error(`Failed to unsubscribe is not ready`);
-      self.ready = false;
     }
   }
 
@@ -466,7 +463,7 @@ class RpcClient extends MsgSenderReceiver {
     }
   }
 
-  async remoteCall(to, method, args, callbacks) {
+  async remoteCall(to, method, args, callbacks, timeout=TIMEOUT) {
     let self = this;
     self.log.debug('remoteCall, corrID:', self.corrID, 'to:', to, 'method:', method);
     if (self.ready && !self.closed) {
@@ -480,13 +477,13 @@ class RpcClient extends MsgSenderReceiver {
         if (self.callMap[corrID]) {
           for (const i in self.callMap[corrID].fn) {
             if (typeof self.callMap[corrID].fn[i] === 'function') {
-              self.log.debug(`remoteCall, corrID:, ${self.corrID}, to:, ${to}, method:, ${method}, args: ${JSON.stringify(args)}, timeout: ${rpcTimeout}`);
+              self.log.debug(`remoteCall, corrID:, ${self.corrID}, to:, ${to}, method:, ${method}, args: ${JSON.stringify(args)}, timeout: ${timeout}`);
               self.callMap[corrID].fn[i]('timeout');
             }
           }
           delete self.callMap[corrID];
         }
-      }, timeout || TIMEOUT);
+      }, timeout);
 
       const content = {method, args, corrID, replyTo: self.queue};
       self.log.debug('Publish content:', JSON.stringify(content));
@@ -749,6 +746,7 @@ class ConnDesc {
 };
 
 var RECONNECT = true;
+const RECONNECT_INTERVAL = 200;
 
 class AmqpCli {
   constructor() {
@@ -765,6 +763,7 @@ class AmqpCli {
     this.connected = false;
     this.successCb = [];
     this.failureCb = [];
+    this.reconnectAttempts = 0;
     this._errorHandler = this._errorHandler.bind(this);
     this._initAfterConnect = this._initAfterConnect.bind(this);
     this.balanceHosts = null;
@@ -795,8 +794,10 @@ class AmqpCli {
 
     this.successCb.push(onOk);
     this.failureCb.push(onFailure);
-    if (fs.existsSync(cipher.astore)) {
-      cipher.unlock(cipher.k, cipher.astore, (err, authConfig) => {
+
+    options.storePath = options.storePath || cipher.astore;
+    if (fs.existsSync(options.storePath)) {
+      cipher.unlock(cipher.k, options.storePath, (err, authConfig) => {
         if (!err) {
           if (authConfig.rabbit) {
             this.options.username = authConfig.rabbit.username;
@@ -988,10 +989,10 @@ class AmqpCli {
   }
 
   removeRpcServer() {
-    if (this.rpcServer) {
-      let rpcServer = this.rpcServer;
-      this.rpcServer = undefined;
-      return rpcServer.close().then(() => {
+    let self = this;
+    if (self.rpcServer) {
+      return self.rpcServer.close().then(() => {
+        self.rpcServer = undefined;
         return 'ok';
       }).catch(() => {
         return 'ok';
@@ -1039,6 +1040,10 @@ class AmqpCli {
       log.error("TopicParticipant restart setup", util.inspect(e));
       onFailure(e)
     });
+  }
+
+  async asRpcDispatcher(onOk, onFailure) {
+    onOk(null);
   }
 
   async disconnect() {
