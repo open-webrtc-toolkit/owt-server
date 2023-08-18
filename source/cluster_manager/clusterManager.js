@@ -12,8 +12,7 @@ var log = logger.getLogger('ClusterManager');
 var Url = require("url");
 
 var ClusterManager = function (clusterName, selfId, spec) {
-    var that = {name: clusterName,
-                id: selfId};
+    var that = {name: clusterName, id: selfId, totalNode:spec.totalNode};
 
     /*initializing | in-service*/
     var state = 'initializing',
@@ -48,38 +47,38 @@ var ClusterManager = function (clusterName, selfId, spec) {
     var sendRequest = validateUrl(spec.url);
 
     var send = function (method, resource, body) {
-      log.info("send info to url:", spec.url);
-      const data = JSON.stringify(body);
-      var url = Url.parse(spec.url + "/" + resource);
-      var ssl = (url.protocol === 'https:' ? true : false);
+        log.info("send info to url:", spec.url);
+        const data = JSON.stringify(body);
+        var url = Url.parse(spec.url + "/" + resource);
+        var ssl = (url.protocol === 'https:' ? true : false);
 
-      const options = {
-        hostname: url.hostname,
-        port: url.port,
-        path: url.pathname + (url.search ? url.search : ''),
-        method: method,
-        headers: {
-          'Content-Type': 'application/json',
-          'Content-Length': data.length,
-        },
-      };
-      ssl && (options.rejectUnauthorized = false);
-      log.info("send options:", options);
-      const http = (ssl ? require('https') : require('http'));
-      const req = http.request(options, res => {
-        console.log(`statusCode: ${res.statusCode}`);
+        const options = {
+            hostname: url.hostname,
+            port: url.port,
+            path: url.pathname + (url.search ? url.search : ''),
+            method: method,
+            headers: {
+                'Content-Type': 'application/json',
+                'Content-Length': data.length,
+            },
+        };
+        ssl && (options.rejectUnauthorized = false);
+        log.info("send options:", options);
+        const http = (ssl ? require('https') : require('http'));
+        const req = http.request(options, res => {
+            console.log(`statusCode: ${res.statusCode}`);
 
-        res.on('data', d => {
-          process.stdout.write(d);
+            res.on('data', d => {
+                process.stdout.write(d);
+            });
         });
-      });
 
-      req.on('error', error => {
-        console.error(error);
-      });
+        req.on('error', error => {
+            console.error(error);
+        });
 
-      req.write(data);
-      req.end();
+        req.write(data);
+        req.end();
 
     }
 
@@ -113,7 +112,7 @@ var ClusterManager = function (clusterName, selfId, spec) {
         schedulers[purpose] = schedulers[purpose] || createScheduler(purpose);
         schedulers[purpose].add(worker, info);
         workers[worker] = {purpose: purpose,
-                           alive_count: 0};
+            alive_count: 0};
         if (!clusterInfo[purpose]) {
             clusterInfo[purpose] = new Set()
             var data = {
@@ -136,7 +135,7 @@ var ClusterManager = function (clusterName, selfId, spec) {
 
     var workerQuit = function (worker) {
         log.debug('workerQuit, worker:', worker);
-        var purpose = workers[worker].purpose;
+        var purpose = workers[worker] ? workers[worker].purpose : undefined;
         if (workers[worker] && schedulers[workers[worker].purpose]) {
             schedulers[workers[worker].purpose].remove(worker);
             monitoringTarget && monitoringTarget.notify('quit', {purpose: workers[worker].purpose, id: worker, type: 'worker'});
@@ -147,7 +146,7 @@ var ClusterManager = function (clusterName, selfId, spec) {
         if (purpose) {
             clusterInfo[purpose].delete(worker);
             if(!clusterInfo[purpose]) {
-               var data = {
+                var data = {
                     clusterID: spec.clusterID,
                     region: spec.region,
                     info: {
@@ -163,7 +162,7 @@ var ClusterManager = function (clusterName, selfId, spec) {
         }
     };
 
-    var keepAlive = function (worker, load, on_result) {
+    var keepAlive = function (worker, on_result) {
         if (workers[worker]) {
             /**
              * keycoding 20230811
@@ -243,14 +242,14 @@ var ClusterManager = function (clusterName, selfId, spec) {
             // FIXME: the following attr items are for purpose of compaticity with legacy oam client, should be refined later.
             if (workers[worker].purpose === 'portal') {
                 on_ok({id: worker,
-                       purpose: workers[worker].purpose,
-                       ip: worker_info.info.ip,
-                       rpcID: worker,
-                       state: worker_info.state,
-                       load: worker_info.load,
-                       hostname: worker_info.info.hostname || '',
-                       port: worker_info.info.port || 0,
-                       keepAlive: workers[worker].alive_count});
+                    purpose: workers[worker].purpose,
+                    ip: worker_info.info.ip,
+                    rpcID: worker,
+                    state: worker_info.state,
+                    load: worker_info.load,
+                    hostname: worker_info.info.hostname || '',
+                    port: worker_info.info.port || 0,
+                    keepAlive: workers[worker].alive_count});
             } else {
                 on_ok(worker_info);
             }
@@ -371,15 +370,15 @@ var ClusterManager = function (clusterName, selfId, spec) {
     };
 
     that.setRuntimeData = function (data) {
-         log.debug('onRuntimeData, data:', data);
-         if (is_freshman) {
-             is_freshman = false;
-         }
-         workers = data.workers;
-         for (var purpose in data.schedulers) {
-             schedulers[purpose] = createScheduler(purpose);
-             schedulers[purpose].setData(data.schedulers[purpose]);
-         }
+        log.debug('onRuntimeData, data:', data);
+        if (is_freshman) {
+            is_freshman = false;
+        }
+        workers = data.workers;
+        for (var purpose in data.schedulers) {
+            schedulers[purpose] = createScheduler(purpose);
+            schedulers[purpose].setData(data.schedulers[purpose]);
+        }
     };
 
     that.setUpdatedData = function (data) {
@@ -388,32 +387,32 @@ var ClusterManager = function (clusterName, selfId, spec) {
         }
         log.debug('onUpdatedData, data:', data);
         switch (data.type) {
-        case 'worker_join':
-            workerJoin(data.payload.purpose, data.payload.worker, data.payload.info);
-            break;
-        case 'worker_quit':
-            workerQuit(data.payload.worker);
-            break;
-        case 'worker_state':
-            reportState(data.payload.worker, data.payload.state);
-            break;
-        case 'worker_load':
-            reportLoad(data.payload.worker, data.payload.load);
-            break;
-        case 'worker_pickup':
-            pickUpTasks(data.payload.worker, data.payload.tasks);
-            break;
-        case 'worker_laydown':
-            layDownTask(data.payload.worker, data.payload.task);
-            break;
-        case 'scheduled':
-            schedulers[data.payload.purpose] && schedulers[data.payload.purpose].setScheduled(data.payload.task, data.payload.worker, data.payload.reserve_time);
-            break;
-        case 'unscheduled':
-            unschedule(data.payload.worker, data.payload.task);
-            break;
-        default:
-            log.warn('unknown updated data type:', data.type);
+            case 'worker_join':
+                workerJoin(data.payload.purpose, data.payload.worker, data.payload.info);
+                break;
+            case 'worker_quit':
+                workerQuit(data.payload.worker);
+                break;
+            case 'worker_state':
+                reportState(data.payload.worker, data.payload.state);
+                break;
+            case 'worker_load':
+                reportLoad(data.payload.worker, data.payload.load);
+                break;
+            case 'worker_pickup':
+                pickUpTasks(data.payload.worker, data.payload.tasks);
+                break;
+            case 'worker_laydown':
+                layDownTask(data.payload.worker, data.payload.task);
+                break;
+            case 'scheduled':
+                schedulers[data.payload.purpose] && schedulers[data.payload.purpose].setScheduled(data.payload.task, data.payload.worker, data.payload.reserve_time);
+                break;
+            case 'unscheduled':
+                unschedule(data.payload.worker, data.payload.task);
+                break;
+            default:
+                log.warn('unknown updated data type:', data.type);
         }
     };
 
@@ -754,13 +753,13 @@ var runAsFollower = function (topicChannel, manager) {
 };
 
 var runAsLeader = function (topicChannel, manager) {
+    state.role = "leader"
     state.leaderId = manager.id;
     state.lastVoteFor = state.leaderId;
     state.lastVoteTerm = state.term;
 
     log.info('Run as leader id:',manager.id);
     var interval;
-    state.role = "leader"
     var routerKeys = [`clusterManager.leader.${manager.id}`];
     var observer = new HeartbeatObserver(async (loseTime,lastContact)=>{
         log.info("Lose heart-beat from leader:",state.leaderId,"loseTime:", loseTime, 'lastContact:', lastContact);
