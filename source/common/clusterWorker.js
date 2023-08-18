@@ -365,18 +365,19 @@ module.exports = function (spec) {
         if (keep_alive_interval) {
             clearInterval(keep_alive_interval);
             keep_alive_interval = undefined;
+            load_collector && load_collector.stop();
+            load_collector = null;
+            return new Promise((resolve)=>{
+                makeRPC(
+                    rpcClient,
+                    cluster_name,
+                    'quit',
+                    [id],
+                    resolve,
+                    resolve
+                );
+            });
         }
-        load_collector && load_collector.stop();
-        return new Promise((resolve)=>{
-            makeRPC(
-                rpcClient,
-                cluster_name,
-                'quit',
-                [id],
-                resolve,
-                resolve
-            );
-        });
     };
 
     that.reportState = function (st) {
