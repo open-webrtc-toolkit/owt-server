@@ -884,9 +884,9 @@ var runAsCandidate = function (topicChannel, manager) {
         topicChannel.publish('clusterManager.candidate', {type: 'requestVote', data: state});
     };
 
-    var responseVote = function(term, id,commitId){
+    var responseVote = function(term, id,commitId,voteGranted){
         log.debug('Send responseVote..',"term:",term,"id:",id,"commitId:",commitId, "self:",state);
-        topicChannel.publish('clusterManager.candidate', {type: 'responseVote', data: {term,  id, commitId, voter:manager.id}});
+        topicChannel.publish('clusterManager.candidate', {type: 'responseVote', data: {voteGranted,term,  id, commitId, voter:manager.id}});
     }
 
     var electTimeout = async function () {
@@ -956,7 +956,7 @@ var runAsCandidate = function (topicChannel, manager) {
                 log.warn("vote for yourself",  "self:", state);
                 state.lastVoteTerm = data.term;
                 state.lastVoteFor = manager.id;
-                responseVote(data.term, data.id, data.commitId);
+                responseVote(data.term, data.id, data.commitId,true);
                 return
             }
 
@@ -965,12 +965,11 @@ var runAsCandidate = function (topicChannel, manager) {
                 state.lastVoteTerm = data.term;
                 state.lastVoteFor = data.id;
                 log.warn("vote for another",  "data:",data, "self:", state);
-                responseVote(data.term, data.id, data.commitId);
+                responseVote(data.term, data.id, data.commitId,true);
                 return;
             }
 
-
-            responseVote( state.term, manager.id, state.commitId);
+            responseVote( state.term, manager.id, state.commitId,false);
             // only left the candidate to vote,it means many node found leader is loss
             //if(data.term > term){
             //    log.info(`found other candidate term:${data.term} bigger then me:${term}`)
@@ -985,7 +984,7 @@ var runAsCandidate = function (topicChannel, manager) {
             }
 
             //got some one vote for me
-            if(data.id == manager.id && !state.voters.has(data.voter)){
+            if(data.voteGranted && data.id == manager.id && !state.voters.has(data.voter)){
                 state.voters.add(data.voter);
                 if( (++state.voteNum) > parseInt(state.totalNode/2)){
                     log.info(`got vote:${state.voteNum} run as leader`,"self:", state);
