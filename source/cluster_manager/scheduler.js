@@ -121,6 +121,10 @@ exports.Scheduler = function(spec) {
         workers[worker] && (workers[worker].state = state);
     };
 
+    that.isAlive = function (worker) {
+        return workers[worker] && (worker.state === undefined || worker.state === 2)
+    };
+
     that.updateLoad = function (worker, load) {
         workers[worker] && (workers[worker].load = load);
     };

@@ -173,7 +173,7 @@ var ClusterManager = function (clusterName, selfId, spec) {
                 log.info(`Agent ${worker} is recover(${workers[worker].alive_count})`);
             }
             let scheduler = schedulers[workers[worker].purpose];
-            if (scheduler && !scheduler.isWorkerAvailable(worker)) {
+            if (scheduler && !scheduler.isAlive(worker)) {
                 reportState(worker, 2);
             }
             workers[worker].alive_count = 0;
@@ -277,8 +277,13 @@ var ClusterManager = function (clusterName, selfId, spec) {
     };
 
     var getScheduled = function (purpose, task, on_ok, on_error) {
+        /**
+         * keycoding 20230819
+         * 1、return the worker when it's state==2
+         */
         let on_ok_check = (worker)=>{
-            if(!schedulers[purpose].isWorkerAvailable(worker)){
+            let scheduler = schedulers[purpose];
+            if(!scheduler || !scheduler.isAlive(worker)){
                 log.error("work:",worker,"for task:",task,"is no available");
                 on_error(`NO_AVAILABLE_WORKER[${worker}]_TASK[${task}]`);
             }else{
