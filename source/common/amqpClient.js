@@ -645,21 +645,13 @@ class MonitoringTarget extends MsgSender {
 }
 
 class ConnDesc {
-  /**
-   * 连接状态描述信息
-   * @param {String} host
-   * @param {AmqpCli} amqpCli
-   */
   constructor(host, amqpCli) {
     this.hostname = host;
-    this.isNormal = true;                   //连接状态是否正常
+    this.isNormal = true;                   //when connect succ it will be true
     this.isConnected = false;
-    this.isStart = false;                   //是否正在连接
+    this.isStart = false;                   //when start connect it will be true
     this.rcCount = 0;
-    this.setuped = false;
-    this.rcLock = false;                    //是否正在重连
-    this.waitRC = 1000;                     //等待重连的时间单位 ms
-    this.lastErrTime = 0;
+    this.rcLock = false;                    //reconnect locker
     this.conn = amqpCli.connection;
     this.ch = amqpCli.channel;
     this.amqpCli = amqpCli;
@@ -684,10 +676,8 @@ class ConnDesc {
 
   async onSetupOk() {
     log.info(`${this.amqpCli.idx} onSetupOk ${this.hostname} ok`);
-    this.setuped = true;
     this.rcLock = false;
   };
-
 
   tryReconnect() {
     if (this.rcLock) {
@@ -698,37 +688,20 @@ class ConnDesc {
     return true;
   };
 
-
   wait(t) {
     return new Promise((resolve) => setTimeout(resolve, t));
   };
 
   async waitToReconnect() {
-    //liyiyan 2023-03-23 add begin
     await this.wait(5000);
     return;
-    //liyiyan 2023-03-23 add end
-
-    if (!this.isNormal) {
-      let wt = Date.now() - this.lastErrTime;
-      if (wt >= 0 && wt < this.waitRC) {
-        await this.wait(this.waitRC - wt);
-        log.info(`${this.amqpCli.idx} waitToReconnect ${this.waitRC - wt} ms done`);
-      } else {
-        log.info(`${this.amqpCli.idx} needn't waitToReconnect ${this.lastErrTime} wt=${wt}`);
-      }
-      this.isNormal = true;
-    }
   };
 
   async onConnectError(event, error) {
     log.error(`${this.amqpCli.idx} onConnectError ${this.hostname}, event: ${event}, error: ${util.inspect(error)}`);
-    this.lastErrTime = Date.now();
     this.isNormal = false;
     this.isStart = false;
     this.isConnected = false;
-    this.setuped = false;
-    let cli = this.amqpCli;
     try {
       this.ch && await this.ch.close();
     } catch (e) {
@@ -746,7 +719,6 @@ class ConnDesc {
 };
 
 var RECONNECT = true;
-const RECONNECT_INTERVAL = 200;
 
 class AmqpCli {
   constructor() {
@@ -763,7 +735,6 @@ class AmqpCli {
     this.connected = false;
     this.successCb = [];
     this.failureCb = [];
-    this.reconnectAttempts = 0;
     this._errorHandler = this._errorHandler.bind(this);
     this._initAfterConnect = this._initAfterConnect.bind(this);
     this.balanceHosts = null;
@@ -795,9 +766,8 @@ class AmqpCli {
     this.successCb.push(onOk);
     this.failureCb.push(onFailure);
 
-    options.storePath = options.storePath || cipher.astore;
-    if (fs.existsSync(options.storePath)) {
-      cipher.unlock(cipher.k, options.storePath, (err, authConfig) => {
+    if (fs.existsSync(options.astore)) {
+      cipher.unlock(cipher.k, options.astore, (err, authConfig) => {
         if (!err) {
           if (authConfig.rabbit) {
             this.options.username = authConfig.rabbit.username;
@@ -813,11 +783,6 @@ class AmqpCli {
     }
   };
 
-  /**
-   * 选择连接的函数
-   * @param {ConnDesc} eConnInfo
-   * @returns {ConnDesc} connInfo
-   */
   _choseConnDesc(eConnInfo = null) {
     let host, i, k = 0;
     if (eConnInfo) {
@@ -842,11 +807,6 @@ class AmqpCli {
     return this.connectStatus[this.curHost];
   };
 
-  /**
-   * 连接成功后的初始化操作
-   * @param {ConnDesc} connSt
-   * @returns
-   */
   async _initAfterConnect(connSt) {
     try {
       log.debug(`${this.idx} _initAfterConnect ${connSt.hostname}`);
@@ -884,12 +844,6 @@ class AmqpCli {
     }
   };
 
-
-  /**
-   * 实际的连接操作
-   * @param {ConnDesc} connInfo 连接描述信息
-   * @returns
-   */
   async _connect(connInfo) {
     try {
       let host = connInfo.hostname;
@@ -919,11 +873,6 @@ class AmqpCli {
     }
   }
 
-  /**
-   * 连接出错时的错误处理函数
-   * @param {Error} err 错误信息
-   * @param {ConnDesc} connInfo 连接信息
-   */
   async _errorHandler(err, event, connInfo) {
     // log.warn(`amqpCli ${this.idx} Connecting error:`, this.curHost, event, util.inspect(err));
     this.connected = false;
