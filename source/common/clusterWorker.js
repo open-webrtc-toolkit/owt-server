@@ -265,6 +265,10 @@ module.exports = function (spec) {
             var tryJoining = function () {
                 log.debug('Try rejoining cluster', cluster_name, '....');
                 join(function (result) {
+                    /**
+                     * removed call on_loss
+                     * the agent has found that they have lost their heartbeat and should not lose tasks that are already being executed. Instead, they should perform reconnection or wait for monitoring alarms for human intervention
+                     */
                     log.debug('Rejoining result', result);
                     let rejoinPromise = tasks.map((taskId)=>{
                         return new Promise((resolve)=>{
@@ -315,6 +319,10 @@ module.exports = function (spec) {
                     //keycoding 20230811: fix when a newer leader was vote,the agent must pickUp itself
                     if (result === 'whoareyou') {
                         loss_count += 1;
+                        /**
+                         * when the agent is found self loss
+                         * the first line of logs is printed, and every 5 minutes, one line of logs is still lost
+                         */
                         if (loss_count % 300 === 0 || loss_count === 3) {
                             log.info(`Agent ${id} is not alive any longer(${loss_count}), error_reason: ${result}`);
                         }
@@ -332,10 +340,16 @@ module.exports = function (spec) {
                         loss_count = 0;
                     }
                 }, function (error_reason) {
+                    /**
+                     * when the agent is found self loss
+                     * the first line of logs is printed, and every 5 minutes, one line of logs is still lost
+                     * removed call tryRecovery because if no response is received from the cluster, it may be a one-way network problem, and reexecuting tryRecovery will cause problems with tasks that are already in normal service
+                     */
                     loss_count += 1;
                     if (loss_count % 300 === 0 || loss_count === 3) {
                         log.info(`Agent ${id} is not alive any longer(${loss_count}), error_reason: ${error_reason}`);
                     }
+
                 });
         }, keep_alive_period);
     };

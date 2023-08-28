@@ -91,15 +91,22 @@ var ClusterManager = function (clusterName, selfId, spec) {
         for (var worker in workers) {
             workers[worker].alive_count += 1;
             /**
-             * keycoding 20230811
-             * 1、when find the agent was loss just set it's state to 0
-             * 2、notify to follower which agent was loss
-             * 3、the agent which was loss may be connect in the loop time
+             * when found the agent was loss 3s just set it's state to 0 and notify to follower which agent was loss
+             * all the cluster node will no longer schedule new tasks for him
+             * and getScheduled will return a new error NO_AVAILABLE_WORKER[${work}]_TASK[${task}]
              */
             if (workers[worker].alive_count >= 3) reportState(worker, 0);
+            //when the agent is found to be lost
+            //the first line of logs is printed, and every 5 minutes, one line of logs is still lost
             if (workers[worker].alive_count === 3 || workers[worker].alive_count % 300 === 0) {
                 log.info(`Agent ${worker} is not alive any longer(${workers[worker].alive_count})`);
             }
+            /**
+             * check_alive_count default is 86400s,in previous versions is was 3s
+             * in previous versions, the heartbeat check time of only 3s was too short, which caused the agent to call on_loss during network jitter  resulting in all tasks being recycled
+             * considering that the loss of heartbeat may only be a cluster or rabbitmq issue, the agent should not stop tasks that are already running normally.
+             * Therefore, we increase the time for the agent to reconnect and also reserve sufficient time for disaster recovery processing in the cluster
+             */
             if (workers[worker].alive_count > check_alive_count) {
                 log.info('Worker', worker, 'is not alive any longer, Deleting it.');
                 workerQuit(worker);

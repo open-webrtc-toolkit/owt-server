@@ -254,7 +254,11 @@ class MsgSenderReceiver extends MsgSender {
         return channel.bindQueue(self.queue, self.exchange.name, pattern)
             .then(() => self.log.info(`exchange:${self.exchange.name},queue:${self.queue} Follow [${pattern}] ok.`))
             .catch((err) => {
-              //队列被删除处理
+              /**
+               * keycoding 20230828
+               * If the quele is deleted, will invoked this function
+               * we need set ready is false and throw err for recreate the queue
+               */
               self.subscriptions.set(consumerTag, {patterns, cb: onMessage, onOk: onOk});
               self.ready = false;
               throw new Error(`Failed to bind queue:${self.queue} on exchange:${self.exchange.name} for pattern:${pattern}`);
@@ -263,7 +267,12 @@ class MsgSenderReceiver extends MsgSender {
       Promise.all(bindQueuePromise).then(() => {
         channel.consume(self.queue, (rawMessage) => {
           if (!rawMessage || !rawMessage.hasOwnProperty("content")) {
-            //队列被删除处理
+            /**
+             * keycoding 20230828
+             * https://amqp-node.github.io/amqplib/channel_api.html#model_events
+             * If the consumer is cancelled by RabbitMQ, the message callback will be invoked with null
+             * we need set ready is false and throw err for recreate the queue
+             */
             self.ready = false;
             throw new Error(`subscribe failed patterns:${patterns}, exchange:${self.exchange.name}, queue:${self.queue} might be delete`);
           }
@@ -693,6 +702,11 @@ class ConnDesc {
   };
 
   async waitToReconnect() {
+    /**
+     * keycoding 20230828
+     * when we discover anomalies in the rabbitmq link, we reconnect it every 5 seconds
+     * to avoid excessive TCP links penetrating into rabbitmq and causing greater pressure on it
+     */
     await this.wait(5000);
     return;
   };
