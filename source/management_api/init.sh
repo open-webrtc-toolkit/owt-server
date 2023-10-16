@@ -43,7 +43,7 @@ shopt -s extglob
 while [[ $# -gt 0 ]]; do
   case $1 in
     *(-)dburl=* )
-      DB_URL=$(echo $1 | cut -d '=' -f 2)
+      DB_URL=$(echo $1 | cut -d '=' -f 2-)
       echo -e "\x1b[36musing $DB_URL\x1b[0m"
       ;;
     *(-)help )
