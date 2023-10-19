@@ -87,6 +87,7 @@ var joinCluster = function (on_ok) {
         rpcClient: rpcClient,
         purpose: myPurpose,
         clusterName: config.cluster.name,
+        clusterHost: config.cluster.host,
         joinRetry: config.cluster.worker.join_retry,
         // Cannot find a defination about |info|. It looks like it will be used by cluster manager, but agents and portal may have different properties of |info|.
         info: {

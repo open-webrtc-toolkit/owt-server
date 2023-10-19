@@ -35,7 +35,7 @@ var e = require('./errors');
 
 const enableGrpc = global.config?.server?.enable_grpc || false;
 if (enableGrpc) {
-  cluster_name = global.config?.cluster?.grpc_host || 'localhost:10080';
+  cluster_name = global.config?.cluster?.host || global.config?.cluster?.grpc_host || 'localhost:10080';
 }
 
 const scheduleAgent = function(agentName, tokenCode, origin, attempts, callback) {
