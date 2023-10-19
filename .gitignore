@@ -13,3 +13,4 @@ node_modules/
 *.d
 *.a
 *.so
+.vscode
