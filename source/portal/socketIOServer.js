@@ -487,7 +487,8 @@ var SocketIOServer = function(spec, portal, observer) {
     log.debug('receivers:', JSON.stringify(receivers));
     for (let clientId of receivers) {
       if (!excludeList.includes(clientId) && clients[clientId]) {
-        clients[clientId].notify(event, data);
+        let dataClone = JSON.parse(JSON.stringify(data));
+        clients[clientId].notify(event, dataClone);
       }
     }
   }

@@ -63,6 +63,9 @@ install_depot_tools(){
 
   pushd $OWT_DIR >/dev/null
   git clone https://chromium.googlesource.com/chromium/tools/depot_tools.git
+  pushd depot_tools > /dev/null
+  git checkout 53075227f31e38bf875dad98ec57d53076316d6f && \
+  popd >/dev/null
   popd >/dev/null
 }
 
@@ -85,7 +88,8 @@ download_and_build(){
     source /opt/rh/devtoolset-7/enable
   fi
 
-  export PATH="$PATH:$DEPOT_TOOLS"
+  export PATH="$DEPOT_TOOLS:$PATH"
+  export DEPOT_TOOLS_UPDATE=0
   gclient sync  --no-history
   pushd src >/dev/null
   gn gen out --args="$GN_ARGS"
