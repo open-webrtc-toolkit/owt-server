@@ -95,7 +95,7 @@ install_ffmpeg(){
 }
 
 install_zlib() {
-  local VERSION="1.2.13"
+  local VERSION="1.3"
 
   local LIST_LIBS=`ls ${PREFIX_DIR}/lib/libz* 2>/dev/null`
   [ "$INCR_INSTALL" = true ]  && [[ ! -z $LIST_LIBS ]] && \
