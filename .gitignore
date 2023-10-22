@@ -9,7 +9,6 @@ third_party/nICEr
 third_party/re
 third_party/webrtc
 third_party/webrtc-*
-source/**/binding.gyp
 third_party/SVT-HEVC
 node_modules/
 *.o
