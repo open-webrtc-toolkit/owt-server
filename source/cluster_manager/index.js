@@ -42,6 +42,7 @@ config.rabbit = config.rabbit || {};
 config.rabbit.host = config.rabbit.host || 'localhost';
 config.rabbit.port = config.rabbit.port || 5672;
 
+config.cascading = config.cascading || {};
 config.cascading.enabled = config.cascading.enabled || false;
 config.cascading.url = config.cascading.url;
 config.cascading.region = config.cascading.region;
