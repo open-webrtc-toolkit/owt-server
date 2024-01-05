@@ -210,8 +210,8 @@ install_openssl(){
   fi
 
   if [ -d $LIB_DIR ]; then
-    local SSL_BASE_VERSION="3.0"
-    local SSL_VERSION="3.0.8"
+    local SSL_BASE_VERSION="3.2.0"
+    local SSL_VERSION="3.2.0"
     cd $LIB_DIR
     rm -f ./build/lib/libssl.*
     rm -f ./build/lib/libcrypto.*
