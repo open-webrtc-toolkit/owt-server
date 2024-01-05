@@ -519,9 +519,10 @@ install_node() {
 }
 
 install_node_tools() {
+  local installed=0
   if [ "$CHECK_INSTALL" = true ]; then
-    npm list -g node-gyp > /dev/null 2>&1
-    if [ $? -eq 0 ]; then
+    npm list -g node-gyp@6.1.0 > /dev/null 2>&1 || installed=1  
+    if [ $installed -eq 0 ]; then
       echo "node_tools - Yes"
     else
       echo "node_tools - No"
@@ -529,8 +530,8 @@ install_node_tools() {
     return 0
   fi
   if [ "${INCR_INSTALL}" == "true" ]; then
-    npm list -g node-gyp > /dev/null 2>&1
-    [ $? -eq 0 ] && echo "node tools already installed." && return 0
+    npm list -g node-gyp@6.1.0 > /dev/null 2>&1 || installed=1 
+    [ $installed -eq 0 ] && echo "node tools already installed." && return 0
   fi
 
   check_proxy
