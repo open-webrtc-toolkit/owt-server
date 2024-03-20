@@ -4,6 +4,7 @@ port = 5672 #default: 5672
 
 [manager]
 name = "owt-cluster"
+totalNode = 1
 
 #The time for cluster manager getting ready to handle the incoming 'schedule' requirements.
 initial_time = 6000 #ms
@@ -12,7 +13,7 @@ initial_time = 6000 #ms
 check_alive_interval = 1000 #ms
 
 #The threshold count of consecutive absences after which the corresponding cluster workers will be deleted.
-check_alive_count = 3
+check_alive_count = 86400
 
 #The default reservation time if not specified in the scheduling requirement.
 schedule_reserve_time = 60000 #ms

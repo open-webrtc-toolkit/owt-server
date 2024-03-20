@@ -262,7 +262,7 @@ if (config.agent.enable_grpc) {
     process.on(sig, async function () {
         log.warn('Exiting on', sig);
         manager && manager.dropAllNodes(true);
-        worker && worker.quit();
+        worker && await worker.quit();
         try {
             await amqper.disconnect();
         } catch(e) {
