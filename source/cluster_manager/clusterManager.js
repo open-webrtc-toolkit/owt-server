@@ -13,7 +13,7 @@ var role = null;
 var Url = require("url");
 
 var ClusterManager = function (clusterName, selfId, spec) {
-    var that = {name: clusterName, id: selfId ,totalNode:spec.totalNode};
+    var that = {name: clusterName, id: selfId , totalNode: spec.totalNode, electTimeout: spec.electTimeout};
 
     /*initializing | in-service*/
     var state = 'initializing',
@@ -583,8 +583,9 @@ class HeartbeatObserver {
         this.state = state;
         this.onLoss = onLoss;
         this.intervalStep = 100;
-        this.mixStepCount = getTimerCount(2000, this.intervalStep);
-        this.maxStepCount = getTimerCount(4000, this.intervalStep);
+        this.electTimeout = this.state.electTimeout * 1.2;
+        this.mixStepCount = getTimerCount(parseInt(this.electTimeout / 2), this.intervalStep);
+        this.maxStepCount = getTimerCount(this.electTimeout, this.intervalStep);
         this.observerTimes = 0;
     }
 
@@ -1165,8 +1166,8 @@ var runAsCandidate = function (topicChannel, manager) {
     state.voters = new Set();
     state.timestamp=(new Date()).getTime();
 
-    let mixElecTimeout = 500;
-    let maxElecTimeout = 1000;
+    let mixElecTimeout = parseInt(state.electTimeout / 2);
+    let maxElecTimeout = state.electTimeout;
     var isStop = false;
 
     var timer;
@@ -1430,6 +1431,7 @@ exports.manager = async function (topicChannel, clusterName, id, spec) {
         topicChannel.subscribe(['clusterManager.broadcast.#'], broadcastHandler, () => {
             state.id = manager.id;
             state.totalNode = manager.totalNode;
+            state.electTimeout = manager.electTimeout;
             runAsCandidate(topicChannel, manager);
         });
     }

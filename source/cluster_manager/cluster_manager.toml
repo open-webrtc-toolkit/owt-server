@@ -6,6 +6,8 @@ port = 5672 #default: 5672
 name = "owt-cluster"
 # how many raft node in this cluster,raft will select leader when the candidate got votes gt totalNode/2
 totalNode = 3
+# elect leader timeout
+electTimeout = 1000
 
 #The time for cluster manager getting ready to handle the incoming 'schedule' requirements.
 initial_time = 6000 #ms
