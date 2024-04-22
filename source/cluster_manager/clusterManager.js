@@ -386,6 +386,7 @@ var ClusterManager = function (clusterName, selfId, spec) {
         }
     };
 
+    let interval = undefined;
     that.serve = function (monitoringTgt) {
         if (is_freshman) {
             setTimeout(function () {
@@ -396,11 +397,21 @@ var ClusterManager = function (clusterName, selfId, spec) {
         }
         is_freshman = false;
         monitoringTarget = monitoringTgt;
-        setInterval(checkAlive, check_alive_period);
+        interval=setInterval(checkAlive, check_alive_period);
         for (var purpose in schedulers) {
             schedulers[purpose].serve();
         }
     };
+
+    that.unserve = function () {
+        state = 'initializing'
+        monitoringTarget = undefined;
+        interval && clearInterval(interval);
+        is_freshman = true;
+        //schedulers = {};
+        //workers = {};
+        data_synchronizer = undefined;
+    }
 
     that.rpcAPI = {
         join: function (purpose, worker, info, callback) {
