@@ -56,7 +56,8 @@ function startup () {
         checkAliveCount: config.manager.check_alive_count,
         scheduleKeepTime: config.manager.schedule_reserve_time,
         strategy: config.strategy,
-        enableCascading: config.cascading.enabled, url: config.cascading.url, region: config.cascading.region, clusterID: config.cascading.clusterID
+        enableCascading: config.cascading.enabled, url: config.cascading.url, region: config.cascading.region, clusterID: config.cascading.clusterID,
+        totalNode:config.manager.totalNode ? config.manager.totalNode : 1,
     };
 
     if (config.manager.enable_grpc) {

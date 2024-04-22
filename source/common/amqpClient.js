@@ -35,6 +35,10 @@ const Q_OPTION = {
 };
 
 var translateToRegx = function(regx) {
+  if (!regx) {
+    return;
+  }
+
   let regxParts = regx.split('.');
   let regxStr = "";
   let len = regxParts.length;
@@ -53,19 +57,14 @@ var translateToRegx = function(regx) {
         jumpOut = true;
         break;
       default:
-        regxStr += part;
+        if (i == 0) {
+          regxStr = part;
+        } else {
+          regxStr += "[.]" + part;
+        }
         break;
     }
-
-    if (jumpOut) {
-      break;
-    }
-
-    if (i < len - 2) {
-      regxStr += "[.]";
-    }
   }
-
   return new RegExp(`^${regxStr}$`);
 }
 

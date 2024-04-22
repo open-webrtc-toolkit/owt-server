@@ -4,6 +4,7 @@ port = 5672 #default: 5672
 
 [manager]
 name = "owt-cluster"
+totalNode = 5
 
 #The time for cluster manager getting ready to handle the incoming 'schedule' requirements.
 initial_time = 6000 #ms
