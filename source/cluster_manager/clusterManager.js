@@ -734,7 +734,7 @@ var runAsFollower = function (topicChannel, manager) {
                     if (!isInstallSnapshot) {
                         resolve(true);
                     } else {
-                        if ((++count) == 50) {
+                        if ((++count) == 25) {
                             isInstallSnapshot = false;
                             resolve(false);
                             clearInterval(checkIntvl);
@@ -758,8 +758,8 @@ var runAsFollower = function (topicChannel, manager) {
                 topicChannel.publish(`clusterManager.leader.${state.leaderId}`, {type: 'verifyLeader', data: state});
             }
             verifyLeaderCallback.push(resolve);
-            let step = 100;
-            let count = getTimerCount(500,step);
+            let step = 20;
+            let count = getTimerCount(100,step);
             let checkIntvl = setInterval(() => {
                 if (verifyLeaderResult) {
                     const next = verifyLeaderCallback.shift()
