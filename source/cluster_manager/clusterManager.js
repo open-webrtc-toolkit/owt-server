@@ -755,8 +755,10 @@ var runAsFollower = function (topicChannel, manager) {
             }
             if(!isVerifyLeader){
                 isVerifyLeader = true;
+                verifyLeaderResult = false;
                 topicChannel.publish(`clusterManager.leader.${state.leaderId}`, {type: 'verifyLeader', data: state});
             }
+
             verifyLeaderCallback.push(resolve);
             let step = 20;
             let count = getTimerCount(100,step);
@@ -809,9 +811,22 @@ var runAsFollower = function (topicChannel, manager) {
         return true;
     }
 
+    var verifyLeaderResponse = function(message){
+        let data = message.data;
+        if (message.type !== "requestVote" && data.id == state.leaderId) {
+            verifyLeaderResult = true;
+            isVerifyLeader = false;
+            return message.type === "verifyLeader";
+        }
+        return false;
+    }
+
     var onTopicMessage = async function (message, routingKey) {
         if(!checkHeartbeatDelay(message)){
             return;
+        }
+        if(verifyLeaderResponse(message)){
+            return
         }
         await mutex.lock();
         try{
@@ -1061,12 +1076,6 @@ var runAsLeader = function (topicChannel, manager) {
             log.info('Run as asRpcServer.');
             topicChannel.bus.asMonitoringTarget(function (monitoringTgt) {
                 manager.serve(monitoringTgt);
-                interval && clearInterval(interval);
-                interval = setInterval(function () {
-                    state.timestamp = (new Date()).getTime();
-                    topicChannel.publish('clusterManager.broadcast', {type:'heartbeart', data:state});
-                }, 100);
-
                 var onTopicMessage = async function (message) {
                     await mutex.lock();
                     try{
@@ -1082,8 +1091,8 @@ var runAsLeader = function (topicChannel, manager) {
                                 return;
                             }
 
-                            if(message.data.id !== state.id) {
-                                log.fatal('verifyLeader faile no my leaderId:');
+                            if(message.data.leaderId !== state.id) {
+                                log.fatal('verifyLeader refuse no my leaderId:', "self:", state, "other:", message.data.id);
                                 return;
                             }
 
@@ -1133,6 +1142,11 @@ var runAsLeader = function (topicChannel, manager) {
                 topicChannel.subscribe(routerKeys, onTopicMessage, function () {
                     log.info('Cluster leader is in service as leader!');
                     leaderMsgHandler = onTopicMessage;
+                    interval && clearInterval(interval);
+                    interval = setInterval(function () {
+                        state.timestamp = (new Date()).getTime();
+                        topicChannel.publish('clusterManager.broadcast', {type:'heartbeart', data:state});
+                    }, 100);
                     manager.registerDataUpdate(function (data) {
                         state.commitId++;
                         log.debug("registerDataUpdate last commitId:",state.commitId)
