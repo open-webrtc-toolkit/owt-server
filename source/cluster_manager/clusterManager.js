@@ -583,7 +583,7 @@ class HeartbeatObserver {
         this.state = state;
         this.onLoss = onLoss;
         this.intervalStep = 100;
-        this.mixStepCount = getTimerCount(parseInt(state.electTimeout/2), this.intervalStep);
+        this.minStepCount = getTimerCount(parseInt(state.electTimeout/2), this.intervalStep);
         this.maxStepCount = getTimerCount(state.electTimeout, this.intervalStep);
     }
 
@@ -594,7 +594,7 @@ class HeartbeatObserver {
         let loseTime = undefined;
         self.lastContact = new Date();
         let lossCount = 0;
-        let maxCount = Math.random() * (self.maxStepCount-self.mixStepCount) + self.mixStepCount;
+        let maxCount = Math.random() * (self.maxStepCount-self.minStepCount) + self.minStepCount;
         self.interval = setInterval( function () {
             loseTime = new Date();
             lossCount++;
@@ -1499,7 +1499,7 @@ exports.manager = async function (topicChannel, clusterName, id, spec) {
 
     that.run = function (topicChannel){
         let manager = new ClusterManager(clusterName, id, spec);
-        topicChannel.subscribe(['clusterManager.broadcast.#'], broadcastHandler, () => {
+        topicChannel.subscribe(['clusterManager.broadcast'], broadcastHandler, () => {
             state.id = manager.id;
             state.totalNode = manager.totalNode;
             state.electTimeout = manager.electTimeout;
