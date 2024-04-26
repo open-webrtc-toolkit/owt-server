@@ -629,7 +629,7 @@ class Mutex {
 
         return new Promise((resolve, reject) => {
             this._waitingPromises.push(()=>{
-                log.info("lock for:", msg)
+                log.debug("lock for:", msg)
                 resolve();
             });
         });
@@ -738,7 +738,7 @@ var runAsFollower = function (topicChannel, manager) {
         topicChannel.publish('clusterManager.candidate', {type: 'responseVote', data: {voteGranted, term,  id, commitId, voter:state.id, voterRole:"follower"}});
     }
 
-    var checkHeartbeatDelay = function(message){
+    var needHandler = function(message){
         if (message.type === 'heartbeart') {
             let data = message.data;
             if (state.leaderId != 0 && state.leaderId != data.id) {
@@ -762,7 +762,7 @@ var runAsFollower = function (topicChannel, manager) {
     let preEnd = undefined;
     let preDelay = undefined;
     var onTopicMessage = async function (message, routingKey) {
-        if(!checkHeartbeatDelay(message)){
+        if(!needHandler(message)){
             return;
         }
 
@@ -971,7 +971,7 @@ var runAsLeader = function (topicChannel, manager) {
                 log.warn('leader cycle in HeartbeatObserver',"self:", state);
                 return;
             }
-            log.fatal("leader Lose heart-beat from self:", state.leaderId, "loseTime:", loseTime, 'lastContact:', lastContact, "timeout:", `${loseTime.getTime() - lastContact.getTime()}ms`);
+            log.fatal("leader Lose heart-beat from self:", state.id, "loseTime:", loseTime, 'lastContact:', lastContact, "timeout:", `${loseTime.getTime() - lastContact.getTime()}ms`);
             await changeRole('follower');
         }catch (e) {
             log.fatal(util.inspect(e));
@@ -1008,8 +1008,12 @@ var runAsLeader = function (topicChannel, manager) {
         }
     }
 
-    var checkHeartbeatDelay = function(message){
-        if (message.type === 'heartbeart') {
+    var needHandler = function(message){
+        //ignore self appendEntry message
+        if(message.type === "appendEntry" && message.data.id == state.id){
+            observer.resetTimer();
+            return false;
+        }else if (message.type === 'heartbeart') {
             //网络延迟观察
             let data = message.data;
             let current=(new Date()).getTime();
@@ -1020,118 +1024,108 @@ var runAsLeader = function (topicChannel, manager) {
                 log.debug(`[leader.${state.id}] got hear beat from [leader:${data.id}]: ${new Date(data.timestamp)}, delay: ${delay}ms`);
             }
         }
+        return true;
     }
 
-    return new Promise((resolve) => {
-        topicChannel.bus.asRpcServer(manager.name, manager.rpcAPI, (rpcSvr) => {
-            log.info('Run as asRpcServer.');
-            topicChannel.bus.asMonitoringTarget(function (monitoringTgt) {
-                manager.serve(monitoringTgt);
-                let preMessage = undefined;
-                let preBegin = undefined;
-                let preEnd = undefined;
-                let preDelay = undefined;
-                var onTopicMessage = async function (message) {
-                    let begin = (new Date()).getTime();
-                    await mutex.lock(`leader.onTopicMessage.${message.type}`);
-                    try{
-                        if (state.role != "leader") {
-                            log.warn('leader cycle in onTopicMessage', "self:", state);
-                            return;
-                        }
+    let preMessage = undefined;
+    let preBegin = undefined;
+    let preEnd = undefined;
+    let preDelay = undefined;
+    var onTopicMessage = async function (message) {
+        if(!needHandler(message)){
+            return false;
+        }
+        let begin = (new Date()).getTime();
+        await mutex.lock(`leader.onTopicMessage.${message.type}`);
+        try{
+            if (state.role != "leader") {
+                log.warn('leader cycle in onTopicMessage', "self:", state);
+                return;
+            }
 
-                        if(message.type === 'verifyLeader'){
-                            let followerId = message.data.id;
-                            if (followerId === state.id) {
-                                log.fatal('verifyLeader follower:', followerId, "is yourself");
-                                return;
-                            }
+            if (message.type === 'installSnapshot') {
+                let followerId = message.data.id;
+                if (followerId === state.id) {
+                    log.error('installSnapshot follower:', followerId, "is yourself");
+                    return;
+                }
 
-                            if(message.data.leaderId !== state.id) {
-                                log.fatal('verifyLeader refuse no my leaderId:', "self:", state, "other:", message.data.id);
-                                return;
-                            }
+                let leaderId = message.data.leaderId;
+                if (leaderId !== state.id) {
+                    log.error('installSnapshot follower:', followerId, "leaderId:",leaderId, "no yourself:",state.id);
+                    return;
+                }
 
-                            observer.resetTimer();
-                            log.warn('verifyLeader for follower:', followerId);
-                            let data = Object.assign({followerId}, state);
-                            topicChannel.publish(`clusterManager.follower.${followerId}` , {type: 'verifyLeader', data: data});
-                        }
-                        else if (message.type === 'installSnapshot') {
-                            let followerId = message.data.id;
-                            if (followerId === state.id) {
-                                log.error('installSnapshot follower:', followerId, "is yourself");
-                                return;
-                            }
-
-                            let leaderId = message.data.leaderId;
-                            if (leaderId !== state.id) {
-                                log.error('installSnapshot follower:', followerId, "leaderId:",leaderId, "no yourself:",state.id);
-                                return;
-                            }
-
-                            manager.getRuntimeData(function (data) {
-                                log.info('installSnapshot follower:', followerId);
-                                data = Object.assign({data,followerId}, state);
-                                topicChannel.publish(`clusterManager.follower.${followerId}` , {type: 'installSnapshot', data: data});
-                            });
-                        } else if (message.type === 'heartbeart') {
-                            if(message.data.id !== state.id){
-                                log.fatal('!!Double Leader!! ',"data:",message.data,"self:", state);
-                                if (message.data.term > state.term) {
-                                    log.fatal('Another leader is more senior than me, I quit.');
-                                    state.term = message.data.term;
-                                    await changeRole("follower");
-                                }
-                            }else{
-                                checkHeartbeatDelay(message);
-                                observer.resetTimer();
-                            }
-                        }
-                    }catch(e){
-                        log.fatal(util.inspect(e));
-                    }finally {
-                        let end = (new Date()).getTime();
-                        let delay = end-begin;
-                        if(delay>150){
-                            log.debug(state.id, `leader.onTopicMessage.${message.type} handler delay:`, `${delay}ms`, "leaderId:", state.leaderId, "self:", state, "message:", message, "preBegin:", preBegin, "preEnd:", preEnd, "preDelay:", `${preDelay}ms`, "preMessage:", preMessage);
-                        }
-                        preMessage = message;
-                        preBegin = begin;
-                        preEnd = end;
-                        preDelay = delay;
-                        mutex.unlock();
+                manager.getRuntimeData(function (data) {
+                    log.info('installSnapshot follower:', followerId);
+                    data = Object.assign({data,followerId}, state);
+                    topicChannel.publish(`clusterManager.follower.${followerId}` , {type: 'installSnapshot', data: data});
+                });
+            } else if (message.type === 'heartbeart') {
+                if(message.data.id !== state.id){
+                    log.fatal('!!Double Leader!! ',"data:",message.data,"self:", state);
+                    if (message.data.term > state.term) {
+                        log.fatal('Another leader is more senior than me, I quit.');
+                        state.term = message.data.term;
+                        await changeRole("follower");
                     }
-                };
+                }else{
+                    observer.resetTimer();
+                }
+            }
+        }catch(e){
+            log.fatal(util.inspect(e));
+        }finally {
+            let end = (new Date()).getTime();
+            let delay = end-begin;
+            if(delay>150){
+                log.debug(state.id, `leader.onTopicMessage.${message.type} handler delay:`, `${delay}ms`, "leaderId:", state.leaderId, "self:", state, "message:", message, "preBegin:", preBegin, "preEnd:", preEnd, "preDelay:", `${preDelay}ms`, "preMessage:", preMessage);
+            }
+            preMessage = message;
+            preBegin = begin;
+            preEnd = end;
+            preDelay = delay;
+            mutex.unlock();
+        }
+    };
 
-                topicChannel.subscribe(routerKeys, onTopicMessage, function () {
+    return new Promise((resolve)=>{
+        topicChannel.subscribe(routerKeys, onTopicMessage, function () {
+            leaderMsgHandler = onTopicMessage;
+            topicChannel.bus.asRpcServer(manager.name, manager.rpcAPI, (rpcSvr) => {
+                log.info('Run as asRpcServer.');
+                topicChannel.bus.asMonitoringTarget(function (monitoringTgt) {
                     log.info('Cluster leader is in service as leader!');
-                    leaderMsgHandler = onTopicMessage;
+                    //start heartbeat
                     interval && clearInterval(interval);
                     interval = setInterval(function () {
                         state.timestamp = (new Date()).getTime();
-                        topicChannel.publish('clusterManager.broadcast', {type:'heartbeart', data:state});
+                        topicChannel.publish('clusterManager.broadcast', {type: 'heartbeart', data: state});
                     }, 100);
+
+                    //start service
+                    manager.serve(monitoringTgt);
+
+                    //sync data to others
                     manager.registerDataUpdate(function (data) {
                         state.commitId++;
-                        log.debug("registerDataUpdate last commitId:",state.commitId)
-                        data = Object.assign({},{data}, state);
+                        log.debug("registerDataUpdate last commitId:", state.commitId)
+                        data = Object.assign({}, {data}, state);
                         topicChannel.publish('clusterManager.broadcast', {type: 'appendEntry', data: data});
                         state.prevLogIndex = state.commitId;
                         state.prevLogTerm = state.term;
                     });
-                    log.info('Run as leader success id:',state.id);
+                    log.info('Run as leader success id:', state.id);
                     observer.resetTimer();
                     resolve();
+                }, function (reason) {
+                    log.error('Cluster leader running as monitoring target failed, reason:', reason);
+                    process.kill(process.pid, 'SIGINT');
                 });
-
             }, function (reason) {
-                log.error('Cluster leader running as monitoring target failed, reason:', reason);
+                log.error('Cluster leader running as RPC server failed, reason:', util.inspect(reason));
                 process.kill(process.pid, 'SIGINT');
             });
-        }, function (reason) {
-            log.error('Cluster leader running as RPC server failed, reason:', util.inspect(reason));
-            process.kill(process.pid, 'SIGINT');
         });
     });
 };
