@@ -773,7 +773,7 @@ var runAsFollower = function (topicChannel, manager) {
             if (state.leaderId != 0 && state.leaderId != data.id) {
                 return false;
             }
-            //网络延迟观察
+            //statistics delay
             let current = (new Date()).getTime();
             let delay = current - data.timestamp;
             if (delay >= 150) {
@@ -1025,9 +1025,8 @@ var runAsLeader = function (topicChannel, manager) {
         }else if(message.type === "requestVote"){
             log.fatal(`[leader.${state.id}] got requestVote from [candidate:${data.id}]`, "self:", state, "data:", data);
             return false;
-        }
-        else if (message.type === 'heartbeart') {
-            //网络延迟观察
+        } else if (message.type === 'heartbeart' && (data.term > state.term || data.id === state.id)) {
+            //statistics delay
             let current=(new Date()).getTime();
             let delay=current-data.timestamp;
             if(delay>=150){
