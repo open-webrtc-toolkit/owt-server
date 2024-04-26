@@ -616,32 +616,67 @@ class HeartbeatObserver {
 class Mutex {
     constructor() {
         this._locked = false;
-        this.msg = "";
+        this.lockKey = "";
+        this.lockIndex = 0;
+        this.currentMessage = "";
+
+        this.preLockKey = "";
+        this.preMessage = "";
+        this.preBegin = (new Date()).getTime();
+        this.preEnd = this.preBegin;
+        this.preDelay = 0;
+        this.maxDelay = 150;
         this._waitingPromises = [];
     }
 
-    lock(msg) {
+    lock(lockKey, message) {
         if (!this._locked) {
             this._locked = true;
-            this.msg = msg;
+            this.lockKey = lockKey;
+            this.lockIndex++;
+            this.currentMessage = message;
+            this.begin = (new Date()).getTime();
             return Promise.resolve();
         }
-
+        let self = this;
         return new Promise((resolve, reject) => {
-            this._waitingPromises.push(()=>{
-                log.debug("lock for:", msg)
+            self.begin = (new Date()).getTime();
+            self.lockKey = lockKey;
+            self.currentMessage = message;
+            self.lockIndex++;
+            self._waitingPromises.push(()=>{
+                let end = (new Date()).getTime();
+                let delay = end-self.begin;
+                if (delay > self.maxDelay) {
+                    log.debug(state.id, `${self.lockKey}.${self.lockIndex} handler delay:`, `${delay}ms`, "leaderId:", state.leaderId, "self:", state, "currentMessage:", self.currentMessage, "preBegin:", self.preBegin, "preEnd:", self.preEnd, "preDelay:", `${self.preDelay}ms`, "preMessage:", self.preMessage);
+                }
+                self.preLockKey = self.lockKey;
+                self.preMessage = self.currentMessage;
+                self.preBegin = self.begin;
+                self.preEnd = end;
+                self.preDelay = delay;
                 resolve();
             });
         });
     }
 
     unlock() {
-        if (this._waitingPromises.length > 0) {
-            const next = this._waitingPromises.shift();
+        let self = this;
+        if (self._waitingPromises.length > 0) {
+            const next = self._waitingPromises.shift();
             next();
         } else {
-            log.debug("first lock for:", this.msg);
-            this._locked = false;
+            let end = (new Date()).getTime();
+            let delay = end-self.begin;
+            if (delay > self.maxDelay) {
+                log.debug(state.id, `${self.lockKey}.${self.lockIndex} handler delay:`, `${delay}ms`, "leaderId:", state.leaderId, "self:", state, "currentMessage:", self.currentMessage, "preBegin:", self.preBegin, "preEnd:", self.preEnd, "preDelay:", `${self.preDelay}ms`, "preMessage:", self.preMessage);
+            }
+            self.preLockKey = self.lockKey;
+            self.preMessage = self.currentMessage;
+            self.preBegin = self.begin;
+            self.preEnd = end;
+            self.preDelay = delay;
+            self._locked = false;
         }
     }
 }
@@ -663,7 +698,7 @@ var state = {
     timestamp: (new Date()).getTime()
 }
 
-var leaderMsgHandler = null;
+var broadcastOnTopicMsg = null;
 
 var runAsFollower = function (topicChannel, manager) {
     var isInstallSnapshot = false;
@@ -673,7 +708,6 @@ var runAsFollower = function (topicChannel, manager) {
 
     var routerKeys = [`clusterManager.follower.${state.id}`];
     var observer = new HeartbeatObserver(async (loseTime,lastContact)=>{
-        let begin = (new Date()).getTime();
         await mutex.lock("follower.HeartbeatObserver");
         try{
             if(state.role !== "follower"){
@@ -685,11 +719,6 @@ var runAsFollower = function (topicChannel, manager) {
         }catch(e){
             log.fatal(util.inspect(e));
         }finally {
-            let end = (new Date()).getTime();
-            let delay = end-begin;
-            if(delay>150){
-                log.debug(state.id, `follower.verifyLeader handler delay:`, `${delay}ms`,"leaderId:", state.leaderId, "self:", state);
-            }
             mutex.unlock();
         }
     });
@@ -757,17 +786,12 @@ var runAsFollower = function (topicChannel, manager) {
         return true;
     }
 
-    let preMessage = undefined;
-    let preBegin = undefined;
-    let preEnd = undefined;
-    let preDelay = undefined;
     var onTopicMessage = async function (message, routingKey) {
         if(!needHandler(message)){
             return;
         }
 
-        let begin = (new Date()).getTime();
-        await mutex.lock(`follower.onTopicMessage.${message.type}`);
+        await mutex.lock(`follower.onTopicMessage.${message.type}`, message);
         try{
             if(state.role!="follower"){
                 log.warn('follower cycle in onTopicMessage',"self:", state);
@@ -809,7 +833,7 @@ var runAsFollower = function (topicChannel, manager) {
                     isInstallSnapshot = false;
                     installSnapshotMutex.unlock();
                 }
-            } else if (message.type === 'appendEntry') {
+           } else if (message.type === 'appendEntry') {
                 //if i not found the leader was loss ignore
                 if (state.leaderId != 0 && state.leaderId != data.id) {
                     log.warn("follower got appendEntry no my leaderId",  "data:",data,"self:",state);
@@ -836,9 +860,9 @@ var runAsFollower = function (topicChannel, manager) {
                         return;
                     }
                 }
-                log.warn('appendEntry warn, prevLogIndex:', data.prevLogIndex, "prevLogTerm:", data.prevLogTerm, 'my prevLogIndex:', state.prevLogIndex, "my prevLogTerm:", state.prevLogTerm);
-                installSnapshot(data);
-            } else if (message.type === 'heartbeart'){
+               log.warn("appendEntry warn commitId:", state.commitId, "data.commitId:", data.commitId, "from:", data.id, "self:", JSON.stringify(state), "data:", JSON.stringify(data));
+               installSnapshot(data);
+           } else if (message.type === 'heartbeart'){
                 //if i not found the leader was loss ignore
                 if (state.leaderId != 0 && state.leaderId != data.id) {
                     log.warn("follower got heartbeart no my leaderId","data:", data,"self:",state);
@@ -870,7 +894,7 @@ var runAsFollower = function (topicChannel, manager) {
                     log.debug("follower found new leader last commitId:",state.commitId,"data.commitId:",data.commitId,"from:",data.id,"data:",JSON.stringify(data));
                     return;
                 }
-            }else if(message.type === 'requestVote'){
+           }else if(message.type === 'requestVote'){
                 //if i not found the leader was loss ignore
                 if (state.leaderId != 0 && state.leaderId != data.id) {
                     log.warn("follower rejecting vote request since we have a leader",  "data:",data,"self:",state);
@@ -925,22 +949,12 @@ var runAsFollower = function (topicChannel, manager) {
                 log.warn(`follower vote for other data:`,  data, "self:", state);
                 responseVote(state.term, data.id, state.commitId, true);
                 observer.resetTimer();
-            }
-            else {
+           } else {
                 log.debug('follower, not concerned message:', message, "routingKey:", routingKey, "self:",state);
-            }
+           }
         }catch (e) {
             log.fatal(util.inspect(e));
         }finally {
-            let end = (new Date()).getTime();
-            let delay = end-begin;
-            if(delay>150){
-                log.debug(state.id, `follower.onTopicMessage.${message.type} handler delay:`, `${delay}ms`, "leaderId:",state.leaderId, "self:", state, "message:",message, "preBegin:",preBegin,"preEnd:",preEnd,"preDelay:",`${preDelay}ms`,"preMessage:",preMessage);
-            }
-            preBegin = begin;
-            preEnd = end;
-            preDelay = delay;
-            preMessage = message;
             mutex.unlock();
         }
     };
@@ -948,7 +962,7 @@ var runAsFollower = function (topicChannel, manager) {
     log.info(state.id,'Run as follower leaderId:',state.leaderId,"self:",state);
     return new Promise((resolve) => {
         topicChannel.subscribe(routerKeys, onTopicMessage, function () {
-            leaderMsgHandler = onTopicMessage;
+            broadcastOnTopicMsg = onTopicMessage;
             observer.resetTimer();
             log.info(state.id,'Run as follower success leaderId:',state.leaderId,"self:",state);
             resolve();
@@ -964,7 +978,6 @@ var runAsLeader = function (topicChannel, manager) {
     var interval;
     var routerKeys = [`clusterManager.leader.${state.id}`];
     var observer = new HeartbeatObserver(async (loseTime,lastContact)=>{
-        let begin = (new Date()).getTime();
         await mutex.lock('leader.HeartbeatObserver');
         try{
             if(state.role !== "leader"){
@@ -976,11 +989,6 @@ var runAsLeader = function (topicChannel, manager) {
         }catch (e) {
             log.fatal(util.inspect(e));
         }finally {
-            let end = (new Date()).getTime();
-            let delay = end-begin;
-            if(delay>150){
-                log.debug(state.id, 'leader.HeartbeatObserver handler delay:', `${delay}ms`, "leaderId:",state.leaderId, "self:", state);
-            }
             mutex.unlock();
         }
     });
@@ -1010,12 +1018,16 @@ var runAsLeader = function (topicChannel, manager) {
 
     var needHandler = function(message){
         //ignore self appendEntry message
-        if(message.type === "appendEntry" && message.data.id == state.id){
+        let data = message.data;
+        if(message.type === "appendEntry" && data.id == state.id){
             observer.resetTimer();
             return false;
-        }else if (message.type === 'heartbeart') {
+        }else if(message.type === "requestVote"){
+            log.fatal(`[leader.${state.id}] got requestVote from [candidate:${data.id}]`, "self:", state, "data:", data);
+            return false;
+        }
+        else if (message.type === 'heartbeart') {
             //网络延迟观察
-            let data = message.data;
             let current=(new Date()).getTime();
             let delay=current-data.timestamp;
             if(delay>=150){
@@ -1027,16 +1039,11 @@ var runAsLeader = function (topicChannel, manager) {
         return true;
     }
 
-    let preMessage = undefined;
-    let preBegin = undefined;
-    let preEnd = undefined;
-    let preDelay = undefined;
     var onTopicMessage = async function (message) {
         if(!needHandler(message)){
             return false;
         }
-        let begin = (new Date()).getTime();
-        await mutex.lock(`leader.onTopicMessage.${message.type}`);
+        await mutex.lock(`leader.onTopicMessage.${message.type}`, message);
         try{
             if (state.role != "leader") {
                 log.warn('leader cycle in onTopicMessage', "self:", state);
@@ -1076,22 +1083,13 @@ var runAsLeader = function (topicChannel, manager) {
         }catch(e){
             log.fatal(util.inspect(e));
         }finally {
-            let end = (new Date()).getTime();
-            let delay = end-begin;
-            if(delay>150){
-                log.debug(state.id, `leader.onTopicMessage.${message.type} handler delay:`, `${delay}ms`, "leaderId:", state.leaderId, "self:", state, "message:", message, "preBegin:", preBegin, "preEnd:", preEnd, "preDelay:", `${preDelay}ms`, "preMessage:", preMessage);
-            }
-            preMessage = message;
-            preBegin = begin;
-            preEnd = end;
-            preDelay = delay;
             mutex.unlock();
         }
     };
 
     return new Promise((resolve)=>{
         topicChannel.subscribe(routerKeys, onTopicMessage, function () {
-            leaderMsgHandler = onTopicMessage;
+            broadcastOnTopicMsg = onTopicMessage;
             topicChannel.bus.asRpcServer(manager.name, manager.rpcAPI, (rpcSvr) => {
                 log.info('Run as asRpcServer.');
                 topicChannel.bus.asMonitoringTarget(function (monitoringTgt) {
@@ -1170,7 +1168,6 @@ var runAsCandidate = function (topicChannel, manager) {
     }
 
     var electTimeout = async function (msg) {
-        let begin = (new Date()).getTime();
         await mutex.lock('candidate.electTimeout');
         try{
             if(isStop){
@@ -1181,11 +1178,6 @@ var runAsCandidate = function (topicChannel, manager) {
         }catch(e){
             log.fatal(util.inspect(e))
         }finally {
-            let end = (new Date()).getTime();
-            let delay = end-begin;
-            if(delay>150){
-                log.debug(state.id, 'candidate.electTimeout handler delay:', delay, state.leaderId, "self:", state);
-            }
             mutex.unlock();
         }
     };
@@ -1244,13 +1236,8 @@ var runAsCandidate = function (topicChannel, manager) {
         }
     }
 
-    let preMessage = null;
-    let preBegin = undefined;
-    let preEnd = undefined;
-    let preDelay = undefined;
     var onTopicMessage = async function (message) {
-        let begin = (new Date()).getTime();
-        await mutex.lock(`candidate.onTopicMessage.${message.type}`);
+        await mutex.lock(`candidate.onTopicMessage.${message.type}`, message);
         try{
             if(isStop){
                 log.warn('candidate cycle in is stop', "self:",state);
@@ -1355,15 +1342,6 @@ var runAsCandidate = function (topicChannel, manager) {
         }catch(e){
             log.fatal(util.inspect(e));
         }finally {
-            let end = (new Date()).getTime();
-            let delay = end-begin;
-            if(delay>150){
-                log.debug(state.id, `candidate.onTopicMessage.${message.type} handler delay:`, `${delay}ms`, "leaderId:", state.leaderId, "self:", state, "message:", message, "preBegin:", preBegin, "preEnd:", preEnd, "preDelay:", `${preDelay}ms`, "preMessage:", preMessage);
-            }
-            preMessage = message;
-            preBegin = begin;
-            preEnd = end;
-            preDelay = delay;
             mutex.unlock();
         }
     };
@@ -1372,7 +1350,7 @@ var runAsCandidate = function (topicChannel, manager) {
     voteSelf();
     return new Promise((resolve) => {
         topicChannel.subscribe(routerKeys, onTopicMessage, function () {
-            leaderMsgHandler = onTopicMessage;
+            broadcastOnTopicMsg = onTopicMessage;
             requestVote();
             resetTimer("requestVote");
             log.info(state.id,"Run as candidate success","self:",state);
@@ -1382,15 +1360,15 @@ var runAsCandidate = function (topicChannel, manager) {
 };
 
 var broadcastHandler = function(message){
-    leaderMsgHandler ? leaderMsgHandler(message) :null;
+    broadcastOnTopicMsg ? broadcastOnTopicMsg(message) :null;
 }
 
-exports.manager = async function (topicChannel, clusterName, id, spec) {
+exports.manager = function (topicChannel, clusterName, id, spec) {
     var that = {};
     var manager;
 
     that.run = function (topicChannel){
-        let manager = new ClusterManager(clusterName, id, spec);
+        manager = new ClusterManager(clusterName, id, spec);
         topicChannel.subscribe(['clusterManager.broadcast'], broadcastHandler, () => {
             state.id = manager.id;
             state.totalNode = manager.totalNode || 1;

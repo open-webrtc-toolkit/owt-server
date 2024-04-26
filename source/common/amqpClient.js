@@ -10,6 +10,7 @@ var log = require('./logger')
 var cipher = require('./cipher');
 var TIMEOUT = 2000;
 var REMOVAL_TIMEOUT = 7 * 24 * 3600 * 1000;
+var util = require('util');
 
 const RPC_EXC = {
   name: 'owtRpc',
@@ -197,9 +198,13 @@ class RpcServer {
     this.methods = methods;
     this.ready = false;
     this.closed = false;
+    this.consumerTag = undefined;
   }
 
   setup() {
+    const tagTail = Math.floor(Math.random() * 1000000000)
+    this.consumerTag = `${this.requestQ}.${tagTail}`
+
     const channel = this.bus.channel;
     return channel.assertExchange(
         RPC_EXC.name, RPC_EXC.type, RPC_EXC.options).then(() => {
@@ -213,6 +218,10 @@ class RpcServer {
       }
       return channel.consume(this.requestQ, (rawMessage) => {
         try {
+          if (!rawMessage || !rawMessage.hasOwnProperty("content")) {
+            log.error(`queue:${this.requestQ} error message received:`, rawMessage);
+            return
+          }
           const msg = JSON.parse(rawMessage.content.toString());
           log.debug('New message received', msg);
           msg.args = msg.args || [];
@@ -242,27 +251,35 @@ class RpcServer {
             }
           }
         } catch (error) {
-          log.error('Error processing call: ', error);
-          log.error('message:', rawMessage.content.toString());
+          this.log.error('Error processing call: ', util.inspect(error));
         }
-      }, {noAck: true});
+      }, {noAck: true, consumerTag: this.consumerTag});
     }).then((ok) => {
-      log.debug('Setup rpc server ok:', this.requestQ);
-      this.consumerTag = ok.consumerTag;
-      this.ready = true;
+      if (ok) {
+        log.info('setup ok', "queue:", this.requestQ, "consumerTag:", ok.consumerTag);
+        this.consumerTag = ok.consumerTag;
+        this.ready = true;
+      } else {
+        log.error('setup failed', "queue:", this.requestQ, "consumerTag:", this.consumerTag);
+      }
     });
   }
 
-  close() {
-    this.ready = false;
-    this.closed = true;
-    if (this.consumerTag) {
-      return this.bus.channel.cancel(this.consumerTag)
-        .catch((err) => {
-          log.error('Failed to during close RpcServer:', this.requestQ);
-        });
+    close() {
+        this.ready = false;
+        this.closed = true;
+        let closeSteps = [];
+        if (this.consumerTag) {
+            this.bus.channel.cancel(this.consumerTag)
+                .then((ret) => {
+                    log.info(`cancel ${this.consumerTag} success`, ret);
+                })
+                .catch((err) => {
+                    log.error(`cancel ${this.consumerTag} failed`, util.inspect(err));
+                })
+        }
+        return Promise.resolve();
     }
-  }
 }
 
 class TopicParticipant {
@@ -607,6 +624,19 @@ class AmqpCli {
       onOk(this.rpcServer);
     }
   }
+
+    removeRpcServer(){
+        if (this.rpcServer) {
+            let rpcServer = this.rpcServer;
+            this.rpcServer = undefined;
+            return rpcServer.close().then(()=>{
+                return 'ok';
+            }).catch(()=>{
+                return 'ok';
+            });
+        }
+        return Promise.resolve("ok");
+    }
 
   asMonitor(messageReceiver, onOk, onFailure) {
     if (!this.monitor) {
