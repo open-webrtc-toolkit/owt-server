@@ -397,7 +397,7 @@ var ClusterManager = function (clusterName, selfId, spec) {
         }
         is_freshman = false;
         monitoringTarget = monitoringTgt;
-        interval=setInterval(checkAlive, check_alive_period);
+        interval = setInterval(checkAlive, check_alive_period);
         for (var purpose in schedulers) {
             schedulers[purpose].serve();
         }
@@ -767,7 +767,7 @@ var runAsFollower = function (topicChannel, manager) {
         topicChannel.publish('clusterManager.candidate', {type: 'responseVote', data: {voteGranted, term,  id, commitId, voter:state.id, voterRole:"follower"}});
     }
 
-    var needHandler = function(message){
+    var needHandle = function(message){
         if (message.type === 'heartbeart') {
             let data = message.data;
             if (state.leaderId != 0 && state.leaderId != data.id) {
@@ -787,7 +787,7 @@ var runAsFollower = function (topicChannel, manager) {
     }
 
     var onTopicMessage = async function (message, routingKey) {
-        if(!needHandler(message)){
+        if(!needHandle(message)){
             return;
         }
 
@@ -1016,30 +1016,36 @@ var runAsLeader = function (topicChannel, manager) {
         }
     }
 
-    var needHandler = function(message){
+    var needHandle = function(message){
         //ignore self appendEntry message
         let data = message.data;
-        if(message.type === "appendEntry" && data.id == state.id){
-            observer.resetTimer();
+        if(message.type === "appendEntry"){
+            if(data.id == state.id){
+                observer.resetTimer();
+            }
             return false;
         }else if(message.type === "requestVote"){
             log.fatal(`[leader.${state.id}] got requestVote from [candidate:${data.id}]`, "self:", state, "data:", data);
             return false;
-        } else if (message.type === 'heartbeart' && (data.term > state.term || data.id === state.id)) {
+        } else if (message.type === 'heartbeart') {
             //statistics delay
-            let current=(new Date()).getTime();
-            let delay=current-data.timestamp;
-            if(delay>=150){
-                log.fatal(`[leader.${state.id}] got hear beat from [leader:${data.id}]: ${new Date(data.timestamp)}, delay: ${delay}ms`);
-            }else{
-                log.debug(`[leader.${state.id}] got hear beat from [leader:${data.id}]: ${new Date(data.timestamp)}, delay: ${delay}ms`);
+            if (data.id === state.id) {
+                let current=(new Date()).getTime();
+                let delay=current-data.timestamp;
+                if(delay>=150){
+                    log.fatal(`[leader.${state.id}] got hear beat from [leader:${data.id}]: ${new Date(data.timestamp)}, delay: ${delay}ms`);
+                }else{
+                    log.debug(`[leader.${state.id}] got hear beat from [leader:${data.id}]: ${new Date(data.timestamp)}, delay: ${delay}ms`);
+                }
+            }else if(data.term < state.term){
+                return false;
             }
         }
         return true;
     }
 
     var onTopicMessage = async function (message) {
-        if(!needHandler(message)){
+        if(!needHandle(message)){
             return false;
         }
         await mutex.lock(`leader.onTopicMessage.${message.type}`, message);
