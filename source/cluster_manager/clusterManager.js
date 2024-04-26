@@ -717,7 +717,7 @@ var runAsFollower = function (topicChannel, manager) {
     }
 
     var installSnapshot = async function (data) {
-        await installSnapshotMutex.lock();
+        await installSnapshotMutex.lock("follower.installSnapshot");
         if (!isInstallSnapshot) {
             isInstallSnapshot = true;
             log.info("start installSnapshot last commitId:",state.commitId,"data.commitId:",data.commitId,"from:",data.id);
