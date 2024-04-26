@@ -667,9 +667,7 @@ var leaderMsgHandler = null;
 
 var runAsFollower = function (topicChannel, manager) {
     var isInstallSnapshot = false;
-    var verifyLeaderCallback = [];
-    var isVerifyLeader = false;
-    var verifyLeaderResult = false;
+    var installSnapshotMutex = new Mutex();
     state.role = "follower";
     state.timestamp=(new Date()).getTime();
 
@@ -681,18 +679,6 @@ var runAsFollower = function (topicChannel, manager) {
             if(state.role !== "follower"){
                 log.warn('follower cycle in HeartbeatObserver',"self:", state);
                 return;
-            }
-
-            //check if leader is still alive
-            if (false && state.leaderId != 0) {
-                let count = 2;
-                while (count > 0) {
-                    count--;
-                    if (await verifyLeader()) {
-                        observer.resetTimer();
-                        return;
-                    }
-                }
             }
             log.fatal("Lose heart-beat from leader:",state.leaderId,"loseTime:", loseTime, 'lastContact:', lastContact, "timeout:",`${loseTime.getTime()-lastContact.getTime()}ms`);
             await changeRole("candidate",state.term);
@@ -731,68 +717,21 @@ var runAsFollower = function (topicChannel, manager) {
     }
 
     var installSnapshot = async function (data) {
+        await installSnapshotMutex.lock();
         if (!isInstallSnapshot) {
             isInstallSnapshot = true;
             log.info("start installSnapshot last commitId:",state.commitId,"data.commitId:",data.commitId,"from:",data.id);
             topicChannel.publish(`clusterManager.leader.${state.leaderId}`, {type: 'installSnapshot', data: state});
-            return new Promise((resolve) => {
-                let count = 0;
-                let checkIntvl = setInterval(() => {
-                    if (!isInstallSnapshot) {
-                        resolve(true);
-                    } else {
-                        if ((++count) == 25) {
-                            isInstallSnapshot = false;
-                            clearInterval(checkIntvl);
-                            checkIntvl = null;
-                            resolve(false);
-                        }
-                    }
-                }, 20);
-            });
-        }
-    };
-
-    var verifyLeader = async function () {
-        return new Promise((resolve) => {
-            log.info("verifyLeader begin:", "self:", state);
-            if (state.leaderId == 0) {
-                resolve(false);
-                return;
-            }
-            if(!isVerifyLeader){
-                isVerifyLeader = true;
-                verifyLeaderResult = false;
-                topicChannel.publish(`clusterManager.leader.${state.leaderId}`, {type: 'verifyLeader', data: state});
-            }
-
-            verifyLeaderCallback.push(resolve);
-            let step = 20;
-            let count = getTimerCount(100,step);
-            let checkIntvl = setInterval(() => {
-                if (verifyLeaderResult) {
-                    const next = verifyLeaderCallback.shift()
-                    if (next) {
-                        log.warn("verifyLeader success", "self:", state);
-                        next(verifyLeaderResult);
-                    }
-                } else {
-                    count--;
-                    if (count == 0) {
-                        clearInterval(checkIntvl);
-                        checkIntvl = null;
-                        isVerifyLeader = false;
-                        verifyLeaderResult = false;
-                        const next = verifyLeaderCallback.shift();
-                        log.fatal("verifyLeader failed", "self:", state);
-                        if (next) {
-                            next(verifyLeaderResult);
-                        }
-                    }
+            setTimeout(() => {
+                if(isInstallSnapshot){
+                    isInstallSnapshot = false;
+                    installSnapshotMutex.unlock();
                 }
-            }, step);
-        });
-    }
+            }, 500);
+            return;
+        }
+        installSnapshotMutex.unlock();
+    };
 
     var responseVote = function(term, id, commitId, voteGranted){
         log.debug('follower Send responseVote..',"term:",term,"id:",id,"commitId:",commitId,"voteGranted:",voteGranted, "self:",state);
@@ -818,16 +757,6 @@ var runAsFollower = function (topicChannel, manager) {
         return true;
     }
 
-    var verifyLeaderResponse = function(message){
-        let data = message.data;
-        if (message.type !== "requestVote" && data.id == state.leaderId) {
-            verifyLeaderResult = true;
-            isVerifyLeader = false;
-            return message.type === "verifyLeader";
-        }
-        return false;
-    }
-
     let preMessage = undefined;
     let preBegin = undefined;
     let preEnd = undefined;
@@ -835,9 +764,6 @@ var runAsFollower = function (topicChannel, manager) {
     var onTopicMessage = async function (message, routingKey) {
         if(!checkHeartbeatDelay(message)){
             return;
-        }
-        if(verifyLeaderResponse(message)){
-            return
         }
 
         let begin = (new Date()).getTime();
@@ -849,23 +775,7 @@ var runAsFollower = function (topicChannel, manager) {
             }
 
             let data = message.data;
-            if(message.type === "verifyLeader"){
-                //no my data throw it
-                if(data.followerId !== state.id){
-                    log.fatal('verifyLeader failed no for me',"data:",data,"self:",state);
-                    return;
-                }
-
-                if(data.id !== state.leaderId){
-                    log.fatal('verifyLeader failed no my leader',"data:",data,"self:",state);
-                    return;
-                }
-
-                log.warn('verifyLeader response',"data:",data,"self:",state);
-                verifyLeaderResult = true;
-                isVerifyLeader = false;
-            }
-            else if (message.type === 'installSnapshot') {
+           if (message.type === 'installSnapshot') {
                 //no my data throw it
                 if(data.followerId !== state.id){
                     log.fatal('installSnapshot failed followerId:',data.followerId,"my id:",state.id);
@@ -895,7 +805,10 @@ var runAsFollower = function (topicChannel, manager) {
                 log.info("installSnapshot last commitId:", state.commitId, "data.commitId:", data.commitId, "from:", data.id, "self:", state, "data:", data);
                 observer.resetTimer();
                 manager.setRuntimeData(data.data);
-                isInstallSnapshot = false;
+                if(isInstallSnapshot){
+                    isInstallSnapshot = false;
+                    installSnapshotMutex.unlock();
+                }
             } else if (message.type === 'appendEntry') {
                 //if i not found the leader was loss ignore
                 if (state.leaderId != 0 && state.leaderId != data.id) {
@@ -913,11 +826,7 @@ var runAsFollower = function (topicChannel, manager) {
                 state.leaderId = data.id;
                 state.term = data.term;
                 if (state.prevLogIndex != DEFAULT_DATA) {
-                    let prevLogTerm = state.prevLogTerm;
-                    if (state.prevLogIndex == data.prevLogIndex) {
-                        prevLogTerm = data.prevLogTerm
-                    }
-                    if (prevLogTerm == data.prevLogTerm) {
+                    if (state.prevLogTerm == data.prevLogTerm && state.prevLogIndex == data.prevLogIndex) {
                         state.commitId++;
                         state.prevLogIndex = state.commitId;
                         state.prevLogTerm = data.term;
@@ -1361,12 +1270,6 @@ var runAsCandidate = function (topicChannel, manager) {
 
             let data = message.data;
             if (message.type === 'requestVote') {
-                if (state.leaderId != 0 && state.leaderId == data.id) {
-                    log.warn("candidate rejecting vote request since we have a leader",  "data:",data,"self:",state);
-                    responseVote( state.term, data.id, state.commitId, false);
-                    return
-                }
-
                 // ignore an older term
                 if(data.term < state.term){
                     log.warn("candidate ignore an older term",  "data:",data,"self:",state);
@@ -1379,7 +1282,7 @@ var runAsCandidate = function (topicChannel, manager) {
                     await changeRole("follower", data.term);
                 }
 
-                //Check if we've voted in this election before
+                //check if we've voted in this election before
                 if(state.lastVoteFor != DEFAULT_DATA && state.lastVoteTerm === data.term){
                     log.warn("candidate duplicate requestVote for same term:",data.term,  "data:", data, "self:", state);
                     if (state.lastVoteFor == data.id) {
@@ -1436,11 +1339,6 @@ var runAsCandidate = function (topicChannel, manager) {
                     }
                 }
             }else if(message.type === 'heartbeart' || message.type === 'appendEntry'){
-                if (state.leaderId != 0 && state.leaderId != data.id) {
-                    log.warn("candidate got heartbeart no my leaderId",  "data:",data,"self:",state);
-                    return
-                }
-
                 //ignore the older node to become leader
                 if (state.prevLogIndex != DEFAULT_DATA) {
                     let prevLogTerm = state.prevLogTerm;
@@ -1501,9 +1399,9 @@ exports.manager = async function (topicChannel, clusterName, id, spec) {
         let manager = new ClusterManager(clusterName, id, spec);
         topicChannel.subscribe(['clusterManager.broadcast'], broadcastHandler, () => {
             state.id = manager.id;
-            state.totalNode = manager.totalNode;
-            state.electTimeout = manager.electTimeout;
-            runAsCandidate(topicChannel, manager);
+            state.totalNode = manager.totalNode || 1;
+            state.electTimeout = manager.electTimeout || 4000;
+            runAsFollower(topicChannel, manager);
         });
     }
 
