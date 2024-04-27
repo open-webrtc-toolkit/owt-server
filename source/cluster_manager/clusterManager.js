@@ -1147,21 +1147,6 @@ var runAsCandidate = function (topicChannel, manager) {
     var timer;
     var routerKeys = ['clusterManager.candidate'];
 
-    var voteSelf = function(){
-        log.info("candidate vote self",state);
-        onTopicMessage({
-            type: 'responseVote',
-            data: {
-                voteGranted: true,
-                term: state.term,
-                id: state.id,
-                commitId: state.commitId,
-                voter: state.id,
-                voterRole: state.role
-            }
-        });
-    }
-
     var requestVote = function () {
         log.debug('candidate Send requestVote..', "self:",state);
         topicChannel.publish('clusterManager.broadcast', {type: 'requestVote', data: state});
@@ -1352,7 +1337,6 @@ var runAsCandidate = function (topicChannel, manager) {
     };
 
     log.info(state.id,'Run as candidate.',"self:",state);
-    voteSelf();
     return new Promise((resolve) => {
         topicChannel.subscribe(routerKeys, onTopicMessage, function () {
             broadcastOnTopicMsg = onTopicMessage;
