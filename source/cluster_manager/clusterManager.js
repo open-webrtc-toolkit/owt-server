@@ -594,7 +594,11 @@ class HeartbeatObserver {
         let loseTime = undefined;
         self.lastContact = new Date();
         let lossCount = 0;
-        let maxCount = Math.random() * (self.maxStepCount-self.minStepCount) + self.minStepCount;
+        let maxCount = self.maxStepCount;
+        //if it was run first let it elect to max avoid it's network lately term plus to large
+        if (self.observerTimes > 1) {
+            maxCount = Math.random() * (self.maxStepCount-self.minStepCount) + self.minStepCount;
+        }
         self.interval = setInterval( function () {
             loseTime = new Date();
             lossCount++;
