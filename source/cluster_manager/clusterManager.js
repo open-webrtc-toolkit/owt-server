@@ -585,6 +585,7 @@ class HeartbeatObserver {
         this.intervalStep = 100;
         this.minStepCount = getTimerCount(parseInt(state.electTimeout/2), this.intervalStep);
         this.maxStepCount = getTimerCount(state.electTimeout, this.intervalStep);
+        this.observerTimes = 0;
     }
 
     resetTimer () {
@@ -629,7 +630,6 @@ class Mutex {
         this.preBegin = (new Date()).getTime();
         this.preEnd = this.preBegin;
         this.preDelay = 0;
-        this.maxDelay = 150;
         this._waitingPromises = [];
     }
 
@@ -637,7 +637,6 @@ class Mutex {
         if (!this._locked) {
             this._locked = true;
             this.lockKey = lockKey;
-            this.lockIndex++;
             this.currentMessage = message;
             this.begin = (new Date()).getTime();
             return Promise.resolve();
@@ -647,12 +646,11 @@ class Mutex {
             self.begin = (new Date()).getTime();
             self.lockKey = lockKey;
             self.currentMessage = message;
-            self.lockIndex++;
             self._waitingPromises.push(()=>{
                 let end = (new Date()).getTime();
                 let delay = end-self.begin;
-                if (delay > self.maxDelay) {
-                    log.debug(state.id, `${self.lockKey}.${self.lockIndex} handler delay:`, `${delay}ms`, "leaderId:", state.leaderId, "self:", state, "currentMessage:", self.currentMessage, "preBegin:", self.preBegin, "preEnd:", self.preEnd, "preDelay:", `${self.preDelay}ms`, "preMessage:", self.preMessage);
+                if (delay > state.maxDelay) {
+                    log.debug(state.id, `${self.lockKey}.${self.lockIndex++} handler delay:`, `${delay}ms`, "leaderId:", state.leaderId, "self:", state, "currentMessage:", self.currentMessage, "preBegin:", self.preBegin, "preEnd:", self.preEnd, "preDelay:", `${self.preDelay}ms`, "preMessage:", self.preMessage);
                 }
                 self.preLockKey = self.lockKey;
                 self.preMessage = self.currentMessage;
@@ -672,8 +670,8 @@ class Mutex {
         } else {
             let end = (new Date()).getTime();
             let delay = end-self.begin;
-            if (delay > self.maxDelay) {
-                log.debug(state.id, `${self.lockKey}.${self.lockIndex} handler delay:`, `${delay}ms`, "leaderId:", state.leaderId, "self:", state, "currentMessage:", self.currentMessage, "preBegin:", self.preBegin, "preEnd:", self.preEnd, "preDelay:", `${self.preDelay}ms`, "preMessage:", self.preMessage);
+            if (delay > state.maxDelay) {
+                log.debug(state.id, `${self.lockKey}.${self.lockIndex++} handler delay:`, `${delay}ms`, "leaderId:", state.leaderId, "self:", state, "currentMessage:", self.currentMessage, "preBegin:", self.preBegin, "preEnd:", self.preEnd, "preDelay:", `${self.preDelay}ms`, "preMessage:", self.preMessage);
             }
             self.preLockKey = self.lockKey;
             self.preMessage = self.currentMessage;
@@ -699,7 +697,8 @@ var state = {
     prevLogTerm: DEFAULT_DATA, // last log entry term
     voters: new Set(), //who vote for me
     role: "follower",
-    timestamp: (new Date()).getTime()
+    timestamp: (new Date()).getTime(),
+    maxDelay:100
 }
 
 var broadcastOnTopicMsg = null;
@@ -710,7 +709,7 @@ var runAsFollower = function (topicChannel, manager) {
     state.role = "follower";
     state.timestamp=(new Date()).getTime();
 
-    var routerKeys = [`clusterManager.follower.${state.id}`];
+    var routerKeys = ["clusterManager.follower", `clusterManager.follower.${state.id}`];
     var observer = new HeartbeatObserver(async (loseTime,lastContact)=>{
         await mutex.lock("follower.HeartbeatObserver");
         try{
@@ -766,13 +765,13 @@ var runAsFollower = function (topicChannel, manager) {
         installSnapshotMutex.unlock();
     };
 
-    var responseVote = function(term, id, commitId, voteGranted){
-        log.debug('follower Send responseVote..',"term:",term,"id:",id,"commitId:",commitId,"voteGranted:",voteGranted, "self:",state);
-        topicChannel.publish('clusterManager.candidate', {type: 'responseVote', data: {voteGranted, term,  id, commitId, voter:state.id, voterRole:"follower"}});
+    var responseVote = function (term, id, commitId, voteForTerm, voteGranted) {
+        log.debug('follower Send responseVote..', "term:", term,"id:", id, "commitId:",commitId, "voteForTerm:", voteForTerm, "voteGranted:",voteGranted, "self:",state);
+        topicChannel.publish(`clusterManager.candidate.${id}`, {type: 'responseVote', data: {voteGranted, term,  id, commitId, voteForTerm, voter:state.id, voterRole:"follower"}});
     }
 
     var needHandle = function(message){
-        if (message.type === 'heartbeart') {
+        if (message.type === 'heartbeart' || message.type === 'installSnapshot' || message.type === 'appendEntry') {
             let data = message.data;
             if (state.leaderId != 0 && state.leaderId != data.id) {
                 return false;
@@ -780,7 +779,7 @@ var runAsFollower = function (topicChannel, manager) {
             //statistics delay
             let current = (new Date()).getTime();
             let delay = current - data.timestamp;
-            if (delay >= 150) {
+            if (delay >= state.maxDelay) {
                 log.fatal(`[follower.${state.id}] got hear beat from [leader:${data.id}]: ${new Date(data.timestamp)}, delay: ${delay}ms`);
             } else {
                 log.debug(`[follower.${state.id}] got hear beat from [leader:${data.id}]: ${new Date(data.timestamp)}, delay: ${delay}ms`);
@@ -902,14 +901,14 @@ var runAsFollower = function (topicChannel, manager) {
                 //if i not found the leader was loss ignore
                 if (state.leaderId != 0 && state.leaderId != data.id) {
                     log.warn("follower rejecting vote request since we have a leader",  "data:",data,"self:",state);
-                    responseVote( state.term, data.id, state.commitId, false);
+                    responseVote( state.term, data.id, state.commitId, data.term,false);
                     return
                 }
 
                 // ignore an older term
                 if(data.term < state.term){
                     log.warn("follower ignore an older term",  "data:",data,"self:",state);
-                    responseVote( state.term, data.id, state.commitId, false);
+                    responseVote( state.term, data.id, state.commitId, data.term,false);
                     return;
                 }
 
@@ -923,7 +922,7 @@ var runAsFollower = function (topicChannel, manager) {
                 if(state.lastVoteFor != DEFAULT_DATA && state.lastVoteTerm === data.term){
                     log.warn("follower duplicate requestVote for same term:",data.term,  "data:", data, "self:", state);
                     if (state.lastVoteFor == data.id) {
-                        responseVote(state.term, data.id, state.commitId, true);
+                        responseVote(state.term, data.id, state.commitId, data.term,true);
                     }
                     return
                 }
@@ -936,13 +935,13 @@ var runAsFollower = function (topicChannel, manager) {
                     }
                     if (prevLogTerm > data.prevLogTerm) {
                         log.warn("follower rejecting vote request since our prevLogTerm is greater", "data:", data, "self:", state);
-                        responseVote( state.term, data.id, state.commitId, false);
+                        responseVote( state.term, data.id, state.commitId, data.term,false);
                         return;
                     }
 
                     if(state.prevLogTerm <= data.prevLogTerm && state.commitId > data.commitId){
                         log.warn("follower rejecting vote request since our commitId is greater", "data:", data, "self:", state);
-                        responseVote( state.term, data.id, state.commitId, false);
+                        responseVote( state.term, data.id, state.commitId, data.term, false);
                         return;
                     }
                 }
@@ -951,7 +950,7 @@ var runAsFollower = function (topicChannel, manager) {
                 state.lastVoteFor = data.id;
                 state.term = data.term;
                 log.warn(`follower vote for other data:`,  data, "self:", state);
-                responseVote(state.term, data.id, state.commitId, true);
+                responseVote(state.term, data.id, state.commitId, data.term,true);
                 observer.resetTimer();
            } else {
                 log.debug('follower, not concerned message:', message, "routingKey:", routingKey, "self:",state);
@@ -980,7 +979,7 @@ var runAsLeader = function (topicChannel, manager) {
 
     log.info('Run as leader id:',state.id,"self:",state);
     var interval;
-    var routerKeys = [`clusterManager.leader.${state.id}`];
+    var routerKeys = ["clusterManager.leader",`clusterManager.leader.${state.id}`];
     var observer = new HeartbeatObserver(async (loseTime,lastContact)=>{
         await mutex.lock('leader.HeartbeatObserver');
         try{
@@ -1021,22 +1020,13 @@ var runAsLeader = function (topicChannel, manager) {
     }
 
     var needHandle = function(message){
-        //ignore self appendEntry message
-        let data = message.data;
-        if(message.type === "appendEntry"){
-            if(data.id == state.id){
-                observer.resetTimer();
-            }
-            return false;
-        }else if(message.type === "requestVote"){
-            log.fatal(`[leader.${state.id}] got requestVote from [candidate:${data.id}]`, "self:", state, "data:", data);
-            return false;
-        } else if (message.type === 'heartbeart') {
+        if (message.type === 'heartbeart') {
+            let data = message.data;
             //statistics delay
             if (data.id === state.id) {
                 let current=(new Date()).getTime();
                 let delay=current-data.timestamp;
-                if(delay>=150){
+                if (delay >= state.maxDelay) {
                     log.fatal(`[leader.${state.id}] got hear beat from [leader:${data.id}]: ${new Date(data.timestamp)}, delay: ${delay}ms`);
                 }else{
                     log.debug(`[leader.${state.id}] got hear beat from [leader:${data.id}]: ${new Date(data.timestamp)}, delay: ${delay}ms`);
@@ -1096,6 +1086,23 @@ var runAsLeader = function (topicChannel, manager) {
         }
     };
 
+    var sendHeartbeat = function(){
+        state.timestamp = (new Date()).getTime();
+        topicChannel.publish('clusterManager.leader', {type: 'heartbeart', data: state});
+        topicChannel.publish('clusterManager.follower', {type: 'heartbeart', data: state});
+        topicChannel.publish('clusterManager.candidate', {type: 'heartbeart', data: state});
+    }
+
+    var leaderLoop = function(){
+        sendHeartbeat();
+        //start heartbeat
+        interval && clearInterval(interval);
+        interval = setInterval(function () {
+            sendHeartbeat();
+        }, 100);
+    }
+
+    leaderLoop();
     return new Promise((resolve)=>{
         topicChannel.subscribe(routerKeys, onTopicMessage, function () {
             broadcastOnTopicMsg = onTopicMessage;
@@ -1103,13 +1110,6 @@ var runAsLeader = function (topicChannel, manager) {
                 log.info('Run as asRpcServer.');
                 topicChannel.bus.asMonitoringTarget(function (monitoringTgt) {
                     log.info('Cluster leader is in service as leader!');
-                    //start heartbeat
-                    interval && clearInterval(interval);
-                    interval = setInterval(function () {
-                        state.timestamp = (new Date()).getTime();
-                        topicChannel.publish('clusterManager.broadcast', {type: 'heartbeart', data: state});
-                    }, 100);
-
                     //start service
                     manager.serve(monitoringTgt);
 
@@ -1118,7 +1118,7 @@ var runAsLeader = function (topicChannel, manager) {
                         state.commitId++;
                         log.debug("registerDataUpdate last commitId:", state.commitId)
                         data = Object.assign({}, {data}, state);
-                        topicChannel.publish('clusterManager.broadcast', {type: 'appendEntry', data: data});
+                        topicChannel.publish('clusterManager.follower', {type: 'appendEntry', data: data});
                         state.prevLogIndex = state.commitId;
                         state.prevLogTerm = state.term;
                     });
@@ -1138,27 +1138,30 @@ var runAsLeader = function (topicChannel, manager) {
 };
 
 var runAsCandidate = function (topicChannel, manager) {
-    state.leaderId = 0;
-    state.role = "candidate";
-    state.term++;
-    state.lastVoteFor = DEFAULT_DATA;
-    state.voteNum = 0;
-    state.voters = new Set();
-    state.timestamp=(new Date()).getTime();
-
     var isStop = false;
-
     var timer;
-    var routerKeys = ['clusterManager.candidate'];
+    var routerKeys = ['clusterManager.candidate',`clusterManager.candidate.${state.id}`];
+
+    var init = function(){
+        state.leaderId = 0;
+        state.role = "candidate";
+        state.term++;
+        state.lastVoteFor = DEFAULT_DATA;
+        state.voteNum = 0;
+        state.voters = new Set();
+        state.timestamp = (new Date()).getTime();
+        isStop = false;
+    }
 
     var requestVote = function () {
         log.debug('candidate Send requestVote..', "self:",state);
-        topicChannel.publish('clusterManager.broadcast', {type: 'requestVote', data: state});
+        topicChannel.publish('clusterManager.follower', {type: 'requestVote', data: state});
+        topicChannel.publish('clusterManager.candidate', {type: 'requestVote', data: state});
     };
 
-    var responseVote = function(term, id, commitId, voteGranted){
-        log.debug('candidate Send responseVote..', "term:", term, "id:", id, "commitId:", commitId, "voteGranted:", voteGranted, "self:", state);
-        topicChannel.publish('clusterManager.candidate', {type: 'responseVote', data: {voteGranted, term,  id, commitId, voter:state.id ,voterRole:"candidate"}});
+    var responseVote = function(term, id, commitId, voteForTerm,voteGranted){
+        log.debug('candidate Send responseVote..', "term:", term, "id:", id, "commitId:", commitId, "voteForTerm:", voteForTerm, "voteGranted:", voteGranted, "self:", state);
+        topicChannel.publish(`clusterManager.candidate.${id}`, {type: 'responseVote', data: {voteGranted, term, id, commitId, voteForTerm, voter:state.id, voterRole:"candidate"}});
     }
 
     var electTimeout = async function (msg) {
@@ -1168,7 +1171,7 @@ var runAsCandidate = function (topicChannel, manager) {
                 return;
             }
             log.debug(`${msg}->electTimeout`);
-            return changeRole('candidate',state.term);
+            await changeRole('candidate',state.term);
         }catch(e){
             log.fatal(util.inspect(e))
         }finally {
@@ -1198,11 +1201,11 @@ var runAsCandidate = function (topicChannel, manager) {
     };
 
     var stopTimer = function(msg){
-        msg=`${msg}->stopTimer`
-        clearTimer(msg,isStop);
         if(!isStop){
             isStop = true;
         }
+        msg=`${msg}->stopTimer`
+        clearTimer(msg,isStop);
     }
 
     var changeRole = async function(newRole,newTerm){
@@ -1211,11 +1214,18 @@ var runAsCandidate = function (topicChannel, manager) {
             return;
         }
 
-        state.leaderId = 0;
         stopTimer(`changeRole candidate->${newRole}`);
+        log.info(`candidate->${newRole}`,"self:",state);
+        if (newRole == "candidate") {
+            init();
+            requestVote();
+            resetTimer("requestVote");
+            return;
+        }
+
+        state.leaderId = 0;
         state.term = newTerm;
         state.role = newRole;
-        log.info(`candidate->${newRole}`,"self:",state);
         await topicChannel.unsubscribe(routerKeys);
         switch(newRole){
             case "candidate":
@@ -1248,7 +1258,7 @@ var runAsCandidate = function (topicChannel, manager) {
                 // ignore an older term
                 if(data.term < state.term){
                     log.warn("candidate ignore an older term",  "data:",data,"self:",state);
-                    responseVote( state.term, data.id, state.commitId, false);
+                    responseVote(state.term, data.id, state.commitId, data.term, false);
                     return;
                 }
 
@@ -1261,7 +1271,9 @@ var runAsCandidate = function (topicChannel, manager) {
                 if(state.lastVoteFor != DEFAULT_DATA && state.lastVoteTerm === data.term){
                     log.warn("candidate duplicate requestVote for same term:",data.term,  "data:", data, "self:", state);
                     if (state.lastVoteFor == data.id) {
-                        responseVote( state.term, data.id, state.commitId, true);
+                        responseVote( state.term, data.id, state.commitId, data.term,true);
+                    }else{
+                        responseVote( state.term, data.id, state.commitId, data.term, false);
                     }
                     return
                 }
@@ -1275,13 +1287,13 @@ var runAsCandidate = function (topicChannel, manager) {
 
                     if (prevLogTerm > data.prevLogTerm) {
                         log.warn("candidate rejecting vote request since our prevLogTerm is greater", "data:", data, "self:", state);
-                        responseVote( state.term, data.id, state.commitId, false);
+                        responseVote( state.term, data.id, state.commitId, data.term,false);
                         return;
                     }
 
                     if(state.prevLogTerm <= data.prevLogTerm && state.commitId > data.commitId){
                         log.warn("candidate rejecting vote request since our commitId is greater", "data:", data, "self:", state);
-                        responseVote( state.term, data.id, state.commitId, false);
+                        responseVote( state.term, data.id, state.commitId, data.term,false);
                         return;
                     }
                 }
@@ -1294,18 +1306,18 @@ var runAsCandidate = function (topicChannel, manager) {
                     voteFor = "self";
                 }
                 log.warn(`candidate vote for ${voteFor} data:`,  data, "self:", state);
-                responseVote(state.term, data.id, state.commitId, true);
+                responseVote(state.term, data.id, state.commitId, data.term,true);
                 resetTimer("responseVote");
             }else if(message.type === 'responseVote'){
-                if(data.term > state.term && data.id == state.id){
+                if(data.term > state.term && data.id == state.id && data.voteForTerm == state.term){
                     resetTimer("responseVote change as follower");
-                    log.warn("candidate some one term is bigger then me i run as follower",  "data:", data, "self:", state);
+                    log.warn("candidate newer term discovered, fallback to follower",  "data:", data, "self:", state);
                     await changeRole("follower", data.term);
                     return;
                 }
 
                 //got some one vote for me
-                if (data.voteGranted && data.id == state.id && !state.voters.has(data.voter)) {
+                if (data.voteGranted && data.voteForTerm == state.term && data.id == state.id && !state.voters.has(data.voter)) {
                     state.voters.add(data.voter);
                     if ((++state.voteNum) > parseInt(state.totalNode / 2)) {
                         resetTimer("responseVote got vote");
@@ -1313,7 +1325,7 @@ var runAsCandidate = function (topicChannel, manager) {
                         await changeRole("leader", state.term);
                     }
                 }
-            }else if(message.type === 'heartbeart' || message.type === 'appendEntry'){
+            }else if(message.type === 'heartbeart'){
                 //ignore the older node to become leader
                 if (state.prevLogIndex != DEFAULT_DATA) {
                     let prevLogTerm = state.prevLogTerm;
@@ -1340,6 +1352,7 @@ var runAsCandidate = function (topicChannel, manager) {
         }
     };
 
+    init();
     log.info(state.id,'Run as candidate.',"self:",state);
     return new Promise((resolve) => {
         topicChannel.subscribe(routerKeys, onTopicMessage, function () {
