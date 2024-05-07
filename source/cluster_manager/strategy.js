@@ -69,7 +69,6 @@ var randomlyPick = function () {
     };
 };
 
-//when all the candidate load is low it like roundRobin,when candidate load is hight is will
 //Algorithm is from https://github.com/phusion/nginx/commit/27e94984486058d73157038f7950a0a36ecc6e35
 //code is from https://github.com/nginx/nginx/blob/489e1e61912a808fdaffb4f513426cb285f267a3/src/http/ngx_http_upstream_round_robin.c#L522
 var weightRobin = function() {
