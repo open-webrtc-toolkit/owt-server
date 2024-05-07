@@ -69,6 +69,45 @@ var randomlyPick = function () {
     };
 };
 
+//when all the candidate load is low it like roundRobin,when candidate load is hight is will
+//Algorithm is from https://github.com/phusion/nginx/commit/27e94984486058d73157038f7950a0a36ecc6e35
+//code is from https://github.com/nginx/nginx/blob/489e1e61912a808fdaffb4f513426cb285f267a3/src/http/ngx_http_upstream_round_robin.c#L522
+var weightRobin = function() {
+    let servers = [];
+    this.allocate = function (workers, candidates, on_ok, on_error) {
+        for (let i in candidates) {
+            let id = candidates[i];
+            let index = servers.findIndex(item=>{return item.name == id});
+            if(index==-1){
+                servers.push({"name": id, "cur_weight": 0});
+            }
+            index = servers.findIndex(item=>{return item.name == id});
+            servers[index].weight = parseInt((1 - workers[id].load) * 100);
+        }
+
+        for (let i = servers.length - 1; i >= 0; i--) {
+            if(candidates.indexOf(servers[i].name)==-1){
+                servers.splice(i, 1);
+            }
+        }
+
+        let index = -1;
+        let total = 0;
+        let size = servers.length;
+        for (let i = 0; i < size; i++) {
+            servers[i].cur_weight += servers[i].weight;
+            total += servers[i].weight;
+
+            if (index == -1 || servers[index].cur_weight < servers[i].cur_weight) {
+                index = i;
+            }
+        }
+
+        servers[index].cur_weight -= total;
+        on_ok(servers[index].name);
+    };
+}
+
 exports.create = function (strategy) {
     switch (strategy) {
         case 'least-used':
@@ -81,6 +120,8 @@ exports.create = function (strategy) {
             return new roundRobin();
         case 'randomly-pick':
             return new randomlyPick();
+        case 'weight-robin':
+            return new weightRobin();
         default:
             log.warn('Invalid specified scheduling strategy:', strategy, ', apply "randomly-pick" instead.');
             return new randomlyPick();
