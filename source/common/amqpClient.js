@@ -550,7 +550,6 @@ class RpcServer extends MsgSenderReceiver {
     receiveMsg(msg, routingKey) {
         let self = this;
         try {
-            msg.args && msg.args[0] && msg.args[0].method === 'onMessage' && msg.args[0].statusCode && self.log.info(`consume msg, ${JSON.stringify(msg.args[0])}`);
             if (msg.replyTo && msg.corrID !== undefined) {
                 msg.args.push((type, result, err) => {
                     const content = {
