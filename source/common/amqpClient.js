@@ -10,6 +10,7 @@ var log = require('./logger')
 var cipher = require('./cipher');
 var TIMEOUT = 2000;
 var REMOVAL_TIMEOUT = 7 * 24 * 3600 * 1000;
+var util = require('util');
 
 const RPC_EXC = {
   name: 'owtRpc',
@@ -35,6 +36,10 @@ const Q_OPTION = {
 };
 
 var translateToRegx = function(regx) {
+  if (!regx) {
+    return;
+  }
+
   let regxParts = regx.split('.');
   let regxStr = "";
   let len = regxParts.length;
@@ -53,19 +58,14 @@ var translateToRegx = function(regx) {
         jumpOut = true;
         break;
       default:
-        regxStr += part;
+        if (i == 0) {
+          regxStr = part;
+        } else {
+          regxStr += "[.]" + part;
+        }
         break;
     }
-
-    if (jumpOut) {
-      break;
-    }
-
-    if (i < len - 2) {
-      regxStr += "[.]";
-    }
   }
-
   return new RegExp(`^${regxStr}$`);
 }
 
@@ -198,9 +198,13 @@ class RpcServer {
     this.methods = methods;
     this.ready = false;
     this.closed = false;
+    this.consumerTag = undefined;
   }
 
   setup() {
+    const tagTail = Math.floor(Math.random() * 1000000000)
+    this.consumerTag = `${this.requestQ}.${tagTail}`
+
     const channel = this.bus.channel;
     return channel.assertExchange(
         RPC_EXC.name, RPC_EXC.type, RPC_EXC.options).then(() => {
@@ -214,6 +218,10 @@ class RpcServer {
       }
       return channel.consume(this.requestQ, (rawMessage) => {
         try {
+          if (!rawMessage || !rawMessage.hasOwnProperty("content")) {
+            log.error(`queue:${this.requestQ} error message received:`, rawMessage);
+            return
+          }
           const msg = JSON.parse(rawMessage.content.toString());
           log.debug('New message received', msg);
           msg.args = msg.args || [];
@@ -243,27 +251,35 @@ class RpcServer {
             }
           }
         } catch (error) {
-          log.error('Error processing call: ', error);
-          log.error('message:', rawMessage.content.toString());
+          this.log.error('Error processing call: ', util.inspect(error));
         }
-      }, {noAck: true});
+      }, {noAck: true, consumerTag: this.consumerTag});
     }).then((ok) => {
-      log.debug('Setup rpc server ok:', this.requestQ);
-      this.consumerTag = ok.consumerTag;
-      this.ready = true;
+      if (ok) {
+        log.info('setup ok', "queue:", this.requestQ, "consumerTag:", ok.consumerTag);
+        this.consumerTag = ok.consumerTag;
+        this.ready = true;
+      } else {
+        log.error('setup failed', "queue:", this.requestQ, "consumerTag:", this.consumerTag);
+      }
     });
   }
 
-  close() {
-    this.ready = false;
-    this.closed = true;
-    if (this.consumerTag) {
-      return this.bus.channel.cancel(this.consumerTag)
-        .catch((err) => {
-          log.error('Failed to during close RpcServer:', this.requestQ);
-        });
+    close() {
+        this.ready = false;
+        this.closed = true;
+        let closeSteps = [];
+        if (this.consumerTag) {
+            this.bus.channel.cancel(this.consumerTag)
+                .then((ret) => {
+                    log.info(`cancel ${this.consumerTag} success`, ret);
+                })
+                .catch((err) => {
+                    log.error(`cancel ${this.consumerTag} failed`, util.inspect(err));
+                })
+        }
+        return Promise.resolve();
     }
-  }
 }
 
 class TopicParticipant {
@@ -291,94 +307,146 @@ class TopicParticipant {
     });
   }
 
-  subscribe(patterns, onMessage, onOk) {
-    log.debug('subscribe:', this.queue, patterns);
-    const channel = this.bus.channel;
-    const consumerTag = patterns.toString()
-    if (this.queue && channel) {
-      patterns.map((pattern) => {
-        channel.bindQueue(this.queue, this.name, pattern)
-          .then(() => log.debug('Follow topic [' + pattern + '] ok.'))
-          .catch((err) => log.error('Failed to bind queue on topic'));
-      });
-      let self = this;
-      channel.consume(this.queue, (rawMessage) => {
-        try {
-          const msg = JSON.parse(rawMessage.content.toString());
-          let found = false;
-          self.subscriptions.forEach((sub, tag) => {
-               if(sub.cb == onMessage){
-                  found = true;
-               }
-          });
+    async subscribe(patterns, onMessage, onOk) {
+        let self = this;
+        log.debug('subscribe:', this.queue, patterns);
+        const channel = self.bus.channel;
+        patterns = patterns.concat();
+        //fix consumerTag repeat
+        const tagTail = Math.floor(Math.random() * 1000000000);
+        const consumerTag = `${patterns.toString()}.${tagTail}`;
+        if (self.queue && channel) {
+            let bindQueuePromise = patterns.map((pattern) => {
+                return channel.bindQueue(self.queue, self.name, pattern)
+                    .then(() => log.info(`exchange:${self.name},queue:${self.queue} Follow [${pattern}] ok.`))
+                    .catch((err) => {
+                        //queue might be delete
+                        self.subscriptions.set(consumerTag, {patterns, cb: onMessage, onOk: onOk});
+                        self.ready = false;
+                        throw new Error(`Failed to bind queue:${self.queue} on exchange:${self.name} for pattern:${pattern}`);
+                    });
+            });
+            Promise.all(bindQueuePromise).then(() => {
+                channel.consume(self.queue, (rawMessage) => {
+                    if (!rawMessage || !rawMessage.hasOwnProperty("content")) {
+                        //queue might be delete
+                        self.ready = false;
+                        throw new Error(`subscribe failed patterns:${patterns}, exchange:${self.name}, queue:${self.queue} might be delete`);
+                    }
+                    try {
+                        const msg = JSON.parse(rawMessage.content.toString());
+                        const routingKey = rawMessage.fields.routingKey;
+                        self.subscriptions.forEach((sub, tag) => {
+                            let callback = undefined;
+                            sub.patterns.forEach((pattern, index) => {
+                                if (!callback) {
+                                    let regx = translateToRegx(pattern);
+                                    if (regx && regx.test(routingKey)) {
+                                        callback = sub.cb;
+                                    }
+                                }
+                            });
 
-          if (found) {
-            log.debug('Topic on message:', msg, rawMessage.fields.routingKey);
-            onMessage(msg, rawMessage.fields.routingKey);
-          }
-        } catch (error) {
-          log.error('Error processing topic message:', rawMessage, 'and error:', error);
+                            if (callback) {
+                                log.debug(`exchange:${self.name},queue:${self.queue} on message:`, msg, rawMessage.fields.routingKey);
+                                callback(msg, rawMessage.fields.routingKey);
+                            }
+                        });
+                    } catch (error) {
+                        log.error(`Error processing exchange:${self.name},queue:${self.queue} message:`, rawMessage, 'and error:', util.inspect(error));
+                    }
+                }, {noAck: true, consumerTag: consumerTag}).then((ok) => {
+                    if (ok) {
+                        log.info('subscribe ok', "exchange", self.name, "queue:", self.queue, 'patterns:', patterns, "consumerTag:", ok.consumerTag);
+                        self.subscriptions.set(ok.consumerTag, {patterns, cb: onMessage});
+                    } else {
+                        log.error('subscribe failed', "exchange", self.name, "queue:", self.queue, 'patterns:', patterns, "consumerTag:", consumerTag);
+                    }
+                    onOk ? onOk() : null;
+                });
+            });
+        } else {
+            self.ready = false;
         }
-      }, {noAck: true,consumerTag:consumerTag}).then((ok) => {
-        log.debug('set consumerTag:', consumerTag,"ok.consumerTag:",ok.consumerTag);
-        this.subscriptions.set(ok.consumerTag, {patterns, cb: onMessage});
-        onOk();
-      });
-    } else {
-      this.ready = false;
     }
-  }
 
-  unsubscribe(patterns) {
-    log.debug('unsubscribe:', patterns);
-    const channel = this.bus.channel;
-    if (this.queue && channel) {
-      patterns.map((pattern) => {
-        channel.unbindQueue(this.queue, this.name, pattern)
-          .catch((err) => log.error('Failed to unbind queue on topic'));
-        log.debug('Ignore topic [' + pattern + ']');
-      });
+    async unsubscribe(patterns) {
+        let self = this;
+        patterns = patterns.concat();
+        log.info('unsubscribe:', patterns);
+        const channel = self.bus.channel;
+        if (self.queue && channel) {
+            let cancleTags = new Set();
+            let ubindArr = []
+            for (let index in patterns) {
+                let pattern = patterns[index];
+                let regx = translateToRegx(pattern);
+                log.debug("translateToRegx:", pattern, "=>", regx);
+                if (!regx) {
+                    continue
+                }
+                self.subscriptions.forEach((sub, tag) => {
+                    let hits = {};
+                    let i = 0;
+                    sub.patterns.forEach((oldPattern, index) => {
+                        if (regx.test(oldPattern)) {
+                            hits[index] = oldPattern;
+                            i++;
+                            ubindArr.push(new Promise(async (resolve) => {
+                                try {
+                                    await channel.unbindQueue(self.queue, self.name, oldPattern);
+                                    log.info(`ubindQueue ${oldPattern} on queue:${self.queue} pattern:${oldPattern}`);
+                                    resolve();
+                                } catch (e) {
+                                    log.error(`Failed to ubindQueue ${oldPattern} on queue:${self.queue}`, util.inspect(e));
+                                    resolve();
+                                }
+                            }));
+                        }
+                    });
 
-      let cancleTags = new Set();
-      for (let index in patterns) {
-        let pattern = patterns[index];
-        let regx = translateToRegx(pattern);
-        log.debug("translateToRegx:",pattern, "=>", regx);
-        this.subscriptions.forEach((sub, tag) => {
-          let hits = {};
-          let i = 0;
-          sub.patterns.forEach((oldPattern,index) => {
-            if (regx.test(oldPattern)) {
-              hits[index] = oldPattern;
-              i++;
+                    log.debug("pattern:", pattern, "hits:", hits, "hits.length:", i, "sub.patterns.length:", sub.patterns.length);
+                    if (i >= sub.patterns.length) {
+                        cancleTags.add(tag);
+                    } else {
+                        for (let i in hits) {
+                            let index = sub.patterns.findIndex((p) => {
+                                return p == hits[i]
+                            });
+                            if (index != -1) {
+                                sub.patterns.splice(index, 1);
+                            }
+                        }
+                    }
+                });
             }
-          });
 
-          log.debug("hits:", hits,"hits.length:",i,"sub.patterns.length:",sub.patterns.length);
-          if (i >= sub.patterns.length) {
-            cancleTags.add(tag);
-          } else {
-            for (let index in hits) {
-              sub.patterns.splice(index,1);
+            if (ubindArr.length > 0) {
+                await Promise.all(ubindArr);
             }
-          }
-        });
-      }
-
-      if (cancleTags.size > 0) {
-        cancleTags.forEach((consumerTag) => {
-          channel.cancel(consumerTag)
-              .then((ret) => {
-                this.subscriptions.delete(consumerTag);
-                log.debug('del consumerTag:', consumerTag, "real.consumerTag:", consumerTag, "ret:", ret);
-              })
-              .catch((err) => log.error('Failed to cancel:', consumerTag));
-        });
-      }
-    } else {
-      this.ready = false;
+            ubindArr = [];
+            if (cancleTags.size > 0) {
+                cancleTags.forEach((consumerTag) => {
+                    self.subscriptions.delete(consumerTag);
+                    log.debug('del consumerTag:', consumerTag);
+                    ubindArr.push(new Promise((resolve) => {
+                        channel.cancel(consumerTag).then((ret) => {
+                            log.info('cancel consumerTag:', consumerTag, "real.consumerTag:", consumerTag, "ret:", ret);
+                            resolve();
+                        }).catch((err) => {
+                            log.error('Failed to cancel:', consumerTag);
+                            resolve();
+                        });
+                    }));
+                });
+            }
+            if (ubindArr.length > 0) {
+                await Promise.all(ubindArr);
+            }
+        }else{
+            self.ready = false;
+        }
     }
-  }
 
   publish(topic, data) {
     log.debug('Topic send:', topic, data, this.ready);
@@ -571,7 +639,7 @@ class AmqpCli {
   }
 
   _errorHandler(err) {
-    log.warn('Connecting error:', err);
+    log.warn('Connecting error:', util.inspect(err));
     this.channel = null;
     if (RECONNECT) {
       setTimeout(() => {
@@ -608,6 +676,19 @@ class AmqpCli {
       onOk(this.rpcServer);
     }
   }
+
+    removeRpcServer(){
+        if (this.rpcServer) {
+            let rpcServer = this.rpcServer;
+            this.rpcServer = undefined;
+            return rpcServer.close().then(()=>{
+                return 'ok';
+            }).catch(()=>{
+                return 'ok';
+            });
+        }
+        return Promise.resolve("ok");
+    }
 
   asMonitor(messageReceiver, onOk, onFailure) {
     if (!this.monitor) {

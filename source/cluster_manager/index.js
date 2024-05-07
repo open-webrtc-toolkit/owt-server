@@ -25,6 +25,8 @@ config.manager.initial_time = config.manager.initial_time || 10 * 1000;
 config.manager.check_alive_interval = config.manager.check_alive_interval || 1000;
 config.manager.check_alive_count = config.manager.check_alive_count || 10;
 config.manager.schedule_reserve_time = config.manager.schedule_reserve_time || 60 * 1000;
+config.manager.totalNode = config.manager.totalNode || 1;
+config.manager.electTimeout = config.manager.electTimeout || 1000;
 
 config.strategy = config.strategy || {};
 config.strategy.general = config.strategy.general || 'round-robin';
@@ -56,7 +58,9 @@ function startup () {
         checkAliveCount: config.manager.check_alive_count,
         scheduleKeepTime: config.manager.schedule_reserve_time,
         strategy: config.strategy,
-        enableCascading: config.cascading.enabled, url: config.cascading.url, region: config.cascading.region, clusterID: config.cascading.clusterID
+        enableCascading: config.cascading.enabled, url: config.cascading.url, region: config.cascading.region, clusterID: config.cascading.clusterID,
+        totalNode:config.manager.totalNode,
+        electTimeout:config.manager.electTimeout
     };
 
     if (config.manager.enable_grpc) {

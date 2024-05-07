@@ -4,6 +4,10 @@ port = 5672 #default: 5672
 
 [manager]
 name = "owt-cluster"
+#Set its value to the number of cluster manager instances，suggest odd number
+totalNode = 1 #node become leader when got vote gt totalNode/2
+# elect leader timeout
+electTimeout = 1000 #ms
 
 #The time for cluster manager getting ready to handle the incoming 'schedule' requirements.
 initial_time = 6000 #ms
