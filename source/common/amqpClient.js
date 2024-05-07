@@ -29,7 +29,7 @@ const MONITOR_EXC = {
     name: 'owtMonitoring',
     type: 'topic',
     options: {
-        autoDelete: true,
+        autoDelete: false,
         durable: true,
     }
 };
