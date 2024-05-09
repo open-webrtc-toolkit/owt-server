@@ -152,7 +152,7 @@ class MsgSenderReceiver extends MsgSender {
     constructor(amqpCli, exchange = RPC_EXC, queue, options = Q_OPTION) {
         super(amqpCli, exchange);
         this.options = options;
-        this.queue = queue ? queue : getQueueName("topic", this.bus.idx)
+        this.queue = queue ? queue : getQueueName(exchange.type, this.bus.idx)
         this.subscriptions = new Map(); //{patterns, cb}
         this.log = logger.getLogger('MsgSenderReceiver');
         this.rebinded = false;
