@@ -161,8 +161,30 @@ void FrameProcesser::onFrame(const Frame& frame)
         }
     }
 
-    uint32_t width = (m_outWidth == 0 ? frame.additionalInfo.video.width : m_outWidth);
-    uint32_t height = (m_outHeight == 0 ? frame.additionalInfo.video.height : m_outHeight);
+    uint32_t width = frame.additionalInfo.video.width;
+    uint32_t height = frame.additionalInfo.video.height;
+    double aspectRatio = static_cast<double>(frame.additionalInfo.video.width) / static_cast<double>(frame.additionalInfo.video.height);
+
+    if(m_outWidth > 0 && m_outHeight == 0){
+
+		if(width > m_outWidth){
+			width = m_outWidth;
+		}
+
+		height = (int) ( static_cast<double>(width) / aspectRatio);
+
+    }else if(m_outWidth == 0 && m_outHeight > 0){
+
+		if(height > m_outHeight){
+			height = m_outHeight;
+		}
+
+		width = (int) ( static_cast<double>(height) * aspectRatio);
+
+    }else if(m_outWidth > 0 && m_outHeight > 0){
+    	width = m_outWidth;
+    	height = m_outHeight;
+    }
 
 #ifdef ENABLE_MSDK
     if (m_format == FRAME_FORMAT_MSDK) {
