@@ -6,8 +6,15 @@ port = 5672 #default: 5672
 name = "owt-cluster"
 #Set its value to the number of cluster manager instances，suggest odd number
 totalNode = 1 #node become leader when got vote gt totalNode/2
-# elect leader timeout
+
+#electTimeout specifies the time in candidate state without contact from a leader before we attempt an election.
 electTimeout = 1000 #ms
+
+#leaderLeaseTimeout is used to control how long the "lease" lasts for being the leader without being able to contact a quorum of nodes. If we reach this interval without contact, we will step down as leader.
+leaderLeaseTimeout = 500 #ms
+
+#heartbeatTimeout specifies the time in follower state without contact from a leader before we attempt an election.
+heartbeatTimeout = 1000 #ms
 
 #The time for cluster manager getting ready to handle the incoming 'schedule' requirements.
 initial_time = 6000 #ms

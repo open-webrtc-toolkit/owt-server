@@ -27,6 +27,24 @@ config.manager.check_alive_count = config.manager.check_alive_count || 10;
 config.manager.schedule_reserve_time = config.manager.schedule_reserve_time || 60 * 1000;
 config.manager.totalNode = config.manager.totalNode || 1;
 config.manager.electTimeout = config.manager.electTimeout || 1000;
+if (config.manager.electTimeout < 1000) {
+    log.error(`electTimeout is too low it must egt 1000ms`);
+    process.exit(1);
+}
+if(!config.manager.heartbeatTimeout){
+    config.manager.heartbeatTimeout = config.manager.electTimeout;
+}
+if(!config.manager.leaderLeaseTimeout){
+    config.manager.leaderLeaseTimeout = parseInt(config.manager.heartbeatTimeout/2);
+}
+if (config.manager.heartbeatTimeout < 1000) {
+    log.error(`heartbeatTimeout is too low it must egt 1000ms`);
+    process.exit(1);
+}
+if (config.manager.leaderLeaseTimeout < 500) {
+    log.error(`leaderLeaseTimeout is too low it must egt 500ms`);
+    process.exit(1);
+}
 
 config.strategy = config.strategy || {};
 config.strategy.general = config.strategy.general || 'round-robin';
@@ -60,7 +78,9 @@ function startup () {
         strategy: config.strategy,
         enableCascading: config.cascading.enabled, url: config.cascading.url, region: config.cascading.region, clusterID: config.cascading.clusterID,
         totalNode:config.manager.totalNode,
-        electTimeout:config.manager.electTimeout
+        electTimeout:config.manager.electTimeout,
+        heartbeatTimeout: config.manager.heartbeatTimeout,
+        leaderLeaseTimeout: config.manager.leaderLeaseTimeout
     };
 
     if (config.manager.enable_grpc) {
