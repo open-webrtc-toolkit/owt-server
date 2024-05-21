@@ -970,7 +970,7 @@ var runAsFollower = function(topicChannel, manager) {
                     if (state.lastVoteFor == data.id) {
                         responseVote(state.term, data.id, state.commitIndex, data.term, true);
                         return
-                    } else if (!(state.lastVoteFor == state.id && state.prevLogIndex == DEFAULT_DATA && data.prevLogIndex != DEFAULT_DATA)) {
+                    } else if (!(state.lastVoteFor == state.id && state.prevLogIndex < data.prevLogIndex)) {
                         responseVote(state.term, data.id, state.commitIndex, data.term, false);
                         return
                     }
@@ -1356,7 +1356,7 @@ var runAsCandidate = function(topicChannel, manager) {
                     if (state.lastVoteFor == data.id) {
                         responseVote(state.term, data.id, state.commitIndex, data.term, true);
                         return
-                    } else if (!(state.lastVoteFor == state.id && state.prevLogIndex == DEFAULT_DATA && data.prevLogIndex != DEFAULT_DATA)) {
+                    } else if (!(state.lastVoteFor == state.id && state.prevLogIndex < data.prevLogIndex)) {
                         responseVote(state.term, data.id, state.commitIndex, data.term, false);
                         return
                     }
