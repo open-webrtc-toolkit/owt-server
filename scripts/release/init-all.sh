@@ -24,7 +24,6 @@ copy_video_libs()
 {
   cp ${ROOT}/video_agent/lib/* ${ROOT}/audio_agent/lib/
   cp ${ROOT}/video_agent/lib/* ${ROOT}/recording_agent/lib/
-  cp ${ROOT}/video_agent/lib/* ${ROOT}/streaming_agent/lib/
 }
 
 init_software()
@@ -39,6 +38,7 @@ init_software()
     ${ROOT}/webrtc_agent/install_deps.sh
     ${ROOT}/video_agent/install_deps.sh
     ${ROOT}/video_agent/init.sh
+    ${ROOT}/streaming_agent/install_deps.sh
     ${ROOT}/analytics_agent/install_deps.sh
     copy_video_libs
   else
