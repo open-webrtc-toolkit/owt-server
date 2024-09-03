@@ -474,6 +474,7 @@ function isLibAllowed(libSrc) {
     'libowt_web_transport',
   ];
   if (!options['archive'] || options['with-ffmpeg']) {
+    whiteList.push('libsrt');
     whiteList.push('libav');
     whiteList.push('libsw');
     if (osType.includes('centos') || (osType.includes('ubuntu') && osType.includes('20.04'))) {
