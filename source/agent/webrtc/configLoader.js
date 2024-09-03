@@ -51,8 +51,8 @@ module.exports.load = () => {
     config.webrtc = config.webrtc || {};
     config.webrtc.stunserver = config.webrtc.stunserver || '';
     config.webrtc.stunport = config.webrtc.stunport || 0;
-    config.webrtc.minport = config.webrtc.minport || 0;
-    config.webrtc.maxport = config.webrtc.maxport || 0;
+    config.webrtc.minport = config.webrtc.minport.indexOf('$') === 0 ? process.env[config.webrtc.minport.substr(1)] : (config.webrtc.minport || 0);
+    config.webrtc.maxport = config.webrtc.maxport.indexOf('$') === 0 ? process.env[config.webrtc.maxport.substr(1)] : (config.webrtc.maxport || 0);
     config.webrtc.keystorePath = config.webrtc.keystorePath || '';
     config.webrtc.num_workers = config.webrtc.num_workers || 24;
     config.webrtc.use_nicer = config.webrtc.use_nicer || false;
