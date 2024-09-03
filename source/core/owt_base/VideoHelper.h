@@ -50,7 +50,7 @@ public:
         } else {
             std::string::size_type r = resolution.find("r");
             std::string::size_type x = resolution.find("x");
-            if ((r != std::string::npos) && (x != std::string::npos) && (x > 2)) {
+            if ((r != std::string::npos) && (x != std::string::npos) && (x > 0)) {
                 videoSize = {(unsigned int)std::atoi(resolution.substr(1, x).c_str()), (unsigned int)std::atoi(resolution.substr(x+1).c_str())};
                 return true;
             }
