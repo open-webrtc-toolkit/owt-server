@@ -61,3 +61,6 @@ port = 7700 #default: 7700
 
 # FQDN of QUIC agent. It's included in WebTransport tokens as a part of the WebTransport URL client connects to. IP address will be included in WebTransport tokens if hostname is empty.
 hostname = ""
+
+# Path to QUIC agent plugin. Plugin is enabled only when the value is not an empty string. Default: "".
+pluginPath = ""
