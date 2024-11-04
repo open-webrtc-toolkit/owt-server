@@ -100,6 +100,7 @@ var joinCluster = function (on_ok) {
   var spec = {rpcClient: rpcClient,
               purpose: 'eventbridge',
               clusterName: config.cluster.name,
+              clusterHost: config.cluster.host,
               joinRetry: config.cluster.join_retry,
               info: {ip: config.bridge.hostname || ip_address,
                      port: config.bridge.port,

@@ -139,6 +139,7 @@ var joinCluster = function (on_ok) {
   var spec = {rpcClient: rpcClient,
               purpose: 'portal',
               clusterName: config.cluster.name,
+              clusterHost: config.cluster.host,
               joinRetry: config.cluster.join_retry,
               info: {
                 ip: ip_address,
