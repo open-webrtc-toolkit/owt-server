@@ -64,7 +64,7 @@ void GstInternalIn::onFrame(const owt_base::Frame& frame)
         return;
     }
 
-    if(frame.additionalInfo.video.width == 1) {
+    if(frame.format > owt_base::FRAME_FORMAT_AV1 || frame.format < owt_base::FRAME_FORMAT_VP8) {
         ELOG_DEBUG("Not a valid video frame\n");
         return;
     }
